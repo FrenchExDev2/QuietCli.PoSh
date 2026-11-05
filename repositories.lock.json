@@ -1,0 +1,44 @@
+{
+  "Layout": "Monorepo",
+  "SDK": "11.0.100-rc.3.26522.148",
+  "SchemaVersion": 3,
+  "Repository": {
+    "Name": "FrenchExDev2.QuietCli.PoSh",
+    "SourceSHA256": "72CE46CCFCC1341E809CB4F69F666F3DC5568E3A9EB753D94E99F5AB1CDCAC0A",
+    "Remote": "https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh.git"
+  },
+  "Projects": [
+    {
+      "Name": "FrenchExDev2.QuietCli.Core.PoSh",
+      "Dependencies": [],
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh",
+      "SourceSHA256": "B60A7F03F1A064C5CCD211073004267FBDCFF2689B024A3AD80EA51001F55F17"
+    },
+    {
+      "Name": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
+      "Dependencies": [
+        "FrenchExDev2.QuietCli.Core.PoSh"
+      ],
+      "Path": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
+      "SourceSHA256": "2CB84252C4F43FE5FCED74A6223C17DB0FC281CFDD2F00D3284FD4447B0DBF35"
+    },
+    {
+      "Name": "FrenchExDev2.QuietCli.Git.PoSh",
+      "Dependencies": [
+        "FrenchExDev2.QuietCli.Core.PoSh"
+      ],
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh",
+      "SourceSHA256": "066F0A98A0C8DBBB9014A41B8ACCE05180BAEDDB5B046A85BD9282C12A7E37F7"
+    },
+    {
+      "Name": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
+      "Dependencies": [
+        "FrenchExDev2.QuietCli.Git.PoSh",
+        "FrenchExDev2.QuietCli.Core.Tests.PoSh"
+      ],
+      "Path": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
+      "SourceSHA256": "69DB662E257EB27A2AD5E5437F515FB699A22E4481450320777C8D2AD2BD15B0"
+    }
+  ],
+  "Runtime": "11.0.0-rc.3.26522.148"
+}

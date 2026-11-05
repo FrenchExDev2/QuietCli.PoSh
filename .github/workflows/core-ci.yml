@@ -1,0 +1,22 @@
+name: QuietCli2 Core and dependent Git
+on:
+  pull_request:
+    paths: &core_paths
+      - 'FrenchExDev2.QuietCli.Core.PoSh/**'
+      - 'FrenchExDev2.QuietCli.Core.Tests.PoSh/**'
+      - 'scripts/**'
+      - 'build/**'
+      - '.github/**'
+      - 'global.json'
+      - 'AGENTS.md'
+      - '.gitattributes'
+  push:
+    branches: [main]
+    paths: *core_paths
+permissions:
+  contents: read
+jobs:
+  core-and-git:
+    uses: ./.github/workflows/ci.yml
+    with:
+      suite: All

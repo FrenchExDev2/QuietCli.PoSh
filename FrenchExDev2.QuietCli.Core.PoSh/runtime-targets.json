@@ -1,0 +1,11 @@
+{
+  "SchemaVersion": 1,
+  "Targets": [
+    { "Rid": "win-x64", "PlatformTarget": "x64", "ManagedMachine": 34404, "NativeFormat": "PE", "NativeMachine": 34404, "Apphost": "QuietCli.Engine.exe", "Pty": false },
+    { "Rid": "win-arm64", "PlatformTarget": "ARM64", "ManagedMachine": 43620, "NativeFormat": "PE", "NativeMachine": 43620, "Apphost": "QuietCli.Engine.exe", "Pty": false },
+    { "Rid": "linux-x64", "PlatformTarget": "x64", "ManagedMachine": 34404, "NativeFormat": "ELF", "NativeMachine": 62, "Apphost": "QuietCli.Engine", "Pty": true },
+    { "Rid": "linux-arm64", "PlatformTarget": "ARM64", "ManagedMachine": 43620, "NativeFormat": "ELF", "NativeMachine": 183, "Apphost": "QuietCli.Engine", "Pty": true },
+    { "Rid": "linux-musl-x64", "PlatformTarget": "x64", "ManagedMachine": 34404, "NativeFormat": "ELF", "NativeMachine": 62, "Apphost": "QuietCli.Engine", "Pty": true },
+    { "Rid": "linux-musl-arm64", "PlatformTarget": "ARM64", "ManagedMachine": 43620, "NativeFormat": "ELF", "NativeMachine": 183, "Apphost": "QuietCli.Engine", "Pty": true }
+  ]
+}

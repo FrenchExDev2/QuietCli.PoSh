@@ -1,0 +1,4744 @@
+{
+  "ls-files": {
+    "Name": "ls-files",
+    "Contract": "Git.LsFiles.ps1",
+    "OutputSchema": "git.ls-files.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "stripspace": {
+    "Name": "stripspace",
+    "Contract": "Git.Stripspace.ps1",
+    "OutputSchema": "git.stripspace.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "mktree": {
+    "Name": "mktree",
+    "Contract": "Git.Mktree.ps1",
+    "OutputSchema": "git.mktree.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "count-objects": {
+    "Name": "count-objects",
+    "Contract": "Git.CountObjects.ps1",
+    "OutputSchema": "git.count-objects.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "for-each-ref": {
+    "Name": "for-each-ref",
+    "Contract": "Git.ForEachRef.ps1",
+    "OutputSchema": "git.for-each-ref.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "hash-object": {
+    "Name": "hash-object",
+    "Contract": "Git.HashObject.ps1",
+    "OutputSchema": "git.hash-object.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "unpack-file": {
+    "Name": "unpack-file",
+    "Contract": "Git.UnpackFile.ps1",
+    "OutputSchema": "git.unpack-file.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "get-tar-commit-id": {
+    "Name": "get-tar-commit-id",
+    "Contract": "Git.GetTarCommitId.ps1",
+    "OutputSchema": "git.get-tar-commit-id.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "write-tree": {
+    "Name": "write-tree",
+    "Contract": "Git.WriteTree.ps1",
+    "OutputSchema": "git.write-tree.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "ls-tree": {
+    "Name": "ls-tree",
+    "Contract": "Git.LsTree.ps1",
+    "OutputSchema": "git.ls-tree.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "version": {
+    "Name": "version",
+    "Contract": "Git.Version.ps1",
+    "OutputSchema": "git.version.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "commit-tree": {
+    "Name": "commit-tree",
+    "Contract": "Git.CommitTree.ps1",
+    "OutputSchema": "git.commit-tree.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "check-ref-format": {
+    "Name": "check-ref-format",
+    "Contract": "Git.CheckRefFormat.ps1",
+    "OutputSchema": "git.check-ref-format.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "show-ref": {
+    "Name": "show-ref",
+    "Contract": "Git.ShowRef.ps1",
+    "OutputSchema": "git.show-ref.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "symbolic-ref": {
+    "Name": "symbolic-ref",
+    "Contract": "Git.SymbolicRef.ps1",
+    "OutputSchema": "git.symbolic-ref.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "var": {
+    "Name": "var",
+    "Contract": "Git.Var.ps1",
+    "OutputSchema": "git.var.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "merge-base": {
+    "Name": "merge-base",
+    "Contract": "Git.MergeBase.ps1",
+    "OutputSchema": "git.merge-base.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "mktag": {
+    "Name": "mktag",
+    "Contract": "Git.Mktag.ps1",
+    "OutputSchema": "git.mktag.v1",
+    "Handler": "Query",
+    "Qualification": "Pending"
+  },
+  "status": {
+    "Qualification": "Pending",
+    "Contract": "Git.Status.ps1",
+    "Name": "status",
+    "OutputSchema": "git.status.v3",
+    "Handler": "Status"
+  },
+  "cat-file": {
+    "Contract": "Git.CatFile.ps1",
+    "OutputSchema": "Git.CatFile",
+    "Name": "cat-file",
+    "Qualification": "Pending",
+    "Handler": "Content"
+  },
+  "add": {
+    "Operation": "add",
+    "OutputSchema": "Git.Add",
+    "DryRunOptions": [
+      "--dry-run",
+      "-n"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Add.ps1",
+    "Qualification": "Pending",
+    "Name": "add",
+    "Handler": "Mutation"
+  },
+  "rm": {
+    "Operation": "rm",
+    "OutputSchema": "Git.Rm",
+    "DryRunOptions": [
+      "--dry-run",
+      "-n"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Rm.ps1",
+    "Qualification": "Pending",
+    "Name": "rm",
+    "Handler": "Mutation"
+  },
+  "mv": {
+    "Operation": "mv",
+    "OutputSchema": "Git.Mv",
+    "DryRunOptions": [
+      "--dry-run",
+      "-n"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Mv.ps1",
+    "Qualification": "Pending",
+    "Name": "mv",
+    "Handler": "Mutation"
+  },
+  "update-index": {
+    "Operation": "update-index",
+    "OutputSchema": "Git.UpdateIndex",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.UpdateIndex.ps1",
+    "Qualification": "Pending",
+    "Name": "update-index",
+    "Handler": "Mutation"
+  },
+  "update-ref": {
+    "Operation": "update-ref",
+    "OutputSchema": "Git.UpdateRef",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.UpdateRef.ps1",
+    "Qualification": "Pending",
+    "Name": "update-ref",
+    "Handler": "Mutation"
+  },
+  "read-tree": {
+    "Operation": "read-tree",
+    "OutputSchema": "Git.ReadTree",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.ReadTree.ps1",
+    "Qualification": "Pending",
+    "Name": "read-tree",
+    "Handler": "Mutation"
+  },
+  "commit": {
+    "Operation": "commit",
+    "OutputSchema": "Git.Commit",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Commit.ps1",
+    "Qualification": "Pending",
+    "Name": "commit",
+    "Handler": "Mutation"
+  },
+  "reset": {
+    "Operation": "reset",
+    "OutputSchema": "Git.Reset",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Reset.ps1",
+    "Qualification": "Pending",
+    "Name": "reset",
+    "Handler": "Mutation"
+  },
+  "checkout": {
+    "Operation": "checkout",
+    "OutputSchema": "Git.Checkout",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Checkout.ps1",
+    "Qualification": "Pending",
+    "Name": "checkout",
+    "Handler": "Mutation"
+  },
+  "restore": {
+    "Operation": "restore",
+    "OutputSchema": "Git.Restore",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Restore.ps1",
+    "Qualification": "Pending",
+    "Name": "restore",
+    "Handler": "Mutation"
+  },
+  "switch": {
+    "Operation": "switch",
+    "OutputSchema": "Git.Switch",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Switch.ps1",
+    "Qualification": "Pending",
+    "Name": "switch",
+    "Handler": "Mutation"
+  },
+  "clean": {
+    "Operation": "clean",
+    "OutputSchema": "Git.Clean",
+    "DryRunOptions": [
+      "--dry-run",
+      "-n"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Clean.ps1",
+    "Qualification": "Pending",
+    "Name": "clean",
+    "Handler": "Mutation"
+  },
+  "merge": {
+    "Operation": "merge",
+    "OutputSchema": "Git.Merge",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Merge.ps1",
+    "Qualification": "Pending",
+    "Name": "merge",
+    "Handler": "Mutation"
+  },
+  "cherry-pick": {
+    "Operation": "cherry-pick",
+    "OutputSchema": "Git.CherryPick",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.CherryPick.ps1",
+    "Qualification": "Pending",
+    "Name": "cherry-pick",
+    "Handler": "Mutation"
+  },
+  "revert": {
+    "Operation": "revert",
+    "OutputSchema": "Git.Revert",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Revert.ps1",
+    "Qualification": "Pending",
+    "Name": "revert",
+    "Handler": "Mutation"
+  },
+  "gc": {
+    "Operation": "gc",
+    "OutputSchema": "Git.Gc",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Gc.ps1",
+    "Qualification": "Pending",
+    "Name": "gc",
+    "Handler": "Mutation"
+  },
+  "prune": {
+    "Operation": "prune",
+    "OutputSchema": "Git.Prune",
+    "DryRunOptions": [
+      "--dry-run",
+      "-n"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Prune.ps1",
+    "Qualification": "Pending",
+    "Name": "prune",
+    "Handler": "Mutation"
+  },
+  "repack": {
+    "Operation": "repack",
+    "OutputSchema": "Git.Repack",
+    "DryRunOptions": [
+      "--dry-run",
+      "-n"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Repack.ps1",
+    "Qualification": "Pending",
+    "Name": "repack",
+    "Handler": "Mutation"
+  },
+  "pack-refs": {
+    "Operation": "pack-refs",
+    "OutputSchema": "Git.PackRefs",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.PackRefs.ps1",
+    "Qualification": "Pending",
+    "Name": "pack-refs",
+    "Handler": "Mutation"
+  },
+  "prune-packed": {
+    "Operation": "prune-packed",
+    "OutputSchema": "Git.PrunePacked",
+    "DryRunOptions": [
+      "--dry-run",
+      "-n"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.PrunePacked.ps1",
+    "Qualification": "Pending",
+    "Name": "prune-packed",
+    "Handler": "Mutation"
+  },
+  "multi-pack-index": {
+    "Operation": "multi-pack-index",
+    "OutputSchema": "Git.MultiPackIndex",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.MultiPackIndex.ps1",
+    "Qualification": "Pending",
+    "Name": "multi-pack-index",
+    "Handler": "Mutation"
+  },
+  "maintenance": {
+    "Operation": "maintenance",
+    "OutputSchema": "Git.Maintenance",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Maintenance.ps1",
+    "Qualification": "Pending",
+    "Name": "maintenance",
+    "Handler": "Mutation"
+  },
+  "rerere": {
+    "Operation": "rerere",
+    "OutputSchema": "Git.Rerere",
+    "DryRunOptions": [
+      "--dry-run"
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Contract": "Git.Rerere.ps1",
+    "Qualification": "Pending",
+    "Name": "rerere",
+    "Handler": "Mutation"
+  },
+  "diff": {
+    "Name": "diff",
+    "Qualification": "Pending",
+    "Handler": "Diff",
+    "OutputSchema": "Git.Diff",
+    "Contract": "Git.Diff.ps1"
+  },
+  "diff-index": {
+    "Name": "diff-index",
+    "Qualification": "Pending",
+    "Handler": "Diff",
+    "OutputSchema": "Git.DiffIndex",
+    "Contract": "Git.DiffIndex.ps1"
+  },
+  "diff-files": {
+    "Name": "diff-files",
+    "Qualification": "Pending",
+    "Handler": "Diff",
+    "OutputSchema": "Git.DiffFiles",
+    "Contract": "Git.DiffFiles.ps1"
+  },
+  "diff-tree": {
+    "Name": "diff-tree",
+    "Qualification": "Pending",
+    "Handler": "Diff",
+    "OutputSchema": "Git.DiffTree",
+    "Contract": "Git.DiffTree.ps1"
+  },
+  "$root": {
+    "Qualification": "Pending",
+    "Name": "$root",
+    "Handler": "Help",
+    "OutputSchema": "git.$root.v1",
+    "Contract": "Git.Root.ps1"
+  },
+  "help": {
+    "Qualification": "Pending",
+    "Name": "help",
+    "Handler": "Help",
+    "OutputSchema": "git.help.v1",
+    "Contract": "Git.Help.ps1"
+  },
+  "check-attr": {
+    "Name": "check-attr",
+    "Handler": "Checks",
+    "Contract": "Git.CheckAttr.ps1",
+    "OutputSchema": "git.check-attr.v1",
+    "Qualification": "Pending"
+  },
+  "check-ignore": {
+    "Name": "check-ignore",
+    "Handler": "Checks",
+    "Contract": "Git.CheckIgnore.ps1",
+    "OutputSchema": "git.check-ignore.v1",
+    "Qualification": "Pending"
+  },
+  "check-mailmap": {
+    "Name": "check-mailmap",
+    "Handler": "Checks",
+    "Contract": "Git.CheckMailmap.ps1",
+    "OutputSchema": "git.check-mailmap.v1",
+    "Qualification": "Pending"
+  },
+  "credential": {
+    "Name": "credential",
+    "Handler": "Credential",
+    "Contract": "Git.Credential.ps1",
+    "OutputSchema": "git.credential.v1",
+    "Qualification": "Pending"
+  },
+  "credential-store": {
+    "Name": "credential-store",
+    "Handler": "Credential",
+    "Contract": "Git.CredentialStore.ps1",
+    "OutputSchema": "git.credential-store.v1",
+    "Qualification": "Pending"
+  },
+  "credential-cache": {
+    "Name": "credential-cache",
+    "Handler": "Credential",
+    "Contract": "Git.CredentialCache.ps1",
+    "OutputSchema": "git.credential-cache.v1",
+    "Qualification": "Pending"
+  },
+  "credential-cache--daemon": {
+    "Name": "credential-cache--daemon",
+    "Handler": "Credential",
+    "Contract": "Git.CredentialCacheDaemon.ps1",
+    "OutputSchema": "git.credential-cache--daemon.v1",
+    "Qualification": "Pending"
+  },
+  "send-email": {
+    "Name": "send-email",
+    "Handler": "Delivery",
+    "Contract": "Git.SendEmail.ps1",
+    "OutputSchema": "git.send-email.v1",
+    "Qualification": "Pending"
+  },
+  "imap-send": {
+    "Name": "imap-send",
+    "Handler": "Delivery",
+    "Contract": "Git.ImapSend.ps1",
+    "OutputSchema": "git.imap-send.v1",
+    "Qualification": "Pending"
+  },
+  "apply": {
+    "Name": "apply",
+    "Handler": "Editing",
+    "Contract": "Git.Apply.ps1",
+    "OutputSchema": "git.apply.v1",
+    "Qualification": "Pending"
+  },
+  "am": {
+    "Name": "am",
+    "Handler": "Editing",
+    "Contract": "Git.Am.ps1",
+    "OutputSchema": "git.am.v1",
+    "Qualification": "Pending"
+  },
+  "rebase": {
+    "Name": "rebase",
+    "Handler": "Editing",
+    "Contract": "Git.Rebase.ps1",
+    "OutputSchema": "git.rebase.v1",
+    "Qualification": "Pending"
+  },
+  "bisect": {
+    "Name": "bisect",
+    "Handler": "Editing",
+    "Contract": "Git.Bisect.ps1",
+    "OutputSchema": "git.bisect.v1",
+    "Qualification": "Pending"
+  },
+  "replay": {
+    "Name": "replay",
+    "Handler": "Editing",
+    "Contract": "Git.Replay.ps1",
+    "OutputSchema": "git.replay.v1",
+    "Qualification": "Pending"
+  },
+  "merge-index": {
+    "Name": "merge-index",
+    "Handler": "Editing",
+    "Contract": "Git.MergeIndex.ps1",
+    "OutputSchema": "git.merge-index.v1",
+    "Qualification": "Pending"
+  },
+  "merge-one-file": {
+    "Name": "merge-one-file",
+    "Handler": "Editing",
+    "Contract": "Git.MergeOneFile.ps1",
+    "OutputSchema": "git.merge-one-file.v1",
+    "Qualification": "Pending"
+  },
+  "merge-file": {
+    "Name": "merge-file",
+    "Handler": "Editing",
+    "Contract": "Git.MergeFile.ps1",
+    "OutputSchema": "git.merge-file.v1",
+    "Qualification": "Pending"
+  },
+  "merge-tree": {
+    "Name": "merge-tree",
+    "Handler": "Editing",
+    "Contract": "Git.MergeTree.ps1",
+    "OutputSchema": "git.merge-tree.v1",
+    "Qualification": "Pending"
+  },
+  "gui": {
+    "Name": "gui",
+    "Handler": "Gui",
+    "Contract": "Git.Gui.ps1",
+    "OutputSchema": "git.gui.v1",
+    "Qualification": "Pending"
+  },
+  "citool": {
+    "Name": "citool",
+    "Handler": "Gui",
+    "Contract": "Git.Citool.ps1",
+    "OutputSchema": "git.citool.v1",
+    "Qualification": "Pending"
+  },
+  "difftool": {
+    "Name": "difftool",
+    "Handler": "Gui",
+    "Contract": "Git.Difftool.ps1",
+    "OutputSchema": "git.difftool.v1",
+    "Qualification": "Pending"
+  },
+  "difftool--helper": {
+    "Name": "difftool--helper",
+    "Handler": "Gui",
+    "Contract": "Git.DifftoolHelper.ps1",
+    "OutputSchema": "git.difftool--helper.v1",
+    "Qualification": "Pending"
+  },
+  "mergetool": {
+    "Name": "mergetool",
+    "Handler": "Gui",
+    "Contract": "Git.Mergetool.ps1",
+    "OutputSchema": "git.mergetool.v1",
+    "Qualification": "Pending"
+  },
+  "web--browse": {
+    "Name": "web--browse",
+    "Handler": "Gui",
+    "Contract": "Git.WebBrowse.ps1",
+    "OutputSchema": "git.web--browse.v1",
+    "Qualification": "Pending"
+  },
+  "instaweb": {
+    "Name": "instaweb",
+    "Handler": "Gui",
+    "Contract": "Git.Instaweb.ps1",
+    "OutputSchema": "git.instaweb.v1",
+    "Qualification": "Pending"
+  },
+  "log": {
+    "Name": "log",
+    "Handler": "History",
+    "Contract": "Git.Log.ps1",
+    "Qualification": "Development",
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "OutputSchema": "git.log.v1"
+  },
+  "rev-list": {
+    "Name": "rev-list",
+    "Handler": "History",
+    "Contract": "Git.RevList.ps1",
+    "Qualification": "Development",
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "OutputSchema": "git.rev-list.v1",
+    "OutputProtocols": [
+      "RevisionRelationships",
+      "ReachableObjects",
+      "EdgeObjects",
+      "OmittedObjects",
+      "MissingObjectInfo",
+      "ExactCounts",
+      "ExactDiskBytes",
+      "CommitMetadata",
+      "BisectSelection"
+    ]
+  },
+  "rev-parse": {
+    "Name": "rev-parse",
+    "Handler": "History",
+    "Contract": "Git.RevParse.ps1",
+    "Qualification": "Development",
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "OutputSchema": "git.rev-parse.v1"
+  },
+  "shortlog": {
+    "Name": "shortlog",
+    "Handler": "History",
+    "Contract": "Git.Shortlog.ps1",
+    "Qualification": "Development",
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "OutputSchema": "git.shortlog.v1"
+  },
+  "blame": {
+    "Name": "blame",
+    "Handler": "History",
+    "Contract": "Git.Blame.ps1",
+    "Qualification": "Development",
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "OutputSchema": "git.blame.v1"
+  },
+  "annotate": {
+    "Name": "annotate",
+    "Handler": "History",
+    "Contract": "Git.Annotate.ps1",
+    "Qualification": "Development",
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "OutputSchema": "git.annotate.v1"
+  },
+  "describe": {
+    "Name": "describe",
+    "Handler": "History",
+    "Contract": "Git.Describe.ps1",
+    "Qualification": "Development",
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "OutputSchema": "git.describe.v1"
+  },
+  "name-rev": {
+    "Name": "name-rev",
+    "Handler": "History",
+    "Contract": "Git.NameRev.ps1",
+    "Qualification": "Development",
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "OutputSchema": "git.name-rev.v1"
+  },
+  "reflog": {
+    "Name": "reflog",
+    "Handler": "History",
+    "Contract": "Git.Reflog.ps1",
+    "Qualification": "Development",
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "OutputSchema": "git.reflog.v1"
+  },
+  "show": {
+    "Qualification": "Development",
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "Name": "show",
+    "Handler": "History",
+    "Contract": "Git.Show.ps1",
+    "OutputSchema": "git.show.v1"
+  },
+  "cherry": {
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "OutputSchema": "git.cherry.v1",
+    "Qualification": "Development",
+    "Handler": "History",
+    "Contract": "Git.Cherry.ps1",
+    "Name": "cherry"
+  },
+  "whatchanged": {
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "OutputSchema": "git.whatchanged.v1",
+    "Qualification": "Development",
+    "Handler": "History",
+    "Contract": "Git.Whatchanged.ps1",
+    "VersionNotes": "Git 2.51 and newer require explicit --i-still-use-this; the module never injects acknowledgement.",
+    "Name": "whatchanged"
+  },
+  "show-branch": {
+    "Contract": "Git.ShowBranch.ps1",
+    "Name": "show-branch",
+    "Dependencies": [
+      "shared/Git.History.ps1"
+    ],
+    "Handler": "History",
+    "Variants": [
+      "--independent",
+      "--merge-base",
+      "GraphOverview",
+      "ReferenceList",
+      "ReflogOverview"
+    ],
+    "Qualification": "Development",
+    "OutputSchema": "git.show-branch.v1"
+  },
+  "last-modified": {
+    "OutputSchema": "git.last-modified.v1",
+    "Dependencies": [
+      "shared/Git.History.ps1",
+      "shared/Git.Content.ps1"
+    ],
+    "Handler": "History",
+    "Contract": "Git.LastModified.ps1",
+    "Qualification": "Development",
+    "Name": "last-modified"
+  },
+  "format-rev": {
+    "OutputSchema": "git.format-rev.v1",
+    "Dependencies": [
+      "shared/Git.History.ps1",
+      "shared/Git.Content.ps1"
+    ],
+    "Handler": "History",
+    "Contract": "Git.FormatRev.ps1",
+    "Qualification": "Development",
+    "Name": "format-rev"
+  },
+  "history": {
+    "OutputSchema": "git.history.v1",
+    "Dependencies": [
+      "shared/Git.History.ps1",
+      "shared/Git.Content.ps1",
+      "shared/Git.Mutation.ps1",
+      "shared/Git.Status.ps1"
+    ],
+    "Handler": "History",
+    "Contract": "Git.History.ps1",
+    "Qualification": "Development",
+    "Name": "history"
+  },
+  "range-diff": {
+    "OutputSchema": "git.range-diff.v1",
+    "Dependencies": [
+      "shared/Git.History.ps1",
+      "shared/Git.Content.ps1"
+    ],
+    "Handler": "History",
+    "Contract": "Git.RangeDiff.ps1",
+    "Qualification": "Development",
+    "Name": "range-diff"
+  },
+  "diff-pairs": {
+    "OutputSchema": "git.diff-pairs.v1",
+    "Dependencies": [
+      "shared/Git.History.ps1",
+      "shared/Git.Content.ps1"
+    ],
+    "Handler": "History",
+    "Contract": "Git.DiffPairs.ps1",
+    "Qualification": "Development",
+    "Name": "diff-pairs"
+  },
+  "pickaxe": {
+    "OutputSchema": "git.pickaxe.v1",
+    "Dependencies": [
+      "shared/Git.History.ps1",
+      "shared/Git.Content.ps1"
+    ],
+    "Handler": "History",
+    "Contract": "Git.Pickaxe.ps1",
+    "Qualification": "Development",
+    "Name": "pickaxe"
+  },
+  "checkout-index": {
+    "Name": "checkout-index",
+    "Handler": "Index",
+    "Contract": "Git.CheckoutIndex.ps1",
+    "OutputSchema": "git.checkout-index.v1",
+    "Qualification": "Pending"
+  },
+  "svn": {
+    "Name": "svn",
+    "Handler": "Integration",
+    "Contract": "Git.Svn.ps1",
+    "OutputSchema": "git.svn.v1",
+    "FamilyDocumentation": "doc/commands/integration-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; integration service, interpreter bindings and full option qualification remain pending.",
+    "ExternalEffects": "Native requested operation; remote state and arbitrary filter side effects are not inferred."
+  },
+  "p4": {
+    "Name": "p4",
+    "Handler": "Integration",
+    "Contract": "Git.P4.ps1",
+    "OutputSchema": "git.p4.v1",
+    "FamilyDocumentation": "doc/commands/integration-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; integration service, interpreter bindings and full option qualification remain pending.",
+    "ExternalEffects": "Native requested operation; remote state and arbitrary filter side effects are not inferred."
+  },
+  "archimport": {
+    "Name": "archimport",
+    "Handler": "Integration",
+    "Contract": "Git.Archimport.ps1",
+    "OutputSchema": "git.archimport.v1",
+    "FamilyDocumentation": "doc/commands/integration-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; integration service, interpreter bindings and full option qualification remain pending.",
+    "ExternalEffects": "Native requested operation; remote state and arbitrary filter side effects are not inferred."
+  },
+  "cvsimport": {
+    "Name": "cvsimport",
+    "Handler": "Integration",
+    "Contract": "Git.Cvsimport.ps1",
+    "OutputSchema": "git.cvsimport.v1",
+    "FamilyDocumentation": "doc/commands/integration-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; integration service, interpreter bindings and full option qualification remain pending.",
+    "ExternalEffects": "Native requested operation; remote state and arbitrary filter side effects are not inferred."
+  },
+  "cvsexportcommit": {
+    "Name": "cvsexportcommit",
+    "Handler": "Integration",
+    "Contract": "Git.Cvsexportcommit.ps1",
+    "OutputSchema": "git.cvsexportcommit.v1",
+    "FamilyDocumentation": "doc/commands/integration-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; integration service, interpreter bindings and full option qualification remain pending.",
+    "ExternalEffects": "Native requested operation; remote state and arbitrary filter side effects are not inferred."
+  },
+  "cvsserver": {
+    "Name": "cvsserver",
+    "Handler": "Integration",
+    "Contract": "Git.Cvsserver.ps1",
+    "OutputSchema": "git.cvsserver.v1",
+    "FamilyDocumentation": "doc/commands/integration-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; integration service, interpreter bindings and full option qualification remain pending.",
+    "ExternalEffects": "Native requested operation; remote state and arbitrary filter side effects are not inferred."
+  },
+  "quiltimport": {
+    "Name": "quiltimport",
+    "Handler": "Integration",
+    "Contract": "Git.Quiltimport.ps1",
+    "OutputSchema": "git.quiltimport.v1",
+    "FamilyDocumentation": "doc/commands/integration-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; integration service, interpreter bindings and full option qualification remain pending.",
+    "ExternalEffects": "Native requested operation; remote state and arbitrary filter side effects are not inferred."
+  },
+  "filter-branch": {
+    "Name": "filter-branch",
+    "Handler": "Integration",
+    "Contract": "Git.FilterBranch.ps1",
+    "OutputSchema": "git.filter-branch.v1",
+    "FamilyDocumentation": "doc/commands/integration-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; integration service, interpreter bindings and full option qualification remain pending.",
+    "ExternalEffects": "Native requested operation; remote state and arbitrary filter side effects are not inferred."
+  },
+  "format-patch": {
+    "Name": "format-patch",
+    "Handler": "Mail",
+    "Contract": "Git.FormatPatch.ps1",
+    "OutputSchema": "git.format-patch.v1",
+    "Dependencies": [
+      "shared/Git.Mail.ps1"
+    ],
+    "Qualification": "Development",
+    "Limitations": [
+      "Newline-delimited file destinations require another manifest protocol.",
+      "Unknown option binding prevents normalization; no valid layout is inferred."
+    ]
+  },
+  "request-pull": {
+    "Name": "request-pull",
+    "Handler": "Mail",
+    "Contract": "Git.RequestPull.ps1",
+    "OutputSchema": "git.request-pull.v1",
+    "Dependencies": [
+      "shared/Git.Mail.ps1"
+    ],
+    "Qualification": "Development",
+    "NativeDependencies": [
+      "Official git-request-pull helper and its Git distribution shell dependencies"
+    ]
+  },
+  "fmt-merge-msg": {
+    "Name": "fmt-merge-msg",
+    "Handler": "Mail",
+    "Contract": "Git.FmtMergeMsg.ps1",
+    "OutputSchema": "git.fmt-merge-msg.v1",
+    "Dependencies": [
+      "shared/Git.Mail.ps1"
+    ],
+    "Qualification": "Development"
+  },
+  "patch-id": {
+    "Name": "patch-id",
+    "Handler": "Mail",
+    "Contract": "Git.PatchId.ps1",
+    "OutputSchema": "git.patch-id.v1",
+    "Dependencies": [
+      "shared/Git.Mail.ps1"
+    ],
+    "Qualification": "Development"
+  },
+  "mailinfo": {
+    "Name": "mailinfo",
+    "Handler": "Mail",
+    "Contract": "Git.Mailinfo.ps1",
+    "OutputSchema": "git.mailinfo.v1",
+    "Dependencies": [
+      "shared/Git.Mail.ps1"
+    ],
+    "Qualification": "Development"
+  },
+  "mailsplit": {
+    "Name": "mailsplit",
+    "Handler": "Mail",
+    "Contract": "Git.Mailsplit.ps1",
+    "OutputSchema": "git.mailsplit.v1",
+    "Dependencies": [
+      "shared/Git.Mail.ps1"
+    ],
+    "Qualification": "Development"
+  },
+  "interpret-trailers": {
+    "Name": "interpret-trailers",
+    "Handler": "Mail",
+    "Contract": "Git.InterpretTrailers.ps1",
+    "OutputSchema": "git.interpret-trailers.v1",
+    "Dependencies": [
+      "shared/Git.Mail.ps1"
+    ],
+    "Qualification": "Development",
+    "Limitations": [
+      "Multiple stdout documents require framing; multiple in-place files retain explicit path boundaries."
+    ]
+  },
+  "config": {
+    "Name": "config",
+    "Contract": "Git.Config.ps1",
+    "OutputSchema": "git.config.v1",
+    "Handler": "Management",
+    "Qualification": "Pending"
+  },
+  "branch": {
+    "Name": "branch",
+    "Contract": "Git.Branch.ps1",
+    "OutputSchema": "git.branch.v1",
+    "Handler": "Management",
+    "Qualification": "Pending"
+  },
+  "tag": {
+    "Name": "tag",
+    "Contract": "Git.Tag.ps1",
+    "OutputSchema": "git.tag.v1",
+    "Handler": "Management",
+    "Qualification": "Pending"
+  },
+  "remote": {
+    "Name": "remote",
+    "Contract": "Git.Remote.ps1",
+    "OutputSchema": "git.remote.v1",
+    "Handler": "Management",
+    "Qualification": "Pending"
+  },
+  "worktree": {
+    "Name": "worktree",
+    "Contract": "Git.Worktree.ps1",
+    "OutputSchema": "git.worktree.v1",
+    "Handler": "Management",
+    "Qualification": "Pending"
+  },
+  "init": {
+    "Handler": "Management",
+    "Name": "init",
+    "Qualification": "Pending",
+    "Contract": "Git.Init.ps1",
+    "OutputSchema": "git.init.v1"
+  },
+  "init-db": {
+    "Handler": "Management",
+    "Name": "init-db",
+    "Qualification": "Pending",
+    "Contract": "Git.InitDb.ps1",
+    "OutputSchema": "git.init-db.v1"
+  },
+  "sparse-checkout": {
+    "Handler": "Management",
+    "Name": "sparse-checkout",
+    "Qualification": "Pending",
+    "Contract": "Git.SparseCheckout.ps1",
+    "OutputSchema": "git.sparse-checkout.v1",
+    "SubcommandVersions": {
+      "list": 131071,
+      "check-rules": 131070,
+      "clean": 126976,
+      "init": 131071,
+      "disable": 131071,
+      "add": 131071,
+      "set": 131071,
+      "reapply": 131071
+    },
+    "SubcommandSources": [
+      "https://raw.githubusercontent.com/git/git/v2.40.0/Documentation/git-sparse-checkout.txt",
+      "https://raw.githubusercontent.com/git/git/v2.41.0/Documentation/git-sparse-checkout.txt",
+      "https://raw.githubusercontent.com/git/git/v2.51.0/Documentation/git-sparse-checkout.adoc",
+      "https://raw.githubusercontent.com/git/git/v2.52.0/Documentation/git-sparse-checkout.adoc"
+    ]
+  },
+  "replace": {
+    "Handler": "Management",
+    "Name": "replace",
+    "Qualification": "Pending",
+    "Contract": "Git.Replace.ps1",
+    "OutputSchema": "git.replace.v1"
+  },
+  "notes": {
+    "OutputSchema": "git.notes.v1",
+    "Handler": "Management",
+    "Contract": "Git.Notes.ps1",
+    "Qualification": "Pending",
+    "Name": "notes"
+  },
+  "stash": {
+    "OutputSchema": "git.stash.v1",
+    "Handler": "Management",
+    "Contract": "Git.Stash.ps1",
+    "Qualification": "Pending",
+    "Name": "stash"
+  },
+  "submodule": {
+    "Name": "submodule",
+    "Qualification": "Pending",
+    "Handler": "Management",
+    "OutputSchema": "git.submodule.v1",
+    "Contract": "Git.Submodule.ps1"
+  },
+  "submodule--helper": {
+    "Name": "submodule--helper",
+    "Contract": "Git.SubmoduleHelper.ps1",
+    "OutputSchema": "git.submodule-helper.v1",
+    "Handler": "Management",
+    "Qualification": "Pending",
+    "SubcommandVersions": {
+      "clone": 131071,
+      "add": 131071,
+      "update": 131071,
+      "foreach": 131071,
+      "init": 131071,
+      "status": 131071,
+      "sync": 131071,
+      "deinit": 131071,
+      "summary": 131071,
+      "push-check": 131071,
+      "absorbgitdirs": 131071,
+      "set-url": 131071,
+      "set-branch": 131071,
+      "create-branch": 131071,
+      "gitdir": 114688,
+      "get-default-remote": 114688,
+      "migrate-gitdir-configs": 114688
+    },
+    "Sources": [
+      "https://github.com/git/git/blob/v2.40.0/builtin/submodule--helper.c",
+      "https://github.com/git/git/blob/v2.54.0/builtin/submodule--helper.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/submodule--helper.c"
+    ]
+  },
+  "ls-remote": {
+    "Name": "ls-remote",
+    "Contract": "Git.LsRemote.ps1",
+    "OutputSchema": "git.ls-remote.v1",
+    "Handler": "Network",
+    "Qualification": "Pending"
+  },
+  "fetch": {
+    "Name": "fetch",
+    "Contract": "Git.Fetch.ps1",
+    "OutputSchema": "git.fetch.v1",
+    "Handler": "Network",
+    "Qualification": "Pending"
+  },
+  "push": {
+    "Name": "push",
+    "Contract": "Git.Push.ps1",
+    "OutputSchema": "git.push.v1",
+    "Handler": "Network",
+    "Qualification": "Pending"
+  },
+  "clone": {
+    "Name": "clone",
+    "Contract": "Git.Clone.ps1",
+    "OutputSchema": "git.clone.v1",
+    "Handler": "Network",
+    "Qualification": "Pending"
+  },
+  "pull": {
+    "Name": "pull",
+    "Contract": "Git.Pull.ps1",
+    "OutputSchema": "git.pull.v1",
+    "Handler": "Network",
+    "Qualification": "Pending"
+  },
+  "fetch-pack": {
+    "Qualification": "Pending",
+    "OutputSchema": "git.fetch-pack.v1",
+    "Handler": "Network",
+    "Name": "fetch-pack",
+    "Contract": "Git.FetchPack.ps1"
+  },
+  "send-pack": {
+    "Qualification": "Pending",
+    "OutputSchema": "git.send-pack.v1",
+    "Handler": "Network",
+    "Name": "send-pack",
+    "Contract": "Git.SendPack.ps1"
+  },
+  "http-fetch": {
+    "Qualification": "Pending",
+    "OutputSchema": "git.http-fetch.v1",
+    "Handler": "Network",
+    "Name": "http-fetch",
+    "Contract": "Git.HttpFetch.ps1"
+  },
+  "http-push": {
+    "Name": "http-push",
+    "Handler": "Network",
+    "Qualification": "Pending",
+    "Contract": "Git.HttpPush.ps1",
+    "MachineStatusSources": [
+      "https://github.com/git/git/blob/v2.40.0/http-push.c",
+      "https://github.com/git/git/blob/v2.56.0/http-push.c"
+    ],
+    "OutputSchema": "git.http-push.v1"
+  },
+  "remote-ext": {
+    "Name": "remote-ext",
+    "Contract": "Git.RemoteExt.ps1",
+    "OutputSchema": "git.remote-ext.v1",
+    "Handler": "Network",
+    "Qualification": "Pending",
+    "Sources": [
+      "https://github.com/git/git/blob/v2.56.0/Documentation/gitremote-helpers.adoc",
+      "https://github.com/git/git/blob/v2.56.0/remote-curl.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/remote-ext.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/remote-fd.c"
+    ]
+  },
+  "remote-fd": {
+    "Name": "remote-fd",
+    "Contract": "Git.RemoteFd.ps1",
+    "OutputSchema": "git.remote-fd.v1",
+    "Handler": "Network",
+    "Qualification": "Pending",
+    "Sources": [
+      "https://github.com/git/git/blob/v2.56.0/Documentation/gitremote-helpers.adoc",
+      "https://github.com/git/git/blob/v2.56.0/remote-curl.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/remote-ext.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/remote-fd.c"
+    ]
+  },
+  "remote-http": {
+    "Name": "remote-http",
+    "Contract": "Git.RemoteHttp.ps1",
+    "OutputSchema": "git.remote-http.v1",
+    "Handler": "Network",
+    "Qualification": "Pending",
+    "Sources": [
+      "https://github.com/git/git/blob/v2.56.0/Documentation/gitremote-helpers.adoc",
+      "https://github.com/git/git/blob/v2.56.0/remote-curl.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/remote-ext.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/remote-fd.c"
+    ]
+  },
+  "remote-https": {
+    "Name": "remote-https",
+    "Contract": "Git.RemoteHttps.ps1",
+    "OutputSchema": "git.remote-https.v1",
+    "Handler": "Network",
+    "Qualification": "Pending",
+    "Sources": [
+      "https://github.com/git/git/blob/v2.56.0/Documentation/gitremote-helpers.adoc",
+      "https://github.com/git/git/blob/v2.56.0/remote-curl.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/remote-ext.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/remote-fd.c"
+    ]
+  },
+  "remote-ftp": {
+    "Name": "remote-ftp",
+    "Contract": "Git.RemoteFtp.ps1",
+    "OutputSchema": "git.remote-ftp.v1",
+    "Handler": "Network",
+    "Qualification": "Pending",
+    "Sources": [
+      "https://github.com/git/git/blob/v2.56.0/Documentation/gitremote-helpers.adoc",
+      "https://github.com/git/git/blob/v2.56.0/remote-curl.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/remote-ext.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/remote-fd.c"
+    ]
+  },
+  "remote-ftps": {
+    "Name": "remote-ftps",
+    "Contract": "Git.RemoteFtps.ps1",
+    "OutputSchema": "git.remote-ftps.v1",
+    "Handler": "Network",
+    "Qualification": "Pending",
+    "Sources": [
+      "https://github.com/git/git/blob/v2.56.0/Documentation/gitremote-helpers.adoc",
+      "https://github.com/git/git/blob/v2.56.0/remote-curl.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/remote-ext.c",
+      "https://github.com/git/git/blob/v2.56.0/builtin/remote-fd.c"
+    ]
+  },
+  "archive": {
+    "Handler": "Objects",
+    "Contract": "Git.Archive.ps1",
+    "Modes": [
+      "Formats",
+      "Archive"
+    ],
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Name": "archive",
+    "OutputSchema": "git.archive.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.archive.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "EntryMetadataAvailable": {
+          "type": "boolean"
+        },
+        "OutputSchema": {
+          "const": "git.archive.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "Format": {
+          "type": "string"
+        },
+        "Entries": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "Formats": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "Mode": {
+          "enum": [
+            "Formats",
+            "Archive"
+          ]
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "Archive": {
+          "$ref": "#/$defs/artifact"
+        },
+        "Command": {
+          "const": "archive"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git archive result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification."
+  },
+  "bundle": {
+    "Handler": "Objects",
+    "Contract": "Git.Bundle.ps1",
+    "Modes": [
+      "create",
+      "verify",
+      "list-heads",
+      "unbundle"
+    ],
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Name": "bundle",
+    "OutputSchema": "git.bundle.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.bundle.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "Refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        },
+        "OutputSchema": {
+          "const": "git.bundle.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "Bundle": {
+          "properties": {
+            "Capabilities": {
+              "type": "object"
+            },
+            "PackOffset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Payload": {
+              "$ref": "#/$defs/artifact"
+            },
+            "ContainerVersion": {
+              "enum": [
+                2,
+                3
+              ]
+            }
+          },
+          "type": "object",
+          "required": [
+            "ContainerVersion",
+            "PackOffset",
+            "Payload"
+          ]
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "Mode": {
+          "enum": [
+            "create",
+            "verify",
+            "list-heads",
+            "unbundle"
+          ]
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "Report": {
+          "$ref": "#/$defs/artifact"
+        },
+        "Prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ObjectsStored": {
+          "type": "boolean"
+        },
+        "Valid": {
+          "type": "boolean"
+        },
+        "Command": {
+          "const": "bundle"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git bundle result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification."
+  },
+  "pack-objects": {
+    "Handler": "Objects",
+    "Contract": "Git.PackObjects.ps1",
+    "Modes": [
+      "Stdout",
+      "Files"
+    ],
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Name": "pack-objects",
+    "OutputSchema": "git.pack-objects.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.pack-objects.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "Packs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "OutputSchema": {
+          "const": "git.pack-objects.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "Mode": {
+          "enum": [
+            "Stdout",
+            "Files"
+          ]
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "Pack": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "Command": {
+          "const": "pack-objects"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git pack-objects result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification.",
+    "UnsupportedVariants": [
+      "filter-to",
+      "uri-protocol"
+    ]
+  },
+  "index-pack": {
+    "Handler": "Objects",
+    "Contract": "Git.IndexPack.ps1",
+    "Modes": [
+      "Stdin",
+      "File",
+      "Verify"
+    ],
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Name": "index-pack",
+    "OutputSchema": "git.index-pack.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.index-pack.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "Valid": {
+          "type": "boolean"
+        },
+        "OutputSchema": {
+          "const": "git.index-pack.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "Mode": {
+          "enum": [
+            "Stdin",
+            "File",
+            "Verify"
+          ]
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "Pack": {
+          "$ref": "#/$defs/artifact"
+        },
+        "IndexWritten": {
+          "type": "boolean"
+        },
+        "KeepCreated": {
+          "type": "boolean"
+        },
+        "PackId": {
+          "$ref": "#/$defs/oid"
+        },
+        "Sidecars": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "Index": {
+          "$ref": "#/$defs/artifact"
+        },
+        "Command": {
+          "const": "index-pack"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git index-pack result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification."
+  },
+  "unpack-objects": {
+    "Handler": "Objects",
+    "Contract": "Git.UnpackObjects.ps1",
+    "Modes": [
+      "Unpacked",
+      "ValidatedWithoutWriting"
+    ],
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Name": "unpack-objects",
+    "OutputSchema": "git.unpack-objects.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.unpack-objects.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "Before": {
+          "type": "object"
+        },
+        "DryRun": {
+          "type": "boolean"
+        },
+        "OutputSchema": {
+          "const": "git.unpack-objects.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "After": {
+          "type": "object"
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "LooseObjectDelta": {
+          "type": "integer"
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "Command": {
+          "const": "unpack-objects"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git unpack-objects result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification."
+  },
+  "show-index": {
+    "Handler": "Objects",
+    "Contract": "Git.ShowIndex.ps1",
+    "Modes": [
+      "Index"
+    ],
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Name": "show-index",
+    "OutputSchema": "git.show-index.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.show-index.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "OutputSchema": {
+          "const": "git.show-index.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "Objects": {
+          "type": "array",
+          "items": {
+            "properties": {
+              "ObjectId": {
+                "$ref": "#/$defs/oid"
+              },
+              "Offset": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "CRC32": {
+                "pattern": "^[0-9a-fA-F]{8}$",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "type": "object",
+            "required": [
+              "ObjectId",
+              "Offset"
+            ]
+          }
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "Command": {
+          "const": "show-index"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git show-index result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification."
+  },
+  "verify-pack": {
+    "Handler": "Objects",
+    "Contract": "Git.VerifyPack.ps1",
+    "Modes": [
+      "Valid",
+      "StatisticsOnly"
+    ],
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Name": "verify-pack",
+    "OutputSchema": "git.verify-pack.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.verify-pack.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "Valid": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "Packs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "OutputSchema": {
+          "const": "git.verify-pack.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "DeltaHistogram": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "Objects": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "VerificationPerformed": {
+          "type": "boolean"
+        },
+        "Command": {
+          "const": "verify-pack"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git verify-pack result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification."
+  },
+  "fsck": {
+    "Handler": "Objects",
+    "Contract": "Git.Fsck.ps1",
+    "Modes": [
+      "ObjectIntegrityAndConnectivity",
+      "ConnectivityOnly",
+      "Recovery"
+    ],
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Name": "fsck",
+    "OutputSchema": "git.fsck.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.fsck.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "Valid": {
+          "type": "boolean"
+        },
+        "OutputSchema": {
+          "const": "git.fsck.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "RecoveryInventoryAtomic": {
+          "type": "boolean"
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "Findings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "Diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "RecoveryFiles": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ValidationScope": {
+          "enum": [
+            "ConnectivityOnly",
+            "ObjectIntegrityAndConnectivity"
+          ]
+        },
+        "Command": {
+          "const": "fsck"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git fsck result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification."
+  },
+  "fast-export": {
+    "Contract": "Git.FastExport.ps1",
+    "Name": "fast-export",
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Handler": "Objects",
+    "Modes": [
+      "Export"
+    ],
+    "OutputSchema": "git.fast-export.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.fast-export.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "OutputSchema": {
+          "const": "git.fast-export.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "Marks": {
+          "$ref": "#/$defs/artifact"
+        },
+        "BlobCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "CommitCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "ProtocolRecords": {
+          "type": "array",
+          "items": {
+            "properties": {
+              "Bytes": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "Reference": {
+                "type": "string"
+              },
+              "Path": {
+                "$ref": "#/$defs/path"
+              },
+              "Payload": {
+                "$ref": "#/$defs/artifact"
+              },
+              "Kind": {
+                "type": "string"
+              }
+            },
+            "type": "object",
+            "required": [
+              "Kind"
+            ]
+          }
+        },
+        "Mode": {
+          "const": "Export"
+        },
+        "Stream": {
+          "$ref": "#/$defs/artifact"
+        },
+        "Command": {
+          "const": "fast-export"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git fast-export result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification.",
+    "QualificationStatus": "Pending"
+  },
+  "fast-import": {
+    "Contract": "Git.FastImport.ps1",
+    "Name": "fast-import",
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Handler": "Objects",
+    "Modes": [
+      "Import"
+    ],
+    "OutputSchema": "git.fast-import.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.fast-import.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "AfterRefs": {
+          "$ref": "#/$defs/artifact"
+        },
+        "OutputSchema": {
+          "const": "git.fast-import.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "Marks": {
+          "$ref": "#/$defs/artifact"
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "Responses": {
+          "type": "array",
+          "items": {
+            "properties": {
+              "Content": {
+                "$ref": "#/$defs/artifact"
+              },
+              "ObjectId": {
+                "$ref": "#/$defs/oid"
+              },
+              "Kind": {
+                "enum": [
+                  "Blob",
+                  "MissingObject",
+                  "Mark",
+                  "TreeEntry",
+                  "MissingPath",
+                  "Progress"
+                ]
+              }
+            },
+            "type": "object",
+            "required": [
+              "Kind"
+            ]
+          }
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "BeforeRefs": {
+          "$ref": "#/$defs/artifact"
+        },
+        "Mode": {
+          "const": "Import"
+        },
+        "PackEdges": {
+          "$ref": "#/$defs/artifact"
+        },
+        "ReferenceChanges": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "AfterRefCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "BeforeRefCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "Command": {
+          "const": "fast-import"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git fast-import result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification.",
+    "UnsupportedVariants": [
+      "InputPath",
+      "Interaction",
+      "relative-marks",
+      "non-stdout response descriptors",
+      "marks declared through stream features"
+    ],
+    "QualificationStatus": "Pending"
+  },
+  "pack-redundant": {
+    "QualificationStatus": "Pending",
+    "Name": "pack-redundant",
+    "Contract": "Git.PackRedundant.ps1",
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Handler": "Objects",
+    "OutputSchema": "git.pack-redundant.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.pack-redundant.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "OutputSchema": {
+          "const": "git.pack-redundant.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "Entries": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "Mode": {
+          "const": "IdentifyRedundancy"
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "Selection": {
+          "$ref": "#/$defs/artifact"
+        },
+        "Command": {
+          "const": "pack-redundant"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git pack-redundant result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification.",
+    "Modes": [
+      "IdentifyRedundancy"
+    ]
+  },
+  "update-server-info": {
+    "QualificationStatus": "Pending",
+    "Name": "update-server-info",
+    "Contract": "Git.UpdateServerInfo.ps1",
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Handler": "Objects",
+    "OutputSchema": "git.update-server-info.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.update-server-info.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "Refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        },
+        "Packs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "OutputSchema": {
+          "const": "git.update-server-info.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "ReferenceFile": {
+          "$ref": "#/$defs/artifact"
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "Mode": {
+          "const": "RefreshServerMetadata"
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "Force": {
+          "type": "boolean"
+        },
+        "PackFile": {
+          "$ref": "#/$defs/artifact"
+        },
+        "Command": {
+          "const": "update-server-info"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git update-server-info result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification.",
+    "Modes": [
+      "RefreshServerMetadata"
+    ]
+  },
+  "fsck-objects": {
+    "OfficialAliasOf": "fsck",
+    "QualificationStatus": "Pending",
+    "Name": "fsck-objects",
+    "Contract": "Git.FsckObjects.ps1",
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Handler": "Objects",
+    "OutputSchema": "git.fsck-objects.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.fsck-objects.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "Valid": {
+          "type": "boolean"
+        },
+        "OutputSchema": {
+          "const": "git.fsck-objects.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "RecoveryInventoryAtomic": {
+          "type": "boolean"
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "Findings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "Diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "RecoveryFiles": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ValidationScope": {
+          "enum": [
+            "ConnectivityOnly",
+            "ObjectIntegrityAndConnectivity"
+          ]
+        },
+        "Command": {
+          "const": "fsck-objects"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git fsck-objects result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification.",
+    "Modes": [
+      "ObjectIntegrityAndConnectivity",
+      "ConnectivityOnly",
+      "Recovery"
+    ]
+  },
+  "backfill": {
+    "QualificationStatus": "Pending",
+    "Name": "backfill",
+    "Contract": "Git.Backfill.ps1",
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Handler": "Objects",
+    "OutputSchema": "git.backfill.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.backfill.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "AfterMissingCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "Mode": {
+          "const": "Backfill"
+        },
+        "BeforeMissingCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "NewMissingObjects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/oid"
+          }
+        },
+        "ResolvedMissingObjects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/oid"
+          }
+        },
+        "RemainingMissingObjects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/oid"
+          }
+        },
+        "Command": {
+          "const": "backfill"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "BeforeMissing": {
+          "$ref": "#/$defs/artifact"
+        },
+        "ObservationScope": {
+          "const": "AllRefs"
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "BeforeAvailableObjectCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "AfterAvailableObjectCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "OutputSchema": {
+          "const": "git.backfill.v1"
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "AfterMissing": {
+          "$ref": "#/$defs/artifact"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git backfill result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification.",
+    "Modes": [
+      "Backfill"
+    ]
+  },
+  "commit-graph": {
+    "QualificationStatus": "Pending",
+    "Name": "commit-graph",
+    "Contract": "Git.CommitGraph.ps1",
+    "FamilyDocumentation": "doc/commands/object-family.md",
+    "Handler": "Objects",
+    "OutputSchema": "git.commit-graph.v1",
+    "ResultSchema": {
+      "$id": "urn:quietcli:git.commit-graph.v1",
+      "required": [
+        "Command",
+        "OutputSchema",
+        "GitVersion",
+        "Condition",
+        "Normalization"
+      ],
+      "properties": {
+        "Valid": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "OutputSchema": {
+          "const": "git.commit-graph.v1"
+        },
+        "Normalization": {
+          "properties": {
+            "Executed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Requested": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "Requested",
+            "Executed"
+          ]
+        },
+        "NextActions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "GitVersion": {
+          "type": "string"
+        },
+        "Mode": {
+          "enum": [
+            "write",
+            "verify"
+          ]
+        },
+        "Condition": {
+          "type": "string"
+        },
+        "GraphFilesPresent": {
+          "type": "boolean"
+        },
+        "ObjectDirectory": {
+          "type": "string"
+        },
+        "Graphs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "Chain": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "ValidationScope": {
+          "enum": [
+            "TipGraph",
+            "GraphChain",
+            "None"
+          ]
+        },
+        "InventoryAtomic": {
+          "type": "boolean"
+        },
+        "Command": {
+          "const": "commit-graph"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Git commit-graph result",
+      "$defs": {
+        "reference": {
+          "properties": {
+            "Name": {
+              "$ref": "#/$defs/path"
+            },
+            "ObjectId": {
+              "$ref": "#/$defs/oid"
+            }
+          },
+          "type": "object",
+          "required": [
+            "ObjectId",
+            "Name"
+          ]
+        },
+        "oid": {
+          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+          "type": "string"
+        },
+        "artifact": {
+          "properties": {
+            "Destination": {
+              "type": "string"
+            },
+            "Bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Path": {
+              "type": "string"
+            },
+            "SHA256": {
+              "pattern": "^[0-9A-Fa-f]{64}$",
+              "type": "string"
+            },
+            "Complete": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "Offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "Kind": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "Kind",
+            "Path",
+            "Offset",
+            "Bytes",
+            "SHA256",
+            "Complete"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "properties": {
+                "Encoding": {
+                  "const": "RawBytes"
+                },
+                "Base64": {
+                  "type": "string",
+                  "contentEncoding": "base64"
+                },
+                "Display": {
+                  "type": "null"
+                }
+              },
+              "type": "object",
+              "required": [
+                "Encoding",
+                "Base64"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "SchemaCoverage": "Common invariants and principal typed fields; detailed variants remain pending qualification.",
+    "Modes": [
+      "write",
+      "verify"
+    ]
+  },
+  "grep": {
+    "Name": "grep",
+    "Handler": "Search",
+    "Contract": "Git.Grep.ps1",
+    "OutputSchema": "git.grep.v1",
+    "Qualification": "Pending"
+  },
+  "upload-pack": {
+    "Name": "upload-pack",
+    "Contract": "Git.UploadPack.ps1",
+    "OutputSchema": "git.upload-pack.v1",
+    "Handler": "Service",
+    "Qualification": "Pending"
+  },
+  "receive-pack": {
+    "Name": "receive-pack",
+    "Contract": "Git.ReceivePack.ps1",
+    "OutputSchema": "git.receive-pack.v1",
+    "Handler": "Service",
+    "Qualification": "Pending"
+  },
+  "upload-archive": {
+    "Name": "upload-archive",
+    "Contract": "Git.UploadArchive.ps1",
+    "OutputSchema": "git.upload-archive.v1",
+    "Handler": "Service",
+    "Qualification": "Pending"
+  },
+  "upload-archive--writer": {
+    "Name": "upload-archive--writer",
+    "Contract": "Git.UploadArchiveWriter.ps1",
+    "OutputSchema": "git.upload-archive-writer.v1",
+    "Handler": "Service",
+    "Qualification": "Pending"
+  },
+  "http-backend": {
+    "Name": "http-backend",
+    "Contract": "Git.HttpBackend.ps1",
+    "OutputSchema": "git.http-backend.v1",
+    "Handler": "Service",
+    "Qualification": "Pending"
+  },
+  "daemon": {
+    "Name": "daemon",
+    "Contract": "Git.Daemon.ps1",
+    "OutputSchema": "git.daemon.v1",
+    "Handler": "Service",
+    "Qualification": "Pending"
+  },
+  "shell": {
+    "Name": "shell",
+    "Contract": "Git.Shell.ps1",
+    "OutputSchema": "git.shell.v1",
+    "Handler": "Service",
+    "Qualification": "Pending"
+  },
+  "fsmonitor--daemon": {
+    "Name": "fsmonitor--daemon",
+    "Contract": "Git.FsmonitorDaemon.ps1",
+    "OutputSchema": "git.fsmonitor-daemon.v1",
+    "Handler": "Service",
+    "Qualification": "Pending",
+    "Sources": [
+      "https://github.com/git/git/blob/v2.56.0/builtin/fsmonitor--daemon.c",
+      "https://github.com/git/git/blob/v2.56.0/Documentation/git-fsmonitor--daemon.adoc"
+    ]
+  },
+  "sh-i18n": {
+    "Name": "sh-i18n",
+    "Handler": "ShellHelper",
+    "Contract": "Git.ShI18n.ps1",
+    "OutputSchema": "git.sh-i18n.v1",
+    "Qualification": "Pending"
+  },
+  "sh-i18n--envsubst": {
+    "Name": "sh-i18n--envsubst",
+    "Handler": "ShellHelper",
+    "Contract": "Git.ShI18nEnvsubst.ps1",
+    "OutputSchema": "git.sh-i18n--envsubst.v1",
+    "Qualification": "Pending"
+  },
+  "sh-setup": {
+    "Name": "sh-setup",
+    "Handler": "ShellHelper",
+    "Contract": "Git.ShSetup.ps1",
+    "OutputSchema": "git.sh-setup.v1",
+    "Qualification": "Pending"
+  },
+  "merge-ours": {
+    "Name": "merge-ours",
+    "OutputSchema": "git.merge-ours.v1",
+    "Contract": "Git.MergeOurs.ps1",
+    "Operation": "MergeStrategy",
+    "DryRunOptions": [],
+    "Handler": "Mutation",
+    "ExitConditions": {
+      "2": "NotApplicable",
+      "1": "Conflicted",
+      "0": "Completed"
+    },
+    "SuccessExitCodes": [
+      0,
+      1,
+      2
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Qualification": "Pending"
+  },
+  "merge-recursive": {
+    "Name": "merge-recursive",
+    "OutputSchema": "git.merge-recursive.v1",
+    "Contract": "Git.MergeRecursive.ps1",
+    "Operation": "MergeStrategy",
+    "DryRunOptions": [],
+    "Handler": "Mutation",
+    "ExitConditions": {
+      "2": "NotApplicable",
+      "1": "Conflicted",
+      "0": "Completed"
+    },
+    "SuccessExitCodes": [
+      0,
+      1,
+      2
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Qualification": "Pending"
+  },
+  "merge-recursive-ours": {
+    "Name": "merge-recursive-ours",
+    "OutputSchema": "git.merge-recursive-ours.v1",
+    "Contract": "Git.MergeRecursiveOurs.ps1",
+    "Operation": "MergeStrategy",
+    "DryRunOptions": [],
+    "Handler": "Mutation",
+    "ExitConditions": {
+      "2": "NotApplicable",
+      "1": "Conflicted",
+      "0": "Completed"
+    },
+    "SuccessExitCodes": [
+      0,
+      1,
+      2
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Qualification": "Pending"
+  },
+  "merge-recursive-theirs": {
+    "Name": "merge-recursive-theirs",
+    "OutputSchema": "git.merge-recursive-theirs.v1",
+    "Contract": "Git.MergeRecursiveTheirs.ps1",
+    "Operation": "MergeStrategy",
+    "DryRunOptions": [],
+    "Handler": "Mutation",
+    "ExitConditions": {
+      "2": "NotApplicable",
+      "1": "Conflicted",
+      "0": "Completed"
+    },
+    "SuccessExitCodes": [
+      0,
+      1,
+      2
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Qualification": "Pending"
+  },
+  "merge-octopus": {
+    "Name": "merge-octopus",
+    "OutputSchema": "git.merge-octopus.v1",
+    "Contract": "Git.MergeOctopus.ps1",
+    "Operation": "MergeStrategy",
+    "DryRunOptions": [],
+    "Handler": "Mutation",
+    "ExitConditions": {
+      "2": "NotApplicable",
+      "1": "Conflicted",
+      "0": "Completed"
+    },
+    "SuccessExitCodes": [
+      0,
+      1,
+      2
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Qualification": "Pending"
+  },
+  "merge-resolve": {
+    "Name": "merge-resolve",
+    "OutputSchema": "git.merge-resolve.v1",
+    "Contract": "Git.MergeResolve.ps1",
+    "Operation": "MergeStrategy",
+    "DryRunOptions": [],
+    "Handler": "Mutation",
+    "ExitConditions": {
+      "2": "NotApplicable",
+      "1": "Conflicted",
+      "0": "Completed"
+    },
+    "SuccessExitCodes": [
+      0,
+      1,
+      2
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Qualification": "Pending"
+  },
+  "merge-subtree": {
+    "Name": "merge-subtree",
+    "OutputSchema": "git.merge-subtree.v1",
+    "Contract": "Git.MergeSubtree.ps1",
+    "Operation": "MergeStrategy",
+    "DryRunOptions": [],
+    "Handler": "Mutation",
+    "ExitConditions": {
+      "2": "NotApplicable",
+      "1": "Conflicted",
+      "0": "Completed"
+    },
+    "SuccessExitCodes": [
+      0,
+      1,
+      2
+    ],
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Qualification": "Pending"
+  },
+  "stage": {
+    "Name": "stage",
+    "OutputSchema": "git.stage.v1",
+    "Contract": "Git.Stage.ps1",
+    "Operation": "Stage",
+    "DryRunOptions": [
+      "-n",
+      "--dry-run"
+    ],
+    "Handler": "Mutation",
+    "OfficialAliasFor": "add",
+    "Observe": [
+      "Refs",
+      "Head",
+      "Index",
+      "Status",
+      "Storage"
+    ],
+    "Qualification": "Pending"
+  },
+  "bugreport": {
+    "Name": "bugreport",
+    "Handler": "Utility",
+    "Contract": "Git.Bugreport.ps1",
+    "OutputSchema": "git.bugreport.v1",
+    "FamilyDocumentation": "doc/commands/utility-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; native platform and detailed mode qualification remain pending.",
+    "Interaction": "Editor; a controller or explicitly noninteractive editor is required."
+  },
+  "column": {
+    "Name": "column",
+    "Handler": "Utility",
+    "Contract": "Git.Column.ps1",
+    "OutputSchema": "git.column.v1",
+    "FamilyDocumentation": "doc/commands/utility-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; native platform and detailed mode qualification remain pending."
+  },
+  "diagnose": {
+    "Name": "diagnose",
+    "Handler": "Utility",
+    "Contract": "Git.Diagnose.ps1",
+    "OutputSchema": "git.diagnose.v1",
+    "FamilyDocumentation": "doc/commands/utility-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; native platform and detailed mode qualification remain pending."
+  },
+  "for-each-repo": {
+    "Name": "for-each-repo",
+    "Handler": "Utility",
+    "Contract": "Git.ForEachRepo.ps1",
+    "OutputSchema": "git.for-each-repo.v1",
+    "FamilyDocumentation": "doc/commands/utility-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; native platform and detailed mode qualification remain pending.",
+    "Scope": "Aggregate native dispatch; per-repository visits and delegated side effects are not invented."
+  },
+  "hook": {
+    "Name": "hook",
+    "Handler": "Utility",
+    "Contract": "Git.Hook.ps1",
+    "OutputSchema": "git.hook.v1",
+    "FamilyDocumentation": "doc/commands/utility-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; native platform and detailed mode qualification remain pending.",
+    "Modes": [
+      "run",
+      "list"
+    ]
+  },
+  "refs": {
+    "Name": "refs",
+    "Handler": "Utility",
+    "Contract": "Git.Refs.ps1",
+    "OutputSchema": "git.refs.v1",
+    "FamilyDocumentation": "doc/commands/utility-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; native platform and detailed mode qualification remain pending.",
+    "Modes": [
+      "migrate",
+      "verify",
+      "list",
+      "exists",
+      "optimize",
+      "create",
+      "delete",
+      "update",
+      "rename"
+    ]
+  },
+  "repo": {
+    "Name": "repo",
+    "Handler": "Utility",
+    "Contract": "Git.Repo.ps1",
+    "OutputSchema": "git.repo.v1",
+    "FamilyDocumentation": "doc/commands/utility-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; native platform and detailed mode qualification remain pending.",
+    "Modes": [
+      "info",
+      "structure"
+    ]
+  },
+  "url-parse": {
+    "Name": "url-parse",
+    "Handler": "Utility",
+    "Contract": "Git.UrlParse.ps1",
+    "OutputSchema": "git.url-parse.v1",
+    "FamilyDocumentation": "doc/commands/utility-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; native platform and detailed mode qualification remain pending."
+  },
+  "verify-commit": {
+    "Name": "verify-commit",
+    "Handler": "Utility",
+    "Contract": "Git.VerifyCommit.ps1",
+    "OutputSchema": "git.verify-commit.v1",
+    "FamilyDocumentation": "doc/commands/utility-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; native platform and detailed mode qualification remain pending."
+  },
+  "verify-tag": {
+    "Name": "verify-tag",
+    "Handler": "Utility",
+    "Contract": "Git.VerifyTag.ps1",
+    "OutputSchema": "git.verify-tag.v1",
+    "FamilyDocumentation": "doc/commands/utility-family.md",
+    "QualificationStatus": "Pending",
+    "SchemaCoverage": "Principal fields only; native platform and detailed mode qualification remain pending."
+  },
+  "checkout--worker": {
+    "Name": "checkout--worker",
+    "Handler": "Worker",
+    "Contract": "Git.CheckoutWorker.ps1",
+    "OutputSchema": "git.checkout--worker.v1",
+    "Qualification": "Pending"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "Version": 1,
+  "HeaderLimit": 1048576,
+  "BlockSize": 16384,
+  "QueueBlocks": 16,
+  "ReadFrameTimeoutSeconds": 15,
+  "WriteFrameTimeoutSeconds": 30
+}

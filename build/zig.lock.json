@@ -1,0 +1,18 @@
+{
+  "Hosts": [
+    {
+      "Bytes": 92614574,
+      "SHA256": "3A0ED1E8799A2F8CE2A6E6290A9FF22E6906F8227865911FB7DDEDC3CC14CB0C",
+      "Url": "https://ziglang.org/download/0.15.2/zig-x86_64-windows-0.15.2.zip",
+      "Host": "x86_64-windows"
+    },
+    {
+      "Bytes": 88464585,
+      "SHA256": "B926465F8872BF983422257CD9EC248BB2B270996FBE8D57872CCA13B56FC370",
+      "Url": "https://ziglang.org/download/0.15.2/zig-aarch64-windows-0.15.2.zip",
+      "Host": "aarch64-windows"
+    }
+  ],
+  "Version": "0.15.2",
+  "Source": "https://ziglang.org/download/index.json"
+}

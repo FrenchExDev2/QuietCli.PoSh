@@ -1,0 +1,20 @@
+{
+  "Handlers": {
+    "diff": "Invoke-QuietGitDiff",
+    "log": "Invoke-QuietGitHistory",
+    "status": "Invoke-QuietGitStatus",
+    "show": "Invoke-QuietGitShow",
+    "add": "Invoke-QuietGitMutation",
+    "commit": "Invoke-QuietGitCommit",
+    "checkout": "Invoke-QuietGitMutation",
+    "push": "Invoke-QuietGitPush",
+    "pull": "Invoke-QuietGitMutation",
+    "branch": "Invoke-QuietGitBranch",
+    "fetch": "Invoke-QuietGitMutation",
+    "stash": "Invoke-QuietGitStash",
+    "worktree": "Invoke-QuietGitWorktree",
+    "ls-tree": "Invoke-QuietGitTree"
+  },
+  "SchemaVersion": 2,
+  "Scope": "Specialized streaming handlers; variants and release qualification remain explicit."
+}

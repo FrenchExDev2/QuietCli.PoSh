@@ -1,0 +1,27 @@
+{
+  "Runtime": "linux-x64",
+  "SourceSHA256": "F5F35466B77B23A6C8F83166933E1DB247EEB0623C8C88BBE2F187FE11B7157B",
+  "ToolchainLockSHA256": "6164E9585FE0ACEDBBCB90ABC72DE8870351E5F14BC18A18ED4EE3AF40916C2E",
+  "Compiler": "Zig 0.15.2",
+  "Static": true,
+  "SchemaVersion": 2,
+  "Target": "x86_64-linux-musl",
+  "ExecutableSHA256": "091EDF5E46D28E00A6A85B239C2360DC6982D557D96B3852D88B0969119764B7",
+  "Arguments": [
+    "cc",
+    "-target",
+    "x86_64-linux-musl",
+    "-std=c11",
+    "-O2",
+    "-s",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-static",
+    "-pthread",
+    "-lutil",
+    "native/quietcli-pty.c",
+    "-o",
+    "quietcli-pty"
+  ]
+}

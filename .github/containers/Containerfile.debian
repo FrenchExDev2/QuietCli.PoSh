@@ -1,0 +1,31 @@
+# Objectif : Préparer uniquement dans une image Debian les dépendances du banc .NET 11 RC et Git verrouillé.
+ARG SDK_IMAGE=mcr.microsoft.com/dotnet/sdk@sha256:9fc2f44fba54c579b9b650f6feea29beff050fb030d797eac697de85a94ad77f
+FROM ${SDK_IMAGE} AS tools
+FROM docker.io/library/rust@sha256:307d198027388f780db83929487de35084a73ecbaa31319989438db38103439f AS rust
+FROM docker.io/library/debian@sha256:a3bba7dc7dbcc1f37c2856c51fc9a7fac96608f50cb87b1b4e4d8b8c85ae988e
+ARG GIT_VERSION=2.56.0
+ARG GIT_SHA256=D761232B81394F7D4C3EF1A99FA804FFBE10D278AE1AD302833A0892050CA9FC
+COPY --from=tools /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+RUN printf 'Types: deb\nURIs: https://snapshot.debian.org/archive/debian/20261104T000000Z/\nSuites: bookworm bookworm-updates\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\nCheck-Valid-Until: no\n\nTypes: deb\nURIs: https://snapshot.debian.org/archive/debian-security/20261104T000000Z/\nSuites: bookworm-security\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\nCheck-Valid-Until: no\n' > /etc/apt/sources.list.d/debian.sources
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    build-essential ca-certificates curl gettext libssl-dev zlib1g-dev libcurl4-openssl-dev \
+    libexpat1-dev libicu72 libgssapi-krb5-2 libunwind8 libatomic1 openssh-client \
+    perl liberror-perl tcl tk tzdata && rm -rf /var/lib/apt/lists/*
+COPY --from=tools /usr/share/dotnet /usr/share/dotnet
+COPY --from=tools /usr/share/powershell /usr/share/powershell
+COPY --from=rust /usr/local/rustup /usr/local/rustup
+COPY --from=rust /usr/local/cargo /usr/local/cargo
+ENV DOTNET_ROOT=/usr/share/dotnet \
+    RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/opt/git/bin:/usr/share/dotnet:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    POWERSHELL_TELEMETRY_OPTOUT=1
+RUN find /usr/share/powershell -type f -name pwsh -path '*/tools/*/any/pwsh' -exec ln -s '{}' /usr/local/bin/pwsh \;
+RUN curl --fail --location --output /tmp/git.tar.gz "https://codeload.github.com/git/git/tar.gz/refs/tags/v${GIT_VERSION}" \
+    && printf '%s  /tmp/git.tar.gz\n' "${GIT_SHA256}" | sha256sum --check --strict \
+    && mkdir /tmp/git-source && tar -xzf /tmp/git.tar.gz --strip-components=1 -C /tmp/git-source \
+    && make -C /tmp/git-source -s --no-print-directory -j2 prefix=/opt/git NO_GETTEXT=YesPlease NO_INSTALL_HARDLINKS=YesPlease NO_REGEX=NeedsStartEnd 'CFLAGS=-std=gnu11 -O2' all install \
+    && rm -rf /tmp/git-source /tmp/git.tar.gz
+WORKDIR /workspace
+ENTRYPOINT ["pwsh"]

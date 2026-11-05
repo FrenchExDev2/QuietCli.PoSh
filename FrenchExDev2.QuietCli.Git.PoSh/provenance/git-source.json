@@ -1,0 +1,27 @@
+{
+  "SpecializedCount": 14,
+  "Name": "RTK",
+  "License": "Apache-2.0",
+  "SourceFile": "src/cmds/git/git_cmd.rs",
+  "SHA256": "7FA91976090233764BB1A116959C20C6C91749DE151383923ADC79CD5FC3D4BB",
+  "EngineCopied": false,
+  "Version": "0.49.0",
+  "Commands": [
+    "diff",
+    "log",
+    "status",
+    "show",
+    "add",
+    "commit",
+    "checkout",
+    "push",
+    "pull",
+    "branch",
+    "fetch",
+    "stash",
+    "worktree",
+    "ls-tree"
+  ],
+  "Path": "C:/code/FrenchExDev/FrenchExDev_i2/Rust/rtk",
+  "Adaptation": "Format-sensitive routing and regression scenarios adapted to streaming business objects. No whole-output capture or rtk-engine compression code."
+}

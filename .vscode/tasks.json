@@ -1,0 +1,8 @@
+{
+ "version":"2.0.0",
+ "tasks":[
+  {"label":"QuietCli2: build","type":"shell","command":"pwsh","args":["-File","${workspaceFolder:Workspace}/scripts/Build-Workspace.ps1"],"problemMatcher":"$msCompile","group":"build"},
+  {"label":"QuietCli2: tests","type":"shell","command":"pwsh","args":["-File","${workspaceFolder:Workspace}/scripts/Invoke-WorkspaceCi.ps1"],"problemMatcher":[],"group":"test"},
+  {"label":"QuietCli2: source lock","type":"shell","command":"pwsh","args":["-File","${workspaceFolder:Workspace}/scripts/Update-WorkspaceLock.ps1"],"problemMatcher":[]}
+ ]
+}

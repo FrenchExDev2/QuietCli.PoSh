@@ -1,0 +1,176 @@
+{
+  "Repository": "https://github.com/git-for-windows/git",
+  "SchemaVersion": 1,
+  "Archives": [
+    {
+      "Minor": 40,
+      "Tag": "v2.40.1.windows.1",
+      "Name": "PortableGit-2.40.1-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.40.1.windows.1/PortableGit-2.40.1-64-bit.7z.exe",
+      "Bytes": 49220256,
+      "SHA256": "9E1D819AEF3284420ADF6D923B0D4865254BD403641D915975E49DDEA1E7CDF9",
+      "PublishedDigest": null,
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 41,
+      "Tag": "v2.41.0.windows.1",
+      "Name": "PortableGit-2.41.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.41.0.windows.1/PortableGit-2.41.0-64-bit.7z.exe",
+      "Bytes": 56221056,
+      "SHA256": "FCBAEFFD24FDF435A1F7844825253509136377915E6720AA66AA256EC1F83C30",
+      "PublishedDigest": null,
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 42,
+      "Tag": "v2.42.0.windows.1",
+      "Name": "PortableGit-2.42.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.42.0.windows.1/PortableGit-2.42.0-64-bit.7z.exe",
+      "Bytes": 57794880,
+      "SHA256": "D394800E5EAFA11814FF15F8631BD6F5379F7FBEF347CF23A6D76CDBC42E23BD",
+      "PublishedDigest": null,
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 43,
+      "Tag": "v2.43.0.windows.1",
+      "Name": "PortableGit-2.43.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.43.0.windows.1/PortableGit-2.43.0-64-bit.7z.exe",
+      "Bytes": 56424944,
+      "SHA256": "C76216D032685FA972D129ECA30F8C9FB957EB9F46CCBCE954E70E07D6211961",
+      "PublishedDigest": null,
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 44,
+      "Tag": "v2.44.0.windows.1",
+      "Name": "PortableGit-2.44.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.44.0.windows.1/PortableGit-2.44.0-64-bit.7z.exe",
+      "Bytes": 61765416,
+      "SHA256": "1FC64CA91B9B475AB0ADA72C9F7B3ADDBE69A6C8F520BE31425CF21841CCA369",
+      "PublishedDigest": null,
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 45,
+      "Tag": "v2.45.0.windows.1",
+      "Name": "PortableGit-2.45.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.45.0.windows.1/PortableGit-2.45.0-64-bit.7z.exe",
+      "Bytes": 62741680,
+      "SHA256": "E9CAF1CAB7D2C1DC531A07C48445D84A8B27FAE129CA7244E0D4F7B1E4949F60",
+      "PublishedDigest": null,
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 46,
+      "Tag": "v2.46.0.windows.1",
+      "Name": "PortableGit-2.46.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.46.0.windows.1/PortableGit-2.46.0-64-bit.7z.exe",
+      "Bytes": 61419624,
+      "SHA256": "DEDAE83F4D0851BCBF473C516701E2DA6A5D7C574D694D5ECEEC46D1307132EA",
+      "PublishedDigest": null,
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 47,
+      "Tag": "v2.47.0.windows.1",
+      "Name": "PortableGit-2.47.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.47.0.windows.1/PortableGit-2.47.0-64-bit.7z.exe",
+      "Bytes": 62065352,
+      "SHA256": "0B7FCD76902EBDE5B4C00EBAE597D7F65DFF8C3DD0AE59F5059E1AAA3ADACE87",
+      "PublishedDigest": null,
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 48,
+      "Tag": "v2.48.1.windows.1",
+      "Name": "PortableGit-2.48.1-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.48.1.windows.1/PortableGit-2.48.1-64-bit.7z.exe",
+      "Bytes": 63431824,
+      "SHA256": "A4335111B3363871CAC632BE93D7466154D8EB08782FF55103866B67D6722257",
+      "PublishedDigest": null,
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 49,
+      "Tag": "v2.49.0.windows.1",
+      "Name": "PortableGit-2.49.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.49.0.windows.1/PortableGit-2.49.0-64-bit.7z.exe",
+      "Bytes": 64145824,
+      "SHA256": "BC980A64E875304EA5AA88386FDA37E8A0089D0F2023616B9995B1CA75B471DD",
+      "PublishedDigest": null,
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 50,
+      "Tag": "v2.50.0.windows.1",
+      "Name": "PortableGit-2.50.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.50.0.windows.1/PortableGit-2.50.0-64-bit.7z.exe",
+      "Bytes": 64576208,
+      "SHA256": "0A16FF4699B62F171309DCA221BD90F0DAD5D4E68668D49B3EF0889BCB6DA370",
+      "PublishedDigest": "sha256:0a16ff4699b62f171309dca221bd90f0dad5d4e68668d49b3ef0889bcb6da370",
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 51,
+      "Tag": "v2.51.0.windows.1",
+      "Name": "PortableGit-2.51.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/PortableGit-2.51.0-64-bit.7z.exe",
+      "Bytes": 59384960,
+      "SHA256": "A09B275D51ED3E829128E04CF4168FB54896CF6234BB30FECB8DC96A2BD321FA",
+      "PublishedDigest": "sha256:a09b275d51ed3e829128e04cf4168fb54896cf6234bb30fecb8dc96a2bd321fa",
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 52,
+      "Tag": "v2.52.0.windows.1",
+      "Name": "PortableGit-2.52.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.52.0.windows.1/PortableGit-2.52.0-64-bit.7z.exe",
+      "Bytes": 60238232,
+      "SHA256": "1DC4046DCFB138F62AA04A46B5529ADC8ABED5033B2AF29BB60B66872A836CF8",
+      "PublishedDigest": "sha256:1dc4046dcfb138f62aa04a46b5529adc8abed5033b2af29bb60b66872a836cf8",
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 53,
+      "Tag": "v2.53.0.windows.1",
+      "Name": "PortableGit-2.53.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.53.0.windows.1/PortableGit-2.53.0-64-bit.7z.exe",
+      "Bytes": 58256920,
+      "SHA256": "08713A710EC91AC90DE1C09F861289A3B103175F098676E5E664C04DD6C6BF23",
+      "PublishedDigest": "sha256:08713a710ec91ac90de1c09f861289a3b103175f098676e5e664c04dd6c6bf23",
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 54,
+      "Tag": "v2.54.0.windows.1",
+      "Name": "PortableGit-2.54.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.54.0.windows.1/PortableGit-2.54.0-64-bit.7z.exe",
+      "Bytes": 58995352,
+      "SHA256": "BEA006A6CC69673F27B1647E84AB3A68E912FBC175AB6320C5987E012897F311",
+      "PublishedDigest": "sha256:bea006a6cc69673f27b1647e84ab3a68e912fbc175ab6320c5987e012897f311",
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 55,
+      "Tag": "v2.55.0.windows.1",
+      "Name": "PortableGit-2.55.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.1/PortableGit-2.55.0-64-bit.7z.exe",
+      "Bytes": 58986160,
+      "SHA256": "DFA8CAD3CE7E685B9BFBBB2125AFCF7C68D4F53490426702FFAC367DAC62E928",
+      "PublishedDigest": "sha256:dfa8cad3ce7e685b9bfbbb2125afcf7c68d4f53490426702ffac367dac62e928",
+      "Qualification": "Pending; Windows container runtime required"
+    },
+    {
+      "Minor": 56,
+      "Tag": "v2.56.0.windows.1",
+      "Name": "PortableGit-2.56.0-64-bit.7z.exe",
+      "URL": "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.1/PortableGit-2.56.0-64-bit.7z.exe",
+      "Bytes": 59958024,
+      "SHA256": "ECEB5E061AA90DF2F69DDD3E90F0030E1B8037A7829934BC40E4BE1CAA1ACCC1",
+      "PublishedDigest": "sha256:eceb5e061aa90df2f69ddd3e90f0030e1b8037a7829934bc40e4be1caa1accc1",
+      "Qualification": "Pending; Windows container runtime required"
+    }
+  ]
+}

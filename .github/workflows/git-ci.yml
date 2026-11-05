@@ -1,0 +1,17 @@
+name: QuietCli2 Git
+on:
+  pull_request:
+    paths: &git_paths
+      - 'FrenchExDev2.QuietCli.Git.PoSh/**'
+      - 'FrenchExDev2.QuietCli.Git.Tests.PoSh/**'
+      - '.github/workflows/git-ci.yml'
+  push:
+    branches: [main]
+    paths: *git_paths
+permissions:
+  contents: read
+jobs:
+  git:
+    uses: ./.github/workflows/ci.yml
+    with:
+      suite: Git

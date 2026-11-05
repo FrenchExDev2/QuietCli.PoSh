@@ -1,0 +1,112 @@
+{
+  "SchemaVersion": 1,
+  "Repository": "https://github.com/git/git",
+  "Coverage": "Stable Git 2.40.x through 2.56.x",
+  "Sources": [
+    {
+      "Version": "2.40.0",
+      "Tag": "v2.40.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.40.0",
+      "SHA256": "D46FA859FE1E89B479E3E29C6E65D7C3C26A48F3C08F1E2E5A5CED04155B4F86"
+    },
+    {
+      "Version": "2.41.0",
+      "Tag": "v2.41.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.41.0",
+      "SHA256": "4F0B74BBDE2800B00D3A50A7F389BCF1D59F1265B6986C00048D8BA4892AB01A"
+    },
+    {
+      "Version": "2.42.0",
+      "Tag": "v2.42.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.42.0",
+      "SHA256": "60C06EB7CE840903169ED4872224B2409DD8D8A518E9DF847C6DC0EF10D35D99"
+    },
+    {
+      "Version": "2.43.0",
+      "Tag": "v2.43.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.43.0",
+      "SHA256": "4E1599231F77D64F01D46A773E7741218FB8D98F2A05CCD2B8F35FC7ECF62040"
+    },
+    {
+      "Version": "2.44.0",
+      "Tag": "v2.44.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.44.0",
+      "SHA256": "318B9234CB188628C773E021BDFC5CF23E9963E29EB940B05CEFD71BFC8D9A1A"
+    },
+    {
+      "Version": "2.45.0",
+      "Tag": "v2.45.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.45.0",
+      "SHA256": "BC67D69AF994E344091B61139B60501DBBF7E7AAC6A8A50E0AC95A22503B5D1C"
+    },
+    {
+      "Version": "2.46.0",
+      "Tag": "v2.46.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.46.0",
+      "SHA256": "D9A72F1648406806D2CB3049B4A73F357E2DC8DF5D2962CE6D24220F3861A221"
+    },
+    {
+      "Version": "2.47.0",
+      "Tag": "v2.47.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.47.0",
+      "SHA256": "0AF590D52972741B8787C35CE6E204127B04FEB50EE078434CB159DCC13FD7CF"
+    },
+    {
+      "Version": "2.48.0",
+      "Tag": "v2.48.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.48.0",
+      "SHA256": "70130AC46C6D5E2F0FEE99213B9DFE2AB9B47807863410E1A95D8BBCE00FD76B"
+    },
+    {
+      "Version": "2.49.0",
+      "Tag": "v2.49.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.49.0",
+      "SHA256": "1BFEEAFC78036E78C7B422219473987A6FA79BFDC1DA673FCF20E4901399E09F"
+    },
+    {
+      "Version": "2.50.0",
+      "Tag": "v2.50.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.50.0",
+      "SHA256": "07D75FB5438D7BD2E3353A18ABEF34A2E143EDCD62679F0907440D9529735D43"
+    },
+    {
+      "Version": "2.51.0",
+      "Tag": "v2.51.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.51.0",
+      "SHA256": "3524FC5FD81F16F80E1696A8281BD8AD831048B67848015D7B7382BF365AE685"
+    },
+    {
+      "Version": "2.52.0",
+      "Tag": "v2.52.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.52.0",
+      "SHA256": "DA8BE57AFB73A2370A5A891405B5E5624562F07A5C041F9E827E75320DC61114"
+    },
+    {
+      "Version": "2.53.0",
+      "Tag": "v2.53.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.53.0",
+      "SHA256": "0492BCD8A9FC99BEDCA75DBEC7C8C15B24DD1501C82D4518294EE0850F91F219"
+    },
+    {
+      "Version": "2.54.0",
+      "Tag": "v2.54.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.54.0",
+      "SHA256": "7B01A23C44C9CCFCA2E3AD9DAF8CBDD4D4CAAAA6B5181E77E16E60C6AE5F772A"
+    },
+    {
+      "Version": "2.55.0",
+      "Tag": "v2.55.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.55.0",
+      "SHA256": "72923418DB7B26DFDDC21E2268660C5118E560BDFAA09B4489B67B38E9B69C49"
+    },
+    {
+      "Version": "2.56.0",
+      "Tag": "v2.56.0",
+      "URL": "https://codeload.github.com/git/git/tar.gz/refs/tags/v2.56.0",
+      "SHA256": "D761232B81394F7D4C3EF1A99FA804FFBE10D278AE1AD302833A0892050CA9FC"
+    }
+  ],
+  "InventoryGeneratorSHA256": "0EBEBFE3CF37FA3459D917D6774732697F44132CCAADEB9EC0BACF2954A586CB",
+  "InventorySHA256": "43C64B2AC706D1948A02CCFE180970CCB5B7DE187C45D8E1C919E0DF52AD01B8",
+  "Qualification": "Pending; source inventory is not behavioral certification"
+}

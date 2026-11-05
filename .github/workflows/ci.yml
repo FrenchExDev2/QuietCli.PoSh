@@ -1,0 +1,99 @@
+name: QuietCli2 PR
+on:
+  workflow_call:
+    inputs:
+      suite:
+        type: string
+        required: false
+        default: All
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    name: Windows (${{ matrix.rid }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: windows-latest
+            rid: win-x64
+          - image: windows-11-arm
+            rid: win-arm64
+    runs-on: ${{ matrix.image }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, reviewed upstream reference
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 11.0.100-rc.3.26522.148
+      - name: Verify monorepo source lock
+        shell: pwsh
+        run: ./scripts/Initialize-Workspace.ps1 -Restore
+      - name: Run companion suites
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+          QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+        run: ./scripts/Invoke-WorkspaceCi.ps1 -Headless -Suite $env:QUIETCLI_SUITE -ExpectedRuntimeIdentifier $env:EXPECTED_RID
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quietcli2-${{ matrix.rid }}
+          path: artifacts/tests
+  linux:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: debian
+            rid: linux-x64
+            runner: ubuntu-latest
+          - platform: alpine
+            rid: linux-musl-x64
+            runner: ubuntu-latest
+          - platform: debian
+            rid: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: alpine
+            rid: linux-musl-arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 11.0.100-rc.3.26522.148
+      - name: Verify monorepo source lock
+        shell: pwsh
+        run: ./scripts/Initialize-Workspace.ps1 -Restore
+      - name: Require platform image and run the shared launcher
+        shell: pwsh
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          DEBIAN_IMAGE: ${{ vars.QUIETCLI2_DEBIAN_IMAGE }}
+          ALPINE_IMAGE: ${{ vars.QUIETCLI2_ALPINE_IMAGE }}
+          DEBIAN_ARM64_IMAGE: ${{ vars.QUIETCLI2_DEBIAN_ARM64_IMAGE }}
+          ALPINE_ARM64_IMAGE: ${{ vars.QUIETCLI2_ALPINE_ARM64_IMAGE }}
+          EXPECTED_RID: ${{ matrix.rid }}
+          QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+        run: |
+          # Objectif : Exécuter le même lanceur dans une image .NET 11 RC/PowerShell explicitement configurée.
+          $arm=$env:EXPECTED_RID.EndsWith('arm64')
+          $image=if($env:PLATFORM -eq 'debian'){if($arm){$env:DEBIAN_ARM64_IMAGE}else{$env:DEBIAN_IMAGE}}else{if($arm){$env:ALPINE_ARM64_IMAGE}else{$env:ALPINE_IMAGE}}
+          if($image -notmatch '^[a-zA-Z0-9./_:-]+@sha256:[a-f0-9]{64}$'){throw 'Configure an immutable image reference with @sha256 digest.'}
+          . ./scripts/Common.ps1
+          ./scripts/Build-Workspace.ps1
+          # Objectif : Provisionner explicitement l’image verrouillée sur ce runner CI neuf.
+          $null=Invoke-WorkspaceNative podman @('pull',$image) $PWD.Path
+          ./scripts/Invoke-ContainerCi.ps1 -Image $image -Platform $env:PLATFORM -Suite $env:QUIETCLI_SUITE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -Headless
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quietcli2-${{ matrix.rid }}
+          path: artifacts/containers

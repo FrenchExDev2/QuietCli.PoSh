@@ -1,0 +1,774 @@
+{
+  "DebianSnapshotBuild": {
+    "State": "Failed",
+    "Reason": "snapshot.debian.org returned HTTP 503 No healthy backends",
+    "ExistingImageUsedForTests": true
+  },
+  "CSharpAssertionsPerRun": 12,
+  "RecordedUtc": "2026-11-04T23:13:38.8377373+00:00",
+  "EntireGitInventoryQualified": false,
+  "HistoricalDatabaseScrubExecuted": false,
+  "RemoteCiExecuted": false,
+  "SchemaVersion": 1,
+  "WindowsBuilds": [
+    {
+      "NativeExecutionVerified": true,
+      "SourceSHA256": "1F5FFA3141ADF6DF38F66DCF75C60814595B5A4267763413DD9CAB3BF349177C",
+      "Binaries": [
+        {
+          "Bytes": 155,
+          "SHA256": "4A49C25E0C668D867318BBCAE4F9DE5E30B57F645C29F449BACD79DC2E9252AB",
+          "Path": "protocol.json"
+        },
+        {
+          "Bytes": 493,
+          "SHA256": "2E21E23B46BA7B98AE7F07E8468AB1EA50147462AA27D09999B501438E194FD8",
+          "Path": "QuietCli.Engine.deps.json"
+        },
+        {
+          "Bytes": 115200,
+          "SHA256": "96B2D0B2C8CDEBE81504A5AE0E615359A51600ACE223F6490A7DF6335A97ADA9",
+          "Path": "QuietCli.Engine.dll"
+        },
+        {
+          "Bytes": 73728,
+          "SHA256": "0D942F088DFC9D940D9C4E3F551A6AC0DF483D8BA038C3F7DD404EDF295A243E",
+          "Path": "QuietCli.Engine.exe"
+        },
+        {
+          "Bytes": 31536,
+          "SHA256": "672937D6314123706C66E9EDB63073F091A072E1259D0E6E4156FAE42E0F317E",
+          "Path": "QuietCli.Engine.pdb"
+        },
+        {
+          "Bytes": 388,
+          "SHA256": "5AF2220AC3BA3CE6F01FC7283B3DE75DA803DEB951A72427F060A739B7ABACAC",
+          "Path": "QuietCli.Engine.runtimeconfig.json"
+        },
+        {
+          "Bytes": 89232,
+          "SHA256": "5923CA4A74C949F26A02851052EB0EFB0D3EBA9EC394DF8B2D2F89B0EF0F9611",
+          "Path": "QuietCli.Engine.xml"
+        }
+      ],
+      "RuntimeIdentifier": "win-x64",
+      "PlatformTarget": "x64"
+    },
+    {
+      "NativeExecutionVerified": false,
+      "SourceSHA256": "1F5FFA3141ADF6DF38F66DCF75C60814595B5A4267763413DD9CAB3BF349177C",
+      "Binaries": [
+        {
+          "Bytes": 155,
+          "SHA256": "4A49C25E0C668D867318BBCAE4F9DE5E30B57F645C29F449BACD79DC2E9252AB",
+          "Path": "protocol.json"
+        },
+        {
+          "Bytes": 497,
+          "SHA256": "3E1BDCD715A75253C4605FCA48D04DE790983D2C8C85185EEF8D4E8362E6F21B",
+          "Path": "QuietCli.Engine.deps.json"
+        },
+        {
+          "Bytes": 115200,
+          "SHA256": "FBFECC5BAC4B5DD6978892A179C74DFF67ADB35E47057E02ABC66737025D9610",
+          "Path": "QuietCli.Engine.dll"
+        },
+        {
+          "Bytes": 76288,
+          "SHA256": "2FC60269054594B9D13ABED666AC4931F4C4003EEFF192AF61D58FB7D241EA37",
+          "Path": "QuietCli.Engine.exe"
+        },
+        {
+          "Bytes": 31540,
+          "SHA256": "3B17C66B820E6095DC19C64F09CB3D5AEF406D4EEEE7AE2877CF51006B0DD426",
+          "Path": "QuietCli.Engine.pdb"
+        },
+        {
+          "Bytes": 388,
+          "SHA256": "5AF2220AC3BA3CE6F01FC7283B3DE75DA803DEB951A72427F060A739B7ABACAC",
+          "Path": "QuietCli.Engine.runtimeconfig.json"
+        },
+        {
+          "Bytes": 89232,
+          "SHA256": "5923CA4A74C949F26A02851052EB0EFB0D3EBA9EC394DF8B2D2F89B0EF0F9611",
+          "Path": "QuietCli.Engine.xml"
+        }
+      ],
+      "RuntimeIdentifier": "win-arm64",
+      "PlatformTarget": "ARM64"
+    }
+  ],
+  "Security": [
+    {
+      "Resolved": 18,
+      "Platform": "win-x64",
+      "SHA256": "E87CBB182C9116F56613A4A28EDB0B101F1D6D75CA763E8130015B7C9AF6E80A",
+      "Report": "artifacts/security-regressions/49c152c3be474add9ca8ddb05b58e432/summary.json",
+      "Checks": [
+        {
+          "Id": "REL-01",
+          "Resolved": true,
+          "Evidence": {
+            "Starts": 1,
+            "Outcome": "Failed",
+            "Effect": "Unknown",
+            "Complete": false
+          }
+        },
+        {
+          "Id": "SEC-02",
+          "Resolved": true,
+          "Evidence": {
+            "LocalDiagnosticPreserved": true,
+            "PersistedMessageRows": 0
+          }
+        },
+        {
+          "Id": "SEC-03",
+          "Resolved": true,
+          "Evidence": {
+            "NestedBusinessShapeRejected": true
+          }
+        },
+        {
+          "Id": "REL-02",
+          "Resolved": true,
+          "Evidence": {
+            "Rows": 180,
+            "Complete": true,
+            "Pages": 3
+          }
+        },
+        {
+          "Id": "DES-01",
+          "Resolved": true,
+          "Evidence": {
+            "NoBinaryExecuted": true,
+            "DottedBinaryResolved": true
+          }
+        },
+        {
+          "Id": "SEC-01",
+          "Resolved": true,
+          "Evidence": {
+            "Rejected": true,
+            "UnexpectedCodeExecuted": false
+          }
+        },
+        {
+          "Id": "SEC-01-data-only",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "Decision": {
+              "Rejected": false,
+              "ImportTested": false,
+              "Verified": true
+            },
+            "ExpectedReason": null
+          }
+        },
+        {
+          "Id": "SEC-01-foreign",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "Decision": {
+              "Rejected": true,
+              "Reason": "ArchiveModuleBoundaryViolation"
+            },
+            "ExpectedReason": "ArchiveModuleBoundaryViolation"
+          }
+        },
+        {
+          "Id": "SEC-01-case",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "Decision": {
+              "Rejected": true,
+              "Reason": "DuplicatePackagePath"
+            },
+            "ExpectedReason": "DuplicatePackagePath"
+          }
+        },
+        {
+          "Id": "SEC-01-traversal",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "Decision": {
+              "Rejected": true,
+              "Reason": "ArchiveUnsafePath"
+            },
+            "ExpectedReason": "ArchiveUnsafePath"
+          }
+        },
+        {
+          "Id": "SEC-01-file-quota",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "Decision": {
+              "Reason": "ArchiveDirectoryLimit",
+              "Rejected": true
+            },
+            "ExpectedReason": "ArchiveDirectoryLimit"
+          }
+        },
+        {
+          "Id": "SEC-01-byte-quota",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "Decision": {
+              "Rejected": true,
+              "Reason": "ArchiveSizeLimit"
+            },
+            "ExpectedReason": "ArchiveSizeLimit"
+          }
+        },
+        {
+          "Id": "REL-03",
+          "Resolved": true,
+          "Evidence": {
+            "ObservedChanges": 1,
+            "ExpectedChanges": 1
+          }
+        },
+        {
+          "Id": "REL-04",
+          "Resolved": true,
+          "Evidence": {
+            "InternalStreamReturned": false,
+            "RemainingFiles": 0
+          }
+        },
+        {
+          "Id": "DES-02",
+          "Resolved": true,
+          "Evidence": {
+            "ReplacementBlocked": true,
+            "ImmutableSnapshot": true,
+            "DetachedFromRuntime": true
+          }
+        },
+        {
+          "Id": "REL-05",
+          "Resolved": true,
+          "Evidence": {
+            "IndependentDrainCase": true,
+            "CSharpFailed": 0,
+            "CSharpPassed": 12
+          }
+        },
+        {
+          "Id": "REL-06",
+          "Resolved": true,
+          "Evidence": {
+            "Disconnected": true,
+            "Milliseconds": 120.9754
+          }
+        },
+        {
+          "Id": "SEC-05",
+          "Resolved": true,
+          "Evidence": {
+            "ManagedDeltaBytes": 1269672,
+            "Rejected": true,
+            "ExpectedNativeBytes": 16777216
+          }
+        }
+      ],
+      "Unresolved": 0
+    },
+    {
+      "Resolved": 19,
+      "Platform": "linux-musl-x64",
+      "SHA256": "349092F0E81485B2A2DCF1A96E6B5B454E3BF4E4C853B70A8EAA107D64F1E4A7",
+      "Report": "artifacts/containers/alpine-20261104-230030-e516b1/security-evidence/f81e0eefb0394dce9589a59df403ccd4/summary.json",
+      "Checks": [
+        {
+          "Id": "REL-01",
+          "Resolved": true,
+          "Evidence": {
+            "Outcome": "Failed",
+            "Effect": "Unknown",
+            "Starts": 1,
+            "Complete": false
+          }
+        },
+        {
+          "Id": "SEC-02",
+          "Resolved": true,
+          "Evidence": {
+            "LocalDiagnosticPreserved": true,
+            "PersistedMessageRows": 0
+          }
+        },
+        {
+          "Id": "SEC-03",
+          "Resolved": true,
+          "Evidence": {
+            "NestedBusinessShapeRejected": true
+          }
+        },
+        {
+          "Id": "REL-02",
+          "Resolved": true,
+          "Evidence": {
+            "Rows": 180,
+            "Pages": 3,
+            "Complete": true
+          }
+        },
+        {
+          "Id": "DES-01",
+          "Resolved": true,
+          "Evidence": {
+            "NoBinaryExecuted": true,
+            "DottedBinaryResolved": true
+          }
+        },
+        {
+          "Id": "SEC-01",
+          "Resolved": true,
+          "Evidence": {
+            "Rejected": true,
+            "UnexpectedCodeExecuted": false
+          }
+        },
+        {
+          "Id": "SEC-01-data-only",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "Decision": {
+              "Rejected": false,
+              "ImportTested": false,
+              "Verified": true
+            },
+            "ExpectedReason": null
+          }
+        },
+        {
+          "Id": "SEC-01-foreign",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "Decision": {
+              "Reason": "ArchiveModuleBoundaryViolation",
+              "Rejected": true
+            },
+            "ExpectedReason": "ArchiveModuleBoundaryViolation"
+          }
+        },
+        {
+          "Id": "SEC-01-case",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "Decision": {
+              "Reason": "DuplicatePackagePath",
+              "Rejected": true
+            },
+            "ExpectedReason": "DuplicatePackagePath"
+          }
+        },
+        {
+          "Id": "SEC-01-traversal",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "Decision": {
+              "Reason": "ArchiveUnsafePath",
+              "Rejected": true
+            },
+            "ExpectedReason": "ArchiveUnsafePath"
+          }
+        },
+        {
+          "Id": "SEC-01-file-quota",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "Decision": {
+              "Rejected": true,
+              "Reason": "ArchiveDirectoryLimit"
+            },
+            "ExpectedReason": "ArchiveDirectoryLimit"
+          }
+        },
+        {
+          "Id": "SEC-01-byte-quota",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "Decision": {
+              "Rejected": true,
+              "Reason": "ArchiveSizeLimit"
+            },
+            "ExpectedReason": "ArchiveSizeLimit"
+          }
+        },
+        {
+          "Id": "REL-03",
+          "Resolved": true,
+          "Evidence": {
+            "ObservedChanges": 1,
+            "ExpectedChanges": 1
+          }
+        },
+        {
+          "Id": "REL-04",
+          "Resolved": true,
+          "Evidence": {
+            "RemainingFiles": 0,
+            "InternalStreamReturned": false
+          }
+        },
+        {
+          "Id": "SEC-04",
+          "Resolved": true,
+          "Evidence": {
+            "DirectoryMode": 448,
+            "FileMode": 384
+          }
+        },
+        {
+          "Id": "DES-02",
+          "Resolved": true,
+          "Evidence": {
+            "ReplacementBlocked": true,
+            "ImmutableSnapshot": true,
+            "DetachedFromRuntime": true
+          }
+        },
+        {
+          "Id": "REL-05",
+          "Resolved": true,
+          "Evidence": {
+            "IndependentDrainCase": true,
+            "CSharpPassed": 12,
+            "CSharpFailed": 0
+          }
+        },
+        {
+          "Id": "REL-06",
+          "Resolved": true,
+          "Evidence": {
+            "Disconnected": true,
+            "Milliseconds": 120.2585
+          }
+        },
+        {
+          "Id": "SEC-05",
+          "Resolved": true,
+          "Evidence": {
+            "ExpectedNativeBytes": 16777216,
+            "ManagedDeltaBytes": 1428552,
+            "Rejected": true
+          }
+        }
+      ],
+      "Unresolved": 0
+    },
+    {
+      "Resolved": 19,
+      "Platform": "linux-x64",
+      "SHA256": "F3A2281CF71D8F2368EEA73ADFE33A9DF99161BE2C54EDF35519470715B66B2B",
+      "Report": "artifacts/containers/debian-20261104-230122-a480fb/security-evidence/9c1c3d043af9455888901b39703b871d/summary.json",
+      "Checks": [
+        {
+          "Id": "REL-01",
+          "Resolved": true,
+          "Evidence": {
+            "Complete": false,
+            "Effect": "Unknown",
+            "Outcome": "Failed",
+            "Starts": 1
+          }
+        },
+        {
+          "Id": "SEC-02",
+          "Resolved": true,
+          "Evidence": {
+            "LocalDiagnosticPreserved": true,
+            "PersistedMessageRows": 0
+          }
+        },
+        {
+          "Id": "SEC-03",
+          "Resolved": true,
+          "Evidence": {
+            "NestedBusinessShapeRejected": true
+          }
+        },
+        {
+          "Id": "REL-02",
+          "Resolved": true,
+          "Evidence": {
+            "Complete": true,
+            "Rows": 180,
+            "Pages": 3
+          }
+        },
+        {
+          "Id": "DES-01",
+          "Resolved": true,
+          "Evidence": {
+            "DottedBinaryResolved": true,
+            "NoBinaryExecuted": true
+          }
+        },
+        {
+          "Id": "SEC-01",
+          "Resolved": true,
+          "Evidence": {
+            "Rejected": true,
+            "UnexpectedCodeExecuted": false
+          }
+        },
+        {
+          "Id": "SEC-01-data-only",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "ExpectedReason": null,
+            "Decision": {
+              "Verified": true,
+              "ImportTested": false,
+              "Rejected": false
+            }
+          }
+        },
+        {
+          "Id": "SEC-01-foreign",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "ExpectedReason": "ArchiveModuleBoundaryViolation",
+            "Decision": {
+              "Rejected": true,
+              "Reason": "ArchiveModuleBoundaryViolation"
+            }
+          }
+        },
+        {
+          "Id": "SEC-01-case",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "ExpectedReason": "DuplicatePackagePath",
+            "Decision": {
+              "Rejected": true,
+              "Reason": "DuplicatePackagePath"
+            }
+          }
+        },
+        {
+          "Id": "SEC-01-traversal",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "ExpectedReason": "ArchiveUnsafePath",
+            "Decision": {
+              "Reason": "ArchiveUnsafePath",
+              "Rejected": true
+            }
+          }
+        },
+        {
+          "Id": "SEC-01-file-quota",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "ExpectedReason": "ArchiveDirectoryLimit",
+            "Decision": {
+              "Reason": "ArchiveDirectoryLimit",
+              "Rejected": true
+            }
+          }
+        },
+        {
+          "Id": "SEC-01-byte-quota",
+          "Resolved": true,
+          "Evidence": {
+            "Markers": 0,
+            "ExpectedReason": "ArchiveSizeLimit",
+            "Decision": {
+              "Rejected": true,
+              "Reason": "ArchiveSizeLimit"
+            }
+          }
+        },
+        {
+          "Id": "REL-03",
+          "Resolved": true,
+          "Evidence": {
+            "ObservedChanges": 1,
+            "ExpectedChanges": 1
+          }
+        },
+        {
+          "Id": "REL-04",
+          "Resolved": true,
+          "Evidence": {
+            "InternalStreamReturned": false,
+            "RemainingFiles": 0
+          }
+        },
+        {
+          "Id": "SEC-04",
+          "Resolved": true,
+          "Evidence": {
+            "FileMode": 384,
+            "DirectoryMode": 448
+          }
+        },
+        {
+          "Id": "DES-02",
+          "Resolved": true,
+          "Evidence": {
+            "DetachedFromRuntime": true,
+            "ImmutableSnapshot": true,
+            "ReplacementBlocked": true
+          }
+        },
+        {
+          "Id": "REL-05",
+          "Resolved": true,
+          "Evidence": {
+            "CSharpFailed": 0,
+            "CSharpPassed": 12,
+            "IndependentDrainCase": true
+          }
+        },
+        {
+          "Id": "REL-06",
+          "Resolved": true,
+          "Evidence": {
+            "Disconnected": true,
+            "Milliseconds": 131.5261
+          }
+        },
+        {
+          "Id": "SEC-05",
+          "Resolved": true,
+          "Evidence": {
+            "ManagedDeltaBytes": 1509368,
+            "Rejected": true,
+            "ExpectedNativeBytes": 16777216
+          }
+        }
+      ],
+      "Unresolved": 0
+    }
+  ],
+  "PsGalleryPublished": false,
+  "ContainerCleanup": "Unconfirmed; run reports distinguish test success from cleanup",
+  "Runs": [
+    {
+      "Engine": {
+        "ProtocolVersion": 1,
+        "Runtime": ".NET 11.0.0-rc.3.26522.148",
+        "ProcessId": 33276,
+        "RuntimeIdentifier": "win-x64",
+        "BuildRuntimeIdentifier": "win-x64",
+        "BlockSize": 16384,
+        "QueueBlocks": 16,
+        "AssemblySHA256": "96B2D0B2C8CDEBE81504A5AE0E615359A51600ACE223F6490A7DF6335A97ADA9",
+        "SourceSHA256": "1F5FFA3141ADF6DF38F66DCF75C60814595B5A4267763413DD9CAB3BF349177C",
+        "Capture": false
+      },
+      "StartedUtc": "2026-11-05T00:08:44.0395679+01:00",
+      "Suites": [
+        {
+          "Project": "FrenchExDev2.QuietCli.Core.PoSh",
+          "Passed": 30,
+          "Failed": 0
+        },
+        {
+          "Project": "FrenchExDev2.QuietCli.Git.PoSh",
+          "Passed": 32,
+          "Failed": 0
+        }
+      ],
+      "FinishedUtc": "2026-11-05T00:10:42.8461869+01:00",
+      "Failed": 0,
+      "Passed": 62,
+      "Report": "artifacts/tests/20261104-230842-c39ea2/summary.json",
+      "Platform": "win-x64",
+      "State": "Success",
+      "ReportSHA256": "01EE489CFC4B2D752F106E60B01C6B9E343538CE4B9C6EE10453FF9EE6651640"
+    },
+    {
+      "Engine": {
+        "ProtocolVersion": 1,
+        "Runtime": ".NET 11.0.0-rc.3.26522.148",
+        "ProcessId": 59,
+        "RuntimeIdentifier": "linux-musl-x64",
+        "BuildRuntimeIdentifier": "portable",
+        "BlockSize": 16384,
+        "QueueBlocks": 16,
+        "AssemblySHA256": "BB906BE9E6AF8373036F4B23B5A01C8E290B4A1FB8105582AB1426AD470E13E4",
+        "SourceSHA256": "1F5FFA3141ADF6DF38F66DCF75C60814595B5A4267763413DD9CAB3BF349177C",
+        "Capture": false
+      },
+      "StartedUtc": "2026-11-05T00:02:39.0709354+01:00",
+      "Suites": [
+        {
+          "Project": "FrenchExDev2.QuietCli.Core.PoSh",
+          "Passed": 30,
+          "Failed": 0
+        },
+        {
+          "Project": "FrenchExDev2.QuietCli.Git.PoSh",
+          "Passed": 32,
+          "Failed": 0
+        }
+      ],
+      "FinishedUtc": "2026-11-05T00:04:18.4075296+01:00",
+      "Failed": 0,
+      "Passed": 62,
+      "Report": "artifacts/containers/alpine-20261104-230030-e516b1/guest/summary.json",
+      "Platform": "linux-musl-x64",
+      "State": "Success",
+      "ReportSHA256": "8B436301C8E691226FD368F1DB89E565E21F279C5D222FEF13515EF52B25AEFA"
+    },
+    {
+      "Engine": {
+        "ProtocolVersion": 1,
+        "Runtime": ".NET 11.0.0-rc.3.26522.148",
+        "ProcessId": 55,
+        "RuntimeIdentifier": "linux-x64",
+        "BuildRuntimeIdentifier": "portable",
+        "BlockSize": 16384,
+        "QueueBlocks": 16,
+        "AssemblySHA256": "BB906BE9E6AF8373036F4B23B5A01C8E290B4A1FB8105582AB1426AD470E13E4",
+        "SourceSHA256": "1F5FFA3141ADF6DF38F66DCF75C60814595B5A4267763413DD9CAB3BF349177C",
+        "Capture": false
+      },
+      "StartedUtc": "2026-11-05T00:05:24.9849437+01:00",
+      "Suites": [
+        {
+          "Project": "FrenchExDev2.QuietCli.Core.PoSh",
+          "Passed": 30,
+          "Failed": 0
+        },
+        {
+          "Project": "FrenchExDev2.QuietCli.Git.PoSh",
+          "Passed": 32,
+          "Failed": 0
+        }
+      ],
+      "FinishedUtc": "2026-11-05T00:06:43.1173585+01:00",
+      "Failed": 0,
+      "Passed": 62,
+      "Report": "artifacts/containers/debian-20261104-230122-a480fb/guest/summary.json",
+      "Platform": "linux-x64",
+      "State": "Success",
+      "ReportSHA256": "2C139829FF64DEE709E4AE6680A5B3727EB9B21751CF20041A7D0EC1B7FC13C2"
+    }
+  ]
+}

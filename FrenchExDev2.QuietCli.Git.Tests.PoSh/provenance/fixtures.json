@@ -1,0 +1,26 @@
+{
+  "License": "Apache-2.0",
+  "Files": [
+    {
+      "Fixture": "fixtures/patch/latin1.txt",
+      "SHA256": "9BD8259BA60163AE34E8BDB2043CDA6A486E8F1D7C09AF4E065E2E7FC0C04B00",
+      "Source": "tests/fixtures/diff/git_diff_latin1_raw.txt"
+    },
+    {
+      "Fixture": "fixtures/patch/combined.txt",
+      "SHA256": "537B0BA81EFFB4B704660E3F587994086C4BCBFE6109B05E350B918682D5A962",
+      "Source": "tests/fixtures/diff/git_show_cc_raw.txt"
+    },
+    {
+      "Fixture": "fixtures/patch/no-final-newline.txt",
+      "SHA256": "F30285491CC9ED9061834551730D74A43806652368C38BC87F9AFB61CAE364AA",
+      "Source": "tests/fixtures/diff/git_diff_no_newline_raw.txt"
+    },
+    {
+      "Fixture": "fixtures/patch/multifile.txt",
+      "SHA256": "1532FC3B1849738A1822A0EF09D21CD5034AEDF13586F8D290C6A0D21755016F",
+      "Source": "tests/fixtures/diff/git_diff_multifile_raw.txt"
+    }
+  ],
+  "Reference": "RTK 0.49.0"
+}

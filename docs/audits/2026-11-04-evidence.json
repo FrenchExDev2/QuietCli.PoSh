@@ -1,0 +1,531 @@
+{
+  "Audit": {
+    "Checks": [
+      {
+        "Id": "REL-01-lost-start-ack",
+        "FindingConfirmed": true,
+        "Evidence": {
+          "Outcome": "Failed",
+          "SourceComplete": true,
+          "NativeExecutionPresent": false,
+          "EngineConfirmedProcessCreation": true,
+          "ErrorCode": "InvocationFailed"
+        }
+      },
+      {
+        "Id": "SEC-02-error-retention",
+        "FindingConfirmed": true,
+        "Evidence": {
+          "NoRealSecretUsed": true,
+          "SyntheticMarkerPersisted": true,
+          "MatchingRows": 1
+        }
+      },
+      {
+        "Id": "SEC-03-nested-metadata-whitelist",
+        "FindingConfirmed": true,
+        "Evidence": {
+          "TrustBoundary": "Caller metadata validation, not a remote code execution primitive",
+          "NestedBusinessShapeAccepted": true
+        }
+      },
+      {
+        "Id": "REL-02-query-frame-budget",
+        "FindingConfirmed": true,
+        "Evidence": {
+          "StoredRows": 180,
+          "QueryFailed": true,
+          "Message": "EngineCommunicationFailed: EngineRequestFailed: ResponseTooLarge"
+        }
+      },
+      {
+        "Id": "DES-01-dotted-binary-identity",
+        "FindingConfirmed": true,
+        "Evidence": {
+          "DeclaredBinary": "audit.tool",
+          "NoBinaryExecuted": true,
+          "Resolved": false
+        }
+      },
+      {
+        "Id": "SEC-01-package-unmanifested-import",
+        "FindingConfirmed": true,
+        "Evidence": {
+          "VerifierOutcome": "Success",
+          "UndeclaredModuleImported": true,
+          "Verified": true,
+          "MarkerWithinAuditDirectory": true,
+          "ManifestEntries": 1,
+          "ZipEntries": 5
+        }
+      },
+      {
+        "Id": "REL-03-case-sensitive-refs",
+        "FindingConfirmed": true,
+        "Evidence": {
+          "ObservedChanges": 0,
+          "DistinctNativeRefNames": [
+            "refs/heads/Feature",
+            "refs/heads/feature"
+          ],
+          "ExpectedChanges": 1,
+          "NoRepositoryMutated": true
+        }
+      },
+      {
+        "Id": "REL-04-blob-start-failure-resource",
+        "FindingConfirmed": true,
+        "Evidence": {
+          "StreamStillOpen": true,
+          "ReturnedInternalStream": true,
+          "BusinessDescriptorReturned": false,
+          "OwnedPathInsideAudit": true
+        }
+      },
+      {
+        "Id": "REL-05-drain-cutoff-completeness",
+        "FindingConfirmed": false,
+        "Evidence": {
+          "ElapsedSeconds": 31.27,
+          "ExpectedLateOutputBytes": 21,
+          "StdoutBytesRead": 0,
+          "SourceComplete": true,
+          "Outcome": "Success",
+          "LateChildReachedWrite": false
+        }
+      }
+    ],
+    "Meaning": "Passed counts completed reproductions, not security compliance.",
+    "State": {
+      "Workspace": "C:\\code\\FrenchExDev\\FrenchExDev_i2\\PoSh\\FrenchExDev\\QuietCliEcosystem\\FrenchExDev2.QuietCli.PoSh",
+      "Failed": 0,
+      "Task": "Audit sécurité et logiciel",
+      "ProcessId": 24460,
+      "Project": "FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh",
+      "Error": null,
+      "StartedUtc": "2026-11-04T22:16:37.743884+01:00",
+      "FinishedUtc": "2026-11-04T22:17:19.1845608+01:00",
+      "State": "Success",
+      "Case": "Audit reproductions complete; confirmed findings are listed separately",
+      "Passed": 9,
+      "ProjectDirectory": "C:\\code\\FrenchExDev\\FrenchExDev_i2\\PoSh\\FrenchExDev\\QuietCliEcosystem\\FrenchExDev2.QuietCli.PoSh\\FrenchExDev2.QuietCli.Core.PoSh",
+      "Platform": "win-x64"
+    },
+    "ConfirmedFindings": 8
+  },
+  "BaselineRun": "artifacts\\tests\\20261104-211105-2cbc92",
+  "Date": "2026-11-04",
+  "Identities": [
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/src/Delivery.ps1",
+      "Bytes": 8652,
+      "SHA256": "1CDDCB0992F087F315416B70F16ACEB8F83ADE389E07553C2B97A60956DF261E"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/src/Gain.ps1",
+      "Bytes": 5329,
+      "SHA256": "F3F3CE2DB06815F6A8DE9B895E9494BB0712CDC0AEE0841583E5B2EE5D9CA527"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/src/Invoke.ps1",
+      "Bytes": 13478,
+      "SHA256": "199D282126A575958F2560DBD736720C25140F8C63E84968F3AC0F23349DAFA8"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/src/Protocol.ps1",
+      "Bytes": 4811,
+      "SHA256": "BB34B95757B0AFFEE1854B650EC88189AF167D6F5C320927D430075EDD69994A"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/src/Registry.ps1",
+      "Bytes": 3283,
+      "SHA256": "96A960A9CB9C94F1211E59617092A3F2C10C149063CDDB37A3724921CBBAD675"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/src/Runtime.ps1",
+      "Bytes": 6714,
+      "SHA256": "977193AC0E16AAB8BE946DB2E65972F3C555F8F3E15D0034D9E937D5D94542C8"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/src/Scaffold.ps1",
+      "Bytes": 4801,
+      "SHA256": "45EAF483BE6A0F0B1ACD43AC9780D36A2C8180D733FC7732776FF78FEF2EA0E9"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/ConPtyChannel.cs",
+      "Bytes": 14859,
+      "SHA256": "D3D8B8B912A857BC2B71FEAC171692052457A008B9313413FA5BFCACE25B44F7"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/Invocation.cs",
+      "Bytes": 12328,
+      "SHA256": "C23C505F443191DE4DCAE0E34874376CA7E80C2A642AEC8179489D885989F9E2"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/MeasurementStore.cs",
+      "Bytes": 5313,
+      "SHA256": "4E38B460DE29974D593402BCFBB79DEFD09C91E5E3A6FC74598471DD66023962"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/PrivateDirectory.cs",
+      "Bytes": 720,
+      "SHA256": "3AE505D53734DAADC45637F18135C47E9305AC8286D1765FB9ECF123C08D2A15"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/ProcessChannels.cs",
+      "Bytes": 8352,
+      "SHA256": "98CC58044921687E04E913D51C9BD869A536228C66F5375F75FAE84BE74D1F54"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/Program.cs",
+      "Bytes": 5867,
+      "SHA256": "E4F1FFE9333321A0A6ED044FCBC1C5B4294F2F08D1259DB21BA42D59D9512A1B"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/Protocol.cs",
+      "Bytes": 3511,
+      "SHA256": "C27FC37C9AD6DD295F75A9A047DF453F2E85C07B13DC0022907D3ED9368B3F40"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj",
+      "Bytes": 613,
+      "SHA256": "5B0B903C2EF125F86A1B79FB82A504C63487844DF78FE8FE92A75CB7F1B007AE"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/SqliteNative.cs",
+      "Bytes": 22405,
+      "SHA256": "DD1AC863431482FB5414E9720D3F0CF976DDEDCA5696F846301C45FDE6008F12"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/linux-arm64/native/libe_sqlite3.so",
+      "Bytes": 1534296,
+      "SHA256": "707FFF6B18C1F083158E7A543C8D2545D5485F547FFD96DB29679A95F52878D5"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/linux-musl-arm64/native/libe_sqlite3.so",
+      "Bytes": 1450704,
+      "SHA256": "530E2F74F259FE04FAA4B595336E671FAB5EEDBB6F4E94DAD59494EFB7B00C2A"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/linux-musl-x64/native/libe_sqlite3.so",
+      "Bytes": 1445336,
+      "SHA256": "647B7B5886526691AED58E0FCBB56DC1E6DEA8B1F9F5390782F0C95269250DB1"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/linux-x64/native/libe_sqlite3.so",
+      "Bytes": 1470784,
+      "SHA256": "B0F5C48026FEDCF9F05CF31C6FADF9E1E001CA59CD85AA68B8B6814E52C18A07"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/osx-arm64/native/libe_sqlite3.dylib",
+      "Bytes": 1696624,
+      "SHA256": "09FE20A6C050912A7944B2F2F2981DEBE31679F7919F523C87251AE8CF0F2DAA"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/osx-x64/native/libe_sqlite3.dylib",
+      "Bytes": 1724472,
+      "SHA256": "02344E1D0BCB5ED447AD9B79ED19E37A590FB1ECE3EBA1E63EFBC35E36E47BDF"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/win-arm64/native/e_sqlite3.dll",
+      "Bytes": 1814528,
+      "SHA256": "4177542756BD94F75B55FB74367E0CF34E66A88FFAF95755489AF14C6CA2F792"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/win-x64/native/e_sqlite3.dll",
+      "Bytes": 1978880,
+      "SHA256": "B7385D722C83FB52142A00477A726723745916D22A555711EE89834C1111FB2E"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/tokenizers/Microsoft.Bcl.Memory.dll",
+      "Bytes": 58160,
+      "SHA256": "16AF18CC22C8E3F492DEB373A92C732357D9A04430EB7058E98AC6B6853F9E78"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/tokenizers/Microsoft.ML.Tokenizers.Data.Cl100kBase.dll",
+      "Bytes": 538896,
+      "SHA256": "A1AAD30FA79231557B9A32D2BD01EACF4D6E83E0F3AF56C161809BC5AA859232"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/tokenizers/Microsoft.ML.Tokenizers.Data.O200kBase.dll",
+      "Bytes": 1199376,
+      "SHA256": "67DD727D73D87D46E6F12259B0DAA733F596D609212D47E54AEA1E3517D18C46"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/tokenizers/Microsoft.ML.Tokenizers.dll",
+      "Bytes": 325896,
+      "SHA256": "04B9CB9A6BCE333071E071C6735A8914BB55E1EA1F197707ED71BF4CABF6CA77"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/transport/linux-musl-x64/build.json",
+      "Bytes": 498,
+      "SHA256": "BB7859E3A7164C5E807134E4BBF5EFECFFFA2B12A3C982C760487CBF74BF0434"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/transport/linux-musl-x64/quietcli-pty",
+      "Bytes": 358752,
+      "SHA256": "767A618BC66BBF136837B0CFC71212898331FB575A1B04303F55850C5D6C0EB5"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/transport/linux-musl-x64/quietcli-pty.sha256",
+      "Bytes": 64,
+      "SHA256": "8EBB522C454E404BB30B57582A5D8A7B978B3C3D6B589528A8A92EF895AE2A08"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/transport/linux-x64/build.json",
+      "Bytes": 498,
+      "SHA256": "BB7859E3A7164C5E807134E4BBF5EFECFFFA2B12A3C982C760487CBF74BF0434"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/transport/linux-x64/quietcli-pty",
+      "Bytes": 358752,
+      "SHA256": "767A618BC66BBF136837B0CFC71212898331FB575A1B04303F55850C5D6C0EB5"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/resources/transport/linux-x64/quietcli-pty.sha256",
+      "Bytes": 64,
+      "SHA256": "8EBB522C454E404BB30B57582A5D8A7B978B3C3D6B589528A8A92EF895AE2A08"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/lib/engine/QuietCli.Engine.deps.json",
+      "Bytes": 439,
+      "SHA256": "95421A9AFE4658B43140A4403702F2D77629EDB8759547F269D9908AC9F013A1"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/lib/engine/QuietCli.Engine.dll",
+      "Bytes": 70144,
+      "SHA256": "06B9A75CC30F23D10E7F3081644F2F4F089D40FE2174E74BE485EA6A15ECD6F8"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/lib/engine/QuietCli.Engine.exe",
+      "Bytes": 73728,
+      "SHA256": "0D942F088DFC9D940D9C4E3F551A6AC0DF483D8BA038C3F7DD404EDF295A243E"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/lib/engine/QuietCli.Engine.pdb",
+      "Bytes": 23480,
+      "SHA256": "33FAC4F1435BD4FB6A07CB4BFFCB296E9CAD285F02006CF0A1AE55C4A46F0C3B"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/lib/engine/QuietCli.Engine.runtimeconfig.json",
+      "Bytes": 388,
+      "SHA256": "5AF2220AC3BA3CE6F01FC7283B3DE75DA803DEB951A72427F060A739B7ABACAC"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/lib/engine/QuietCli.Engine.xml",
+      "Bytes": 53192,
+      "SHA256": "A180ACD53436A789F163968DCA7D4DFEE1253917B632B2DB69553A00E44E5DB0"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh/src/Arguments.ps1",
+      "Bytes": 2685,
+      "SHA256": "A1E743709AEE7FFFFB0C86DFE179B832F920F41DD5F2154CC38553A5A1C4617A"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh/src/ArgumentSchema.ps1",
+      "Bytes": 17345,
+      "SHA256": "847D8D42B48AD575384E8B6953A2A416269144072CAC8EC484550B01F462B36A"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh/src/Commands.ps1",
+      "Bytes": 10553,
+      "SHA256": "4B9610A6C6C775EDE7E46C23D832990EC4895642A58BC94207C3899EF0203D58"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh/src/Diff.ps1",
+      "Bytes": 4722,
+      "SHA256": "D3619D8394DE2CCA5685C4CE4ABF407FB12563EF531F99F0A2C4A68337A4CF18"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh/src/History.ps1",
+      "Bytes": 6466,
+      "SHA256": "34AEBC83EBCBEFBAF1A54146E0A1DE86E49A217879B1E9EB739433B93A87900B"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh/src/Records.ps1",
+      "Bytes": 5888,
+      "SHA256": "6D65674C932B7C3D3542DE1CFDF1E584AE5168F18237D4FE87B262C838225990"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh/src/Repository.ps1",
+      "Bytes": 8895,
+      "SHA256": "1364B3D1D6C77A1CD90DB0E5973B61286374061A0C1303A96DA86A3857CDF22E"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh/src/Semantics.ps1",
+      "Bytes": 5673,
+      "SHA256": "726D9379F0F04552D83BD0255B7A9AA2A76CADCE20C86C919FD1BAEA78C2969E"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh/src/StatusRecords.ps1",
+      "Bytes": 6488,
+      "SHA256": "DB76DDD2FAEAD339195C234DAF9F1F413913BE2222DC7A6B97CD4C3B350D9454"
+    },
+    {
+      "Path": "scripts/Bootstrap.ps1",
+      "Bytes": 4642,
+      "SHA256": "4F14EB75474D7A380D56FB5F4EEE9196B5856847FC9979D730CDC5FC2F940D36"
+    },
+    {
+      "Path": "scripts/Build-DebianCiImage.ps1",
+      "Bytes": 1896,
+      "SHA256": "0AA53A6E85EB5F0B93D571EB46F07BF5DD72B7997B4CF5FF58CBA3CFE94689D9"
+    },
+    {
+      "Path": "scripts/Build-Workspace.ps1",
+      "Bytes": 1210,
+      "SHA256": "B4E1A0EB14AEAA77FED0352EC8D83FC6307F8AA877E67423BA4DB75B37F4D6E1"
+    },
+    {
+      "Path": "scripts/Commit-Workspace.ps1",
+      "Bytes": 1427,
+      "SHA256": "FAA792494C7746CA4E9DFFB096BF8854BAD7CCF3EB5806986D04C3E8EE09578A"
+    },
+    {
+      "Path": "scripts/Common.ps1",
+      "Bytes": 1684,
+      "SHA256": "4E542DD4A4DA976E43E4D8811091A11A27A72E0EAEA0B5324CCCD735A037D0CA"
+    },
+    {
+      "Path": "scripts/Initialize-Workspace.ps1",
+      "Bytes": 2961,
+      "SHA256": "A5F236F29FE5E7798BE46389BCBB19F23B0D96ECB1312A9FE9C01ACE62BD963B"
+    },
+    {
+      "Path": "scripts/Invoke-ContainerCi.ps1",
+      "Bytes": 2386,
+      "SHA256": "4763A443F9EF6E76E79E7EED6C326519174ED1E75BD4B067FD23CC50C04953AA"
+    },
+    {
+      "Path": "scripts/Invoke-ContainerWorker.ps1",
+      "Bytes": 4297,
+      "SHA256": "DD68B564D11DA7299DA87DE7E08439D0D6CD6112B4E18EFEACCCB09E89D3AE3C"
+    },
+    {
+      "Path": "scripts/Invoke-GitQualification.ps1",
+      "Bytes": 2044,
+      "SHA256": "1E1D6709E9A17B339DF51E3F3DB58B281F9FC7A6C9D15F263784EFACE2873816"
+    },
+    {
+      "Path": "scripts/Invoke-RemoteWorkflow.ps1",
+      "Bytes": 1033,
+      "SHA256": "9222C9AD3C0B5B5F63FB3BD14F969570457AD58CD62EC638308D247DBAAAA4B0"
+    },
+    {
+      "Path": "scripts/Invoke-TestWorker.ps1",
+      "Bytes": 3605,
+      "SHA256": "A166CC5B5CF3C9FCC65EE218A6BC311DA5E31A4C5A87056D784560D923335C67"
+    },
+    {
+      "Path": "scripts/Invoke-WorkspaceCi.ps1",
+      "Bytes": 3822,
+      "SHA256": "A3EC861CC25DC3C83165DDC15DCEAC61A2FE84D4A81717171B7B269936736AAC"
+    },
+    {
+      "Path": "scripts/Monitor.Time.ps1",
+      "Bytes": 1623,
+      "SHA256": "ECCB7BE8941F0DDF30C6B78F9492549D0AC2920545F775427A7442B9D5EDF272"
+    },
+    {
+      "Path": "scripts/New-WorkspacePackage.ps1",
+      "Bytes": 3200,
+      "SHA256": "5C4E8C0DF623B9F950A7BB8757F0A77268A9992ECED6F64DB4E7CEC104E2E206"
+    },
+    {
+      "Path": "scripts/Push-Workspace.ps1",
+      "Bytes": 996,
+      "SHA256": "158A3C24E801258A513560B34ADE88D4C7D698AE9BD09030B0F7A8F19C4B8D0B"
+    },
+    {
+      "Path": "scripts/Test-WorkspacePackage.ps1",
+      "Bytes": 2219,
+      "SHA256": "66A8042B23F6859F09B4168E539C13D02549ADA574BC8C5BDBB55A05A83A1F5B"
+    },
+    {
+      "Path": "scripts/Update-WorkspaceLock.ps1",
+      "Bytes": 2903,
+      "SHA256": "B09EA0FB03CCD5AC481BA842C953F27FFFC637B148768224BAE8AABB2EF4CB8E"
+    },
+    {
+      "Path": "scripts/Verify-Distribution.ps1",
+      "Bytes": 701,
+      "SHA256": "0FF2A3A2F03435F2DA8742F6FD3AF2E09DACB4E935BC04908044788AF77AEC06"
+    },
+    {
+      "Path": "scripts/Watch-Tests.ps1",
+      "Bytes": 5173,
+      "SHA256": "DCC6969F9792F7CECEB1DE800B3D6E47B05DB29B37B5E545A69A145FDE93B768"
+    },
+    {
+      "Path": ".github/containers/Containerfile.debian",
+      "Bytes": 1925,
+      "SHA256": "8A2A6AF2E667947AC53A1B61595DD59373583AAC857906F638BDDA703A19D998"
+    },
+    {
+      "Path": ".github/workflows/ci.yml",
+      "Bytes": 1981,
+      "SHA256": "D72AFED9D7826A4BB128382704F8AD6BBDB3B4BEAC2F2ECB314A181598D4E2BF"
+    },
+    {
+      "Path": ".github/workflows/qualification.yml",
+      "Bytes": 788,
+      "SHA256": "DDF30D24B4CAF434DA387C533054B032FCD21C7B4A025E327749C6BD04343ECD"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psm1",
+      "Bytes": 848,
+      "SHA256": "7C7E4226E4AA6B2829FF7B03FBE7303E60D5954E731A8604FBDC0EA495814E67"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psm1",
+      "Bytes": 2538,
+      "SHA256": "25E12B8EC72A26BE5B992A8A45323E63631AD51FAC7E9D39659785F9F2D9D5EC"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1",
+      "Bytes": 678,
+      "SHA256": "7B8D1279EA2449D386193E68BDB1C737DF7674C7AD7431A1C26E4CCDF5DF9E9D"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1",
+      "Bytes": 540,
+      "SHA256": "B8D0F13A5327EFC23274BE3D5A4AC013C9C4A719A3DEC8C111A49AF3D4C502F2"
+    },
+    {
+      "Path": "repositories.lock.json",
+      "Bytes": 1470,
+      "SHA256": "F55C3FC8E9C8DF2C907A0FE9177897403CAF7134800A096191F0B26DF904D3FD"
+    },
+    {
+      "Path": "global.json",
+      "Bytes": 105,
+      "SHA256": "F2D0D40412E51E28EE464F561B4CAD2B7A751B863D959A458CA5FDE15DA225CE"
+    }
+  ],
+  "SecretSearch": {
+    "Scope": "Core/Git source, scripts and workflows only",
+    "Exhaustive": false,
+    "RecognizedPatternFiles": 0
+  },
+  "Baseline": {
+    "Failed": 0,
+    "Passed": 59,
+    "Suites": [
+      {
+        "Project": "FrenchExDev2.QuietCli.Core.PoSh",
+        "Passed": 27,
+        "Failed": 0
+      },
+      {
+        "Project": "FrenchExDev2.QuietCli.Git.PoSh",
+        "Passed": 32,
+        "Failed": 0
+      }
+    ],
+    "State": "Success"
+  },
+  "Timezone": "Europe/Paris",
+  "AuditRun": "artifacts\\audit\\20261104-211636-ab41c3",
+  "Workspace": "C:\\code\\FrenchExDev\\FrenchExDev_i2\\PoSh\\FrenchExDev\\QuietCliEcosystem\\FrenchExDev2.QuietCli.PoSh",
+  "Scope": "Source audit and Windows synthetic reproductions; no Linux security replication or advisory scanner certification."
+}

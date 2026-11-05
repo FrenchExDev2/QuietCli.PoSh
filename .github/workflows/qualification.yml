@@ -1,0 +1,26 @@
+name: QuietCli2 full Git qualification
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qualification:
+    runs-on: [self-hosted, linux, x64, podman, kvm]
+    timeout-minutes: 720
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Verify monorepo source lock
+        shell: pwsh
+        run: ./scripts/Initialize-Workspace.ps1 -Restore
+      - name: Qualify every applicable capability
+        shell: pwsh
+        env:
+          QUIETCLI2_QUALIFICATION_CONFIG: ${{ vars.QUIETCLI2_QUALIFICATION_CONFIG }}
+        run: ./scripts/Invoke-GitQualification.ps1 -ConfigurationPath $env:QUIETCLI2_QUALIFICATION_CONFIG
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quietcli2-full-qualification
+          path: artifacts/qualification

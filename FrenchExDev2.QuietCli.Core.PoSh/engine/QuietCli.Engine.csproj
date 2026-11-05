@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net11.0</TargetFramework>
+    <RuntimeFrameworkVersion>11.0.0-rc.3.26522.148</RuntimeFrameworkVersion>
+    <RollForward>Disable</RollForward>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <AssemblyName>QuietCli.Engine</AssemblyName>
+    <RestoreIgnoreFailedSources>true</RestoreIgnoreFailedSources>
+  </PropertyGroup>
+  <ItemGroup><InternalsVisibleTo Include="QuietCli.Engine.Tests" /></ItemGroup>
+  <ItemGroup><Content Include="../protocol.json" Link="protocol.json" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
+</Project>

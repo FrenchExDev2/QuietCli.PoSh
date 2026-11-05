@@ -1,0 +1,14 @@
+{
+  "folders": [
+    {"name":"Workspace", "path":"."},
+    {"name":"Core", "path":"FrenchExDev2.QuietCli.Core.PoSh"},
+    {"name":"Core.Tests", "path":"FrenchExDev2.QuietCli.Core.Tests.PoSh"},
+    {"name":"Git", "path":"FrenchExDev2.QuietCli.Git.PoSh"},
+    {"name":"Git.Tests", "path":"FrenchExDev2.QuietCli.Git.Tests.PoSh"}
+  ],
+  "settings": {
+    "files.encoding":"utf8",
+    "powershell.cwd":"Workspace",
+    "search.exclude":{"**/bin":true,"**/obj":true,"**/artifacts":true}
+  }
+}

@@ -1,0 +1,57 @@
+name: QuietCli2 manual PowerShell Gallery release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact version of FrenchExDev2.QuietCli.Core.PoSh and FrenchExDev2.QuietCli.Git.PoSh
+        required: true
+        type: string
+      publish:
+        description: Publish those two modules publicly to PSGallery; false only validates
+        required: true
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: quietcli2-psgallery
+  cancel-in-progress: false
+jobs:
+  qualification:
+    uses: ./.github/workflows/ci.yml
+  publish:
+    needs: qualification
+    runs-on: windows-latest
+    timeout-minutes: 30
+    environment: psgallery
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 11.0.100-rc.3.26522.148
+      - name: Verify monorepo source lock
+        shell: pwsh
+        run: ./scripts/Initialize-Workspace.ps1 -Restore
+      - name: Build all embedded engine distributions
+        shell: pwsh
+        run: ./scripts/Build-Workspace.ps1
+      - name: Verify the exact build being packaged
+        shell: pwsh
+        run: ./scripts/Invoke-WorkspaceCi.ps1 -SkipBuild -Headless -ExpectedRuntimeIdentifier win-x64
+      - name: Prepare and validate the two installable packages
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          # Objectif : Préparer les seuls paquets Core et Git puis contrôler leur version sans clé de publication.
+          ./scripts/New-QuietGalleryPackage.ps1 -OutputDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION
+          ./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -ValidateOnly
+      - name: Explicit manual publication to PSGallery, Core then Git
+        if: inputs.publish == true
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: ./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION
