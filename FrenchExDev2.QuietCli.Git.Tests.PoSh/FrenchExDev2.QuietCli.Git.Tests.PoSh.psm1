@@ -1,3 +1,4 @@
+. (Join-Path $PSScriptRoot 'IndexOperations.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Revisions.Tests.ps1')
 . (Join-Path $PSScriptRoot 'PathQueries.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Attribution.Tests.ps1')
@@ -122,6 +123,8 @@ Tests independently prepared repositories, hook counts and local bare push targe
     if($env:QUIETCLI2_GIT_REVISION_MUTATION -eq '1'){$cases['revision parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Revision}}
     $revisionCases=Get-QuietGitRevisionCases -RootDirectory $root -Environment $environment
     foreach($entry in $revisionCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
+    $indexCases=Get-QuietGitIndexOperationCases -RootDirectory $root -Environment $environment -WorkspaceRoot $WorkspaceRoot
+    foreach($entry in $indexCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $semanticCases=Get-QuietGitSemanticCases -RootDirectory $root -Environment $environment
     foreach($entry in $semanticCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $passed=0;$failed=0;$results=[Collections.Generic.List[object]]::new()

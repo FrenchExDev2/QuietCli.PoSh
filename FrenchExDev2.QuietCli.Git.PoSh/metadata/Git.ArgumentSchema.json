@@ -1883,14 +1883,17 @@
         "-m",
         "-n",
         "-u",
-        "-z"
+        "-z",
+        "--force-remove",
+        "--show-index-version"
       ],
       "Required": [
         "--cacheinfo",
         "--chmod",
         "--exclude-per-directory",
         "--index-version",
-        "--prefix"
+        "--prefix",
+        "--index-output"
       ],
       "Optional": [],
       "EqualsRequired": [],

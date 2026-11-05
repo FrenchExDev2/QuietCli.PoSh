@@ -54,7 +54,10 @@
     "rev-parse": "Invoke-QuietGitRevision",
     "describe": "Invoke-QuietGitDescribe",
     "name-rev": "Invoke-QuietGitRevisionNames",
-    "shortlog": "Invoke-QuietGitShortlog"
+    "shortlog": "Invoke-QuietGitShortlog",
+    "update-index": "Invoke-QuietGitIndexMutation",
+    "read-tree": "Invoke-QuietGitIndexMutation",
+    "checkout-index": "Invoke-QuietGitIndexMutation"
   },
   "SchemaVersion": 2,
   "Scope": "Specialized streaming handlers; variants and release qualification remain explicit.",
@@ -210,6 +213,15 @@
     ],
     "shortlog": [
       "GitShortlogRecords"
+    ],
+    "update-index": [
+      "GitIndexRecords"
+    ],
+    "read-tree": [
+      "GitIndexRecords"
+    ],
+    "checkout-index": [
+      "GitIndexRecords"
     ]
   }
 }
