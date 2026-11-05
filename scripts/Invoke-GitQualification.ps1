@@ -10,7 +10,7 @@ QuietCli2 workspace.
 #>
 [CmdletBinding()]param([string]$ConfigurationPath,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
-$directory=Join-Path $WorkspaceRoot ('artifacts/qualification/'+[DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss'))
+$directory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'qualification') ([DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss'))
 [void][IO.Directory]::CreateDirectory($directory)
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
 Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1') -Force

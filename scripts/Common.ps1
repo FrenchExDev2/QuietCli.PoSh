@@ -1,3 +1,4 @@
+. (Join-Path $PSScriptRoot 'ReportPaths.ps1')
 # Objectif : Fournir les opérations communes et bornées du workspace QuietCli2.
 . (Join-Path $PSScriptRoot 'Ci.Process.ps1')
 . (Join-Path $PSScriptRoot 'SourceIdentity.ps1')

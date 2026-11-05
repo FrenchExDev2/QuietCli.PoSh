@@ -87,3 +87,12 @@ Native mutation containers have a 1 GiB cgroup memory limit. On musl the fuzzer 
 ## Text encoding and line endings
 
 All repository text files must use UTF-8 and LF line endings on disk, including generated JSON, native source, notices and lock files. Honor .gitattributes and .editorconfig. Preserve text content and attribution, retain original provenance digests when normalizing third-party evidence, and refresh every affected content lock. Never normalize binary resources or recorded native business evidence as text.
+
+<!-- local-test-reports:begin -->
+## Local test reports
+
+- Store local test progress, summaries, logs and mutation reports outside the checkout, under `%TEMP%\QuietCli2\<workspace-id>\<category>\<run-id>` on Windows (the system temporary directory on other platforms). Resolve the path with `scripts/ReportPaths.ps1` / `Get-QuietReportRoot`; do not hard-code a user name or recreate local report directories under `artifacts/`.
+- For this checkout, the resolved root is `C:\Users\serard\AppData\Local\Temp\QuietCli2\874a99c9b658`. Companion reports are under `tests`; container, Gallery-validation and mutation reports use separate categories. Launchers print the exact run path and monitor reopening command.
+- Preserve explicit `-RunDirectory` overrides. CI retains repository `artifacts/` paths for its upload contracts. Do not move an active run. Keep toolchains, package outputs and the protected monorepo-migration archive separate from test reports.
+- Temporary storage may be cleared by the operating system. Export evidence requiring durable retention before cleanup; never silently delete failure diagnostics, seeds or mutation results.
+<!-- local-test-reports:end -->

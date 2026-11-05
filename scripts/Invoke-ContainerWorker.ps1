@@ -39,7 +39,7 @@ try{
     }
     if($Suite -eq 'Mutation'){
         [void][IO.Directory]::CreateDirectory((Join-Path $stage scripts))
-        foreach($file in @('Ci.Process.ps1','Common.ps1','SourceIdentity.ps1','RuntimeTargets.ps1','Assert-PtyQualification.ps1','Watch-Tests.ps1','Monitor.Time.ps1')){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $stage ('scripts/'+$file))}
+        foreach($file in @('ReportPaths.ps1','Ci.Process.ps1','Common.ps1','SourceIdentity.ps1','RuntimeTargets.ps1','Assert-PtyQualification.ps1','Watch-Tests.ps1','Monitor.Time.ps1')){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $stage ('scripts/'+$file))}
         $productFiles=@(Get-ChildItem $stage -Recurse -File|Where-Object Extension -In @('.dll','.csproj','.psd1','.psm1'))
         if($productFiles.Count){throw 'NativeStageMustNotContainProductBuildsOrModules'}
         Write-WorkspaceJson (Join-Path $RunDirectory 'bootstrap.json') @{Mode='Direct CI processes';ProductBuildFiles=0;NativeSourceSHA256=(Get-FileHash (Join-Path $stage 'FrenchExDev2.QuietCli.Core.PoSh/native/quietcli-pty.c') -Algorithm SHA256).Hash}

@@ -22,7 +22,7 @@ Required actual PowerShell and engine runtime identifier; detects accidental arc
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 if(!$SkipBuild){& (Join-Path $PSScriptRoot 'Build-Workspace.ps1') -WorkspaceRoot $WorkspaceRoot}
-if(!$RunDirectory){$RunDirectory=Join-Path $WorkspaceRoot ('artifacts/tests/'+[DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))}
+if(!$RunDirectory){$RunDirectory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'tests') ([DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))}
 if(Test-Path -LiteralPath $RunDirectory){throw 'TestRunDirectoryExists'}
 [void][IO.Directory]::CreateDirectory($RunDirectory)
 $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})

@@ -20,7 +20,7 @@ Companion scope or native C mutation campaign selected by the dependency-aware w
 #>
 [CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$Image,[ValidateSet('alpine','debian')][string]$Platform,[switch]$Headless,[ValidateRange(1,7200)][int]$TimeoutSeconds=900,[ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,[ValidateSet('Core','Git','All','Mutation')][string]$Suite='All')
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
-$run=Join-Path $WorkspaceRoot ('artifacts/containers/'+$Platform+'-'+[DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))
+$run=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'containers') ($Platform+'-'+[DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))
 [void][IO.Directory]::CreateDirectory($run)
 $runner=(Get-Command pwsh -CommandType Application|Select-Object -First 1).Source
 $arguments=@('-File',('"'+(Join-Path $PSScriptRoot 'Invoke-ContainerWorker.ps1')+'"'),'-WorkspaceRoot',('"'+$WorkspaceRoot+'"'),'-RunDirectory',('"'+$run+'"'),'-Image',('"'+$Image+'"'),'-Platform',$Platform)

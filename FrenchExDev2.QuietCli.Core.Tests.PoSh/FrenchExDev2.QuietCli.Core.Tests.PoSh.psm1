@@ -1,3 +1,4 @@
+. (Join-Path $PSScriptRoot 'ReportPaths.Tests.ps1')
 #requires -Version 7.6
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'Performance.Tests.ps1')
@@ -49,6 +50,7 @@ Executes independent native byte and object invariants in a companion module.
     $performance=[Collections.Generic.List[object]]::new()
     $galleryEvidence=[Collections.Generic.List[object]]::new()
     $cases=[ordered]@{}
+    $cases['local report paths isolate workspaces and preserve CI upload contracts']={Test-QuietReportPaths -WorkspaceRoot $WorkspaceRoot}
     $cases['Core migration preserves metadata and compares local helper costs']={foreach($sample in Measure-QuietCoreMigration -Dotnet $dotnet){$performance.Add($sample)}}
     $cases['typed controls preserve duplex bytes and request rejection in both hosts']={Test-QuietTypedControls -Fixture $fixture -Dotnet $dotnet}
     $cases['typed controls measure local JSON avoidance with identical stdin']={foreach($sample in Measure-QuietTypedControls -Fixture $fixture -Dotnet $dotnet){$performance.Add($sample)}}
