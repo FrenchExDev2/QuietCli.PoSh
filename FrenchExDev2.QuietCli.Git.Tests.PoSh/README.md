@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./../icons/logo.png" alt="Requirement-As-Code logo" width="150px" />
+</p>
+
 # FrenchExDev2.QuietCli.Git.Tests.PoSh
 
 Module de tests compagnon séparé. Dépend de Git et des assertions de conformité du compagnon Core.

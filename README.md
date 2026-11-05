@@ -22,6 +22,13 @@ QuietGit lance directement le binaire Git. Le projet consulté comme référence
 
 Les modules sont préparés pour une [installation et publication PSGallery](docs/PSGallery.md). Le workflow manuel publie Core puis Git après la CI ; les paquets embarquent les moteurs Windows/Linux x64 et ARM64, pour glibc et musl. La disponibilité effective sur la galerie nécessite la clé API et le premier lancement de publication ; elle ne se déduit pas d’un paquet local préparé.
 
+Les versions **0.1.0 sont publiées** : [Core](https://www.powershellgallery.com/packages/FrenchExDev2.QuietCli.Core.PoSh/0.1.0), [Git](https://www.powershellgallery.com/packages/FrenchExDev2.QuietCli.Git.PoSh/0.1.0). Le téléchargement depuis PSGallery, la résolution de la dépendance Core et l’exécution des modules téléchargés ont été vérifiés dans une installation temporaire isolée.
+
+```powershell
+# Objectif : installer QuietGit et Core depuis la galerie publique.
+Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Version 0.1.0 -Repository PSGallery -Scope CurrentUser
+```
+
 Dans le terminal PowerShell du dossier **Workspace** :
 
 ```powershell

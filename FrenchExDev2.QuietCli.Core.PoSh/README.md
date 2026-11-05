@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./../icons/logo.png" alt="Requirement-As-Code logo" width="150px" />
+</p>
+
 # FrenchExDev2.QuietCli.Core.PoSh
 
 Façade PowerShell Core 7.6+ pour le moteur séparé C# .NET 11 RC. Le projet est sous `engine/`, la distribution compilée sous `lib/engine/`. Aucun SDK n’est requis lors d’un import ou d’une utilisation après construction.

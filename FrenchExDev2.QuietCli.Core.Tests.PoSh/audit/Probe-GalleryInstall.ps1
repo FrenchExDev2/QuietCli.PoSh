@@ -7,18 +7,24 @@ Checks the installed nupkg layout and automatic Core dependency loading in an is
 Already validated package set.
 .PARAMETER InstallationDirectory
 New owned module directory and native repository fixture.
+.PARAMETER ExistingInstallation
+Loads modules already downloaded by PSResourceGet, without extracting local archives.
 #>
-[CmdletBinding()]param([string]$PackageDirectory,[string]$InstallationDirectory)
+[CmdletBinding()]param([string]$PackageDirectory,[string]$InstallationDirectory,[switch]$ExistingInstallation)
 $ErrorActionPreference='Stop'
 $utf8=[Text.UTF8Encoding]::new($false);[Console]::InputEncoding=$utf8;[Console]::OutputEncoding=$utf8;$OutputEncoding=$utf8
 $root=[IO.Path]::GetFullPath($InstallationDirectory)
-if(Test-Path -LiteralPath $root){throw 'GalleryInstallFixtureExists'}
-[void][IO.Directory]::CreateDirectory($root)
-$plan=Get-Content (Join-Path $PackageDirectory package-set.json) -Encoding utf8 -Raw|ConvertFrom-Json
-foreach($package in $plan.Packages){
-    $destination=Join-Path (Join-Path $root $package.Module) $plan.Version
-    [void][IO.Directory]::CreateDirectory($destination)
-    [void][IO.Compression.ZipFile]::ExtractToDirectoryAsync((Join-Path $PackageDirectory $package.File),$destination,[Threading.CancellationToken]::None).GetAwaiter().GetResult()
+if($ExistingInstallation){
+    if(!(Test-Path -LiteralPath $root)){throw 'SavedGalleryInstallationMissing'}
+}else{
+    if(Test-Path -LiteralPath $root){throw 'GalleryInstallFixtureExists'}
+    [void][IO.Directory]::CreateDirectory($root)
+    $plan=Get-Content (Join-Path $PackageDirectory package-set.json) -Encoding utf8 -Raw|ConvertFrom-Json
+    foreach($package in $plan.Packages){
+        $destination=Join-Path (Join-Path $root $package.Module) $plan.Version
+        [void][IO.Directory]::CreateDirectory($destination)
+        [void][IO.Compression.ZipFile]::ExtractToDirectoryAsync((Join-Path $PackageDirectory $package.File),$destination,[Threading.CancellationToken]::None).GetAwaiter().GetResult()
+    }
 }
 $env:PSModulePath=$root+[IO.Path]::PathSeparator+(Join-Path $PSHOME Modules)
 $env:QUIETCLI2_DATABASE=Join-Path $root measurements.sqlite

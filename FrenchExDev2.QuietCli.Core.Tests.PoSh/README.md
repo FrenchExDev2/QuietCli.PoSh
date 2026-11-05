@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./../icons/logo.png" alt="Requirement-As-Code logo" width="150px" />
+</p>
+
 # FrenchExDev2.QuietCli.Core.Tests.PoSh
 
 Module de tests indépendant du moteur. Dépend du module Core, jamais l’inverse.

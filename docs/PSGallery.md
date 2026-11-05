@@ -16,6 +16,8 @@ $result.Data
 
 Ces commandes deviennent utilisables depuis PSGallery une fois la publication réellement effectuée. Préparer un nupkg local ne rend pas sa version disponible sur la galerie.
 
+La version 0.1.0 des deux modules est effectivement publiée et son téléchargement public avec dépendance Core a été validé le 5 novembre 2026. `scripts/Invoke-PublishedGallery.ps1 -Version 0.1.0` reproduit ce contrôle sans installer de module globalement et avec le moniteur visible.
+
 PowerShell Core 7.6+, Git et le **runtime .NET 11 RC `11.0.0-rc.3.26522.148`** de l’architecture courante doivent être installés séparément. Le SDK n’est pas requis pour utiliser les modules. L’installation du module ne télécharge et n’installe aucun runtime système.
 
 Le paquet Core embarque les publications C# suivantes, chacune avec assembly, apphost et manifeste de build :

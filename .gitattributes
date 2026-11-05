@@ -2,6 +2,7 @@
 **/resources/** -text
 **/third_party/** -text -whitespace
 **/licenses/** -text -whitespace
+**/provenance/** -text -whitespace
 **/native/** -text
 **/LICENSE* -text
 **/NOTICE* -text
