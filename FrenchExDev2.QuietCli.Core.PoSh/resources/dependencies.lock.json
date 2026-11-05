@@ -3,13 +3,15 @@
   "Packages": [
     {
       "Source": "https://api.nuget.org/v3-flatcontainer/sqlitepclraw.lib.e_sqlite3/2.1.13/sqlitepclraw.lib.e_sqlite3.2.1.13.nupkg",
-      "Provenance": "Content matches the inspected local source manifest; package author authenticity is not inferred from a checksum.",
+      "Provenance": "Content matches the inspected local source manifest; package author authenticity is not inferred from a checksum. Local text evidence is normalized to UTF-8 LF; OriginalSHA256 retains its pre-normalization digest.",
       "Version": "2.1.13",
       "Id": "sqlitepclraw.lib.e_sqlite3",
       "LicenseEvidence": [
         {
           "Path": "third_party/sqlitepclraw.lib.e_sqlite3/LICENSE-APACHE-2.0",
-          "SHA256": "0D4D6A722737B8A3F9BD40868011F8D6522650EB93B6F3C36BF780BB54210A5F"
+          "SHA256": "33F694A31D9F9DF3E292A9413A3CDB0113FA72698E2C719F657FF6B53165DCC4",
+          "OriginalSHA256": "0D4D6A722737B8A3F9BD40868011F8D6522650EB93B6F3C36BF780BB54210A5F",
+          "Normalization": "UTF-8 LF"
         },
         {
           "Path": "third_party/sqlitepclraw.lib.e_sqlite3/NOTICE.txt",
@@ -23,81 +25,105 @@
     },
     {
       "Source": "https://api.nuget.org/v3-flatcontainer/microsoft.bcl.memory/9.0.14/microsoft.bcl.memory.9.0.14.nupkg",
-      "Provenance": "Content matches the inspected local source manifest; package author authenticity is not inferred from a checksum.",
+      "Provenance": "Content matches the inspected local source manifest; package author authenticity is not inferred from a checksum. Local text evidence is normalized to UTF-8 LF; OriginalSHA256 retains its pre-normalization digest.",
       "Version": "9.0.14",
       "Id": "microsoft.bcl.memory",
       "LicenseEvidence": [
         {
           "Path": "third_party/microsoft.bcl.memory/LICENSE.TXT",
-          "SHA256": "D7A68596AB69B06F51CA278A6545148E4269A9381C26D597C13DF5D88E08CF5B"
+          "SHA256": "CFC21F5E8BD655AE997EEC916138B707B1D290B83272C02A95C9F821B8C87310",
+          "OriginalSHA256": "D7A68596AB69B06F51CA278A6545148E4269A9381C26D597C13DF5D88E08CF5B",
+          "Normalization": "UTF-8 LF"
         },
         {
           "Path": "third_party/microsoft.bcl.memory/Microsoft.Bcl.Memory.nuspec",
-          "SHA256": "FC97A6D6212224C10751F4CBA44188803765180ADBCAB7FF8A013DBE7FD5B6FD"
+          "SHA256": "DA5C0ACA7E381F333472C6F407C1C3EF042E7F347B724CA42724147418CDD6B1",
+          "OriginalSHA256": "FC97A6D6212224C10751F4CBA44188803765180ADBCAB7FF8A013DBE7FD5B6FD",
+          "Normalization": "UTF-8 LF"
         },
         {
           "Path": "third_party/microsoft.bcl.memory/THIRD-PARTY-NOTICES.TXT",
-          "SHA256": "40686C6447A7D5B5D3693068E4571B5F483D7ED335AEEE773EF662440DE4C5D5"
+          "SHA256": "FA3E9D0A2C52476F04FE798D7DC4F6E7EDB7B68A3D2F4D5F59A39BCE957EEDC8",
+          "OriginalSHA256": "40686C6447A7D5B5D3693068E4571B5F483D7ED335AEEE773EF662440DE4C5D5",
+          "Normalization": "UTF-8 LF"
         }
       ]
     },
     {
       "Source": "https://api.nuget.org/v3-flatcontainer/microsoft.ml.tokenizers.data.cl100kbase/2.0.0/microsoft.ml.tokenizers.data.cl100kbase.2.0.0.nupkg",
-      "Provenance": "Content matches the inspected local source manifest; package author authenticity is not inferred from a checksum.",
+      "Provenance": "Content matches the inspected local source manifest; package author authenticity is not inferred from a checksum. Local text evidence is normalized to UTF-8 LF; OriginalSHA256 retains its pre-normalization digest.",
       "Version": "2.0.0",
       "Id": "microsoft.ml.tokenizers.data.cl100kbase",
       "LicenseEvidence": [
         {
           "Path": "third_party/microsoft.ml.tokenizers.data.cl100kbase/LICENSE",
-          "SHA256": "D7A68596AB69B06F51CA278A6545148E4269A9381C26D597C13DF5D88E08CF5B"
+          "SHA256": "CFC21F5E8BD655AE997EEC916138B707B1D290B83272C02A95C9F821B8C87310",
+          "OriginalSHA256": "D7A68596AB69B06F51CA278A6545148E4269A9381C26D597C13DF5D88E08CF5B",
+          "Normalization": "UTF-8 LF"
         },
         {
           "Path": "third_party/microsoft.ml.tokenizers.data.cl100kbase/Microsoft.ML.Tokenizers.Data.Cl100kBase.nuspec",
-          "SHA256": "A3BDF85B97234FB1CAAE3D64904F3CFE0C9CD105C54AD7B5AC115752E1D83DBF"
+          "SHA256": "F71A2A78E13E0A459D1FD2206C82014A95E3C4DEB8ADE441DE6FF9B54A74239F",
+          "OriginalSHA256": "A3BDF85B97234FB1CAAE3D64904F3CFE0C9CD105C54AD7B5AC115752E1D83DBF",
+          "Normalization": "UTF-8 LF"
         },
         {
           "Path": "third_party/microsoft.ml.tokenizers.data.cl100kbase/THIRD-PARTY-NOTICES.TXT",
-          "SHA256": "EC84CC3EAE77024FC512828ED05B257AF93E61C32EB8C732CEFBA16DAC4DE5EA"
+          "SHA256": "5F1B8DD3D9AA66276421F5BF1472F35E1DABE26AFDAB57FECED6C934816264A7",
+          "OriginalSHA256": "EC84CC3EAE77024FC512828ED05B257AF93E61C32EB8C732CEFBA16DAC4DE5EA",
+          "Normalization": "UTF-8 LF"
         }
       ]
     },
     {
       "Source": "https://api.nuget.org/v3-flatcontainer/microsoft.ml.tokenizers.data.o200kbase/2.0.0/microsoft.ml.tokenizers.data.o200kbase.2.0.0.nupkg",
-      "Provenance": "Content matches the inspected local source manifest; package author authenticity is not inferred from a checksum.",
+      "Provenance": "Content matches the inspected local source manifest; package author authenticity is not inferred from a checksum. Local text evidence is normalized to UTF-8 LF; OriginalSHA256 retains its pre-normalization digest.",
       "Version": "2.0.0",
       "Id": "microsoft.ml.tokenizers.data.o200kbase",
       "LicenseEvidence": [
         {
           "Path": "third_party/microsoft.ml.tokenizers.data.o200kbase/LICENSE",
-          "SHA256": "D7A68596AB69B06F51CA278A6545148E4269A9381C26D597C13DF5D88E08CF5B"
+          "SHA256": "CFC21F5E8BD655AE997EEC916138B707B1D290B83272C02A95C9F821B8C87310",
+          "OriginalSHA256": "D7A68596AB69B06F51CA278A6545148E4269A9381C26D597C13DF5D88E08CF5B",
+          "Normalization": "UTF-8 LF"
         },
         {
           "Path": "third_party/microsoft.ml.tokenizers.data.o200kbase/Microsoft.ML.Tokenizers.Data.O200kBase.nuspec",
-          "SHA256": "F03EF9831A823DB033495A50FFBD2243B1383DA4C5D0A6905CDA68ACDE80F8F5"
+          "SHA256": "856B8C713F24FD17033F00E1F6FE321269A6B62AF879AA1E5B69F3F063A76611",
+          "OriginalSHA256": "F03EF9831A823DB033495A50FFBD2243B1383DA4C5D0A6905CDA68ACDE80F8F5",
+          "Normalization": "UTF-8 LF"
         },
         {
           "Path": "third_party/microsoft.ml.tokenizers.data.o200kbase/THIRD-PARTY-NOTICES.TXT",
-          "SHA256": "EC84CC3EAE77024FC512828ED05B257AF93E61C32EB8C732CEFBA16DAC4DE5EA"
+          "SHA256": "5F1B8DD3D9AA66276421F5BF1472F35E1DABE26AFDAB57FECED6C934816264A7",
+          "OriginalSHA256": "EC84CC3EAE77024FC512828ED05B257AF93E61C32EB8C732CEFBA16DAC4DE5EA",
+          "Normalization": "UTF-8 LF"
         }
       ]
     },
     {
       "Source": "https://api.nuget.org/v3-flatcontainer/microsoft.ml.tokenizers/2.0.0/microsoft.ml.tokenizers.2.0.0.nupkg",
-      "Provenance": "Content matches the inspected local source manifest; package author authenticity is not inferred from a checksum.",
+      "Provenance": "Content matches the inspected local source manifest; package author authenticity is not inferred from a checksum. Local text evidence is normalized to UTF-8 LF; OriginalSHA256 retains its pre-normalization digest.",
       "Version": "2.0.0",
       "Id": "microsoft.ml.tokenizers",
       "LicenseEvidence": [
         {
           "Path": "third_party/microsoft.ml.tokenizers/LICENSE",
-          "SHA256": "D7A68596AB69B06F51CA278A6545148E4269A9381C26D597C13DF5D88E08CF5B"
+          "SHA256": "CFC21F5E8BD655AE997EEC916138B707B1D290B83272C02A95C9F821B8C87310",
+          "OriginalSHA256": "D7A68596AB69B06F51CA278A6545148E4269A9381C26D597C13DF5D88E08CF5B",
+          "Normalization": "UTF-8 LF"
         },
         {
           "Path": "third_party/microsoft.ml.tokenizers/Microsoft.ML.Tokenizers.nuspec",
-          "SHA256": "C7BD322F3B6BD752BB91372CF576F84361F24E46B1D72650323060341D1DCA2E"
+          "SHA256": "A90A0EB3820899CBEEB482E358EBE69B87EFA2DE3398A405961CC4CE5C945011",
+          "OriginalSHA256": "C7BD322F3B6BD752BB91372CF576F84361F24E46B1D72650323060341D1DCA2E",
+          "Normalization": "UTF-8 LF"
         },
         {
           "Path": "third_party/microsoft.ml.tokenizers/THIRD-PARTY-NOTICES.TXT",
-          "SHA256": "EC84CC3EAE77024FC512828ED05B257AF93E61C32EB8C732CEFBA16DAC4DE5EA"
+          "SHA256": "5F1B8DD3D9AA66276421F5BF1472F35E1DABE26AFDAB57FECED6C934816264A7",
+          "OriginalSHA256": "EC84CC3EAE77024FC512828ED05B257AF93E61C32EB8C732CEFBA16DAC4DE5EA",
+          "Normalization": "UTF-8 LF"
         }
       ]
     },
@@ -132,6 +158,31 @@
           "SHA256": "5C537D6853E005298A285D508CFF9AC7192CEA23576C840D485B2B586A7FF177"
         }
       ]
+    },
+    {
+      "Provenance": "Official NuGet package; repository commit 748334a8fa7c227740018b284b71ad95cc6b7fc7. A checksum establishes content identity, not author authenticity. Local text evidence is normalized to UTF-8 LF; OriginalSHA256 retains its pre-normalization digest.",
+      "Id": "yamldotnet",
+      "LicenseEvidence": [
+        {
+          "SHA256": "DAEA8B7F1B2BAB48EA12AD50B0CE91634669D99D7DD0CB64AED8DFFEEEF69ED3",
+          "Path": "third_party/yamldotnet/LICENSE.txt"
+        },
+        {
+          "SHA256": "D0D8B09800A45CD982E9568FC7669D9C1A4C330E275A821BBE24D54366D16FE9",
+          "Path": "third_party/yamldotnet/LICENSE-libyaml",
+          "OriginalSHA256": "CB65F46DF0D9125BA60862117200EC6631FEF3A8169CD0B4513FFCAD4EF5CB9B",
+          "Normalization": "UTF-8 LF"
+        },
+        {
+          "SHA256": "5E4E640BBCA0A133C492C4931905BE04AE32C23517BB31DB7B05AFC8536B9CF6",
+          "Path": "third_party/yamldotnet/YamlDotNet.nuspec",
+          "OriginalSHA256": "362C3E6B2B0A04CAE354AB97EA3D4D3945BB20390C7DCD2A696B73DC012B3036",
+          "Normalization": "UTF-8 LF"
+        }
+      ],
+      "Version": "18.1.0",
+      "SHA256": "59FFE65ADE67AD9D886267F877B634A450363CB81B94E19DB9CA4C36461416F6",
+      "Source": "https://api.nuget.org/v3-flatcontainer/yamldotnet/18.1.0/yamldotnet.18.1.0.nupkg"
     }
   ],
   "Policy": "Verify pinned content before native or managed loading. Updates and advisory review are explicit maintenance operations.",
@@ -245,112 +296,129 @@
       "ReferencePath": "resources/runtime/Microsoft.ML.Tokenizers.dll"
     },
     {
-      "Bytes": 683,
-      "SHA256": "F0C022C4A1D08199B614385BED1E67430FDBDC1814EC0FF4FB64C1F3F4AA1C9C",
+      "Bytes": 768,
       "Package": "quietcli-pty",
-      "AssemblyVersion": null,
+      "SHA256": "3EE58AA2D8E8A4529E6F1538718D6BAF5FF5CB00CA429835826E0DA1E1553A25",
       "Path": "resources/transport/linux-arm64/build.json",
+      "AssemblyVersion": null,
       "ReferencePath": "native/quietcli-pty.c",
-      "Version": "source-build"
+      "Version": "source-build",
+      "OriginalSHA256": "30FDC5FCB21E62F5236C2BE4A8D2436B1F6C0C534CD16CA7E37F4CED7CDA8A7D",
+      "Normalization": "UTF-8 LF"
     },
     {
-      "Bytes": 46432,
-      "SHA256": "A2C71A53EA17595B22E36F5B665A2D05CCBF802C57F14E8290DBEF3147AEF3CF",
+      "Bytes": 54584,
       "Package": "quietcli-pty",
-      "AssemblyVersion": null,
+      "SHA256": "F09AF1D3A06E25E719659C274F7A9DC00183EEFEE0F1581BFE5FB16BCC7CA92D",
       "Path": "resources/transport/linux-arm64/quietcli-pty",
+      "AssemblyVersion": null,
       "ReferencePath": "native/quietcli-pty.c",
       "Version": "source-build"
     },
     {
       "Bytes": 64,
-      "SHA256": "20F79DA5253EB46939BFDB69E818963CEF928ABC7EDB68BDD17E994DAF46AC45",
       "Package": "quietcli-pty",
-      "AssemblyVersion": null,
+      "SHA256": "91170C847D9561E5DC543D3479CFC751E5FFD9424610363DF371D76062DE02BE",
       "Path": "resources/transport/linux-arm64/quietcli-pty.sha256",
+      "AssemblyVersion": null,
       "ReferencePath": "native/quietcli-pty.c",
       "Version": "source-build"
     },
     {
-      "Bytes": 688,
-      "SHA256": "30EAA0286D176AA819C23F2F50B9C137CB11B909A9E2F9A3A8DBDD8B9F4A27E3",
+      "Bytes": 773,
       "Package": "quietcli-pty",
-      "AssemblyVersion": null,
+      "SHA256": "C1428770978E2A81824ABCC825BB85BA27E2509C21974BA66EC91288FDEED266",
       "Path": "resources/transport/linux-musl-arm64/build.json",
+      "AssemblyVersion": null,
       "ReferencePath": "native/quietcli-pty.c",
-      "Version": "source-build"
+      "Version": "source-build",
+      "OriginalSHA256": "9F088AEED9BD6FF2F7E0BF40D47B7908837D8F9ABC72664644B3DAFB8A7B3D87",
+      "Normalization": "UTF-8 LF"
     },
     {
-      "Bytes": 46432,
-      "SHA256": "A2C71A53EA17595B22E36F5B665A2D05CCBF802C57F14E8290DBEF3147AEF3CF",
+      "Bytes": 54584,
       "Package": "quietcli-pty",
-      "AssemblyVersion": null,
+      "SHA256": "F09AF1D3A06E25E719659C274F7A9DC00183EEFEE0F1581BFE5FB16BCC7CA92D",
       "Path": "resources/transport/linux-musl-arm64/quietcli-pty",
+      "AssemblyVersion": null,
       "ReferencePath": "native/quietcli-pty.c",
       "Version": "source-build"
     },
     {
       "Bytes": 64,
-      "SHA256": "20F79DA5253EB46939BFDB69E818963CEF928ABC7EDB68BDD17E994DAF46AC45",
       "Package": "quietcli-pty",
-      "AssemblyVersion": null,
+      "SHA256": "91170C847D9561E5DC543D3479CFC751E5FFD9424610363DF371D76062DE02BE",
       "Path": "resources/transport/linux-musl-arm64/quietcli-pty.sha256",
+      "AssemblyVersion": null,
       "ReferencePath": "native/quietcli-pty.c",
       "Version": "source-build"
     },
     {
-      "Bytes": 684,
-      "SHA256": "B0506F447E03FD48B991248173115B974950F117B478DC1A29B4BB18CB1B7DCD",
+      "Bytes": 769,
       "Package": "quietcli-pty",
-      "AssemblyVersion": null,
+      "SHA256": "D8C8C1084391D245DCCCC7D6C1929E09159F0764CB30656A524743AAD3BAF3FD",
       "Path": "resources/transport/linux-musl-x64/build.json",
+      "AssemblyVersion": null,
       "ReferencePath": "native/quietcli-pty.c",
-      "Version": "source-build"
+      "Version": "source-build",
+      "OriginalSHA256": "4D09A4F0D7B6A9B24E008EDEA24346BF527A8F762D7181E460D6EE11A660373C",
+      "Normalization": "UTF-8 LF"
     },
     {
-      "Bytes": 38056,
-      "SHA256": "091EDF5E46D28E00A6A85B239C2360DC6982D557D96B3852D88B0969119764B7",
+      "Bytes": 47032,
       "Package": "quietcli-pty",
-      "AssemblyVersion": null,
+      "SHA256": "11F00B4FDA1AC181231198CA227BC6C4D742F975A0FCCE424A71347E8D23768A",
       "Path": "resources/transport/linux-musl-x64/quietcli-pty",
+      "AssemblyVersion": null,
       "ReferencePath": "native/quietcli-pty.c",
       "Version": "source-build"
     },
     {
       "Bytes": 64,
-      "SHA256": "888538D8F6D021B904633327D43E4C719EAFB14D8AB0EFFE168C3B1E6B3554E0",
       "Package": "quietcli-pty",
-      "AssemblyVersion": null,
+      "SHA256": "A9874AFB60EDE3BFE720912555DE6F2B19C73D6F4B73F1D47B303D592CCAFE55",
       "Path": "resources/transport/linux-musl-x64/quietcli-pty.sha256",
+      "AssemblyVersion": null,
       "ReferencePath": "native/quietcli-pty.c",
       "Version": "source-build"
     },
     {
-      "Bytes": 679,
-      "SHA256": "137B9C693EDD8C9CF2AF7EE5A4771429C60A2145DD7298375D765536529966E8",
+      "Bytes": 764,
       "Package": "quietcli-pty",
-      "AssemblyVersion": null,
+      "SHA256": "F73A5A2F6FA10C06FE9190C6044DD5CED5D64B08E962EAF08C959EF1834F4154",
       "Path": "resources/transport/linux-x64/build.json",
+      "AssemblyVersion": null,
       "ReferencePath": "native/quietcli-pty.c",
-      "Version": "source-build"
+      "Version": "source-build",
+      "OriginalSHA256": "835F38932FE5D4658A859B4B6DD12E5A8A4E48970D2D3CEAD38C380A709A1A9C",
+      "Normalization": "UTF-8 LF"
     },
     {
-      "Bytes": 38056,
-      "SHA256": "091EDF5E46D28E00A6A85B239C2360DC6982D557D96B3852D88B0969119764B7",
+      "Bytes": 47032,
       "Package": "quietcli-pty",
-      "AssemblyVersion": null,
+      "SHA256": "11F00B4FDA1AC181231198CA227BC6C4D742F975A0FCCE424A71347E8D23768A",
       "Path": "resources/transport/linux-x64/quietcli-pty",
+      "AssemblyVersion": null,
       "ReferencePath": "native/quietcli-pty.c",
       "Version": "source-build"
     },
     {
       "Bytes": 64,
-      "SHA256": "888538D8F6D021B904633327D43E4C719EAFB14D8AB0EFFE168C3B1E6B3554E0",
       "Package": "quietcli-pty",
-      "AssemblyVersion": null,
+      "SHA256": "A9874AFB60EDE3BFE720912555DE6F2B19C73D6F4B73F1D47B303D592CCAFE55",
       "Path": "resources/transport/linux-x64/quietcli-pty.sha256",
+      "AssemblyVersion": null,
       "ReferencePath": "native/quietcli-pty.c",
       "Version": "source-build"
+    },
+    {
+      "Bytes": 300032,
+      "AssemblyVersion": "18.0.0.0",
+      "Package": "yamldotnet",
+      "ReferencePath": "lib/net10.0/YamlDotNet.dll",
+      "Version": "18.1.0",
+      "SHA256": "D618138109A40E4A7250E49E2ABAD8C450E3636BEE18D7499AB231E37FA9150A",
+      "Path": "resources/yaml/YamlDotNet.dll"
     }
   ]
 }

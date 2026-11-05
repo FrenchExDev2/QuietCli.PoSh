@@ -2,7 +2,7 @@
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Checks that the profile-free fallback rejects a long unterminated record while retaining bounded managed memory.
+Checks that the engine-independent CI process reader rejects an oversized unterminated record.
 .PARAMETER WorkspaceRoot
 QuietCli2 workspace.
 #>
@@ -12,6 +12,6 @@ $utf8=[Text.UTF8Encoding]::new($false);[Console]::InputEncoding=$utf8;[Console]:
 . (Join-Path $WorkspaceRoot 'scripts/Bootstrap.ps1')
 $fixture=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture/QuietCli.Fixture.dll'
 $before=[GC]::GetTotalMemory($true);$rejected=$false
-try{$null=pump -AsObject -State @{} -OnOutput {param($e,$s)} -Complete {param($s)} dotnet $fixture emit 16777216}catch{$rejected=$_.Exception.Message -eq 'BootstrapRecordTooLarge'}
+try{$null=Invoke-CiProcess -FilePath dotnet -ArgumentList @($fixture,'emit','16777216') -MaxRecordChars 8192 -OnOutput {param($e,$s)}}catch{$rejected=$_.Exception.Message -eq 'CiRecordTooLarge'}
 $delta=[GC]::GetTotalMemory($true)-$before
 @{Rejected=$rejected;ManagedDeltaBytes=$delta;ExpectedNativeBytes=16777216}|ConvertTo-Json -Compress

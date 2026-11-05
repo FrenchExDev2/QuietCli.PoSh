@@ -1,0 +1,4 @@
+*
+!Dockerfile.ci.debian
+!Dockerfile.ci.alpine
+!fetch-ci-tools.sh

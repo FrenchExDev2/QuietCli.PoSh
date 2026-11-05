@@ -14,8 +14,7 @@ Creates one fresh caller-local runtime and attaches interactive adapters.
         Request=$Request;Data=$null;State=$(if($Request.ContainsKey('State')){$Request.State}else{@{}})
         Lifecycle='Created';Execution=$null;Children=[Collections.Generic.List[object]]::new();Sources=[ordered]@{}
         AnalysisComplete=$true;Errors=[Collections.Generic.List[object]]::new();CallbackMs=0.0;NativeStarted=$false;StartState='NotStarted';CompleteInvoked=$false;InputClosed=$false;Completed=$false;Handler=$null
-        Decoders=@{stdout=[Text.UTF8Encoding]::new($false,$true).GetDecoder();stderr=[Text.UTF8Encoding]::new($false,$true).GetDecoder();terminal=[Text.UTF8Encoding]::new($false,$true).GetDecoder()}
-        Pending=@{stdout='';stderr='';terminal=''}
+        TextStreams=@{}
     }
     if($Request.ContainsKey('Data')){$runtime.Data=$Request.Data}
     $runtime.PSObject.TypeNames.Insert(0,'QuietCli2.Runtime')
@@ -99,19 +98,18 @@ Consumes one bounded native frame and optionally decodes or frames its text.
     $event=[pscustomobject]@{Stream=$stream;Kind=$mode;Bytes=$packet.Payload;ByteCount=$packet.Payload.Length;Text=$null}
     if($mode -eq 'Text' -and $Runtime.AnalysisComplete){
         try{
-            $characters=[char[]]::new($packet.Payload.Length*2+2)
-            $count=$Runtime.Decoders[$stream].GetChars($packet.Payload,0,$packet.Payload.Length,$characters,0,$false)
-            $event.Text=[string]::new($characters,0,$count)
+            if(!$Runtime.TextStreams.ContainsKey($stream)){
+                Import-QuietManagedEngine
+                $delimiter=if($Runtime.Request.ContainsKey('RecordDelimiter')){[string]$Runtime.Request.RecordDelimiter}else{[System.Management.Automation.Language.NullString]::Value}
+                $Runtime.TextStreams[$stream]=[FrenchExDev2.QuietCli.TextStreamState]::new($delimiter,[int]$Runtime.Request.MaxRecordBytes)
+            }
+            $processor=$Runtime.TextStreams[$stream]
+            $event.Text=$processor.Decode($packet.Payload)
             if($Runtime.Request.ContainsKey('RecordDelimiter')){
-                $pending=$Runtime.Pending[$stream]+$event.Text;$delimiter=[string]$Runtime.Request.RecordDelimiter
-                while(($position=$pending.IndexOf($delimiter,[StringComparison]::Ordinal)) -ge 0){
-                    if([Text.Encoding]::UTF8.GetByteCount($pending.Substring(0,$position)) -gt $Runtime.Request.MaxRecordBytes){throw 'RecordTooLarge'}
-                    $record=[pscustomobject]@{Stream=$stream;Kind='Text';Text=$pending.Substring(0,$position);Bytes=$null;ByteCount=$null}
+                foreach($text in $processor.Frame($event.Text)){
+                    $record=[pscustomobject]@{Stream=$stream;Kind='Text';Text=$text;Bytes=$null;ByteCount=$null}
                     Invoke-QuietOutputCallback $Runtime $record
-                    $pending=$pending.Substring($position+$delimiter.Length)
                 }
-                if([Text.Encoding]::UTF8.GetByteCount($pending) -gt $Runtime.Request.MaxRecordBytes){throw 'RecordTooLarge'}
-                $Runtime.Pending[$stream]=$pending
                 return $event
             }
         }catch{$Runtime.AnalysisComplete=$false;$Runtime.Errors.Add(@{Code='DecodeOrFramingFailed';Phase='Output';Message=$_.Exception.Message});return $null}

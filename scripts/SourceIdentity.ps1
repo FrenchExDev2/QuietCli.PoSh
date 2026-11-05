@@ -67,6 +67,7 @@ function Get-QuietBinaryInputs {
     param([string]$WorkspaceRoot,[string]$Project)
     $roots=@((Split-Path (Join-Path $WorkspaceRoot $Project) -Parent))
     if($Project -match 'engine-tests'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/engine'}
+    if($Project -like 'FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests/*'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/engine'}
     $files=foreach($root in $roots){foreach($file in Get-QuietSourceFiles $root){$file.Path=[IO.Path]::GetRelativePath($WorkspaceRoot,(Join-Path $root $file.Path)).Replace('\','/');$file}}
     $sdk=Join-Path $WorkspaceRoot 'global.json'
     $spec=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/protocol.json'
@@ -137,7 +138,7 @@ function Read-QuietRepositoryValue {
     #>
     param([string]$Path,[string[]]$Arguments)
     $state=@{Value=[Text.StringBuilder]::new()}
-    $result=pump -AsObject -WorkingDirectory $Path -State $state -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Value.Append($e.Text)}} -Complete {param($s)$s.Value.ToString()} git @Arguments
+    $result=Invoke-CiProcess -FilePath git -ArgumentList $Arguments -WorkingDirectory $Path -State $state -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Value.Append($e.Text)}}
     if($result.Outcome -eq 'Success'){return $state.Value.ToString().Trim()};return $null
 }
 function Get-QuietWorkspaceIdentity {
@@ -158,7 +159,7 @@ function Get-QuietWorkspaceIdentity {
         $remote=Read-QuietRepositoryValue $WorkspaceRoot @('remote','get-url','origin')
         $dirty=![string]::IsNullOrWhiteSpace((Read-QuietRepositoryValue $WorkspaceRoot @('status','--porcelain=v1')))
         $selection=@{Files=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)}
-        $listed=pump -AsObject -WorkingDirectory $WorkspaceRoot -State $selection -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Files.Add($e.Text)}} -Complete {param($s)$s.Files.Count} git -c core.quotepath=false ls-files --cached --others --exclude-standard
+        $listed=Invoke-CiProcess -FilePath git -ArgumentList @('-c','core.quotepath=false','ls-files','--cached','--others','--exclude-standard') -WorkingDirectory $WorkspaceRoot -State $selection -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Files.Add($e.Text)}}
         if($listed.Outcome -ne 'Success'){throw 'MonorepoSourceListUnavailable'}
         $allowedFiles=$selection.Files
     }
@@ -166,7 +167,7 @@ function Get-QuietWorkspaceIdentity {
     $rootFiles=@(Get-QuietSourceFiles $WorkspaceRoot|Where-Object {$null -eq $allowedFiles -or $allowedFiles.Contains($_.Path)})
     $repository=@{Name='FrenchExDev2.QuietCli.PoSh';Revision=$revision;Remote=$remote;Dirty=$dirty;SourceSHA256=(Get-QuietManifestDigest $rootFiles);Files=$rootFiles}
     $binaries=@()
-    if($IncludeBinaries){foreach($output in @('FrenchExDev2.QuietCli.Core.PoSh/lib/engine','FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture','FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/engine-tests')){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $output}}
+    if($IncludeBinaries){foreach($output in @('FrenchExDev2.QuietCli.Core.PoSh/lib/engine','FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess','FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture','FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/engine-tests','FrenchExDev2.QuietCli.Git.PoSh/lib/parser/net10.0','FrenchExDev2.QuietCli.Git.PoSh/lib/parser/net11.0','FrenchExDev2.QuietCli.Git.Tests.PoSh/lib/parser-tests')){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $output}}
     if($IncludeBinaries){foreach($rid in (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){
         $output='FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid
         if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot $output)){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $output}

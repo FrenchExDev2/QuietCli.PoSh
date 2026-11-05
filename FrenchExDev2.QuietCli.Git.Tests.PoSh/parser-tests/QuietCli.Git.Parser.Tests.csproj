@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net11.0</TargetFramework>
+    <RuntimeFrameworkVersion>11.0.0-rc.3.26522.148</RuntimeFrameworkVersion>
+    <RollForward>Disable</RollForward>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <AssemblyName>QuietCli.Git.Parser.Tests</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../../FrenchExDev2.QuietCli.Git.PoSh/engine/QuietCli.Git.Parser.csproj" /></ItemGroup>
+</Project>

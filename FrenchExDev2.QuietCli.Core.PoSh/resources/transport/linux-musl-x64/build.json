@@ -1,12 +1,6 @@
 {
-  "Runtime": "linux-musl-x64",
-  "SourceSHA256": "F5F35466B77B23A6C8F83166933E1DB247EEB0623C8C88BBE2F187FE11B7157B",
-  "ToolchainLockSHA256": "6164E9585FE0ACEDBBCB90ABC72DE8870351E5F14BC18A18ED4EE3AF40916C2E",
-  "Compiler": "Zig 0.15.2",
-  "Static": true,
   "SchemaVersion": 2,
-  "Target": "x86_64-linux-musl",
-  "ExecutableSHA256": "091EDF5E46D28E00A6A85B239C2360DC6982D557D96B3852D88B0969119764B7",
+  "ToolchainLockSHA256": "6164E9585FE0ACEDBBCB90ABC72DE8870351E5F14BC18A18ED4EE3AF40916C2E",
   "Arguments": [
     "cc",
     "-target",
@@ -17,11 +11,22 @@
     "-Wall",
     "-Wextra",
     "-Werror",
+    "-fstack-protector-strong",
+    "-D_FORTIFY_SOURCE=2",
+    "-fPIE",
     "-static",
+    "-pie",
+    "-Wl,-z,relro,-z,now",
     "-pthread",
     "-lutil",
     "native/quietcli-pty.c",
     "-o",
     "quietcli-pty"
-  ]
+  ],
+  "Static": true,
+  "ExecutableSHA256": "11F00B4FDA1AC181231198CA227BC6C4D742F975A0FCCE424A71347E8D23768A",
+  "Compiler": "Zig 0.15.2",
+  "SourceSHA256": "85291462D03DBD76ECBE23E03D2504B0AF2D3EE6B33793A51F9A0832E02C4EF3",
+  "Target": "x86_64-linux-musl",
+  "Runtime": "linux-musl-x64"
 }

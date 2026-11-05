@@ -18,6 +18,15 @@ internal static class MeasurementModels
         MeasurementRecord record;
         try { record = JsonSerializer.Deserialize<MeasurementRecord>(metadata, Options) ?? throw new JsonException(); }
         catch (JsonException error) { throw new InvalidDataException("MeasurementSchemaRejected", error); }
+        return Validate(record, kind);
+    }
+
+    /// <summary>Validates typed telemetry before producing its persisted JSON representation.</summary>
+    /// <param name="record">Closed counter record.</param>
+    /// <param name="kind">Invocation or delivery.</param>
+    internal static JsonElement Validate(MeasurementRecord record, string kind)
+    {
+        if (kind is not ("invocation" or "delivery")) throw new InvalidDataException("InvalidMeasurementKind");
         Text(record.InvocationId, 128, true); Text(record.RootId, 128); Text(record.ParentId, 128); Text(record.SessionId, 128);
         Text(record.Context, 256); Text(record.Command, 256); Text(record.HandlerId, 256); Text(record.ModuleVersion, 64);
         Text(record.ModuleHash, 128); Text(record.DeliveryId, 128); Text(record.TokenVersion, 128); Text(record.TokenProfile, 64);

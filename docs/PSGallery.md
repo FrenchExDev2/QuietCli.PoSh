@@ -66,13 +66,13 @@ Sous Linux, fournir `-CompilerPath` vers la version de Zig verrouillée dans `bu
 Préparer :
 
 1. Le monorepo public `FrenchExDev2/FrenchExDev2.QuietCli.PoSh`, contenant les quatre projets et le verrouillage des sources schéma 3. Un seul checkout de la révision du workflow suffit ; aucun remote enfant n’est requis.
-2. Quatre références d’images immuables contenant PowerShell 7.6+, .NET 11 RC et Git : `QUIETCLI2_DEBIAN_IMAGE`, `QUIETCLI2_ALPINE_IMAGE`, `QUIETCLI2_DEBIAN_ARM64_IMAGE`, `QUIETCLI2_ALPINE_ARM64_IMAGE`, toutes sous la forme `image@sha256:...`.
+2. Les [Dockerfiles et le cache GHCR](ci/linux-images.md) remplacent les quatre variables d’images préconfigurées. Les runners x64 et ARM64 construisent leurs images nativement. Le jeton éphémère GitHub du job Linux possède `packages: write` pour publier le premier cache depuis `main` ; aucune clé de registre personnelle n’est nécessaire.
 3. Un compte PowerShell Gallery autorisé à publier les deux noms. Créer une clé API limitée aux opérations et modules nécessaires.
 4. L’environnement GitHub `psgallery` et son secret **`PSGALLERY_API_KEY`**. Ils sont configurés sur le dépôt à partir du `PSGALLERY_TOKEN` fourni dans le `.env` du workspace, sans afficher sa valeur. Configurer les protections de l’environnement selon la politique du dépôt. Ne jamais placer la clé dans le code, les arguments CLI, les rapports ou le chat.
 
 Le workflow appelle la CI commune : deux runners Windows et quatre combinaisons Linux/libc/architecture. Le RID attendu est contrôlé jusqu’à l’invité et au moteur. Une image ARM absente, une version non verrouillée ou un scénario en échec bloque la publication. La CI ARM doit fournir sa propre preuve d’exécution ; une compilation croisée n’est pas une qualification native.
 
-État du 5 novembre 2026 : les jobs Windows x64 et ARM64 réussissent. Les quatre jobs Linux hébergés échouent explicitement au prérequis d’image tant que leurs variables ne sont pas définies ; le workflow de publication complète reste donc bloqué par cette configuration. La première version 0.1.0 a été publiée par invocation locale explicite, après les suites Windows/Alpine et les contrôles des six binaires. La validation publique avec PSResourceGet a ensuite confirmé le téléchargement de Git et de Core et leur exécution. Cette première publication n’est pas une certification des quatre jobs Linux hébergés.
+Les premiers runs du 5 novembre 2026 ont réussi sur Windows x64/ARM64 et échoué au prérequis des quatre anciennes variables d’images Linux. Le workflow a depuis été adapté pour construire et mettre en cache ces images automatiquement ; consulter les nouveaux runs pour leurs résultats effectifs. La première version 0.1.0 a été publiée par invocation locale explicite, après les suites Windows/Alpine et les contrôles des six binaires. La validation publique avec PSResourceGet a ensuite confirmé le téléchargement de Git et de Core et leur exécution. Cette première publication n’est pas une certification des quatre jobs Linux hébergés.
 
 Après les six jobs, le job de publication reconstruit et teste son propre payload, vérifie les deux nupkg puis lit la clé uniquement pendant l’étape explicite de publication. Aucun upload des paquets vers les artefacts GitHub n’est configuré. Les rapports de tests existants restent disponibles.
 
@@ -86,3 +86,34 @@ La publication locale explicite utilise le même script et lit la clé depuis l�
 Une version existante est refusée, sans écrasement ni répétition automatique. Le reçu `publication.json` distingue modules confirmés et module dont une requête interrompue peut avoir eu un effet inconnu. En cas de publication partielle, consulter la galerie et ce reçu avant toute action ; le script ne rejoue pas aveuglément une publication.
 
 Le flux manuel reprend les recommandations [Microsoft sur les manifestes et dépendances](https://learn.microsoft.com/en-us/powershell/gallery/concepts/publishing-guidelines) et utilise [Publish-PSResource](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.psresourceget/publish-psresource). L’upload GitHub et la publication automatique sur tag ont été refusés par le contrôle automatique d’approbation ; cette implémentation conserve un déclenchement manuel explicite vers la destination PSGallery demandée.
+
+## Revision-bound release gate
+
+Every Gallery run calls ci.yml with suite=All. Native PTY baseline tests and the 23 targeted mutations run in all four native pty-mutation jobs (glibc/musl, x64/ARM64), alongside the Windows and Linux matrix. The qualification-gate job runs even when a dependency fails and rejects failure, cancellation, missing results or skipped required jobs. Tests cover positive and negative job-result combinations.
+
+Only a complete success emits qualified_sha for that workflow revision. The publish job requires both a successful reusable workflow and qualified_sha == github.sha, then checks out github.sha explicitly. Each delivery is qualified again; an older green run cannot authorize another revision. Mutation reports and the qualification decision are uploaded on failure too.
+
+These changes govern the Actions delivery path after they are committed and pushed. Making QuietCli2 qualification gate a required pull-request check is a separate repository ruleset setting; workflow YAML alone does not configure merge protection. Local standalone publishing scripts remain explicit administrative entry points.
+
+Native qualification also requires all 35 baseline assertions (including process properties) and 20,000 coverage-guided decoder executions under ASan/UBSan. CI images contain GCC, G++, Clang and compiler-rt (Debian: libclang-rt-dev; Alpine: compiler-rt). The ordinary CI process runner has no product-engine dependency. A successful native matrix is required before the .NET matrix starts and before any Gallery publication can be authorized.
+
+The dependency order is native source-only qualification, then the .NET Windows/Linux matrix, then the revision-bound release gate. The native phase neither loads QuietCli nor requires its compiled engine. It must also provide an independence receipt with zero product build files, zero loaded product modules and zero AI command calls, and the guest must exit with code zero.
+
+## Prerelease packages
+
+The current development manifests declare `ModuleVersion='0.2.0'` and `PrivateData.PSData.Prerelease='preview'`, producing **0.2.0-preview** for both modules. This is independent of the PowerShell stable/preview host. A build or test never publishes it.
+
+Preparation, validation, manual workflow inputs and public identity checks accept the complete version, including `-preview` or `-preview1`. A request for `0.2.0` cannot validate `0.2.0-preview`. PowerShell Gallery prerelease labels use the supported alphanumeric/hyphen form; dotted SemVer 2 labels and build metadata are rejected explicitly.
+
+PowerShell's `RequiredModules.ModuleVersion` remains numeric (`0.2.0`). Before hashing a newly compressed Git nupkg, the packager pins its NuGet dependency to **[0.2.0-preview]**. This prevents dependency resolution from selecting the older stable Core or silently substituting a different preview. Validators check both package versions and that exact dependency. Installed module directories use the numeric base version; display/package identity retains the prerelease suffix.
+
+```powershell
+# Objective: Prepare and validate the prerelease without publishing or using an API key.
+./scripts/New-QuietGalleryPackage.ps1 -OutputDirectory ./artifacts/gallery-preview -Version 0.2.0-preview
+./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery-preview -Version 0.2.0-preview -ValidateOnly
+
+# Objective: Install an explicitly chosen prerelease after it has actually been published.
+Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Version 0.2.0-preview -Prerelease -Repository PSGallery
+```
+
+The example installation is not evidence that this prerelease is already public. The historical stable **0.1.0** publication remains unchanged. See Microsoft's [prerelease module guidance](https://learn.microsoft.com/powershell/gallery/concepts/module-prerelease-support).

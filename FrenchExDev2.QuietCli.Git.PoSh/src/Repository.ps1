@@ -24,17 +24,8 @@ Compares independently observed local refs without inferring remote or hook effe
     Parsed refs after the mutation.
     #>
     param([object[]]$Before,[object[]]$After)
-    $old=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
-    $new=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
-    foreach($ref in $Before){$key=if($ref.Name -is [string]){$ref.Name}else{$ref.Name.Base64};$old[$key]=$ref}
-    foreach($ref in $After){$key=if($ref.Name -is [string]){$ref.Name}else{$ref.Name.Base64};$new[$key]=$ref}
-    $names=[Collections.Generic.SortedSet[string]]::new($old.Keys,[StringComparer]::Ordinal)
-    $names.UnionWith($new.Keys)
-    foreach($name in $names){
-        $a=$null;$b=$null
-        [void]$old.TryGetValue($name,[ref]$a);[void]$new.TryGetValue($name,[ref]$b)
-        if(!$a -or !$b -or $a.ObjectId -cne $b.ObjectId){@{Kind=$(if(!$a){'Added'}elseif(!$b){'Removed'}else{'Updated'});Name=$name;Before=$(if($a){$a.ObjectId}else{$null});After=$(if($b){$b.ObjectId}else{$null})}}
-    }
+    Import-QuietGitParser
+    return [FrenchExDev2.QuietCli.Git.GitRecords]::RefChanges([object[]]$Before,[object[]]$After)
 }
 function Invoke-QuietGitObservedMutation {
     <#
@@ -75,14 +66,10 @@ Parses ls-tree with NUL paths, with awkward-path and explicit-format preservatio
     if('--format' -cin $flags){return Invoke-QuietGitRequestedFormat $Runtime ($Prefix+@('ls-tree')+@($Request.Arguments)) 'ls-tree' -Delimiter $(if('-z' -cin $flags){[byte]0}else{[byte]10})}
     $arguments=Get-QuietGitArguments $Binding @('--name-only','--name-status','--long','-l','-z')
     $data=@{Command='ls-tree';GitVersion=$Runtime.State.DetectedVersion;Entries=[Collections.Generic.List[object]]::new();Scope=@{PathRepresentation='NUL-delimited UTF-8 or explicit raw bytes';Requested=$Request.Original}}
-    $decode=Get-Command ConvertFrom-QuietGitBytes
+    Import-QuietGitParser
     $parser={
         param($record,$data)
-        if(!$record.Length){return};$tab=[Array]::IndexOf($record,[byte]9);if($tab -lt 0){throw 'MalformedTreeRecord'}
-        $header=[Text.Encoding]::ASCII.GetString($record,0,$tab)
-        if($header -notmatch '^(\d+) (blob|tree|commit) ([0-9a-f]+)\s+(\d+|-)\s*$'){throw 'MalformedTreeHeader'}
-        $fields=@($Matches[1],$Matches[2],$Matches[3],$Matches[4]);$bytes=[byte[]]::new($record.Length-$tab-1);[Array]::Copy($record,$tab+1,$bytes,0,$bytes.Length)
-        $data.Entries.Add(@{Mode=$fields[0];Type=$fields[1];ObjectId=$fields[2];Size=$(if($fields[3] -eq '-'){$null}else{[long]$fields[3]});Path=(& $decode $bytes)})
+        [FrenchExDev2.QuietCli.Git.GitRecords]::Tree($record,$data)
     }.GetNewClosure()
     $r=Invoke-QuietGitRecords $Runtime ($Prefix+@('ls-tree','-z','--long')+$arguments) $data -Delimiter 0 -Parser $parser
     return $r.Data
@@ -102,16 +89,10 @@ Parses the worktree porcelain protocol with NUL path preservation.
     #>
     param($Runtime,[string[]]$Prefix,[string[]]$Arguments=@(),[string]$Role='Business')
     $data=@{Command='worktree';GitVersion=$Runtime.State.DetectedVersion;Worktrees=[Collections.Generic.List[object]]::new();Current=$null}
-    $decode=Get-Command ConvertFrom-QuietGitBytes
+    Import-QuietGitParser
     $parser={
         param($record,$data)
-        if(!$record.Length){if($data.Current){$data.Worktrees.Add($data.Current);$data.Current=$null};return}
-        $space=[Array]::IndexOf($record,[byte]32)
-        $key=if($space -lt 0){[Text.Encoding]::ASCII.GetString($record)}else{[Text.Encoding]::ASCII.GetString($record,0,$space)}
-        $value=if($space -ge 0){$bytes=[byte[]]::new($record.Length-$space-1);[Array]::Copy($record,$space+1,$bytes,0,$bytes.Length);& $decode $bytes}else{$true}
-        if($key -eq 'worktree'){if($data.Current){$data.Worktrees.Add($data.Current)};$data.Current=@{Path=$value;HeadOid=$null;Branch=$null;Bare=$false;Detached=$false;Locked=$null;Prunable=$null};return}
-        if(!$data.Current){throw 'WorktreeFieldWithoutEntry'}
-        switch -CaseSensitive ($key){HEAD {$data.Current.HeadOid=$value} branch {$data.Current.Branch=$value} bare {$data.Current.Bare=$true} detached {$data.Current.Detached=$true} locked {$data.Current.Locked=$value} prunable {$data.Current.Prunable=$value} default {$data.Current[$key]=$value}}
+        [FrenchExDev2.QuietCli.Git.GitRecords]::Worktree($record,$data)
     }.GetNewClosure()
     Invoke-QuietGitRecords $Runtime ($Prefix+@('worktree','list','--porcelain','-z')+$Arguments) $data -Role $Role -Delimiter 0 -Parser $parser -Finalize {param($data)if($data.Current){$data.Worktrees.Add($data.Current)};$data.Remove('Current');$data}
 }

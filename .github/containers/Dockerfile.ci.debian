@@ -1,0 +1,21 @@
+# Objectif : Construire nativement le banc Debian ; seuls les outils livrés passent dans l’étape finale.
+FROM docker.io/library/debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3 AS tools
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl build-essential libssl-dev zlib1g-dev libcurl4-openssl-dev libexpat1-dev perl && rm -rf /var/lib/apt/lists/*
+ARG SDK_URL
+ARG SDK_SHA512
+ARG POWERSHELL_URL
+ARG POWERSHELL_SHA256
+ARG GIT_URL
+ARG GIT_SHA256
+COPY fetch-ci-tools.sh /tmp/fetch-ci-tools.sh
+RUN sh /tmp/fetch-ci-tools.sh
+
+FROM docker.io/library/debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3 AS ci
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libicu72 libgssapi-krb5-2 libunwind8 libatomic1 libssl3 zlib1g libcurl4 libexpat1 libsqlite3-0 openssh-client perl liberror-perl tzdata gcc libc6-dev g++ clang libclang-rt-dev && rm -rf /var/lib/apt/lists/*
+COPY --from=tools /opt/dotnet /usr/share/dotnet
+COPY --from=tools /opt/powershell /opt/powershell
+COPY --from=tools /opt/git /opt/git
+RUN ln -s /opt/powershell/pwsh /usr/local/bin/pwsh
+ENV DOTNET_ROOT=/usr/share/dotnet PATH=/opt/git/bin:/usr/share/dotnet:/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 DOTNET_CLI_TELEMETRY_OPTOUT=1 POWERSHELL_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
+WORKDIR /workspace
+ENTRYPOINT ["pwsh"]

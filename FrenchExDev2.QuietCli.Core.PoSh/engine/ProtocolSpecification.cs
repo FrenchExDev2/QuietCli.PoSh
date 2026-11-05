@@ -20,7 +20,7 @@ internal static class ProtocolSpecification
     /// <summary>Loads the versioned manifest and enforces hard safety ceilings.</summary>
     static ProtocolSpecification()
     {
-        using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "protocol.json"), System.Text.Encoding.UTF8));
+        using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(Path.GetDirectoryName(typeof(ProtocolSpecification).Assembly.Location)!, "protocol.json"), System.Text.Encoding.UTF8));
         var root = document.RootElement;
         Version = root.GetProperty("Version").GetInt32(); HeaderLimit = root.GetProperty("HeaderLimit").GetInt32(); BlockSize = root.GetProperty("BlockSize").GetInt32(); QueueBlocks = root.GetProperty("QueueBlocks").GetInt32();
         ReadFrameTimeoutSeconds = root.GetProperty("ReadFrameTimeoutSeconds").GetDouble(); WriteFrameTimeoutSeconds = root.GetProperty("WriteFrameTimeoutSeconds").GetDouble();

@@ -43,20 +43,9 @@ Emits YAML directly, without an intermediate JSON document.
     Current indentation.
     #>
     param([AllowNull()]$Value,[int]$Indent=0)
-    $pad=' '*$Indent
-    if($null -eq $Value){return 'null'}
-    if($Value -is [string] -or $Value -is [ValueType]){return ConvertTo-Json -InputObject $Value -Depth 4 -Compress}
-    if($Value -is [Collections.IDictionary]){
-        if(!$Value.Count){return '{}'}
-        $lines=foreach($key in $Value.Keys){$child=$Value[$key];$name=ConvertTo-Json -InputObject ([string]$key) -Compress;$rendered=ConvertTo-QuietYamlValue $child ($Indent+2);if($child -is [Collections.IDictionary] -and $child.Count -or $child -is [array] -and $child.Count){$pad+$name+':'+"`n"+$rendered}else{$pad+$name+': '+$rendered}}
-        return $lines -join "`n"
-    }
-    if($Value -is [array]){
-        if(!$Value.Count){return '[]'}
-        $lines=foreach($child in $Value){$rendered=ConvertTo-QuietYamlValue $child ($Indent+2);if($child -is [Collections.IDictionary] -and $child.Count -or $child -is [array] -and $child.Count){$pad+'-'+"`n"+$rendered}else{$pad+'- '+$rendered}}
-        return $lines -join "`n"
-    }
-    throw 'UnsupportedYamlValue'
+    Import-QuietManagedEngine
+    Assert-QuietResources 'resources/yaml/YamlDotNet.dll'
+    return [FrenchExDev2.QuietCli.BoundedYaml]::Render($Value,$script:QuietRoot,$Indent,[Func[object,string]]{param($scalar)ConvertTo-Json -InputObject $scalar -Depth 4 -Compress})
 }
 function Out-QuietResult {
     <#

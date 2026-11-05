@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Exact version of FrenchExDev2.QuietCli.Core.PoSh and FrenchExDev2.QuietCli.Git.PoSh
+        description: Exact stable or prerelease version of both modules, for example 0.2.0-preview
         required: true
         type: string
       publish:
@@ -18,9 +18,15 @@ concurrency:
   cancel-in-progress: false
 jobs:
   qualification:
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/ci.yml
+    with:
+      suite: All
   publish:
     needs: qualification
+    if: ${{ needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }}
     runs-on: windows-latest
     timeout-minutes: 30
     environment: psgallery
@@ -28,6 +34,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+          ref: ${{ github.sha }}
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 11.0.100-rc.3.26522.148

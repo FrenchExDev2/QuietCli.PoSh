@@ -1,3 +1,10 @@
+# Adapt only metadata property bags, synchronously on the calling PowerShell thread.
+$script:QuietMetadataAdapter=[Func[object,Collections.IDictionary]]{
+    param($value)
+    $fields=[ordered]@{}
+    foreach($property in $value.PSObject.Properties){$fields.Add($property.Name,$property.Value)}
+    return $fields
+}
 function ConvertTo-QuietSnapshot {
     <#
     .SYNOPSIS
@@ -6,20 +13,9 @@ function ConvertTo-QuietSnapshot {
     Execution, completeness or diagnostic metadata.
     #>
     param([AllowNull()]$Value)
-    if($null -eq $Value -or $Value -is [string] -or $Value -is [ValueType]){return $Value}
-    if($Value -is [Collections.IDictionary]){
-        $copy=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
-        foreach($key in $Value.Keys){$copy.Add([string]$key,(ConvertTo-QuietSnapshot $Value[$key]))}
-        return ,([Collections.ObjectModel.ReadOnlyDictionary[string,object]]::new($copy))
-    }
-    if($Value -is [Collections.IEnumerable]){
-        $copy=[Collections.Generic.List[object]]::new()
-        foreach($item in $Value){$copy.Add((ConvertTo-QuietSnapshot $item))}
-        return ,$copy.AsReadOnly()
-    }
-    $copy=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
-    foreach($property in $Value.PSObject.Properties){$copy.Add($property.Name,(ConvertTo-QuietSnapshot $property.Value))}
-    return ,([Collections.ObjectModel.ReadOnlyDictionary[string,object]]::new($copy))
+    if($null -eq $Value){return $null}
+    Import-QuietManagedEngine
+    return ,([FrenchExDev2.QuietCli.CallerMetadata]::Freeze($Value,$script:QuietMetadataAdapter))
 }
 function ConvertTo-QuietErrorCodes {
     <#

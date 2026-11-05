@@ -13,7 +13,22 @@
     "fetch": "Invoke-QuietGitMutation",
     "stash": "Invoke-QuietGitStash",
     "worktree": "Invoke-QuietGitWorktree",
-    "ls-tree": "Invoke-QuietGitTree"
+    "ls-tree": "Invoke-QuietGitTree",
+    "switch": "Invoke-QuietGitRepositoryMutation",
+    "restore": "Invoke-QuietGitRepositoryMutation",
+    "reset": "Invoke-QuietGitRepositoryMutation",
+    "rm": "Invoke-QuietGitRepositoryMutation",
+    "mv": "Invoke-QuietGitRepositoryMutation",
+    "clean": "Invoke-QuietGitRepositoryMutation",
+    "merge": "Invoke-QuietGitRepositoryMutation",
+    "rebase": "Invoke-QuietGitRepositoryMutation",
+    "cherry-pick": "Invoke-QuietGitRepositoryMutation",
+    "revert": "Invoke-QuietGitRepositoryMutation",
+    "tag": "Invoke-QuietGitTag",
+    "remote": "Invoke-QuietGitRemote",
+    "config": "Invoke-QuietGitConfig",
+    "init": "Invoke-QuietGitCreate",
+    "clone": "Invoke-QuietGitCreate"
   },
   "SchemaVersion": 2,
   "Scope": "Specialized streaming handlers; variants and release qualification remain explicit."

@@ -17,6 +17,32 @@ internal static class Program
             try { await assertion(); passed++; results.Add(new { Name = name, State = "Passed" }); }
             catch (Exception error) { failed++; results.Add(new { Name = name, State = "Failed", Error = error.Message }); }
         }
+        await Case("compiled records preserve every byte at every fragment boundary", () =>
+        {
+            byte[] bytes = [0, 195, 169, 255, 0, 0, 120];
+            for (int split = 0; split <= bytes.Length; split++)
+            {
+                using var framer = new ByteRecordFramer(0, 3);
+                var records = framer.Push(bytes[..split]).Concat(framer.Push(bytes[split..])).ToArray();
+                Require(records.Length == 3 && records[0].Length == 0 && records[1].SequenceEqual(new byte[] { 195, 169, 255 }) && records[2].Length == 0, "Empty or fragmented binary record changed");
+                Require(framer.Finish()!.SequenceEqual(new byte[] { 120 }) && framer.Finish() == null, "Final record repeated or lost");
+            }
+            return Task.CompletedTask;
+        });
+        await Case("compiled framing bounds terminated and unfinished records", () =>
+        {
+            foreach (byte[] block in new byte[][] { [1, 2, 3, 4], [1, 2, 3, 4, 0] })
+            {
+                using var framer = new ByteRecordFramer(0, 3);
+                try { _ = framer.Push(block).ToArray(); throw new Exception("Oversized record accepted"); }
+                catch (InvalidDataException error) when (error.Message == "GitRecordTooLarge") { }
+            }
+            using var fragmented = new ByteRecordFramer(0, 3);
+            _ = fragmented.Push([1, 2]).ToArray();
+            try { _ = fragmented.Push([3, 4]).ToArray(); throw new Exception("Oversized fragmented record accepted"); }
+            catch (InvalidDataException error) when (error.Message == "GitRecordTooLarge") { }
+            return Task.CompletedTask;
+        });
         await Case("binary frame identity", async () =>
         {
             var memory = new MemoryStream(); var writer = new Protocol(Stream.Null, memory);
@@ -48,6 +74,9 @@ internal static class Program
         string directory = Path.Combine(Path.GetTempPath(), "quietcli2-store-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         await using var store = new MeasurementStore(Path.Combine(directory, "gains.sqlite"));
+        await SecondPassCases.RunAsync(Case, store, directory);
+        await CoreMigrationCases.RunAsync(Case, directory, Path.GetFullPath(Path.Combine(arguments[0], "../../../../..")));
+        await Case("available stdin wakes a backpressured caller without stdout", InputBackpressureCases.ReadyInputDoesNotWaitForOutputAsync);
         await Case("business data forbidden in SQLite metadata", async () =>
         {
             using var document = JsonDocument.Parse("{\"InvocationId\":\"forbidden\",\"Data\":{\"Secret\":\"must-not-be-stored\"}}");

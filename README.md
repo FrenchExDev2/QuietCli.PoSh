@@ -4,7 +4,13 @@
 
 # QuietCli2 — monorepo multi-projets
 
-Moteur C# **.NET 11 RC**, façade **PowerShell Core 7.6+**, analyse en flux destinée en premier lieu aux IA.
+Moteur C# **.NET 10 / .NET 11 RC**, façade **PowerShell Core 7.6+**, analyse en flux destinée en premier lieu aux IA.
+
+The current development release is **0.2.0-preview**, declared by numeric `ModuleVersion='0.2.0'` and `PSData.Prerelease='preview'` in Core and Git. It is not published by a build or test. The previously published stable 0.1.0 remains a separate historical release. Gallery packaging preserves the suffix and pins Git's package dependency to the exact matching Core preview; PowerShell's manifest dependency remains numeric.
+
+The same engine now also targets **.NET 10** for direct hosting in PowerShell 7.6. Set `$env:QUIETCLI2_ENGINE_MODE='InProcess'` before the first call (or call `Stop-QuietEngine` before changing modes). This removes the engine subprocess and pipe IPC. Native blocks, fixed read metadata and input/lifecycle controls cross direct C# method boundaries without JSON. Startup and telemetry also use closed local metadata operations in integrated mode. Internal raw queries and rejected-request diagnostics retain bounded JSON; SQLite keeps its validated JSON storage representation. `Auto` is the default: the actual CLR selects the integrated net10.0 build on .NET 10 or net11.0 build on .NET 11 and later. Set `Process` explicitly for the isolated .NET 11 host. Git byte-record framing runs in a verified caller-local compatible assembly in either mode. See [performance and hosting](docs/performance-and-hosting.md) for measured scope, reproduction and limitations.
+
+A second pass moves incremental UTF-8 text framing and measurement aggregation to C#. Text framing stays caller-local in both hosting modes, and gain reports transfer aggregate groups instead of original SQLite events. See [PowerShell/C# boundaries](docs/powershell-csharp-boundaries.md) for the remaining candidates and measurement scope.
 
 Le [dépôt public unique](https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh) contient quatre projets : Core, Core.Tests, Git et Git.Tests. Ouvrir `QuietCli2.code-workspace` dans VS Code pour les parcourir. Source Control utilise le seul dépôt racine ; il n’y a ni dépôt Git enfant ni sous-module. Les deux modules métier restent publiés séparément sur PSGallery.
 
@@ -12,7 +18,7 @@ Le [dépôt public unique](https://github.com/FrenchExDev2/FrenchExDev2.QuietCli
 
 Le moteur, SQLite, le protocole binaire, les bytecounts, les callbacks imbriqués et les transports pipe/PTY sont implémentés. Les modules compagnons exécutent des assertions indépendantes.
 
-**Git complet n’est pas encore livré.** L’inventaire officiel verrouillé contient 183 entrées pour les versions 2.40 à 2.56. Quatorze familles ont des handlers spécialisés : `status`, `diff`, `log`, `show`, `add`, `commit`, `checkout`, `push`, `pull`, `branch`, `fetch`, `stash`, `worktree` et `ls-tree`. Les familles restantes et toutes les variantes de ces commandes ne sont pas qualifiées. `Get-QuietGitCoverage` conserve explicitement cette distinction. Une énumération de l’inventaire n’est pas une preuve de support.
+**Git complet n’est pas encore livré.** L’inventaire officiel verrouillé contient 183 entrées pour les versions 2.40 à 2.56. Twenty-nine command families now have specialized handlers, including init/clone, switch/restore/reset, rm/mv/clean, merge/rebase/cherry-pick/revert and tag/remote/config. Common workflows are covered; advanced forms and the full version/platform matrix remain explicitly unqualified. Les familles restantes et toutes les variantes de ces commandes ne sont pas qualifiées. `Get-QuietGitCoverage` conserve explicitement cette distinction. Une énumération de l’inventaire n’est pas une preuve de support.
 
 Les workflows Core et Git sont filtrés par chemins et appellent la CI commune. Core déclenche aussi les tests Git ; Git peut être validé seul. Le workflow de publication PSGallery est manuel et revalide tous les projets et plateformes. Les révisions réellement exécutées figurent dans les rapports.
 
@@ -20,11 +26,11 @@ QuietGit lance directement le binaire Git. Le projet consulté comme référence
 
 ## Démarrage dans VS Code
 
-Les modules sont préparés pour une [installation et publication PSGallery](docs/PSGallery.md). Le workflow manuel publie Core puis Git après la CI ; les paquets embarquent les moteurs Windows/Linux x64 et ARM64, pour glibc et musl. La disponibilité effective sur la galerie nécessite la clé API et le premier lancement de publication ; elle ne se déduit pas d’un paquet local préparé.
+Les modules disposent d’une [installation et publication PSGallery](docs/PSGallery.md). Le workflow manuel publie Core puis Git après la CI ; les paquets embarquent les moteurs Windows/Linux x64 et ARM64, pour glibc et musl. La disponibilité publiée et les preuves d’installation sont indiquées ci-dessous.
 
 Les versions **0.1.0 sont publiées** : [Core](https://www.powershellgallery.com/packages/FrenchExDev2.QuietCli.Core.PoSh/0.1.0), [Git](https://www.powershellgallery.com/packages/FrenchExDev2.QuietCli.Git.PoSh/0.1.0). Le téléchargement depuis PSGallery, la résolution de la dépendance Core et l’exécution des modules téléchargés ont été vérifiés dans une installation temporaire isolée.
 
-La validation locale du monorepo comporte 63 scénarios réussis sur Windows x64 et Alpine x64. Les jobs GitHub Windows x64 **et Windows ARM64** ont également réussi dans [le run du 5 novembre](https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh/actions/runs/41943788968). Les quatre jobs Linux hébergés restent bloqués par les références d’images immuables non configurées ; ils ne sont pas annoncés comme réussis. Voir les quatre variables nécessaires dans [la documentation PSGallery/CI](docs/PSGallery.md).
+La validation locale initiale du monorepo comporte 63 scénarios réussis sur Windows x64 et Alpine x64. Les jobs GitHub Windows x64 **et Windows ARM64** ont également réussi dans [le run du 5 novembre](https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh/actions/runs/41943788968). La CI Linux prépare désormais ses images avec les Dockerfiles multiétapes du dépôt, sur des runners natifs x64 et ARM64. Le premier run sur `main` publie les images manquantes dans GHCR ; les runs suivants réutilisent leur digest tant que les entrées verrouillées restent identiques. Les résultats de cette nouvelle chaîne sont distincts des preuves antérieures. Voir [le cache et les images CI](docs/ci/linux-images.md).
 
 ```powershell
 # Objectif : installer QuietGit et Core depuis la galerie publique.
@@ -54,7 +60,7 @@ Get-QuietCliGain -C travail
 
 Définir `$repository` explicitement. Charger V1 et V2 dans des sessions séparées : leurs noms de fonctions publics se recouvrent. Aucun profil n’est modifié par ces scripts.
 
-Le moteur démarre à la première invocation. Le SDK est `11.0.100-rc.3.26522.148`, le runtime `11.0.0-rc.3.26522.148`. Le runtime RC est requis à l’utilisation ; le SDK est requis uniquement pour construire. Le processus PowerShell reste sur son propre runtime .NET.
+Le moteur démarre à la première invocation. Le SDK est `11.0.100-rc.3.26522.148`, le runtime `11.0.0-rc.3.26522.148`. Le runtime RC est requis pour le mode isolé ; le mode intégré utilise le runtime compatible de PowerShell. Le SDK est requis uniquement pour construire. Le mode isolé utilise ce runtime épinglé ; le mode intégré automatique utilise le runtime réel de PowerShell (.NET 10 ou .NET 11+).
 
 ## Flux et objets
 
@@ -130,3 +136,5 @@ L’[audit sécurité et conception du 4 novembre 2026](docs/audits/2026-11-04-s
 Les quatre modules possèdent leur README. Les scripts/fonctions PowerShell disposent d’une aide ; les signatures C# possèdent des commentaires XML. L’outil de maintenance de documentation sous le module compagnon s’exécute dans un processus .NET séparé et n’intervient jamais pendant un import, un build normal ou un test.
 
 `New-QuietModule -Name Entreprise.QuietOutil.PoSh -Binary outil -OutputPath $destination` génère le module, son catalogue inerte et `src/Handler.ps1`, ainsi que le compagnon de tests. Les callbacks de sonde, politique de version, sélection et analyse sont à compléter à partir de la documentation du binaire. Le compagnon dépend du module métier et des assertions Core ; sa suite initiale échoue explicitement tant que les assertions métier ne sont pas écrites.
+
+The principal-command implementation, validation and known limits are recorded in [the command audit](docs/audits/2026-11-05-git-principal-commands.md).

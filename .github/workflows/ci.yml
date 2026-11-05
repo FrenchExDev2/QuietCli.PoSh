@@ -1,6 +1,10 @@
 name: QuietCli2 PR
 on:
   workflow_call:
+    outputs:
+      qualified_sha:
+        description: Exact revision accepted by all required qualification jobs
+        value: ${{ jobs.qualification-gate.outputs.qualified_sha }}
     inputs:
       suite:
         type: string
@@ -10,16 +14,125 @@ on:
 permissions:
   contents: read
 jobs:
+  qualification-gate:
+    name: QuietCli2 qualification gate
+    needs: [windows, linux, pty-mutation]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      qualified_sha: ${{ steps.gate.outputs.qualified_sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Require successful qualification of this exact revision
+        id: gate
+        shell: pwsh
+        env:
+          QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+          WINDOWS_RESULT: ${{ needs.windows.result }}
+          LINUX_RESULT: ${{ needs.linux.result }}
+          MUTATION_RESULT: ${{ needs.pty-mutation.result }}
+        run: |
+          # Objective: Fail closed and emit a commit-bound receipt only after every required check succeeds.
+          ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -MutationResult $env:MUTATION_RESULT -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quietcli2-qualification-gate
+          path: artifacts/qualification-gate
+  pty-mutation:
+    name: Native PTY properties, fuzzing and mutation (${{ matrix.rid }})
+    needs: linux-images
+    if: ${{ always() && !cancelled() && inputs.suite != 'Git' && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') }}
+    permissions:
+      contents: read
+      packages: read
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: debian
+            rid: linux-x64
+            runner: ubuntu-latest
+          - platform: alpine
+            rid: linux-musl-x64
+            runner: ubuntu-latest
+          - platform: debian
+            rid: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: alpine
+            rid: linux-musl-arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Require unit tests, process properties, decoder fuzzing and C mutations
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+          PLATFORM: ${{ matrix.platform }}
+          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          # Objective: Compile and run mutations with the native architecture and libc; reject incomplete qualification.
+          $image=./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache
+          ./scripts/Invoke-ContainerCi.ps1 -Image $image.Image -Platform $env:PLATFORM -ExpectedRuntimeIdentifier $env:EXPECTED_RID -Suite Mutation -Headless -TimeoutSeconds 1800
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quietcli2-pty-mutation-${{ matrix.rid }}
+          path: |
+            artifacts/containers
+            artifacts/ci-images
   windows:
-    name: Windows (${{ matrix.rid }})
+    name: Windows (${{ matrix.rid }}, ${{ matrix.channel }}, ${{ matrix.mode }})
+    needs: pty-mutation
+    if: ${{ always() && !cancelled() && (needs.pty-mutation.result == 'success' || (inputs.suite == 'Git' && needs.pty-mutation.result == 'skipped')) }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - image: windows-latest
             rid: win-x64
+            channel: stable
+            mode: Process
+            host_version: 7.6.7
+            runtime_major: 10
           - image: windows-11-arm
             rid: win-arm64
+            channel: stable
+            mode: Process
+            host_version: 7.6.7
+            runtime_major: 10
+          - image: windows-latest
+            rid: win-x64
+            channel: stable
+            mode: InProcess
+            host_version: 7.6.7
+            runtime_major: 10
+          - image: windows-11-arm
+            rid: win-arm64
+            channel: stable
+            mode: InProcess
+            host_version: 7.6.7
+            runtime_major: 10
+          - image: windows-latest
+            rid: win-x64
+            channel: preview
+            mode: InProcess
+            host_version: 7.7.0-preview.5
+            runtime_major: 11
+          - image: windows-11-arm
+            rid: win-arm64
+            channel: preview
+            mode: InProcess
+            host_version: 7.7.0-preview.5
+            runtime_major: 11
     runs-on: ${{ matrix.image }}
     timeout-minutes: 30
     steps:
@@ -32,20 +145,81 @@ jobs:
       - name: Verify monorepo source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
+      - name: Prepare the pinned PowerShell host without installing or changing profiles
+        shell: pwsh
+        env:
+          HOST_CHANNEL: ${{ matrix.channel }}
+          HOST_RID: ${{ matrix.rid }}
+        run: |
+          # Objective: Select the checksum-verified host for every subsequent PowerShell step and child.
+          $hostInfo=./scripts/Initialize-PowerShellHost.ps1 -Channel $env:HOST_CHANNEL -RuntimeIdentifier $env:HOST_RID -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-powershell-host')
+          [void][IO.File]::AppendAllTextAsync($env:GITHUB_PATH,($hostInfo.Directory+"`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
       - name: Run companion suites
         shell: pwsh
         env:
           EXPECTED_RID: ${{ matrix.rid }}
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+          QUIETCLI2_ENGINE_MODE: ${{ matrix.mode }}
+          QUIETCLI2_EXPECT_ENGINE_MODE: ${{ matrix.mode }}
+          QUIETCLI2_GIT_PUSH_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
+          QUIETCLI2_GIT_COMMAND_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
+          QUIETCLI2_EXPECT_HOST_VERSION: ${{ matrix.host_version }}
+          QUIETCLI2_EXPECT_RUNTIME_MAJOR: ${{ matrix.runtime_major }}
         run: ./scripts/Invoke-WorkspaceCi.ps1 -Headless -Suite $env:QUIETCLI_SUITE -ExpectedRuntimeIdentifier $env:EXPECTED_RID
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: quietcli2-${{ matrix.rid }}
-          path: artifacts/tests
-  linux:
+          name: quietcli2-${{ matrix.rid }}-${{ matrix.channel }}-${{ matrix.mode }}
+          path: |
+            artifacts/tests
+            ${{ runner.temp }}/quietcli-powershell-host/host-receipt.json
+  linux-images:
+    name: Image (${{ matrix.rid }})
+    if: github.repository == 'FrenchExDev2/FrenchExDev2.QuietCli.PoSh' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: quietcli2-image-${{ matrix.rid }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            runner: ubuntu-latest
+          - rid: linux-musl-x64
+            runner: ubuntu-latest
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+          - rid: linux-musl-arm64
+            runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Publish a missing toolchain image or reuse its verified digest
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
+        run: ./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -PublishCache
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quietcli2-image-${{ matrix.rid }}
+          path: artifacts/ci-images
+  linux:
+    name: Linux (${{ matrix.rid }})
+    needs: [linux-images, pty-mutation]
+    if: ${{ always() && !cancelled() && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') && (needs.pty-mutation.result == 'success' || (inputs.suite == 'Git' && needs.pty-mutation.result == 'skipped')) }}
+    permissions:
+      contents: read
+      packages: read
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -72,28 +246,25 @@ jobs:
       - name: Verify monorepo source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
-      - name: Require platform image and run the shared launcher
+      - name: Build engines for the six distributions
+        shell: pwsh
+        run: ./scripts/Build-Workspace.ps1
+      - name: Reuse the native test image and run suites
         shell: pwsh
         env:
           PLATFORM: ${{ matrix.platform }}
-          DEBIAN_IMAGE: ${{ vars.QUIETCLI2_DEBIAN_IMAGE }}
-          ALPINE_IMAGE: ${{ vars.QUIETCLI2_ALPINE_IMAGE }}
-          DEBIAN_ARM64_IMAGE: ${{ vars.QUIETCLI2_DEBIAN_ARM64_IMAGE }}
-          ALPINE_ARM64_IMAGE: ${{ vars.QUIETCLI2_ALPINE_ARM64_IMAGE }}
           EXPECTED_RID: ${{ matrix.rid }}
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
         run: |
-          # Objectif : Exécuter le même lanceur dans une image .NET 11 RC/PowerShell explicitement configurée.
-          $arm=$env:EXPECTED_RID.EndsWith('arm64')
-          $image=if($env:PLATFORM -eq 'debian'){if($arm){$env:DEBIAN_ARM64_IMAGE}else{$env:DEBIAN_IMAGE}}else{if($arm){$env:ALPINE_ARM64_IMAGE}else{$env:ALPINE_IMAGE}}
-          if($image -notmatch '^[a-zA-Z0-9./_:-]+@sha256:[a-f0-9]{64}$'){throw 'Configure an immutable image reference with @sha256 digest.'}
-          . ./scripts/Common.ps1
-          ./scripts/Build-Workspace.ps1
-          # Objectif : Provisionner explicitement l’image verrouillée sur ce runner CI neuf.
-          $null=Invoke-WorkspaceNative podman @('pull',$image) $PWD.Path
-          ./scripts/Invoke-ContainerCi.ps1 -Image $image -Platform $env:PLATFORM -Suite $env:QUIETCLI_SUITE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -Headless
+          # Objectif : Réutiliser le cache publié ; construire localement si une PR ne peut pas y accéder.
+          $image=./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache
+          # Objectif : Tester sans réseau dans l’image native dont l’identité vient d’être vérifiée.
+          ./scripts/Invoke-ContainerCi.ps1 -Image $image.Image -Platform $env:PLATFORM -Suite $env:QUIETCLI_SUITE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -Headless
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: quietcli2-${{ matrix.rid }}
-          path: artifacts/containers
+          path: |
+            artifacts/containers
+            artifacts/ci-images

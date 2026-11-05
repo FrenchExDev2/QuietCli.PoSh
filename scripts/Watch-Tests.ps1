@@ -77,8 +77,13 @@ try{
                 $lines.Add((Fit-Cell $border $width))
                 $identity=if($state.PSObject.Properties['ContainerId']){$state.ContainerId}else{[string]$state.ProcessId}
                 $passed=if($null -eq $state.Passed){'-'}else{[string]$state.Passed};$failed=if($null -eq $state.Failed){'-'}else{[string]$state.Failed}
+                $rows=[Collections.Generic.List[object]]::new();$rows.Add(@('Platform','State','Duration','Process','Passed','Failed'))
+                if($state.PSObject.Properties['Runs'] -and $state.Runs.Count){
+                    $rows[0]=@('Platform','State','Duration','Job','Passed','Failed')
+                    foreach($run in $state.Runs){$elapsed=if($run.StartedUtc){Get-QuietMonitorDuration -StartedUtc $run.StartedUtc -FinishedUtc $run.FinishedUtc}else{'-'};$rows.Add(@($run.Platform,$run.State,$elapsed,$run.Identity,'-','-'))}
+                }else{$rows.Add(@($state.Platform,$state.State,$duration,$identity,$passed,$failed))}
                 $rowNumber=0
-                foreach($row in @(@('Platform','State','Duration','Process','Passed','Failed'),@($state.Platform,$state.State,$duration,$identity,$passed,$failed))){$cells=for($i=0;$i -lt 6;$i++){Fit-Cell ([string]$row[$i]) $columns[$i] -Right:($rowNumber -gt 0 -and $i -ge 2)};$rowNumber++;$lines.Add((Fit-Cell ('|'+($cells -join '|')+'|') $width))}
+                foreach($row in $rows){$cells=for($i=0;$i -lt 6;$i++){Fit-Cell ([string]$row[$i]) $columns[$i] -Right:($rowNumber -gt 0 -and $i -ge 2)};$rowNumber++;$lines.Add((Fit-Cell ('|'+($cells -join '|')+'|') $width))}
                 $lines.Add((Fit-Cell ('└'+(($columns|ForEach-Object{'─'*$_}) -join '┴')+'┘') $width))
             }else{$lines.Add((Fit-Cell "$($state.Platform) | $($state.State) | $duration | PID $($state.ProcessId)" $width));$lines.Add((Fit-Cell "Passed $($state.Passed) | Failed $($state.Failed)" $width))}
             $lines.Add((Fit-Cell $state.Case $width));$lines.Add((Fit-Cell "Rapport : $RunDirectory" $width))

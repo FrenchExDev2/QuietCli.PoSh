@@ -1,3 +1,6 @@
+. (Join-Path $PSScriptRoot 'RepositoryCommands.Tests.ps1')
+. (Join-Path $PSScriptRoot 'Push.Mutation.ps1')
+. (Join-Path $PSScriptRoot 'Migration.Tests.ps1')
 #requires -Version 7.6
 . (Join-Path $PSScriptRoot 'Semantic.Tests.ps1')
 function Invoke-GitFixture {
@@ -31,7 +34,18 @@ Tests independently prepared repositories, hook counts and local bare push targe
     $environment=@{GIT_CONFIG_NOSYSTEM='1';GIT_CONFIG_GLOBAL=(Join-Path $root 'empty.gitconfig');GIT_AUTHOR_NAME='QuietCli2 Test';GIT_AUTHOR_EMAIL='quietcli2@example.invalid';GIT_COMMITTER_NAME='QuietCli2 Test';GIT_COMMITTER_EMAIL='quietcli2@example.invalid';GIT_TERMINAL_PROMPT='0';GIT_EDITOR='false';GIT_SEQUENCE_EDITOR='false'}
     Invoke-GitFixture $repo @('init','--initial-branch=main') $environment
     Invoke-GitFixture $repo @('config','commit.gpgsign','false') $environment
+    $performance=[Collections.Generic.List[object]]::new()
     $cases=[ordered]@{}
+    $cases['compiled Git parsers preserve migration vectors and measure local costs']={foreach($sample in Measure-QuietGitMigration){$performance.Add($sample)}}
+    $cases['compiled Git formats and argument bindings satisfy independent assertions']={
+        $dotnet=(Get-Command dotnet -CommandType Application -ErrorAction Stop|Select-Object -First 1).Source
+        $assembly=Join-Path $PSScriptRoot 'lib/parser-tests/QuietCli.Git.Parser.Tests.dll'
+        $schema=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/metadata/Git.ArgumentSchema.json'
+        $r=quiet -AsObject -Data ([Text.StringBuilder]::new()) -Output {param($event,$runtime)if($event.Stream -eq 'stdout'){[void]$runtime.Data.Append($event.Text)}} -Complete {param($runtime)$runtime.Data.ToString()|ConvertFrom-Json} $dotnet $assembly $schema
+        Assert-QuietEqual $r.Outcome Success 'Compiled Git suite process'
+        Assert-QuietEqual $r.Data.Passed 22 'Compiled Git independent cases'
+        Assert-QuietEqual $r.Data.Failed 0 'Compiled Git independent failures'
+    }
     $cases['status distinguishes unborn state and Unicode untracked paths']={
         [void][IO.File]::WriteAllTextAsync((Join-Path $repo 'é test.txt'),'first',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         $r=quiet -AsObject -C git-status -WorkingDirectory $repo -Environment $environment git status
@@ -88,6 +102,10 @@ Tests independently prepared repositories, hook counts and local bare push targe
         Assert-QuietEqual $coverage.Count 183
         Assert-QuietEqual @($coverage|Where-Object EntireInventoryQualified).Count 0
     }
+    if($env:QUIETCLI2_GIT_PUSH_MUTATION -eq '1'){$cases['push targeted mutations are detected by independent assertions']={$null=Invoke-QuietGitPushMutation -WorkspaceRoot $WorkspaceRoot}}
+    if($env:QUIETCLI2_GIT_COMMAND_MUTATION -eq '1'){$cases['repository command C# mutants are detected']={$null=Invoke-QuietGitPushMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Repository}}
+    $repositoryCases=Get-QuietRepositoryCommandCases -RootDirectory $root -Environment $environment -WorkspaceRoot $WorkspaceRoot
+    foreach($entry in $repositoryCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $semanticCases=Get-QuietGitSemanticCases -RootDirectory $root -Environment $environment
     foreach($entry in $semanticCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $passed=0;$failed=0;$results=[Collections.Generic.List[object]]::new()
@@ -97,6 +115,6 @@ Tests independently prepared repositories, hook counts and local bare push targe
         $results.Add([pscustomobject]@{Name=$entry.Key;State=$state;Error=$failure})
         if($OnProgress){& $OnProgress $entry.Key $state $passed $failed}
     }
-    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Git.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();FixtureDirectory=$root;EntireInventoryQualified=$false}
+    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Git.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Performance=$performance.ToArray();FixtureDirectory=$root;EntireInventoryQualified=$false}
 }
 Export-ModuleMember -Function Invoke-QuietGitTests

@@ -44,12 +44,13 @@ Resolves a versioned handler, caching successful probes by binary identity.
     param($Runtime)
     $binary=[IO.Path]::GetFileName($Runtime.Request.FilePath)
     if($IsWindows -and $binary.EndsWith('.exe',[StringComparison]::OrdinalIgnoreCase)){$binary=$binary.Substring(0,$binary.Length-4)}
-    $candidates=@($script:QuietHandlers.Values|Where-Object{$_.Binary -eq $binary})
-    if($Runtime.Request.ContainsKey('HandlerId')){$candidates=@($candidates|Where-Object Id -EQ $Runtime.Request.HandlerId)}
+    $specific=$Runtime.Request.ContainsKey('HandlerId')
+    $requested=if($specific){$Runtime.Request.HandlerId}else{$null}
+    $candidates=@(foreach($handler in $script:QuietHandlers.Values){if($handler.Binary -eq $binary -and (!$specific -or $handler.Id -eq $requested)){$handler}})
     $matches=[Collections.Generic.List[object]]::new()
     foreach($handler in $candidates){
-        $file=Get-Item -LiteralPath $Runtime.Request.FilePath
-        $key=$handler.Id+'|'+$file.FullName+'|'+$file.Length+'|'+$file.LastWriteTimeUtc.Ticks+'|'+($Runtime.Request.Environment|ConvertTo-Json -Compress)
+        Import-QuietManagedEngine
+        $key=[FrenchExDev2.QuietCli.ProbeIdentity]::Build($handler.Id,$Runtime.Request.FilePath,$Runtime.Request.Environment)
         if(!$script:QuietProbeCache.ContainsKey($key)){
             if(!$handler.ContainsKey('Probe')){continue}
             $version=@(& $handler.Probe $Runtime)

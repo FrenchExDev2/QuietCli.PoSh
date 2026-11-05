@@ -32,7 +32,7 @@ if(!$CompilerPath){
     $CompilerPath=$candidates[0].FullName
 }
 $version=@{Text=''}
-$r=pump -AsObject -State $version -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){$s.Text=$e.Text.Trim()}} -Complete {param($s)$s.Text} $CompilerPath version
+$r=Invoke-CiProcess -FilePath $CompilerPath -ArgumentList @('version') -State $version -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){$s.Text=$e.Text.Trim()}}
 if($r.Outcome -ne 'Success' -or $version.Text -cne $lock.Version){throw 'CompilerVersionMismatch'}
 $module=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh'
 $source=Join-Path $module 'native/quietcli-pty.c';$sourceHash=(Get-FileHash $source -Algorithm SHA256).Hash
@@ -44,7 +44,7 @@ foreach($arch in @('x64','arm64')){
     $triple=if($arch -eq 'arm64'){'aarch64-linux-musl'}else{'x86_64-linux-musl'}
     $staging=Join-Path $WorkspaceRoot ('artifacts/pty-build/'+$arch);[void][IO.Directory]::CreateDirectory($staging)
     $binary=Join-Path $staging quietcli-pty
-    $arguments=@('cc','-target',$triple,'-std=c11','-O2','-s','-Wall','-Wextra','-Werror','-static','-pthread','-lutil',$source,'-o',$binary)
+    $arguments=@('cc','-target',$triple,'-std=c11','-O2','-s','-Wall','-Wextra','-Werror','-fstack-protector-strong','-D_FORTIFY_SOURCE=2','-fPIE','-static','-pie','-Wl,-z,relro,-z,now','-pthread','-lutil',$source,'-o',$binary)
     $null=Invoke-WorkspaceNative $CompilerPath $arguments $WorkspaceRoot -TimeoutSeconds 600
     if((Get-FileHash $source -Algorithm SHA256).Hash -cne $sourceHash){throw 'BridgeSourcesChangedDuringBuild'}
     $hash=(Get-FileHash $binary -Algorithm SHA256).Hash
@@ -52,7 +52,7 @@ foreach($arch in @('x64','arm64')){
         $directory=Join-Path $module ('resources/transport/'+$rid);[void][IO.Directory]::CreateDirectory($directory)
         Copy-Item $binary (Join-Path $directory quietcli-pty) -Force
         [void][IO.File]::WriteAllTextAsync((Join-Path $directory quietcli-pty.sha256),$hash,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-        Write-WorkspaceJson (Join-Path $directory build.json) @{SchemaVersion=2;Runtime=$rid;Target=$triple;Compiler=('Zig '+$version.Text);ToolchainLockSHA256=(Get-FileHash (Join-Path $WorkspaceRoot 'build/zig.lock.json') -Algorithm SHA256).Hash;Arguments=@('cc','-target',$triple,'-std=c11','-O2','-s','-Wall','-Wextra','-Werror','-static','-pthread','-lutil','native/quietcli-pty.c','-o','quietcli-pty');SourceSHA256=$sourceHash;ExecutableSHA256=$hash;Static=$true}
+        Write-WorkspaceJson (Join-Path $directory build.json) @{SchemaVersion=2;Runtime=$rid;Target=$triple;Compiler=('Zig '+$version.Text);ToolchainLockSHA256=(Get-FileHash (Join-Path $WorkspaceRoot 'build/zig.lock.json') -Algorithm SHA256).Hash;Arguments=@('cc','-target',$triple,'-std=c11','-O2','-s','-Wall','-Wextra','-Werror','-fstack-protector-strong','-D_FORTIFY_SOURCE=2','-fPIE','-static','-pie','-Wl,-z,relro,-z,now','-pthread','-lutil','native/quietcli-pty.c','-o','quietcli-pty');SourceSHA256=$sourceHash;ExecutableSHA256=$hash;Static=$true}
     }
 }
 $inventoryPath=Join-Path $module resources/dependencies.lock.json

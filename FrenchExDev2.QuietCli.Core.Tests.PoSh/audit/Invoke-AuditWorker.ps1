@@ -141,7 +141,7 @@ try{
         [void]$client.ConnectAsync().GetAwaiter().GetResult();[void]$accept.GetAwaiter().GetResult()
         $fake=[pscustomobject]@{HasExited=$true}
         $fake|Add-Member ScriptMethod Dispose {}
-        $script:QuietEngine=@{Process=$fake;Broken=$false;Input=[IO.MemoryStream]::new();Output=$server;Requests=0L;InputBytes=0L;OutputBytes=0L}
+        $script:QuietEngine=@{Mode='Process';Process=$fake;Broken=$false;Input=[IO.MemoryStream]::new();Output=$server;Requests=0L;InputBytes=0L;OutputBytes=0L}
         $old=$env:QUIETCLI2_IPC_TIMEOUT_SECONDS;$env:QUIETCLI2_IPC_TIMEOUT_SECONDS='0.1'
         $watch=[Diagnostics.Stopwatch]::StartNew();$cancelled=$false
         try{$null=Send-QuietRequest @{Action='hello'}}catch{$cancelled=$script:QuietEngine.Broken}

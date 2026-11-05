@@ -1,5 +1,10 @@
 #requires -Version 7.6
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'Performance.Tests.ps1')
+. (Join-Path $PSScriptRoot 'HostMatrix.Tests.ps1')
+. (Join-Path $PSScriptRoot 'SecondPass.Tests.ps1')
+. (Join-Path $PSScriptRoot 'Control.Tests.ps1')
+. (Join-Path $PSScriptRoot 'CoreMigration.Tests.ps1')
 function Assert-QuietEqual {
     <#
 .SYNOPSIS
@@ -44,6 +49,159 @@ Executes independent native byte and object invariants in a companion module.
     $performance=[Collections.Generic.List[object]]::new()
     $galleryEvidence=[Collections.Generic.List[object]]::new()
     $cases=[ordered]@{}
+    $cases['Core migration preserves metadata and compares local helper costs']={foreach($sample in Measure-QuietCoreMigration -Dotnet $dotnet){$performance.Add($sample)}}
+    $cases['typed controls preserve duplex bytes and request rejection in both hosts']={Test-QuietTypedControls -Fixture $fixture -Dotnet $dotnet}
+    $cases['typed controls measure local JSON avoidance with identical stdin']={foreach($sample in Measure-QuietTypedControls -Fixture $fixture -Dotnet $dotnet){$performance.Add($sample)}}
+    $cases['compiled text framing and gain reports preserve their contracts']={foreach($sample in Invoke-QuietSecondPassChecks -WorkspaceRoot $WorkspaceRoot){$performance.Add($sample)}}
+    $cases['Gallery preserves prerelease labels and keeps numeric manifest versions separate']={
+        & {
+            param($scripts)
+            . (Join-Path $scripts Common.ps1);. (Join-Path $scripts Gallery.ps1)
+            foreach($label in @('preview','preview1','beta2')){
+                $manifest=@{ModuleVersion='2.3.4';PrivateData=@{PSData=@{Prerelease=$label}}}
+                if((Get-QuietGalleryModuleVersion $manifest) -cne ('2.3.4-'+$label)){throw 'GalleryPrereleaseSuffixLost'}
+            }
+            if((Get-QuietGalleryModuleVersion @{ModuleVersion='2.3.4'}) -cne '2.3.4'){throw 'StableGalleryVersionChanged'}
+            foreach($invalid in @('2.3.4-','2.3.4-preview.1','2.3.4-preview/other','2.3.4+build','2.3')){
+                $rejected=$false;try{$null=Get-QuietGalleryVersion $invalid}catch{$rejected=$_.Exception.Message -eq 'GalleryReleaseVersionMismatch'}
+                if(!$rejected){throw ('UnsafeGalleryVersionAccepted: '+$invalid)}
+            }
+        } (Join-Path $WorkspaceRoot scripts)
+    }
+    $cases['CI requires stable net10 and preview net11 integrated hosts on x64 and ARM64']={Assert-QuietHostMatrix $WorkspaceRoot}
+    $cases['managed target follows the actual CLR including preview and future hosts']={
+        $core=Get-Module FrenchExDev2.QuietCli.Core.PoSh
+        & $core {
+            foreach($major in @(10,11,12)){
+                $target=Resolve-QuietManagedTarget -RuntimeMajor $major
+                $expected=if($major -eq 10){'net10.0'}else{'net11.0'}
+                if($target.Framework -cne $expected){throw 'ManagedRuntimeSelectionMismatch'}
+            }
+            $rejected=$false;try{$null=Resolve-QuietManagedTarget -RuntimeMajor 9}catch{$rejected=$true}
+            if(!$rejected){throw 'IncompatibleHostAccepted'}
+        }
+        $identity=Get-QuietEngine
+        if($identity.Mode -eq 'InProcess'){
+            $expected=if([Environment]::Version.Major -ge 11){'.NETCoreApp,Version=v11.0'}else{'.NETCoreApp,Version=v10.0'}
+            Assert-QuietEqual $identity.Engine.TargetFramework $expected
+            Assert-QuietEqual $identity.Engine.ProcessId $PID
+        }
+    }
+    $cases['compiled framing and direct engine measure local overhead independently']={
+        foreach($sample in Measure-QuietLocalOverhead -Fixture $fixture -Dotnet $dotnet){$performance.Add($sample)}
+    }
+    $cases['CI process execution is independent and preserves streams failures stdin and deadlines']={
+        . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
+        $state=@{stdout='';stderr=''}
+        $r=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-Command','[Console]::Out.Write("sortie-é"); [Console]::Error.Write("diagnostic-λ"); exit 7') -State $state -OnOutput {param($e,$s)$s[$e.Stream]+=$e.Text}
+        Assert-QuietEqual $r.Outcome Failed
+        Assert-QuietEqual $r.ExitCode 7
+        Assert-QuietEqual $state.stdout 'sortie-é'
+        Assert-QuietEqual $state.stderr 'diagnostic-λ'
+        $state=@{Text=''}
+        $r=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-Command','$value=[Console]::In.ReadToEndAsync().GetAwaiter().GetResult(); [Console]::Out.Write($value)') -InputText 'ci-stdin-sentinel' -State $state -OnOutput {param($e,$s)$s.Text+=$e.Text}
+        Assert-QuietEqual $r.Outcome Success
+        Assert-QuietEqual $state.Text 'ci-stdin-sentinel'
+        if(($r|ConvertTo-Json -Compress) -like '*ci-stdin-sentinel*'){throw 'CI process metadata exposed stdin'}
+        $r=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-Command','[Threading.Tasks.Task]::Delay(30000).GetAwaiter().GetResult()') -TimeoutSeconds 1 -OnOutput {param($e,$s)}
+        Assert-QuietEqual $r.Outcome Timeout
+    }
+    $cases['every native property fuzz and mutation phase is mandatory for delivery']={
+        . (Join-Path $WorkspaceRoot 'scripts/Assert-PtyQualification.ps1')
+        $good=@{State=@{State='Success'};Baseline=@{State='Success';Assertions=43;PropertyGroups=6;Failed=0};Fuzz=@{State='Success';RequestedRuns=20000;ExecutedRuns=20000};Mutation=@{Selected=31;Killed=31;Survived=0;Invalid=0;Timeout=0;Error=0}}
+        Assert-PtyQualification $good
+        foreach($change in @(
+            {param($s)$s.State.State='Failed'},
+            {param($s)$s.Baseline.State='NotRun'},
+            {param($s)$s.Baseline.Assertions=42},
+            {param($s)$s.Baseline.PropertyGroups=5},
+            {param($s)$s.Baseline.Failed=1},
+            {param($s)$s.Fuzz.State='NotRequested'},
+            {param($s)$s.Fuzz.State='Timeout'},
+            {param($s)$s.Fuzz.ExecutedRuns=19999},
+            {param($s)$s.Fuzz.ExecutedRuns=$null},
+            {param($s)$s.Fuzz.RequestedRuns=1000;$s.Fuzz.ExecutedRuns=1000},
+            {param($s)$s.Mutation.Selected=0;$s.Mutation.Killed=0},
+            {param($s)$s.Mutation.Selected=30;$s.Mutation.Killed=30},
+            {param($s)$s.Mutation.Killed=30;$s.Mutation.Survived=1},
+            {param($s)$s.Mutation.Invalid=1},
+            {param($s)$s.Mutation.Timeout=1},
+            {param($s)$s.Mutation.Error=1}
+        )){
+            $candidate=$good|ConvertTo-Json -Depth 8|ConvertFrom-Json
+            & $change $candidate
+            $rejected=$false;try{Assert-PtyQualification $candidate}catch{$rejected=$_.Exception.Message -like 'NativeQualificationIncomplete*'}
+            Assert-QuietEqual $rejected $true 'No missing or failed validation phase may authorize a delivery'
+        }
+    }
+    $cases['native mutation refuses a mismatched guest before invoking a compiler']={
+        $directory=Join-Path $WorkspaceRoot ('artifacts/mutation-platform-tests/'+[guid]::NewGuid().ToString('N'))
+        [void][IO.Directory]::CreateDirectory($directory)
+        $actual=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+        $wrong=if($actual -ceq 'linux-arm64'){'linux-x64'}else{'linux-arm64'}
+        $script=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests/Invoke-PtyMutation.ps1'
+        . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
+        $r=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-File',$script,'-WorkspaceRoot',$WorkspaceRoot,'-RunDirectory',$directory,'-CompilerPath','missing-compiler-must-not-run','-ExpectedRuntimeIdentifier',$wrong,'-Worker') -TimeoutSeconds 60 -OnOutput {param($e,$s)}
+        Assert-QuietEqual $r.Outcome Failed
+        $summary=Get-Content (Join-Path $directory 'summary.json') -Raw -Encoding utf8|ConvertFrom-Json
+        if($summary.State.Error -notlike '*NativeMutationRuntimeMismatch*'){throw 'Wrong guest was not rejected before compiler discovery'}
+        Assert-QuietEqual $summary.Mutation.Selected 0
+        Assert-QuietEqual (Test-Path (Join-Path $directory 'inputs.json')) $false
+    }
+    $cases['release gate rejects failed skipped cancelled or incomplete required jobs']={
+        $directory=Join-Path $WorkspaceRoot ('artifacts/gate-tests/'+[guid]::NewGuid().ToString('N'))
+        [void][IO.Directory]::CreateDirectory($directory)
+        $script=Join-Path $WorkspaceRoot 'scripts/Assert-QualificationGate.ps1'
+        $revision='1234567890abcdef1234567890abcdef12345678'
+        foreach($suite in @('All','Core','Git')){
+            foreach($job in @('WindowsResult','LinuxResult','MutationResult')){
+                foreach($result in @('success','failure','cancelled','skipped','')){
+                    $expectedMutation=if($suite -eq 'Git'){'skipped'}else{'success'}
+                    $ready=if($job -eq 'MutationResult'){$result -ceq $expectedMutation}else{$result -ceq 'success'}
+                    $id=[guid]::NewGuid().ToString('N')
+                    $output=Join-Path $directory ($id+'.output');$receipt=Join-Path $directory ($id+'.json')
+                    $arguments=@{Suite=$suite;Revision=$revision;WindowsResult='success';LinuxResult='success';MutationResult=$expectedMutation;ReceiptPath=$receipt;OutputPath=$output}
+                    $arguments[$job]=$result
+                    $accepted=$false
+                    try{& $script @arguments;$accepted=$true}catch{if($ready){throw}}
+                    Assert-QuietEqual $accepted $ready 'Only complete required job success may pass'
+                    Assert-QuietEqual (Test-Path $output) $ready 'A rejected revision must have no qualified_sha output'
+                    if($ready){Assert-QuietEqual ((Get-Content $output -Encoding utf8 -Raw).Trim()) ('qualified_sha='+$revision)}
+                }
+            }
+        }
+    }
+    $cases['CI images cover four native Linux targets and invalidate the cache on recipe changes']={
+        & {
+            param($root)
+            . (Join-Path $root 'scripts/CiImages.ps1')
+            $expected=@{
+                'linux-x64'=@('debian','x64');'linux-arm64'=@('debian','arm64')
+                'linux-musl-x64'=@('alpine','x64');'linux-musl-arm64'=@('alpine','arm64')
+            }
+            foreach($rid in $expected.Keys){
+                $plan=Get-QuietCiImagePlan $root $rid
+                if($plan.Platform -cne $expected[$rid][0] -or $plan.Architecture -cne $expected[$rid][1]){throw 'CI image targets the wrong native platform'}
+                if(!$plan.Arguments.SDK_URL.EndsWith('-'+$rid+'.tar.gz')){throw 'SDK archive belongs to another architecture/libc'}
+                if($plan.Fingerprint -cnotmatch '^[a-f0-9]{64}$'){throw 'Cache identity missing'}
+            }
+            $copy=Join-Path $root ('artifacts/ci-image-contract/'+[guid]::NewGuid().ToString('N'))
+            $files=@('global.json','build/ci-images.lock.json','scripts/CiImages.ps1','scripts/New-CiImage.ps1','FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/UpstreamSources.json')
+            $files+=@(Get-ChildItem (Join-Path $root '.github/containers') -File -Force|ForEach-Object {'.github/containers/'+$_.Name})
+            foreach($file in $files){$destination=Join-Path $copy $file;[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination));Copy-Item -LiteralPath (Join-Path $root $file) -Destination $destination}
+            $before=Get-QuietCiImagePlan $copy linux-arm64
+            [IO.File]::AppendAllText((Join-Path $copy '.github/containers/fetch-ci-tools.sh'),"`n# synthetic recipe change`n",[Text.UTF8Encoding]::new($false))
+            $after=Get-QuietCiImagePlan $copy linux-arm64
+            if($before.Fingerprint -ceq $after.Fingerprint){throw 'Changed recipe reused the old registry cache'}
+            $lockPath=Join-Path $copy 'build/ci-images.lock.json'
+            $lock=Get-Content $lockPath -Encoding utf8 -Raw|ConvertFrom-Json
+            ($lock.Platforms|Where-Object Rid -CEQ linux-arm64).SDK_SHA512='invalid'
+            [IO.File]::WriteAllText($lockPath,($lock|ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))
+            $rejected=$false
+            try{$null=Get-QuietCiImagePlan $copy linux-arm64}catch{$rejected=$_.Exception.Message -ceq 'CiImageDigestInvalid'}
+            if(!$rejected){throw 'Unverifiable SDK archive accepted'}
+        } $WorkspaceRoot
+    }
     $cases['cold engine and warm block-size measurements retain no business output']={
         Stop-QuietEngine
         $cold=[Diagnostics.Stopwatch]::StartNew();$identity=Get-QuietEngine;$cold.Stop()
@@ -98,14 +256,15 @@ Executes independent native byte and object invariants in a companion module.
             }
         } $WorkspaceRoot
         $identity=Get-QuietEngine
-        Assert-QuietEqual $identity.Engine.BuildRuntimeIdentifier ([Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)
+        $expected=if($identity.Mode -eq 'InProcess'){'portable'}else{[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier}
+        Assert-QuietEqual $identity.Engine.BuildRuntimeIdentifier $expected
     }
     $cases['C# protocol and concurrent SQLite assertions']={
         $assembly=Join-Path $PSScriptRoot 'lib/engine-tests/QuietCli.Engine.Tests.dll'
         $nativeDirectory=Join-Path $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/'+[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier+'/native')
         $r=quiet -AsObject -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} $dotnet $assembly $nativeDirectory
         Assert-QuietEqual $r.Outcome Success
-        Assert-QuietEqual $r.Data.Passed 13
+        Assert-QuietEqual $r.Data.Passed 26
         Assert-QuietEqual $r.Data.Failed 0
     }
     $cases['PTY reports a merged terminal counter without fake stderr separation']={
@@ -304,6 +463,23 @@ Executes independent native byte and object invariants in a companion module.
         }finally{[Globalization.CultureInfo]::CurrentCulture=$culture}
     }
     $cases['PowerShell functions have readable help and sources parse without errors']={
+        . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+        $paths=@(@(Get-QuietSourceFiles $WorkspaceRoot)|ForEach-Object {Join-Path $WorkspaceRoot $_.Path})+@(Join-Path $WorkspaceRoot 'repositories.lock.json')
+        foreach($path in $paths){
+            $bytes=[IO.File]::ReadAllBytesAsync($path).GetAwaiter().GetResult()
+            if([Array]::IndexOf($bytes,[byte]0) -ge 0){continue}
+            try{$text=[Text.UTF8Encoding]::new($false,$true).GetString($bytes)}catch{continue}
+            if($text.Contains("`r")){throw ('RepositoryTextMustUseLF: '+[IO.Path]::GetRelativePath($WorkspaceRoot,$path))}
+        }
+        $jsonPath=Join-Path $WorkspaceRoot ('artifacts/lf-writer/'+[guid]::NewGuid().ToString('N')+'.json')
+        [void][IO.Directory]::CreateDirectory((Split-Path $jsonPath -Parent))
+        $random=[Random]::new(72055)
+        foreach($iteration in 1..64){
+            $value="é漢 $($random.Next())`r`nvalue`rnext"
+            Write-WorkspaceJson $jsonPath @{Value=$value;Empty='';Items=@(1,2)}
+            $written=[IO.File]::ReadAllTextAsync($jsonPath,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
+            if($written.Contains("`r") -or ($written|ConvertFrom-Json).Value -cne $value){throw 'JsonWriterLineEndingsOrValueChanged: seed 72055'}
+        }
         $directories=@('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh','FrenchExDev2.QuietCli.Git.PoSh','FrenchExDev2.QuietCli.Git.Tests.PoSh','scripts')
         foreach($directory in $directories){
             foreach($file in Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot $directory) -Recurse -File -Include *.ps1,*.psm1 | Where-Object FullName -NotMatch '[\\/](bin|obj|lib|artifacts|\.git)[\\/]'){
@@ -339,15 +515,20 @@ Executes independent native byte and object invariants in a companion module.
     $cases['PSGallery packages install outside sources with their embedded engine and Core dependency']={
         $root=Join-Path $WorkspaceRoot ('artifacts/gallery-tests/'+[guid]::NewGuid().ToString('N'))
         $packages=Join-Path $root packages
-        $prepared=& (Join-Path $WorkspaceRoot 'scripts/New-QuietGalleryPackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $packages -Version 0.1.0
+        $prepared=& (Join-Path $WorkspaceRoot 'scripts/New-QuietGalleryPackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $packages -Version 0.2.0-preview
+        Assert-QuietEqual $prepared.Version '0.2.0-preview'
         & {
             param($scripts,$packages)
             . (Join-Path $scripts Common.ps1);. (Join-Path $scripts Gallery.ps1)
-            $rejected=$false
-            try{$null=Test-QuietGalleryPackageSet $packages -Version 9.9.9}catch{$rejected=$_.Exception.Message -eq 'GalleryReleaseVersionMismatch'}
-            if(!$rejected){throw 'Wrong release version was accepted'}
-            $null=& (Join-Path $scripts Publish-QuietGallery.ps1) -PackageDirectory $packages -Version 0.1.0 -ValidateOnly
-            $null=& (Join-Path $scripts Publish-QuietGallery.ps1) -PackageDirectory $packages -Version 0.1.0 -WhatIf
+            foreach($wrong in @('9.9.9','0.2.0','0.2.0-preview1')){
+                $rejected=$false
+                try{$null=Test-QuietGalleryPackageSet $packages -Version $wrong}catch{$rejected=$_.Exception.Message -eq 'GalleryReleaseVersionMismatch'}
+                if(!$rejected){throw 'Wrong or stripped prerelease version was accepted'}
+            }
+            $null=& (Join-Path $scripts Publish-QuietGallery.ps1) -PackageDirectory $packages -Version 0.2.0-preview -ValidateOnly
+            $null=& (Join-Path $scripts Publish-QuietGallery.ps1) -PackageDirectory $packages -Version 0.2.0-preview -WhatIf
+            $plan=Test-QuietGalleryPackageSet $packages -Version '0.2.0-preview'
+            if($plan.CoreDependencyVersion -cne '0.2.0-preview'){throw 'PreviewDependencySuffixLost'}
         } (Join-Path $WorkspaceRoot scripts) $packages
         $probe=Join-Path $PSScriptRoot audit/Probe-GalleryInstall.ps1
         $r=quiet -AsObject -Role Infrastructure -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} pwsh -NoProfile -File $probe -PackageDirectory $packages -InstallationDirectory (Join-Path $root installed)
@@ -355,6 +536,7 @@ Executes independent native byte and object invariants in a companion module.
         Assert-QuietEqual $r.Data.Installed $true
         Assert-QuietEqual $r.Data.CoreLoadedFromPackage $true
         Assert-QuietEqual $r.Data.GitLoadedFromPackage $true
+        Assert-QuietEqual $r.Data.PackageVersion '0.2.0-preview'
         $galleryEvidence.Add(@{Packages=$prepared.Packages;Targets=$prepared.Targets;Installation=$r.Data;ExternalPublication=$false})
     }
     $passed=0;$failed=0;$results=[Collections.Generic.List[object]]::new()

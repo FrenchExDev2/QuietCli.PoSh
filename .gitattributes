@@ -1,16 +1,14 @@
-* text=auto eol=lf whitespace=cr-at-eol
-**/resources/** -text
-**/third_party/** -text -whitespace
-**/licenses/** -text -whitespace
-**/provenance/** -text -whitespace
-**/native/** -text
-**/LICENSE* -text
-**/NOTICE* -text
-**/COPYRIGHT* -text
-docs/audits/** -text
-build/zig.lock.json -text
-repositories.lock.json -text
+* text=auto eol=lf
+**/third_party/** -whitespace
+**/licenses/** -whitespace
+**/provenance/** -whitespace
 *.dll binary
 *.exe binary
 *.so binary
 *.dylib binary
+*.png binary
+*.ico binary
+*.zip binary
+*.nupkg binary
+*.pdb binary
+**/resources/transport/**/quietcli-pty binary

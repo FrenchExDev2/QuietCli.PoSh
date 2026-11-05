@@ -26,8 +26,14 @@ function Assert-QuietGitInteraction {
     Bound option units, excluding flag-looking option values.
     #>
     param($Runtime,$Request,$Binding)
-    $interactive=@($Binding.Options.Name|Where-Object{$_ -cin @('--interactive','--patch','-p','--edit-description')}).Count -gt 0
-    if($Request.Name -in @('add','checkout','stash','branch') -and $interactive -and !@('Interaction','InputText','InputBytes','InputPath'|Where-Object{$Runtime.Request.ContainsKey($_)}).Count){throw 'ExplicitInteractionRequired'}
+    $flags=@($Binding.Options.Name)
+    $interactive=@($flags|Where-Object {$_ -cin @('--interactive','--patch','-p','--edit-description')}).Count -gt 0
+    if($Request.Name -eq 'rebase' -and ('-i' -cin $flags -or '--edit-todo' -cin $flags)){$interactive=$true}
+    if($Request.Name -eq 'clean' -and '-i' -cin $flags){$interactive=$true}
+    if($Request.Name -eq 'config' -and ($Binding.Subcommand -ceq 'edit' -or '--edit' -cin $flags -or '-e' -cin $flags)){$interactive=$true}
+    if($Request.Name -cin @('merge','cherry-pick','revert') -and ('--edit' -cin $flags -or '-e' -cin $flags)){$interactive=$true}
+    if($Request.Name -eq 'tag' -and @($flags|Where-Object {$_ -cin @('--annotate','-a','--sign','-s')}).Count -and !@($flags|Where-Object {$_ -cin @('--message','-m','--file','-F')}).Count){$interactive=$true}
+    if($interactive -and !@('Interaction','InputText','InputBytes','InputPath'|Where-Object {$Runtime.Request.ContainsKey($_)}).Count){throw 'ExplicitInteractionRequired'}
 }
 function Invoke-QuietGitBranch {
     <#

@@ -34,9 +34,20 @@ internal sealed class MeasurementStore : IAsyncDisposable
     /// <summary>Persists whitelisted metadata. Payloads, callback text and business values are forbidden.</summary>
     /// <param name="metadata">Control or counter metadata, never business data.</param>
 /// <param name="kind">Metadata record kind.</param>
-    internal Task SaveAsync(JsonElement metadata, string kind) => ExecuteAsync(() =>
+    internal Task SaveAsync(JsonElement metadata, string kind) => SaveValidatedAsync(() => MeasurementModels.Validate(metadata, kind), kind);
+
+    /// <summary>Persists typed telemetry without transport serialization; storage JSON remains explicit.</summary>
+    /// <param name="metadata">Closed counter record.</param>
+    /// <param name="kind">Invocation or delivery.</param>
+    internal Task SaveAsync(MeasurementRecord metadata, string kind) => SaveValidatedAsync(() => MeasurementModels.Validate(metadata, kind), kind);
+
+    /// <summary>Validates once on the worker, then stores only the approved representation.</summary>
+    /// <param name="validate">Closed validation operation, not caller business code.</param>
+    /// <param name="kind">Storage kind.</param>
+    private Task SaveValidatedAsync(Func<JsonElement> validate, string kind) => ExecuteAsync(() =>
     {
-        metadata = MeasurementModels.Validate(metadata, kind);
+        var metadata = validate();
+        if (System.Text.Encoding.UTF8.GetByteCount(metadata.GetRawText()) > Protocol.HeaderLimit - 4096) throw new InvalidDataException("MeasurementRowTooLarge");
         // Reads one nullable scalar metadata field, never business Data.
         string? Value(string name) => metadata.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null ? value.GetString() : null;
         string id = kind == "delivery" ? Value("DeliveryId")! : Value("InvocationId")!;
@@ -52,16 +63,7 @@ internal sealed class MeasurementStore : IAsyncDisposable
     {
         if (!File.Exists(path)) return new { Rows = Array.Empty<JsonElement>(), Complete = true };
         using var database = new Database(path, false);
-        string sql = "SELECT id,timestamp_ms,payload FROM quiet2_events WHERE timestamp_ms>=? AND timestamp_ms<?";
-        var values = new List<object> { request.GetProperty("From").GetInt64(), request.GetProperty("To").GetInt64() };
-        if (request.TryGetProperty("Context", out var context) && context.ValueKind == JsonValueKind.String) { sql += " AND context=?"; values.Add(context.GetString()!); }
-        if (request.TryGetProperty("Generic", out var generic) && generic.GetBoolean()) sql += " AND context IS NULL";
-        if (request.TryGetProperty("SessionId", out var session) && session.ValueKind == JsonValueKind.String) { sql += " AND session_id=?"; values.Add(session.GetString()!); }
-        if (request.TryGetProperty("ModuleId", out var module) && module.ValueKind == JsonValueKind.String) { sql += " AND json_extract(payload,'$.HandlerId')=?"; values.Add(module.GetString()!); }
-        if (request.TryGetProperty("After", out var cursor) && cursor.ValueKind == JsonValueKind.Object) {
-            sql += " AND (timestamp_ms>? OR (timestamp_ms=? AND id>?))";
-            values.Add(cursor.GetProperty("Timestamp").GetInt64()); values.Add(cursor.GetProperty("Timestamp").GetInt64()); values.Add(cursor.GetProperty("Id").GetString()!);
-        }
+        var (sql, values) = Select(request);
         const int pageRows = 128;
         int pageBytes = Protocol.HeaderLimit / 2;
         sql += " ORDER BY timestamp_ms,id LIMIT 129";
@@ -78,6 +80,78 @@ internal sealed class MeasurementStore : IAsyncDisposable
         return new { Rows = selected.ToArray(), Complete = complete, After = complete ? null : after };
     });
 
+    /// <summary>Builds the parameterized time/context/session/module selection used by both reports and pages.</summary>
+    /// <param name="request">Control filters only.</param>
+    private static (string Sql, List<object> Values) Select(JsonElement request)
+    {
+        var (sql, values) = Select(GainSelection.Parse(request));
+        if (request.TryGetProperty("After", out var cursor) && cursor.ValueKind == JsonValueKind.Object) {
+            sql += " AND (timestamp_ms>? OR (timestamp_ms=? AND id>?))";
+            values.Add(cursor.GetProperty("Timestamp").GetInt64()); values.Add(cursor.GetProperty("Timestamp").GetInt64()); values.Add(cursor.GetProperty("Id").GetString()!);
+        }
+        return (sql, values);
+    }
+
+    /// <summary>Builds the same parameterized selection from typed report filters.</summary>
+    /// <param name="request">Closed selection.</param>
+    private static (string Sql, List<object> Values) Select(GainSelection request)
+    {
+        string sql = "SELECT id,timestamp_ms,payload FROM quiet2_events WHERE timestamp_ms>=? AND timestamp_ms<?";
+        var values = new List<object> { request.From, request.To };
+        if (request.Context != null) { sql += " AND context=?"; values.Add(request.Context); }
+        if (request.Generic) sql += " AND context IS NULL";
+        if (request.SessionId != null) { sql += " AND session_id=?"; values.Add(request.SessionId); }
+        if (request.ModuleId != null) { sql += " AND json_extract(payload,'$.HandlerId')=?"; values.Add(request.ModuleId); }
+        return (sql, values);
+    }
+
+    /// <summary>Aggregates safe metadata on the SQLite worker without exporting original event rows.</summary>
+    /// <param name="request">Validated filters, grouping dimension and event budget.</param>
+    /// <param name="cancellation">Cancels abandoned scans between bounded pages and individual records.</param>
+    internal Task<GainReport> GainAsync(JsonElement request, CancellationToken cancellation = default) => GainAsync(GainSelection.Parse(request), cancellation);
+
+    /// <summary>Aggregates a closed selection without encoding transport filters.</summary>
+    /// <param name="request">Detached filter values.</param>
+    /// <param name="cancellation">Cancels abandoned scans.</param>
+    internal Task<GainReport> GainAsync(GainSelection request, CancellationToken cancellation = default) => ExecuteAsync(() =>
+    {
+        int maximum = request.MaxEvents;
+        if (maximum < 1 || maximum > 1000000) throw new InvalidDataException("InvalidGainEventBudget");
+        var accumulator = new GainAccumulator(request.GroupBy);
+        if (!File.Exists(path)) return accumulator.Build(true);
+        using var database = new Database(path, false);
+        var (selection, filters) = Select(request);
+        long? timestamp = null; string? identifier = null; int consumed = 0;
+        database.Execute("BEGIN", []);
+        try
+        {
+            while (true)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                string sql = selection; var values = new List<object>(filters);
+                if (timestamp.HasValue)
+                {
+                    sql += " AND (timestamp_ms>? OR (timestamp_ms=? AND id>?))";
+                    values.Add(timestamp.Value); values.Add(timestamp.Value); values.Add(identifier!);
+                }
+                int count = Math.Min(128, maximum - consumed + 1);
+                sql += " ORDER BY timestamp_ms,id LIMIT ?"; values.Add(count);
+                var rows = database.Query(sql, values.ToArray());
+                foreach (var row in rows)
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    if (consumed == maximum) return accumulator.Build(false);
+                    string payload = (string)row["payload"];
+                    if (System.Text.Encoding.UTF8.GetByteCount(payload) > Protocol.HeaderLimit - 4096) throw new InvalidDataException("MeasurementRowTooLarge");
+                    var safe = MeasurementProjection.Read(payload);
+                    accumulator.Add(safe.Deserialize<MeasurementRecord>() ?? throw new InvalidDataException("InvalidMeasurementRecord"));
+                    consumed++; timestamp = (long)row["timestamp_ms"]; identifier = (string)row["id"];
+                }
+                if (rows.Count < count) return accumulator.Build(true);
+            }
+        }
+        finally { database.Execute("ROLLBACK", []); }
+    });
     /// <summary>Scrubs legacy diagnostic content only following an explicit caller confirmation.</summary>
     /// <param name="confirmed">Required irreversible-operation confirmation.</param>
     internal Task<int> ScrubAsync(bool confirmed) => ExecuteAsync(() => {

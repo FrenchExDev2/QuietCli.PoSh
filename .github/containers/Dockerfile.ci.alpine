@@ -1,0 +1,19 @@
+# Objectif : Construire le banc musl x64/ARM64 avec le paquet PowerShell natif Alpine.
+FROM docker.io/library/alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS tools
+RUN apk add --no-cache ca-certificates curl build-base openssl-dev zlib-dev curl-dev expat-dev perl
+ARG SDK_URL
+ARG SDK_SHA512
+ARG GIT_URL
+ARG GIT_SHA256
+COPY fetch-ci-tools.sh /tmp/fetch-ci-tools.sh
+RUN sh /tmp/fetch-ci-tools.sh
+
+FROM docker.io/library/alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS ci
+ARG POWERSHELL_PACKAGE=7.6.9-r0
+RUN apk add --no-cache "powershell=${POWERSHELL_PACKAGE}" ca-certificates icu-data-full icu-libs libatomic libstdc++ libgcc libssl3 libcurl expat sqlite-libs openssh-client perl tzdata gcc musl-dev g++ clang compiler-rt
+# Overlay the pinned SDK after apk installs PowerShell's .NET 10 dependency; keep both runtimes.
+COPY --from=tools /opt/dotnet /usr/share/dotnet
+COPY --from=tools /opt/git /opt/git
+ENV DOTNET_ROOT=/usr/share/dotnet PATH=/opt/git/bin:/usr/share/dotnet:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin LANG=C.UTF-8 DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false DOTNET_CLI_TELEMETRY_OPTOUT=1 POWERSHELL_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
+WORKDIR /workspace
+ENTRYPOINT ["pwsh"]

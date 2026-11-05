@@ -166,13 +166,13 @@ function Invoke-QuietGitPush {
     $version=$Runtime.State.DetectedVersion
 
         if($Runtime.Request.Transport -ne 'Pipe'){throw 'PushPorcelainRequiresPipe: use explicit -Output for terminal control.'}
-        $state=@{References=[Collections.Generic.List[object]]::new();Remote=$null}
+        Import-QuietGitParser
+     $state=@{References=[Collections.Generic.List[object]]::new();Remote=$null}
         $result=Invoke-QuietGitNative $Runtime ($prefix+@('push','--porcelain')+@($request.Arguments)) -Data $state -Delimiter "`n" -Output {
             param($e,$r)
-            if($e.Stream -ne 'stdout'){return};$line=$e.Text.TrimEnd("`r")
-            if($line -match '^To (.+)$'){$r.Data.Remote=$Matches[1];return}
-            if($line -match '^([ =*+!\-])\t([^:]*):([^\t]*)\t(.*)$'){$r.Data.References.Add(@{Flag=$Matches[1];From=$Matches[2];To=$Matches[3];Summary=$Matches[4];Accepted=($Matches[1] -ne '!')})}
-        } -Complete {param($r)@{Command='push';Remote=$r.Data.Remote;References=$r.Data.References.ToArray();ExitCode=$r.Execution.ExitCode}}
+            if($e.Stream -ne 'stdout'){return}
+         [FrenchExDev2.QuietCli.Git.GitPush]::Receive($e.Text,$r.Data)
+     } -Complete {param($r)@{Command='push';Remote=$r.Data.Remote;References=$r.Data.References.ToArray();ExitCode=$r.Execution.ExitCode}}
         return $result.Data
 
 }

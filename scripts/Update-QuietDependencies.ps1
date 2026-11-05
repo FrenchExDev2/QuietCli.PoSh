@@ -37,8 +37,13 @@ foreach($file in Get-ChildItem (Join-Path $moduleRoot 'resources') -Recurse -Fil
         $licenseSource=Join-Path $ReferenceRoot ('third_party/'+$(if($package -eq 'quietcli-pty'){'transport'}else{$package}))
         $licenseDestination=Join-Path $moduleRoot ('third_party/'+$package)
         [void][IO.Directory]::CreateDirectory($licenseDestination)
-        foreach($license in Get-ChildItem -LiteralPath $licenseSource -File){Copy-Item -LiteralPath $license.FullName -Destination $licenseDestination -Force}
-        $licenseFiles=@(Get-ChildItem -LiteralPath $licenseDestination -File|ForEach-Object{@{Path=[IO.Path]::GetRelativePath($moduleRoot,$_.FullName).Replace('\','/');SHA256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})
+        foreach($license in Get-ChildItem -LiteralPath $licenseSource -File){
+            $text=[IO.File]::ReadAllTextAsync($license.FullName,[Text.Encoding]::UTF8).GetAwaiter().GetResult().Replace("`r`n","`n").Replace("`r","`n")
+            [void][IO.File]::WriteAllTextAsync((Join-Path $licenseDestination $license.Name),$text,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+        }
+        $licenseFiles=@(Get-ChildItem -LiteralPath $licenseDestination -File|ForEach-Object{
+            @{Path=[IO.Path]::GetRelativePath($moduleRoot,$_.FullName).Replace('\','/');SHA256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;OriginalSHA256=(Get-FileHash -LiteralPath (Join-Path $licenseSource $_.Name) -Algorithm SHA256).Hash;Normalization='UTF-8 LF'}
+        })
         $packages.Add($package,@{Id=$package;Version=$version;Source=$(if($package -eq 'quietcli-pty'){'resources/transport/*/build.json'}else{"https://api.nuget.org/v3-flatcontainer/$package/$version/$package.$version.nupkg"});LicenseEvidence=$licenseFiles;Provenance='Content matches the inspected local source manifest; package author authenticity is not inferred from a checksum.'})
     }
 }

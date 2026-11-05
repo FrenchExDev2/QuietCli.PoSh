@@ -20,35 +20,8 @@ Parses one patch line while preserving non-UTF8 payloads and combined diff recor
     Parsed patch state.
     #>
     param([byte[]]$Record,[hashtable]$Data)
-    $line=ConvertFrom-QuietGitBytes $Record
-    if($line -isnot [string]){
-        $row=@{Kind='ByteContent';Content=$line}
-        if($Data.CurrentHunk){$Data.CurrentHunk.Lines.Add($row)}elseif($Data.CurrentFile){$Data.CurrentFile.Metadata.Add($row)}else{$Data.Preamble.Add($row)}
-        return
-    }
-    if($line -match '^diff --(git|cc|combined) (.*)$'){
-        $file=@{Header=$line;CommitId=$Data.CurrentCommit;Combined=($Matches[1] -ne 'git');Labels=$Matches[2];OldLabel=$null;NewLabel=$null;OldMode=$null;NewMode=$null;Binary=$false;Metadata=[Collections.Generic.List[object]]::new();Hunks=[Collections.Generic.List[object]]::new()}
-        $Data.Files.Add($file);$Data.CurrentFile=$file;$Data.CurrentHunk=$null;return
-    }
-    if($line -match '^commit ([0-9a-f]+)'){$Data.CurrentCommit=$Matches[1];$Data.Commits.Add(@{ObjectId=$Matches[1]});$Data.CurrentFile=$null;$Data.CurrentHunk=$null;$Data.Preamble.Add(@{Text=$line});return}
-    if(!$Data.CurrentFile){$Data.Preamble.Add(@{Text=$line});return}
-    $file=$Data.CurrentFile
-    if($line -match '^(@@+)(.*)\1(.*)$'){
-        $hunk=@{Header=$line;Combined=($Matches[1].Length -gt 2);Ranges=@([regex]::Matches($Matches[2],'[-+]\d+(?:,\d+)?')|ForEach-Object{$_.Value});Lines=[Collections.Generic.List[object]]::new()}
-        $file.Hunks.Add($hunk);$Data.CurrentHunk=$hunk;return
-    }
-    if($Data.CurrentHunk){
-        $kind=if($line.StartsWith('\ No newline')){'NoFinalNewline'}elseif($Data.CurrentHunk.Combined){'CombinedContent'}elseif($line.StartsWith('+')){'Addition'}elseif($line.StartsWith('-')){'Deletion'}else{'Context'}
-        $Data.CurrentHunk.Lines.Add(@{Kind=$kind;Text=$line});return
-    }
-    switch -Regex ($line){
-        '^--- (.*)$' {$file.OldLabel=$Matches[1]}
-        '^\+\+\+ (.*)$' {$file.NewLabel=$Matches[1]}
-        '^(?:old mode|deleted file mode) (\d+)$' {$file.OldMode=$Matches[1]}
-        '^(?:new mode|new file mode) (\d+)$' {$file.NewMode=$Matches[1]}
-        '^(?:Binary files |GIT binary patch)' {$file.Binary=$true}
-    }
-    $file.Metadata.Add(@{Text=$line})
+    Import-QuietGitParser
+    [FrenchExDev2.QuietCli.Git.GitRecords]::Patch($Record,$Data)
 }
 function Complete-QuietGitPatch {
     <#

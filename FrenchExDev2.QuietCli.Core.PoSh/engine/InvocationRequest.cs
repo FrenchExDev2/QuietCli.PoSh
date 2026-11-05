@@ -42,6 +42,19 @@ internal sealed record InvocationRequest(string Id, string FilePath, string[] Ar
         return new(id, request.GetProperty("FilePath").GetString()!, request.GetProperty("ArgumentList").EnumerateArray().Select(x => x.GetString()!).ToArray(), request.GetProperty("WorkingDirectory").GetString()!, environment, transport, columns, rows, timeout, drain, size, request.GetProperty("SuccessExitCodes").EnumerateArray().Select(x => x.GetInt32()).ToArray(), request.GetProperty("KeepInputOpen").GetBoolean(), input);
     }
 
+    /// <summary>Validates direct and isolated launch options before any side effect.</summary>
+    internal InvocationRequest Validated()
+    {
+        if (!double.IsFinite(TimeoutSeconds) || TimeoutSeconds <= 0 || TimeoutSeconds > (uint.MaxValue - 1L) / 1000.0) throw new ArgumentOutOfRangeException(nameof(TimeoutSeconds));
+        if (!double.IsFinite(DrainTimeoutSeconds) || DrainTimeoutSeconds < 0.05 || DrainTimeoutSeconds > 300) throw new ArgumentOutOfRangeException(nameof(DrainTimeoutSeconds));
+        if (ReadBlockBytes < 1024 || ReadBlockBytes > Protocol.BlockSize) throw new ArgumentOutOfRangeException(nameof(ReadBlockBytes));
+        ValidateDimensions(Columns, Rows);
+        if (Transport is not ("Pipe" or "Pty")) throw new ArgumentException("InvalidTransport");
+        if (string.IsNullOrEmpty(Id) || Id.Length > 128) throw new ArgumentException("InvalidInvocationId");
+        if (string.IsNullOrEmpty(FilePath) || string.IsNullOrEmpty(Directory) || Arguments == null || Environment == null || SuccessCodes == null) throw new ArgumentException("InvalidNativeRequest");
+        return this;
+    }
+
     /// <summary>Uses the same limits for initial dimensions and interactive resizes.</summary>
     /// <param name="columns">Terminal width.</param>
     /// <param name="rows">Terminal height.</param>

@@ -10,7 +10,7 @@ Exact published version.
 .PARAMETER Headless
 Reserved for CI without a desktop.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,[switch]$Headless)
+[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+(?:-[A-Za-z][A-Za-z0-9-]*)?$')][string]$Version,[switch]$Headless)
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot Common.ps1)
 $run=Join-Path $WorkspaceRoot ('artifacts/gallery-validation/'+[DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))
 [void][IO.Directory]::CreateDirectory($run)

@@ -18,6 +18,6 @@ $lock=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.
 $source=@($lock.Sources|Where-Object Version -EQ $GitVersion)|Select-Object -First 1
 if(!$source){throw 'GitVersionNotLocked'}
 $state=@{Lines=0;Diagnostics=[Collections.Generic.Queue[string]]::new()}
-$result=pump -AsObject -TimeoutSeconds 1800 -WorkingDirectory $WorkspaceRoot -State $state -OnOutput {param($record,$state)$state.Lines++;if($state.Diagnostics.Count -ge 12){$null=$state.Diagnostics.Dequeue()};$state.Diagnostics.Enqueue($record.Text)} -Complete {param($state,$capture)@{Lines=$state.Lines;Diagnostics=@($state.Diagnostics)}} podman build --pull=never --jobs 1 --build-arg "SDK_IMAGE=$SdkImage" --build-arg "GIT_VERSION=$GitVersion" --build-arg "GIT_SHA256=$($source.SHA256)" -f (Join-Path $WorkspaceRoot '.github/containers/Containerfile.debian') -t $Tag (Join-Path $WorkspaceRoot '.github/containers')
-$result|Out-QuietResult -MaxOutputBytes 5000
+$result=Invoke-CiProcess -FilePath podman -ArgumentList @('build','--pull=never','--jobs','1','--build-arg',"SDK_IMAGE=$SdkImage",'--build-arg',"GIT_VERSION=$GitVersion",'--build-arg',"GIT_SHA256=$($source.SHA256)",'-f',(Join-Path $WorkspaceRoot '.github/containers/Containerfile.debian'),'-t',$Tag,(Join-Path $WorkspaceRoot '.github/containers')) -TimeoutSeconds 1800 -WorkingDirectory $WorkspaceRoot -State $state -OnOutput {param($record,$state)$state.Lines++;if($state.Diagnostics.Count -ge 12){$null=$state.Diagnostics.Dequeue()};$state.Diagnostics.Enqueue($record.Text)}
+[pscustomobject]@{Outcome=$result.Outcome;Lines=$state.Lines;Diagnostics=@($state.Diagnostics)}
 if($result.Outcome -ne 'Success'){throw 'DebianImageBuildFailed'}

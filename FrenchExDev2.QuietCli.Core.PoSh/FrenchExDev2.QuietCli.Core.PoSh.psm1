@@ -4,6 +4,7 @@ Set-StrictMode -Version Latest
 $script:QuietRoot=$PSScriptRoot
 $script:QuietSession=[guid]::NewGuid().ToString('N')
 $script:QuietEngine=$null
+$script:QuietManagedAssembly=$null
 $script:QuietHandlers=[ordered]@{}
 $script:QuietProbeCache=@{}
 $script:QuietStack=[Collections.Generic.Stack[object]]::new()
@@ -13,4 +14,4 @@ if($script:QuietProtocol.Version -ne 1 -or $script:QuietProtocol.BlockSize -gt 1
 foreach($source in @('Contracts','Dependencies','Protocol','Runtime','Invoke','Delivery','Registry','Gain','Scaffold')){. (Join-Path $PSScriptRoot "src/$source.ps1")}
 Set-Alias -Name quiet -Value Invoke-QuietCli
 $ExecutionContext.SessionState.Module.OnRemove={Stop-QuietEngine}
-Export-ModuleMember -Function Invoke-QuietCli,Out-QuietResult,ConvertTo-QuietJson,Get-QuietCliGain,Repair-QuietCliMeasurementPrivacy,Register-QuietHandler,Get-QuietHandler,Unregister-QuietHandler,New-QuietModule,Stop-QuietEngine,Get-QuietEngine -Alias quiet
+Export-ModuleMember -Function Invoke-QuietCli,Out-QuietResult,ConvertTo-QuietJson,Get-QuietCliGain,Repair-QuietCliMeasurementPrivacy,Register-QuietHandler,Get-QuietHandler,Unregister-QuietHandler,New-QuietModule,New-QuietByteRecordFramer,Stop-QuietEngine,Get-QuietEngine -Alias quiet

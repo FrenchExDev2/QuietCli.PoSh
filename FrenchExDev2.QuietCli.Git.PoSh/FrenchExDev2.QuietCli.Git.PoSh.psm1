@@ -1,12 +1,16 @@
 #requires -Version 7.6
 $script:GitRoot=$PSScriptRoot
+$script:GitModuleManifest=Import-PowerShellDataFile (Join-Path $PSScriptRoot 'FrenchExDev2.QuietCli.Git.PoSh.psd1')
+$script:GitModuleVersion=[string]$script:GitModuleManifest.ModuleVersion
+if($script:GitModuleManifest.PrivateData.PSData.ContainsKey('Prerelease') -and $script:GitModuleManifest.PrivateData.PSData.Prerelease){$script:GitModuleVersion+='-'+$script:GitModuleManifest.PrivateData.PSData.Prerelease}
 $script:GitContractRoot=$PSScriptRoot
 $script:GitInventory=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'metadata/Git.Inventory.json') -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable -Depth 50
 $script:GitSpecifications=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'metadata/Git.Contracts.json') -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable -Depth 50
 $script:GitArgumentSchema=$null
+$script:GitParserAssembly=$null
 $script:GitArtifacts=@{}
 $script:GitHandlerCatalogue=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'metadata/Git.HandlerCatalogue.json') -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable
-foreach($source in @('Arguments','ArgumentSchema','StatusRecords','Records','Diff','History','Repository','Semantics','Commands')){. (Join-Path $PSScriptRoot "src/$source.ps1")}
+foreach($source in @('Managed','Arguments','ArgumentSchema','StatusRecords','Records','Diff','History','Repository','Semantics','RepositoryCommands','Commands')){. (Join-Path $PSScriptRoot "src/$source.ps1")}
 $script:GitExecutors=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
 foreach($entry in $script:GitHandlerCatalogue.Handlers.GetEnumerator()){
     if($entry.Value -notmatch '^Invoke-QuietGit[A-Za-z]+$'){throw 'InvalidGitHandlerFunction'}
@@ -14,7 +18,7 @@ foreach($entry in $script:GitHandlerCatalogue.Handlers.GetEnumerator()){
 }
 $script:GitHandlerCatalogue.Commands=@($script:GitExecutors.Keys)
 Register-QuietHandler -Id 'FrenchExDev2.QuietCli.Git.PoSh' -Definition @{
- Binary='git';ModuleVersion='0.1.0';VersionRange='stable >=2.40.0 <2.57.0, including .windows.N'
+ Binary='git';ModuleVersion=$script:GitModuleVersion;VersionRange='stable >=2.40.0 <2.57.0, including .windows.N'
  Summary='Observed Git operation.';Qualification='Partial'
  Documentation=@('https://git-scm.com/docs/git','https://git-scm.com/docs/git-status','https://git-scm.com/docs/git-commit','https://git-scm.com/docs/git-push')
  SupportedForms=@($script:GitExecutors.Keys)

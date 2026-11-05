@@ -12,6 +12,7 @@ Distinguishes between default history and explicitly requested formatting.
     Native globals.
     #>
     param($Runtime,$Request,$Binding,[string[]]$Prefix)
+    Import-QuietGitParser
     $flags=@($Binding.Options.Name)
     $explicit=@('--format','--pretty','--oneline','--graph','--raw','--numstat','--name-only','--name-status','--stat','--shortstat','--dirstat','--summary','--check','--word-diff','--color-words','--binary','--output','--color','-z','--null')
     if(@($flags|Where-Object{$_ -cin $explicit}).Count){$delimiter=if('-z' -cin $flags -or '--null' -cin $flags){[byte]0}else{[byte]10};return Invoke-QuietGitRequestedFormat $Runtime ($Prefix+@($Request.Name)+@($Request.Arguments)) $Request.Name -Delimiter $delimiter}
@@ -19,8 +20,7 @@ Distinguishes between default history and explicitly requested formatting.
     $data=@{Command='log';GitVersion=$Runtime.State.DetectedVersion;OutputMode='Commits';Commits=[Collections.Generic.List[object]]::new();Scope=@{Walk='Requested native history walk';ImplicitLimit=$false;Format='NUL-delimited full object IDs, parents, author, committer, subject and body'}}
     $parser={
         param($f,$data)
-            if($f[0] -isnot [string] -or $f[0] -notmatch '^[0-9a-f]{40}(?:[0-9a-f]{24})?$'){throw 'MalformedLogObjectId'}
-            $data.Commits.Add(@{ObjectId=$f[0];Parents=@(([string]$f[1]).Split(' ',[StringSplitOptions]::RemoveEmptyEntries));Author=@{Name=$f[2];Email=$f[3];Date=$f[4]};Committer=@{Name=$f[5];Email=$f[6];Date=$f[7]};Subject=$f[8];Body=$f[9]})
+        [FrenchExDev2.QuietCli.Git.GitRecords]::Commit($f,$data)
     }.GetNewClosure()
     $format='--format=%H%x00%P%x00%an%x00%ae%x00%aI%x00%cn%x00%ce%x00%cI%x00%s%x00%b%x00%x00'
     $r=Invoke-QuietGitFieldRecords $Runtime ($Prefix+@('log',$format)+@($Request.Arguments)) $data -FieldCount 10 -Commit $parser

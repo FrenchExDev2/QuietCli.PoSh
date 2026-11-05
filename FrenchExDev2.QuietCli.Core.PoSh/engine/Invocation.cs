@@ -17,6 +17,8 @@ internal sealed class Invocation : IAsyncDisposable
     private readonly Channel<OutputBlock> output = Channel.CreateBounded<OutputBlock>(new BoundedChannelOptions(ProtocolSpecification.QueueBlocks) { FullMode = BoundedChannelFullMode.Wait });
     /// <summary>Native input contract used by the isolated runtime.</summary>
     private readonly Channel<byte[]> input = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(ProtocolSpecification.QueueBlocks) { FullMode = BoundedChannelFullMode.Wait });
+    /// <summary>Whether the serialized caller must retry a full input queue after draining.</summary>
+    private bool inputBackpressured;
     /// <summary>Native disconnected contract used by the isolated runtime.</summary>
     private readonly CancellationTokenSource disconnected = new();
     /// <summary>Native deadline contract used by the isolated runtime.</summary>
@@ -175,14 +177,39 @@ internal sealed class Invocation : IAsyncDisposable
     {
         if (output.Reader.TryRead(out var block)) return block;
         using var timeout = new CancellationTokenSource(100);
-        try { if (await output.Reader.WaitToReadAsync(timeout.Token) && output.Reader.TryRead(out block)) return block; }
+        Task<bool>? writable = null;
+        if (inputBackpressured)
+        {
+            inputBackpressured = false;
+            writable = input.Writer.WaitToWriteAsync(timeout.Token).AsTask();
+            if (writable.IsCompletedSuccessfully && writable.Result) return null;
+        }
+        Task<bool> readable = output.Reader.WaitToReadAsync(timeout.Token).AsTask();
+        try
+        {
+            if (writable != null)
+            {
+                var activity = await Task.WhenAny(readable, writable);
+                // A closed writer is not capacity: keep the normal bounded output/exit wait.
+                if (activity == writable && !await writable) await readable;
+            }
+            else await readable;
+            if (output.Reader.TryRead(out block)) return block;
+        }
         catch (OperationCanceledException) { }
+        finally
+        {
+            // End and observe both waits; never accumulate abandoned readers or writers.
+            timeout.Cancel();
+            try { if (writable != null) await Task.WhenAll(readable, writable); else await readable; }
+            catch (OperationCanceledException) { }
+        }
         return null;
     }
 
     /// <summary>Accepts one input block, returning false when the bounded writer is full.</summary>
     /// <param name="bytes">Exact byte block provided by the caller.</param>
-    internal bool TryWrite(byte[] bytes) => input.Writer.TryWrite(bytes);
+    internal bool TryWrite(byte[] bytes) { bool accepted = input.Writer.TryWrite(bytes); inputBackpressured = !accepted; return accepted; }
     /// <summary>Queues EOF after previously accepted writes.</summary>
     internal void CompleteInput() => input.Writer.TryComplete();
     /// <summary>Cancels only this owned process tree.</summary>
@@ -196,8 +223,8 @@ internal sealed class Invocation : IAsyncDisposable
         terminal.Resize(columns, rows);
     }
     /// <summary>Reports counters and native state without retaining native content.</summary>
-    internal object Snapshot() => new {
-        ProcessId, Transport, ReadBlockBytes = readBlockBytes, ExitCode = exitCode,
+    internal object Snapshot() => new NativeExecutionSnapshot {
+        ProcessId = ProcessId, Transport = Transport, ReadBlockBytes = readBlockBytes, ExitCode = exitCode,
         Outcome = timedOut ? "Timeout" : cancelled ? "Cancelled" : error != null || !successCodes.Contains(exitCode ?? -1) ? "Failed" : "Success",
         StdinBytesWritten = Interlocked.Read(ref stdinBytes),
         StdoutBytesRead = Transport == "Pty" ? (long?)null : Interlocked.Read(ref stdoutBytes),

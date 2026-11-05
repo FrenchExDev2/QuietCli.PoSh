@@ -21,7 +21,7 @@ if($ExistingInstallation){
     [void][IO.Directory]::CreateDirectory($root)
     $plan=Get-Content (Join-Path $PackageDirectory package-set.json) -Encoding utf8 -Raw|ConvertFrom-Json
     foreach($package in $plan.Packages){
-        $destination=Join-Path (Join-Path $root $package.Module) $plan.Version
+        $destination=Join-Path (Join-Path $root $package.Module) $plan.BaseVersion
         [void][IO.Directory]::CreateDirectory($destination)
         [void][IO.Compression.ZipFile]::ExtractToDirectoryAsync((Join-Path $PackageDirectory $package.File),$destination,[Threading.CancellationToken]::None).GetAwaiter().GetResult()
     }
@@ -38,6 +38,10 @@ try{
     $status=quiet -AsObject -WorkingDirectory $repository git status
     if($status.Outcome -ne 'Success' -or !$status.Completeness.Source -or !$status.Completeness.Analysis){throw 'InstalledGalleryGitFailed'}
     $identity=Get-QuietEngine
-    if($identity.Engine.BuildRuntimeIdentifier -cne [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier){throw 'InstalledGalleryRuntimeMismatch'}
-    @{Installed=$true;CoreLoadedFromPackage=$true;GitLoadedFromPackage=$true;RuntimeIdentifier=$identity.Engine.RuntimeIdentifier;Version=$core.Version.ToString();GitStatus=$status.Outcome}|ConvertTo-Json -Compress
+    $actual=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+    $expectedBuild=if($identity.Mode -eq 'InProcess'){'portable'}else{$actual}
+    if($identity.Engine.RuntimeIdentifier -cne $actual -or $identity.Engine.BuildRuntimeIdentifier -cne $expectedBuild){throw 'InstalledGalleryRuntimeMismatch'}
+    $packageVersion=$core.Version.ToString()
+    if($core.PrivateData.PSData.ContainsKey('Prerelease') -and $core.PrivateData.PSData.Prerelease){$packageVersion+='-'+$core.PrivateData.PSData.Prerelease}
+    @{Installed=$true;CoreLoadedFromPackage=$true;GitLoadedFromPackage=$true;RuntimeIdentifier=$identity.Engine.RuntimeIdentifier;Version=$core.Version.ToString();PackageVersion=$packageVersion;GitStatus=$status.Outcome}|ConvertTo-Json -Compress
 }finally{Stop-QuietEngine}

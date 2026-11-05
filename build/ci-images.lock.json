@@ -1,0 +1,12 @@
+{
+  "SchemaVersion": 1,
+  "SDK": "11.0.100-rc.3.26522.148",
+  "AlpinePowerShellPackage": "7.6.9-r0",
+  "GitVersion": "2.56.0",
+  "Platforms": [
+    { "Rid": "linux-x64", "Platform": "debian", "Architecture": "x64", "Base": "docker.io/library/debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3", "SDK_SHA512": "77ef603622f0632ce59fc631871c9d0ec0c7402399837c659ead5b6fc7ea898f7f64a2632ecdc8d3330e608307416a36bff90a4d10179210489676167b9b80da", "PowerShell": "7.6.7", "PowerShell_SHA256": "6896f9e3a6b0a354bf470835a96da76d2f801cd50dcf047ad7c4563bf93bf431" },
+    { "Rid": "linux-arm64", "Platform": "debian", "Architecture": "arm64", "Base": "docker.io/library/debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3", "SDK_SHA512": "e8788cba187792a64bdc5493da4c29066070f3996b0d7899d4f4ace2f76f7f101217e88834522394aa00e306f1c9506faf74f5cd2379fbee314b00ac8f34bb5b", "PowerShell": "7.6.7", "PowerShell_SHA256": "ba465efdfb0984c1c5dc5ed9eb0b79a7e91a1b52c45f99377058c0659b84d3f1" },
+    { "Rid": "linux-musl-x64", "Platform": "alpine", "Architecture": "x64", "Base": "docker.io/library/alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a", "SDK_SHA512": "9dbe557101abd45a141396c7029398451c33414edd899410c38848c40ac268b613eef973b0102af82c376ec7b9f5d89c63b01c9bc15abc59cc395980fb0c50c2" },
+    { "Rid": "linux-musl-arm64", "Platform": "alpine", "Architecture": "arm64", "Base": "docker.io/library/alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a", "SDK_SHA512": "f4df5332e05941eca167ad3c0cb795fa2f1335ff6d46f3b757b5616481e70cfab08a0b718902eef7232b082f70a54c6846e1a08b7167330fdd9acdb767615735" }
+  ]
+}

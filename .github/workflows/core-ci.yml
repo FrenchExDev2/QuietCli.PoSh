@@ -17,6 +17,9 @@ permissions:
   contents: read
 jobs:
   core-and-git:
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/ci.yml
     with:
       suite: All

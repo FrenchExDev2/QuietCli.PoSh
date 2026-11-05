@@ -4,7 +4,9 @@
 
 # FrenchExDev2.QuietCli.Git.PoSh
 
-Handlers Git utilisant le moteur QuietCli2. Dépend explicitement de `FrenchExDev2.QuietCli.Core.PoSh >= 0.1.0`.
+Handlers Git utilisant le moteur QuietCli2. Dépend explicitement de `FrenchExDev2.QuietCli.Core.PoSh >= 0.2.0`.
+
+The current development manifests declare `0.2.0-preview`. The numeric Core dependency is now `>= 0.2.0`; prepared Gallery packages pin the exact `0.2.0-preview` companion package. Prerelease status describes the module release, independently of the stable/preview PowerShell host selected at runtime.
 
 L’import enregistre un catalogue inerte. La première invocation observe la version du binaire ; les sondes suivantes utilisent un cache lié à son identité. La plage déclarée est Git stable `>= 2.40.0 < 2.57.0`, variantes `.windows.N` comprises. La compatibilité déclarée n’est pas une qualification de toutes les versions.
 
@@ -41,4 +43,19 @@ Sources : documentation officielle [Git](https://git-scm.com/docs/git), [status]
 
 ## Tests
 
-Le compagnon `FrenchExDev2.QuietCli.Git.Tests.PoSh` exécute 32 scénarios avec des assertions indépendantes : patches fragmentés et combinés, noms difficiles, blob binaire exact, listes structurées, mutations uniques, commit avec compteur de hook, push/fetch/pull locaux, contextes, mesures et cache des sondes. `./scripts/Invoke-WorkspaceCi.ps1 -Suite Git` lance ces scénarios avec le moniteur. La qualification complète 2.40–2.56 et trois plateformes reste un chantier distinct, dont les absences sont bloquantes.
+The companion executes 43 functional scenarios, or 45 with both explicitly selected C# mutation catalogues, including 22 nested compiled cases. Common forms are exercised against disposable local repositories; this is not full Git-version/platform qualification.
+
+## Principal command workflows
+
+The catalogue now registers 29 specialized command families. The new handlers cover:
+
+- `switch`, `restore`, `reset`, `rm`, `mv`, `clean`: one requested native execution and independent porcelain-v2 HEAD/index/worktree observations. `clean --dry-run` retains the explicitly requested plan records. Unavailable initial observations block a worktree mutation before execution; bare variants requiring different observations remain unqualified.
+- `merge`, `rebase`, `cherry-pick`, `revert`: one native operation, local before/after state and ref changes. A nonzero exit remains a failure; observed unmerged entries are reported as FailedWithConflicts. There is no automatic resolution, abort, continue or retry. Explicit follow-up commands are independent invocations. Requested rebase patch output is preserved.
+- `tag`: structured lightweight/annotated listings, observed ref creation/deletion and explicit signature/format output. Message-less annotation and interactive forms require explicit input.
+- `remote`: structured configured names, URLs and fetch/push directions; config mutations expose local before/after configuration without an implicit fetch. Explicit get-url/show output remains requested-format records.
+- `config`: NUL-delimited list/get/get-all results retain duplicate keys, multiline/empty/valueless settings and lossless bytes. Missing get results are explicit; writes execute once without echoing values. Advanced origin/scope/format variants keep their requested records.
+- `init`, `clone`: execute once and verify Git directory/bare identity for explicit destinations (or the current directory for init). Implicit clone destination discovery and recursive submodule state are not inferred.
+
+`GitConfigRecords`, `GitRemoteRecords` and `GitOperationOutcome` have separate responsibilities. PowerShell RepositoryCommands.ps1 owns orchestration; there is no command named daily and no GitDaily class. File-only mutations require two status observations; ref-moving operations add two ref observations rather than separate HEAD/branch processes. These are native process costs, not per-record engine IPC.
+
+Interactive option names are checked after binding, so flag-looking message values remain values. Qualification and reproducible commands are documented in [the audit](../docs/audits/2026-11-05-git-principal-commands.md). Reflog, grep, blame, bisect, recursive submodule and maintenance workflows are subsequent work; inventory membership does not qualify them.

@@ -54,39 +54,36 @@ Reports measured counters across all contexts by default, without creating a mis
     .PARAMETER AsObject
     Returns the report directly; does not serialize it.
     .PARAMETER MaxEvents
-    Maximum telemetry events retained by this report; a limit is explicitly marked incomplete.
+    Maximum telemetry events scanned by this report; a limit is explicitly marked incomplete.
     #>
     [CmdletBinding()]param([Alias('C')][string]$Context,[switch]$Generic,[string]$SessionId,[string]$ModuleId,[int]$Days=7,[DateTimeOffset]$From,[DateTimeOffset]$To=[DateTimeOffset]::UtcNow,[ValidateSet('Context','Command','Session','Module','Role','Outcome')][string]$GroupBy='Context',[switch]$AsObject,[ValidateRange(1,1000000)][int]$MaxEvents=10000)
     if($Generic -and $PSBoundParameters.ContainsKey('Context')){throw 'ContextAndGenericAreExclusive'}
     if(!$PSBoundParameters.ContainsKey('From')){$From=$To.AddDays(-$Days)}
     if($From -ge $To){throw 'InvalidTimeRange'}
-    $query=@{Action='query';From=$From.ToUnixTimeMilliseconds();To=$To.ToUnixTimeMilliseconds();Generic=[bool]$Generic}
+    $query=@{Action='gain';From=$From.ToUnixTimeMilliseconds();To=$To.ToUnixTimeMilliseconds();Generic=[bool]$Generic;GroupBy=$GroupBy;MaxEvents=$MaxEvents}
     if($PSBoundParameters.ContainsKey('Context')){$query.Context=$Context}
     if($SessionId){$query.SessionId=$SessionId}
     if($ModuleId){$query.ModuleId=$ModuleId}
-    $rows=[Collections.Generic.List[object]]::new()
-    $limited=$false
-    do{
-        $response=(Send-QuietRequest $query).Header.Data
-        foreach($row in $response.Rows){if($rows.Count -ge $MaxEvents){$limited=$true;break};$rows.Add($row)}
-        if($response.Complete -or $rows.Count -ge $MaxEvents){break}
-        if(!$response.After){throw 'MeasurementPaginationMissingCursor'}
-        $query.After=$response.After
-    }while($true)
-    $complete=[bool]$response.Complete -and !$limited
-    $calls=@($rows|Where-Object{!$_.PSObject.Properties['DeliveryId'] -or $null -eq $_.DeliveryId})
-    $deliveries=@($rows|Where-Object{$_.PSObject.Properties['DeliveryId'] -and $null -ne $_.DeliveryId})
-    $sourceMap=@{}
-    foreach($call in $calls){foreach($source in $call.Sources){$sourceMap[$source.InvocationId]=$source}}
-    $business=0L;$auxiliary=0L;$stdin=0L;$unknown=0
-    foreach($source in $sourceMap.Values){$size=if($null -ne $source.TerminalBytesRead){$source.TerminalBytesRead}else{[long]$source.StdoutBytesRead+[long]$source.StderrBytesRead};$stdin+=$source.StdinBytesWritten;if($source.Role -eq 'Business'){$business+=$size}else{$auxiliary+=$size};if(!$source.Complete){$unknown++}}
-    $rootDeliveries=@($deliveries|Where-Object{!$_.ParentId})
-    $delivered=if($rootDeliveries.Count){[long](($rootDeliveries|Measure-Object OutputBytes -Sum).Sum)}else{$null}
-    $groups=@($calls|Group-Object -CaseSensitive -Property {$row=$_;switch($GroupBy){Context {if($null -eq $row.Context){'(generic)'}else{$row.Context}} Session {$row.SessionId} Module {if($row.PSObject.Properties['HandlerId'] -and $row.HandlerId){$row.HandlerId}else{'(direct)'}} default {$row.$GroupBy}}}|ForEach-Object{@{Key=$_.Name;Invocations=$_.Count;Roots=@($_.Group|Where-Object{!$_.ParentId}).Count;Failures=@($_.Group|Where-Object Outcome -NE Success).Count}})
-    $report=[pscustomobject]@{From=$From;To=$To;Complete=$complete;Invocations=$calls.Count;Roots=@($calls|Where-Object{!$_.ParentId}).Count;UniqueNativeSources=$sourceMap.Count;StdinBytesWritten=$stdin;BusinessBytesObserved=$business;AuxiliaryBytesObserved=$auxiliary;IncompleteSources=$unknown;RootDeliveryBytes=$delivered;ReductionBytes=$null;NativeTokens=$null;Groups=$groups;Comparability='Observed effective native business output; source and delivered object may be projected. Context subtotals are not additive.'}
-    # A total reduction requires exactly one accounted delivery for every selected root.
-    $roots=@($calls|Where-Object{!$_.ParentId})
-    if($unknown -eq 0 -and $complete -and $roots.Count -gt 0 -and $rootDeliveries.Count -eq $roots.Count -and @($rootDeliveries.InvocationId|Select-Object -Unique).Count -eq $roots.Count -and @($roots|Where-Object{!$_.Completeness -or !$_.Completeness.Analysis}).Count -eq 0){$report.ReductionBytes=$business-$delivered}
+    $groups=[Collections.Generic.List[object]]::new();$reportId=$null;$report=$null
+    try{
+        do{
+            $response=(Send-QuietRequest $query).Header.Data
+            if($response.PSObject.Properties['Pending'] -and $response.Pending){
+                if(!$response.ReportId){throw 'MeasurementPaginationMissingCursor'}
+                $reportId=$response.ReportId;$query=@{Action='gain-poll';ReportId=$reportId}
+                continue
+            }
+            if($null -eq $report){$report=$response.Report}
+            foreach($group in $response.Groups){$groups.Add($group)}
+            if($response.GroupsComplete){break}
+            if(!$response.ReportId -or $null -eq $response.After){throw 'MeasurementPaginationMissingCursor'}
+            $reportId=$response.ReportId
+            $query=@{Action='gain-next';ReportId=$reportId;After=$response.After}
+        }while($true)
+    }finally{if($reportId){try{$null=Send-QuietRequest @{Action='gain-release';ReportId=$reportId}}catch{}}}
+    $report|Add-Member -NotePropertyName From -NotePropertyValue $From
+    $report|Add-Member -NotePropertyName To -NotePropertyValue $To
+    $report|Add-Member -NotePropertyName Groups -NotePropertyValue $groups.ToArray()
     if($AsObject){return $report}
     ConvertTo-Json -InputObject $report -Depth 20 -Compress
 }

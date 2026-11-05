@@ -299,18 +299,17 @@ Drives the separate native process without retaining its streams.
     }
     foreach ($stream in @('stdout', 'stderr', 'terminal')) {
         if (!$Runtime.AnalysisComplete) { break }
+        if (!$Runtime.TextStreams.ContainsKey($stream)) { continue }
         try {
-            $characters = [char[]]::new(8)
-            $count = $Runtime.Decoders[$stream].GetChars([byte[]]@(), 0, 0, $characters, 0, $true)
-            $tail = $Runtime.Pending[$stream] + [string]::new($characters, 0, $count)
+            $tail = $Runtime.TextStreams[$stream].Finish()
             if ($tail.Length) { Invoke-QuietOutputCallback $Runtime ([pscustomobject]@{Stream = $stream; Kind = 'Text'; Text = $tail; Bytes = $null; ByteCount = $null }) }
         }
         catch {
             $Runtime.AnalysisComplete = $false
             $Runtime.Errors.Add(@{Code = 'DecodeIncomplete'; Phase = 'Drain'; Message = $_.Exception.Message })
         }
-        $Runtime.Pending[$stream] = ''
     }
+    foreach ($processor in $Runtime.TextStreams.Values) { $processor.Dispose() }
     $Runtime.Sources[$Runtime.InvocationId] = [ordered]@{InvocationId =$Runtime.InvocationId
         Role                                                          =$request.Role
         StdoutBytesRead                                               =$Runtime.Execution.StdoutBytesRead

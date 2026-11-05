@@ -1,11 +1,11 @@
 # Objectif : Fournir les opérations communes et bornées du workspace QuietCli2.
-. (Join-Path $PSScriptRoot 'Bootstrap.ps1')
+. (Join-Path $PSScriptRoot 'Ci.Process.ps1')
 . (Join-Path $PSScriptRoot 'SourceIdentity.ps1')
 . (Join-Path $PSScriptRoot 'RuntimeTargets.ps1')
 function Invoke-WorkspaceNative {
     <#
 .SYNOPSIS
-Runs a documented tool through pump and emits only bounded diagnostics.
+Runs a CI tool directly, independently of the product engine, with bounded failure diagnostics.
     .PARAMETER FilePath
     Native executable.
     .PARAMETER Arguments
@@ -17,8 +17,13 @@ Runs a documented tool through pump and emits only bounded diagnostics.
     #>
     param([string]$FilePath,[string[]]$Arguments,[string]$WorkingDirectory,[ValidateRange(1,3600)][int]$TimeoutSeconds=600)
     $state=@{Lines=0;Diagnostics=[Collections.Generic.Queue[string]]::new()}
-    $result=pump -AsObject -TimeoutSeconds $TimeoutSeconds -WorkingDirectory $WorkingDirectory -State $state -OnOutput {param($record,$state)$state.Lines++;if($record.Text.Trim()){if($state.Diagnostics.Count -ge 10){$null=$state.Diagnostics.Dequeue()};$line=$record.Text;if($line.Length -gt 1024){$line=$line.Substring(0,1024)+'…'};$state.Diagnostics.Enqueue($line)}} -Complete {param($state,$capture)@{Lines=$state.Lines;Diagnostics=@($state.Diagnostics)}} $FilePath @Arguments
-    if($result.Outcome -ne 'Success'){$result|Out-QuietResult -MaxOutputBytes 6000;throw "Workspace operation failed: $FilePath ($($result.Outcome))"}
+    $result=Invoke-CiProcess -FilePath $FilePath -ArgumentList $Arguments -TimeoutSeconds $TimeoutSeconds -WorkingDirectory $WorkingDirectory -State $state -OnOutput {
+        param($record,$state)
+        $state.Lines++
+        if($record.Stream -eq 'stderr'){[void][Console]::Error.WriteLineAsync($record.Text).GetAwaiter().GetResult()}else{[void][Console]::Out.WriteLineAsync($record.Text).GetAwaiter().GetResult()}
+        if($record.Text.Trim()){if($state.Diagnostics.Count -ge 10){$null=$state.Diagnostics.Dequeue()};$line=$record.Text;if($line.Length -gt 1024){$line=$line.Substring(0,1024)+'…'};$state.Diagnostics.Enqueue($line)}
+    }
+    if($result.Outcome -ne 'Success'){foreach($line in $state.Diagnostics){Write-Host $line};throw "Workspace operation failed: $FilePath ($($result.Outcome))"}
     [pscustomobject]@{Tool=$FilePath;Outcome=$result.Outcome;Lines=$state.Lines}
 }
 function Write-WorkspaceJson {
@@ -33,7 +38,8 @@ Publishes UTF-8 state atomically for the read-only monitor.
     param([string]$Path,$Value)
     $Path=[IO.Path]::GetFullPath($Path,$PWD.Path)
     $temporary=$Path+'.'+[guid]::NewGuid().ToString('N')+'.tmp'
-    [void][IO.File]::WriteAllTextAsync($temporary,(ConvertTo-Json -InputObject $Value -Depth 32),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $json=(ConvertTo-Json -InputObject $Value -Depth 32).Replace("`r`n","`n").Replace("`r","`n")
+    [void][IO.File]::WriteAllTextAsync($temporary,$json,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     try{
         for($attempt=0;$attempt -le 5;$attempt++){
             try{[IO.File]::Move($temporary,$Path,$true);break}catch{

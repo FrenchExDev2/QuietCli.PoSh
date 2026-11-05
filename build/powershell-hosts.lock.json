@@ -1,0 +1,10 @@
+{
+  "SchemaVersion": 1,
+  "Source": "https://github.com/PowerShell/PowerShell/releases",
+  "Hosts": [
+    { "Channel": "stable", "Version": "7.6.7", "RuntimeMajor": 10, "Rid": "win-x64", "SHA256": "D2F952EBDBF24386CB8923553AA58E41A846DB35A6155EA04C58142A4B16DBB7" },
+    { "Channel": "stable", "Version": "7.6.7", "RuntimeMajor": 10, "Rid": "win-arm64", "SHA256": "119BD9221254EF3637523CB1990797618F5FD68848B57DE40F12B561D743149E" },
+    { "Channel": "preview", "Version": "7.7.0-preview.5", "RuntimeMajor": 11, "Rid": "win-x64", "SHA256": "BA727D1890F7DBCBA05286BC0E61FC9F168DE9BA2A1003C4934BCE8E38BBFD1B" },
+    { "Channel": "preview", "Version": "7.7.0-preview.5", "RuntimeMajor": 11, "Rid": "win-arm64", "SHA256": "8BF495D9CDA9BD701E3633B450946FA2F94772D812559E4A5ADAC7343CCD4CD9" }
+  ]
+}

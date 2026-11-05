@@ -25,7 +25,7 @@ if(!$SkipBuild){& (Join-Path $PSScriptRoot 'Build-Workspace.ps1') -WorkspaceRoot
 if(!$RunDirectory){$RunDirectory=Join-Path $WorkspaceRoot ('artifacts/tests/'+[DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))}
 if(Test-Path -LiteralPath $RunDirectory){throw 'TestRunDirectoryExists'}
 [void][IO.Directory]::CreateDirectory($RunDirectory)
-$runner=(Get-Command pwsh -CommandType Application|Select-Object -First 1).Source
+$runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
 $workerPath=Join-Path $PSScriptRoot 'Invoke-TestWorker.ps1'
 $monitorPath=Join-Path $PSScriptRoot 'Watch-Tests.ps1'
 $workerArguments=@('-File',('"'+$workerPath+'"'),'-WorkspaceRoot',('"'+$WorkspaceRoot+'"'),'-RunDirectory',('"'+$RunDirectory+'"'),'-Suite',$Suite)

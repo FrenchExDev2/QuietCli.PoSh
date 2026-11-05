@@ -8,38 +8,8 @@ Parses porcelain-v2 bytes, preserving raw paths and rename source boundaries.
     Parsed status state.
     #>
     param([byte[]]$Record,[hashtable]$Data)
-    if($Data.Pending){$Data.Pending.OriginalPath=ConvertFrom-QuietGitBytes $Record;$Data.Pending=$null;return}
-    if(!$Record.Length){return}
-    if($Record[0] -eq 35){
-        $space=[Array]::IndexOf($Record,[byte]32,2);if($space -lt 0){return}
-        $key=[Text.Encoding]::ASCII.GetString($Record,2,$space-2)
-        $bytes=[byte[]]::new($Record.Length-$space-1);[Array]::Copy($Record,$space+1,$bytes,0,$bytes.Length);$value=ConvertFrom-QuietGitBytes $bytes
-        switch -CaseSensitive ($key){
-            'branch.head' {$Data.Detached=$value -is [string] -and $value -ceq '(detached)';$Data.Branch=if($Data.Detached){$null}else{$value}}
-            'branch.oid' {$Data.Unborn=$value -is [string] -and $value -ceq '(initial)';$Data.HeadOid=if($Data.Unborn){$null}else{$value}}
-            'branch.upstream' {$Data.Upstream=$value}
-            'branch.ab' {if($value -isnot [string] -or $value -notmatch '^\+(\d+) -(\d+)$'){throw 'MalformedBranchDivergence'};$Data.Ahead=[long]$Matches[1];$Data.Behind=[long]$Matches[2]}
-            stash {$Data.StashCount=[long]$value}
-        }
-        return
-    }
-    $kind=[char]$Record[0];$entry=$null
-    if($kind -cin @('?','!')){
-        if($Record.Length -lt 3 -or $Record[1] -ne 32){throw 'MalformedStatusPath'}
-        $bytes=[byte[]]::new($Record.Length-2);[Array]::Copy($Record,2,$bytes,0,$bytes.Length)
-        $entry=@{Kind=$(if($kind -eq '?'){'Untracked'}else{'Ignored'});Status=$(if($kind -eq '?'){'??'}else{'!!'});Path=(ConvertFrom-QuietGitBytes $bytes);OriginalPath=$null;Submodule=$null}
-        if($kind -eq '?'){$Data.Counts.Untracked++;$Data.Counts.Changed++}else{$Data.Counts.Ignored++}
-    }elseif($kind -cin @('1','2','u')){
-        $limit=switch($kind){'1' {8} '2' {9} default {10}};$fields=[Collections.Generic.List[string]]::new();$start=0
-        for($index=0;$index -lt $Record.Length -and $fields.Count -lt $limit;$index++){if($Record[$index] -eq 32){$fields.Add([Text.Encoding]::ASCII.GetString($Record,$start,$index-$start));$start=$index+1}}
-        if($fields.Count -ne $limit -or $start -ge $Record.Length -or $fields[1] -notmatch '^[.MADRCUT]{2}$'){throw 'MalformedPorcelainStatusRecord'}
-        $bytes=[byte[]]::new($Record.Length-$start);[Array]::Copy($Record,$start,$bytes,0,$bytes.Length)
-        $entry=@{Kind=$(if($kind -eq 'u'){'Conflicted'}elseif($kind -eq '2'){'RenamedOrCopied'}else{'Tracked'});Status=$fields[1];Path=(ConvertFrom-QuietGitBytes $bytes);OriginalPath=$null;Submodule=$fields[2]}
-        $Data.Counts.Changed++
-        if($kind -eq 'u'){$Data.Counts.Conflicted++}else{if($fields[1][0] -ne '.'){$Data.Counts.Staged++};if($fields[1][1] -ne '.'){$Data.Counts.Unstaged++}}
-        if($kind -eq '2'){$Data.Pending=$entry;if($fields[8].StartsWith('R')){$Data.Counts.Renamed++}}
-    }else{throw 'UnknownPorcelainStatusRecord'}
-    $Data.Entries.Add($entry)
+    Import-QuietGitParser
+    [FrenchExDev2.QuietCli.Git.GitRecords]::Status($Record,$Data)
 }
 function Invoke-QuietGitStatus {
     <#

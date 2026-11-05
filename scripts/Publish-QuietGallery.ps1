@@ -10,7 +10,7 @@ Required exact tag or manually requested version.
 .PARAMETER ValidateOnly
 Performs local validation without using a key or contacting PSGallery.
 #>
-[CmdletBinding(SupportsShouldProcess,ConfirmImpact='Medium')]param([Parameter(Mandatory)][string]$PackageDirectory,[Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,[switch]$ValidateOnly)
+[CmdletBinding(SupportsShouldProcess,ConfirmImpact='Medium')]param([Parameter(Mandatory)][string]$PackageDirectory,[Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+(?:-[A-Za-z][A-Za-z0-9-]*)?$')][string]$Version,[switch]$ValidateOnly)
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1');. (Join-Path $PSScriptRoot 'Gallery.ps1')
 $directory=[IO.Path]::GetFullPath($PackageDirectory,$PWD.Path)
 $plan=Test-QuietGalleryPackageSet $directory -Version $Version

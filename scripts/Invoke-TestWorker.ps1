@@ -23,13 +23,21 @@ Write-WorkspaceJson $statusPath $state
 $summaries=[Collections.Generic.List[object]]::new()
 $sourceIdentity=$null;$engineIdentity=$null
 try{
+    if($env:QUIETCLI2_EXPECT_RUNTIME_MAJOR -and [Environment]::Version.Major -ne [int]$env:QUIETCLI2_EXPECT_RUNTIME_MAJOR){throw 'PowerShellRuntimeMajorMismatch'}
+    if($env:QUIETCLI2_EXPECT_HOST_VERSION -and $PSVersionTable.PSVersion.ToString() -cne $env:QUIETCLI2_EXPECT_HOST_VERSION){throw 'PowerShellVersionMismatch'}
     if($ExpectedRuntimeIdentifier -and $state.Platform -cne $ExpectedRuntimeIdentifier){throw "HostRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($state.Platform)"}
     $sourceIdentity=Get-QuietWorkspaceIdentity $WorkspaceRoot -IncludeBinaries
     Write-WorkspaceJson (Join-Path $RunDirectory 'source-identity.json') $sourceIdentity
     Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1') -Force
     $engineIdentity=Get-QuietEngine
+    if($env:QUIETCLI2_EXPECT_ENGINE_MODE -and $engineIdentity.Mode -cne $env:QUIETCLI2_EXPECT_ENGINE_MODE){throw 'EngineHostingModeMismatch'}
+    if($env:QUIETCLI2_EXPECT_RUNTIME_MAJOR -and $engineIdentity.Mode -eq 'InProcess'){
+        $framework='.NETCoreApp,Version=v'+$env:QUIETCLI2_EXPECT_RUNTIME_MAJOR+'.0'
+        if($engineIdentity.Mode -cne 'InProcess' -or $engineIdentity.Engine.ProcessId -ne $PID -or $engineIdentity.Engine.TargetFramework -cne $framework){throw 'IntegratedEngineIdentityMismatch'}
+        if($engineIdentity.ProtocolInputBytes -ne 0 -or $engineIdentity.ProtocolOutputBytes -ne 0){throw 'IntegratedEngineUnexpectedPipeTraffic'}
+    }
     if($ExpectedRuntimeIdentifier -and $engineIdentity.Engine.RuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw "EngineRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($engineIdentity.Engine.RuntimeIdentifier)"}
-    if($ExpectedRuntimeIdentifier -and $engineIdentity.Engine.BuildRuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw 'EnginePublicationRuntimeMismatch'}
+    if($ExpectedRuntimeIdentifier -and $engineIdentity.Mode -ne 'InProcess' -and $engineIdentity.Engine.BuildRuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw 'EnginePublicationRuntimeMismatch'}
     foreach($selected in $(if($Suite -eq 'All'){@('Core','Git')}else{@($Suite)})){
         $project="FrenchExDev2.QuietCli.$selected.PoSh"
         $state.Project=$project;$state.ProjectDirectory=Join-Path $WorkspaceRoot $project

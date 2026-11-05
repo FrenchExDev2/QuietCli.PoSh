@@ -13,6 +13,9 @@ $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 Assert-QuietPtyPublications $WorkspaceRoot
+foreach($framework in @('net10.0','net11.0')){$null=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Git.PoSh/lib/parser/'+$framework)}
+$null=Test-QuietBuildManifest $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess'
+$null=Test-QuietBuildManifest $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/lib/engine'
 foreach($rid in (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){
     $build=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid)
     if($build.RuntimeIdentifier -cne $rid){throw ('EngineDistributionMissing: '+$rid)}
@@ -24,7 +27,7 @@ foreach($repository in $lock.Projects){
     $source=Join-Path $WorkspaceRoot $repository.Path;$stage=Join-Path $OutputDirectory $repository.Name
     [void][IO.Directory]::CreateDirectory($stage)
     foreach($item in Get-ChildItem -LiteralPath $source -Force){
-        if($item.Name -in @('.git','.gitignore','bin','obj','artifacts','engine','fixture','engine-tests','tools','global.json')){continue}
+        if($item.Name -in @('.git','.gitignore','bin','obj','artifacts','engine','fixture','engine-tests','parser-tests','tools','global.json')){continue}
         Copy-Item -LiteralPath $item.FullName -Destination $stage -Recurse
     }
     if(!(Test-Path -LiteralPath (Join-Path $stage ($repository.Name+'.psd1')))){throw 'PackageManifestMissing'}

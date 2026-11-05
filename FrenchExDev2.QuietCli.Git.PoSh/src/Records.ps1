@@ -6,8 +6,8 @@ Decodes a business field losslessly; invalid UTF-8 remains explicitly represente
     Exact bytes of one Git field or record.
     #>
     param([byte[]]$Bytes)
-    try{return [Text.UTF8Encoding]::new($false,$true).GetString($Bytes)}
-    catch{return @{Encoding='RawBytes';Base64=[Convert]::ToBase64String($Bytes);Bytes=$Bytes.Length}}
+    Import-QuietGitParser
+    return [FrenchExDev2.QuietCli.Git.GitRecords]::Decode($Bytes)
 }
 function New-QuietGitRecordState {
     <#
@@ -23,7 +23,7 @@ Creates a bounded unfinished-record buffer owned by one business parser.
     Optional callback after the final record.
     #>
     param($Data,[byte]$Delimiter,[scriptblock]$Parser,[scriptblock]$Finalize)
-    return @{Data=$Data;Delimiter=$Delimiter;Parser=$Parser;Finalize=$Finalize;Pending=[IO.MemoryStream]::new();MaxRecordBytes=1048576;Records=0L}
+    return @{Data=$Data;Delimiter=$Delimiter;Parser=$Parser;Finalize=$Finalize;Pending=(New-QuietByteRecordFramer -Delimiter $Delimiter);MaxRecordBytes=1048576;Records=0L}
 }
 function Receive-QuietGitRecord {
     <#
@@ -36,17 +36,8 @@ Parses complete byte records and releases each block without storing a native do
     #>
     param($Event,$Runtime)
     if($Event.Stream -ne 'stdout'){return}
-    $state=$Runtime.Data;$bytes=$Event.Bytes;$start=0
-    for($index=0;$index -lt $bytes.Length;$index++){
-        if($bytes[$index] -ne $state.Delimiter){continue}
-        $count=$index-$start
-        if($state.Pending.Length+$count -gt $state.MaxRecordBytes){throw 'GitRecordTooLarge'}
-        if($count){$state.Pending.Write($bytes,$start,$count)}
-        $record=$state.Pending.ToArray();$state.Pending.SetLength(0)
-        Invoke-QuietGitRecordParser $state $record
-        $start=$index+1
-    }
-    if($start -lt $bytes.Length){$count=$bytes.Length-$start;if($state.Pending.Length+$count -gt $state.MaxRecordBytes){throw 'GitRecordTooLarge'};$state.Pending.Write($bytes,$start,$count)}
+    $state=$Runtime.Data
+    foreach($record in $state.Pending.Push($Event.Bytes)){Invoke-QuietGitRecordParser $state $record}
 }
 function Complete-QuietGitRecord {
     <#
@@ -58,7 +49,8 @@ Finalizes a parser, preserving unterminated last lines without a raw capture.
     param($Runtime)
     $state=$Runtime.Data
     try{
-        if($state.Pending.Length){Invoke-QuietGitRecordParser $state $state.Pending.ToArray()}
+        $last=$state.Pending.Finish()
+        if($null -ne $last){Invoke-QuietGitRecordParser $state $last}
         if($state.Finalize){$values=@(& $state.Finalize $state.Data);if($values.Count -gt 1){throw 'GitFinalizerMustReturnOneValue'};if($values.Count){return $values[0]}}
         return $state.Data
     }finally{$state.Pending.Dispose()}
@@ -96,13 +88,11 @@ function Invoke-QuietGitFieldRecords {
     #>
     param($Runtime,[string[]]$Arguments,$Data,[ValidateRange(1,64)][int]$FieldCount,[scriptblock]$Commit,[string]$Role='Business')
     $state=@{Business=$Data;Fields=[Collections.Generic.List[object]]::new();FieldCount=$FieldCount;Commit=$Commit}
+    Import-QuietGitParser
     $decode=Get-Command ConvertFrom-QuietGitBytes
     $parser={
         param($record,$state)
-        $value=& $decode $record
-        if($state.Fields.Count -eq 0 -and $value -is [string]){$value=$value.TrimStart("`r","`n");if(!$value){return}}
-        $state.Fields.Add($value)
-        if($state.Fields.Count -eq $state.FieldCount){
+        if([FrenchExDev2.QuietCli.Git.GitRecords]::Field($record,$state)){
             $values=@(& $state.Commit $state.Fields $state.Business)
             if($values.Count){throw 'GitFieldMapperUnexpectedOutput'}
             $state.Fields.Clear()
@@ -175,6 +165,7 @@ Preserves explicitly requested formatting as lossless business records, without 
     #>
     param($Runtime,[string[]]$Arguments,[string]$Name,[int[]]$Codes=@(0),[byte]$Delimiter=10)
     $data=@{Command=$Name;GitVersion=$Runtime.State.DetectedVersion;OutputMode='RequestedFormat';Records=[Collections.Generic.List[object]]::new();Delimiter=$Delimiter;Scope='Exact requested native records; UTF-8 text or an explicit byte representation.'}
+    Import-QuietGitParser
     $decode=Get-Command ConvertFrom-QuietGitBytes
     $r=Invoke-QuietGitRecords $Runtime $Arguments $data -Codes $Codes -Delimiter $Delimiter -Parser {param($record,$data)$data.Records.Add((& $decode $record))}.GetNewClosure()
     return $r.Data
