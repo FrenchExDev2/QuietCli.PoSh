@@ -47,7 +47,7 @@ The companion executes 43 functional scenarios, or 45 with both explicitly selec
 
 ## Principal command workflows
 
-The catalogue now registers 29 specialized command families. The new handlers cover:
+The catalogue now registers 44 specialized command families. The new handlers cover:
 
 - `switch`, `restore`, `reset`, `rm`, `mv`, `clean`: one requested native execution and independent porcelain-v2 HEAD/index/worktree observations. `clean --dry-run` retains the explicitly requested plan records. Unavailable initial observations block a worktree mutation before execution; bare variants requiring different observations remain unqualified.
 - `merge`, `rebase`, `cherry-pick`, `revert`: one native operation, local before/after state and ref changes. A nonzero exit remains a failure; observed unmerged entries are reported as FailedWithConflicts. There is no automatic resolution, abort, continue or retry. Explicit follow-up commands are independent invocations. Requested rebase patch output is preserved.
@@ -62,8 +62,16 @@ Interactive option names are checked after binding, so flag-looking message valu
 
 ## Object, reference and tracked-file queries
 
-Twelve additional commands now have dedicated orchestration and caller-local C# parsing: ls-files, for-each-ref, show-ref, ls-remote, merge-base, rev-list, hash-object, write-tree, count-objects, symbolic-ref, check-ref-format and version. The specialized catalogue contains 41 of the 183 inventory entries. Get-QuietGitCoverage reports each PowerShell handler and its C# ParserTypes separately; Qualification remains Pending for the complete version/platform matrix.
+Twelve additional commands now have dedicated orchestration and caller-local C# parsing: ls-files, for-each-ref, show-ref, ls-remote, merge-base, rev-list, hash-object, write-tree, count-objects, symbolic-ref, check-ref-format and version. The specialized catalogue contains 44 of the 183 inventory entries. Get-QuietGitCoverage reports each PowerShell handler and its C# ParserTypes separately; Qualification remains Pending for the complete version/platform matrix.
 
 ls-files uses NUL framing for paths and index stages. Object queries validate full SHA-1/SHA-256 identities and optional parents; alternative revision output is retained in RequestedFormat mode. show-ref/ls-remote distinguish ordinary, symbolic and peeled refs, quiet predicates and no-match exit codes. for-each-ref uses fixed NUL fields. count-objects keeps numeric counters and alternate records with explicit KiB units; human-readable output remains requested format. Symbolic-ref writes are separate observed mutations. The explicitly requested ls-remote may contact its source; no other query adds a hidden fetch or network observation.
 
 Windows stable/.NET 10 and Preview/.NET 11 each passed 49 scenarios for this group, including 28 nested C# cases and the eight targeted query mutants. The current native fixture version is Git 2.56.0.windows.3. See [the query audit](../docs/audits/2026-11-05-git-queries.md) for limits and evidence.
+
+## Reflog and line attribution
+
+blame and annotate normalize their default display to line-porcelain. GitBlameRecords parses full IDs, source/final line numbers, declared group lengths, exact content and metadata. GitQuotedPath decodes Git C-style/octal byte paths before strict UTF-8 decoding; invalid Unicode remains explicit bytes. Incomplete entries/groups fail at EOF, and uncommitted zero IDs remain visible. Explicit porcelain/incremental/stats/color modes retain the requested native records. No hidden file read or secondary blame execution is performed.
+
+reflog show uses five NUL fields for full object ID, selector, identity and message, mapped by GitReflogRecords. exists is a separate native predicate. Explicit output formats and other reflog operations retain requested records; they do not claim a recovery action or complete effect observation. Version-specific subcommand/option qualification remains pending.
+
+The catalogue now has 44 specialized entries. This group passed 53/53 stable scenarios and 56/56 Preview scenarios (different explicitly selected mutation catalogues), with 33 compiled cases. See [the attribution audit](../docs/audits/2026-11-05-git-attribution.md).

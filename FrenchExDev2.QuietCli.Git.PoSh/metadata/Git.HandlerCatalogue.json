@@ -40,7 +40,10 @@
     "count-objects": "Invoke-QuietGitCountQuery",
     "symbolic-ref": "Invoke-QuietGitSymbolicRef",
     "check-ref-format": "Invoke-QuietGitRefValidation",
-    "version": "Invoke-QuietGitVersion"
+    "version": "Invoke-QuietGitVersion",
+    "blame": "Invoke-QuietGitBlame",
+    "annotate": "Invoke-QuietGitBlame",
+    "reflog": "Invoke-QuietGitReflog"
   },
   "SchemaVersion": 2,
   "Scope": "Specialized streaming handlers; variants and release qualification remain explicit.",
@@ -147,6 +150,18 @@
     ],
     "ls-files": [
       "GitIndexRecords"
+    ],
+    "blame": [
+      "GitBlameRecords",
+      "GitQuotedPath"
+    ],
+    "annotate": [
+      "GitBlameRecords",
+      "GitQuotedPath"
+    ],
+    "reflog": [
+      "GitReflogRecords",
+      "GitRecords"
     ]
   }
 }

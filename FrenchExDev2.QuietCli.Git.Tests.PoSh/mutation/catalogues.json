@@ -1,6 +1,59 @@
 {
-  "ExpectedCases": 28,
+  "ExpectedCases": 33,
   "Catalogues": {
+    "Attribution": {
+      "CasePrefix": "attribution ",
+      "Mutants": [
+        {
+          "Name": "path-named-escape",
+          "File": "GitQuotedPath.cs",
+          "From": "(byte)'n' => 10",
+          "To": "(byte)'n' => 13"
+        },
+        {
+          "Name": "path-octal-weight",
+          "File": "GitQuotedPath.cs",
+          "From": "(item - '0') * 64",
+          "To": "(item - '0') * 8"
+        },
+        {
+          "Name": "blame-original-line",
+          "File": "GitBlameRecords.cs",
+          "From": "\"OriginalLine\", original",
+          "To": "\"OriginalLine\", final"
+        },
+        {
+          "Name": "blame-content-prefix",
+          "File": "GitBlameRecords.cs",
+          "From": "GitRecords.Decode(record[1..])",
+          "To": "GitRecords.Decode(record)"
+        },
+        {
+          "Name": "blame-incomplete-group",
+          "File": "GitBlameRecords.cs",
+          "From": "Remaining(data) != 0",
+          "To": "false"
+        },
+        {
+          "Name": "blame-group-counter",
+          "File": "GitBlameRecords.cs",
+          "From": "Remaining(data) - 1",
+          "To": "Remaining(data)"
+        },
+        {
+          "Name": "reflog-selector",
+          "File": "GitReflogRecords.cs",
+          "From": "GitRecords.Unwrap(fields[1])",
+          "To": "GitRecords.Unwrap(fields[2])"
+        },
+        {
+          "Name": "reflog-message",
+          "File": "GitReflogRecords.cs",
+          "From": "GitRecords.Unwrap(fields[4])",
+          "To": "GitRecords.Unwrap(fields[3])"
+        }
+      ]
+    },
     "Push": {
       "CasePrefix": "push ",
       "Mutants": [
