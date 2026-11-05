@@ -35,3 +35,11 @@ The compiled runner now contains 28 cases. Set QUIETCLI2_GIT_QUERY_MUTATION=1 fo
 Attribution.Tests.ps1 adds native blame/annotate, requested incremental-format and reflog/predicate workflows. Native read blocks use the supported minimum of 1 KiB. AttributionCases.cs adds five compiled cases with generated octal-path round trips (seed 74051), grouped metadata/content/line invariants (seed 74052), raw/uncommitted/truncated state, fixed reflog fields and 20,000 malformed inputs (seed 74053). The compiled runner now contains 33 cases.
 
 QUIETCLI2_GIT_ATTRIBUTION_MUTATION=1 selects eight targeted attribution mutants through the shared runner. The Preview qualification ran all four catalogues after the runner refactor: 32/32 mutants detected, with no invalid builds, survivors, timeouts or infrastructure failures. Normal development has 52 scenarios; selecting only Attribution yields 53; selecting all four catalogues yields 56. These counts are scenario counts, not exhaustive Git-command qualification.
+
+## Search/path/raw-diff qualification
+
+PathQueries.Tests.ps1 adds seven workflows for grep modes, canonical attributes, ignore negation/nonmatches/caller stdin, mailmap, three plumbing diffs, rename path pairs and generated mode/guard properties. Native test calls preserve literal separators using an outer PowerShell -- before git. The -p regression separates display modes from actual patch selection.
+
+PathQueryCases.cs adds six cases: generated raw fields (seed 75051), truncation/status checks, attribute and ignore properties (seed 75052), canonical contacts (seed 75053), literal NUL stdin encoding, and 20,000 malformed inputs across four parsers (seed 75054). The generated PowerShell grep-mode test uses seed 75055 and 500 cases with two isolated mutants.
+
+The compiled runner now has 39 cases. QUIETCLI2_GIT_PATH_QUERY_MUTATION=1 selects eight source-checked PathQuery mutants. Both Windows host qualifications passed 60 scenarios with this catalogue selected. Baseline development has 59 scenarios; other compiler catalogues remain opt-in locally and required in the Preview CI qualification job. Native PTY code was unchanged and its unrelated campaign was not repeated.

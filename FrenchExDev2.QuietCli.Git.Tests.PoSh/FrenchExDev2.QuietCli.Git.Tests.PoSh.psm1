@@ -1,3 +1,4 @@
+. (Join-Path $PSScriptRoot 'PathQueries.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Attribution.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Queries.Tests.ps1')
 . (Join-Path $PSScriptRoot 'RepositoryCommands.Tests.ps1')
@@ -45,7 +46,7 @@ Tests independently prepared repositories, hook counts and local bare push targe
         $schema=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/metadata/Git.ArgumentSchema.json'
         $r=quiet -AsObject -Data ([Text.StringBuilder]::new()) -Output {param($event,$runtime)if($event.Stream -eq 'stdout'){[void]$runtime.Data.Append($event.Text)}} -Complete {param($runtime)$runtime.Data.ToString()|ConvertFrom-Json} $dotnet $assembly $schema
         Assert-QuietEqual $r.Outcome Success 'Compiled Git suite process'
-        Assert-QuietEqual $r.Data.Passed 33 'Compiled Git independent cases'
+        Assert-QuietEqual $r.Data.Passed 39 'Compiled Git independent cases'
         Assert-QuietEqual $r.Data.Failed 0 'Compiled Git independent failures'
     }
     $cases['status distinguishes unborn state and Unicode untracked paths']={
@@ -114,6 +115,9 @@ Tests independently prepared repositories, hook counts and local bare push targe
     if($env:QUIETCLI2_GIT_ATTRIBUTION_MUTATION -eq '1'){$cases['attribution parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Attribution}}
     $attributionCases=Get-QuietGitAttributionCases -RootDirectory $root -Environment $environment
     foreach($entry in $attributionCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
+    if($env:QUIETCLI2_GIT_PATH_QUERY_MUTATION -eq '1'){$cases['pathquery parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue PathQuery}}
+    $pathCases=Get-QuietGitPathQueryCases -RootDirectory $root -Environment $environment -WorkspaceRoot $WorkspaceRoot
+    foreach($entry in $pathCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $semanticCases=Get-QuietGitSemanticCases -RootDirectory $root -Environment $environment
     foreach($entry in $semanticCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $passed=0;$failed=0;$results=[Collections.Generic.List[object]]::new()

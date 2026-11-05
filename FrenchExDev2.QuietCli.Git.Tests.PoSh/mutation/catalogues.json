@@ -1,6 +1,59 @@
 {
-  "ExpectedCases": 33,
+  "ExpectedCases": 39,
   "Catalogues": {
+    "PathQuery": {
+      "CasePrefix": "pathquery ",
+      "Mutants": [
+        {
+          "Name": "raw-old-mode",
+          "File": "GitRawDiffRecords.cs",
+          "From": "\"OldMode\", fields[0][1..]",
+          "To": "\"OldMode\", fields[1]"
+        },
+        {
+          "Name": "raw-rename-arity",
+          "File": "GitRawDiffRecords.cs",
+          "From": "status[0] is 'R' or 'C' ? 2 : 1",
+          "To": "1"
+        },
+        {
+          "Name": "raw-path",
+          "File": "GitRawDiffRecords.cs",
+          "From": "pending[\"Path\"] = GitRecords.Decode(record)",
+          "To": "pending[\"Path\"] = \"changed\""
+        },
+        {
+          "Name": "raw-score-bound",
+          "File": "GitRawDiffRecords.cs",
+          "From": "parsed > 100",
+          "To": "parsed > 101"
+        },
+        {
+          "Name": "attribute-value",
+          "File": "GitPathCheckRecords.cs",
+          "From": "\"Value\", GitRecords.Decode(fields[2])",
+          "To": "\"Value\", GitRecords.Decode(fields[1])"
+        },
+        {
+          "Name": "ignore-negation",
+          "File": "GitPathCheckRecords.cs",
+          "From": "line is not null && !negated",
+          "To": "line is not null && negated"
+        },
+        {
+          "Name": "stdin-path-framing",
+          "File": "GitPathCheckRecords.cs",
+          "From": "string.Join('\\0', paths)",
+          "To": "string.Join('\\n', paths)"
+        },
+        {
+          "Name": "mailmap-email",
+          "File": "GitMailmapRecords.cs",
+          "From": "record[(angle + 1)..(length - 1)]",
+          "To": "record[angle..(length - 1)]"
+        }
+      ]
+    },
     "Attribution": {
       "CasePrefix": "attribution ",
       "Mutants": [

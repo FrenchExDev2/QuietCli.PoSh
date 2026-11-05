@@ -88,6 +88,7 @@ internal static class Program
         RepositoryCommandCases.Run(Case);
         QueryCases.Run(Case);
         AttributionCases.Run(Case);
+        PathQueryCases.Run(Case);
         var schema = Grammar();
         Case("required values empty equals values and literal separators bind independently", () => {
             var bound = GitArguments.Bind("fixture", ["-m", "--all", "--author=", "--", "--flag"], "fixture-version", schema);

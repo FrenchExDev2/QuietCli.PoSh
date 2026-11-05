@@ -27,7 +27,10 @@ function Assert-QuietGitInteraction {
     #>
     param($Runtime,$Request,$Binding)
     $flags=@($Binding.Options.Name)
-    $interactive=@($flags|Where-Object {$_ -cin @('--interactive','--patch','-p','--edit-description')}).Count -gt 0
+    $interactive='--interactive' -cin $flags
+    if($Request.Name -cin @('add','checkout','restore','reset','stash') -and @($flags|Where-Object {$_ -cin @('--patch','-p')}).Count){$interactive=$true}
+    if($Request.Name -eq 'branch' -and '--edit-description' -cin $flags){$interactive=$true}
+    if($Request.Name -eq 'grep' -and @($flags|Where-Object {$_ -cin @('-O','--open-files-in-pager')}).Count){$interactive=$true}
     if($Request.Name -eq 'rebase' -and ('-i' -cin $flags -or '--edit-todo' -cin $flags)){$interactive=$true}
     if($Request.Name -eq 'clean' -and '-i' -cin $flags){$interactive=$true}
     if($Request.Name -eq 'config' -and ($Binding.Subcommand -ceq 'edit' -or '--edit' -cin $flags -or '-e' -cin $flags)){$interactive=$true}

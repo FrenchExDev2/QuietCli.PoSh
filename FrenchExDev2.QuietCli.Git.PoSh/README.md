@@ -47,7 +47,7 @@ The companion executes 43 functional scenarios, or 45 with both explicitly selec
 
 ## Principal command workflows
 
-The catalogue now registers 44 specialized command families. The new handlers cover:
+The catalogue now registers 51 specialized command families. The new handlers cover:
 
 - `switch`, `restore`, `reset`, `rm`, `mv`, `clean`: one requested native execution and independent porcelain-v2 HEAD/index/worktree observations. `clean --dry-run` retains the explicitly requested plan records. Unavailable initial observations block a worktree mutation before execution; bare variants requiring different observations remain unqualified.
 - `merge`, `rebase`, `cherry-pick`, `revert`: one native operation, local before/after state and ref changes. A nonzero exit remains a failure; observed unmerged entries are reported as FailedWithConflicts. There is no automatic resolution, abort, continue or retry. Explicit follow-up commands are independent invocations. Requested rebase patch output is preserved.
@@ -62,7 +62,7 @@ Interactive option names are checked after binding, so flag-looking message valu
 
 ## Object, reference and tracked-file queries
 
-Twelve additional commands now have dedicated orchestration and caller-local C# parsing: ls-files, for-each-ref, show-ref, ls-remote, merge-base, rev-list, hash-object, write-tree, count-objects, symbolic-ref, check-ref-format and version. The specialized catalogue contains 44 of the 183 inventory entries. Get-QuietGitCoverage reports each PowerShell handler and its C# ParserTypes separately; Qualification remains Pending for the complete version/platform matrix.
+Twelve additional commands now have dedicated orchestration and caller-local C# parsing: ls-files, for-each-ref, show-ref, ls-remote, merge-base, rev-list, hash-object, write-tree, count-objects, symbolic-ref, check-ref-format and version. The specialized catalogue contains 51 of the 183 inventory entries. Get-QuietGitCoverage reports each PowerShell handler and its C# ParserTypes separately; Qualification remains Pending for the complete version/platform matrix.
 
 ls-files uses NUL framing for paths and index stages. Object queries validate full SHA-1/SHA-256 identities and optional parents; alternative revision output is retained in RequestedFormat mode. show-ref/ls-remote distinguish ordinary, symbolic and peeled refs, quiet predicates and no-match exit codes. for-each-ref uses fixed NUL fields. count-objects keeps numeric counters and alternate records with explicit KiB units; human-readable output remains requested format. Symbolic-ref writes are separate observed mutations. The explicitly requested ls-remote may contact its source; no other query adds a hidden fetch or network observation.
 
@@ -74,4 +74,14 @@ blame and annotate normalize their default display to line-porcelain. GitBlameRe
 
 reflog show uses five NUL fields for full object ID, selector, identity and message, mapped by GitReflogRecords. exists is a separate native predicate. Explicit output formats and other reflog operations retain requested records; they do not claim a recovery action or complete effect observation. Version-specific subcommand/option qualification remains pending.
 
-The catalogue now has 44 specialized entries. This group passed 53/53 stable scenarios and 56/56 Preview scenarios (different explicitly selected mutation catalogues), with 33 compiled cases. See [the attribution audit](../docs/audits/2026-11-05-git-attribution.md).
+The catalogue now has 51 specialized entries. This group passed 53/53 stable scenarios and 56/56 Preview scenarios (different explicitly selected mutation catalogues), with 33 compiled cases. See [the attribution audit](../docs/audits/2026-11-05-git-attribution.md).
+
+## Search, path rules and raw plumbing diffs
+
+grep distinguishes quiet predicates, requested NUL file lists and exact native content/context/count formats. Only file-list modes use typed GitIndexRecords paths; default content and binary-match records are not misrepresented as a structured match protocol. Pager forms require explicit interaction.
+
+check-attr parses three-field NUL records. check-ignore parses four-field verbose NUL records, preserving leading empty fields for nonmatching paths and negated rules. Logical argv paths are encoded as equivalent NUL stdin only when the caller did not provide stdin/controller data; caller-provided LF stdin is preserved in requested-format mode. check-mailmap parses native canonical contacts. These handlers do not read ignore/attribute/mailmap files themselves.
+
+diff-files, diff-index and diff-tree use GitRawDiffRecords for non-combined raw output: modes, complete IDs, status/score and one/two lossless paths. Only framing and identity display are normalized; native recursion is preserved. Explicit patch output uses the existing C# patch parser, while custom/combined/abbreviated formats retain their native records. Incomplete rename/copy paths fail at EOF. Read-only patch/porcelain -p modes no longer trigger the interactive patch-selector guard.
+
+The catalogue contains 51 specialized entries. This group passed 60/60 scenarios on stable/.NET 10 and Preview/.NET 11, including 39 compiled cases, eight targeted C# mutants and two generated grep-mode PowerShell mutants. See [the path-query audit](../docs/audits/2026-11-05-git-path-queries.md).

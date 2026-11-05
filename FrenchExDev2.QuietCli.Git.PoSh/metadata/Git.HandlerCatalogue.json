@@ -43,7 +43,14 @@
     "version": "Invoke-QuietGitVersion",
     "blame": "Invoke-QuietGitBlame",
     "annotate": "Invoke-QuietGitBlame",
-    "reflog": "Invoke-QuietGitReflog"
+    "reflog": "Invoke-QuietGitReflog",
+    "grep": "Invoke-QuietGitGrep",
+    "check-attr": "Invoke-QuietGitAttributes",
+    "check-ignore": "Invoke-QuietGitIgnore",
+    "check-mailmap": "Invoke-QuietGitMailmap",
+    "diff-files": "Invoke-QuietGitRawDiff",
+    "diff-index": "Invoke-QuietGitRawDiff",
+    "diff-tree": "Invoke-QuietGitRawDiff"
   },
   "SchemaVersion": 2,
   "Scope": "Specialized streaming handlers; variants and release qualification remain explicit.",
@@ -161,6 +168,30 @@
     ],
     "reflog": [
       "GitReflogRecords",
+      "GitRecords"
+    ],
+    "grep": [
+      "GitIndexRecords"
+    ],
+    "check-attr": [
+      "GitPathCheckRecords"
+    ],
+    "check-ignore": [
+      "GitPathCheckRecords"
+    ],
+    "check-mailmap": [
+      "GitMailmapRecords"
+    ],
+    "diff-files": [
+      "GitRawDiffRecords",
+      "GitRecords"
+    ],
+    "diff-index": [
+      "GitRawDiffRecords",
+      "GitRecords"
+    ],
+    "diff-tree": [
+      "GitRawDiffRecords",
       "GitRecords"
     ]
   }
