@@ -85,3 +85,9 @@ check-attr parses three-field NUL records. check-ignore parses four-field verbos
 diff-files, diff-index and diff-tree use GitRawDiffRecords for non-combined raw output: modes, complete IDs, status/score and one/two lossless paths. Only framing and identity display are normalized; native recursion is preserved. Explicit patch output uses the existing C# patch parser, while custom/combined/abbreviated formats retain their native records. Incomplete rename/copy paths fail at EOF. Read-only patch/porcelain -p modes no longer trigger the interactive patch-selector guard.
 
 The catalogue contains 51 specialized entries. This group passed 60/60 scenarios on stable/.NET 10 and Preview/.NET 11, including 39 compiled cases, eight targeted C# mutants and two generated grep-mode PowerShell mutants. See [the path-query audit](../docs/audits/2026-11-05-git-path-queries.md).
+
+## Revision identity and summary queries
+
+The catalogue contains 55 specialized entries. rev-parse separates single documented path/boolean/format selectors, verified IDs and mixed requested output. GitScalarOutput bounds the requested scalar and removes only its final LF, preserving embedded path newlines and raw bytes. describe parses long descriptions without treating abbreviations as full identities. name-rev preserves native revision labels; shortlog parses explicitly requested summary counts and retains opaque grouping labels. Custom description suffixes, name-only/stdin formats and default shortlog subjects retain their requested representation.
+
+Both Windows stable/.NET 10 and Preview/.NET 11 passed 64 scenarios with Auto selecting integrated hosting, including 44 compiled cases and eight targeted revision mutants. See [the revision audit](../docs/audits/2026-11-05-git-revisions.md). This does not qualify all inventory entries, option combinations or supported platforms.

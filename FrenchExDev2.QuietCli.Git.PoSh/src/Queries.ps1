@@ -23,7 +23,7 @@ function Invoke-QuietGitObjectQuery {
         if(@($flags|Where-Object {$_ -cin $nonIdentity}).Count){return Invoke-QuietGitRequestedFormat $Runtime ($Prefix+@('rev-list')+@($Request.Arguments)) rev-list -Delimiter $(if('-z' -cin $flags){0}else{10})}
     }
     $data=@{Command=$Request.Name;GitVersion=$Runtime.State.DetectedVersion;Objects=[Collections.Generic.List[object]]::new();WithParents=('--parents' -cin $flags);Found=$false}
-    $codes=if($Request.Name -ceq 'merge-base'){@(0,1)}else{@(0)}
+    $codes=if($Request.Name -ceq 'merge-base' -or ($Request.Name -ceq 'rev-parse' -and @($flags|Where-Object {$_ -cin @('--quiet','-q')}).Count)){@(0,1)}else{@(0)}
     $r=Invoke-QuietGitRecords $Runtime ($Prefix+@($Request.Name)+@($Request.Arguments)) $data -Codes $codes -Parser {
         param($record,$data)
         [FrenchExDev2.QuietCli.Git.GitObjectRecords]::Receive($record,$data)

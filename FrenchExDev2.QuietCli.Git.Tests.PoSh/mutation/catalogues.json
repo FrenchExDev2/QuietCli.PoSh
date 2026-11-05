@@ -1,6 +1,59 @@
 {
-  "ExpectedCases": 39,
+  "ExpectedCases": 44,
   "Catalogues": {
+    "Revision": {
+      "CasePrefix": "revision ",
+      "Mutants": [
+        {
+          "Name": "scalar-boundary",
+          "File": "GitScalarOutput.cs",
+          "From": "block.Length > maximum - buffer.WrittenCount",
+          "To": "block.Length >= maximum - buffer.WrittenCount"
+        },
+        {
+          "Name": "scalar-lf",
+          "File": "GitScalarOutput.cs",
+          "From": "value = value[..^1]",
+          "To": "value = value[..^2]"
+        },
+        {
+          "Name": "scalar-false",
+          "File": "GitScalarOutput.cs",
+          "From": "\"false\" => false",
+          "To": "\"false\" => true"
+        },
+        {
+          "Name": "describe-tag",
+          "File": "GitDescribeRecords.cs",
+          "From": "record[..previous]",
+          "To": "record[..final]"
+        },
+        {
+          "Name": "describe-distance",
+          "File": "GitDescribeRecords.cs",
+          "From": "\"Distance\", distance",
+          "To": "\"Distance\", distance + 1"
+        },
+        {
+          "Name": "revision-input",
+          "File": "GitRevisionNames.cs",
+          "From": "record[..space]",
+          "To": "record[(space + 1)..]"
+        },
+        {
+          "Name": "revision-undefined",
+          "File": "GitRevisionNames.cs",
+          "From": "Equals(name, \"undefined\")",
+          "To": "false"
+        },
+        {
+          "Name": "shortlog-count",
+          "File": "GitShortlogRecords.cs",
+          "From": "\"Count\", count",
+          "To": "\"Count\", count + 1"
+        }
+      ]
+    },
     "PathQuery": {
       "CasePrefix": "pathquery ",
       "Mutants": [

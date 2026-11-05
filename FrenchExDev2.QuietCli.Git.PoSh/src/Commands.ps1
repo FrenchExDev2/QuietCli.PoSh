@@ -32,7 +32,7 @@ Executes one Git operation with explicit business parsing, never generic raw cap
     # Use a vector of explicit facade options, not a shell command string.
     $tokens=[Collections.Generic.List[object]]::new();foreach($key in $options.Keys){$tokens.Add('-'+$key);if($key -ne 'AsObject'){$tokens.Add($options[$key])}}
     $quietArguments=$tokens.ToArray()
-    Invoke-QuietCli @quietArguments
+    quiet @quietArguments
 }
 function Read-QuietGitScalar {
     <#

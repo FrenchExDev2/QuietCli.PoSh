@@ -11,6 +11,13 @@ public static class GitObjectRecords
     public static bool IsObjectId(ReadOnlySpan<byte> value)
     {
         if (value.Length != 40 && value.Length != 64) return false;
+        return IsHexadecimal(value);
+    }
+    /// <summary>Tests nonempty ASCII hex without inferring a hash algorithm from abbreviations.</summary>
+    /// <param name="value">Complete or abbreviated identifier bytes.</param>
+    public static bool IsHexadecimal(ReadOnlySpan<byte> value)
+    {
+        if (value.IsEmpty) return false;
         foreach (byte item in value)
             if (!(item is >= (byte)'0' and <= (byte)'9' or >= (byte)'a' and <= (byte)'f' or >= (byte)'A' and <= (byte)'F')) return false;
         return true;

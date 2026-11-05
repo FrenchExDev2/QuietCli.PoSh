@@ -50,7 +50,11 @@
     "check-mailmap": "Invoke-QuietGitMailmap",
     "diff-files": "Invoke-QuietGitRawDiff",
     "diff-index": "Invoke-QuietGitRawDiff",
-    "diff-tree": "Invoke-QuietGitRawDiff"
+    "diff-tree": "Invoke-QuietGitRawDiff",
+    "rev-parse": "Invoke-QuietGitRevision",
+    "describe": "Invoke-QuietGitDescribe",
+    "name-rev": "Invoke-QuietGitRevisionNames",
+    "shortlog": "Invoke-QuietGitShortlog"
   },
   "SchemaVersion": 2,
   "Scope": "Specialized streaming handlers; variants and release qualification remain explicit.",
@@ -193,6 +197,19 @@
     "diff-tree": [
       "GitRawDiffRecords",
       "GitRecords"
+    ],
+    "rev-parse": [
+      "GitScalarOutput",
+      "GitObjectRecords"
+    ],
+    "describe": [
+      "GitDescribeRecords"
+    ],
+    "name-rev": [
+      "GitRevisionNames"
+    ],
+    "shortlog": [
+      "GitShortlogRecords"
     ]
   }
 }
