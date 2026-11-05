@@ -152,13 +152,18 @@ function Get-QuietWorkspaceIdentity {
     param([string]$WorkspaceRoot,[switch]$IncludeBinaries)
     $children=@('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh','FrenchExDev2.QuietCli.Git.PoSh','FrenchExDev2.QuietCli.Git.Tests.PoSh')
     $revision=$null;$remote=$null;$dirty=$false
+    $allowedFiles=$null
     if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot '.git')){
         $revision=Read-QuietRepositoryValue $WorkspaceRoot @('rev-parse','--verify','HEAD')
         $remote=Read-QuietRepositoryValue $WorkspaceRoot @('remote','get-url','origin')
         $dirty=![string]::IsNullOrWhiteSpace((Read-QuietRepositoryValue $WorkspaceRoot @('status','--porcelain=v1')))
+        $selection=@{Files=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)}
+        $listed=pump -AsObject -WorkingDirectory $WorkspaceRoot -State $selection -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Files.Add($e.Text)}} -Complete {param($s)$s.Files.Count} git -c core.quotepath=false ls-files --cached --others --exclude-standard
+        if($listed.Outcome -ne 'Success'){throw 'MonorepoSourceListUnavailable'}
+        $allowedFiles=$selection.Files
     }
-    $projects=@(foreach($name in $children){$files=@(Get-QuietSourceFiles (Join-Path $WorkspaceRoot $name));@{Name=$name;Path=$name;SourceSHA256=(Get-QuietManifestDigest $files);Files=$files}})
-    $rootFiles=@(Get-QuietSourceFiles $WorkspaceRoot)
+    $projects=@(foreach($name in $children){$files=@(Get-QuietSourceFiles (Join-Path $WorkspaceRoot $name)|Where-Object {$null -eq $allowedFiles -or $allowedFiles.Contains($name+'/'+$_.Path)});@{Name=$name;Path=$name;SourceSHA256=(Get-QuietManifestDigest $files);Files=$files}})
+    $rootFiles=@(Get-QuietSourceFiles $WorkspaceRoot|Where-Object {$null -eq $allowedFiles -or $allowedFiles.Contains($_.Path)})
     $repository=@{Name='FrenchExDev2.QuietCli.PoSh';Revision=$revision;Remote=$remote;Dirty=$dirty;SourceSHA256=(Get-QuietManifestDigest $rootFiles);Files=$rootFiles}
     $binaries=@()
     if($IncludeBinaries){foreach($output in @('FrenchExDev2.QuietCli.Core.PoSh/lib/engine','FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture','FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/engine-tests')){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $output}}

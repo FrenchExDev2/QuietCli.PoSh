@@ -1,6 +1,7 @@
 * text=auto eol=lf whitespace=cr-at-eol
 **/resources/** -text
 **/third_party/** -text -whitespace
+**/licenses/** -text -whitespace
 **/native/** -text
 **/LICENSE* -text
 **/NOTICE* -text

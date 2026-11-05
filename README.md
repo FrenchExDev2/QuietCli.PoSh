@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./icons/logo.png" alt="Requirement-As-Code logo" width="150px" />
+</p>
+
 # QuietCli2 — monorepo multi-projets
 
 Moteur C# **.NET 11 RC**, façade **PowerShell Core 7.6+**, analyse en flux destinée en premier lieu aux IA.
