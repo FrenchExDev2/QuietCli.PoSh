@@ -16,11 +16,12 @@ Required architecture and libc family in the actual guest and engine.
 .PARAMETER Suite
 Companion scope or native C mutation campaign selected by the workflow.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[ValidateSet('Core','Git','All','Mutation')][string]$Suite='All')
+[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[ValidateSet('Core','Git','All','Import','Mutation')][string]$Suite='All')
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 $owner=[guid]::NewGuid().ToString('N');$name='quietcli2-'+$owner.Substring(0,12)
 $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Tests Podman';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=$Platform;State='Preparing';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;ContainerId=$name;Passed=$null;Failed=$null;Case='Staging explicit source files';FinishedUtc=$null;Error=$null;Image=$Image;Owner=$owner}
 $status=Join-Path $RunDirectory 'status.json'
+if($Suite -eq 'Import'){$state.Project='FrenchExDev2.QuietCli.Core.PoSh';$state.Task='Core import cost in fresh pwsh sessions'}
 if($Suite -eq 'Mutation'){$state.Project='FrenchExDev2.QuietCli.Core.PoSh';$state.Task='PTY properties, fuzzing and mutation'}
 Write-WorkspaceJson $status $state
 $created=$false

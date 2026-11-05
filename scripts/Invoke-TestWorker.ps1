@@ -8,11 +8,13 @@ QuietCli2 workspace root.
 .PARAMETER RunDirectory
 Private output directory for this run.
 .PARAMETER Suite
-Core, Git or All.
+Core, Git, All, Import or the explicit-repository RealStatus integration suite.
+.PARAMETER RepositoryConfig
+UTF-8 JSON array of existing repository roots; required by RealStatus.
 .PARAMETER ExpectedRuntimeIdentifier
 Required native architecture for both the PowerShell host and the separate engine.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[ValidateSet('Core','Git','All')][string]$Suite='All',[string]$ExpectedRuntimeIdentifier)
+[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[ValidateSet('Core','Git','All','Import','RealStatus')][string]$Suite='All',[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
@@ -34,24 +36,36 @@ try{
     if(![StringComparer]::OrdinalIgnoreCase.Equals($actualCorePath,$expectedCorePath)){throw 'UnexpectedCoreModulePath'}
     $localAlias=Get-Alias quiet -ErrorAction Stop
     if(!$localAlias.ResolvedCommand -or ![StringComparer]::OrdinalIgnoreCase.Equals($localAlias.ResolvedCommand.Module.Path,$expectedCorePath)){throw 'UnexpectedQuietAliasTarget'}
-    $engineIdentity=Get-QuietEngine
-    if($env:QUIETCLI2_EXPECT_ENGINE_MODE -and $engineIdentity.Mode -cne $env:QUIETCLI2_EXPECT_ENGINE_MODE){throw 'EngineHostingModeMismatch'}
-    if($env:QUIETCLI2_EXPECT_RUNTIME_MAJOR -and $engineIdentity.Mode -eq 'InProcess'){
-        $framework='.NETCoreApp,Version=v'+$env:QUIETCLI2_EXPECT_RUNTIME_MAJOR+'.0'
-        if($engineIdentity.Mode -cne 'InProcess' -or $engineIdentity.Engine.ProcessId -ne $PID -or $engineIdentity.Engine.TargetFramework -cne $framework){throw 'IntegratedEngineIdentityMismatch'}
-        if($engineIdentity.ProtocolInputBytes -ne 0 -or $engineIdentity.ProtocolOutputBytes -ne 0){throw 'IntegratedEngineUnexpectedPipeTraffic'}
-    }
-    if($ExpectedRuntimeIdentifier -and $engineIdentity.Engine.RuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw "EngineRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($engineIdentity.Engine.RuntimeIdentifier)"}
-    if($ExpectedRuntimeIdentifier -and $engineIdentity.Mode -ne 'InProcess' -and $engineIdentity.Engine.BuildRuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw 'EnginePublicationRuntimeMismatch'}
-    foreach($selected in $(if($Suite -eq 'All'){@('Core','Git')}else{@($Suite)})){
-        $project="FrenchExDev2.QuietCli.$selected.PoSh"
-        $state.Project=$project;$state.ProjectDirectory=Join-Path $WorkspaceRoot $project
-        Import-Module (Join-Path $WorkspaceRoot "FrenchExDev2.QuietCli.$selected.Tests.PoSh/FrenchExDev2.QuietCli.$selected.Tests.PoSh.psd1") -Force
-        $basePassed=$state.Passed;$baseFailed=$state.Failed
-        $progress={param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$basePassed+$passed;$state.Failed=$baseFailed+$failed;Write-WorkspaceJson $statusPath $state}
-        $command=Get-Command "Invoke-Quiet$($selected)Tests"
-        $summary=& $command -WorkspaceRoot $WorkspaceRoot -OnProgress $progress
+    if($Suite -eq 'RealStatus'){
+        $state.Task='Real repository git status with Core callbacks only'
+        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Status.Real.Tests.ps1')
+        $summary=Invoke-QuietRealStatusIntegration -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -RepositoryConfig $RepositoryConfig -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
         $summaries.Add($summary)
+    }elseif($Suite -eq 'Import'){
+        $state.Task='Core import cost in fresh pwsh sessions'
+        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Import.Tests.ps1')
+        $summary=Invoke-QuietImportIntegration -WorkspaceRoot $WorkspaceRoot -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
+        $summaries.Add($summary)
+    }else{
+        $engineIdentity=Get-QuietEngine
+        if($env:QUIETCLI2_EXPECT_ENGINE_MODE -and $engineIdentity.Mode -cne $env:QUIETCLI2_EXPECT_ENGINE_MODE){throw 'EngineHostingModeMismatch'}
+        if($env:QUIETCLI2_EXPECT_RUNTIME_MAJOR -and $engineIdentity.Mode -eq 'InProcess'){
+            $framework='.NETCoreApp,Version=v'+$env:QUIETCLI2_EXPECT_RUNTIME_MAJOR+'.0'
+            if($engineIdentity.Mode -cne 'InProcess' -or $engineIdentity.Engine.ProcessId -ne $PID -or $engineIdentity.Engine.TargetFramework -cne $framework){throw 'IntegratedEngineIdentityMismatch'}
+            if($engineIdentity.ProtocolInputBytes -ne 0 -or $engineIdentity.ProtocolOutputBytes -ne 0){throw 'IntegratedEngineUnexpectedPipeTraffic'}
+        }
+        if($ExpectedRuntimeIdentifier -and $engineIdentity.Engine.RuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw "EngineRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($engineIdentity.Engine.RuntimeIdentifier)"}
+        if($ExpectedRuntimeIdentifier -and $engineIdentity.Mode -ne 'InProcess' -and $engineIdentity.Engine.BuildRuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw 'EnginePublicationRuntimeMismatch'}
+        foreach($selected in $(if($Suite -eq 'All'){@('Core','Git')}else{@($Suite)})){
+            $project="FrenchExDev2.QuietCli.$selected.PoSh"
+            $state.Project=$project;$state.ProjectDirectory=Join-Path $WorkspaceRoot $project
+            Import-Module (Join-Path $WorkspaceRoot "FrenchExDev2.QuietCli.$selected.Tests.PoSh/FrenchExDev2.QuietCli.$selected.Tests.PoSh.psd1") -Force
+            $basePassed=$state.Passed;$baseFailed=$state.Failed
+            $progress={param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$basePassed+$passed;$state.Failed=$baseFailed+$failed;Write-WorkspaceJson $statusPath $state}
+            $command=Get-Command "Invoke-Quiet$($selected)Tests"
+            $summary=& $command -WorkspaceRoot $WorkspaceRoot -OnProgress $progress
+            $summaries.Add($summary)
+        }
     }
     $state.State=if($state.Failed){'Failed'}else{'Success'}
 }catch{$state.State='Crash';$state.Error=$_.ToString();$state.Failed++}
@@ -62,8 +76,8 @@ finally{
             $drift=@(foreach($before in $sourceIdentity.Projects){$current=@($after.Projects|Where-Object Name -CEQ $before.Name)[0];if($current.SourceSHA256 -cne $before.SourceSHA256){$before.Name}};if($sourceIdentity.Repository.SourceSHA256 -cne $after.Repository.SourceSHA256){'Monorepo'})
             if($drift.Count){$state.State='Failed';$state.Failed++;$state.Case='Sources changed during the run';$state.Error=$drift -join ', '}
             Write-WorkspaceJson (Join-Path $RunDirectory 'source-identity-final.json') $after
-            $engineIdentity=Get-QuietEngine
-            if($ExpectedRuntimeIdentifier -and $engineIdentity.Engine.RuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw 'FinalEngineRuntimeMismatch'}
+            if($Suite -ne 'Import'){$engineIdentity=Get-QuietEngine}
+            if($Suite -ne 'Import' -and $ExpectedRuntimeIdentifier -and $engineIdentity.Engine.RuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw 'FinalEngineRuntimeMismatch'}
         }catch{$state.State='Failed';$state.Failed++;$state.Error='Build/source identity verification failed: '+$_.Exception.Message}
     }
     try{Stop-QuietEngine}catch{}

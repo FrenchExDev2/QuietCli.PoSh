@@ -6,7 +6,7 @@ Runs companion suites with a dedicated local monitor; CI uses the same saved sta
 .PARAMETER WorkspaceRoot
 QuietCli2 root.
 .PARAMETER Suite
-Core, Git or All.
+Core, Git, All, Import or the explicit-repository RealStatus integration suite.
 .PARAMETER RunDirectory
 New output directory; generated when omitted.
 .PARAMETER Headless
@@ -15,10 +15,12 @@ CI-only output mode, without a desktop window.
 Uses already built engine and test fixture.
 .PARAMETER TimeoutSeconds
 Maximum worker time before a saved Timeout state.
+.PARAMETER RepositoryConfig
+UTF-8 JSON array of existing repository roots; required by RealStatus.
 .PARAMETER ExpectedRuntimeIdentifier
 Required actual PowerShell and engine runtime identifier; detects accidental architecture emulation.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Core','Git','All')][string]$Suite='All',[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier)
+[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Core','Git','All','Import','RealStatus')][string]$Suite='All',[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 if(!$SkipBuild){& (Join-Path $PSScriptRoot 'Build-Workspace.ps1') -WorkspaceRoot $WorkspaceRoot}
@@ -29,6 +31,8 @@ $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
 $workerPath=Join-Path $PSScriptRoot 'Invoke-TestWorker.ps1'
 $monitorPath=Join-Path $PSScriptRoot 'Watch-Tests.ps1'
 $workerArguments=@('-File',('"'+$workerPath+'"'),'-WorkspaceRoot',('"'+$WorkspaceRoot+'"'),'-RunDirectory',('"'+$RunDirectory+'"'),'-Suite',$Suite)
+if($Suite -eq 'RealStatus' -and !$RepositoryConfig){throw 'RealStatusRequiresRepositoryConfig'}
+if($RepositoryConfig){$workerArguments+=@('-RepositoryConfig',('"'+[IO.Path]::GetFullPath($RepositoryConfig,$PWD.Path)+'"'))}
 if($ExpectedRuntimeIdentifier){$workerArguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
 $options=@{FilePath=$runner;ArgumentList=$workerArguments;PassThru=$true;RedirectStandardOutput=(Join-Path $RunDirectory 'worker.stdout.log');RedirectStandardError=(Join-Path $RunDirectory 'worker.stderr.log')}
 if($IsWindows){$options.WindowStyle='Hidden'}

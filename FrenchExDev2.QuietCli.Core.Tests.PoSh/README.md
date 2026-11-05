@@ -20,6 +20,57 @@ Depuis le workspace : `./scripts/Invoke-WorkspaceCi.ps1 -Suite Core`. Le lanceur
 
 Une suite vide, un crash ou un prérequis manquant n’est jamais converti en succès.
 
+## Fresh-session Core import cost
+
+`Import.Tests.ps1` runs on Windows and Linux using the current host's exact `$PSHOME` executable. It is included in Core/All; the focused `Import` suite avoids unrelated functional tests and does not need a rebuild when matching binaries already exist:
+
+```powershell
+# Objective: Measure the local Core import with a visible monitor and saved reports.
+./scripts/Invoke-WorkspaceCi.ps1 -Suite Import -SkipBuild
+
+# Objective: Repeat inside existing networkless Linux images with host monitoring.
+./scripts/Invoke-ContainerCi.ps1 -Suite Import -Platform debian -Image localhost/quietcli2-debian-net11:2.56.0 -ExpectedRuntimeIdentifier linux-x64
+./scripts/Invoke-ContainerCi.ps1 -Suite Import -Platform alpine -Image localhost/frenchexdev-quality:alpine-pwsh-7.6.7-net11 -ExpectedRuntimeIdentifier linux-musl-x64
+```
+
+Each run discards one warm-up pair and retains seven baseline/import pairs, alternating their order. Each arm starts a fresh process. Only the measurement children use `-NoProfile -NonInteractive`, deliberately isolating the module from user profiles; the launcher and monitor retain normal profiles. This is a fresh module/process measurement with warm filesystem caches, not disk-cold startup or an estimate of normal profile loading.
+
+The probe measures the `Import-Module` interval, CPU, total managed allocations, managed heap delta, working-set delta and private-memory delta. Baseline performs no import. Reports preserve raw observations, signed paired differences and count/min/median/nearest-rank-p95/max for each metric. `InvocationElapsedMs` separately includes process startup/shutdown, probe JSON and parent QuietCli dispatch/callback/telemetry overhead; it is not pure PowerShell startup. Memory deltas are noisy observations, not guaranteed retained memory. No monetary conversion or speed threshold is applied.
+
+The probe rejects a preloaded Core/engine, checks the exact loaded path and `quiet` alias, and verifies that import leaves the engine and managed helper unstarted. It never calls `Get-QuietEngine`. The parent test uses its existing Core engine to launch probes; parent overhead is outside the measured import interval. The monitor and summary retain the actual host version, CLR, RID and source identity. Windows and Linux hosts with different PowerShell/CLR versions are separate observations, not a controlled OS comparison. ARM64 uses the same test but requires actual ARM64 execution to establish results.
+
+`summary.json` contains `Suites[0].Statistics`, `Samples`, `Pairs` and `Validation` for the focused suite; full Core runs retain the same object under `Suites[].Performance`. Linux results are in the container report's `guest/summary.json`. The launcher prints each temporary report directory and its monitor reopening command. Statistics validation retains seed 73591, 64 generated finite-vector properties, 68 malformed/boundary inputs and four source-checked targeted mutants with individual outcomes. This small catalogue qualifies the new statistics, not exhaustive PowerShell mutation coverage or the existing product implementation.
+
+The loader reads protocol JSON through asynchronous .NET file I/O and `System.Text.Json`, combines paths with `System.IO.Path`, and creates the exported alias through the public PowerShell session-state provider API. A fresh import must not autoload `Microsoft.PowerShell.Management` or `Microsoft.PowerShell.Utility`. Their first-use initialization belongs to the cost of the previous cmdlet-based loader and is explicitly isolated by the diagnostic controls below. No security setting is changed.
+
+`ProtocolSpecification.Tests.ps1` checks all six protocol constants, inclusive frame bounds, missing/wrong JSON types and malformed UTF-8. It retains seed 73593, 66 valid properties, 143 malformed/boundary cases and six targeted validation/decoder mutants. Core/All and RealStatus execute this regression. It does not compile or start the engine.
+
+## Real repositories with Core callbacks only
+
+Create a UTF-8 JSON array of existing repository roots outside the checkout, then run from the monorepo root:
+
+```powershell
+# Objective: Verify plain git status on explicit real repositories with a visible monitor.
+./scripts/Invoke-WorkspaceCi.ps1 -Suite RealStatus -SkipBuild -RepositoryConfig /absolute/path/repositories.json
+```
+
+For the local Windows setup, the configuration contains:
+
+```json
+[
+  "C:/code/FrenchExDev/FrenchExDev_i2/LLVM/llvm-project",
+  "C:/code/FrenchExDev/FrenchExDev_i2/VsCode/FrenchExDev/VsCodeInsider"
+]
+```
+
+This opt-in suite requires those real repositories and is not implicitly added to CI or copied into Linux containers. The probe itself is portable when given local repository roots. Each repository gets a fresh profile-free process which imports only the explicit Core manifest. It checks an empty handler registry and absence of the Git companion before and after all commands.
+
+The measured business call is `quiet -Output { ... } -Complete { ... } git status`, with `-AsObject`, newline records and explicit working directory. Callbacks retain only per-stream line/UTF-8 counters and streaming SHA-256 digests. The independent shared CI runner brackets every sample with a reference `git status`; changing output fails the sample instead of becoming a product defect. Optional Git locks are disabled. No fixture, reset, cleanup, hooks or network operation is requested on a real repository.
+
+The report separates Core import, first call with a cold engine, three calls reusing the engine, independent reference timing and callback timing. Native intervals are the engine's reported observations; wall-clock invocation intervals include Core dispatch and telemetry. Order and warm-cache effects limit performance comparisons. `-Complete` must run once, exit must be zero, both completeness flags must hold, and reference digests/counts must match. `Status.Aggregation.ps1` is also checked in Core/All using seed 73592, 65 generated Unicode properties, six boundary inputs and three targeted mutants.
+
+`Import.DiagnosticProbe.ps1` compares fresh imports, same-process reimports, explicit preloading of PowerShell's Management/Utility modules and separate read/parse/dot-source controls. Controls run in independent processes and are not additive phases of one import. In particular, the source-only dot-source control uses a diagnostic module scope. `summary.json` retains all controls under `Suites[0].Diagnostics`, repository evidence under `Repositories`, and generator/mutation evidence under `Validation` and `ProtocolValidation`. Incremental evidence survives in `real-status.partial.json`. Security-product activity is not causally isolated by this test.
+
 `SecondPass.Tests.ps1` verifies gain group paging and report cleanup, then compares the former PowerShell aggregation with C# in both engine modes. It also measures short-record and long-fragment framing with independent expected counts. `Gain.Baseline.ps1` is test-only. Timing scope, request counts and actual pipe bytes are retained in `Suites[].Performance`; see [the migration review](../docs/powershell-csharp-boundaries.md).
 
 `Control.Tests.ps1` verifies an exact 1 MiB + 7 byte duplex copy in both hosting modes, rejected controls followed by a usable session, input/identity bounds, and direct-versus-JSON request accounting. Its timing samples compare identical 1 MiB stdin/hash workloads through local JSON or typed controls. Startup, hashing and drainage are included; actual pipe traffic is zero for both local samples.

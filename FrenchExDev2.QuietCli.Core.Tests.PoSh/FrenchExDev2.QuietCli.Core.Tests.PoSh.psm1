@@ -2,6 +2,8 @@
 #requires -Version 7.6
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'Performance.Tests.ps1')
+. (Join-Path $PSScriptRoot 'Import.Tests.ps1')
+. (Join-Path $PSScriptRoot 'Status.Aggregation.ps1')
 . (Join-Path $PSScriptRoot 'HostMatrix.Tests.ps1')
 . (Join-Path $PSScriptRoot 'SecondPass.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Control.Tests.ps1')
@@ -50,6 +52,15 @@ Executes independent native byte and object invariants in a companion module.
     $performance=[Collections.Generic.List[object]]::new()
     $galleryEvidence=[Collections.Generic.List[object]]::new()
     $cases=[ordered]@{}
+    $cases['protocol configuration preserves bounds using host .NET APIs']={
+        $performance.Add((& (Get-Module FrenchExDev2.QuietCli.Core.PoSh) {
+            param($tests,$workspace)
+            . $tests
+            Test-QuietProtocolSpecification -WorkspaceRoot $workspace
+        } (Join-Path $PSScriptRoot 'ProtocolSpecification.Tests.ps1') $WorkspaceRoot))
+    }
+    $cases['direct status callbacks preserve generated Unicode record digests']={$performance.Add((Test-QuietStatusAggregation))}
+    $cases['fresh sessions measure inert Core import against a paired baseline']={$performance.Add((Invoke-QuietImportIntegration -WorkspaceRoot $WorkspaceRoot))}
     $cases['local report paths isolate workspaces and preserve CI upload contracts']={Test-QuietReportPaths -WorkspaceRoot $WorkspaceRoot}
     $cases['Core migration preserves metadata and compares local helper costs']={foreach($sample in Measure-QuietCoreMigration -Dotnet $dotnet){$performance.Add($sample)}}
     $cases['typed controls preserve duplex bytes and request rejection in both hosts']={Test-QuietTypedControls -Fixture $fixture -Dotnet $dotnet}

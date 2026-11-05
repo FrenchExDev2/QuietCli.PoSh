@@ -16,9 +16,9 @@ Maximum worker duration, including staging and cleanup.
 .PARAMETER ExpectedRuntimeIdentifier
 Required guest RID; prevents a different architecture from being accepted as ARM qualification.
 .PARAMETER Suite
-Companion scope or native C mutation campaign selected by the dependency-aware workflow.
+Companion scope, focused Import benchmark, or native C mutation campaign.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$Image,[ValidateSet('alpine','debian')][string]$Platform,[switch]$Headless,[ValidateRange(1,7200)][int]$TimeoutSeconds=900,[ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,[ValidateSet('Core','Git','All','Mutation')][string]$Suite='All')
+[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$Image,[ValidateSet('alpine','debian')][string]$Platform,[switch]$Headless,[ValidateRange(1,7200)][int]$TimeoutSeconds=900,[ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,[ValidateSet('Core','Git','All','Import','Mutation')][string]$Suite='All')
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 $run=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'containers') ($Platform+'-'+[DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))
 [void][IO.Directory]::CreateDirectory($run)

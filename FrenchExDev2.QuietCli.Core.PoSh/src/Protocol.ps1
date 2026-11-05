@@ -1,3 +1,17 @@
+function Read-QuietProtocolSpecification {
+    <#
+    .SYNOPSIS
+    Reads strict UTF-8 protocol constants using host .NET APIs without cmdlet-module autoloading.
+    .PARAMETER Path
+    Protocol JSON file containing integer constants and the supported framing bounds.
+    #>
+    param([string]$Path)
+    $text=[IO.File]::ReadAllTextAsync($Path,[Text.UTF8Encoding]::new($false,$true)).GetAwaiter().GetResult()
+    $values=[Text.Json.JsonSerializer]::Deserialize[Collections.Generic.Dictionary[string,int]]($text)
+    if($null -eq $values -or !$values.ContainsKey('Version') -or !$values.ContainsKey('BlockSize') -or !$values.ContainsKey('HeaderLimit') -or $values['Version'] -ne 1 -or $values['BlockSize'] -gt 16384 -or $values['BlockSize'] -lt 1024 -or $values['HeaderLimit'] -gt 1048576 -or $values['HeaderLimit'] -lt 65536){throw 'UnsafeProtocolSpecification'}
+    return $values
+}
+
 function Resolve-QuietManagedTarget {
     <#
     .SYNOPSIS
