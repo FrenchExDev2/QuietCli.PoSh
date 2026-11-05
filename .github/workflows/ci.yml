@@ -163,6 +163,7 @@ jobs:
           QUIETCLI2_EXPECT_ENGINE_MODE: ${{ matrix.mode }}
           QUIETCLI2_GIT_PUSH_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
           QUIETCLI2_GIT_COMMAND_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
+          QUIETCLI2_GIT_QUERY_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
           QUIETCLI2_EXPECT_HOST_VERSION: ${{ matrix.host_version }}
           QUIETCLI2_EXPECT_RUNTIME_MAJOR: ${{ matrix.runtime_major }}
         run: ./scripts/Invoke-WorkspaceCi.ps1 -Headless -Suite $env:QUIETCLI_SUITE -ExpectedRuntimeIdentifier $env:EXPECTED_RID

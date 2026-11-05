@@ -10,7 +10,7 @@ $script:GitArgumentSchema=$null
 $script:GitParserAssembly=$null
 $script:GitArtifacts=@{}
 $script:GitHandlerCatalogue=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'metadata/Git.HandlerCatalogue.json') -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable
-foreach($source in @('Managed','Arguments','ArgumentSchema','StatusRecords','Records','Diff','History','Repository','Semantics','RepositoryCommands','Commands')){. (Join-Path $PSScriptRoot "src/$source.ps1")}
+foreach($source in @('Managed','Arguments','ArgumentSchema','StatusRecords','Records','Diff','History','Repository','Semantics','RepositoryCommands','Queries','Commands')){. (Join-Path $PSScriptRoot "src/$source.ps1")}
 $script:GitExecutors=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
 foreach($entry in $script:GitHandlerCatalogue.Handlers.GetEnumerator()){
     if($entry.Value -notmatch '^Invoke-QuietGit[A-Za-z]+$'){throw 'InvalidGitHandlerFunction'}

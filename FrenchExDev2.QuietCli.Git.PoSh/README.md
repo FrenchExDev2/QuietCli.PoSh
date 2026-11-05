@@ -59,3 +59,11 @@ The catalogue now registers 29 specialized command families. The new handlers co
 `GitConfigRecords`, `GitRemoteRecords` and `GitOperationOutcome` have separate responsibilities. PowerShell RepositoryCommands.ps1 owns orchestration; there is no command named daily and no GitDaily class. File-only mutations require two status observations; ref-moving operations add two ref observations rather than separate HEAD/branch processes. These are native process costs, not per-record engine IPC.
 
 Interactive option names are checked after binding, so flag-looking message values remain values. Qualification and reproducible commands are documented in [the audit](../docs/audits/2026-11-05-git-principal-commands.md). Reflog, grep, blame, bisect, recursive submodule and maintenance workflows are subsequent work; inventory membership does not qualify them.
+
+## Object, reference and tracked-file queries
+
+Twelve additional commands now have dedicated orchestration and caller-local C# parsing: ls-files, for-each-ref, show-ref, ls-remote, merge-base, rev-list, hash-object, write-tree, count-objects, symbolic-ref, check-ref-format and version. The specialized catalogue contains 41 of the 183 inventory entries. Get-QuietGitCoverage reports each PowerShell handler and its C# ParserTypes separately; Qualification remains Pending for the complete version/platform matrix.
+
+ls-files uses NUL framing for paths and index stages. Object queries validate full SHA-1/SHA-256 identities and optional parents; alternative revision output is retained in RequestedFormat mode. show-ref/ls-remote distinguish ordinary, symbolic and peeled refs, quiet predicates and no-match exit codes. for-each-ref uses fixed NUL fields. count-objects keeps numeric counters and alternate records with explicit KiB units; human-readable output remains requested format. Symbolic-ref writes are separate observed mutations. The explicitly requested ls-remote may contact its source; no other query adds a hidden fetch or network observation.
+
+Windows stable/.NET 10 and Preview/.NET 11 each passed 49 scenarios for this group, including 28 nested C# cases and the eight targeted query mutants. The current native fixture version is Git 2.56.0.windows.3. See [the query audit](../docs/audits/2026-11-05-git-queries.md) for limits and evidence.

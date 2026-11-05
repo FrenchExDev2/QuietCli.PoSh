@@ -28,8 +28,125 @@
     "remote": "Invoke-QuietGitRemote",
     "config": "Invoke-QuietGitConfig",
     "init": "Invoke-QuietGitCreate",
-    "clone": "Invoke-QuietGitCreate"
+    "clone": "Invoke-QuietGitCreate",
+    "hash-object": "Invoke-QuietGitObjectQuery",
+    "write-tree": "Invoke-QuietGitObjectQuery",
+    "merge-base": "Invoke-QuietGitObjectQuery",
+    "rev-list": "Invoke-QuietGitObjectQuery",
+    "for-each-ref": "Invoke-QuietGitReferenceQuery",
+    "show-ref": "Invoke-QuietGitReferenceQuery",
+    "ls-remote": "Invoke-QuietGitReferenceQuery",
+    "ls-files": "Invoke-QuietGitIndexQuery",
+    "count-objects": "Invoke-QuietGitCountQuery",
+    "symbolic-ref": "Invoke-QuietGitSymbolicRef",
+    "check-ref-format": "Invoke-QuietGitRefValidation",
+    "version": "Invoke-QuietGitVersion"
   },
   "SchemaVersion": 2,
-  "Scope": "Specialized streaming handlers; variants and release qualification remain explicit."
+  "Scope": "Specialized streaming handlers; variants and release qualification remain explicit.",
+  "ParserTypes": {
+    "write-tree": [
+      "GitObjectRecords"
+    ],
+    "branch": [
+      "GitRecords"
+    ],
+    "merge": [
+      "GitRecords",
+      "GitOperationOutcome"
+    ],
+    "version": [
+      "GitVersionRecords"
+    ],
+    "stash": [
+      "GitRecords"
+    ],
+    "merge-base": [
+      "GitObjectRecords"
+    ],
+    "status": [
+      "GitRecords"
+    ],
+    "ls-remote": [
+      "GitReferenceRecords"
+    ],
+    "log": [
+      "GitRecords"
+    ],
+    "show": [
+      "GitRecords"
+    ],
+    "rebase": [
+      "GitRecords",
+      "GitOperationOutcome"
+    ],
+    "clean": [
+      "GitRecords",
+      "GitOperationOutcome"
+    ],
+    "revert": [
+      "GitRecords",
+      "GitOperationOutcome"
+    ],
+    "reset": [
+      "GitRecords",
+      "GitOperationOutcome"
+    ],
+    "diff": [
+      "GitRecords"
+    ],
+    "rev-list": [
+      "GitObjectRecords"
+    ],
+    "config": [
+      "GitConfigRecords"
+    ],
+    "count-objects": [
+      "GitObjectCounts"
+    ],
+    "rm": [
+      "GitRecords",
+      "GitOperationOutcome"
+    ],
+    "hash-object": [
+      "GitObjectRecords"
+    ],
+    "remote": [
+      "GitRemoteRecords"
+    ],
+    "worktree": [
+      "GitRecords"
+    ],
+    "restore": [
+      "GitRecords",
+      "GitOperationOutcome"
+    ],
+    "mv": [
+      "GitRecords",
+      "GitOperationOutcome"
+    ],
+    "cherry-pick": [
+      "GitRecords",
+      "GitOperationOutcome"
+    ],
+    "ls-tree": [
+      "GitRecords"
+    ],
+    "switch": [
+      "GitRecords",
+      "GitOperationOutcome"
+    ],
+    "show-ref": [
+      "GitReferenceRecords"
+    ],
+    "push": [
+      "GitPush"
+    ],
+    "for-each-ref": [
+      "GitRecords"
+    ],
+    "ls-files": [
+      "GitIndexRecords"
+    ]
+  }
 }

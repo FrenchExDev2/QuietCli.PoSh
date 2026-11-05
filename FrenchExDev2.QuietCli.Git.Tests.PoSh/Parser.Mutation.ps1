@@ -1,13 +1,13 @@
-function Invoke-QuietGitPushMutation {
+function Invoke-QuietGitParserMutation {
     <#
     .SYNOPSIS
-    Builds source-checked push mutants in owned artifact directories and requires assertion failures.
+    Builds source-checked parser mutants in owned artifact directories and requires assertion failures.
     .PARAMETER WorkspaceRoot
     Monorepo root containing the production parser and its independent tests.
     .PARAMETER Catalogue
-    Source-checked push or repository command mutation catalogue.
+    Source-checked parser mutation catalogue selected for the changed domain.
     #>
-    param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Push','Repository')][string]$Catalogue='Push')
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Push','Repository','Query')][string]$Catalogue='Push')
     $ErrorActionPreference='Stop'
     . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
     $run=Join-Path $WorkspaceRoot ('artifacts/git-'+$Catalogue.ToLowerInvariant()+'-mutation/'+[guid]::NewGuid().ToString('N'))
@@ -18,29 +18,10 @@ function Invoke-QuietGitPushMutation {
     $production=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/engine'
     $tests=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests'
 
-    $mutants=@(
-        @{Name='remote-case';From='StringComparison.OrdinalIgnoreCase';To='StringComparison.Ordinal'},
-        @{Name='remote-value';From='line[3..]';To='line[4..]'},
-        @{Name='cr-preservation';From="text.TrimEnd('\r')";To='text'},
-        @{Name='flag-rejection';From='" =*+!-"';To='" =*+-"'},
-        @{Name='acceptance';From="line[0] != '!'";To="line[0] == '!'"},
-        @{Name='source-boundary';From='line[2..colon]';To='line[1..colon]'},
-        @{Name='target-boundary';From='line[(colon + 1)..tab]';To='line[colon..tab]'},
-        @{Name='summary-boundary';From='line[(tab + 1)..]';To='line[tab..]'}
-    )
-    foreach($mutation in $mutants){$mutation.File='GitPush.cs'}
-    if($Catalogue -eq 'Repository'){
-        $mutants=@(
-            @{Name='config-null';File='GitConfigRecords.cs';From='split >= 0';To='split < 0'},
-            @{Name='config-value';File='GitConfigRecords.cs';From='record[(split + 1)..]';To='record[split..]'},
-            @{Name='config-key';File='GitConfigRecords.cs';From='if (key.Length == 0)';To='if (false)'},
-            @{Name='remote-name';File='GitRemoteRecords.cs';From='record[..tab]';To='record[..(tab + 1)]'},
-            @{Name='remote-push';File='GitRemoteRecords.cs';From='direction = "push"';To='direction = "fetch"'},
-            @{Name='remote-url';File='GitRemoteRecords.cs';From='suffix = 7';To='suffix = 8'},
-            @{Name='operation-success';File='GitOperationOutcome.cs';From='exitCode == 0';To='exitCode != 0'},
-            @{Name='operation-conflict';File='GitOperationOutcome.cs';From='conflicts > 0';To='conflicts < 0'}
-        )
-    }
+    $definitions=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'mutation/catalogues.json') -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable
+    $definition=$definitions.Catalogues[$Catalogue]
+    $mutants=@($definition.Mutants)
+    if(!$mutants.Count -or !$definition.CasePrefix){throw 'InvalidParserMutationCatalogue'}
     $results=[Collections.Generic.List[object]]::new()
     try {
         foreach($mutation in @(@{Name='baseline';From=$null;To=$null})+$mutants){
@@ -68,9 +49,9 @@ function Invoke-QuietGitPushMutation {
             [void][IO.File]::WriteAllLinesAsync((Join-Path $directory 'tests.log'),$log,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
             if($execution.Outcome -eq 'Timeout'){throw ('MutationTimeout: '+$mutation.Name)}
             $report=($log -join "`n") | ConvertFrom-Json -ErrorAction Stop
-            $pushFailures=@($report.Cases | Where-Object {$_.State -eq 'Failed' -and $_.Name.StartsWith($(if($Catalogue -eq 'Push'){'push '}else{'repository '}))})
+            $pushFailures=@($report.Cases | Where-Object {$_.State -eq 'Failed' -and $_.Name.StartsWith($definition.CasePrefix)})
             if($mutation.Name -eq 'baseline'){
-                if($execution.ExitCode -ne 0 -or $report.Failed -ne 0 -or $report.Passed -ne 22){throw 'MutationBaselineFailed'}
+                if($execution.ExitCode -ne 0 -or $report.Failed -ne 0 -or $report.Passed -ne $definitions.ExpectedCases){throw 'MutationBaselineFailed'}
                 $state='BaselinePassed'
             }else{
                 if($execution.ExitCode -ne 1 -or $pushFailures.Count -eq 0){throw ('MutationSurvivedOrCrashed: '+$mutation.Name)}

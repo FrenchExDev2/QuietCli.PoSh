@@ -1,5 +1,6 @@
+. (Join-Path $PSScriptRoot 'Queries.Tests.ps1')
 . (Join-Path $PSScriptRoot 'RepositoryCommands.Tests.ps1')
-. (Join-Path $PSScriptRoot 'Push.Mutation.ps1')
+. (Join-Path $PSScriptRoot 'Parser.Mutation.ps1')
 . (Join-Path $PSScriptRoot 'Migration.Tests.ps1')
 #requires -Version 7.6
 . (Join-Path $PSScriptRoot 'Semantic.Tests.ps1')
@@ -43,7 +44,7 @@ Tests independently prepared repositories, hook counts and local bare push targe
         $schema=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/metadata/Git.ArgumentSchema.json'
         $r=quiet -AsObject -Data ([Text.StringBuilder]::new()) -Output {param($event,$runtime)if($event.Stream -eq 'stdout'){[void]$runtime.Data.Append($event.Text)}} -Complete {param($runtime)$runtime.Data.ToString()|ConvertFrom-Json} $dotnet $assembly $schema
         Assert-QuietEqual $r.Outcome Success 'Compiled Git suite process'
-        Assert-QuietEqual $r.Data.Passed 22 'Compiled Git independent cases'
+        Assert-QuietEqual $r.Data.Passed 28 'Compiled Git independent cases'
         Assert-QuietEqual $r.Data.Failed 0 'Compiled Git independent failures'
     }
     $cases['status distinguishes unborn state and Unicode untracked paths']={
@@ -102,10 +103,13 @@ Tests independently prepared repositories, hook counts and local bare push targe
         Assert-QuietEqual $coverage.Count 183
         Assert-QuietEqual @($coverage|Where-Object EntireInventoryQualified).Count 0
     }
-    if($env:QUIETCLI2_GIT_PUSH_MUTATION -eq '1'){$cases['push targeted mutations are detected by independent assertions']={$null=Invoke-QuietGitPushMutation -WorkspaceRoot $WorkspaceRoot}}
-    if($env:QUIETCLI2_GIT_COMMAND_MUTATION -eq '1'){$cases['repository command C# mutants are detected']={$null=Invoke-QuietGitPushMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Repository}}
+    if($env:QUIETCLI2_GIT_PUSH_MUTATION -eq '1'){$cases['push targeted mutations are detected by independent assertions']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot}}
+    if($env:QUIETCLI2_GIT_COMMAND_MUTATION -eq '1'){$cases['repository command C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Repository}}
     $repositoryCases=Get-QuietRepositoryCommandCases -RootDirectory $root -Environment $environment -WorkspaceRoot $WorkspaceRoot
     foreach($entry in $repositoryCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
+    if($env:QUIETCLI2_GIT_QUERY_MUTATION -eq '1'){$cases['query parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Query}}
+    $queryCases=Get-QuietGitQueryCases -RootDirectory $root -Environment $environment
+    foreach($entry in $queryCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $semanticCases=Get-QuietGitSemanticCases -RootDirectory $root -Environment $environment
     foreach($entry in $semanticCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $passed=0;$failed=0;$results=[Collections.Generic.List[object]]::new()

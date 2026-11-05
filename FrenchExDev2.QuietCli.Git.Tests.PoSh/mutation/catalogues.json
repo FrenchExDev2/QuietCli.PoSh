@@ -1,0 +1,164 @@
+{
+  "ExpectedCases": 28,
+  "Catalogues": {
+    "Push": {
+      "CasePrefix": "push ",
+      "Mutants": [
+        {
+          "Name": "remote-case",
+          "File": "GitPush.cs",
+          "From": "StringComparison.OrdinalIgnoreCase",
+          "To": "StringComparison.Ordinal"
+        },
+        {
+          "Name": "remote-value",
+          "File": "GitPush.cs",
+          "From": "line[3..]",
+          "To": "line[4..]"
+        },
+        {
+          "Name": "cr-preservation",
+          "File": "GitPush.cs",
+          "From": "text.TrimEnd('\\r')",
+          "To": "text"
+        },
+        {
+          "Name": "flag-rejection",
+          "File": "GitPush.cs",
+          "From": "\" =*+!-\"",
+          "To": "\" =*+-\""
+        },
+        {
+          "Name": "acceptance",
+          "File": "GitPush.cs",
+          "From": "line[0] != '!'",
+          "To": "line[0] == '!'"
+        },
+        {
+          "Name": "source-boundary",
+          "File": "GitPush.cs",
+          "From": "line[2..colon]",
+          "To": "line[1..colon]"
+        },
+        {
+          "Name": "target-boundary",
+          "File": "GitPush.cs",
+          "From": "line[(colon + 1)..tab]",
+          "To": "line[colon..tab]"
+        },
+        {
+          "Name": "summary-boundary",
+          "File": "GitPush.cs",
+          "From": "line[(tab + 1)..]",
+          "To": "line[tab..]"
+        }
+      ]
+    },
+    "Repository": {
+      "CasePrefix": "repository ",
+      "Mutants": [
+        {
+          "Name": "config-null",
+          "File": "GitConfigRecords.cs",
+          "From": "split >= 0",
+          "To": "split < 0"
+        },
+        {
+          "Name": "config-value",
+          "File": "GitConfigRecords.cs",
+          "From": "record[(split + 1)..]",
+          "To": "record[split..]"
+        },
+        {
+          "Name": "config-key",
+          "File": "GitConfigRecords.cs",
+          "From": "if (key.Length == 0)",
+          "To": "if (false)"
+        },
+        {
+          "Name": "remote-name",
+          "File": "GitRemoteRecords.cs",
+          "From": "record[..tab]",
+          "To": "record[..(tab + 1)]"
+        },
+        {
+          "Name": "remote-push",
+          "File": "GitRemoteRecords.cs",
+          "From": "direction = \"push\"",
+          "To": "direction = \"fetch\""
+        },
+        {
+          "Name": "remote-url",
+          "File": "GitRemoteRecords.cs",
+          "From": "suffix = 7",
+          "To": "suffix = 8"
+        },
+        {
+          "Name": "operation-success",
+          "File": "GitOperationOutcome.cs",
+          "From": "exitCode == 0",
+          "To": "exitCode != 0"
+        },
+        {
+          "Name": "operation-conflict",
+          "File": "GitOperationOutcome.cs",
+          "From": "conflicts > 0",
+          "To": "conflicts < 0"
+        }
+      ]
+    },
+    "Query": {
+      "CasePrefix": "query ",
+      "Mutants": [
+        {
+          "Name": "object-algorithm",
+          "File": "GitObjectRecords.cs",
+          "From": "value.Length != 40 && value.Length != 64",
+          "To": "value.Length != 40"
+        },
+        {
+          "Name": "object-parents",
+          "File": "GitObjectRecords.cs",
+          "From": "fields.Skip(1)",
+          "To": "fields.Skip(0)"
+        },
+        {
+          "Name": "reference-peeled",
+          "File": "GitReferenceRecords.cs",
+          "From": ".EndsWith(\"^{}\"u8)",
+          "To": ".EndsWith(\"!{}\"u8)"
+        },
+        {
+          "Name": "reference-symbolic",
+          "File": "GitReferenceRecords.cs",
+          "From": "line[5..separator]",
+          "To": "line[4..separator]"
+        },
+        {
+          "Name": "index-stage",
+          "File": "GitIndexRecords.cs",
+          "From": "header[2][0] - '0'",
+          "To": "header[2][0] - '0' + 1"
+        },
+        {
+          "Name": "index-path",
+          "File": "GitIndexRecords.cs",
+          "From": "record[(tab + 1)..]",
+          "To": "record[tab..]"
+        },
+        {
+          "Name": "counter-value",
+          "File": "GitObjectCounts.cs",
+          "From": "counts[key] = count",
+          "To": "counts[key] = count + 1"
+        },
+        {
+          "Name": "version-value",
+          "File": "GitVersionRecords.cs",
+          "From": "text[12..]",
+          "To": "text[11..]"
+        }
+      ]
+    }
+  }
+}

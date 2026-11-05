@@ -122,7 +122,11 @@ function Get-QuietGitCoverage {
 .SYNOPSIS
 Reports official inventory separately from implemented and qualified command forms. #>
     [CmdletBinding()]param()
-    foreach($command in $script:GitInventory.Commands){[pscustomobject]@{Command=$command.Name;Versions=$command.Versions;Declared=$script:GitSpecifications.ContainsKey($command.Name);Specialized=($command.Name -in $script:GitHandlerCatalogue.Commands);Implementation=$(if($command.Name -in $script:GitHandlerCatalogue.Commands){'StreamingBusinessHandler'}else{'PartialOrMissing'});Qualification='Pending';EntireInventoryQualified=$false}}
+    foreach($command in $script:GitInventory.Commands){
+        $specialized=$script:GitExecutors.ContainsKey($command.Name)
+        $parsers=if($script:GitHandlerCatalogue.ParserTypes.ContainsKey($command.Name)){@($script:GitHandlerCatalogue.ParserTypes[$command.Name])}else{@()}
+        [pscustomobject]@{Command=$command.Name;Versions=$command.Versions;Declared=$script:GitSpecifications.ContainsKey($command.Name);Specialized=$specialized;Handler=$(if($specialized){$script:GitHandlerCatalogue.Handlers[$command.Name]}else{$null});HandlerLanguage=$(if($specialized){'PowerShell'}else{$null});ParserTypes=$parsers;Implementation=$(if($specialized){'StreamingBusinessHandler'}else{'PartialOrMissing'});Qualification='Pending';EntireInventoryQualified=$false}
+    }
 }
 
 function Invoke-QuietGitCommit {
