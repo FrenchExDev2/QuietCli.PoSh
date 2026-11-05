@@ -72,6 +72,8 @@ Préparer :
 
 Le workflow appelle la CI commune : deux runners Windows et quatre combinaisons Linux/libc/architecture. Le RID attendu est contrôlé jusqu’à l’invité et au moteur. Une image ARM absente, une version non verrouillée ou un scénario en échec bloque la publication. La CI ARM doit fournir sa propre preuve d’exécution ; une compilation croisée n’est pas une qualification native.
 
+État du 5 novembre 2026 : les jobs Windows x64 et ARM64 réussissent. Les quatre jobs Linux hébergés échouent explicitement au prérequis d’image tant que leurs variables ne sont pas définies ; le workflow de publication complète reste donc bloqué par cette configuration. La première version 0.1.0 a été publiée par invocation locale explicite, après les suites Windows/Alpine et les contrôles des six binaires. La validation publique avec PSResourceGet a ensuite confirmé le téléchargement de Git et de Core et leur exécution. Cette première publication n’est pas une certification des quatre jobs Linux hébergés.
+
 Après les six jobs, le job de publication reconstruit et teste son propre payload, vérifie les deux nupkg puis lit la clé uniquement pendant l’étape explicite de publication. Aucun upload des paquets vers les artefacts GitHub n’est configuré. Les rapports de tests existants restent disponibles.
 
 La publication locale explicite utilise le même script et lit la clé depuis l’environnement sécurisé :

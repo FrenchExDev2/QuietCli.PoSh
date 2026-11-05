@@ -24,6 +24,8 @@ Les modules sont préparés pour une [installation et publication PSGallery](doc
 
 Les versions **0.1.0 sont publiées** : [Core](https://www.powershellgallery.com/packages/FrenchExDev2.QuietCli.Core.PoSh/0.1.0), [Git](https://www.powershellgallery.com/packages/FrenchExDev2.QuietCli.Git.PoSh/0.1.0). Le téléchargement depuis PSGallery, la résolution de la dépendance Core et l’exécution des modules téléchargés ont été vérifiés dans une installation temporaire isolée.
 
+La validation locale du monorepo comporte 63 scénarios réussis sur Windows x64 et Alpine x64. Les jobs GitHub Windows x64 **et Windows ARM64** ont également réussi dans [le run du 5 novembre](https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh/actions/runs/41943788968). Les quatre jobs Linux hébergés restent bloqués par les références d’images immuables non configurées ; ils ne sont pas annoncés comme réussis. Voir les quatre variables nécessaires dans [la documentation PSGallery/CI](docs/PSGallery.md).
+
 ```powershell
 # Objectif : installer QuietGit et Core depuis la galerie publique.
 Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Version 0.1.0 -Repository PSGallery -Scope CurrentUser

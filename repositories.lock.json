@@ -1,44 +1,44 @@
 {
+  "Runtime": "11.0.0-rc.3.26522.148",
+  "SDK": "11.0.100-rc.3.26522.148",
+  "Layout": "Monorepo",
   "Projects": [
     {
-      "Dependencies": [],
       "Path": "FrenchExDev2.QuietCli.Core.PoSh",
       "Name": "FrenchExDev2.QuietCli.Core.PoSh",
+      "Dependencies": [],
       "SourceSHA256": "F2B5E9BBDD8E3E2873D667EDDEEA5F14343F28B81E7DCC2EBD89A792A9F1A11C"
     },
     {
+      "Path": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
+      "Name": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Core.PoSh"
       ],
-      "Path": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
-      "Name": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
       "SourceSHA256": "F235151BDF573E7CF64F52021DFA976573BECBA676A8CB8ABDFFCDC691D2F885"
     },
     {
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh",
+      "Name": "FrenchExDev2.QuietCli.Git.PoSh",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Core.PoSh"
       ],
-      "Path": "FrenchExDev2.QuietCli.Git.PoSh",
-      "Name": "FrenchExDev2.QuietCli.Git.PoSh",
       "SourceSHA256": "1BBF17BAF1FEC41EE0FAD84985CEB7FC117A408116CE311309DC94C52EEDA28B"
     },
     {
+      "Path": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
+      "Name": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Git.PoSh",
         "FrenchExDev2.QuietCli.Core.Tests.PoSh"
       ],
-      "Path": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
-      "Name": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
       "SourceSHA256": "1AAE26BA2AA2087C24A4B40AB7FD5943C7A83B6F379744005CA726257AB8766D"
     }
   ],
-  "Layout": "Monorepo",
-  "Runtime": "11.0.0-rc.3.26522.148",
-  "SDK": "11.0.100-rc.3.26522.148",
   "Repository": {
     "Name": "FrenchExDev2.QuietCli.PoSh",
     "Remote": "https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh.git",
-    "SourceSHA256": "441D5C646C82AA18EC3DA1C38EF1AE4608B185EEB5209672B75BECA821CDE7E2"
+    "SourceSHA256": "86C59EADE1777067A13EC2CE6D134BF228471CA276307D123F749003CD719E5D"
   },
   "SchemaVersion": 3
 }
