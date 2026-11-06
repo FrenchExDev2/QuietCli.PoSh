@@ -28,22 +28,8 @@ function Invoke-QuietRealStatusIntegration {
     $diagnostics=[Collections.Generic.List[object]]::new()
     $repositories=[Collections.Generic.List[object]]::new()
     $passed=0
-    foreach($mode in @('Import','Import','Import','CmdletOperations','PreloadManagement','PreloadUtility','PreloadBoth','Read','Parse','DotSource')){
-        if($OnProgress){& $OnProgress "Import diagnostic: $mode" Running $passed 0}
-        $result=quiet -AsObject -Role Infrastructure -TimeoutSeconds 90 -Data ([Text.StringBuilder]::new()) -Output {
-            param($event,$runtime)
-            if($event.Stream -eq 'stdout'){
-                if($runtime.Data.Length+$event.Text.Length -gt 32768){throw 'ImportDiagnosticOutputLimit'}
-                [void]$runtime.Data.Append($event.Text)
-            }elseif($event.Stream -eq 'stderr'){
-                if(!$runtime.State.ContainsKey('Diagnostic')){$runtime.State.Diagnostic=''}
-                if($runtime.State.Diagnostic.Length -lt 4096){$runtime.State.Diagnostic+=$event.Text}
-            }
-        } -Complete {param($runtime)if($runtime.State.ContainsKey('Diagnostic')){throw $runtime.State.Diagnostic};$runtime.Data.ToString()|ConvertFrom-Json} -FilePath $runner -ArgumentList @('-NoProfile','-NonInteractive','-File',(Join-Path $PSScriptRoot 'Import.DiagnosticProbe.ps1'),'-Manifest',(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'),'-Mode',$mode)
-        if($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis){throw ('ImportDiagnosticFailed: '+($result.Error|ConvertTo-Json -Compress))}
-        $diagnostics.Add($result.Data)
-        Write-WorkspaceJson (Join-Path $RunDirectory 'real-status.partial.json') @{Diagnostics=$diagnostics.ToArray();Repositories=$repositories.ToArray();Validation=$validation}
-    }
+    $diagnosticEvidence=Invoke-QuietImportDiagnostics -WorkspaceRoot $WorkspaceRoot -OnProgress $OnProgress
+    foreach($sample in $diagnosticEvidence.Samples){$diagnostics.Add($sample)}
     foreach($target in $targets){
         if($OnProgress){& $OnProgress "Core-only git status: $target" Running $passed 0}
         $directory=Join-Path $RunDirectory ('repo-'+$repositories.Count)

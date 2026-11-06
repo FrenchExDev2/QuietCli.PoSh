@@ -4,6 +4,9 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'Performance.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Import.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Status.Aggregation.ps1')
+. (Join-Path $PSScriptRoot 'Status.Controlled.Tests.ps1')
+. (Join-Path $PSScriptRoot 'Integration.Gate.Tests.ps1')
+. (Join-Path $PSScriptRoot 'Evidence.Tests.ps1')
 . (Join-Path $PSScriptRoot 'HostMatrix.Tests.ps1')
 . (Join-Path $PSScriptRoot 'SecondPass.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Control.Tests.ps1')
@@ -44,8 +47,16 @@ Executes independent native byte and object invariants in a companion module.
     Callback receiving name, state, passed and failed counters.
     .PARAMETER WorkspaceRoot
     Workspace containing the engine and independent fixture.
+    .PARAMETER RunDirectory
+    Existing shared report directory, including mandatory controlled fixture evidence.
     #>
-    [CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[scriptblock]$OnProgress)
+    [CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[scriptblock]$OnProgress,[string]$RunDirectory)
+    if(!$RunDirectory){
+        . (Join-Path $WorkspaceRoot 'scripts/ReportPaths.ps1')
+        $RunDirectory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'integration') ([guid]::NewGuid().ToString('N'))
+        [void][IO.Directory]::CreateDirectory($RunDirectory)
+    }
+    $integration=[Collections.Generic.List[object]]::new()
     $fixture=Join-Path $PSScriptRoot 'lib/fixture/QuietCli.Fixture.dll'
     if(!(Test-Path -LiteralPath $fixture)){throw 'Build the independent C# fixture first.'}
     $dotnet=(Get-Command dotnet -CommandType Application|Select-Object -First 1).Source
@@ -61,6 +72,10 @@ Executes independent native byte and object invariants in a companion module.
     }
     $cases['direct status callbacks preserve generated Unicode record digests']={$performance.Add((Test-QuietStatusAggregation))}
     $cases['fresh sessions measure inert Core import against a paired baseline']={$performance.Add((Invoke-QuietImportIntegration -WorkspaceRoot $WorkspaceRoot))}
+    $cases['CI evidence preserves binary traces and rejects tampered mandatory profiles']={$performance.Add((Test-QuietEvidenceBundle -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory))}
+    $cases['mandatory integration receipts reject damaged evidence and targeted gate mutants']={$performance.Add((Test-QuietCoreIntegrationGate -WorkspaceRoot $WorkspaceRoot))}
+    $cases['import diagnostics retain independent first-use controls']={$performance.Add((Invoke-QuietImportDiagnostics -WorkspaceRoot $WorkspaceRoot))}
+    $cases['owned complex repositories use only Core callbacks and exact state oracles']={$integration.Add((Invoke-QuietControlledStatusIntegration -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory))}
     $cases['local report paths isolate workspaces and preserve CI upload contracts']={Test-QuietReportPaths -WorkspaceRoot $WorkspaceRoot}
     $cases['Core migration preserves metadata and compares local helper costs']={foreach($sample in Measure-QuietCoreMigration -Dotnet $dotnet){$performance.Add($sample)}}
     $cases['typed controls preserve duplex bytes and request rejection in both hosts']={Test-QuietTypedControls -Fixture $fixture -Dotnet $dotnet}
@@ -277,7 +292,7 @@ Executes independent native byte and object invariants in a companion module.
         $nativeDirectory=Join-Path $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/'+[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier+'/native')
         $r=quiet -AsObject -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} $dotnet $assembly $nativeDirectory
         Assert-QuietEqual $r.Outcome Success
-        Assert-QuietEqual $r.Data.Passed 34
+        Assert-QuietEqual $r.Data.Passed 26
         Assert-QuietEqual $r.Data.Failed 0
     }
     $cases['PTY reports a merged terminal counter without fake stderr separation']={
@@ -559,6 +574,6 @@ Executes independent native byte and object invariants in a companion module.
         $results.Add([pscustomobject]@{Name=$entry.Key;State=$state;Error=$failure})
         if($OnProgress){& $OnProgress $entry.Key $state $passed $failed}
     }
-    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Performance=$performance.ToArray();Gallery=$galleryEvidence.ToArray()}
+    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Performance=$performance.ToArray();Gallery=$galleryEvidence.ToArray();Integration=$integration.ToArray()}
 }
 Export-ModuleMember -Function Invoke-QuietCoreTests,Assert-QuietEqual,Invoke-QuietConformance

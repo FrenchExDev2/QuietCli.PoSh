@@ -13,10 +13,16 @@ Already prepared platform image; never pulled implicitly.
 Declared platform label, verified by the guest report.
 .PARAMETER ExpectedRuntimeIdentifier
 Required architecture and libc family in the actual guest and engine.
+.PARAMETER Profiler
+Enables a separate pinned PowerShell and CLR profiling pass, outside benchmark samples.
+.PARAMETER ProfilerModulePath
+Explicit Profiler 4.3.0 manifest; the launcher prepares a private cache when omitted.
+.PARAMETER ClrProfilerPath
+Explicit pinned dotnet-trace DLL.
 .PARAMETER Suite
 Companion scope or native C mutation campaign selected by the workflow.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[ValidateSet('Core','Git','All','Import','Mutation')][string]$Suite='All')
+[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[ValidateSet('Core','Git','All','Import','Integration','Mutation')][string]$Suite='All',[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 $owner=[guid]::NewGuid().ToString('N');$name='quietcli2-'+$owner.Substring(0,12)
 $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Tests Podman';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=$Platform;State='Preparing';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;ContainerId=$name;Passed=$null;Failed=$null;Case='Staging explicit source files';FinishedUtc=$null;Error=$null;Image=$Image;Owner=$owner}
@@ -57,6 +63,15 @@ try{
     }else{@('-File','/workspace/scripts/Invoke-WorkspaceCi.ps1','-WorkspaceRoot','/workspace','-Headless','-SkipBuild','-RunDirectory','/workspace/artifacts/tests/container-run')}
     if($ExpectedRuntimeIdentifier){$guestArguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
     if($Suite -ne 'Mutation'){$guestArguments+=@('-Suite',$Suite)}
+    if($Profiler){
+        $toolRoot=Join-Path $stage '.profilers'
+        [void][IO.Directory]::CreateDirectory($toolRoot)
+        Copy-Item -LiteralPath (Split-Path $ProfilerModulePath -Parent) -Destination (Join-Path $toolRoot 'Profiler') -Recurse
+        Copy-Item -LiteralPath (Split-Path $ClrProfilerPath -Parent) -Destination (Join-Path $toolRoot 'clr') -Recurse
+        $guestArguments+=@('-Profiler','-ProfilerModulePath','/workspace/.profilers/Profiler/Profiler.psd1','-ClrProfilerPath','/workspace/.profilers/clr/dotnet-trace.dll')
+        $receipt=Join-Path (Split-Path (Split-Path $ProfilerModulePath -Parent) -Parent) 'tool-receipt.json'
+        if(Test-Path $receipt){Copy-Item -LiteralPath $receipt -Destination (Join-Path $RunDirectory 'tool-receipt.json')}
+    }
     $memoryLimits=if($Suite -eq 'Mutation'){@('--memory','1g','--memory-swap','1g')}else{@()}
     $null=Invoke-WorkspaceNative podman (@('create','--pull=never','--name',$name,'--label',('org.frenchexdev.quietcli2.owner='+$owner),'--network','none')+$memoryLimits+@('--entrypoint','pwsh',$imageState.Id)+$guestArguments) $WorkspaceRoot -TimeoutSeconds 30
     $created=$true

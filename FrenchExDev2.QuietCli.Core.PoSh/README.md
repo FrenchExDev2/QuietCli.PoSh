@@ -81,3 +81,5 @@ Cette opération modifie définitivement les lignes de la base choisie. Elle ne 
 `resources/dependencies.lock.json` attache les ressources embarquées à leurs versions, empreintes et licences sous `third_party`. L’intégrité est vérifiée avant démarrage du moteur et chargement du tokenizer. Une SQLite embarquée présente mais invalide échoue explicitement ; le repli se limite aux chemins système absolus. Un checksum ne prouve ni l’identité d’un auteur ni l’absence de vulnérabilité connue.
 
 Le build produit un manifeste liant sources C#, SDK, protocole et fichiers compilés. Les tests refusent un build périmé ou modifié, y compris avec `-SkipBuild`. `protocol.json` fournit les limites communes à C# et PowerShell.
+
+See [performance measurements and mandatory Core-only CI integration](PERFORMANCES.md) for historical comparisons, controlled repository states, matrix scope, artifacts and reproduction commands.

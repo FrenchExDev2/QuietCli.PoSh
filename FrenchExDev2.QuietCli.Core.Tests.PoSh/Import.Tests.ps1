@@ -126,3 +126,34 @@ function Invoke-QuietImportIntegration {
         Limits='Warm filesystem caches, fresh process/module each time. No disk-cold claim, engine startup, first command, retained-memory guarantee, financial cost or performance threshold. CPU and process memory include measurement noise; signed deltas are preserved. InvocationElapsedMs includes startup, probe, JSON, shutdown and parent QuietCli dispatch/callback/telemetry overhead.'
     }
 }
+
+function Invoke-QuietImportDiagnostics {
+    <#
+    .SYNOPSIS
+    Measures independent fresh-process controls for import, cmdlet first use and source loading.
+    .PARAMETER WorkspaceRoot
+    Local monorepo supplying the exact Core manifest.
+    .PARAMETER OnProgress
+    Optional existing integration progress callback.
+    #>
+    param([string]$WorkspaceRoot,[scriptblock]$OnProgress)
+    $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
+    $diagnostics=[Collections.Generic.List[object]]::new()
+    $passed=0
+    foreach($mode in @('Import','Import','Import','CmdletOperations','PreloadManagement','PreloadUtility','PreloadBoth','Read','Parse','DotSource')){
+        if($OnProgress){& $OnProgress "Import diagnostic: $mode" Running $passed 0}
+        $result=quiet -AsObject -Role Infrastructure -TimeoutSeconds 90 -Data ([Text.StringBuilder]::new()) -Output {
+            param($event,$runtime)
+            if($event.Stream -eq 'stdout'){
+                if($runtime.Data.Length+$event.Text.Length -gt 32768){throw 'ImportDiagnosticOutputLimit'}
+                [void]$runtime.Data.Append($event.Text)
+            }elseif($event.Stream -eq 'stderr'){
+                if(!$runtime.State.ContainsKey('Diagnostic')){$runtime.State.Diagnostic=''}
+                if($runtime.State.Diagnostic.Length -lt 4096){$runtime.State.Diagnostic+=$event.Text}
+            }
+        } -Complete {param($runtime)if($runtime.State.ContainsKey('Diagnostic')){throw $runtime.State.Diagnostic};$runtime.Data.ToString()|ConvertFrom-Json} -FilePath $runner -ArgumentList @('-NoProfile','-NonInteractive','-File',(Join-Path $PSScriptRoot 'Import.DiagnosticProbe.ps1'),'-Manifest',(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'),'-Mode',$mode)
+        if($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis){throw ('ImportDiagnosticFailed: '+($result.Error|ConvertTo-Json -Compress))}
+        $diagnostics.Add($result.Data)
+    }
+    [pscustomobject]@{Kind='ImportDiagnostics';Samples=$diagnostics.ToArray();Count=$diagnostics.Count}
+}

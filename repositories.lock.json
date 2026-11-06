@@ -1,44 +1,44 @@
 {
-  "Runtime": "11.0.0-rc.3.26522.148",
-  "SDK": "11.0.100-rc.3.26522.148",
-  "SchemaVersion": 3,
   "Repository": {
+    "SourceSHA256": "88C619628194C2A0B66C2FBE4B0A9175A3D0561AD97FB2C2017740454C1B5C8F",
     "Name": "FrenchExDev2.QuietCli.PoSh",
-    "SourceSHA256": "3A6B6912A4A76A459A0EF52AFF824E9A982235530407400C3EDAC875F0DE0D64",
     "Remote": null
   },
+  "SchemaVersion": 3,
   "Projects": [
     {
-      "Name": "FrenchExDev2.QuietCli.Core.PoSh",
-      "Dependencies": [],
       "Path": "FrenchExDev2.QuietCli.Core.PoSh",
-      "SourceSHA256": "54B3D6D3C8E86EE1E141DE02B5A9B57EA20F457F7EB8EE3BA5F3293F96AC739B"
+      "Dependencies": [],
+      "Name": "FrenchExDev2.QuietCli.Core.PoSh",
+      "SourceSHA256": "739ED433F9385BCE60414096ECA92FE6D4BD6CD1141BA1CF1CB096773A8B8886"
     },
     {
-      "Name": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
-      "Dependencies": [
-        "FrenchExDev2.QuietCli.Core.PoSh"
-      ],
       "Path": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
-      "SourceSHA256": "83A523A5AC4A22E2A0EE464C3AE06AA9DF057E66DDD45BAE4519EC2C5F67027A"
-    },
-    {
-      "Name": "FrenchExDev2.QuietCli.Git.PoSh",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Core.PoSh"
       ],
+      "Name": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
+      "SourceSHA256": "303036626AC7FC748A95FE313DF78823E2942C336BC152FD81652810FCB9C907"
+    },
+    {
       "Path": "FrenchExDev2.QuietCli.Git.PoSh",
+      "Dependencies": [
+        "FrenchExDev2.QuietCli.Core.PoSh"
+      ],
+      "Name": "FrenchExDev2.QuietCli.Git.PoSh",
       "SourceSHA256": "CBC476930ECDD83BEC8CC424741C3129CE411BC01BF671CF32B42878E71AA40F"
     },
     {
-      "Name": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
+      "Path": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Git.PoSh",
         "FrenchExDev2.QuietCli.Core.Tests.PoSh"
       ],
-      "Path": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
+      "Name": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
       "SourceSHA256": "394CE7DE96E503D08384CE9F759D8C0A002E9CF2820F9FD6A54B9FC1DC47BDBC"
     }
   ],
+  "SDK": "11.0.100-rc.3.26522.148",
+  "Runtime": "11.0.0-rc.3.26522.148",
   "Layout": "Monorepo"
 }

@@ -96,3 +96,10 @@ All repository text files must use UTF-8 and LF line endings on disk, including 
 - Preserve explicit `-RunDirectory` overrides. CI retains repository `artifacts/` paths for its upload contracts. Do not move an active run. Keep toolchains, package outputs and the protected monorepo-migration archive separate from test reports.
 - Temporary storage may be cleared by the operating system. Export evidence requiring durable retention before cleanup; never silently delete failure diagnostics, seeds or mutation results.
 <!-- local-test-reports:end -->
+
+## Mandatory Core performance evidence
+
+- Core/All runs fresh-session import measurements, ten diagnostic controls and eight owned Core-only porcelain-v2 Git fixture states. `Invoke-WorkspaceCi.ps1 -Suite Integration -SkipBuild -Profiler` selects the focused development scope. No Git business companion is loaded by these subjects.
+- Shared ci.yml prepares checksum-pinned Profiler 4.3.0 and dotnet-trace 10.0.750501 in a private runner cache. Linux stages them into the networkless guest. PS line data and CLR traces are collected separately from ordinary benchmark samples; isolated hosting requires both owned target PIDs.
+- Each matrix job builds an integrity-checked evidence bundle and PERFORMANCES_RESULTS.md, then uploads it with `if: always()`. The performance-results job verifies/downloads all ten Windows/Linux bundles and publishes a combined readable report plus JSON/checksum metadata. The qualification gate also requires this job.
+- Missing jobs, failed functional checks, absent profiles and modified trace files are explicit evidence gaps. Frame-name counts are not CPU percentages. Preserve raw/converted traces, source identities, seeds, partial failures and tool receipts in the CI artifacts. See FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md for definitions and measured scope.

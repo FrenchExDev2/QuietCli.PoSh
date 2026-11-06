@@ -7,14 +7,20 @@ Background worker for the companion suites; always persists a terminal report.
 QuietCli2 workspace root.
 .PARAMETER RunDirectory
 Private output directory for this run.
+.PARAMETER Profiler
+Enables a separate pinned PowerShell and CLR profiling pass, outside benchmark samples.
+.PARAMETER ProfilerModulePath
+Explicit Profiler 4.3.0 manifest; the launcher prepares a private cache when omitted.
+.PARAMETER ClrProfilerPath
+Explicit pinned dotnet-trace DLL.
 .PARAMETER Suite
-Core, Git, All, Import or the explicit-repository RealStatus integration suite.
+Core, Git, All, Import, mandatory Integration, or explicit-repository RealStatus.
 .PARAMETER RepositoryConfig
 UTF-8 JSON array of existing repository roots; required by RealStatus.
 .PARAMETER ExpectedRuntimeIdentifier
 Required native architecture for both the PowerShell host and the separate engine.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[ValidateSet('Core','Git','All','Import','RealStatus')][string]$Suite='All',[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig)
+[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[ValidateSet('Core','Git','All','Import','Integration','RealStatus')][string]$Suite='All',[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
@@ -23,7 +29,7 @@ $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Tests compagnons';Works
 $statusPath=Join-Path $RunDirectory 'status.json'
 Write-WorkspaceJson $statusPath $state
 $summaries=[Collections.Generic.List[object]]::new()
-$sourceIdentity=$null;$engineIdentity=$null
+$sourceIdentity=$null;$engineIdentity=$null;$profiling=$null
 try{
     if($env:QUIETCLI2_EXPECT_RUNTIME_MAJOR -and [Environment]::Version.Major -ne [int]$env:QUIETCLI2_EXPECT_RUNTIME_MAJOR){throw 'PowerShellRuntimeMajorMismatch'}
     if($env:QUIETCLI2_EXPECT_HOST_VERSION -and $PSVersionTable.PSVersion.ToString() -cne $env:QUIETCLI2_EXPECT_HOST_VERSION){throw 'PowerShellVersionMismatch'}
@@ -36,7 +42,12 @@ try{
     if(![StringComparer]::OrdinalIgnoreCase.Equals($actualCorePath,$expectedCorePath)){throw 'UnexpectedCoreModulePath'}
     $localAlias=Get-Alias quiet -ErrorAction Stop
     if(!$localAlias.ResolvedCommand -or ![StringComparer]::OrdinalIgnoreCase.Equals($localAlias.ResolvedCommand.Module.Path,$expectedCorePath)){throw 'UnexpectedQuietAliasTarget'}
-    if($Suite -eq 'RealStatus'){
+    if($Suite -eq 'Integration'){
+        $state.Task='Core integration: import and controlled Git states'
+        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Integration.Tests.ps1')
+        $summary=Invoke-QuietCoreIntegrationTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
+        $summaries.Add($summary)
+    }elseif($Suite -eq 'RealStatus'){
         $state.Task='Real repository git status with Core callbacks only'
         . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Status.Real.Tests.ps1')
         $summary=Invoke-QuietRealStatusIntegration -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -RepositoryConfig $RepositoryConfig -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
@@ -63,12 +74,21 @@ try{
             $basePassed=$state.Passed;$baseFailed=$state.Failed
             $progress={param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$basePassed+$passed;$state.Failed=$baseFailed+$failed;Write-WorkspaceJson $statusPath $state}
             $command=Get-Command "Invoke-Quiet$($selected)Tests"
-            $summary=& $command -WorkspaceRoot $WorkspaceRoot -OnProgress $progress
+            if($selected -eq 'Core'){
+                $summary=& $command -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress $progress
+            }else{$summary=& $command -WorkspaceRoot $WorkspaceRoot -OnProgress $progress}
             $summaries.Add($summary)
+            Write-WorkspaceJson (Join-Path $RunDirectory ($selected.ToLowerInvariant()+'-suite.json')) $summary
+            if($selected -eq 'Core'){& (Join-Path $PSScriptRoot 'Assert-CoreIntegrationEvidence.ps1') -Summary $summary}
         }
     }
+    if($Profiler){
+        if($Suite -notin @('Core','All','Integration')){throw 'ProfilerRequiresCoreIntegration'}
+        $state.Project='FrenchExDev2.QuietCli.Core.PoSh';$state.ProjectDirectory=Join-Path $WorkspaceRoot $state.Project;$state.Task='Core PowerShell and CLR profiling';$state.Case='Attaching profilers to owned targets';Write-WorkspaceJson $statusPath $state
+        $profiling=& (Join-Path $PSScriptRoot 'Invoke-CoreProfiling.ps1') -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -ProfilerModulePath $ProfilerModulePath -ClrProfilerPath $ClrProfilerPath
+    }
     $state.State=if($state.Failed){'Failed'}else{'Success'}
-}catch{$state.State='Crash';$state.Error=$_.ToString();$state.Failed++}
+}catch{$state.State='Crash';$state.Error=$_.ToString();$state.Failed++;Write-WorkspaceJson (Join-Path $RunDirectory 'worker-failure.json') @{Message=$_.Exception.Message;Stack=$_.ScriptStackTrace;Position=$_.InvocationInfo.PositionMessage}}
 finally{
     if($sourceIdentity){
         try{
@@ -82,7 +102,7 @@ finally{
     }
     try{Stop-QuietEngine}catch{}
     $state.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o')
-    Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$state;Suites=$summaries.ToArray();EngineIdentity=$engineIdentity;HostRuntime=[Runtime.InteropServices.RuntimeInformation]::FrameworkDescription;PowerShellVersion=$PSVersionTable.PSVersion.ToString();OSArchitecture=[Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString();ProcessArchitecture=[Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString();OSDescription=[Runtime.InteropServices.RuntimeInformation]::OSDescription;MachineName=[Environment]::MachineName;ExpectedRuntimeIdentifier=$ExpectedRuntimeIdentifier;RunnerImage=$env:ImageOS;RunnerImageVersion=$env:ImageVersion}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$state;Suites=$summaries.ToArray();Profiling=$profiling;EngineIdentity=$engineIdentity;HostRuntime=[Runtime.InteropServices.RuntimeInformation]::FrameworkDescription;PowerShellVersion=$PSVersionTable.PSVersion.ToString();OSArchitecture=[Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString();ProcessArchitecture=[Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString();OSDescription=[Runtime.InteropServices.RuntimeInformation]::OSDescription;MachineName=[Environment]::MachineName;ExpectedRuntimeIdentifier=$ExpectedRuntimeIdentifier;RunnerImage=$env:ImageOS;RunnerImageVersion=$env:ImageVersion}
     Write-WorkspaceJson $statusPath $state
 }
 if($state.State -ne 'Success'){exit 1}

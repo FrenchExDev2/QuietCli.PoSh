@@ -16,7 +16,7 @@ permissions:
 jobs:
   qualification-gate:
     name: QuietCli2 qualification gate
-    needs: [windows, linux, pty-mutation]
+    needs: [windows, linux, pty-mutation, performance-results]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -35,8 +35,10 @@ jobs:
           WINDOWS_RESULT: ${{ needs.windows.result }}
           LINUX_RESULT: ${{ needs.linux.result }}
           MUTATION_RESULT: ${{ needs.pty-mutation.result }}
+          PERFORMANCE_RESULT: ${{ needs.performance-results.result }}
         run: |
           # Objective: Fail closed and emit a commit-bound receipt only after every required check succeeds.
+          if($env:PERFORMANCE_RESULT -cne 'success'){throw 'PerformanceEvidenceReportRequired'}
           ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -MutationResult $env:MUTATION_RESULT -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
@@ -154,7 +156,16 @@ jobs:
           # Objective: Select the checksum-verified host for every subsequent PowerShell step and child.
           $hostInfo=./scripts/Initialize-PowerShellHost.ps1 -Channel $env:HOST_CHANNEL -RuntimeIdentifier $env:HOST_RID -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-powershell-host')
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_PATH,($hostInfo.Directory+"`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-      - name: Run companion suites
+      - name: Prepare checksum-pinned PowerShell and CLR profilers
+        if: inputs.suite != 'Git'
+        shell: pwsh
+        run: |
+          $tools=./scripts/Initialize-Profilers.ps1 -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-profilers')
+          $values="QUIETCLI_PROFILER_MODULE=$($tools.ProfilerModulePath)`nQUIETCLI_CLR_PROFILER=$($tools.ClrProfilerPath)`n"
+          [void][IO.File]::AppendAllTextAsync($env:GITHUB_ENV,$values,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+          [void][IO.Directory]::CreateDirectory('./artifacts/tests')
+          Copy-Item -LiteralPath $tools.Receipt -Destination ./artifacts/tests/profiler-tools.json
+      - name: Run selected suites with mandatory Core integration evidence
         shell: pwsh
         env:
           EXPECTED_RID: ${{ matrix.rid }}
@@ -169,14 +180,37 @@ jobs:
           QUIETCLI2_GIT_REVISION_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
           QUIETCLI2_EXPECT_HOST_VERSION: ${{ matrix.host_version }}
           QUIETCLI2_EXPECT_RUNTIME_MAJOR: ${{ matrix.runtime_major }}
-        run: ./scripts/Invoke-WorkspaceCi.ps1 -Headless -Suite $env:QUIETCLI_SUITE -ExpectedRuntimeIdentifier $env:EXPECTED_RID
+        # Core/All requires fresh imports, diagnostics and owned complex Git states with no Git companion.
+        run: |
+          $parameters=@{Headless=$true;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID}
+          if($env:QUIETCLI_SUITE -ne 'Git'){
+            $parameters.Profiler=$true;$parameters.ProfilerModulePath=$env:QUIETCLI_PROFILER_MODULE;$parameters.ClrProfilerPath=$env:QUIETCLI_CLR_PROFILER
+          }
+          ./scripts/Invoke-WorkspaceCi.ps1 @parameters
+      - name: Assemble revision-bound report and trace evidence
+        if: always()
+        shell: pwsh
+        env:
+          QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+        run: |
+          $hostReceipt=Join-Path $env:RUNNER_TEMP 'quietcli-powershell-host/host-receipt.json'
+          if(Test-Path $hostReceipt){
+            [void][IO.Directory]::CreateDirectory('./artifacts/tests')
+            Copy-Item -LiteralPath $hostReceipt -Destination ./artifacts/tests/host-receipt.json
+          }
+          try {
+            ./scripts/New-CoreEvidenceBundle.ps1 -ReportRoot ./artifacts/tests -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -RequireProfiling:($env:QUIETCLI_SUITE -ne 'Git')
+          } finally {
+            ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/evidence -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -Suite $env:QUIETCLI_SUITE
+          }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: quietcli2-${{ matrix.rid }}-${{ matrix.channel }}-${{ matrix.mode }}
-          path: |
-            artifacts/tests
-            ${{ runner.temp }}/quietcli-powershell-host/host-receipt.json
+          name: quietcli-core-evidence-${{ matrix.rid }}-${{ matrix.channel }}-${{ matrix.mode }}-${{ github.sha }}
+          path: artifacts/evidence
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 1
   linux-images:
     name: Image (${{ matrix.rid }})
     if: github.repository == 'FrenchExDev2/FrenchExDev2.QuietCli.PoSh' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
@@ -253,7 +287,7 @@ jobs:
       - name: Build engines for the six distributions
         shell: pwsh
         run: ./scripts/Build-Workspace.ps1
-      - name: Reuse the native test image and run suites
+      - name: Run selected suites and Core integration in the native image
         shell: pwsh
         env:
           PLATFORM: ${{ matrix.platform }}
@@ -263,12 +297,68 @@ jobs:
         run: |
           # Objectif : Réutiliser le cache publié ; construire localement si une PR ne peut pas y accéder.
           $image=./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache
+          # Core/All also requires Core-only controlled Git evidence on every Linux matrix RID.
           # Objectif : Tester sans réseau dans l’image native dont l’identité vient d’être vérifiée.
-          ./scripts/Invoke-ContainerCi.ps1 -Image $image.Image -Platform $env:PLATFORM -Suite $env:QUIETCLI_SUITE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -Headless
+          $parameters=@{Image=$image.Image;Platform=$env:PLATFORM;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID;Headless=$true}
+          if($env:QUIETCLI_SUITE -ne 'Git'){
+            $tools=./scripts/Initialize-Profilers.ps1 -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-profilers')
+            $parameters.Profiler=$true;$parameters.ProfilerModulePath=$tools.ProfilerModulePath;$parameters.ClrProfilerPath=$tools.ClrProfilerPath
+          }
+          ./scripts/Invoke-ContainerCi.ps1 @parameters
+      - name: Assemble revision-bound guest reports and profiling traces
+        if: always()
+        shell: pwsh
+        env:
+          QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+        run: |
+          try {
+            ./scripts/New-CoreEvidenceBundle.ps1 -ReportRoot ./artifacts/containers -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -RequireProfiling:($env:QUIETCLI_SUITE -ne 'Git')
+          } finally {
+            ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/evidence -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -Suite $env:QUIETCLI_SUITE
+          }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: quietcli2-${{ matrix.rid }}
-          path: |
-            artifacts/containers
-            artifacts/ci-images
+          name: quietcli-core-evidence-${{ matrix.rid }}-Auto-${{ github.sha }}
+          path: artifacts/evidence
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 1
+  performance-results:
+    name: Readable performance evidence for the complete matrix
+    needs: [windows, linux]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: always()
+        with:
+          pattern: quietcli-core-evidence-*-${{ github.sha }}
+          path: artifacts/matrix-evidence
+          merge-multiple: false
+      - name: Render readable results and expose missing matrix evidence
+        if: always()
+        shell: pwsh
+        env:
+          QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+        run: |
+          try {
+            ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/matrix-evidence -OutputDirectory ./artifacts/performance-results -Revision $env:GITHUB_SHA -ExpectedReports 10 -Suite $env:QUIETCLI_SUITE
+          } finally {
+            $report='./artifacts/performance-results/PERFORMANCES_RESULTS.md'
+            if(Test-Path $report){
+              $text=[IO.File]::ReadAllTextAsync($report,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
+              [void][IO.File]::AppendAllTextAsync($env:GITHUB_STEP_SUMMARY,$text,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+            }
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quietcli-performance-results-${{ github.sha }}
+          path: artifacts/performance-results
+          if-no-files-found: error
+          retention-days: 30

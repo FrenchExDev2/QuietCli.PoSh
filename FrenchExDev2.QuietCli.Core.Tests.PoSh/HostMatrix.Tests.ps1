@@ -23,5 +23,5 @@ function Assert-QuietHostMatrix {
         }
         if(@($rows|Where-Object {$_.Value -match "(?m)^            rid: $rid\r?$" -and $_.Value -match '(?m)^            mode: Process\r?$'}).Count -ne 1){throw 'IsolatedHostCoverageRemoved'}
     }
-    if($workflow -notmatch 'needs: \[windows, linux, pty-mutation\]'){throw 'HostMatrixNotRequiredByQualification'}
+    if($workflow -notmatch 'needs: \[windows, linux, pty-mutation, performance-results\]'){throw 'HostMatrixNotRequiredByQualification'}
 }
