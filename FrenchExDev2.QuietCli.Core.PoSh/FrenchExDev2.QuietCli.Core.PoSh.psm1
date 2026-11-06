@@ -12,7 +12,7 @@ $script:QuietRecallDepth=0
 $script:QuietConfiguration=$null
 $script:QuietTokenizers=@{}
 $script:QuietUtf8=[Text.UTF8Encoding]::new($false,$true)
-foreach($source in @('Contracts','Dependencies','Protocol','Configuration','Runtime','Invoke','Delivery','Registry','Gain','Scaffold','Recall')){. ([IO.Path]::Combine($PSScriptRoot,"src/$source.ps1"))}
+foreach($source in @('Contracts','Dependencies','Protocol','Configuration','Runtime','Script','Invoke','Delivery','Registry','Gain','Scaffold','Recall')){. ([IO.Path]::Combine($PSScriptRoot,"src/$source.ps1"))}
 $script:QuietProtocol=Read-QuietProtocolSpecification ([IO.Path]::Combine($PSScriptRoot,'protocol.json'))
 [void]$ExecutionContext.SessionState.InvokeProvider.Item.Set('Alias:quiet','Invoke-QuietCli')
 $ExecutionContext.SessionState.Module.OnRemove={Stop-QuietEngine}

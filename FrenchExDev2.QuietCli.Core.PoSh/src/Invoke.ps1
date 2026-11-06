@@ -8,7 +8,7 @@ Separates exact facade options from the uninterpreted native argument vector.
     param([object[]]$Arguments)
     $switches = @('AsObject', 'AsJson', 'AsYaml', 'Recall', 'SaveRecall', 'Zip', 'AllowPartial')
     $values = @('Output', 'Complete', 'Context', 'Data', 'State', 'WorkingDirectory', 'TimeoutSeconds', 'DrainTimeoutSeconds', 'Environment', 'Transport', 'StdoutMode', 'StderrMode', 'InputText', 'InputBytes', 'InputPath', 'Interaction', 'RecordDelimiter', 'MaxRecordBytes', 'MaxOutputBytes', 'MaxItems', 'Role', 'HandlerId', 'CancellationFile', 'CancellationToken', 'Projection', 'Tokenizer', 'FilePath', 'ArgumentList', 'TerminalSize', 'SuccessExitCodes', 'ReadBlockBytes')
-    $values += @('RecallMaxBytes', 'RecallPolicy', 'RecallId', 'RecallName', 'RecallRoot', 'Compress')
+    $values += @('RecallMaxBytes', 'RecallPolicy', 'RecallId', 'RecallName', 'RecallRoot', 'Compress', 'Script', 'DataFactory', 'StateFactory')
     $aliases = @{C = 'Context' }
     $request = @{}
     $index = 0
@@ -66,6 +66,21 @@ Separates exact facade options from the uninterpreted native argument vector.
         $request.ArgumentList = $native.ToArray()
     }
     elseif ($index -ne $Arguments.Count) { throw 'UnexpectedArgumentsAfterArgumentList' }
+    foreach ($name in @('Data', 'State')) {
+        $factory = $name + 'Factory'
+        if ($request.ContainsKey($factory)) {
+            if ($request.ContainsKey($name)) { throw "QuietFactoryConflict: $name" }
+            if ($request[$factory] -isnot [scriptblock]) { throw "QuietFactoryMustBeScriptBlock: $factory" }
+        }
+    }
+    # Preserve explicit options while sharing validation without engine-backed Recall work.
+    $exportRequest = $null
+    if ($request.ContainsKey('Script')) {
+        foreach ($key in $request.Keys) {
+            if ($key -match 'Recall|^(SaveRecall|Zip|Compress|AllowPartial|CancellationToken)$') { throw "QuietScriptUnsupportedOption: $key" }
+        }
+        $exportRequest = $request.Clone()
+    }
     $configuration=(Get-QuietConfigurationSnapshot).Values
     $defaults = @{WorkingDirectory =(Get-Location).Path
         TimeoutSeconds             =$configuration['execution.timeoutSeconds']
@@ -115,6 +130,7 @@ Separates exact facade options from the uninterpreted native argument vector.
     if (@($request.TerminalSize).Count -ne 2 -or $request.TerminalSize[0] -lt 1 -or $request.TerminalSize[0] -gt 1000 -or $request.TerminalSize[1] -lt 1 -or $request.TerminalSize[1] -gt 1000) { throw 'InvalidTerminalSize' }
     if ($request.ContainsKey('Context') -and [string]::IsNullOrWhiteSpace($request.Context)) { throw 'EmptyExplicitContext' }
     if ($request.ContainsKey('RecordDelimiter') -and !([string]$request.RecordDelimiter).Length) { throw 'EmptyRecordDelimiter' }
+    if ($null -ne $exportRequest) { return $exportRequest }
     return $request
 }
 function Invoke-QuietCli {
@@ -126,10 +142,13 @@ Executes a streaming command or registered handler; options precede the binary.
     [-Complete {param($runtime)}] executable arguments. AsObject never serializes Data.
     Nested calls default to AsObject and inherit their parent's context.
     Native arguments follow the executable verbatim; put QuietCli options first.
+    -Script path.ps1 writes a reusable definition without executing the command.
+    -DataFactory and -StateFactory initialize fresh business values once per real call.
     .EXAMPLE
     $result = quiet -AsObject -Data @{Bytes=0L} -Output {param($e,$r) $r.Data.Bytes+=$e.ByteCount} pwsh -Command '"hello"'
     #>
     $request = Read-QuietArguments $args
+    if ($request.ContainsKey('Script')) { return Export-QuietCallScript $request }
     if($request.ContainsKey('RecallId')){return Invoke-QuietSavedRecallRequest $request}
     Invoke-QuietCall $request
 }
@@ -142,6 +161,7 @@ Owns one caller-local lifecycle and preserves assigned child failures.
     #>
     param([hashtable]$Request)
     if ($script:QuietRecallDepth -gt 0) { throw 'NativeExecutionUnavailableDuringRecall' }
+    $Request = Initialize-QuietCallFactories $Request
     Import-QuietManagedEngine
     $allocation = [FrenchExDev2.QuietCli.AllocationMeter]::new()
     # A new root request may establish a fresh engine; no outstanding invocation is retried.

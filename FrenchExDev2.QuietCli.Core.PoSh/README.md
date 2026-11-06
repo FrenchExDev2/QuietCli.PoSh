@@ -4,6 +4,16 @@
 
 # FrenchExDev2.QuietCli.Core.PoSh
 
+## Production agent instructions
+
+After installation, use `Add-QuietAgentInstruction -Path ./project -Agents` to copy the
+[production instructions](../docs/agents/AGENTS.md) and their skill guide into the project's
+`.skills` directory and add a managed reference in its `AGENTS.md`. Existing rules outside
+that block are preserved. `-WhatIf` previews changes. `Get-QuietAgentInstruction` reads the
+distributed rules without creating files or starting the engine. These commands return text
+or file metadata rather than native execution envelopes. See the [Codex guide](../docs/agents/codex.md)
+and [progressive Core workflows](../docs/agents/SKILL.md).
+
 PowerShell Core 7.6+ facade for the C# .NET 10 / .NET 11 RC engine, with integrated or isolated hosting. Sources live under `engine/`; compatible integrated assemblies and isolated publications are selected from `lib/`. No SDK is required to import or use a built module.
 
 Import reads the integer protocol specification through asynchronous host .NET file I/O and `System.Text.Json`, with the existing version and frame-size bounds. Source paths and alias creation also use host APIs, so import does not autoload the Management or Utility cmdlet modules. Engine initialization remains lazy. The companion's focused `Import` suite measures fresh-process loading; `RealStatus` checks direct callbacks on explicitly selected real repositories without the Git companion.
@@ -39,6 +49,63 @@ $r = quiet -AsObject -C analyse -StdoutMode Bytes -Data @{ Bytes = 0L } -Output 
 ```
 
 Ne rien émettre depuis `Output` ; utiliser `[void]` pour les méthodes qui retournent une valeur. `Complete` retourne zéro ou une valeur. Pour un tableau, utiliser `,$array`. Les callbacks restent dans le processus appelant et doivent coopérer avec l’annulation.
+
+## Reusable scripts and business factories
+
+`-Script path.ps1` writes a readable call definition and returns its `FileInfo`.
+It never starts a native process, evaluates a callback/factory or writes execution
+measurements. The destination must be a new `.ps1` file in an existing directory.
+At least one explicit `-Output` or `-Complete` callback is required.
+
+```powershell
+# Generate only; the executable does not need to exist yet.
+$file = quiet -Script ./CountBytes.ps1 -AsObject -StdoutMode Bytes `
+    -DataFactory { @{ Bytes = 0L } } `
+    -Output {
+        param($event, $runtime)
+        if ($event.Stream -eq 'stdout') { $runtime.Data.Bytes += $event.ByteCount }
+    } `
+    -Complete { param($runtime) $runtime.Data } `
+    -FilePath tool -ArgumentList @('--list')
+
+# Execute later, optionally overriding the native arguments or working directory.
+$result = & $file.FullName
+$result = & $file.FullName -ArgumentList @('--other') -WorkingDirectory $PWD.Path
+```
+
+`-DataFactory` and `-StateFactory` also work on ordinary calls. Each receives no
+arguments and must return exactly one pipeline object; `StateFactory` must return
+a hashtable. Use the unary comma to return an array as one object. Factories run
+once per invocation, including nested calls, before engine initialization and
+native startup. Factory failures terminate the call before native execution.
+`Data` conflicts with `DataFactory`; `State` conflicts with `StateFactory`.
+
+Generated scripts require PowerShell Core 7.6+ and import Core only when it is not
+already loaded. They expose `FilePath`, `ArgumentList` and `WorkingDirectory` as
+parameters. The working directory defaults to the directory selected during
+generation; other unspecified options use the configuration active at execution.
+The script calls the module-qualified facade and recreates literal initial values
+and factory-produced values on every execution.
+
+Export supports finite primitive numbers, strings, characters, booleans, nulls,
+one-dimensional primitive/object arrays, hashtables and ordered dictionaries.
+Literal generation is bounded to depth 32, 10,000 nodes and 1 MiB of string
+characters; the complete script is limited to 2 MiB of characters. Cycles and
+unsupported objects fail before creating a file. Use factories for complex
+business objects. Recall options and cancellation-token objects cannot be exported.
+Callbacks and factories are preserved as PowerShell source with LF line endings.
+
+External variables, functions, modules and closure values are not captured.
+Supply dependencies explicitly in the execution environment or edit the generated
+script to declare parameters/imports. Explicit values, including environment
+options, are written into the script. Export does not qualify the business logic;
+keep shared executable semantics and independent tests in companion modules.
+
+The monitored development suite is
+`./scripts/Invoke-WorkspaceCi.ps1 -SkipBuild -Suite Script` from the monorepo root.
+It includes deterministic literal properties, malformed/boundary corpora, live
+script/direct-call comparisons and targeted PowerShell source mutations. Core/All
+also includes these regressions; this focused suite does not qualify a release.
 
 ## Runtime et transports
 

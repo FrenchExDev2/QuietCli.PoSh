@@ -1,3 +1,4 @@
+. (Join-Path $PSScriptRoot 'Script.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Configuration.TestSupport.ps1')
 . (Join-Path $PSScriptRoot 'Recall.Large.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Recall.Rtk.ps1')
@@ -72,6 +73,10 @@ Executes independent native byte and object invariants in a companion module.
     $cases['configuration and unique tokenized deliveries preserve their contracts']={
         $configuration=Invoke-QuietConfigurationDeliveryTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
         if($configuration.Failed){throw ($configuration.Cases|Where-Object State -EQ Failed|ConvertTo-Json -Depth 8 -Compress)}
+    }
+    $cases['reusable scripts, factories and literal property regressions']={
+        $scriptTests=Invoke-QuietScriptTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+        if($scriptTests.Failed){throw ($scriptTests.Cases|Where-Object State -EQ Failed|ConvertTo-Json -Depth 8 -Compress)}
     }
     $cases['Recall capture and offline analysis regressions']={
         $recall=Invoke-QuietRecallTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
