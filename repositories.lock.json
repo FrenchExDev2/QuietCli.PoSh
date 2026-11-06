@@ -1,6 +1,6 @@
 {
   "Repository": {
-    "SourceSHA256": "ECF11EB7217A339EF23EDAE35FA197B260C406456BD027A1669CBF596B7001C9",
+    "SourceSHA256": "8B4DD3595BAB6611F853AA2D92FDE3B129F5C14E5024DE2C915CFA4C265993AA",
     "Name": "FrenchExDev2.QuietCli.PoSh",
     "Remote": "https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh.git"
   },
@@ -9,7 +9,7 @@
     {
       "Dependencies": [],
       "Path": "FrenchExDev2.QuietCli.Core.PoSh",
-      "SourceSHA256": "91B0C205C45A5C7B92A8181BF852248F21B745F7F98CF570F197EEF3A19BD70B",
+      "SourceSHA256": "C84FCE1EC5D2C8E9DF97BD0E9329AD85840E33052470A220618C8B8631E68B2F",
       "Name": "FrenchExDev2.QuietCli.Core.PoSh"
     },
     {

@@ -24,31 +24,31 @@ The same C# sources also build for `net10.0` under `lib/inprocess`. Set YAML `en
 
 `TextStreamState` handles strict incremental UTF-8 decoding and delimiter framing locally, without IPC. `Get-QuietCliGain` delegates safe telemetry aggregation to the SQLite worker and receives only counters and aggregate group pages. Caller callbacks and business objects stay in PowerShell. See [the second migration pass](../docs/powershell-csharp-boundaries.md).
 
-Les six publications sous `lib/engine/<RID>` ciblent Windows x64/ARM64 et Linux glibc/musl x64/ARM64, avec `PlatformTarget` x64 ou ARM64 et un apphost natif de même architecture. La façade sélectionne le RID réel de PowerShell. Le build vérifie l’assembly PE et l’apphost PE ou ELF sans charger l’assembly moteur dans l’hôte. Le runtime .NET 11 RC correspondant reste requis ; aucune compilation NativeAOT n’est impliquée. Le build portable reste réservé aux références et tests.
+The six publications under `lib/engine/<RID>` target Windows x64/ARM64 and Linux glibc/musl x64/ARM64, with `PlatformTarget` set to x64 or ARM64 and a native apphost of the same architecture. The facade selects PowerShell's actual RID. The build verifies the PE assembly and the PE or ELF apphost without loading the engine assembly into the host. The corresponding .NET 11 RC runtime is still required; no NativeAOT compilation is involved. The portable build remains reserved for references and tests.
 
-Les paquets PSGallery embarquent aussi SQLite et les bridges PTY statiques des quatre RIDs Linux. Le moteur copie le bridge vérifié dans son répertoire privé exécutable ; il ne modifie pas un module installé en lecture seule. Les imports restent inertes.
+PSGallery packages also include SQLite and the static PTY bridges for the four Linux RIDs. The engine copies the verified bridge into its private executable directory; it does not modify a module installed as read-only. Imports remain inert.
 
 See [configuration and unique tokenized deliveries](../docs/configuration.md) for `~/.quietcli/config.yaml`, `QUIETCLI_CONFIG_DIRECTORY`, the four configuration cmdlets, `o200k_base` defaults, `AlreadyDelivered` and encoding-specific SQLite measurements.
 
-## Contrat
+## Contract
 
 Opt-in [Recall capture and offline analysis](../docs/recall.md) retains native bytes only with explicit `-Recall -AsObject`. `-RecallMaxBytes` accepts integral bytes, IEC sizes or `All`; `-RecallPolicy` selects `Head`, `Tail` or `HeadAndTail`. `Invoke-QuietRecall` reuses decoding without executing a process. `-SaveRecall` writes a durable journal during execution; `-RecallName`, `Get-QuietSavedRecall` and `quiet -RecallId` support later sessions with new callbacks and delivery projections. Default export is a streaming working directory; `-Zip -Compress 0..9` explicitly selects measured ZIP64 transport. Evidence remains excluded from ordinary deliveries and SQLite. The no-retention statements below describe the default streaming path.
 
-`Invoke-QuietCli`, alias `quiet`, accepte ses options avant le binaire. `-Output` reçoit un événement et le runtime ; `-Complete` finalise `runtime.Data`. Sans ces callbacks, le registre choisit un handler documenté et compatible. Les imports restent inertes.
+`Invoke-QuietCli`, aliased as `quiet`, accepts its options before the executable. `-Output` receives an event and the runtime; `-Complete` finalizes `runtime.Data`. Without these callbacks, the registry selects a documented, compatible handler. Imports remain inert.
 
-Les flux natifs sont consommés une seule fois. Le moteur garde uniquement les bytecounts et des buffers bornés. Il ne crée ni capture cumulative, ni spool, ni historique de contenu. Les événements bytes ont un `ByteCount` et des `Bytes` transitoires ; le cadrage texte conserve seulement un fragment inachevé borné. Un dépassement ou UTF-8 incomplet échoue explicitement.
+Native streams are consumed only once. The engine retains only byte counts and bounded buffers. It creates no cumulative capture, spool or content history. Byte events have a `ByteCount` and transient `Bytes`; text framing retains only a bounded unfinished fragment. Exceeding the limit or encountering incomplete UTF-8 causes an explicit failure.
 
-`-AsObject` retourne l’enveloppe et l’objet local sans parcours, sérialisation ou transfert de `Data` au moteur. JSON/YAML produisent et mesurent uniquement leur représentation réelle, bornée par `MaxItems`, une limite structurelle et `MaxOutputBytes`. Le dernier texte livré est disponible dans `Deliveries[0]` avec son identifiant ; les chaînes de livraisons successives ne s’accumulent pas.
+`-AsObject` returns the envelope and local object without traversing, serializing or transferring `Data` to the engine. JSON/YAML produce and measure only their actual representation, bounded by `MaxItems`, a structural limit and `MaxOutputBytes`. The most recently delivered text is available in `Deliveries[0]` with its identifier; strings from successive deliveries do not accumulate.
 
 ```powershell
-# Objectif : compter des bytes sans conserver leur contenu.
+# Goal: count bytes without retaining their content.
 $r = quiet -AsObject -C analyse -StdoutMode Bytes -Data @{ Bytes = 0L } -Output {
     param($event, $runtime)
     $runtime.Data.Bytes += $event.ByteCount
 } executable arguments
 ```
 
-Ne rien émettre depuis `Output` ; utiliser `[void]` pour les méthodes qui retournent une valeur. `Complete` retourne zéro ou une valeur. Pour un tableau, utiliser `,$array`. Les callbacks restent dans le processus appelant et doivent coopérer avec l’annulation.
+Do not emit output from `Output`; use `[void]` for methods that return a value. `Complete` returns zero or one value. For an array, use `,$array`. Callbacks remain in the calling process and must cooperate with cancellation.
 
 ## Reusable scripts and business factories
 
@@ -107,15 +107,15 @@ It includes deterministic literal properties, malformed/boundary corpora, live
 script/direct-call comparisons and targeted PowerShell source mutations. Core/All
 also includes these regressions; this focused suite does not qualify a release.
 
-## Runtime et transports
+## Runtime and transports
 
-Le runtime fournit `Request`, `Data`, `State`, `Execution`, `Children`, les identifiants et `WriteBytes`, `WriteText`, `CompleteInput`, `ReadEvent`, `Resize`, `Cancel`.
+The runtime provides `Request`, `Data`, `State`, `Execution`, `Children`, identifiers and `WriteBytes`, `WriteText`, `CompleteInput`, `ReadEvent`, `Resize`, `Cancel`.
 
-Le transport pipe distingue stdout/stderr. PTY fusionne les sorties dans `TerminalBytesRead` ; les compteurs séparés sont inconnus. Windows utilise ConPTY ; Linux utilise un bridge vérifié par SHA-256. La fin d’entrée d’un terminal n’est pas une demi-fermeture de pipe.
+The pipe transport distinguishes stdout/stderr. PTY merges output into `TerminalBytesRead`; separate counters are unknown. Windows uses ConPTY; Linux uses a bridge verified by SHA-256. Ending terminal input is not a pipe half-close.
 
-Les appels enfants héritent du contexte ; ils retournent un objet par défaut. Leurs échecs sont conservés même lorsqu’ils sont affectés à une variable. `quiet -C nom` ne modifie pas le contexte des appels indépendants suivants.
+Child calls inherit the context; they return an object by default. Their failures are retained even when their results are assigned to a variable. `quiet -C nom` does not change the context of subsequent independent calls.
 
-## Mesures
+## Measurements
 
 `Get-QuietCliGain` returns a `PSCustomObject` by default (`-AsObject` remains supported). Use `-AsYaml` or `-AsJson` to format the report; `-AsJson -Compress` selects compact JSON. `-Compress` is only valid with `-AsJson`, and output formats are mutually exclusive. Reading or formatting this report never creates invocation or delivery telemetry and does not contribute to measured delivery gains.
 
@@ -123,40 +123,40 @@ Without `-From`, `-To` or `-Days`, the report selects all history. Omitted or nu
 
 `ReductionBytes` compares deduplicated business sources associated with actual root deliveries against the bytes of every corresponding delivery. It stays null when the scan, source/analysis completeness or required byte measurements do not support that comparison. `Complete=true` describes scan completeness, not source completeness. Object-only calls do not establish delivery savings. `NativeTokens` remains null because native output is not tokenized; optional tokenization counts only actual delivered text. Missing allocation samples also leave the aggregate allocation total null rather than treating missing measurements as zero.
 
-`Get-QuietCliGain` lit tous les contextes par défaut. `-C nom`, `-Generic`, `-SessionId`, `-From`, `-To` filtrent le rapport. Les sources uniques sont dédupliquées ; les réductions inconnues restent nulles. Les rôles auxiliaires ne gonflent pas le gain métier.
+`Get-QuietCliGain` reads all contexts by default. `-C nom`, `-Generic`, `-SessionId`, `-From`, `-To` filter the report. Unique sources are deduplicated; unknown reductions remain null. Auxiliary roles do not inflate business gains.
 
-Les tokens natifs restent inconnus. La tokenisation exacte concerne le texte final livré. Le défaut est `o200k_base` ; `-Tokenizer cl100k_base` ou `off` permet de le remplacer.
+Native token counts remain unknown. Exact tokenization applies to the final delivered text. The default is `o200k_base`; use `-Tokenizer cl100k_base` or `off` to override it.
 
-SQLite enregistre uniquement les métadonnées et compteurs. `telemetry.database` choisit la base ; `telemetry.enabled: false` désactive les écritures. Les erreurs de stockage restent séparées du résultat métier. Aucun RECORD/replay.
+SQLite stores only metadata and counters. `telemetry.database` selects the database; `telemetry.enabled: false` disables writes. Storage errors remain separate from the business result. No RECORD/replay.
 
-## Tests et dépendances
+## Tests and dependencies
 
-Le module compagnon est `FrenchExDev2.QuietCli.Core.Tests.PoSh`. Il contient les projets C# de test et les assertions PowerShell. Le module métier ne contient pas les tests. Les ressources natives sont distribuées par RID ; un RID non fourni ne doit pas être présenté comme qualifié.
+The companion module is `FrenchExDev2.QuietCli.Core.Tests.PoSh`. It contains the C# test projects and PowerShell assertions. The business module does not contain tests. Native resources are distributed by RID; a RID that is not provided must not be presented as qualified.
 
-Le SDK et le runtime sont verrouillés dans `global.json` et le projet C#. Une rupture du moteur ne rejoue aucune opération et peut laisser son effet inconnu.
+The SDK and runtime are pinned in `global.json` and the C# project. An engine failure does not replay any operation and may leave its effect unknown.
 
-## Limites, intégrité et confidentialité
+## Limits, integrity and privacy
 
-`-DrainTimeoutSeconds` borne l’attente d’EOF après sortie du processus (30 s par défaut). Une coupure de drainage rend la source incomplète, même si le processus principal a déjà terminé. `engine.ipcTimeoutSeconds` borne chaque échange avec le moteur (30 s par défaut, entre 0,05 et 300 s). Un défaut de transport ferme le moteur détenu et conserve l’effet inconnu d’un démarrage non confirmé. Un nouvel appel racine indépendant peut démarrer un nouveau moteur ; l’appel interrompu n’est jamais répété.
+`-DrainTimeoutSeconds` bounds the wait for EOF after the process exits (30 s by default). A drain cutoff makes the source incomplete, even if the main process has already finished. `engine.ipcTimeoutSeconds` bounds each exchange with the engine (30 s by default, between 0.05 and 300 s). A transport failure closes the owned engine and preserves the unknown effect of an unconfirmed startup. A new independent root call may start a new engine; the interrupted call is never repeated.
 
-`Execution` et `Completeness` du résultat final sont des snapshots détachés en lecture seule. Les transitions du runtime sont validées. `Data` reste locale et modifiable pour les prochaines livraisons.
+The final result's `Execution` and `Completeness` are detached, read-only snapshots. Runtime transitions are validated. `Data` remains local and mutable for subsequent deliveries.
 
-Les diagnostics détaillés restent locaux. SQLite n’accepte que des DTO fermés, y compris les propriétés imbriquées ; les erreurs persistées contiennent leurs codes et phases, sans message de callback. Les anciens événements sont projetés vers les seuls champs autorisés à la lecture, sans réécriture implicite. Pour expurger volontairement leurs anciens champs :
+Detailed diagnostics remain local. SQLite accepts only closed DTOs, including nested properties; persisted errors contain their codes and phases, without callback messages. Older events are projected onto only the fields allowed at read time, without implicit rewriting. To explicitly purge their old fields:
 
 ```powershell
-# Objectif : examiner l’expurgation explicite de la base sélectionnée sans modifier l’historique.
+# Goal: preview the explicit purge of the selected database without modifying history.
 Repair-QuietCliMeasurementPrivacy -WhatIf
 
-# Objectif : expurger les anciens champs sensibles après confirmation interactive explicite.
+# Goal: purge old sensitive fields after explicit interactive confirmation.
 Repair-QuietCliMeasurementPrivacy
 ```
 
-Cette opération modifie définitivement les lignes de la base choisie. Elle ne garantit pas l’effacement physique des sauvegardes ou du support. Aucune expurgation n’est exécutée par l’import, le build ou les tests sur une base utilisateur.
+This operation permanently modifies rows in the selected database. It does not guarantee physical erasure from backups or storage media. Imports, builds and tests never purge a user database.
 
-`Get-QuietCliGain -MaxEvents 10000` utilise une pagination par curseur et budget IPC ; `Complete=false` signale un rapport arrêté par sa limite. Les erreurs de requête restent distinctes des fautes de transport.
+`Get-QuietCliGain -MaxEvents 10000` uses cursor pagination and an IPC budget; `Complete=false` indicates a report stopped by its limit. Query errors remain distinct from transport failures.
 
-`resources/dependencies.lock.json` attache les ressources embarquées à leurs versions, empreintes et licences sous `third_party`. L’intégrité est vérifiée avant démarrage du moteur et chargement du tokenizer. Une SQLite embarquée présente mais invalide échoue explicitement ; le repli se limite aux chemins système absolus. Un checksum ne prouve ni l’identité d’un auteur ni l’absence de vulnérabilité connue.
+`resources/dependencies.lock.json` links bundled resources to their versions, hashes and licenses under `third_party`. Integrity is verified before engine startup and tokenizer loading. A bundled SQLite library that is present but invalid causes an explicit failure; fallback is limited to absolute system paths. A checksum proves neither an author's identity nor the absence of known vulnerabilities.
 
-Le build produit un manifeste liant sources C#, SDK, protocole et fichiers compilés. Les tests refusent un build périmé ou modifié, y compris avec `-SkipBuild`. `protocol.json` fournit les limites communes à C# et PowerShell.
+The build produces a manifest linking C# sources, SDK, protocol and compiled files. Tests reject a stale or modified build, including with `-SkipBuild`. `protocol.json` provides the limits shared by C# and PowerShell.
 
 See [performance measurements and mandatory Core-only CI integration](PERFORMANCES.md) for historical comparisons, controlled repository states, matrix scope, artifacts and reproduction commands.
