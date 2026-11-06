@@ -95,7 +95,7 @@ Produces and measures one actual bounded delivery; no whole-result serialization
         $InputObject.Measurement.OutputBytes=$size;$InputObject.Measurement.OutputTokens=$tokens;$InputObject.Measurement.Status='Delivered'
         Import-QuietManagedEngine
         $InputObject.Measurement.ReductionBytes=[FrenchExDev2.QuietCli.MeasurementTelemetry]::Reduction($InputObject.Internal.Sources.Values,$InputObject.Completeness,$size,$script:QuietMetadataAdapter)
-        if($env:QUIETCLI2_TRACKING -ne '0'){
+        if($env:QUIETCLI2_TRACKING -ne '0' -and !($InputObject.Internal.ContainsKey('Offline') -and $InputObject.Internal.Offline)){
             try{$metadata=Get-QuietMetadata $InputObject;$metadata.DeliveryId=$deliveryId;$metadata.OutputBytes=$size;$metadata.OutputTokens=$tokens;$metadata.TokenProfile=$Tokenizer;$metadata.TokenVersion=$tokenVersion;$metadata.Format=if($AsYaml){'yaml'}else{'json'};$metadata.Truncated=$document.Truncation.Applied;$metadata.SerializationMs=$serializationMs;$null=Send-QuietRequest @{Action='save';Kind='delivery';Metadata=$metadata}}
             catch{$InputObject.Measurement.StorageError=$_.Exception.Message;$InputObject.Measurement.Status='StorageUnavailable'}
         }

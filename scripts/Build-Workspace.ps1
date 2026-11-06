@@ -21,6 +21,11 @@ foreach($project in @(@{Path='FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.En
 }
 # Build both compatible caller-local Git assemblies, independent from the engine.
 foreach($framework in @('net10.0','net11.0')){
+    $toolProject='FrenchExDev2.QuietCli.Core.Tests.PoSh/recall-tools/QuietCli.Recall.Tools.csproj'
+    $toolOutput='FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/recall-tools/'+$framework
+    $toolInputs=@(Get-QuietBinaryInputs $WorkspaceRoot $toolProject)
+    Invoke-WorkspaceNative dotnet @('build',(Join-Path $WorkspaceRoot $toolProject),'-f',$framework,'-c',$Configuration,'-o',(Join-Path $WorkspaceRoot $toolOutput),'--nologo') $WorkspaceRoot
+    Write-QuietBuildManifest $WorkspaceRoot $toolProject $toolOutput -Inputs $toolInputs -Configuration $Configuration
     $gitProject='FrenchExDev2.QuietCli.Git.PoSh/engine/QuietCli.Git.Parser.csproj'
     $gitOutput='FrenchExDev2.QuietCli.Git.PoSh/lib/parser/'+$framework
     $gitInputs=@(Get-QuietBinaryInputs $WorkspaceRoot $gitProject)

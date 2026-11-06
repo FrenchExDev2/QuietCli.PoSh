@@ -1,142 +1,192 @@
 <p align="center">
-  <img src="./icons/logo.png" alt="Requirement-As-Code logo" width="150px" />
+  <img src="./icons/logo.png" alt="QuietCli logo" width="150px" />
 </p>
 
-# QuietCli2 — monorepo multi-projets
+# QuietCli
 
-Moteur C# **.NET 10 / .NET 11 RC**, façade **PowerShell Core 7.6+**, analyse en flux destinée en premier lieu aux IA.
+QuietCli is a streaming native-command engine for PowerShell Core 7.6+, designed for AI agents and developer tooling. A C# engine runs native processes while caller-local callbacks turn their output into business data. Callers can inspect that data directly or deliver a bounded JSON/YAML representation.
 
-The current development release is **0.2.0-preview**, declared by numeric `ModuleVersion='0.2.0'` and `PSData.Prerelease='preview'` in Core and Git. It is not published by a build or test. The previously published stable 0.1.0 remains a separate historical release. Gallery packaging preserves the suffix and pins Git's package dependency to the exact matching Core preview; PowerShell's manifest dependency remains numeric.
+Explicit Recall capture preserves native evidence for inspection and offline analyzer development. Durable recording lets work continue in another session, after a reboot or an interrupted recording, without running the original command again.
 
-The same engine now also targets **.NET 10** for direct hosting in PowerShell 7.6. Set `$env:QUIETCLI2_ENGINE_MODE='InProcess'` before the first call (or call `Stop-QuietEngine` before changing modes). This removes the engine subprocess and pipe IPC. Native blocks, fixed read metadata and input/lifecycle controls cross direct C# method boundaries without JSON. Startup and telemetry also use closed local metadata operations in integrated mode. Internal raw queries and rejected-request diagnostics retain bounded JSON; SQLite keeps its validated JSON storage representation. `Auto` is the default: the actual CLR selects the integrated net10.0 build on .NET 10 or net11.0 build on .NET 11 and later. Set `Process` explicitly for the isolated .NET 11 host. Git byte-record framing runs in a verified caller-local compatible assembly in either mode. See [performance and hosting](docs/performance-and-hosting.md) for measured scope, reproduction and limitations.
+The Core development manifest declares **0.2.0-preview** (`ModuleVersion='0.2.0'`, `PSData.Prerelease='preview'`). Source-checkout features and package availability are separate: building or testing does not publish a release.
 
-A second pass moves incremental UTF-8 text framing and measurement aggregation to C#. Text framing stays caller-local in both hosting modes, and gain reports transfer aggregate groups instead of original SQLite events. See [PowerShell/C# boundaries](docs/powershell-csharp-boundaries.md) for the remaining candidates and measurement scope.
+## Start with the local Core module
 
-Le [dépôt public unique](https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh) contient quatre projets : Core, Core.Tests, Git et Git.Tests. Ouvrir `QuietCli2.code-workspace` dans VS Code pour les parcourir. Source Control utilise le seul dépôt racine ; il n’y a ni dépôt Git enfant ni sous-module. Les deux modules métier restent publiés séparément sur PSGallery.
-
-## État réel
-
-Le moteur, SQLite, le protocole binaire, les bytecounts, les callbacks imbriqués et les transports pipe/PTY sont implémentés. Les modules compagnons exécutent des assertions indépendantes.
-
-**Git complet n’est pas encore livré.** L’inventaire officiel verrouillé contient 183 entrées pour les versions 2.40 à 2.56. Fifty-five command families now have specialized handlers, including init/clone, switch/restore/reset, rm/mv/clean, merge/rebase/cherry-pick/revert and tag/remote/config. Common workflows are covered; advanced forms and the full version/platform matrix remain explicitly unqualified. Les familles restantes et toutes les variantes de ces commandes ne sont pas qualifiées. `Get-QuietGitCoverage` conserve explicitement cette distinction. Une énumération de l’inventaire n’est pas une preuve de support.
-
-Les workflows Core et Git sont filtrés par chemins et appellent la CI commune. Core déclenche aussi les tests Git ; Git peut être validé seul. Le workflow de publication PSGallery est manuel et revalide tous les projets et plateformes. Les révisions réellement exécutées figurent dans les rapports.
-
-QuietGit lance directement le binaire Git. Le projet consulté comme référence n’est ni exécuté ni chargé : seuls les documents de provenance et de licence en conservent l’attribution. Aucun identifiant exécutable n’en reprend le nom.
-
-## Démarrage dans VS Code
-
-Les modules disposent d’une [installation et publication PSGallery](docs/PSGallery.md). Le workflow manuel publie Core puis Git après la CI ; les paquets embarquent les moteurs Windows/Linux x64 et ARM64, pour glibc et musl. La disponibilité publiée et les preuves d’installation sont indiquées ci-dessous.
-
-Les versions **0.1.0 sont publiées** : [Core](https://www.powershellgallery.com/packages/FrenchExDev2.QuietCli.Core.PoSh/0.1.0), [Git](https://www.powershellgallery.com/packages/FrenchExDev2.QuietCli.Git.PoSh/0.1.0). Le téléchargement depuis PSGallery, la résolution de la dépendance Core et l’exécution des modules téléchargés ont été vérifiés dans une installation temporaire isolée.
-
-La validation locale initiale du monorepo comporte 63 scénarios réussis sur Windows x64 et Alpine x64. Les jobs GitHub Windows x64 **et Windows ARM64** ont également réussi dans [le run du 5 novembre](https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh/actions/runs/41943788968). La CI Linux prépare désormais ses images avec les Dockerfiles multiétapes du dépôt, sur des runners natifs x64 et ARM64. Le premier run sur `main` publie les images manquantes dans GHCR ; les runs suivants réutilisent leur digest tant que les entrées verrouillées restent identiques. Les résultats de cette nouvelle chaîne sont distincts des preuves antérieures. Voir [le cache et les images CI](docs/ci/linux-images.md).
+Use PowerShell Core 7.6+ and import the manifest from this repository:
 
 ```powershell
-# Objectif : installer QuietGit et Core depuis la galerie publique.
-Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Version 0.1.0 -Repository PSGallery -Scope CurrentUser
-```
-
-Dans le terminal PowerShell du dossier **Workspace** :
-
-```powershell
-# Objectif : construire l’exécutable et les outils de tests avec le SDK épinglé.
-./scripts/Build-Workspace.ps1
-
-# Objectif : rendre les quatre modules locaux découvrables dans cette session uniquement.
-$root = (Get-Location).Path
-$env:PSModulePath = $root + [IO.Path]::PathSeparator + $env:PSModulePath
 Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
-Import-Module ./FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1
 
-# Objectif : observer le dépôt choisi sans sérialiser l’objet métier.
-$r = quiet -AsObject -C travail -WorkingDirectory $repository git status
-$r.Data
-
-# Objectif : produire une seule livraison JSON bornée puis consulter les mesures.
-$json = $r | ConvertTo-QuietJson
-Get-QuietCliGain -C travail
-```
-
-Définir `$repository` explicitement. Charger V1 et V2 dans des sessions séparées : leurs noms de fonctions publics se recouvrent. Aucun profil n’est modifié par ces scripts.
-
-Le moteur démarre à la première invocation. Le SDK est `11.0.100-rc.3.26522.148`, le runtime `11.0.0-rc.3.26522.148`. Le runtime RC est requis pour le mode isolé ; le mode intégré utilise le runtime compatible de PowerShell. Le SDK est requis uniquement pour construire. Le mode isolé utilise ce runtime épinglé ; le mode intégré automatique utilise le runtime réel de PowerShell (.NET 10 ou .NET 11+).
-
-## Flux et objets
-
-Les blocs stdout/stderr sont comptés, transmis à `-Output`, puis libérés. Aucune capture brute, copie cumulative ou écriture temporaire des sorties n’est créée automatiquement. Les queues natives sont bornées à 16 blocs de 16 Kio par invocation. Un cadrage par délimiteur conserve uniquement le fragment inachevé, borné par `MaxRecordBytes`.
-
-`-AsObject` ne parcourt pas `Data`, ne la sérialise pas et ne l’envoie pas au moteur. Il retourne l’enveloppe locale contenant l’objet métier. Les mesures ne consultent que les métadonnées et les compteurs. Un handler peut conserver explicitement des données nécessaires à son besoin métier.
-
-```powershell
-# Objectif : compter des bytes métier sans conserver le contenu des événements.
-$r = quiet -AsObject -StdoutMode Bytes -Data @{ Count = 0L } -Output {
+# Count received stdout bytes without retaining their content.
+$r = quiet -AsObject -C analysis -StdoutMode Bytes -Data @{ Bytes = 0L } -Output {
     param($event, $runtime)
-    if ($event.Stream -eq 'stdout') { $runtime.Data.Count += $event.ByteCount }
+    if ($event.Stream -eq 'stdout') {
+        $runtime.Data.Bytes += $event.ByteCount
+    }
 } executable arguments
+
+# Inspect execution and source completeness before using the business result.
+$r.Outcome
+$r.Execution
+$r.Completeness
+
+# Produce a bounded delivery and inspect measured volumes.
+$json = ConvertTo-QuietJson $r -MaxOutputBytes 4096
+Get-QuietCliGain -C analysis
 ```
 
-Les options QuietCli précèdent le binaire. Pour un séparateur natif littéral, fournir également le séparateur initial PowerShell : `quiet -AsObject -- git status -- 'un fichier'`. L’API structurée `-FilePath git -ArgumentList @('status','--','un fichier')` évite cette particularité PowerShell. `quiet -C contexte git -C /repo status` distingue le contexte de mesure et le répertoire Git.
+Replace `executable arguments` with the intended native command. Facade options precede the executable; native arguments follow it. For an exact argument vector, use `-FilePath` and `-ArgumentList`. Use `-WorkingDirectory` to select the native working directory and `-C` to label the measurement context.
 
-`-Output` reçoit `(event, runtime)` et ne doit rien émettre. Utiliser `[void]` pour les méthodes qui retournent une valeur. `-Complete` reçoit le runtime et retourne au plus une valeur métier ; utiliser la virgule unaire pour retourner un tableau. Sans valeur retournée, `Data` est conservée. Après un échec d’analyse, le moteur continue de drainer ; `Complete` est appelé une fois et peut finaliser des données partielles.
+A built module needs no SDK to import or run. Import does not compile C# or start the engine. If binaries are missing or stale, build with `./scripts/Build-Workspace.ps1`, then start a fresh PowerShell process before importing rebuilt assemblies. Build inputs are pinned in `global.json` and the project configuration. Keep modules with overlapping public command names in separate sessions.
 
-Un enfant appelé depuis un callback hérite du contexte et retourne un objet par défaut. Son échec reste visible même si son résultat est affecté à une variable.
+See the [Core module README](FrenchExDev2.QuietCli.Core.PoSh/README.md) and [package installation and publication](docs/PSGallery.md) for detailed setup.
 
-Le timeout arrête le processus natif détenu, pas un callback PowerShell arbitrairement bloqué. Les callbacks doivent coopérer. Aucune opération n’est rejouée automatiquement ; une rupture de communication peut laisser l’effet d’une mutation inconnu.
+## Streaming and callbacks
 
-## Mesures
+Without an explicit capture option, stdout/stderr are read once, counted, dispatched through bounded transient buffers and released. No cumulative raw capture, output spool or content history is created. Native queues are bounded to 16 blocks of 16 KiB per invocation. Incremental UTF-8 decoding and delimiter framing run in C#; unfinished records are bounded by `MaxRecordBytes`. Invalid or incomplete UTF-8 and oversized records fail explicitly.
 
-L’enveloppe conserve les compteurs stdin effectivement écrit, stdout/stderr effectivement lus et, en PTY, le flux terminal fusionné. Les compteurs stdout/stderr séparés sont inconnus en PTY.
+`-Output` receives `(event, runtime)` and must emit no incidental pipeline output. Store required business information in `runtime.Data`; use `[void]` for methods whose return values should be discarded. `-Complete` receives the runtime and returns at most one business value. Use the unary comma to return an array as one value. If it returns no value, the existing `Data` is preserved.
 
-Les rôles `Business`, `Probe`, `Observation` et `Infrastructure` séparent les volumes. Une sonde ne gonfle jamais le gain métier. Les totaux dédupliquent les sources ; les sous-totaux de contextes ne sont pas nécessairement additifs.
+Without explicit callbacks, command execution requires a documented compatible registered handler. Unsupported commands are rejected before business execution. `-SaveRecall` also permits direct recording without a parser.
 
-Avec `-AsObject`, taille de livraison et réduction restent inconnues. JSON/YAML sont mesurés uniquement lorsqu’ils sont réellement produits. Une projection ne provoque aucune sérialisation supplémentaire des données omises. Le dernier texte livré est conservé localement sous son `DeliveryId` ; les anciennes chaînes ne s’accumulent pas dans le résultat.
+Collection, retention, decoding, business analysis and delivery are separate responsibilities. `-AsObject` returns a local envelope without enumerating, serializing or transferring `Data` to the engine. Inspect `Outcome`, `Execution`, `Completeness` and errors alongside the business data. JSON/YAML delivery applies item, structural and encoded-byte budgets; a delivery projection can select only the information needed by the consumer.
 
-Le tokenizer est désactivé par défaut. `-Tokenizer o200k_base` ou `cl100k_base` compte exactement le texte livré déjà produit. Les tokens natifs restent inconnus : ni conservation des flux ni addition des tokens de blocs.
+Nested native calls from callbacks have their own results and retain visible failures. Children inherit the measurement context, but do not implicitly inherit Recall retention or recording. After an analyzer failure, native drainage continues and `Complete` can finalize partial business data.
 
-SQLite contient uniquement des métadonnées, compteurs, relations et erreurs structurées. Aucun objet métier, texte livré, environnement complet ou contenu natif n’y est enregistré. `QUIETCLI2_DATABASE` change son emplacement ; `QUIETCLI2_TRACKING=0` désactive l’écriture des mesures. Aucune configuration de contexte préalable n’est requise.
+## Capture once and analyze again
 
-## Tests, CI et distribution
+### In-memory evidence
 
 ```powershell
-# Objectif : exécuter les suites dans un worker avec fenêtre de suivi visible.
-./scripts/Invoke-WorkspaceCi.ps1
+$r = quiet -AsObject -Recall -RecallMaxBytes '90KiB' -StdoutMode Bytes -Output {} executable arguments
 
-# Objectif : utiliser une image Alpine locale déjà préparée, sans pull ni réseau invité.
-./scripts/Invoke-ContainerCi.ps1 -Platform alpine -Image $image
-
-# Objectif : construire quatre archives séparées, sans publication.
-./scripts/New-WorkspacePackage.ps1 -OutputDirectory ./artifacts/package-001
+$analysis = Invoke-QuietRecall -InputObject $r -Data @{ Bytes = 0L } -Output {
+    param($event, $runtime)
+    $runtime.Data.Bytes += $event.ByteCount
+}
 ```
 
-Les rapports sont sous `artifacts/tests` et `artifacts/containers`. Le lanceur affiche la commande permettant de rouvrir le moniteur. Celui-ci ne lit que les fichiers du run et se ferme après sauvegarde d’un état terminal. `-Headless` est réservé aux environnements CI sans bureau.
+`-Recall` retains at most **16 MiB** of native bytes by default. `-RecallMaxBytes` accepts positive integral bytes, an integral size with `B`, `KiB`, `MiB` or `GiB`, or `All`, case insensitive. `All` removes the configured memory ceiling; process memory remains the practical limit. Objects and indexes add memory overhead beyond retained payload bytes.
 
-La matrice Windows comprend aussi [`windows-11-arm` / `win-arm64`](docs/ci/windows-arm64.md), avec les mêmes suites et un contrôle de l’architecture de PowerShell et du moteur. Le module embarque les publications C# `win-x64` et `win-arm64`, avec apphosts natifs et manifestes vérifiés. La façade choisit celle du RID courant. Le job ARM est préparé ; son exécution distante reste à établir. Les versions d’image et identités réellement observées sont conservées dans les rapports, sans assimiler une exécution x64 émulée à une qualification ARM.
+`-RecallPolicy Head|Tail|HeadAndTail` selects retention. `Head` is the default; `HeadAndTail` divides the budget equally and gives an odd extra byte to the head. `All` requires `Head`. Capture options are validated before execution and require explicit `-Recall -AsObject`.
 
-Les archives sont vérifiées sans import par défaut : `Test-WorkspacePackage.ps1` contrôle l’ensemble des quatre modules, les chemins, tailles et empreintes avant extraction. Ajouter `-TestImport` uniquement pour exécuter explicitement les modules ainsi contrôlés. `Verified=true` établit la cohérence des fichiers et manifestes ; `Authenticated=false` rappelle que cette vérification n’authentifie pas leur auteur.
+Reaching the memory budget does not stop execution, drainage or the current analyzer. Recall distinguishes received, retained and omitted bytes, missing ranges and source drainage. A fully retained prefix of an interrupted execution is still incomplete source evidence.
 
-La preuve locale du 4 novembre 2026 comporte 59 assertions réussies sous Windows, Debian/glibc et Alpine/musl : 27 pour le moteur et 32 pour Git. Les suites incluent les sept assertions C# du protocole/SQLite, les distributions extraites hors des sources, les flux de 64 Mio, les interactions PTY, le générateur et les durées du moniteur en cultures française et anglaise. Ces runs valident les scénarios exécutés avec les binaires présents ; ils ne certifient pas les 17 versions Git ni Dockur. Les échantillons de performance distinguent démarrage, callbacks et IPC ; leur durée native inclut le drainage et la contre-pression.
+### Durable recording and later sessions
 
-Après les correctifs de l’audit, la preuve du 5 novembre passe à **62 scénarios réussis par plateforme** (30 Core, 32 Git), avec 12 assertions C# internes et 18 contrôles de sécurité sous Windows, 19 sous Unix. Les détails et limites — construction du snapshot Debian, nettoyage Podman, exécution ARM distante — sont consignés dans le [bilan de correction](docs/audits/2026-11-04-remediation.md). Cette preuve précède l’ajout des distributions Linux par architecture et du workflow PSGallery ; leurs propres résultats sont à lire dans les nouveaux rapports de run.
+```powershell
+$r = quiet -AsObject -SaveRecall -RecallName 'build-investigation' executable arguments
+$id = $r.Recall.RecallId
 
-`ci.yml` utilise Windows et les images Debian/Alpine configurées par `QUIETCLI2_DEBIAN_IMAGE` et `QUIETCLI2_ALPINE_IMAGE`. Elles doivent fournir PowerShell 7.6+, Git, .NET 11 RC et les dépendances nécessaires. La qualification complète nécessite le runner dédié Podman/KVM, les 17 versions verrouillées et une base Dockur préparée. Des scénarios absents font échouer la qualification ; ils ne deviennent pas des succès ignorés.
+# In this or a later session, locate the saved capture.
+Get-QuietSavedRecall -RecallName 'build-*'
 
-## Organisation Git et workflows
+# Use new callbacks without launching the original executable.
+$analysis = quiet -AsObject -RecallId $id -StdoutMode Bytes -Data @{ Bytes = 0L } -Output {
+    param($event, $runtime)
+    $runtime.Data.Bytes += $event.ByteCount
+} -Complete {
+    param($runtime)
+    @{ TotalBytes = $runtime.Data.Bytes }
+}
+$json = ConvertTo-QuietJson $analysis -MaxOutputBytes 4096
+```
 
-`Initialize-Workspace.ps1` vérifie le checkout unique et les quatre projets. `-Restore` contrôle le verrouillage des sources ; il ne clone plus de dépôt enfant. Le checkout GitHub Actions détermine la révision du monorepo.
+`-SaveRecall -AsObject` writes all received output to a durable streaming journal, independently of the memory retention budget. Combined with `-Recall`, the returned `Recall` exposes the disk view and `Recall.MemoryCapture` exposes the bounded memory view. `RecallId` is the immutable capture identity; `RecallName` is an optional nonunique searchable label.
 
-`Commit-Workspace.ps1 -Message <texte>` et `Push-Workspace.ps1` agissent sur le seul monorepo. Les opérations de build/test ne committent et ne poussent jamais. Les anciennes métadonnées Git enfants sont conservées sous `artifacts/monorepo-migration`.
+The default store is `%LOCALAPPDATA%/QuietCli2/recalls` on Windows and the platform local-data directory on Unix. Set `QUIETCLI2_RECALL_ROOT` or supply `-RecallRoot` to select another store. There is no automatic expiry or deletion. Recorded output may contain sensitive business content; retention is an explicit caller choice.
 
-`Update-WorkspaceLock.ps1` recalcule les identités des quatre projets et du dépôt. Son schéma 3 décrit les dépendances des projets, pas des remotes enfants. Les [instructions monorepo](AGENTS.md) détaillent les filtres `paths`, les suites, les dépendances et la publication. `Invoke-RemoteWorkflow.ps1` déclenche un workflow uniquement avec dépôt et ref explicites, ou consulte ses états avec `-Status`.
+Each capture uses a versioned JSON manifest and a checksummed binary journal. Recording uses bounded buffers and 64-bit offsets; there is no 4 GiB content ceiling. Completed journals replay through streaming cursors. Interrupted recordings recover complete checksum-valid frames and remain marked as incomplete. `DurableBytes` identifies the last confirmed filesystem checkpoint; it is not a guarantee against every hardware or power failure. Save errors remain explicit while native drainage continues.
 
-## Documentation et maintenance
+Capture includes stdout/stderr or the merged PTY terminal stream; stdin is excluded. Sequences preserve the order observed by QuietCli and each stream's byte offsets. They do not establish the exact order of writes across independent pipes. Public snapshots protect retained buffers from mutation.
 
-L’[audit sécurité et conception du 4 novembre 2026](docs/audits/2026-11-04-securite-logiciel.md) conserve les constats initiaux. Le [suivi des correctifs](docs/audits/2026-11-04-remediation.md) relie chaque constat à son changement et à ses critères de vérification. Les régressions bloquantes sont dans le compagnon Core.Tests et ne modifient aucune base utilisateur.
+### Replay and byte references
 
-Les quatre modules possèdent leur README. Les scripts/fonctions PowerShell disposent d’une aide ; les signatures C# possèdent des commentaires XML. L’outil de maintenance de documentation sous le module compagnon s’exécute dans un processus .NET séparé et n’intervient jamais pendant un import, un build normal ou un test.
+Each replay creates a fresh analysis runtime and preserves the original result. Supply fresh `Data` and `State` for independent analyses. Replace `Output`, `Complete` and the delivery `Projection`; optionally override `StdoutMode`, `StderrMode`, `RecordDelimiter` and `MaxRecordBytes`. Native controls, probes, automatic handler selection and nested QuietCli execution are unavailable during replay. Stored evidence contains no executable callbacks.
 
-`New-QuietModule -Name Entreprise.QuietOutil.PoSh -Binary outil -OutputPath $destination` génère le module, son catalogue inerte et `src/Handler.ps1`, ainsi que le compagnon de tests. Les callbacks de sonde, politique de version, sélection et analyse sont à compléter à partir de la documentation du binaire. Le compagnon dépend du module métier et des assertions Core ; sa suite initiale échoue explicitement tant que les assertions métier ne sont pas écrites.
+Captures with omitted ranges are rejected by default. `-AllowPartial` permits explicit partial analysis and resets decoding/framing at each gap, preventing separate fragments from becoming a fabricated record. Reanalysis is not counted as a new native source or as additional native-output savings.
 
-The principal-command implementation, validation and known limits are recorded in [the command audit](docs/audits/2026-11-05-git-principal-commands.md).
+```powershell
+$view = Get-QuietRecall $r -Stream stderr -Offset 0 -ByteCount 100 -MaxItems 20 -MaxOutputBytes 4096
+$reference = New-QuietRecallReference $r -Stream stderr -Offset 0 -ByteCount 12
+$context = Get-QuietRecall $r -Reference $reference -Context 1
+```
 
-Local test reports default to `%TEMP%/QuietCli2/<workspace-id>/` (the system temporary directory on other platforms). Companion tests, container reports, Gallery validation and mutation reports use separate categories. The launcher prints the exact run/monitor path. An explicit `-RunDirectory` takes precedence. CI retains workspace `artifacts/` paths for upload contracts. Temporary storage can be cleared by the operating system; export evidence needed for durable retention.
+References identify exact retained byte ranges before decoding and fail if requested bytes are missing. Diagnostics can carry these references without duplicating output content. Query limits bound returned bytes and events; selection completeness, capture completeness and original source completeness remain distinct.
+
+### Working directories and ZIP transport
+
+```powershell
+# Export retained evidence as an uncompressed working directory.
+Export-QuietRecall $r -Path ./reproducer
+$imported = Import-QuietRecall ./reproducer -MaxBytes All
+
+# Explicit ZIP64 transport, with zlib compression level 0..9.
+$transport = Export-QuietRecall $r -Path ./reproducer.zip -Zip -Compress 6 -PassThru
+```
+
+Directory export is the default for repeated replay. `-Zip` selects streaming ZIP64 transport; `-Compress` requires `-Zip`, defaults to 6 and specifies a level rather than a promised ratio. Level 0 stores without compression. Reported input/output sizes and their ratio describe archive bytes, not model tokens or financial savings.
+
+Import validates the supported format, sizes, offsets and SHA-256 integrity with bounded allocations. It loads inert data, never arbitrary serialized types or scripts. `-MaxBytes` bounds accepted native payload; `All` permits large disk-backed evidence without loading it all into RAM. Existing destinations are not overwritten. Integrity checks do not authenticate the author.
+
+See the [Recall contract](docs/recall.md) for checkpoint behavior, corruption handling, live-reader limits and all public APIs.
+
+## Hosting and native transports
+
+`Auto` hosting selects the compatible integrated C# build from the actual PowerShell CLR: `net10.0` on .NET 10 and `net11.0` on .NET 11 or later. Business callbacks, data, decoding and framing stay caller-local. Integrated native reads and lifecycle controls use direct C# calls rather than pipe IPC.
+
+Set `QUIETCLI2_ENGINE_MODE=Process` explicitly for the isolated engine, which requires the pinned .NET 11 RC runtime. `InProcess` explicitly selects direct hosting. Set the mode before the first engine call, or use `Stop-QuietEngine` before changing it. `Get-QuietEngine` reports the actual mode, runtime, process identity and transport counters.
+
+Distributions target Windows x64/ARM64 and Linux glibc/musl x64/ARM64. The facade selects the actual host RID and verifies packaged resources. Pipes preserve separate stdout/stderr; PTY merges output into `TerminalBytesRead`, leaving separate stream counts unknown. Windows uses ConPTY; Linux uses verified native bridges.
+
+Integrated hosting shares PowerShell's failure boundary. Process isolation provides a separate engine boundary. A timeout stops the owned native process, but cannot forcibly interrupt an arbitrary blocked PowerShell callback. Callbacks must cooperate with cancellation. `-DrainTimeoutSeconds` bounds waiting for EOF after native exit; interrupted drainage is explicitly incomplete. Communication failures never trigger automatic command retries and can leave a mutation's effect unknown.
+
+See [hosting and performance](docs/performance-and-hosting.md) and [PowerShell/C# responsibilities](docs/powershell-csharp-boundaries.md).
+
+## Measurements and privacy
+
+The result counts stdin bytes actually written, stdout/stderr bytes actually read, and merged terminal bytes for PTY. `Business`, `Probe`, `Observation` and `Infrastructure` roles separate sources. Aggregates deduplicate sources; context subtotals are not necessarily additive. Probes and reanalysis do not inflate business gains.
+
+With `-AsObject`, delivery size and reduction remain unknown. JSON/YAML bytes are measured only when their representation is produced, including the delivery envelope. The latest delivered text remains local under its `DeliveryId`; successive delivery strings do not accumulate in the result.
+
+Tokenization is off by default. Optional `-Tokenizer o200k_base` or `cl100k_base` counts the exact delivery text already produced. Native model-token counts remain unknown. Byte reduction alone establishes neither context-window use nor financial savings.
+
+SQLite stores closed metadata, counters, relationships and structured error codes. It excludes native output, business objects, delivered text, Recall names and callback code. Explicit Recall storage is separate from telemetry and ordinary result serialization. `QUIETCLI2_DATABASE` selects the telemetry database; `QUIETCLI2_TRACKING=0` disables measurement writes. Storage errors remain distinct from business outcomes.
+
+See [allocation and delivery metrics](docs/allocation-and-delivery-metrics.md), [Core performance qualification](FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md) and the [RTK comparison](QUIET_VS_RTK_MEASURES.md) for definitions, measured scope and limitations.
+
+## Tests and qualification
+
+Tests belong in companion projects, including independent C# assertions and PowerShell scenarios. Focused Recall tooling provides:
+
+- `Compare-QuietRecallAnalysis`: two analyses with independent states, projected differences, diagnostics, cursor counts, durations and allocations. Delivered events alone do not prove business use; ignored events require an explicit declaration.
+- `Export-QuietRecallFixture`: an exact capture and a test skeleton that fails until independent business expectations are written.
+- `Reduce-QuietRecall`: a bounded event reducer driven by an explicit failure predicate, preserving failure without claiming global minimality.
+
+From the repository root:
+
+```powershell
+./scripts/Build-Workspace.ps1
+./scripts/Invoke-WorkspaceCi.ps1 -Suite All -SkipBuild
+
+# Focused development campaigns.
+./scripts/Invoke-WorkspaceCi.ps1 -Suite Recall -SkipBuild
+./scripts/Invoke-WorkspaceCi.ps1 -Suite RecallMutation -SkipBuild
+./scripts/Invoke-WorkspaceCi.ps1 -Suite RecallLarge -SkipBuild -TimeoutSeconds 1800
+```
+
+Local runs start a background worker and a dedicated visible PowerShell monitor. The launcher prints its reopening command; the monitor closes after saving the terminal result. `-Headless` is reserved for CI. Reports default to the system temporary directory under `QuietCli2/<workspace-id>/<category>/<run-id>`, outside the checkout. `-RunDirectory` overrides the location. CI uses its artifact upload paths. Export evidence requiring durable retention before temporary storage is cleared.
+
+Qualification combines examples, generated properties, malformed-input fuzzing and targeted mutation campaigns. Recall covers retention policies, byte identity, mixed streams, fragmented Unicode, references, durable recovery and import integrity. `RecallLarge` uses actual 4 GiB + 1 MiB native output and checks streaming replay, ZIP64 export/import and bounded working memory; it requires twelve GiB of free disk space. Performance measurements separate ordinary streaming, capture, recording, delivery and reanalysis.
+
+The CI matrix covers stable/.NET 10 and preview/.NET 11 hosting, Windows/Linux and x64/ARM64, with explicit native PTY qualification. Configured targets and successful local campaigns do not qualify unexecuted platforms. Missing, failed or incomplete required phases block release qualification. Reports identify the source revision, runtime, architecture, executed scenarios and remaining gaps.
+
+## Repository and distribution
+
+The [public repository](https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh) has one root checkout. Open `QuietCli2.code-workspace` in VS Code. Shared scripts own build, package verification and dependency-aware CI; modules retain their declared package boundaries. Builds and tests do not commit, push or publish.
+
+`New-WorkspacePackage.ps1` creates module archives and SHA-256 manifests. `Test-WorkspacePackage.ps1` verifies paths, sizes, hashes and manifests before extraction; `-TestImport` explicitly enables execution of verified package code. File integrity is distinct from author authentication. Gallery publication is manually dispatched and requires qualification of the exact delivered revision.
+
+`New-QuietModule` generates a business module, inert catalogue, handler skeleton and companion test project. Implement probes, version policy, command selection and analysis from the executable's documentation. Its initial companion suite fails until independent business assertions are supplied. Inventory membership alone never establishes semantic support.
+
+For repository commands, dependency rules and publication gates, read [AGENTS.md](AGENTS.md). For API details, use installed command help, the [Core README](FrenchExDev2.QuietCli.Core.PoSh/README.md) and the [Recall documentation](docs/recall.md).

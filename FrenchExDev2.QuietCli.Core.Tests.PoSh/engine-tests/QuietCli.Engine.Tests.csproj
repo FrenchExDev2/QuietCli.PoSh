@@ -5,4 +5,5 @@
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../../FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj" /></ItemGroup>
+  <ItemGroup><Compile Include="../recall-tools/RecallDevelopment.cs" Link="RecallDevelopment.cs" /></ItemGroup>
 </Project>

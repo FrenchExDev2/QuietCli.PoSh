@@ -14,9 +14,18 @@ Creates one fresh caller-local runtime and attaches interactive adapters.
         Request=$Request;Data=$null;State=$(if($Request.ContainsKey('State')){$Request.State}else{@{}})
         Lifecycle='Created';Execution=$null;Children=[Collections.Generic.List[object]]::new();Sources=[ordered]@{}
         AnalysisComplete=$true;Errors=[Collections.Generic.List[object]]::new();CallbackMs=0.0;CompleteAllocation=$null;NativeStarted=$false;StartState='NotStarted';CompleteInvoked=$false;InputClosed=$false;Completed=$false;Handler=$null
-        TextStreams=@{}
+        TextStreams=@{};RecallCollector=$null;RecallWriter=$null;RecallSaveFailed=$false;IsRecall=$false
     }
     if($Request.ContainsKey('Data')){$runtime.Data=$Request.Data}
+    $name=if($Request.ContainsKey('RecallName')){[string]$Request.RecallName}else{[NullString]::Value}
+    if($Request.ContainsKey('SaveRecall') -and $Request.SaveRecall){
+        $root=if($Request.ContainsKey('RecallRoot')){[string]$Request.RecallRoot}else{[NullString]::Value}
+        $runtime.RecallWriter=[FrenchExDev2.QuietCli.RecallStore]::CreateAsync($root,$name,(Get-QuietRecallSettings $Request)).GetAwaiter().GetResult()
+    }
+    if($Request.ContainsKey('RecallOptions')){
+        $id=if($runtime.RecallWriter){$runtime.RecallWriter.RecallId}else{[NullString]::Value}
+        $runtime.RecallCollector=[FrenchExDev2.QuietCli.RecallCollector]::new($Request.RecallOptions,$id,$name)
+    }
     $runtime.PSObject.TypeNames.Insert(0,'QuietCli2.Runtime')
     $control=Get-Command Invoke-QuietControl -CommandType Function
     $write=Get-Command Write-QuietInput -CommandType Function
@@ -41,6 +50,7 @@ Sends a lifecycle control for the runtime's owned native child.
     Additional control fields.
     #>
     param($Runtime,[string]$Action,[hashtable]$Options=@{})
+    if($Runtime.IsRecall){throw 'ProcessControlUnavailableDuringRecall'}
     if(!$Runtime.NativeStarted -or $Runtime.Completed){throw 'NativeSessionNotRunning'}
     $header=@{Action=$Action;InvocationId=$Runtime.InvocationId};foreach($key in $Options.Keys){$header[$key]=$Options[$key]}
     $null=Send-QuietRequest $header
@@ -55,6 +65,7 @@ Writes input in bounded blocks while consuming output during back-pressure.
     Explicit input bytes; not retained by the engine after writing.
     #>
     param($Runtime,[byte[]]$Bytes)
+    if($Runtime.IsRecall){throw 'ProcessInputUnavailableDuringRecall'}
     if($Runtime.InputClosed){throw 'InputAlreadyClosed'}
     for($offset=0;$offset -lt $Bytes.Length;$offset+=$count){
         $count=[Math]::Min($script:QuietProtocol.BlockSize,$Bytes.Length-$offset);$block=[byte[]]::new($count);[Array]::Copy($Bytes,$offset,$block,0,$count)
@@ -88,14 +99,34 @@ Consumes one bounded native frame and optionally decodes or frames its text.
     Active invocation; only unfinished delimiter fragments are retained.
     #>
     param($Runtime)
+    if($Runtime.IsRecall){throw 'ProcessControlUnavailableDuringRecall'}
     if($Runtime.Completed){return $null}
     $packet=Send-QuietRequest @{Action='next';InvocationId=$Runtime.InvocationId}
     $data=$packet.Header.Data;$Runtime.Execution=$data.Execution
     if($data.Completed){$Runtime.Completed=$true;Set-QuietLifecycle $Runtime Draining;return $null}
     if(!$packet.Payload.Length){return $null}
     $stream=$data.Stream
+    if($Runtime.RecallWriter -and !$Runtime.RecallSaveFailed){
+        try{[void]$Runtime.RecallWriter.AppendAsync($stream,$packet.Payload).GetAwaiter().GetResult()}
+        catch{$Runtime.RecallSaveFailed=$true;$Runtime.Errors.Add(@{Code='RecallWriteFailed';Phase='SaveRecall';Message=$_.Exception.Message})}
+    }
+    if($Runtime.RecallCollector){$Runtime.RecallCollector.Append($stream,$packet.Payload)}
+    Invoke-QuietStreamBlock $Runtime $stream $packet.Payload
+}
+function Invoke-QuietStreamBlock {
+    <#
+    .SYNOPSIS
+    Shares strict decoding, framing and callback dispatch between live and offline analysis.
+    .PARAMETER Runtime
+    Fresh analysis runtime.
+    .PARAMETER Stream
+    Native stream name.
+    .PARAMETER Bytes
+    One transient native block.
+    #>
+    param($Runtime,[string]$Stream,[byte[]]$Bytes)
     $mode=if($stream -eq 'stderr'){$Runtime.Request.StderrMode}else{$Runtime.Request.StdoutMode}
-    $event=[pscustomobject]@{Stream=$stream;Kind=$mode;Bytes=$packet.Payload;ByteCount=$packet.Payload.Length;Text=$null}
+    $event=[pscustomobject]@{Stream=$stream;Kind=$mode;Bytes=$Bytes;ByteCount=$Bytes.Length;Text=$null}
     if($mode -eq 'Text' -and $Runtime.AnalysisComplete){
         try{
             if(!$Runtime.TextStreams.ContainsKey($stream)){
@@ -104,7 +135,7 @@ Consumes one bounded native frame and optionally decodes or frames its text.
                 $Runtime.TextStreams[$stream]=[FrenchExDev2.QuietCli.TextStreamState]::new($delimiter,[int]$Runtime.Request.MaxRecordBytes)
             }
             $processor=$Runtime.TextStreams[$stream]
-            $event.Text=$processor.Decode($packet.Payload)
+            $event.Text=$processor.Decode($Bytes)
             if($Runtime.Request.ContainsKey('RecordDelimiter')){
                 foreach($text in $processor.Frame($event.Text)){
                     $record=[pscustomobject]@{Stream=$stream;Kind='Text';Text=$text;Bytes=$null;ByteCount=$null}

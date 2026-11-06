@@ -67,6 +67,8 @@ function Get-QuietBinaryInputs {
     param([string]$WorkspaceRoot,[string]$Project)
     $roots=@((Split-Path (Join-Path $WorkspaceRoot $Project) -Parent))
     if($Project -match 'engine-tests'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/engine'}
+    if($Project -match 'engine-tests'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/recall-tools'}
+    if($Project -match 'recall-tools'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/engine'}
     if($Project -like 'FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests/*'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/engine'}
     $files=foreach($root in $roots){foreach($file in Get-QuietSourceFiles $root){$file.Path=[IO.Path]::GetRelativePath($WorkspaceRoot,(Join-Path $root $file.Path)).Replace('\','/');$file}}
     $sdk=Join-Path $WorkspaceRoot 'global.json'

@@ -27,7 +27,7 @@ foreach($repository in $lock.Projects){
     $source=Join-Path $WorkspaceRoot $repository.Path;$stage=Join-Path $OutputDirectory $repository.Name
     [void][IO.Directory]::CreateDirectory($stage)
     foreach($item in Get-ChildItem -LiteralPath $source -Force){
-        if($item.Name -in @('.git','.gitignore','bin','obj','artifacts','engine','fixture','engine-tests','parser-tests','tools','global.json')){continue}
+        if($item.Name -in @('.git','.gitignore','bin','obj','artifacts','engine','fixture','engine-tests','parser-tests','tools','recall-tools','global.json')){continue}
         Copy-Item -LiteralPath $item.FullName -Destination $stage -Recurse
     }
     if(!(Test-Path -LiteralPath (Join-Path $stage ($repository.Name+'.psd1')))){throw 'PackageManifestMissing'}

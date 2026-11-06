@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net11.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="RecallDevelopment.cs" Link="RecallDevelopment.cs" />
+    <ProjectReference Include="../../FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj" />
+  </ItemGroup>
+</Project>

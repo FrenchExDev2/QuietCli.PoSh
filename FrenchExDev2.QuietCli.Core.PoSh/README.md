@@ -20,6 +20,8 @@ Les paquets PSGallery embarquent aussi SQLite et les bridges PTY statiques des q
 
 ## Contrat
 
+Opt-in [Recall capture and offline analysis](../docs/recall.md) retains native bytes only with explicit `-Recall -AsObject`. `-RecallMaxBytes` accepts integral bytes, IEC sizes or `All`; `-RecallPolicy` selects `Head`, `Tail` or `HeadAndTail`. `Invoke-QuietRecall` reuses decoding without executing a process. `-SaveRecall` writes a durable journal during execution; `-RecallName`, `Get-QuietSavedRecall` and `quiet -RecallId` support later sessions with new callbacks and delivery projections. Default export is a streaming working directory; `-Zip -Compress 0..9` explicitly selects measured ZIP64 transport. Evidence remains excluded from ordinary deliveries and SQLite. The no-retention statements below describe the default streaming path.
+
 `Invoke-QuietCli`, alias `quiet`, accepte ses options avant le binaire. `-Output` reçoit un événement et le runtime ; `-Complete` finalise `runtime.Data`. Sans ces callbacks, le registre choisit un handler documenté et compatible. Les imports restent inertes.
 
 Les flux natifs sont consommés une seule fois. Le moteur garde uniquement les bytecounts et des buffers bornés. Il ne crée ni capture cumulative, ni spool, ni historique de contenu. Les événements bytes ont un `ByteCount` et des `Bytes` transitoires ; le cadrage texte conserve seulement un fragment inachevé borné. Un dépassement ou UTF-8 incomplet échoue explicitement.

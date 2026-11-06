@@ -17,6 +17,12 @@ internal static class Program
             try { await assertion(); passed++; results.Add(new { Name = name, State = "Passed" }); }
             catch (Exception error) { failed++; results.Add(new { Name = name, State = "Failed", Error = error.Message }); }
         }
+        if (arguments.Contains("--recall-only"))
+        {
+            await RecallCases.RunAsync(Case);
+            Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Cases = results }));
+            return failed == 0 ? 0 : 1;
+        }
         await Case("compiled records preserve every byte at every fragment boundary", () =>
         {
             byte[] bytes = [0, 195, 169, 255, 0, 0, 120];
@@ -81,6 +87,7 @@ internal static class Program
             return failed == 0 ? 0 : 1;
         }
         await SecondPassCases.RunAsync(Case, store, directory);
+        await RecallCases.RunAsync(Case);
         await TelemetryCases.RunAsync(Case, store);
         await CoreMigrationCases.RunAsync(Case, directory, Path.GetFullPath(Path.Combine(arguments[0], "../../../../..")));
         await Case("available stdin wakes a backpressured caller without stdout", InputBackpressureCases.ReadyInputDoesNotWaitForOutputAsync);

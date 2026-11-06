@@ -1,3 +1,7 @@
+. (Join-Path $PSScriptRoot 'Recall.Large.Tests.ps1')
+. (Join-Path $PSScriptRoot 'Recall.Rtk.ps1')
+. (Join-Path $PSScriptRoot 'Recall.Tools.ps1')
+. (Join-Path $PSScriptRoot 'Recall.Tests.ps1')
 . (Join-Path $PSScriptRoot 'ReportPaths.Tests.ps1')
 #requires -Version 7.6
 Set-StrictMode -Version Latest
@@ -63,6 +67,10 @@ Executes independent native byte and object invariants in a companion module.
     $performance=[Collections.Generic.List[object]]::new()
     $galleryEvidence=[Collections.Generic.List[object]]::new()
     $cases=[ordered]@{}
+    $cases['Recall capture and offline analysis regressions']={
+        $recall=Invoke-QuietRecallTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+        if($recall.Failed){throw ($recall.Cases|Where-Object State -EQ Failed|ConvertTo-Json -Depth 12 -Compress)}
+    }
     $cases['protocol configuration preserves bounds using host .NET APIs']={
         $performance.Add((& (Get-Module FrenchExDev2.QuietCli.Core.PoSh) {
             param($tests,$workspace)
@@ -292,7 +300,7 @@ Executes independent native byte and object invariants in a companion module.
         $nativeDirectory=Join-Path $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/'+[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier+'/native')
         $r=quiet -AsObject -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} $dotnet $assembly $nativeDirectory
         Assert-QuietEqual $r.Outcome Success
-        Assert-QuietEqual $r.Data.Passed 26
+        Assert-QuietEqual $r.Data.Passed 46
         Assert-QuietEqual $r.Data.Failed 0
     }
     $cases['PTY reports a merged terminal counter without fake stderr separation']={
@@ -577,3 +585,9 @@ Executes independent native byte and object invariants in a companion module.
     [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Performance=$performance.ToArray();Gallery=$galleryEvidence.ToArray();Integration=$integration.ToArray()}
 }
 Export-ModuleMember -Function Invoke-QuietCoreTests,Assert-QuietEqual,Invoke-QuietConformance
+
+Export-ModuleMember -Function Compare-QuietRecallAnalysis,Export-QuietRecallFixture,Reduce-QuietRecall,Invoke-QuietRecallTests
+
+Export-ModuleMember -Function Invoke-QuietRecallRtkComparison
+
+Export-ModuleMember -Function Invoke-QuietRecallLargeTests
