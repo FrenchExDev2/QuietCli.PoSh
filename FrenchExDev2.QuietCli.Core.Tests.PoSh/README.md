@@ -6,6 +6,62 @@
 
 Module de tests indépendant du moteur. Dépend du module Core, jamais l’inverse.
 
+## Persistent PowerShell benchmark
+
+```powershell
+# Objective: Compare normal-profile fresh processes, persistent sessions and retained results.
+./FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-PersistentShellBenchmark.ps1
+
+# Objective: Run a shorter validation before collecting a larger performance sample.
+./FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-PersistentShellBenchmark.ps1 -Iterations 3 -CommandCounts '1,5,10'
+```
+
+The standalone launcher opens the existing read-only, resizing monitor and runs the coordinator
+in the background. It saves terminal reports before the monitor closes. The printed monitor
+command can reopen the report. Local runs require Windows; this script does not claim Linux
+qualification. Reports, fixture repositories and configuration directories remain under the
+shared temporary `tests/persistent-shell-*` root unless `-RunDirectory` selects a new directory.
+
+Only the selected local **Core** module is imported. `New-QuietGitRepositoryFixture` is copied
+into `PersistentShell.Support.ps1` from the Git test companion, with a local `Invoke-GitFixture`
+preparation helper. Neither the Git business module nor the Git test companion is loaded.
+Every native execution uses `quiet` with explicit callbacks. The fixture has a committed base,
+one modified file and one Unicode untracked path. Dedicated byte-mode `-Output` and `-Complete`
+callbacks count NUL records and bytes and compute SHA-256 for `git status --porcelain=v1 -z`.
+Assertions compare these against literal independently predicted fixture bytes, including
+native exit status, complete source/analysis, stderr and exactly one finalization.
+
+Each sample sets `QUIETCLI_CONFIG_DIRECTORY` to its own temporary directory. The public
+`New-QuietCliConfiguration` cmdlet creates the complete default YAML template. Only telemetry
+database and recall storage destinations are changed to owned temporary paths; hosting remains
+`Auto`, and tokenization and telemetry keep their defaults. User configuration is not edited.
+Git configuration, hooks, signing, author identity and repository discovery are isolated.
+
+For each sequence length, one warm-up triple is discarded. Retained repetitions alternate
+the order of Fresh/Persistent/Retained. Fresh launches one normal-profile PowerShell per request;
+Persistent sends sequential stdin requests to one process, waiting for each response before
+sending the next; Retained executes Git once and repeatedly presents the same in-memory result.
+The protocol accepts only the fixed `RUN` request, never executable input. PID, random session
+token, request index, reference identity and cumulative native execution count are checked.
+Each response generates the same bounded JSON representation policy. Detailed samples preserve
+first/subsequent command times, import times, local round trips, output byte counts and observed
+child working-set/private-memory snapshots.
+
+`summary.json` contains raw samples, paired signed savings, reduction percentages, acceleration
+ratios and count/min/median/nearest-rank-p95/max statistics. Existing statistics validation is
+reused. Seed 73606 adds 96 generated contract cases, 864 damaged/missing-state cases and six
+targeted assertion mutants, reported separately from the existing statistics campaign. A failed
+or incomplete sample fails the run; there is no performance threshold. Use more repetitions
+(for example `-Iterations 30`) before interpreting tail percentiles. The script does not rebuild,
+install dependencies, change profiles, access the network or publish anything.
+
+Elapsed time includes parent QuietCli dispatch, child startup, normal profile, Core import,
+sequential local pipe exchanges and shutdown. Configuration creation and fixture preparation
+are outside the measurement. This does **not** measure Codex tool-call/model latency, PTY echo,
+disk-cold caches, aggregate engine-process memory or a retained-memory guarantee. Retained-result
+savings are a separate optimization because they avoid native executions. Keep raw observations
+and host/source identity when comparing runs; temporary reports are not durable archives.
+
 - `fixture/` : producteur/consommateur C# de bytes dont les volumes sont connus indépendamment.
 - `engine-tests/` : assertions C# de cadrage, limites, EOF, interdiction de stocker des objets métier et concurrence SQLite.
 - The 22 C# cases include bounded protocol paging, independent native drainage, safe telemetry projection, read-only installed resources, incremental text framing and exact aggregate query budgets.
