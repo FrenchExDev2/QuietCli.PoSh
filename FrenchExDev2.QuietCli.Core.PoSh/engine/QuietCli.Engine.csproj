@@ -11,5 +11,9 @@
     <RestoreIgnoreFailedSources>true</RestoreIgnoreFailedSources>
   </PropertyGroup>
   <ItemGroup><InternalsVisibleTo Include="QuietCli.Engine.Tests" /></ItemGroup>
+  <ItemGroup>
+    <!-- Compile-time only: the PowerShell host supplies the runtime assembly; the isolated engine never loads cmdlet types. -->
+    <PackageReference Include="System.Management.Automation" Version="7.6.9" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
   <ItemGroup><Content Include="../protocol.json" Link="protocol.json" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
 </Project>

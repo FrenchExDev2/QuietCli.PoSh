@@ -35,7 +35,7 @@ function Measure-QuietCoreMigration {
         }
         $previousMode=(Get-QuietTestConfiguration).Values['engine.hosting']
         try{
-            Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']='InProcess';$null=Get-QuietEngine;$hostEngine=$script:QuietEngine.Host
+            Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']='InProcess';$null=Get-QuietEngine;$hostEngine=[FrenchExDev2.QuietCli.QuietSession]::Engine.Host
             foreach($iteration in 1..3){
                 foreach($implementation in $(if($iteration%2){@('Json','Typed')}else{@('Typed','Json')})){
                     $jsonBytes=0L;$watch=[Diagnostics.Stopwatch]::StartNew()

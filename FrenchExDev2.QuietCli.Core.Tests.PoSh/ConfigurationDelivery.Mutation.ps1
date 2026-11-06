@@ -33,7 +33,13 @@ function Invoke-QuietConfigurationDeliveryEngine {
             @{Name='yaml-size-limit';File='ConfigurationYaml.cs';From='if (count > 65536)';To='if (false)'},
             @{Name='yaml-inert-tags';File='ConfigurationYaml.cs';From='if (value != null && value.GetType().GetProperty("IsEmpty")?.GetValue(value) is false)';To='if (false)'},
             @{Name='delivery-initial-profile';File='MeasurementStore.cs';From='ON CONFLICT(id) DO NOTHING';To='ON CONFLICT(id) DO UPDATE SET payload=excluded.payload'},
-            @{Name='token-conflict-transaction';File='MeasurementStore.cs';From='if ((long)stored["output_tokens"] != token.OutputTokens)';To='if (false)'}
+            @{Name='token-conflict-transaction';File='MeasurementStore.cs';From='if ((long)stored["output_tokens"] != token.OutputTokens)';To='if (false)'},
+            @{Name='configuration-budget-range';File='ConfigurationSchema.cs';From='|| number < rule.Min ||';To='|| false ||'},
+            @{Name='delivery-receipt-dedup';File='Cmdlets/DeliveryCommands.cs';From='bool already = receipts.ContainsKey(fingerprint);';To='bool already = false;'},
+            @{Name='delivery-token-count';File='Cmdlets/DeliveryCommands.cs';From='(long)count(text)';To='0L'},
+            @{Name='delivery-reduction-bytes';File='Cmdlets/DeliveryCommands.cs';From='MeasurementTelemetry.Reduction(sources is IDictionary sourceMap ? sourceMap.Values : (IEnumerable)(sources ?? Array.Empty<object>()), completeness!, size, MetadataAdapter.Instance)';To='(long?)0L'},
+            @{Name='delivery-surrogate-guard';File='QuietProjection.cs';From='char.IsHighSurrogate(text[limit - 1])';To='false'},
+            @{Name='delivery-dictionary-bound';File='QuietProjection.cs';From='if (count++ >= maxItems) { state.Omitted += map.Count - maxItems; break; }';To='if (false) { }'}
         )
         foreach($mutant in $catalogue){
             if($OnProgress){& $OnProgress ('C# mutation: '+$mutant.Name) 'Running' $passed $failed}
@@ -59,48 +65,6 @@ function Invoke-QuietConfigurationDeliveryEngine {
             Write-WorkspaceJson (Join-Path $directory 'result.json') $result;$outcomes.Add($result)
             if($outcome -eq 'Killed'){$passed++}else{$failed++}
         }
-        $psMutations=& (Get-Module FrenchExDev2.QuietCli.Core.PoSh) {
-            param($dotnet,$fixture)
-            $original=${function:Out-QuietResult};$validator=${function:ConvertTo-QuietConfigurationValue};$savedTracking=Get-QuietSetting 'telemetry.enabled'
-            (Get-QuietConfigurationSnapshot).Values['telemetry.enabled']=$false
-            $check={
-                $result=quiet -AsObject -Data @{Label='é漢字😀'} -Output {param($e,$r)} $dotnet $fixture emit 1
-                $text=Out-QuietResult $result
-                $id=$result.Deliveries[0].DeliveryId
-                $expected=[Microsoft.ML.Tokenizers.TiktokenTokenizer]::CreateForEncoding('o200k_base',$null,$null).CountTokens($text)
-                if($result.Measurement.OutputTokens -ne $expected){throw 'ExactDeliveryTokensInvariant'}
-                $null=Out-QuietResult $result
-                if(!$result.Deliveries[0].AlreadyDelivered -or $result.Deliveries[0].DeliveryId -ne $id){throw 'UniqueDeliveryReceiptInvariant'}
-            }
-            try{
-                & $check
-                $mutations=@(
-                    @('ps-receipt-dedup','$alreadyDelivered=$receipts.ContainsKey($fingerprint)','$alreadyDelivered=$false'),
-                    @('ps-token-count','[long]$script:QuietTokenizers[$Tokenizer].CountTokens($text)','0L')
-                )
-                foreach($mutation in $mutations){
-                    if(!$original.ToString().Contains($mutation[1])){throw 'PowerShellDeliveryMutationAnchorInvalid'}
-                    ${function:Out-QuietResult}=[scriptblock]::Create($original.ToString().Replace($mutation[1],$mutation[2]))
-                    $killed=$false
-                    try{& $check}catch{if($_.Exception.Message -in @('ExactDeliveryTokensInvariant','UniqueDeliveryReceiptInvariant')){$killed=$true}else{throw}}
-                    ${function:Out-QuietResult}=$original
-                    [pscustomobject]@{Name=$mutation[0];State=$(if($killed){'Killed'}else{'Survived'})}
-                }
-                $rangeCheck={
-                    $rejected=$false
-                    try{$null=ConvertTo-QuietConfigurationValue -Value (-1L) -Rule (Get-QuietConfigurationSchema)['delivery.maxItems'] -BaseDirectory ([IO.Path]::GetTempPath())}
-                    catch{if($_.Exception.Message -eq 'InvalidConfigurationNumber'){$rejected=$true}else{throw}}
-                    if(!$rejected){throw 'NonnegativeConfigurationBudgetInvariant'}
-                }
-                & $rangeCheck
-                if(!$validator.ToString().Contains('[double]$Value -lt $Rule.Min')){throw 'ConfigurationValidatorMutationAnchorInvalid'}
-                ${function:ConvertTo-QuietConfigurationValue}=[scriptblock]::Create($validator.ToString().Replace('[double]$Value -lt $Rule.Min','$false'))
-                $killed=$false
-                try{& $rangeCheck}catch{if($_.Exception.Message -eq 'NonnegativeConfigurationBudgetInvariant'){$killed=$true}else{throw}}
-                [pscustomobject]@{Name='ps-configuration-budget-range';State=$(if($killed){'Killed'}else{'Survived'})}
-            }finally{${function:Out-QuietResult}=$original;${function:ConvertTo-QuietConfigurationValue}=$validator;(Get-QuietConfigurationSnapshot).Values['telemetry.enabled']=$savedTracking}
-        } (Get-Command dotnet -CommandType Application|Select-Object -First 1).Source (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture/QuietCli.Fixture.dll')
-        foreach($result in $psMutations){$outcomes.Add($result);if($result.State -eq 'Killed'){$passed++}else{$failed++}}
     }
     return [pscustomobject]@{Passed=$passed;Failed=$failed;Baseline=$baseline.Report;Mutations=$outcomes.ToArray()}
 }

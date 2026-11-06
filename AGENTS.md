@@ -103,6 +103,14 @@ All repository text files must use UTF-8 and LF line endings on disk, including 
 - Temporary storage may be cleared by the operating system. Export evidence requiring durable retention before cleanup; never silently delete failure diagnostics, seeds or mutation results.
 <!-- local-test-reports:end -->
 
+## Test selection and fail-fast
+
+- The unfiltered, full-suite run (all failures listed) remains the pre-commit gate. Never commit on the basis of a filtered or stopped run.
+- `Invoke-WorkspaceCi.ps1 -StopOnFirstFailure` is an opt-in development switch: the monitor stops at the first failing case so it can be fixed immediately. The report states "stopped at case N of M" and is flagged incomplete.
+- `Invoke-WorkspaceCi.ps1 -Case <wildcard>` runs only the matching cases. The report is flagged partial. The two options can be combined.
+- Both options act on the Core suite's cases (the worker exposes them to the case loop as `QUIETCLI_TEST_CASE` / `QUIETCLI_TEST_STOP_ON_FIRST_FAILURE`). The summary carries `Partial`, `Incomplete`, `StoppedAt` and `Skipped`, and the full-run integration evidence assertion is skipped for such runs.
+- The C# test executable accepts `--case <wildcard>` and `--stop-on-first-failure` for direct runs (for example `dotnet QuietCli.Engine.Tests.dll <nativeDir> --case "*framer*"`); its JSON summary reports the same fields. Incomplete and partial runs never count as qualification evidence.
+
 ## Mandatory Core performance evidence
 
 - Core/All runs fresh-session import measurements, ten diagnostic controls and eight owned Core-only porcelain-v2 Git fixture states. `Invoke-WorkspaceCi.ps1 -Suite Integration -SkipBuild -Profiler` selects the focused development scope. No Git business companion is loaded by these subjects.

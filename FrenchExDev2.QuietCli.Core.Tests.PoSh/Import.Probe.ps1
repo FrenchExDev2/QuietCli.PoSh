@@ -40,7 +40,7 @@ try{
         if(!$module -or $module.Path -cne $expected){throw 'UnexpectedImportedCorePath'}
         if((Get-Alias quiet).ResolvedCommand.Module.Path -cne $expected){throw 'UnexpectedImportedQuietAlias'}
         $loadedPath=$module.Path
-        $engineStarted=& $module { $null -ne $script:QuietEngine -or $null -ne $script:QuietManagedAssembly }
+        $engineStarted=$null -ne [FrenchExDev2.QuietCli.QuietSession]::Engine
         if($engineStarted){throw 'ImportStartedEngine'}
     }elseif($module){throw 'BaselineLoadedCore'}
     [pscustomobject]@{

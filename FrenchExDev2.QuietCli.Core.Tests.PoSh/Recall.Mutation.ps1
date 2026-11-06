@@ -28,6 +28,11 @@ function Invoke-QuietRecallMutation {
         @{Name='lose-uncheckpointed-records';File='RecallStore.cs';From='active ? metadata.JournalLength : length';To='metadata.JournalLength'}
         @{Name='hide-interrupted-source';File='RecallStore.cs';From='State = active ? "Recording" : metadata.State == "Failed" ? "Failed" : "Interrupted", SourceComplete = false';To='State = active ? "Recording" : metadata.State == "Failed" ? "Failed" : "Interrupted", SourceComplete = true'}
         @{Name='wrong-catalog-identity';File='RecallStore.cs';From='if (capture.RecallId != expected)';To='if (false)'}
+        @{Name='tail-ignores-checkpoint';File='RecallJournalReader.cs';From='when (recoverTail && start >= durableLength)';To='when (recoverTail)'}
+        @{Name='tail-accepts-garbage';File='RecallJournalReader.cs';From='if (zero) return true;';To='return true;'}
+        @{Name='input-guard-in-recall';File='Cmdlets/RuntimeCommands.cs';From='if (IsRecall) throw new InvalidOperationException("ProcessInputUnavailableDuringRecall");';To='if (false) throw new InvalidOperationException("ProcessInputUnavailableDuringRecall");'}
+        @{Name='compression-upper-bound';File='Cmdlets/ArgumentCommands.cs';From='level >= 0 && level <= 9';To='level >= 0'}
+        @{Name='tail-accepts-inner-torn-record';File='RecallJournalReader.cs';From='return start + HeaderLength + count + HashLength == limit;';To='return true;'}
     )
     $results=[Collections.Generic.List[object]]::new();$passed=0;$failed=0
     foreach($mutation in @(@{Name='baseline'})+$mutants){
@@ -35,7 +40,7 @@ function Invoke-QuietRecallMutation {
         [void][IO.Directory]::CreateDirectory($destination)
         foreach($relative in @('FrenchExDev2.QuietCli.Core.PoSh/engine','FrenchExDev2.QuietCli.Core.Tests.PoSh/engine-tests','FrenchExDev2.QuietCli.Core.Tests.PoSh/recall-tools')){
             $target=Join-Path $destination $relative;[void][IO.Directory]::CreateDirectory($target)
-            foreach($file in Get-ChildItem (Join-Path $WorkspaceRoot $relative) -File|Where-Object Extension -In '.cs','.csproj'){Copy-Item -LiteralPath $file.FullName -Destination $target}
+            foreach($file in Get-QuietSourceFiles (Join-Path $WorkspaceRoot $relative)){if($file.Path -notmatch '\.(cs|csproj)$'){continue};$to=Join-Path $target $file.Path;[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($to));Copy-Item -LiteralPath (Join-Path (Join-Path $WorkspaceRoot $relative) $file.Path) -Destination $to}
         }
         Copy-Item -LiteralPath (Join-Path $WorkspaceRoot 'global.json') -Destination $destination
         Copy-Item -LiteralPath (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/protocol.json') -Destination (Join-Path $destination 'FrenchExDev2.QuietCli.Core.PoSh')
@@ -76,7 +81,7 @@ function Invoke-QuietRecallMutation {
         }
         Write-WorkspaceJson (Join-Path $RunDirectory 'recall-mutation.json') $results.ToArray()
     }
-    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Scope='Sixteen C# and seven PowerShell source-checked targeted mutants, not exhaustive mutation coverage.'}
+    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Scope='Twenty C# and six PowerShell source-checked targeted mutants, not exhaustive mutation coverage.'}
 }
 function Invoke-QuietRecallPowerShellMutations {
     <#
@@ -93,10 +98,6 @@ $collector.Append('stdout',[byte[]]@(1,2))
 $capture=$collector.Snapshot($true,[FrenchExDev2.QuietCli.RecallAnalysisSettings]::new('Bytes','Bytes',[NullString]::Value,10))
 $rejected=$false;try{$null=Invoke-QuietRecall $capture -Output {}}catch{$rejected=$_.Exception.Message -eq 'PartialRecallRequiresAllowPartial'}
 if(!$rejected){throw 'Partial capture accepted without consent'}
-'@},
-        @{Name='ps-input-guard';File='Runtime.ps1';From="if(`$Runtime.IsRecall){throw 'ProcessInputUnavailableDuringRecall'}";To='if($false){}';Check=@'
-$rejected=$false;try{Write-QuietInput ([pscustomobject]@{IsRecall=$true;InputClosed=$false}) ([byte[]]::new(0))}catch{$rejected=$_.Exception.Message -eq 'ProcessInputUnavailableDuringRecall'}
-if(!$rejected){throw 'Offline input control accepted'}
 '@},
         @{Name='ps-gap-reset';File='Recall.ps1';From='if($event.ObservedOffset -ne $cursor)';To='if($false)';Check=@'
 $collector=[FrenchExDev2.QuietCli.RecallCollector]::new([FrenchExDev2.QuietCli.RecallOptions]::new('5','HeadAndTail'))
@@ -122,11 +123,6 @@ $writer=[FrenchExDev2.QuietCli.RecallStore]::CreateAsync($root,[NullString]::Val
 $capture=$writer.CompleteAsync($true,$null).GetAwaiter().GetResult()
 $result=Invoke-QuietCli -AsObject -RecallId $capture.RecallId -RecallRoot $root -Complete {42}
 if($result.Data -ne 42 -or $null -ne $result.Execution.Native){throw 'Replay did not use the offline route'}
-'@},
-        @{Name='ps-compression-bound';File='Invoke.ps1';From='$level -gt 9';To='$false';Check=@'
-$rejected=$false
-try{$null=Read-QuietArguments @('-AsObject','-SaveRecall','-Zip','-Compress',10,'must-not-execute')}catch{$rejected=$_.Exception.Message -eq 'InvalidRecallCompression'}
-if(!$rejected){throw 'Invalid compression accepted before execution'}
 '@},
         @{Name='ps-projection';File='Recall.ps1';From='if($Projection){$request.Projection=$Projection}';To='if($false){}';Check=@'
 $collector=[FrenchExDev2.QuietCli.RecallCollector]::new([FrenchExDev2.QuietCli.RecallOptions]::new('All','Head'))

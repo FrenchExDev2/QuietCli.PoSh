@@ -25,15 +25,15 @@ internal sealed record InvocationRequest(string Id, string FilePath, string[] Ar
     internal static InvocationRequest Parse(JsonElement request)
     {
         double timeout = request.GetProperty("TimeoutSeconds").GetDouble();
-        if (!double.IsFinite(timeout) || timeout <= 0 || timeout > (uint.MaxValue - 1L) / 1000.0) throw new ArgumentOutOfRangeException("TimeoutSeconds");
+        if (!RequestLimits.IsValidTimeout(timeout)) throw new ArgumentOutOfRangeException("TimeoutSeconds");
         double drain = request.TryGetProperty("DrainTimeoutSeconds", out var drainValue) ? drainValue.GetDouble() : 30;
-        if (!double.IsFinite(drain) || drain < 0.05 || drain > 300) throw new ArgumentOutOfRangeException("DrainTimeoutSeconds");
+        if (!RequestLimits.IsValidDrainTimeout(drain)) throw new ArgumentOutOfRangeException("DrainTimeoutSeconds");
         int size = request.TryGetProperty("ReadBlockBytes", out var block) ? block.GetInt32() : Protocol.BlockSize;
-        if (size < 1024 || size > Protocol.BlockSize) throw new ArgumentOutOfRangeException("ReadBlockBytes");
+        if (!RequestLimits.IsValidReadBlock(size)) throw new ArgumentOutOfRangeException("ReadBlockBytes");
         int columns = request.GetProperty("Columns").GetInt32(), rows = request.GetProperty("Rows").GetInt32();
         ValidateDimensions(columns, rows);
         string transport = request.GetProperty("Transport").GetString()!;
-        if (transport is not ("Pipe" or "Pty")) throw new ArgumentException("InvalidTransport");
+        if (!RequestLimits.IsValidTransport(transport)) throw new ArgumentException("InvalidTransport");
         string id = request.GetProperty("InvocationId").GetString()!;
         if (string.IsNullOrEmpty(id) || id.Length > 128) throw new ArgumentException("InvalidInvocationId");
         var environment = new Hashtable();
@@ -45,11 +45,11 @@ internal sealed record InvocationRequest(string Id, string FilePath, string[] Ar
     /// <summary>Validates direct and isolated launch options before any side effect.</summary>
     internal InvocationRequest Validated()
     {
-        if (!double.IsFinite(TimeoutSeconds) || TimeoutSeconds <= 0 || TimeoutSeconds > (uint.MaxValue - 1L) / 1000.0) throw new ArgumentOutOfRangeException(nameof(TimeoutSeconds));
-        if (!double.IsFinite(DrainTimeoutSeconds) || DrainTimeoutSeconds < 0.05 || DrainTimeoutSeconds > 300) throw new ArgumentOutOfRangeException(nameof(DrainTimeoutSeconds));
-        if (ReadBlockBytes < 1024 || ReadBlockBytes > Protocol.BlockSize) throw new ArgumentOutOfRangeException(nameof(ReadBlockBytes));
+        if (!RequestLimits.IsValidTimeout(TimeoutSeconds)) throw new ArgumentOutOfRangeException(nameof(TimeoutSeconds));
+        if (!RequestLimits.IsValidDrainTimeout(DrainTimeoutSeconds)) throw new ArgumentOutOfRangeException(nameof(DrainTimeoutSeconds));
+        if (!RequestLimits.IsValidReadBlock(ReadBlockBytes)) throw new ArgumentOutOfRangeException(nameof(ReadBlockBytes));
         ValidateDimensions(Columns, Rows);
-        if (Transport is not ("Pipe" or "Pty")) throw new ArgumentException("InvalidTransport");
+        if (!RequestLimits.IsValidTransport(Transport)) throw new ArgumentException("InvalidTransport");
         if (string.IsNullOrEmpty(Id) || Id.Length > 128) throw new ArgumentException("InvalidInvocationId");
         if (string.IsNullOrEmpty(FilePath) || string.IsNullOrEmpty(Directory) || Arguments == null || Environment == null || SuccessCodes == null) throw new ArgumentException("InvalidNativeRequest");
         return this;
@@ -58,7 +58,7 @@ internal sealed record InvocationRequest(string Id, string FilePath, string[] Ar
     /// <summary>Uses the same limits for initial dimensions and interactive resizes.</summary>
     /// <param name="columns">Terminal width.</param>
     /// <param name="rows">Terminal height.</param>
-    internal static void ValidateDimensions(int columns, int rows) { if (columns < 1 || columns > 1000 || rows < 1 || rows > 1000) throw new ArgumentOutOfRangeException("TerminalSize"); }
+    internal static void ValidateDimensions(int columns, int rows) { if (!RequestLimits.IsValidDimension(columns) || !RequestLimits.IsValidDimension(rows)) throw new ArgumentOutOfRangeException("TerminalSize"); }
 }
 
 /// <summary>Process-creation port, injectable for independent lifecycle tests.</summary>

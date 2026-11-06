@@ -27,7 +27,7 @@ function Invoke-QuietConfigurationDeliveryTests {
         Stop-QuietEngine
         $missing=Join-Path $directory 'absent/config.yaml'
         $test=Test-QuietCliConfiguration -Path $missing
-        if(!$test.IsValid -or $test.Exists -or (Test-Path (Split-Path $missing)) -or (& $core {$null -ne $script:QuietEngine})){throw 'MissingConfigurationSideEffect'}
+        if(!$test.IsValid -or $test.Exists -or (Test-Path (Split-Path $missing)) -or ($null -ne [FrenchExDev2.QuietCli.QuietSession]::Engine)){throw 'MissingConfigurationSideEffect'}
         if($test.Configuration.tokenization.tokenizer -ne 'o200k_base' -or $test.Configuration.recall.maxBytes -ne '16MiB'){throw 'DefaultConfigurationChanged'}
         $template=Join-Path $directory 'template/config.yaml'
         $null=New-QuietCliConfiguration -Path $template
@@ -73,7 +73,7 @@ function Invoke-QuietConfigurationDeliveryTests {
             if((Test-QuietCliConfiguration).Path -ne $path){throw 'ConfigDirectoryEnvironmentIgnored'}
         }finally{
             $env:QUIETCLI_TOKENIZER=$oldTokenizer;$env:QUIETCLI_DATABASE=$oldDatabase;$env:QUIETCLI_ENGINE_MODE=$oldMode
-            & $core {param($saved)$script:QuietConfiguration=$saved} $snapshot
+            [FrenchExDev2.QuietCli.QuietSession]::Configuration=$snapshot
             $env:QUIETCLI_CONFIG_DIRECTORY=$initialConfigDirectory
         }
     }
@@ -131,7 +131,7 @@ function Invoke-QuietConfigurationDeliveryTests {
         $r=quiet -AsObject -C ('retry-'+[guid]::NewGuid().ToString('N')) -Data @{Value=1} -Output {param($e,$runtime)} $dotnet $fixture emit 1
         & $core {
             param($result)
-            $send=${function:Send-QuietRequest}
+            $send=Get-Command Send-QuietRequest -CommandType Cmdlet
             try{
                 function Send-QuietRequest {
                     <#
@@ -146,7 +146,7 @@ function Invoke-QuietConfigurationDeliveryTests {
                 }
                 $null=Out-QuietResult $result
                 if($result.Measurement.Status -ne 'StorageUnavailable'){throw 'StorageFailureHidden'}
-            }finally{${function:Send-QuietRequest}=$send}
+            }finally{Remove-Item Function:Send-QuietRequest -ErrorAction SilentlyContinue}
         } $r
         $id=$r.Deliveries[0].DeliveryId;$null=ConvertTo-QuietJson $r
         if($r.Measurement.StorageError -or $r.Deliveries[0].DeliveryId -ne $id -or !$r.Deliveries[0].AlreadyDelivered -or (Get-QuietCliGain -C $r.Context).RootDeliveries -ne 1){throw 'StorageRetryDuplicatedOrLostDelivery'}
@@ -171,7 +171,7 @@ function Invoke-QuietConfigurationDeliveryTests {
     }finally{
         Stop-QuietEngine
         foreach($key in $initialValues.Keys){$snapshot.Values[$key]=$initialValues[$key]}
-        & $core {param($saved)$script:QuietConfiguration=$saved} $snapshot
+        [FrenchExDev2.QuietCli.QuietSession]::Configuration=$snapshot
         $env:QUIETCLI_CONFIG_DIRECTORY=$initialConfigDirectory
     }
 }

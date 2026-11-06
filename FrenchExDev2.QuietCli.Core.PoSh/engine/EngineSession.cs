@@ -141,7 +141,7 @@ internal sealed class EngineSession : IAsyncDisposable
         var native = invocations[invocationId];
         switch (control)
         {
-            case LocalControl.Input: return new { Accepted = native.TryWrite(input) };
+            case LocalControl.Input: { bool accepted = native.TryWrite(input); return new { Accepted = accepted, Closed = !accepted && native.InputClosed }; }
             case LocalControl.Eof: native.CompleteInput(); break;
             case LocalControl.Cancel: native.Cancel(); break;
             case LocalControl.Resize: native.Resize(columns, rows); break;
@@ -222,7 +222,23 @@ internal sealed class EngineSession : IAsyncDisposable
     /// <summary>Cancels owned children and flushes all accepted telemetry writes.</summary>
     public async ValueTask DisposeAsync()
     {
-        try { foreach (var invocation in invocations.Values) await invocation.DisposeAsync(); }
-        finally { invocations.Clear(); foreach (var job in gainReports.Values) job.Dispose(); gainReports.Clear(); await terminalBridge.DisposeAsync(); await store.DisposeAsync(); }
+        // Every owner is released even when an earlier one fails; the failures are rethrown together afterwards.
+        var failures = new List<Exception>();
+        foreach (var invocation in invocations.Values.ToArray()) await AttemptAsync(failures, invocation.DisposeAsync);
+        invocations.Clear();
+        foreach (var job in gainReports.Values.ToArray()) { try { job.Dispose(); } catch (Exception exception) { failures.Add(exception); } }
+        gainReports.Clear();
+        await AttemptAsync(failures, terminalBridge.DisposeAsync);
+        await AttemptAsync(failures, store.DisposeAsync);
+        if (failures.Count == 1) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failures[0]).Throw();
+        if (failures.Count > 1) throw new AggregateException(failures);
+    }
+
+    /// <summary>Runs one disposal step and records its failure instead of skipping the remaining owners.</summary>
+    /// <param name="failures">Failures collected so far.</param>
+    /// <param name="step">Asynchronous disposal of one owner.</param>
+    private static async Task AttemptAsync(List<Exception> failures, Func<ValueTask> step)
+    {
+        try { await step(); } catch (Exception exception) { failures.Add(exception); }
     }
 }

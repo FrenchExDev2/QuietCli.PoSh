@@ -40,12 +40,12 @@ public sealed class RecallJournalWriter : IAsyncDisposable
         if (System.IO.Directory.Exists(directory) || File.Exists(directory)) throw new IOException("RecallDestinationExists");
         var metadata = new RecallJournalMetadata { RecallId = RecallStore.NormalizeId(id), RecallName = name, Settings = settings };
         RecallStore.Validate(metadata);
-        System.IO.Directory.CreateDirectory(directory);
-        var ownership = new FileStream(Path.Combine(directory, "writer.lock"), FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
+        RecallPrivateFiles.CreateDirectory(directory);
+        var ownership = RecallPrivateFiles.CreateNew(Path.Combine(directory, "writer.lock"), FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.None);
         FileStream? journal = null;
         try
         {
-            journal = new(Path.Combine(directory, "events.bin"), FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read, 65536, true);
+            journal = RecallPrivateFiles.CreateNew(Path.Combine(directory, "events.bin"), FileAccess.ReadWrite, FileShare.Read, 65536, FileOptions.Asynchronous);
             byte[] preamble = new byte[RecallJournalReader.PreambleLength];
             RecallJournalReader.Magic.CopyTo(preamble); Guid.ParseExact(metadata.RecallId, "N").TryWriteBytes(preamble.AsSpan(8));
             await journal.WriteAsync(preamble); await journal.FlushAsync(); journal.Flush(true);

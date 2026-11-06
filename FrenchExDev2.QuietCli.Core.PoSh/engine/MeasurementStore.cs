@@ -68,7 +68,7 @@ internal sealed class MeasurementStore : IAsyncDisposable
                     if ((long)stored["output_tokens"] != token.OutputTokens) throw new InvalidDataException("TokenMeasurementConflict");
                 }
                 database.Execute("COMMIT", []);
-            } catch { database.Execute("ROLLBACK", []); throw; }
+            } catch { database.TryRollback(); throw; }
             return true;
         }
         database.Execute("INSERT INTO quiet2_events(id,kind,timestamp_ms,parent_id,root_id,session_id,context,role,command,outcome,payload) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,outcome=excluded.outcome",
@@ -174,7 +174,7 @@ internal sealed class MeasurementStore : IAsyncDisposable
                 if (rows.Count < count) return accumulator.Build(true);
             }
         }
-        finally { database.Execute("ROLLBACK", []); }
+        finally { database.TryRollback(); }
     });
     /// <summary>Scrubs legacy diagnostic content only following an explicit caller confirmation.</summary>
     /// <param name="confirmed">Required irreversible-operation confirmation.</param>

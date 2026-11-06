@@ -4,236 +4,181 @@
 
 # QuietCli
 
-QuietCli is a streaming native-command engine for PowerShell Core 7.6+, designed for AI agents and developer tooling. A C# engine runs native processes while caller-local callbacks turn their output into business data. Callers can inspect that data directly or deliver a bounded JSON/YAML representation.
+**QuietCli** (pronounced *Quietly*) runs native command-line tools from PowerShell Core 7.6+ and turns their noisy output into small, typed, trustworthy results. It is built for AI agents and developer tooling, where every byte of terminal text costs time, context and attention.
 
-Explicit Recall capture preserves native evidence for inspection and offline analyzer development. Durable recording lets work continue in another session, after a reboot or an interrupted recording, without running the original command again.
+A C# engine starts the native process and streams its output once, through bounded buffers. Your own PowerShell callbacks, which stay in your process, turn that stream into business data. You then inspect the data directly or deliver a bounded JSON/YAML view of it.
+
+> **Status: preview (`0.2.0-preview`).** The engine is under active development and its API may change. The Git companion module is a work in progress and is presented here as an example only. Nothing in this repository is a release qualification unless a report says so; see [Tests and qualification](README-qualification.md).
+
+## What QuietCli gives you
+
+- **Any executable, one entry point.** `quiet` (an alias of `Invoke-QuietCli`) wraps `git`, `dotnet`, `docker` or any other native command. QuietCli options come first; native arguments follow verbatim.
+- **Output becomes data.** `-Output` and `-Complete` callbacks parse the stream into objects. Nothing is captured, spooled or kept in a history unless you ask for it.
+- **Results you can trust.** Every result reports `Outcome`, `Execution` and `Completeness`, so a truncated or failed run is never mistaken for a clean one.
+- **Bounded deliveries.** `ConvertTo-QuietJson`, `ConvertTo-QuietYaml` and `Out-QuietResult` enforce item, structural and byte budgets, with token counts measured on the exact delivered text.
+- **Capture once, analyze again.** Opt-in *Recall* keeps native evidence in memory or in a durable journal, so analysis can continue in another session without running the command again.
+- **Ready for AI agents.** `Add-QuietAgentInstruction` installs production instructions for Codex, Claude Code or any agent that reads `AGENTS.md` or a skill file.
+- **Honest measurements.** `Get-QuietCliGain` reports measured volumes and overhead. Unknown values stay unknown, and metadata never contains your business output.
+- **Reusable modules.** Companion modules register tested business handlers for one executable, and `New-QuietModule` scaffolds a new one.
+
+## Requirements
+
+| Item | Requirement |
+| --- | --- |
+| PowerShell | Core 7.6 or later |
+| Operating systems | Windows and Linux (glibc and musl) |
+| Architectures | x64 and ARM64 |
+| Hosting | Automatic: the integrated build matching the PowerShell CLR (.NET 10 or .NET 11+). The isolated `Process` host needs the pinned .NET 11 RC runtime. See [Hosting](README-hosting.md) |
+| Native tools | Installed separately; QuietCli never installs the executables you call |
+
+Configured platforms are not the same as qualified platforms. See [Tests and qualification](README-qualification.md) for what has actually been executed.
 
 ## How to install
 
-Use PowerShell Core 7.6+ with PSResourceGet and Git installed. Install the published Git companion and its Core dependency from PowerShell Gallery:
+From a source checkout, import the local Core manifest. A built module needs no SDK; import does not compile C#.
 
 ```powershell
-Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Repository PSGallery -Version 0.1.0 -Scope CurrentUser
+Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
 ```
 
-The published `0.1.0` package also requires the .NET 11 RC runtime `11.0.0-rc.3.26522.148` for your architecture. Install that runtime separately; no SDK or source checkout is needed. See [package installation](docs/PSGallery.md) for platform requirements and distribution details.
+If binaries are missing or stale, build with `./scripts/Build-Workspace.ps1` and start a fresh PowerShell process. Details are in [Development](README-development.md).
+
+From PowerShell Gallery, use `-Prerelease` to select the preview line once a preview is published. Publication status and platform notes are in [package installation](docs/PSGallery.md).
+
+```powershell
+Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh -Prerelease -Repository PSGallery -Scope CurrentUser
+```
 
 ## How to use
 
-Open PowerShell in an existing Git repository, load the installed module and inspect its status:
+Run any native command through `quiet`. This example lists the installed .NET SDKs as typed objects. The parser was written after reading the actual `dotnet --list-sdks` output: one `<version> [<sdk root>]` record per line.
 
 ```powershell
-Import-Module FrenchExDev2.QuietCli.Git.PoSh
+$r = quiet -AsObject -C sdk-inventory -RecordDelimiter "`n" `
+    -Data @{ Sdks = [Collections.Generic.List[object]]::new() } `
+    -Output {
+        param($event, $runtime)
+        if ($event.Stream -ne 'stdout') { return }
+        $m = [regex]::Match($event.Text.TrimEnd([char[]]"`r`n"), '^(?<version>\S+) \[(?<path>.+)\]$')
+        if (!$m.Success) { throw 'InvalidDotnetSdkRecord' }
+        [void]$runtime.Data.Sdks.Add([pscustomobject]@{ Version = $m.Groups['version'].Value; Root = $m.Groups['path'].Value })
+    } `
+    -Complete {
+        param($runtime)
+        [pscustomobject]@{ InstalledSdks = $runtime.Data.Sdks.Count; Sdks = $runtime.Data.Sdks.ToArray() }
+    } `
+    dotnet --list-sdks
 
+# Check the run before trusting the business result.
+$r.Outcome
+$r.Execution
+$r.Completeness
+$r.Data
+
+# Deliver a bounded view for a human or an agent.
+ConvertTo-QuietJson $r -MaxOutputBytes 4096
+```
+
+QuietCli options precede the executable (`dotnet`); native arguments follow it. The parser throws on a record it does not recognize rather than guessing. Read the executable's help or official documentation before writing a parser for it.
+
+What `Outcome`, `Execution` and `Completeness` mean, the guard to apply before using `Data`, and the callback pitfalls are in [Streaming, callbacks and results](README-streaming.md). A longer walkthrough is in [analyzing a non-Git executable](docs/agents/non-git-example.md).
+
+## Bounded delivery, measured
+
+The point of a delivery budget is that the size of what you hand to a human or an agent no longer grows with the size of the repository. Measured on 6 November 2026 on Windows, with the local `0.2.0-preview` Core and Git modules, on disposable repositories (byte counts of UTF-8 text, default item budget):
+
+| Repository state | Raw `git status` | `quiet -AsObject git status` delivered with `ConvertTo-QuietJson -MaxOutputBytes 4096` |
+| --- | ---: | ---: |
+| 40 modified and 20 untracked files | 1,883 bytes | 2,973 bytes |
+| 1,500 modified files | 33,640 bytes | 2,795 bytes (1,480 of 1,500 entries reported as omitted) |
+
+On a small repository the structured JSON is larger than the raw text, because it carries typed fields. On a large one it stays bounded and states explicitly what it left out (`Truncation.Applied`). A caller-defined projection can be much smaller still, as in the counters example below. These are byte counts, not model tokens or cost: byte reduction alone establishes neither context-window use nor financial savings. See [Measurements and privacy](README-measurements.md) and the [comparison with RTK](QUIET_VS_RTK_MEASURES.md) for definitions and limits.
+
+## Use QuietCli with an AI agent
+
+`Add-QuietAgentInstruction` copies QuietCli's production instructions into your project's `.skills` directory and writes a short, delimited reference block into the instruction file your agent reads. Text outside that block is never touched, and repeating the command changes nothing. It installs no hook, profile change or agent setting.
+
+```powershell
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
+$project = (Get-Location).Path
+
+# Preview first, then run without -WhatIf.
+Add-QuietAgentInstruction -Path $project -Claude -WhatIf    # Claude Code: CLAUDE.md imports .skills/AGENTS.md
+Add-QuietAgentInstruction -Path $project -Agents -WhatIf    # Codex and AGENTS.md readers
+```
+
+Commands for each agent, the skill form, options and verification steps are in [QuietCli with AI agents](README-agents.md).
+
+## Example: a companion module (Git, under development)
+
+> **Status: under development.** The Git module illustrates what a companion module looks like. Its handler catalogue is growing, the full command/version/platform matrix is not qualified, and its API and coverage may change. Inventory membership is not support. Read the [Git README](FrenchExDev2.QuietCli.Git.PoSh/README.md#coverage-and-limits) before relying on a command.
+
+A handler is a ready-made callback pair. `quiet -AsObject git status` is shorthand for the explicit form `quiet -AsObject -Output { ... } -Complete { ... } git status ...`, where the module supplies the `-Output` parser and the `-Complete` finalizer for you. The explicit form below does the same job by hand on a small scale: it asks Git for its machine format, counts the entries of a repository and returns a typed result.
+
+```powershell
+Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
+
+# Without a companion module: you write the callbacks.
+$r = quiet -AsObject -C git-status -RecordDelimiter "`n" `
+    -Data @{ Branch = $null; Changed = 0; Conflicted = 0; Untracked = 0 } `
+    -Output {
+        param($event, $runtime)
+        if ($event.Stream -ne 'stdout') { return }
+        $line = $event.Text.TrimEnd([char[]]"`r`n")
+        switch -Regex ($line) {
+            '^# branch\.head (?<name>.+)$' { $runtime.Data.Branch = $Matches['name'] }
+            '^[12] ' { $runtime.Data.Changed++ }
+            '^u '    { $runtime.Data.Conflicted++ }
+            '^\? '   { $runtime.Data.Untracked++ }
+        }
+    } `
+    -Complete {
+        param($runtime)
+        [pscustomobject]@{
+            Branch     = $runtime.Data.Branch
+            Changed    = $runtime.Data.Changed
+            Conflicted = $runtime.Data.Conflicted
+            Untracked  = $runtime.Data.Untracked
+        }
+    } `
+    git status --porcelain=v2 --branch
+
+$r.Data   # Branch master, Changed 1, Conflicted 0, Untracked 1
+```
+
+With the Git companion loaded (it depends on Core), the same question needs no callback. The module selects its own handler for `git status`:
+
+```powershell
+Import-Module ./FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1
+
+# Run inside an existing Git repository.
 $result = quiet -AsObject git status
 $result.Outcome
 $result.Execution
 $result.Completeness
 $result.Data
-```
 
-To produce a bounded JSON delivery:
-
-```powershell
 ConvertTo-QuietJson $result -MaxOutputBytes 4096
 ```
 
-QuietCli options precede `git`; Git arguments follow it. The Git companion supplies the status handler, so no callback is needed. See the [Git module README](FrenchExDev2.QuietCli.Git.PoSh/README.md) for supported commands and limits.
-
-## Development
-
-The Core development manifest declares **0.2.0-preview** (`ModuleVersion='0.2.0'`, `PSData.Prerelease='preview'`). The sections below describe this source checkout; their features are not necessarily available in the published `0.1.0` package. Building or testing does not publish a release.
-
-### Start with the local Core module
-
-From the repository root, use a separate PowerShell Core 7.6+ session and import the local manifest:
-
-```powershell
-Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
-
-# Count received stdout bytes without retaining their content.
-$r = quiet -AsObject -C analysis -StdoutMode Bytes -Data @{ Bytes = 0L } -Output {
-    param($event, $runtime)
-    if ($event.Stream -eq 'stdout') {
-        $runtime.Data.Bytes += $event.ByteCount
-    }
-} executable arguments
-
-# Inspect execution and source completeness before using the business result.
-$r.Outcome
-$r.Execution
-$r.Completeness
-
-# Produce a bounded delivery and inspect measured volumes.
-$json = ConvertTo-QuietJson $r -MaxOutputBytes 4096
-Get-QuietCliGain -C analysis
-```
-
-Replace `executable arguments` with the intended native command. Facade options precede the executable; native arguments follow it. For an exact argument vector, use `-FilePath` and `-ArgumentList`. Use `-WorkingDirectory` to select the native working directory and `-C` to label the measurement context.
-
-A built module needs no SDK to import or run. Import does not compile C# or start the engine. If binaries are missing or stale, build with `./scripts/Build-Workspace.ps1`, then start a fresh PowerShell process before importing rebuilt assemblies. Build inputs are pinned in `global.json` and the project configuration. Keep modules with overlapping public command names in separate sessions.
-
-See the [Core module README](FrenchExDev2.QuietCli.Core.PoSh/README.md) and [package installation and publication](docs/PSGallery.md) for detailed setup.
-
-## Streaming and callbacks
-
-Without an explicit capture option, stdout/stderr are read once, counted, dispatched through bounded transient buffers and released. No cumulative raw capture, output spool or content history is created. Native queues are bounded to 16 blocks of 16 KiB per invocation. Incremental UTF-8 decoding and delimiter framing run in C#; unfinished records are bounded by `MaxRecordBytes`. Invalid or incomplete UTF-8 and oversized records fail explicitly.
-
-`-Output` receives `(event, runtime)` and must emit no incidental pipeline output. Store required business information in `runtime.Data`; use `[void]` for methods whose return values should be discarded. `-Complete` receives the runtime and returns at most one business value. Use the unary comma to return an array as one value. If it returns no value, the existing `Data` is preserved.
-
-Without explicit callbacks, command execution requires a documented compatible registered handler. Unsupported commands are rejected before business execution. `-SaveRecall` also permits direct recording without a parser.
-
-Collection, retention, decoding, business analysis and delivery are separate responsibilities. `-AsObject` returns a local envelope without enumerating, serializing or transferring `Data` to the engine. Inspect `Outcome`, `Execution`, `Completeness` and errors alongside the business data. JSON/YAML delivery applies item, structural and encoded-byte budgets; a delivery projection can select only the information needed by the consumer.
-
-Nested native calls from callbacks have their own results and retain visible failures. Children inherit the measurement context, but do not implicitly inherit Recall retention or recording. After an analyzer failure, native drainage continues and `Complete` can finalize partial business data.
-
-## Capture once and analyze again
-
-### In-memory evidence
-
-```powershell
-$r = quiet -AsObject -Recall -RecallMaxBytes '90KiB' -StdoutMode Bytes -Output {} executable arguments
-
-$analysis = Invoke-QuietRecall -InputObject $r -Data @{ Bytes = 0L } -Output {
-    param($event, $runtime)
-    $runtime.Data.Bytes += $event.ByteCount
-}
-```
-
-`-Recall` retains at most **16 MiB** of native bytes by default. `-RecallMaxBytes` accepts positive integral bytes, an integral size with `B`, `KiB`, `MiB` or `GiB`, or `All`, case insensitive. `All` removes the configured memory ceiling; process memory remains the practical limit. Objects and indexes add memory overhead beyond retained payload bytes.
-
-`-RecallPolicy Head|Tail|HeadAndTail` selects retention. `Head` is the default; `HeadAndTail` divides the budget equally and gives an odd extra byte to the head. `All` requires `Head`. Capture options are validated before execution and require explicit `-Recall -AsObject`.
-
-Reaching the memory budget does not stop execution, drainage or the current analyzer. Recall distinguishes received, retained and omitted bytes, missing ranges and source drainage. A fully retained prefix of an interrupted execution is still incomplete source evidence.
-
-### Durable recording and later sessions
-
-```powershell
-$r = quiet -AsObject -SaveRecall -RecallName 'build-investigation' executable arguments
-$id = $r.Recall.RecallId
-
-# In this or a later session, locate the saved capture.
-Get-QuietSavedRecall -RecallName 'build-*'
-
-# Use new callbacks without launching the original executable.
-$analysis = quiet -AsObject -RecallId $id -StdoutMode Bytes -Data @{ Bytes = 0L } -Output {
-    param($event, $runtime)
-    $runtime.Data.Bytes += $event.ByteCount
-} -Complete {
-    param($runtime)
-    @{ TotalBytes = $runtime.Data.Bytes }
-}
-$json = ConvertTo-QuietJson $analysis -MaxOutputBytes 4096
-```
-
-`-SaveRecall -AsObject` writes all received output to a durable streaming journal, independently of the memory retention budget. Combined with `-Recall`, the returned `Recall` exposes the disk view and `Recall.MemoryCapture` exposes the bounded memory view. `RecallId` is the immutable capture identity; `RecallName` is an optional nonunique searchable label.
-
-The default store is `%LOCALAPPDATA%/QuietCli2/recalls` on Windows and the platform local-data directory on Unix. Set YAML `recall.root` or supply `-RecallRoot` to select another store. There is no automatic expiry or deletion. Recorded output may contain sensitive business content; retention is an explicit caller choice.
-
-Each capture uses a versioned JSON manifest and a checksummed binary journal. Recording uses bounded buffers and 64-bit offsets; there is no 4 GiB content ceiling. Completed journals replay through streaming cursors. Interrupted recordings recover complete checksum-valid frames and remain marked as incomplete. `DurableBytes` identifies the last confirmed filesystem checkpoint; it is not a guarantee against every hardware or power failure. Save errors remain explicit while native drainage continues.
-
-Capture includes stdout/stderr or the merged PTY terminal stream; stdin is excluded. Sequences preserve the order observed by QuietCli and each stream's byte offsets. They do not establish the exact order of writes across independent pipes. Public snapshots protect retained buffers from mutation.
-
-### Replay and byte references
-
-Each replay creates a fresh analysis runtime and preserves the original result. Supply fresh `Data` and `State` for independent analyses. Replace `Output`, `Complete` and the delivery `Projection`; optionally override `StdoutMode`, `StderrMode`, `RecordDelimiter` and `MaxRecordBytes`. Native controls, probes, automatic handler selection and nested QuietCli execution are unavailable during replay. Stored evidence contains no executable callbacks.
-
-Captures with omitted ranges are rejected by default. `-AllowPartial` permits explicit partial analysis and resets decoding/framing at each gap, preventing separate fragments from becoming a fabricated record. Reanalysis is not counted as a new native source or as additional native-output savings.
-
-```powershell
-$view = Get-QuietRecall $r -Stream stderr -Offset 0 -ByteCount 100 -MaxItems 20 -MaxOutputBytes 4096
-$reference = New-QuietRecallReference $r -Stream stderr -Offset 0 -ByteCount 12
-$context = Get-QuietRecall $r -Reference $reference -Context 1
-```
-
-References identify exact retained byte ranges before decoding and fail if requested bytes are missing. Diagnostics can carry these references without duplicating output content. Query limits bound returned bytes and events; selection completeness, capture completeness and original source completeness remain distinct.
-
-### Working directories and ZIP transport
-
-```powershell
-# Export retained evidence as an uncompressed working directory.
-Export-QuietRecall $r -Path ./reproducer
-$imported = Import-QuietRecall ./reproducer -MaxBytes All
-
-# Explicit ZIP64 transport, with zlib compression level 0..9.
-$transport = Export-QuietRecall $r -Path ./reproducer.zip -Zip -Compress 6 -PassThru
-```
-
-Directory export is the default for repeated replay. `-Zip` selects streaming ZIP64 transport; `-Compress` requires `-Zip`, defaults to 6 and specifies a level rather than a promised ratio. Level 0 stores without compression. Reported input/output sizes and their ratio describe archive bytes, not model tokens or financial savings.
-
-Import validates the supported format, sizes, offsets and SHA-256 integrity with bounded allocations. It loads inert data, never arbitrary serialized types or scripts. `-MaxBytes` bounds accepted native payload; `All` permits large disk-backed evidence without loading it all into RAM. Existing destinations are not overwritten. Integrity checks do not authenticate the author.
-
-See the [Recall contract](docs/recall.md) for checkpoint behavior, corruption handling, live-reader limits and all public APIs.
-
-## Hosting and native transports
-
-`Auto` hosting selects the compatible integrated C# build from the actual PowerShell CLR: `net10.0` on .NET 10 and `net11.0` on .NET 11 or later. Business callbacks, data, decoding and framing stay caller-local. Integrated native reads and lifecycle controls use direct C# calls rather than pipe IPC.
-
-Set YAML `engine.hosting: Process` explicitly for the isolated engine, which requires the pinned .NET 11 RC runtime. `InProcess` explicitly selects direct hosting. Set the mode before the first engine call, or use `Stop-QuietEngine` before changing it. `Get-QuietEngine` reports the actual mode, runtime, process identity and transport counters.
-
-Distributions target Windows x64/ARM64 and Linux glibc/musl x64/ARM64. The facade selects the actual host RID and verifies packaged resources. Pipes preserve separate stdout/stderr; PTY merges output into `TerminalBytesRead`, leaving separate stream counts unknown. Windows uses ConPTY; Linux uses verified native bridges.
-
-Integrated hosting shares PowerShell's failure boundary. Process isolation provides a separate engine boundary. A timeout stops the owned native process, but cannot forcibly interrupt an arbitrary blocked PowerShell callback. Callbacks must cooperate with cancellation. `-DrainTimeoutSeconds` bounds waiting for EOF after native exit; interrupted drainage is explicitly incomplete. Communication failures never trigger automatic command retries and can leave a mutation's effect unknown.
-
-See [hosting and performance](docs/performance-and-hosting.md) and [PowerShell/C# responsibilities](docs/powershell-csharp-boundaries.md).
-
-## Configuration
-
-See [configuration and unique tokenized deliveries](docs/configuration.md). The sole product environment override, `QUIETCLI_CONFIG_DIRECTORY`, selects the directory containing `config.yaml`. Explicit parameters override the session's YAML snapshot, then built-in defaults. Use `New-QuietCliConfiguration`, `Test-QuietCliConfiguration`, `Get-QuietCliConfiguration` and `Import-QuietCliConfiguration` to manage it explicitly.
-
-## Measurements and privacy
-
-The result counts stdin bytes actually written, stdout/stderr bytes actually read, and merged terminal bytes for PTY. `Business`, `Probe`, `Observation` and `Infrastructure` roles separate sources. Aggregates deduplicate sources; context subtotals are not necessarily additive. Probes and reanalysis do not inflate business gains.
-
-With `-AsObject`, delivery size and reduction remain unknown. JSON/YAML bytes are measured only when their representation is produced, including the delivery envelope. The latest delivered text remains local under its `DeliveryId`; successive delivery strings do not accumulate in the result.
-
-Use `ConvertTo-QuietJson` for JSON or `ConvertTo-QuietYaml` for YAML. `ConvertTo-QuietYaml` provides the symmetric YAML conversion; `Out-QuietResult -AsJson` also produces JSON.
-
-```powershell
-$json = ConvertTo-QuietJson $r -MaxOutputBytes 4096
-$yaml = Out-QuietResult $r -AsYaml -MaxOutputBytes 4096
-```
-
-The first unique representation creates a `DeliveryId` and, when tracking is enabled and storage succeeds, adds one `kind='delivery'` row to SQLite's `quiet2_events` table. Identical conversions on the same result reuse that identity and expose `AlreadyDelivered=True`; different tokenizer measurements do not create new deliveries. These rows contain metadata and measurements such as format, output bytes and serialization duration, never the delivered JSON/YAML text or business data. Offline results and `telemetry.enabled: false` skip these writes. A storage failure is reported through `Measurement.StorageError` and `Measurement.Status='StorageUnavailable'` while the produced text is still returned.
-
-Tokenization defaults to `o200k_base` and counts the exact final delivery text. `-Tokenizer cl100k_base` or `off` overrides that default. Native model-token counts remain unknown. Byte reduction alone establishes neither context-window use nor financial savings.
-
-SQLite stores closed metadata, counters, relationships and structured error codes. It excludes native output, business objects, delivered text, Recall names and callback code. Explicit Recall storage is separate from telemetry and ordinary result serialization. YAML `telemetry.database` selects the database; `telemetry.enabled: false` disables measurement writes. Storage errors remain distinct from business outcomes.
-
-See [allocation and delivery metrics](docs/allocation-and-delivery-metrics.md), [Core performance qualification](FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md) and the [RTK comparison](QUIET_VS_RTK_MEASURES.md) for definitions, measured scope and limitations.
-
-## Tests and qualification
-
-Tests belong in companion projects, including independent C# assertions and PowerShell scenarios. Focused Recall tooling provides:
-
-- `Compare-QuietRecallAnalysis`: two analyses with independent states, projected differences, diagnostics, cursor counts, durations and allocations. Delivered events alone do not prove business use; ignored events require an explicit declaration.
-- `Export-QuietRecallFixture`: an exact capture and a test skeleton that fails until independent business expectations are written.
-- `Reduce-QuietRecall`: a bounded event reducer driven by an explicit failure predicate, preserving failure without claiming global minimality.
-
-From the repository root:
-
-```powershell
-./scripts/Build-Workspace.ps1
-./scripts/Invoke-WorkspaceCi.ps1 -Suite All -SkipBuild
-
-# Focused development campaigns.
-./scripts/Invoke-WorkspaceCi.ps1 -Suite Recall -SkipBuild
-./scripts/Invoke-WorkspaceCi.ps1 -Suite RecallMutation -SkipBuild
-./scripts/Invoke-WorkspaceCi.ps1 -Suite RecallLarge -SkipBuild -TimeoutSeconds 1800
-```
-
-Local runs start a background worker and a dedicated visible PowerShell monitor. The launcher prints its reopening command; the monitor closes after saving the terminal result. `-Headless` is reserved for CI. Reports default to the system temporary directory under `QuietCli2/<workspace-id>/<category>/<run-id>`, outside the checkout. `-RunDirectory` overrides the location. CI uses its artifact upload paths. Export evidence requiring durable retention before temporary storage is cleared.
-
-Qualification combines examples, generated properties, malformed-input fuzzing and targeted mutation campaigns. Recall covers retention policies, byte identity, mixed streams, fragmented Unicode, references, durable recovery and import integrity. `RecallLarge` uses actual 4 GiB + 1 MiB native output and checks streaming replay, ZIP64 export/import and bounded working memory; it requires twelve GiB of free disk space. Performance measurements separate ordinary streaming, capture, recording, delivery and reanalysis.
-
-The CI matrix covers stable/.NET 10 and preview/.NET 11 hosting, Windows/Linux and x64/ARM64, with explicit native PTY qualification. Configured targets and successful local campaigns do not qualify unexecuted platforms. Missing, failed or incomplete required phases block release qualification. Reports identify the source revision, runtime, architecture, executed scenarios and remaining gaps.
-
-## Repository and distribution
-
-The [public repository](https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh) has one root checkout. Open `QuietCli2.code-workspace` in VS Code. Shared scripts own build, package verification and dependency-aware CI; modules retain their declared package boundaries. Builds and tests do not commit, push or publish.
-
-`New-WorkspacePackage.ps1` creates module archives and SHA-256 manifests. `Test-WorkspacePackage.ps1` verifies paths, sizes, hashes and manifests before extraction; `-TestImport` explicitly enables execution of verified package code. File integrity is distinct from author authentication. Gallery publication is manually dispatched and requires qualification of the exact delivered revision.
-
-`New-QuietModule` generates a business module, inert catalogue, handler skeleton and companion test project. Implement probes, version policy, command selection and analysis from the executable's documentation. Its initial companion suite fails until independent business assertions are supplied. Inventory membership alone never establishes semantic support.
-
-For repository commands, dependency rules and publication gates, read [AGENTS.md](AGENTS.md). For API details, use installed command help, the [Core README](FrenchExDev2.QuietCli.Core.PoSh/README.md) and the [Recall documentation](docs/recall.md).
+The module's handler goes further than this sketch: it reads NUL-delimited porcelain v2 and reports the branch, HEAD, initial or detached state, divergence from local references, entries and counters, and it keeps the short forms and pathspec filters. QuietCli options precede `git`; Git arguments follow it. To build a module for another executable, see [Companion modules](README-modules.md).
+
+## Go deeper
+
+| Topic | Read |
+| --- | --- |
+| Outcome, completeness, callbacks, reusable scripts | [Streaming, callbacks and results](README-streaming.md) |
+| Capturing native evidence and analyzing it later | [Recall](README-recall.md) |
+| Integrated and isolated engine, pipes and PTY, platforms | [Hosting and native transports](README-hosting.md) |
+| YAML configuration and the single environment override | [Configuration](README-configuration.md) |
+| What is measured, stored and never stored | [Measurements and privacy](README-measurements.md) |
+| Using QuietCli with Codex, Claude Code or another agent | [QuietCli with AI agents](README-agents.md) |
+| Registered handlers and writing a module | [Companion modules](README-modules.md) |
+| Working from a source checkout, building | [Development](README-development.md) |
+| Property, fuzzing and mutation campaigns, CI matrix | [Tests and qualification](README-qualification.md) |
+| Packaging, publication gates, repository layout | [Repository and distribution](README-distribution.md) |
+| Repository rules for contributors and agents | [AGENTS.md](AGENTS.md) |
+
+## License
+
+QuietCli is distributed under the MIT license. Each module directory ships its own `LICENSE` file, for example [Core](FrenchExDev2.QuietCli.Core.PoSh/LICENSE).

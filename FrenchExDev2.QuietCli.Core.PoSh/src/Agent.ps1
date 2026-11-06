@@ -90,12 +90,12 @@ function Add-QuietAgentInstruction {
     Creates or updates the project's AGENTS.md.
     .PARAMETER Claude
     Creates or updates CLAUDE.md with a relative import.
-    .PARAMETER Skills
-    Creates or updates SKILLS.md; does not register a native agent skill.
+    .PARAMETER Skill
+    Creates or updates the project SKILL.md reference; does not register a native agent skill.
     .PARAMETER DocumentDirectory
     Managed copy directory, relative to Path or an explicit absolute path on the same filesystem root.
     .PARAMETER Document
-    Auto selects AGENTS.md for Agents/Claude and SKILL.md for Skills. Agents or Skill overrides all targets.
+    Auto selects AGENTS.md for Agents/Claude and SKILL.md for Skill. Agents or Skill overrides all targets.
     .OUTPUTS
     System.Management.Automation.PSCustomObject with Files and Documents metadata. This is not a native execution envelope.
     .EXAMPLE
@@ -104,11 +104,11 @@ function Add-QuietAgentInstruction {
     #>
     [CmdletBinding(SupportsShouldProcess)]param(
         [ValidateNotNullOrEmpty()][string]$Path=(Get-Location).Path,
-        [switch]$Agents,[switch]$Claude,[switch]$Skills,
+        [switch]$Agents,[switch]$Claude,[switch]$Skill,
         [ValidateNotNullOrEmpty()][string]$DocumentDirectory='.skills',
         [ValidateSet('Auto','Agents','Skill')][string]$Document='Auto'
     )
-    if(!$Agents -and !$Claude -and !$Skills){throw 'AgentInstructionTargetRequired'}
+    if(!$Agents -and !$Claude -and !$Skill){throw 'AgentInstructionTargetRequired'}
     $project=Get-Item -LiteralPath $Path -Force -ErrorAction Stop
     if($project -isnot [IO.DirectoryInfo]){throw 'AgentInstructionProjectMustBeDirectory'}
     $copyRoot=[IO.Path]::GetFullPath($DocumentDirectory.Replace('\',[IO.Path]::DirectorySeparatorChar),$project.FullName)
@@ -116,7 +116,7 @@ function Add-QuietAgentInstruction {
     if([IO.Path]::IsPathRooted($relative) -or $relative -match '[\r\n]'){throw 'AgentInstructionNonportableDirectory'}
     $sourceRoot=Get-QuietAgentDocumentDirectory
     $sourcePaths=@(foreach($name in @('AGENTS.md','SKILL.md')){[IO.Path]::Combine($sourceRoot,$name)})
-    $selected=@(@{Enabled=$Agents;Name='AGENTS.md';Choice='Agents'},@{Enabled=$Claude;Name='CLAUDE.md';Choice='Agents'},@{Enabled=$Skills;Name='SKILLS.md';Choice='Skill'})
+    $selected=@(@{Enabled=$Agents;Name='AGENTS.md';Choice='Agents'},@{Enabled=$Claude;Name='CLAUDE.md';Choice='Agents'},@{Enabled=$Skill;Name='SKILL.md';Choice='Skill'})
     $targets=@(foreach($target in $selected){if($target.Enabled){[IO.Path]::Combine($project.FullName,$target.Name)}})
     $copies=@(foreach($source in $sourcePaths){
         $bytes=[IO.File]::ReadAllBytesAsync($source).GetAwaiter().GetResult();$null=$script:QuietUtf8.GetString($bytes)

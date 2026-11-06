@@ -179,7 +179,7 @@ namespace FrenchExDev2.QuietCli.Storage {
                         Execute("CREATE INDEX quiet2_context ON quiet2_events(context,session_id)", Array.Empty<object>());
                         Execute("PRAGMA user_version=1", Array.Empty<object>());
                         Execute("COMMIT", Array.Empty<object>());
-                    } catch { Execute("ROLLBACK", Array.Empty<object>()); throw; }
+                    } catch { TryRollback(); throw; }
                 } else if (!create && version != 1) throw new InvalidOperationException("Not a QuietCli2 database.");
             } catch { Dispose(); throw; }
         }
@@ -228,6 +228,11 @@ namespace FrenchExDev2.QuietCli.Storage {
                 }
                 return statement;
             } catch { if (statement != IntPtr.Zero) Sqlite.sqlite3_finalize(statement); throw; }
+        }
+        /// <summary>Ends a failed or read-only transaction; a rollback error must not replace the original outcome.</summary>
+        public void TryRollback() {
+            try { Execute("ROLLBACK", Array.Empty<object>()); }
+            catch (Exception) { /* The caller reports the original failure; a failed rollback leaves nothing more to undo. */ }
         }
         /// <summary>Executes a SQL statement and ignores any rows it returns.</summary>
         /// <remarks>Advances to SQLITE_DONE (101), checks other outcomes and always finalizes the statement. Queries are prepared with bound values.</remarks>

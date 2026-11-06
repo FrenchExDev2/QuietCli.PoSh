@@ -9,24 +9,45 @@ internal static class Program
     /// <param name="arguments">Exact invocation arguments without shell expansion.</param>
     private static async Task<int> Main(string[] arguments)
     {
+        // Development-only selection: --case <wildcard> (partial run) and --stop-on-first-failure (incomplete run).
+        // The unfiltered run remains the pre-commit gate; the summary reports Partial/Stopped so it is never mistaken for it.
+        string? casePattern = null; bool stopOnFirstFailure = false;
+        var positional = new List<string>();
+        for (int index = 0; index < arguments.Length; index++)
+        {
+            if (arguments[index] == "--case" && index + 1 < arguments.Length) casePattern = arguments[++index];
+            else if (arguments[index] == "--stop-on-first-failure") stopOnFirstFailure = true;
+            else positional.Add(arguments[index]);
+        }
+        arguments = positional.ToArray();
+        var caseFilter = casePattern is null ? null : new System.Text.RegularExpressions.Regex("^" + System.Text.RegularExpressions.Regex.Escape(casePattern).Replace("\\*", ".*").Replace("\\?", ".") + "$", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+        int skipped = 0; string? stoppedAt = null;
         if (arguments.Length != 0) FrenchExDev2.QuietCli.Storage.Database.NativeDirectory = arguments[0];
         var results = new List<object>(); int passed = 0, failed = 0;
         // Each assertion is independent; a fixture failure remains a failing case.
         async Task Case(string name, Func<Task> assertion)
         {
+            if (stoppedAt is not null || (caseFilter is not null && !caseFilter.IsMatch(name))) { skipped++; return; }
             try { await assertion(); passed++; results.Add(new { Name = name, State = "Passed" }); }
-            catch (Exception error) { failed++; results.Add(new { Name = name, State = "Failed", Error = error.Message }); }
+            catch (Exception error) { failed++; results.Add(new { Name = name, State = "Failed", Error = error.Message }); if (stopOnFirstFailure) stoppedAt = name; }
         }
         if (arguments.Contains("--configuration-delivery-only"))
         {
             await ConfigurationDeliveryCases.RunAsync(Case, arguments[2]);
-            Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Cases = results }));
+            await ConfigurationSchemaCases.RunAsync(Case);
+            await ConfigurationSchemaCases.RunRoundTripAsync(Case, arguments[2]);
+            // The YAML library sits at <module root>/resources/yaml/YamlDotNet.dll.
+            string moduleRoot = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(arguments[2])!, "..", ".."));
+            await ConfigurationCmdletCases.RunAsync(Case, moduleRoot);
+            await DeliveryCmdletCases.RunAsync(Case, moduleRoot);
+            Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Partial = caseFilter is not null, Incomplete = stoppedAt is not null, StoppedAt = stoppedAt, Skipped = skipped, Cases = results }));
             return failed == 0 ? 0 : 1;
         }
         if (arguments.Contains("--recall-only"))
         {
             await RecallCases.RunAsync(Case);
-            Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Cases = results }));
+            await RuntimeCases.RunAsync(Case);
+            Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Partial = caseFilter is not null, Incomplete = stoppedAt is not null, StoppedAt = stoppedAt, Skipped = skipped, Cases = results }));
             return failed == 0 ? 0 : 1;
         }
         await Case("compiled records preserve every byte at every fragment boundary", () =>
@@ -89,13 +110,16 @@ internal static class Program
         if (arguments.Contains("--telemetry-only"))
         {
             await TelemetryCases.RunAsync(Case, store);
-            Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Cases = results }));
+            Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Partial = caseFilter is not null, Incomplete = stoppedAt is not null, StoppedAt = stoppedAt, Skipped = skipped, Cases = results }));
             return failed == 0 ? 0 : 1;
         }
         await SecondPassCases.RunAsync(Case, store, directory);
         await RecallCases.RunAsync(Case);
         await TelemetryCases.RunAsync(Case, store);
         await CoreMigrationCases.RunAsync(Case, directory, Path.GetFullPath(Path.Combine(arguments[0], "../../../../..")));
+        await FacadeOptionCases.RunAsync(Case);
+        await ProtocolClientCases.RunAsync(Case);
+        await ConfigurationSchemaCases.RunAsync(Case);
         await Case("available stdin wakes a backpressured caller without stdout", InputBackpressureCases.ReadyInputDoesNotWaitForOutputAsync);
         await Case("business data forbidden in SQLite metadata", async () =>
         {
@@ -194,7 +218,7 @@ internal static class Program
             Require(snapshot.GetProperty("StdoutBytesRead").GetInt64() == (hold ? 0 : 3), "Source byte count changed");
             if (hold) Require(snapshot.GetProperty("Error").GetString() == "OutputDrainInterrupted", "Interrupted drain lost its diagnostic code");
         });
-        Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Cases = results }));
+        Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Partial = caseFilter is not null, Incomplete = stoppedAt is not null, StoppedAt = stoppedAt, Skipped = skipped, Cases = results }));
         return failed == 0 ? 0 : 1;
     }
 

@@ -18,7 +18,7 @@ $text=Get-QuietAgentInstruction
 $hash=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($text)))
 if($hash -cne $ExpectedHash){throw 'AgentProbeInstructionsMismatch'}
 $installation=Add-QuietAgentInstruction -Path $Project -Agents
-if($installation.Files[0].Status -ne 'Created' -or (& $core {$null -ne $script:QuietEngine})){throw 'AgentProbeInstallationOrInertness'}
+if($installation.Files[0].Status -ne 'Created' -or ($null -ne [FrenchExDev2.QuietCli.QuietSession]::Engine)){throw 'AgentProbeInstallationOrInertness'}
 foreach($name in @('Get-QuietAgentInstruction','Add-QuietAgentInstruction')){
     if(!(Get-Help $name).Synopsis){throw 'AgentProbeHelpMissing'}
 }

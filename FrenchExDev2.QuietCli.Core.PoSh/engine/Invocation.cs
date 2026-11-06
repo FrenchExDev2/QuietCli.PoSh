@@ -19,6 +19,8 @@ internal sealed class Invocation : IAsyncDisposable
     private readonly Channel<byte[]> input = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(ProtocolSpecification.QueueBlocks) { FullMode = BoundedChannelFullMode.Wait });
     /// <summary>Whether the serialized caller must retry a full input queue after draining.</summary>
     private bool inputBackpressured;
+    /// <summary>Set once no further input can be accepted, so a full queue is never confused with a closed one.</summary>
+    private volatile bool inputClosed;
     /// <summary>Native disconnected contract used by the isolated runtime.</summary>
     private readonly CancellationTokenSource disconnected = new();
     /// <summary>Native deadline contract used by the isolated runtime.</summary>
@@ -33,18 +35,24 @@ internal sealed class Invocation : IAsyncDisposable
     private readonly Stopwatch watch = Stopwatch.StartNew();
     /// <summary>Native stdin bytes, stdout bytes, stderr bytes contract used by the isolated runtime.</summary>
     private long stdinBytes, stdoutBytes, stderrBytes;
-    /// <summary>Native cancelled, timed out contract used by the isolated runtime.</summary>
-    private bool cancelled, timedOut;
-    /// <summary>Native error contract used by the isolated runtime.</summary>
+    /// <summary>Set by the deadline, cancellation and reader threads, read by the snapshot; volatile publishes them safely.</summary>
+    private volatile bool cancelled, timedOut;
+    /// <summary>First failure code written by concurrent readers and writers; accessed through Volatile and Interlocked only.</summary>
     private string? error;
-    /// <summary>Native exit code contract used by the isolated runtime.</summary>
-    private int? exitCode;
+    /// <summary>Sentinel stored in <see cref="exitCodeValue"/> until the native process has exited.</summary>
+    private const long NoExitCode = long.MinValue;
+    /// <summary>Native exit code, or <see cref="NoExitCode"/>; a 64-bit slot keeps the value and its presence in one atomic read.</summary>
+    private long exitCodeValue = NoExitCode;
     /// <summary>Native success codes contract used by the isolated runtime.</summary>
     private readonly int[] successCodes;
     /// <summary>Configured reader block size, bounded by the protocol maximum.</summary>
     private readonly int readBlockBytes;
     /// <summary>Post-exit drain deadline; EOF and interruption are distinct outcomes.</summary>
     private readonly double drainTimeoutSeconds;
+    /// <summary>Native exit code once the process has exited; read atomically from any thread.</summary>
+    private int? ExitCode => Volatile.Read(ref exitCodeValue) is var value && value != NoExitCode ? (int)value : null;
+    /// <summary>First recorded failure code, or null.</summary>
+    private string? Error => Volatile.Read(ref error);
     /// <summary>Identity of the owned native process.</summary>
     internal string Id { get; }
     /// <summary>Native transport contract used by the isolated runtime.</summary>
@@ -82,13 +90,13 @@ internal sealed class Invocation : IAsyncDisposable
         deadline.Token.Register(() => { timedOut = true; process.Kill(); });
         if (request.InputPath != null)
         {
-            input.Writer.TryComplete();
+            CloseInput();
             writer = FeedFileAsync(request.InputPath);
         }
         else
         {
             writer = WriteInputAsync();
-            if (!request.KeepInputOpen) input.Writer.TryComplete();
+            if (!request.KeepInputOpen) CloseInput();
         }
         completion = RunAsync();
     }
@@ -124,7 +132,7 @@ internal sealed class Invocation : IAsyncDisposable
             process.CloseInput();
         }
         catch (Exception exception) when (exception is IOException or OperationCanceledException or ObjectDisposedException)
-        { if (!disconnected.IsCancellationRequested) error = "InputWriteFailed"; }
+        { if (!disconnected.IsCancellationRequested) { Volatile.Write(ref error, "InputWriteFailed"); CloseInput(); } }
     }
 
     /// <summary>Feeds an explicitly requested file without reading it into memory or creating a copy.</summary>
@@ -142,7 +150,7 @@ internal sealed class Invocation : IAsyncDisposable
             process.CloseInput();
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or OperationCanceledException)
-        { if (!disconnected.IsCancellationRequested) { error = "InputReadFailed"; process.Kill(); } }
+        { if (!disconnected.IsCancellationRequested) { Volatile.Write(ref error, "InputReadFailed"); process.Kill(); } }
     }
 
     /// <summary>Counts successful stream writes once; flush does not retroactively erase written bytes.</summary>
@@ -158,16 +166,17 @@ internal sealed class Invocation : IAsyncDisposable
     private async Task RunAsync()
     {
         var readers = new[] { DrainAsync(process.Output, Transport == "Pty" ? "terminal" : "stdout"), DrainAsync(process.Error, "stderr") };
-        try { await process.WaitAsync(disconnected.Token); exitCode = process.ExitCode; }
+        try { await process.WaitAsync(disconnected.Token); Volatile.Write(ref exitCodeValue, process.ExitCode ?? NoExitCode); }
         catch (OperationCanceledException) { process.Kill(); }
         finally
         {
             deadline.CancelAfter(Timeout.InfiniteTimeSpan);
             disconnected.CancelAfter(TimeSpan.FromSeconds(drainTimeoutSeconds));
-            await Task.WhenAll(readers);
+            // Every step below must run even if a reader or the writer fails, or consumers would wait for an output that never completes.
+            try { await Task.WhenAll(readers); } catch (Exception exception) { Interlocked.CompareExchange(ref error, exception.GetType().Name, null); }
             disconnected.Cancel();
             input.Writer.TryComplete();
-            try { await writer; } catch (Exception exception) { error ??= exception.GetType().Name; }
+            try { await writer; } catch (Exception exception) { Interlocked.CompareExchange(ref error, exception.GetType().Name, null); }
             watch.Stop(); output.Writer.TryComplete();
         }
     }
@@ -210,8 +219,12 @@ internal sealed class Invocation : IAsyncDisposable
     /// <summary>Accepts one input block, returning false when the bounded writer is full.</summary>
     /// <param name="bytes">Exact byte block provided by the caller.</param>
     internal bool TryWrite(byte[] bytes) { bool accepted = input.Writer.TryWrite(bytes); inputBackpressured = !accepted; return accepted; }
+    /// <summary>True when input was closed by EOF, a file source or a failed write; false while it is merely full.</summary>
+    internal bool InputClosed => inputClosed;
     /// <summary>Queues EOF after previously accepted writes.</summary>
-    internal void CompleteInput() => input.Writer.TryComplete();
+    internal void CompleteInput() => CloseInput();
+    /// <summary>Stops accepting input and records why a later write is refused.</summary>
+    private void CloseInput() { inputClosed = true; input.Writer.TryComplete(); }
     /// <summary>Cancels only this owned process tree.</summary>
     internal void Cancel() { cancelled = true; process.Kill(); }
     /// <summary>Resizes an explicitly requested terminal.</summary>
@@ -223,23 +236,29 @@ internal sealed class Invocation : IAsyncDisposable
         terminal.Resize(columns, rows);
     }
     /// <summary>Reports counters and native state without retaining native content.</summary>
-    internal object Snapshot() => new NativeExecutionSnapshot {
-        ProcessId = ProcessId, Transport = Transport, ReadBlockBytes = readBlockBytes, ExitCode = exitCode,
-        Outcome = timedOut ? "Timeout" : cancelled ? "Cancelled" : error != null || !successCodes.Contains(exitCode ?? -1) ? "Failed" : "Success",
+    internal object Snapshot()
+    {
+        // Read each cross-thread field once so one snapshot never mixes two states.
+        int? exit = ExitCode; string? failure = Error; bool wasTimedOut = timedOut, wasCancelled = cancelled, completed = IsCompleted;
+        return new NativeExecutionSnapshot {
+        ProcessId = ProcessId, Transport = Transport, ReadBlockBytes = readBlockBytes, ExitCode = exit,
+        Outcome = wasTimedOut ? "Timeout" : wasCancelled ? "Cancelled" : failure != null || !successCodes.Contains(exit ?? -1) ? "Failed" : "Success",
         StdinBytesWritten = Interlocked.Read(ref stdinBytes),
         StdoutBytesRead = Transport == "Pty" ? (long?)null : Interlocked.Read(ref stdoutBytes),
         StderrBytesRead = Transport == "Pty" ? (long?)null : Interlocked.Read(ref stderrBytes),
         TerminalBytesRead = Transport == "Pty" ? (long?)Interlocked.Read(ref stdoutBytes) : null,
         ElapsedMs = watch.Elapsed.TotalMilliseconds,
-        SourceComplete = IsCompleted && !timedOut && !cancelled && error == null,
-        Error = error, State = IsCompleted ? "Finalized" : "Running",
-        EffectStatus = exitCode.HasValue && !timedOut && !cancelled ? "Executed" : "Unknown"
-    };
+        SourceComplete = completed && !wasTimedOut && !wasCancelled && failure == null,
+        Error = failure, State = completed ? "Finalized" : "Running",
+        EffectStatus = exit.HasValue && !wasTimedOut && !wasCancelled ? "Executed" : "Unknown"
+        };
+    }
     /// <summary>Disconnects readers and terminates the owned child without replay.</summary>
     public async ValueTask DisposeAsync()
     {
-        process.Kill(); disconnected.Cancel();
-        try { await completion; } catch (OperationCanceledException) { }
-        deadline.Dispose(); disconnected.Dispose(); process.Dispose();
+        // Disposal must always release the process and tokens; a faulted run is reported through the snapshot error instead.
+        try { process.Kill(); disconnected.Cancel(); await completion; }
+        catch (Exception exception) when (exception is OperationCanceledException or IOException or InvalidOperationException or ObjectDisposedException) { }
+        finally { deadline.Dispose(); disconnected.Dispose(); process.Dispose(); }
     }
 }

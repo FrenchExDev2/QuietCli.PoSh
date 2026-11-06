@@ -37,7 +37,7 @@ internal static class MeasurementProjection
                 }
             }
             database.Execute("COMMIT", []);
-        } catch { database.Execute("ROLLBACK", []); throw; }
+        } catch { database.TryRollback(); throw; }
         return changed;
     }
 

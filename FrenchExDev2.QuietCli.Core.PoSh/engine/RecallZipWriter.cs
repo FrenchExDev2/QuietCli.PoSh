@@ -17,7 +17,26 @@ internal static class RecallZipWriter
     internal static async Task<RecallTransportResult> WriteAsync(string directory, string destination, int compression)
     {
         if (compression is < 0 or > 9) throw new ArgumentOutOfRangeException(nameof(compression));
-        await using var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, true);
+        if (File.Exists(destination) || Directory.Exists(destination)) throw new IOException("RecallDestinationExists");
+        // The final name appears only once the transport is complete; a failure leaves no truncated archive behind.
+        string partial = destination + "." + Guid.NewGuid().ToString("N")[..8] + ".partial";
+        try
+        {
+            var report = await WriteCoreAsync(directory, partial, destination, compression);
+            File.Move(partial, destination, false);
+            return report;
+        }
+        catch { try { File.Delete(partial); } catch (IOException) { } catch (UnauthorizedAccessException) { } throw; }
+    }
+
+    /// <summary>Writes the complete transport to a private file and reports it under its final name.</summary>
+    /// <param name="directory">Completed working capture directory.</param>
+    /// <param name="partialPath">Private file receiving the bytes.</param>
+    /// <param name="destination">Final transport path reported to the caller.</param>
+    /// <param name="compression">Zero for stored members, otherwise exact zlib level one through nine.</param>
+    private static async Task<RecallTransportResult> WriteCoreAsync(string directory, string partialPath, string destination, int compression)
+    {
+        await using var output = RecallPrivateFiles.CreateNew(partialPath, FileAccess.Write, FileShare.None, 65536, FileOptions.Asynchronous);
         var entries = new List<Entry>(); long inputBytes = 0;
         foreach (string name in new[] { "manifest.json", "events.bin" })
         {

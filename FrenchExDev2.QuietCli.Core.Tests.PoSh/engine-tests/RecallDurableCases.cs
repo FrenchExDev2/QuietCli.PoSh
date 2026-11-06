@@ -46,6 +46,48 @@ internal static class RecallDurableCases
             await using (var corrupt = new FileStream(Path.Combine(path, "events.bin"), FileMode.Open, FileAccess.Write)) { corrupt.Position = RecallJournalReader.PreambleLength + RecallJournalReader.HeaderLength; await corrupt.WriteAsync(new byte[] { 99 }); }
             await RejectAsync(() => RecallStore.OpenAsync(root, id));
         });
+        await test("Recall interrupted journals discard zero-filled and torn tails but never corruption inside the checkpoint", async () =>
+        {
+            const int Header = RecallJournalReader.HeaderLength, Hash = RecallJournalReader.HashLength, Preamble = RecallJournalReader.PreambleLength;
+            async Task<(string Root, string Id, string Path)> Interrupted(bool checkpointFirst)
+            {
+                string root = Root(); var writer = await RecallStore.CreateAsync(root, "tail", settings);
+                await writer.AppendAsync("stdout", [1, 2, 3]);
+                if (checkpointFirst) await writer.CheckpointAsync();
+                await writer.AppendAsync("stderr", [4]);
+                string id = writer.RecallId, path = writer.DirectoryPath; await writer.DisposeAsync();
+                return (root, id, path);
+            }
+            async Task AppendAsync(string path, byte[] bytes) { await using var tail = new FileStream(Path.Combine(path, "events.bin"), FileMode.Append); await tail.WriteAsync(bytes); }
+            async Task PatchAsync(string path, long position, byte value) { await using var file = new FileStream(Path.Combine(path, "events.bin"), FileMode.Open, FileAccess.Write); file.Position = position; await file.WriteAsync(new[] { value }); }
+            static byte[] Bytes(RecallCapture capture) => capture.Events.SelectMany(e => e.Bytes).ToArray();
+            long secondRecord = Preamble + Header + 3 + Hash;
+            // A zero-filled suffix after the last record is crash residue: every complete record survives.
+            var (root, id, path) = await Interrupted(false); await AppendAsync(path, new byte[4096]);
+            var zeroed = await RecallStore.OpenAsync(root, id);
+            Require(zeroed.Recovered && zeroed.State == "Interrupted" && zeroed.EventCount == 2 && Bytes(zeroed).SequenceEqual(new byte[] { 1, 2, 3, 4 }), "zero-filled tail lost valid records");
+            // The same residue after a checkpoint keeps the checkpointed prefix and the later complete record.
+            (root, id, path) = await Interrupted(true); await AppendAsync(path, new byte[Header - 1]);
+            var checkpointed = await RecallStore.OpenAsync(root, id);
+            Require(checkpointed.EventCount == 2 && checkpointed.DurableBytes == 3 && Bytes(checkpointed).SequenceEqual(new byte[] { 1, 2, 3, 4 }), "checkpoint prefix or short zero tail");
+            // A torn last record (complete frame, damaged payload) is dropped; the earlier prefix stays.
+            (root, id, path) = await Interrupted(false); await PatchAsync(path, secondRecord + Header, 99);
+            var torn = await RecallStore.OpenAsync(root, id);
+            Require(torn.EventCount == 1 && Bytes(torn).SequenceEqual(new byte[] { 1, 2, 3 }), "torn last record kept");
+            // Non-zero garbage after a failing record is corruption, not residue.
+            (root, id, path) = await Interrupted(false); await AppendAsync(path, Enumerable.Repeat((byte)0xAB, Header + 8).ToArray());
+            await RejectAsync(() => RecallStore.OpenAsync(root, id));
+            // A damaged record that is followed by another record is never discarded.
+            (root, id, path) = await Interrupted(false); await PatchAsync(path, Preamble + Header, 99);
+            await RejectAsync(() => RecallStore.OpenAsync(root, id));
+            // Damage inside the checkpointed prefix is rejected even when the file also ends with zeros.
+            (root, id, path) = await Interrupted(true); await PatchAsync(path, Preamble + Header, 99); await AppendAsync(path, new byte[4096]);
+            await RejectAsync(() => RecallStore.OpenAsync(root, id));
+            // A damaged final record is not torn residue when the checkpoint already covers it.
+            (root, id, path) = await Interrupted(true); await PatchAsync(path, Preamble + Header, 99);
+            await using (var cut = new FileStream(Path.Combine(path, "events.bin"), FileMode.Open, FileAccess.Write)) cut.SetLength(secondRecord);
+            await RejectAsync(() => RecallStore.OpenAsync(root, id));
+        });
         await test("Recall ZIP64 levels zero through nine interoperate and import lazily", async () =>
         {
             string root = Root(); var collector = new RecallCollector(new("All", "Head")); collector.Append("stdout", Enumerable.Repeat((byte)42, 65536).ToArray()); collector.Append("stderr", [1, 2]);
@@ -63,6 +105,30 @@ internal static class RecallDurableCases
                 await RejectAsync(() => RecallArchive.ImportAsync(zipPath, 10, Path.Combine(root, "budget-" + level)));
             }
             await RejectAsync(() => RecallArchive.ExportAsync(capture, Path.Combine(root, "invalid.zip"), true, 10));
+        });
+        await test("Recall export and import publish atomically and leave no partial artifacts on failure", async () =>
+        {
+            string root = Root(); var collector = new RecallCollector(new("All", "Head")); collector.Append("stdout", Enumerable.Repeat((byte)0x5A, 64).ToArray());
+            var capture = collector.Snapshot(false, settings, new("Success", 0, "Executed"));
+            string zipPath = Path.Combine(root, "atomic.zip");
+            await RecallArchive.ExportAsync(capture, zipPath, true, 0);
+            Require(Directory.GetFiles(root, "*.partial").Length == 0, "export left a partial transport");
+            await RejectAsync(() => RecallArchive.ExportAsync(capture, zipPath, true, 0));
+            Require(Directory.GetFiles(root, "*.partial").Length == 0 && new FileInfo(zipPath).Length > 0, "failed export disturbed the destination or left a partial");
+            // Stored entries keep the payload verbatim, so one flipped byte is an independent integrity violation.
+            byte[] archive = await File.ReadAllBytesAsync(zipPath); int at = archive.AsSpan().IndexOf(Enumerable.Repeat((byte)0x5A, 64).ToArray());
+            Require(at > 0, "stored payload not found"); archive[at + 10] ^= 1;
+            string tampered = Path.Combine(root, "tampered.zip"); await File.WriteAllBytesAsync(tampered, archive);
+            string imports = Path.Combine(root, "imports");
+            await RejectAsync(() => RecallArchive.ImportAsync(tampered, null, imports));
+            Require(!Directory.Exists(imports) || Directory.GetFileSystemEntries(imports).Length == 0, "failed import left a half-imported capture or staging directory");
+            var imported = await RecallArchive.ImportAsync(zipPath, null, imports);
+            Require(imported.IsSaved && Directory.GetFileSystemEntries(imports).Length == 1 && Directory.GetFiles(imports, "*", SearchOption.AllDirectories).All(f => !f.EndsWith(".tmp")), "successful import layout");
+            if (!OperatingSystem.IsWindows())
+            {
+                var mode = File.GetUnixFileMode(Path.Combine(imported.StoragePath!, "events.bin")) | File.GetUnixFileMode(Path.Combine(imported.StoragePath!, "manifest.json"));
+                Require((mode & (UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) == 0, "capture files are not owner-only");
+            }
         });
         await test("Recall journal generated mixed streams preserve independent oracle seed 610611", async () =>
         {

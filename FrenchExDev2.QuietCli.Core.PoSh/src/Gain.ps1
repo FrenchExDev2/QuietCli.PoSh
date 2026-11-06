@@ -97,7 +97,8 @@ Reports measured counters across all contexts by default, without creating a mis
             }
             if($null -eq $report){$report=$response.Report}
             foreach($group in $response.Groups){$groups.Add($group)}
-            if($response.GroupsComplete){break}
+            # The engine already released a completed report; a second release would only cost an exchange.
+            if($response.GroupsComplete){$reportId=$null;break}
             if(!$response.ReportId -or $null -eq $response.After){throw 'MeasurementPaginationMissingCursor'}
             $reportId=$response.ReportId
             $query=@{Action='gain-next';ReportId=$reportId;After=$response.After}

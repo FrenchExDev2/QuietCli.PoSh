@@ -312,7 +312,7 @@ Executes independent native byte and object invariants in a companion module.
         $nativeDirectory=Join-Path $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/'+[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier+'/native')
         $r=quiet -AsObject -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} $dotnet $assembly $nativeDirectory
         Assert-QuietEqual $r.Outcome Success
-        Assert-QuietEqual $r.Data.Passed 46
+        Assert-QuietEqual $r.Data.Passed 65
         Assert-QuietEqual $r.Data.Failed 0
     }
     $cases['PTY reports a merged terminal counter without fake stderr separation']={
@@ -593,13 +593,18 @@ Executes independent native byte and object invariants in a companion module.
         $galleryEvidence.Add(@{Packages=$prepared.Packages;Targets=$prepared.Targets;Installation=$r.Data;ExternalPublication=$false})
     }
     $passed=0;$failed=0;$results=[Collections.Generic.List[object]]::new()
+    # Development-only selection (QUIETCLI_TEST_CASE wildcard, QUIETCLI_TEST_STOP_ON_FIRST_FAILURE=1); the default run executes every case.
+    $casePattern=$env:QUIETCLI_TEST_CASE;$stopOnFirst=$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE -ceq '1'
+    $stoppedAt=$null;$skipped=0
     foreach($entry in $cases.GetEnumerator()){
+        if($stoppedAt -or ($casePattern -and $entry.Key -notlike $casePattern)){$skipped++;continue}
         $failure=$null
         try{& $entry.Value;$passed++;$state='Passed'}catch{$failed++;$state='Failed';$failure=$_.Exception.Message}
         $results.Add([pscustomobject]@{Name=$entry.Key;State=$state;Error=$failure})
         if($OnProgress){& $OnProgress $entry.Key $state $passed $failed}
+        if($state -eq 'Failed' -and $stopOnFirst){$stoppedAt="stopped at case $($passed+$failed) of $($cases.Count)"}
     }
-    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Performance=$performance.ToArray();Gallery=$galleryEvidence.ToArray();Integration=$integration.ToArray()}
+    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Partial=[bool]$casePattern;Incomplete=[bool]$stoppedAt;StoppedAt=$stoppedAt;Skipped=$skipped;Cases=$results.ToArray();Performance=$performance.ToArray();Gallery=$galleryEvidence.ToArray();Integration=$integration.ToArray()}
 }
 Export-ModuleMember -Function Invoke-QuietCoreTests,Assert-QuietEqual,Invoke-QuietConformance
 

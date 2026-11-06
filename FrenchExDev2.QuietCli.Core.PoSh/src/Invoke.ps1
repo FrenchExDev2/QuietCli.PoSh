@@ -1,138 +1,3 @@
-function Read-QuietArguments {
-    <#
-.SYNOPSIS
-Separates exact facade options from the uninterpreted native argument vector.
-    .PARAMETER Arguments
-    Original arguments received by Invoke-QuietCli.
-    #>
-    param([object[]]$Arguments)
-    $switches = @('AsObject', 'AsJson', 'AsYaml', 'Recall', 'SaveRecall', 'Zip', 'AllowPartial')
-    $values = @('Output', 'Complete', 'Context', 'Data', 'State', 'WorkingDirectory', 'TimeoutSeconds', 'DrainTimeoutSeconds', 'Environment', 'Transport', 'StdoutMode', 'StderrMode', 'InputText', 'InputBytes', 'InputPath', 'Interaction', 'RecordDelimiter', 'MaxRecordBytes', 'MaxOutputBytes', 'MaxItems', 'Role', 'HandlerId', 'CancellationFile', 'CancellationToken', 'Projection', 'Tokenizer', 'FilePath', 'ArgumentList', 'TerminalSize', 'SuccessExitCodes', 'ReadBlockBytes')
-    $values += @('RecallMaxBytes', 'RecallPolicy', 'RecallId', 'RecallName', 'RecallRoot', 'Compress', 'Script', 'DataFactory', 'StateFactory')
-    $aliases = @{C = 'Context' }
-    $request = @{}
-    $index = 0
-    while ($index -lt $Arguments.Count) {
-        $argument = $Arguments[$index]
-        if ($argument -isnot [string] -or !$argument.StartsWith('-') -or $argument -eq '--') { break }
-        $name = $argument.TrimStart('-')
-        $switchValue = $true
-        if ($name -match '^([^:]+):(.*)$') {
-            $name = $Matches[1]
-            $suffix = $Matches[2]
-            if ($suffix) { $switchValue = [bool]::Parse($suffix) }elseif ($index + 1 -lt $Arguments.Count) {
-                $index++
-                $switchValue = [bool]$Arguments[$index]
-            }
-        }
-        if ($aliases.ContainsKey($name)) { $name = $aliases[$name] }
-        if ($name -in $switches) {
-            $request[$name] = $switchValue
-            $index++
-            continue
-        }
-        if ($name -notin $values) { throw "UnknownQuietOption: $argument" }
-        $index++
-        if ($index -ge $Arguments.Count) { throw "MissingQuietOptionValue: $name" }
-        $request[$name] = $Arguments[$index]
-        $index++
-    }
-    if ($index -lt $Arguments.Count -and $Arguments[$index] -eq '--') { $index++ }
-    if ($request.ContainsKey('RecallId')) {
-        $allowed=@('RecallId','RecallRoot','AsObject','AsJson','AsYaml','Output','Complete','Data','State','StdoutMode','StderrMode','RecordDelimiter','MaxRecordBytes','Projection','AllowPartial','MaxItems','MaxOutputBytes','Tokenizer')
-        if ($index -ne $Arguments.Count -or @($request.Keys|Where-Object {$_ -notin $allowed}).Count) { throw 'RecallReplayCannotExecute' }
-        if (!$request.ContainsKey('Output') -and !$request.ContainsKey('Complete')) { throw 'RecallAnalysisCallbackRequired' }
-        $request.ReplayOptions=@{}
-        foreach($key in @('Output','Complete','Data','State','StdoutMode','StderrMode','RecordDelimiter','MaxRecordBytes','Projection','AllowPartial')){if($request.ContainsKey($key)){$request.ReplayOptions[$key]=$request[$key]}}
-    }
-    elseif (!$request.ContainsKey('FilePath')) {
-        if ($index -ge $Arguments.Count) { throw 'MissingExecutable' }
-        $request.FilePath = [string]$Arguments[$index]
-        $index++
-    }
-    if (!$request.ContainsKey('ArgumentList')) {
-        $native = [Collections.Generic.List[string]]::new()
-        while ($index -lt $Arguments.Count) {
-            $argument = $Arguments[$index]
-            $index++
-            if ($argument -is [scriptblock] -or $argument -is [Collections.IDictionary]) { throw 'QuietOptionsMustPrecedeExecutable' }
-            if ($argument -is [string] -and $argument.EndsWith(':') -and $argument.PSObject.Properties['<CommandParameterName>'] -and $index -lt $Arguments.Count) {
-                $native.Add($argument + [string]$Arguments[$index])
-                $index++
-                continue
-            }
-            foreach ($value in @($argument)) { if ($null -ne $value) { $native.Add([string]$value) } }
-        }
-        $request.ArgumentList = $native.ToArray()
-    }
-    elseif ($index -ne $Arguments.Count) { throw 'UnexpectedArgumentsAfterArgumentList' }
-    foreach ($name in @('Data', 'State')) {
-        $factory = $name + 'Factory'
-        if ($request.ContainsKey($factory)) {
-            if ($request.ContainsKey($name)) { throw "QuietFactoryConflict: $name" }
-            if ($request[$factory] -isnot [scriptblock]) { throw "QuietFactoryMustBeScriptBlock: $factory" }
-        }
-    }
-    # Preserve explicit options while sharing validation without engine-backed Recall work.
-    $exportRequest = $null
-    if ($request.ContainsKey('Script')) {
-        foreach ($key in $request.Keys) {
-            if ($key -match 'Recall|^(SaveRecall|Zip|Compress|AllowPartial|CancellationToken)$') { throw "QuietScriptUnsupportedOption: $key" }
-        }
-        $exportRequest = $request.Clone()
-    }
-    $configuration=(Get-QuietConfigurationSnapshot).Values
-    $defaults = @{WorkingDirectory =(Get-Location).Path
-        TimeoutSeconds             =$configuration['execution.timeoutSeconds']
-        DrainTimeoutSeconds        =$configuration['execution.drainTimeoutSeconds']
-        Environment                =@{}
-        Transport                  =$configuration['streams.transport']
-        StdoutMode                 =$configuration['streams.stdoutMode']
-        StderrMode                 =$configuration['streams.stderrMode']
-        MaxRecordBytes             =$configuration['streams.maxRecordBytes']
-        MaxOutputBytes             =$configuration['delivery.maxOutputBytes']
-        MaxItems                   =$configuration['delivery.maxItems']
-        Role                       ='Business'
-        Tokenizer                  =$configuration['tokenization.tokenizer']
-        TerminalSize               =@(120, 40)
-        SuccessExitCodes           =@(0)
-        ReadBlockBytes             =$configuration['streams.readBlockBytes']
-    }
-    foreach ($name in $defaults.Keys) { if (!$request.ContainsKey($name)) { $request[$name] = $defaults[$name] } }
-    if (@('AsObject','AsJson','AsYaml' | Where-Object { $request.ContainsKey($_) -and $request[$_] }).Count -gt 1) { throw 'OutputFormatsAreExclusive' }
-    $saving=$request.ContainsKey('SaveRecall') -and $request.SaveRecall
-    if($request.ContainsKey('AllowPartial') -and !$request.ContainsKey('RecallId')){throw 'AllowPartialRequiresReplay'}
-    if ($saving -and (!$request.ContainsKey('AsObject') -or !$request.AsObject)) { throw 'SaveRecallRequiresExplicitAsObject' }
-    if ($request.ContainsKey('RecallName') -and (!$saving -and !($request.ContainsKey('Recall') -and $request.Recall) -or [string]::IsNullOrWhiteSpace([string]$request.RecallName) -or ([string]$request.RecallName).Length -gt 256)) { throw 'InvalidRecallName' }
-    if ($request.ContainsKey('RecallRoot') -and !$saving -and !$request.ContainsKey('RecallId')) { throw 'RecallRootRequiresSaveOrReplay' }
-    if ($request.ContainsKey('Zip') -and $request.Zip -and !$saving) { throw 'ZipRequiresSaveRecall' }
-    if ($request.ContainsKey('Compress')) {
-        $level=0
-        if (!$request.ContainsKey('Zip') -or !$request.Zip -or ![int]::TryParse([string]$request.Compress,[ref]$level) -or $level -lt 0 -or $level -gt 9) { throw 'InvalidRecallCompression' }
-        $request.Compress=$level
-    }
-    if ($request.ContainsKey('Recall') -and $request.Recall -or $request.ContainsKey('RecallMaxBytes') -or $request.ContainsKey('RecallPolicy')) {
-        if (!$request.ContainsKey('Recall') -or !$request.Recall -or !$request.ContainsKey('AsObject') -or !$request.AsObject) { throw 'RecallRequiresExplicitAsObject' }
-        Import-QuietManagedEngine
-        $size = if ($request.ContainsKey('RecallMaxBytes')) { [string]$request.RecallMaxBytes } else { $configuration['recall.maxBytes'] }
-        $policy = if ($request.ContainsKey('RecallPolicy')) { [string]$request.RecallPolicy } else { $configuration['recall.policy'] }
-        $request.RecallOptions = [FrenchExDev2.QuietCli.RecallOptions]::new($size, $policy)
-    }
-    if (@('InputText', 'InputBytes', 'InputPath', 'Interaction' | Where-Object { $request.ContainsKey($_) }).Count -gt 1) { throw 'InputOptionsAreExclusive' }
-    if($request.Tokenizer -notin @('off','o200k_base','cl100k_base')){throw 'InvalidTokenizer'}
-    if ($request.Transport -notin @('Pipe', 'Pty') -or $request.StdoutMode -notin @('Text', 'Bytes') -or $request.StderrMode -notin @('Text', 'Bytes')) { throw 'InvalidTransportOrStreamMode' }
-    if ($request.Role -notin @('Business', 'Probe', 'Observation', 'Infrastructure')) { throw 'InvalidSourceRole' }
-    if ($request.TimeoutSeconds -le 0 -or $request.MaxRecordBytes -lt 1 -or $request.MaxOutputBytes -lt 256 -or $request.MaxItems -lt 0) { throw 'InvalidLimits' }
-    if (![double]::IsFinite([double]$request.TimeoutSeconds) -or $request.TimeoutSeconds -gt ([uint32]::MaxValue - 1L) / 1000.0) { throw 'InvalidTimeout' }
-    if (![double]::IsFinite([double]$request.DrainTimeoutSeconds) -or $request.DrainTimeoutSeconds -lt 0.05 -or $request.DrainTimeoutSeconds -gt 300) { throw 'InvalidDrainTimeout' }
-    $request.WorkingDirectory = [IO.Path]::GetFullPath($request.WorkingDirectory, (Get-Location).Path)
-    if ($request.ReadBlockBytes -lt 1024 -or $request.ReadBlockBytes -gt 16384) { throw 'InvalidReadBlockBytes' }
-    if (@($request.TerminalSize).Count -ne 2 -or $request.TerminalSize[0] -lt 1 -or $request.TerminalSize[0] -gt 1000 -or $request.TerminalSize[1] -lt 1 -or $request.TerminalSize[1] -gt 1000) { throw 'InvalidTerminalSize' }
-    if ($request.ContainsKey('Context') -and [string]::IsNullOrWhiteSpace($request.Context)) { throw 'EmptyExplicitContext' }
-    if ($request.ContainsKey('RecordDelimiter') -and !([string]$request.RecordDelimiter).Length) { throw 'EmptyRecordDelimiter' }
-    if ($null -ne $exportRequest) { return $exportRequest }
-    return $request
-}
 function Invoke-QuietCli {
     <#
 .SYNOPSIS
@@ -165,8 +30,8 @@ Owns one caller-local lifecycle and preserves assigned child failures.
     Import-QuietManagedEngine
     $allocation = [FrenchExDev2.QuietCli.AllocationMeter]::new()
     # A new root request may establish a fresh engine; no outstanding invocation is retried.
-    if ($script:QuietStack.Count -eq 0 -and $script:QuietEngine -and $script:QuietEngine.Broken) { Stop-QuietEngine }
-    $runtime = New-QuietRuntime $Request
+    if ($script:QuietStack.Count -eq 0 -and [FrenchExDev2.QuietCli.QuietSession]::Engine -and [FrenchExDev2.QuietCli.QuietSession]::Engine.Broken) { Stop-QuietEngine }
+    $runtime = New-QuietRuntime -Request $Request -Parent $(if ($script:QuietStack.Count) { $script:QuietStack.Peek() }) -SessionId $script:QuietSession
     $watch = [Diagnostics.Stopwatch]::StartNew()
     $outcome = 'Success'
     $result = $null
@@ -175,7 +40,7 @@ Owns one caller-local lifecycle and preserves assigned child failures.
         try {
             $application = Get-Command $Request.FilePath -CommandType Application -ErrorAction Stop | Select-Object -First 1
             $Request.FilePath = $application.Source
-            Set-QuietLifecycle $runtime Running
+            $runtime.Transition('Running')
             if ($Request.ContainsKey('Output') -or $Request.ContainsKey('Complete')) { Invoke-QuietNative $runtime }
             else {
                 $handler = Resolve-QuietHandler $runtime
@@ -216,7 +81,7 @@ Owns one caller-local lifecycle and preserves assigned child failures.
                     $null = Send-QuietRequest @{Action ='cancel'
                         InvocationId                   =$runtime.InvocationId
                     }
-                    while (!$runtime.Completed) { $null = Read-QuietEvent $runtime }
+                    while (!$runtime.Completed) { $null = $runtime.ReadEvent() }
                 }
                 catch {
                     $runtime.Execution = [pscustomobject]@{Outcome ='Failed'
@@ -246,9 +111,9 @@ Owns one caller-local lifecycle and preserves assigned child failures.
         foreach ($child in $runtime.Children) { foreach ($key in $child.Internal.Sources.Keys) { $runtime.Sources[$key] = $child.Internal.Sources[$key] } }
         $sourceComplete = ($runtime.Execution -eq $null -or $runtime.Execution.SourceComplete) -and @($runtime.Children | Where-Object { !$_.Completeness.Source }).Count -eq 0
         $analysisComplete = $runtime.AnalysisComplete -and @($runtime.Children | Where-Object { !$_.Completeness.Analysis }).Count -eq 0
-        if ($runtime.Lifecycle -eq 'Running') { Set-QuietLifecycle $runtime Draining }
-        if ($runtime.Lifecycle -eq 'Draining') { Set-QuietLifecycle $runtime Completing }
-        Set-QuietLifecycle $runtime Finalized
+        if ($runtime.Lifecycle -eq 'Running') { $runtime.Transition('Draining') }
+        if ($runtime.Lifecycle -eq 'Draining') { $runtime.Transition('Completing') }
+        $runtime.Transition('Finalized')
         $effect = if ($runtime.Execution -and $runtime.Execution.PSObject.Properties['EffectStatus']) { $runtime.Execution.EffectStatus }elseif (@($runtime.Children | Where-Object { $_.Execution.EffectStatus -eq 'Unknown' }).Count) { 'Unknown' }else { 'Observed' }
         $execution = ConvertTo-QuietSnapshot @{State ='Finalized'
             Native                                   =$runtime.Execution
@@ -322,118 +187,4 @@ Owns one caller-local lifecycle and preserves assigned child failures.
     if (!$Request.ContainsKey('AsJson') -and !$Request.ContainsKey('AsYaml') -and $script:QuietStack.Count) { $asObject = $true }
     if ($asObject) { return $result }
     Out-QuietResult -InputObject $result -AsYaml:($Request.ContainsKey('AsYaml') -and $Request.AsYaml) -MaxItems $Request.MaxItems -MaxOutputBytes $Request.MaxOutputBytes -Tokenizer $Request.Tokenizer
-}
-function Invoke-QuietNative {
-    <#
-.SYNOPSIS
-Drives the separate native process without retaining its streams.
-    .PARAMETER Runtime
-    Caller-local state and callbacks.
-    #>
-    param($Runtime)
-    $request = $Runtime.Request
-    $start = @{Action    ='start'
-        InvocationId     =$Runtime.InvocationId
-        FilePath         =$request.FilePath
-        ArgumentList     =[string[]]$request.ArgumentList
-        WorkingDirectory =[IO.Path]::GetFullPath($request.WorkingDirectory)
-        Environment      =$request.Environment
-        Transport        =$request.Transport
-        Columns          =[int]$request.TerminalSize[0]
-        Rows             =[int]$request.TerminalSize[1]
-        TimeoutSeconds   =[double]$request.TimeoutSeconds
-        SuccessExitCodes =@($request.SuccessExitCodes)
-        KeepInputOpen    =($request.ContainsKey('InputBytes') -or $request.ContainsKey('InputText') -or $request.ContainsKey('Interaction'))
-    }
-    if ($request.ContainsKey('InputPath')) { $start.InputPath = [IO.Path]::GetFullPath($request.InputPath, $start.WorkingDirectory) }
-    $start.ReadBlockBytes = [int]$request.ReadBlockBytes
-    $start.DrainTimeoutSeconds = [double]$request.DrainTimeoutSeconds
-    $Runtime.StartState = 'StartRequested'
-    $null = Send-QuietRequest $start
-    $Runtime.NativeStarted = $true
-    $Runtime.StartState = 'StartAcknowledged'
-    if ($request.ContainsKey('InputBytes')) {
-        Write-QuietInput $Runtime $request.InputBytes
-        $Runtime.CompleteInput()
-    }
-    elseif ($request.ContainsKey('InputText')) {
-        Write-QuietInput $Runtime $script:QuietUtf8.GetBytes($request.InputText)
-        $Runtime.CompleteInput()
-    }
-    elseif ($request.ContainsKey('Interaction')) {
-        try {
-            $values = @(& $request.Interaction $Runtime)
-            if ($values.Count) { throw 'InteractionUnexpectedOutput' }
-        }
-        catch {
-            $Runtime.AnalysisComplete = $false
-            $Runtime.Errors.Add(@{Code = 'InteractionFailed'; Phase = 'Interaction'; Message = $_.Exception.Message })
-            $Runtime.Cancel()
-        }
-    }
-    while (!$Runtime.Completed) {
-        if (($request.ContainsKey('CancellationFile') -and (Test-Path -LiteralPath $request.CancellationFile)) -or ($request.ContainsKey('CancellationToken') -and $request.CancellationToken.IsCancellationRequested)) { $Runtime.Cancel() }
-        $null = Read-QuietEvent $Runtime
-    }
-    Complete-QuietStreams $Runtime
-    $Runtime.Sources[$Runtime.InvocationId] = [ordered]@{InvocationId =$Runtime.InvocationId
-        Role                                                          =$request.Role
-        StdoutBytesRead                                               =$Runtime.Execution.StdoutBytesRead
-        StderrBytesRead                                               =$Runtime.Execution.StderrBytesRead
-        TerminalBytesRead                                             =$Runtime.Execution.TerminalBytesRead
-        StdinBytesWritten                                             =$Runtime.Execution.StdinBytesWritten
-        Complete                                                      =$Runtime.Execution.SourceComplete
-    }
-    Set-QuietLifecycle $Runtime Completing
-    Complete-QuietAnalysis $Runtime
-}
-function Complete-QuietStreams {
-    <#
-    .SYNOPSIS
-    Flushes and disposes the shared text decoders after live or offline input.
-    .PARAMETER Runtime
-    Analysis runtime.
-    #>
-    param($Runtime)
-    foreach ($stream in @('stdout', 'stderr', 'terminal')) {
-        if (!$Runtime.AnalysisComplete) { break }
-        if (!$Runtime.TextStreams.ContainsKey($stream)) { continue }
-        try {
-            $tail = $Runtime.TextStreams[$stream].Finish()
-            if ($tail.Length) { Invoke-QuietOutputCallback $Runtime ([pscustomobject]@{Stream = $stream; Kind = 'Text'; Text = $tail; Bytes = $null; ByteCount = $null }) }
-        }
-        catch {
-            $Runtime.AnalysisComplete = $false
-            $Runtime.Errors.Add(@{Code = 'DecodeIncomplete'; Phase = 'Drain'; Message = $_.Exception.Message })
-        }
-    }
-    foreach ($processor in $Runtime.TextStreams.Values) { $processor.Dispose() }
-}
-function Complete-QuietAnalysis {
-    <#
-    .SYNOPSIS
-    Runs the shared completion callback once with allocation accounting.
-    .PARAMETER Runtime
-    Analysis runtime.
-    #>
-    param($Runtime)
-    $request=$Runtime.Request
-    if ($request.ContainsKey('Complete')) {
-        $watch = [Diagnostics.Stopwatch]::StartNew()
-        $allocation = [FrenchExDev2.QuietCli.AllocationMeter]::new()
-        try {
-            if ($Runtime.CompleteInvoked) { throw 'CompleteAlreadyInvoked' }
-            $Runtime.CompleteInvoked = $true
-            $value = Invoke-QuietCallbackValue $request.Complete @($Runtime)
-            if ($value.HasValue) { $Runtime.Data = $value.Value }
-        }
-        catch {
-            $Runtime.AnalysisComplete = $false
-            $Runtime.Errors.Add(@{Code = 'CompleteCallbackFailed'; Phase = 'Complete'; Message = $_.Exception.Message })
-        }
-        finally {
-            $Runtime.CompleteAllocation = $allocation.Stop()
-            $Runtime.CallbackMs += $watch.Elapsed.TotalMilliseconds
-        }
-    }
 }

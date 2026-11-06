@@ -43,16 +43,16 @@ function Test-QuietTypedControls {
                     $rejected=$false
                     try{$null=Send-QuietRequest @{Action=$action;InvocationId='missing-control';Columns=80;Rows=40}}
                     catch{$rejected=$_.Exception.Data['QuietCliRequestRejected'] -eq $true -and $_.Exception.Data['Code'] -eq 'KeyNotFoundException'}
-                    if(!$rejected -or $script:QuietEngine.Broken){throw 'ControlRejectionBrokeSession'}
+                    if(!$rejected -or [FrenchExDev2.QuietCli.QuietSession]::Engine.Broken){throw 'ControlRejectionBrokeSession'}
                 }
                 $null=Send-QuietRequest @{Action='hello'}
                 if($mode -eq 'InProcess'){
                     $rejected=$false
-                    try{$null=$script:QuietEngine.Host.ControlAsync([FrenchExDev2.QuietCli.LocalControl]::Input,'missing','bounded',[byte[]]::new(16385),0,0).GetAwaiter().GetResult()}
+                    try{$null=[FrenchExDev2.QuietCli.QuietSession]::Engine.Host.ControlAsync([FrenchExDev2.QuietCli.LocalControl]::Input,'missing','bounded',[byte[]]::new(16385),0,0).GetAwaiter().GetResult()}
                     catch{$rejected=$_.Exception.ToString() -match 'InputBlockTooLarge'}
                     if(!$rejected){throw 'DirectOversizedInputAccepted'}
                     $rejected=$false
-                    try{$null=$script:QuietEngine.Host.ControlAsync([FrenchExDev2.QuietCli.LocalControl]::Eof,('x'*129),'bounded',[byte[]]@(),0,0).GetAwaiter().GetResult()}
+                    try{$null=[FrenchExDev2.QuietCli.QuietSession]::Engine.Host.ControlAsync([FrenchExDev2.QuietCli.LocalControl]::Eof,('x'*129),'bounded',[byte[]]@(),0,0).GetAwaiter().GetResult()}
                     catch{$rejected=$_.Exception.ToString() -match 'ControlIdentityTooLarge'}
                     if(!$rejected){throw 'DirectOversizedIdentityAccepted'}
                 }
@@ -79,7 +79,7 @@ function Measure-QuietTypedControls {
         try{foreach($block in $blocks){$hash.AppendData($block)};$expected=[Convert]::ToHexString($hash.GetHashAndReset())}finally{$hash.Dispose()}
         try{
             Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']='InProcess';(Get-QuietTestConfiguration).Values['telemetry.enabled']=$false
-            $null=Get-QuietEngine;$hostEngine=$script:QuietEngine.Host
+            $null=Get-QuietEngine;$hostEngine=[FrenchExDev2.QuietCli.QuietSession]::Engine.Host
             foreach($iteration in 1..3){
                 foreach($implementation in $(if($iteration%2){@('Json','Typed')}else{@('Typed','Json')})){
                     $stats=@{Controls=0L;ControlJsonBytes=0L};$data=[Text.StringBuilder]::new()

@@ -15,6 +15,7 @@ public sealed class RecallJournalReader : IDisposable
     private readonly string id;
     private readonly long limit;
     private readonly bool recoverTail;
+    private readonly long durableLength;
     private readonly Dictionary<string, long> streamEnds = new(StringComparer.Ordinal);
     private long sequence, observedEnd;
     private string? priorStream;
@@ -36,12 +37,13 @@ public sealed class RecallJournalReader : IDisposable
     /// <param name="directory">Validated capture directory.</param>
     /// <param name="id">Expected identity encoded in the preamble.</param>
     /// <param name="length">Immutable readable prefix length.</param>
-    /// <param name="recoverTail">Allows only an incomplete final record, not a bad checksum.</param>
-    public RecallJournalReader(string directory, string id, long length, bool recoverTail)
+    /// <param name="recoverTail">Allows an incomplete final record, a zero-filled suffix or a torn last record after the durable prefix, never earlier corruption.</param>
+    /// <param name="durableLength">Checkpointed record boundary; records before it must always validate, so corruption there is rejected.</param>
+    public RecallJournalReader(string directory, string id, long length, bool recoverTail, long durableLength = long.MaxValue)
     {
         RecallStore.AssertPlainFile(Path.Combine(directory, "events.bin"));
         file = new(Path.Combine(directory, "events.bin"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 65536, true);
-        this.id = id; limit = length; this.recoverTail = recoverTail;
+        this.id = id; limit = length; this.recoverTail = recoverTail; this.durableLength = durableLength;
         if (length < PreambleLength || length > file.Length) { file.Dispose(); throw new InvalidDataException("RecallJournalLengthInvalid"); }
     }
 
@@ -55,6 +57,18 @@ public sealed class RecallJournalReader : IDisposable
             initialized = true;
         }
         if (file.Position == limit) return null;
+        long start = file.Position;
+        try { return await ReadRecordAsync(); }
+        catch (InvalidDataException failure) when (recoverTail && start >= durableLength)
+        {
+            if (!await IsDiscardableTailAsync(start, failure.Message)) throw;
+            return Incomplete();
+        }
+    }
+
+    /// <summary>Reads and validates one complete record starting at the current position.</summary>
+    private async Task<RecallEvent?> ReadRecordAsync()
+    {
         if (limit - file.Position < HeaderLength) return Incomplete();
         byte[] header = new byte[HeaderLength]; await file.ReadExactlyAsync(header);
         int count = BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(32));
@@ -75,6 +89,30 @@ public sealed class RecallJournalReader : IDisposable
         observedEnd = checked(observed + count); streamEnds[stream] = checked(offset + count); sequence = nextSequence; priorStream = stream;
         StoredBytes = checked(StoredBytes + count); EventCount = checked(EventCount + 1); ValidLength = file.Position;
         return new(nextSequence, stream, offset, observed, bytes);
+    }
+
+    /// <summary>
+    /// Decides whether a failure after the durable prefix is crash residue: a suffix made only of zero bytes (preallocated or
+    /// zero-filled by the file system) or a final record whose checksum fails because its payload was torn. A failure followed by
+    /// further non-zero data is corruption and stays an error.
+    /// </summary>
+    /// <param name="start">Offset of the failing record.</param>
+    /// <param name="code">Stable failure code raised while validating it.</param>
+    private async Task<bool> IsDiscardableTailAsync(long start, string code)
+    {
+        file.Position = start;
+        byte[] buffer = new byte[65536]; bool zero = true;
+        for (long remaining = limit - start; remaining > 0 && zero;)
+        {
+            int read = await file.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, remaining)));
+            if (read == 0) break;
+            zero = !buffer.AsSpan(0, read).ContainsAnyExcept((byte)0); remaining -= read;
+        }
+        if (zero) return true;
+        if (code != "RecallJournalIntegrityFailed" || limit - start < HeaderLength) return false;
+        file.Position = start; byte[] header = new byte[HeaderLength]; await file.ReadExactlyAsync(header);
+        long count = BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(32));
+        return start + HeaderLength + count + HashLength == limit;
     }
 
     /// <summary>Marks an incomplete suffix only in explicit crash recovery mode.</summary>

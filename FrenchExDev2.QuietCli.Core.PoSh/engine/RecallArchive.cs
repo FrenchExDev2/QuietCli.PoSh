@@ -62,22 +62,34 @@ public static class RecallArchive
         if (metadata.State != "Completed" || data.Length != metadata.JournalLength || maximumBytes != null && metadata.StoredBytes > maximumBytes) throw new InvalidDataException("RecallImportBudgetOrState");
         string destination = Path.Combine(Path.GetFullPath(root ?? RecallStore.DefaultRoot), metadata.RecallId);
         if (Directory.Exists(destination) || File.Exists(destination)) throw new IOException("RecallDestinationExists");
-        Directory.CreateDirectory(destination);
-        await using (var output = new FileStream(Path.Combine(destination, "events.bin"), FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, true))
-        await using (var input = data.Open())
+        // The capture is built in a hidden sibling and renamed once complete, so a failure never leaves a half-imported identity.
+        string staging = destination + "." + Guid.NewGuid().ToString("N")[..8] + ".partial";
+        try
         {
-            byte[] buffer = new byte[65536]; long copied = 0; int count;
-            while ((count = await input.ReadAsync(buffer)) != 0) { copied = checked(copied + count); if (copied > metadata.JournalLength) throw new InvalidDataException("RecallEntryLength"); await output.WriteAsync(buffer.AsMemory(0, count)); }
-            if (copied != metadata.JournalLength) throw new EndOfStreamException("RecallEntryLength");
-            await output.FlushAsync(); output.Flush(true);
+            RecallPrivateFiles.CreateDirectory(staging);
+            await using (var output = RecallPrivateFiles.CreateNew(Path.Combine(staging, "events.bin"), FileAccess.Write, FileShare.None, 65536, FileOptions.Asynchronous))
+            await using (var input = data.Open())
+            {
+                byte[] buffer = new byte[65536]; long copied = 0; int count;
+                while ((count = await input.ReadAsync(buffer)) != 0) { copied = checked(copied + count); if (copied > metadata.JournalLength) throw new InvalidDataException("RecallEntryLength"); await output.WriteAsync(buffer.AsMemory(0, count)); }
+                if (copied != metadata.JournalLength) throw new EndOfStreamException("RecallEntryLength");
+                await output.FlushAsync(); output.Flush(true);
+            }
+            // Verify bounded records before publishing a discoverable manifest.
+            using (var reader = new RecallJournalReader(staging, metadata.RecallId, metadata.JournalLength, false))
+            {
+                while (await reader.ReadNextAsync() != null) { }
+                if (reader.StoredBytes != metadata.StoredBytes || reader.EventCount != metadata.EventCount || reader.GapCount + (metadata.ReceivedBytes > reader.ObservedEnd ? 1 : 0) != metadata.GapCount || reader.ObservedEnd > metadata.ReceivedBytes) throw new InvalidDataException("RecallJournalCountersMismatch");
+            }
+            await RecallStore.WriteManifestAsync(staging, metadata);
+            Directory.Move(staging, destination);
         }
-        // Verify bounded records before publishing a discoverable manifest.
-        using (var reader = new RecallJournalReader(destination, metadata.RecallId, metadata.JournalLength, false))
+        catch
         {
-            while (await reader.ReadNextAsync() != null) { }
-            if (reader.StoredBytes != metadata.StoredBytes || reader.EventCount != metadata.EventCount || reader.GapCount + (metadata.ReceivedBytes > reader.ObservedEnd ? 1 : 0) != metadata.GapCount || reader.ObservedEnd > metadata.ReceivedBytes) throw new InvalidDataException("RecallJournalCountersMismatch");
+            // Only the fixed files of this uniquely named staging directory are removed; never recurse.
+            if (Directory.Exists(staging)) { foreach (string name in new[] { "manifest.json", "events.bin" }) { try { File.Delete(Path.Combine(staging, name)); } catch (IOException) { } } try { Directory.Delete(staging); } catch (IOException) { } }
+            throw;
         }
-        await RecallStore.WriteManifestAsync(destination, metadata);
         return await RecallStore.OpenDirectoryAsync(destination);
     }
 

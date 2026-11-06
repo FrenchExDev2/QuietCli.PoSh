@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./../icons/logo.png" alt="Requirement-As-Code logo" width="150px" />
+  <img src="./../icons/logo.png" alt="QuietCli logo" width="150px" />
 </p>
 
 # FrenchExDev2.QuietCli.Core.PoSh
@@ -7,7 +7,7 @@
 ## Production agent instructions
 
 After installation, use `Add-QuietAgentInstruction -Path ./project -Agents` to copy the
-[production instructions](../docs/agents/AGENTS.md) and their skill guide into the project's
+[production instructions](../docs/agents/AGENTS.md) and their skill form into the project's
 `.skills` directory and add a managed reference in its `AGENTS.md`. Existing rules outside
 that block are preserved. `-WhatIf` previews changes. `Get-QuietAgentInstruction` reads the
 distributed rules without creating files or starting the engine. These commands return text

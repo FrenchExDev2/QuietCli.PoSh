@@ -20,9 +20,12 @@ UTF-8 JSON array of existing repository roots; required by RealStatus.
 .PARAMETER ExpectedRuntimeIdentifier
 Required native architecture for both the PowerShell host and the separate engine.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script')][string]$Suite='All',[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
+[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script')][string]$Suite='All',[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
+# Development-only selection, read by the Core case loop; never set by CI or the pre-commit gate.
+if($Case){$env:QUIETCLI_TEST_CASE=$Case}
+if($StopOnFirstFailure){$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE='1'}
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
 . (Join-Path $PSScriptRoot 'TestConfiguration.ps1')
 $testHosting=if($env:QUIETCLI_EXPECT_ENGINE_MODE){$env:QUIETCLI_EXPECT_ENGINE_MODE}else{'Auto'}
@@ -109,7 +112,11 @@ try{
             }else{$summary=& $command -WorkspaceRoot $WorkspaceRoot -OnProgress $progress}
             $summaries.Add($summary)
             Write-WorkspaceJson (Join-Path $RunDirectory ($selected.ToLowerInvariant()+'-suite.json')) $summary
-            if($selected -eq 'Core'){& (Join-Path $PSScriptRoot 'Assert-CoreIntegrationEvidence.ps1') -Summary $summary}
+            if($selected -eq 'Core' -and ($summary.Partial -or $summary.Incomplete)){
+                # Filtered or stopped development run: not qualification evidence, so the full-run evidence assertion is skipped.
+                $state.Task+=if($summary.Incomplete){" [INCOMPLETE: $($summary.StoppedAt)]"}else{' [PARTIAL: case filter]'}
+                Write-WorkspaceJson $statusPath $state
+            }elseif($selected -eq 'Core'){& (Join-Path $PSScriptRoot 'Assert-CoreIntegrationEvidence.ps1') -Summary $summary}
         }
     }
     if($Profiler){

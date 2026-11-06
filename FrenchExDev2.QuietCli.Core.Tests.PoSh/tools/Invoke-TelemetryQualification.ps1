@@ -155,10 +155,9 @@ try{
         $psCatalogue=@(
             @{Name='ps-invocation-allocation';File='Invoke.ps1';From='$result.Measurement.Allocation = $allocation.Stop()';To='$result.Measurement.Allocation = $null'},
             @{Name='ps-complete-allocation';File='Invoke.ps1';From='$Runtime.CompleteAllocation = $allocation.Stop()';To='$Runtime.CompleteAllocation = $null'},
-            @{Name='ps-allocation-persistence';File='Gain.ps1';From='Allocation=$Result.Measurement.Allocation';To='Allocation=$null'},
-            @{Name='ps-shared-process';File='Protocol.ps1';From='SharedProcess=($caller.ProcessId -eq $engine.ProcessId)';To='SharedProcess=$false'},
-            @{Name='ps-delivery-reduction';File='Delivery.ps1';From='$InputObject.Measurement.ReductionBytes=[FrenchExDev2.QuietCli.MeasurementTelemetry]::Reduction($InputObject.Internal.Sources.Values,$InputObject.Completeness,$size,$script:QuietMetadataAdapter)';To='$InputObject.Measurement.ReductionBytes=0L'}
+            @{Name='ps-allocation-persistence';File='Gain.ps1';From='Allocation=$Result.Measurement.Allocation';To='Allocation=$null'}
         )
+        # SharedProcess (EngineCommands.cs) and ReductionBytes (DeliveryCommands.cs) are compiled now; their mutants live in the C# catalogues.
         foreach($mutant in $psCatalogue){
             $state.Case='Mutation: '+$mutant.Name;Write-WorkspaceJson $statusPath $state
             $directory=Join-Path $RunDirectory ('mutation/'+$mutant.Name);[void][IO.Directory]::CreateDirectory($directory)

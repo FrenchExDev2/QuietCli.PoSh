@@ -10,7 +10,7 @@ $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $imports=@($Summary.Performance|Where-Object {$_.PSObject.Properties['Kind'] -and $_.Kind -ceq 'FreshSessionImport'})
 $diagnostics=@($Summary.Performance|Where-Object {$_.PSObject.Properties['Kind'] -and $_.Kind -ceq 'ImportDiagnostics'})
-$controlled=@($Summary.Integration|Where-Object Kind -EQ ControlledGitStatus)
+$controlled=@($Summary.Integration|Where-Object {$_.PSObject.Properties['Kind'] -and $_.Kind -ceq 'ControlledGitStatus'})
 if($Summary.Failed -ne 0 -or $imports.Count -ne 1 -or $diagnostics.Count -ne 1 -or $controlled.Count -ne 1){throw 'CoreIntegrationEvidenceMissing'}
 if($imports[0].Samples.Count -ne 14 -or $imports[0].Iterations -ne 7 -or $imports[0].Validation.MutantsKilled -ne 4){throw 'CoreImportEvidenceIncomplete'}
 $expectedModes=@('Import','CmdletOperations','PreloadManagement','PreloadUtility','PreloadBoth','Read','Parse','DotSource')

@@ -25,8 +25,12 @@ Maximum worker time before a saved Timeout state.
 UTF-8 JSON array of existing repository roots; required by RealStatus.
 .PARAMETER ExpectedRuntimeIdentifier
 Required actual PowerShell and engine runtime identifier; detects accidental architecture emulation.
+.PARAMETER Case
+Development only: wildcard selecting Core cases by name; the run is partial and never counts as the pre-commit gate.
+.PARAMETER StopOnFirstFailure
+Development only: stops the Core run at the first failing case; the run is incomplete.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script')][string]$Suite='All',[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
+[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script')][string]$Suite='All',[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 if($Profiler){
@@ -47,6 +51,8 @@ $workerArguments=@('-File',('"'+$workerPath+'"'),'-WorkspaceRoot',('"'+$Workspac
 if($Suite -eq 'RealStatus' -and !$RepositoryConfig){throw 'RealStatusRequiresRepositoryConfig'}
 if($RepositoryConfig){$workerArguments+=@('-RepositoryConfig',('"'+[IO.Path]::GetFullPath($RepositoryConfig,$PWD.Path)+'"'))}
 if($Profiler){$workerArguments+=@('-Profiler','-ProfilerModulePath',('"'+$ProfilerModulePath+'"'),'-ClrProfilerPath',('"'+$ClrProfilerPath+'"'))}
+if($Case){$workerArguments+=@('-Case',('"'+$Case+'"'))}
+if($StopOnFirstFailure){$workerArguments+='-StopOnFirstFailure'}
 if($ExpectedRuntimeIdentifier){$workerArguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
 $options=@{FilePath=$runner;ArgumentList=$workerArguments;PassThru=$true;RedirectStandardOutput=(Join-Path $RunDirectory 'worker.stdout.log');RedirectStandardError=(Join-Path $RunDirectory 'worker.stderr.log')}
 if($IsWindows){$options.WindowStyle='Hidden'}

@@ -40,7 +40,7 @@ try{
     $fixture=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture/QuietCli.Fixture.dll'
     $fault=& $core {
         param($dotnet,$fixture)
-        $original=(Get-Command Send-QuietRequest -CommandType Function).ScriptBlock
+        $original=Get-Command Send-QuietRequest -CommandType Cmdlet
         $script:AuditOriginalSend=$original;$script:AuditStartCount=0
         Set-Item Function:script:Send-QuietRequest -Value {
             param([hashtable]$Header,[byte[]]$Payload=@())
@@ -51,7 +51,7 @@ try{
         try{
             $r=Invoke-QuietCli -AsObject -Output {param($e,$r)} $dotnet $fixture emit 3
             @{Outcome=$r.Outcome;Complete=$r.Completeness.Source;Effect=$r.Execution.EffectStatus;Starts=$script:AuditStartCount}
-        }finally{Set-Item Function:script:Send-QuietRequest -Value $original;Remove-Variable AuditOriginalSend,AuditStartCount -Scope Script}
+        }finally{Remove-Item Function:Send-QuietRequest -Force;Remove-Variable AuditOriginalSend,AuditStartCount -Scope Script}
     } $dotnet $fixture
     Add-AuditEvidence REL-01 ($fault.Outcome -eq 'Failed' -and !$fault.Complete -and $fault.Effect -eq 'Unknown' -and $fault.Starts -eq 1) $fault
     Stop-QuietEngine
@@ -140,13 +140,11 @@ try{
         $client=[IO.Pipes.NamedPipeClientStream]::new('.',$name,[IO.Pipes.PipeDirection]::Out,[IO.Pipes.PipeOptions]::Asynchronous)
         $accept=$server.WaitForConnectionAsync()
         [void]$client.ConnectAsync().GetAwaiter().GetResult();[void]$accept.GetAwaiter().GetResult()
-        $fake=[pscustomobject]@{HasExited=$true}
-        $fake|Add-Member ScriptMethod Dispose {}
-        $script:QuietEngine=@{Mode='Process';Process=$fake;Broken=$false;Input=[IO.MemoryStream]::new();Output=$server;Requests=0L;InputBytes=0L;OutputBytes=0L}
+        $engine=[FrenchExDev2.QuietCli.EngineConnection]::new();$engine.Mode='Process';$engine.Input=[IO.MemoryStream]::new();$engine.Output=$server;[FrenchExDev2.QuietCli.QuietSession]::Engine=$engine
         $old=(Get-QuietTestConfiguration).Values['engine.ipcTimeoutSeconds'];(Get-QuietTestConfiguration).Values['engine.ipcTimeoutSeconds']='0.1'
         $watch=[Diagnostics.Stopwatch]::StartNew();$cancelled=$false
-        try{$null=Send-QuietRequest @{Action='hello'}}catch{$cancelled=$script:QuietEngine.Broken}
-        finally{$script:QuietEngine.Input.Dispose();$server.Dispose();$client.Dispose();$script:QuietEngine=$null;(Get-QuietTestConfiguration).Values['engine.ipcTimeoutSeconds']=$old}
+        try{$null=Send-QuietRequest @{Action='hello'}}catch{$cancelled=$engine.Broken}
+        finally{$engine.Input.Dispose();$server.Dispose();$client.Dispose();[FrenchExDev2.QuietCli.QuietSession]::Engine=$null;(Get-QuietTestConfiguration).Values['engine.ipcTimeoutSeconds']=$old}
         @{Disconnected=$cancelled;Milliseconds=$watch.Elapsed.TotalMilliseconds}
     }
     Add-AuditEvidence REL-06 ($ipc.Disconnected -and $ipc.Milliseconds -lt 2000) $ipc

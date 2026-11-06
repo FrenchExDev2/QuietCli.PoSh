@@ -9,7 +9,7 @@ function Test-QuietGainOutput {
     param()
     & (Get-Module FrenchExDev2.QuietCli.Core.PoSh) {
         $original=${function:Get-QuietCliGain}
-        $send=${function:Send-QuietRequest}
+        $send=Get-Command Send-QuietRequest -CommandType Cmdlet
         $script:gainTestWrites=0
         $script:gainTestSelection=$null
         function Send-QuietRequest {
@@ -97,7 +97,7 @@ function Test-QuietGainOutput {
             [pscustomobject]@{Seed=68131;GeneratedFilters=16;InvalidFormats=6;TimeBoundaryCases=10;MutantsKilled=4;State='Success'}
         }finally{
             ${function:Get-QuietCliGain}=$original
-            ${function:Send-QuietRequest}=$send
+            Remove-Item Function:Send-QuietRequest -ErrorAction SilentlyContinue
             Remove-Variable gainTestWrites -Scope Script
             Remove-Variable gainTestSelection -Scope Script
         }

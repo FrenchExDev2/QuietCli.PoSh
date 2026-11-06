@@ -50,14 +50,14 @@ if($Mode -eq 'CmdletOperations'){
         Import-Module -Name $Manifest -ErrorAction Stop
         $watch.Stop()
         $module=Get-Module FrenchExDev2.QuietCli.Core.PoSh
-        if(&$module {$null -ne $script:QuietEngine -or $null -ne $script:QuietManagedAssembly}){throw 'DiagnosticImportStartedEngine'}
+        if($null -ne [FrenchExDev2.QuietCli.QuietSession]::Engine){throw 'DiagnosticImportStartedEngine'}
         $rows.Add(@{Name="Import-$iteration";ElapsedMs=$watch.Elapsed.TotalMilliseconds})
         Remove-Module FrenchExDev2.QuietCli.Core.PoSh
     }
 }else{
     $null=New-Module -Name QuietImportDiagnostic -ArgumentList $root,$Mode,$rows -ScriptBlock {
         param($root,$mode,$rows)
-        foreach($name in @('Contracts','Dependencies','Protocol','Runtime','Invoke','Delivery','Registry','Gain','Scaffold')){
+        foreach($name in @('Contracts','Protocol','Invoke','Delivery','Registry','Gain','Scaffold')){
             $path=Join-Path $root "src/$name.ps1"
             $watch=[Diagnostics.Stopwatch]::StartNew()
             switch($mode){

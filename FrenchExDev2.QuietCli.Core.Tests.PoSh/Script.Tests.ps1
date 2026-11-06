@@ -52,11 +52,11 @@ function Invoke-QuietScriptTests {
     $initializer = & $core { (Get-Command Initialize-QuietCallFactories).ScriptBlock }
     $cases = [ordered]@{}; $results = [Collections.Generic.List[object]]::new(); $mutations = [Collections.Generic.List[object]]::new()
     $cases['generation is inert with an absent executable and throwing callbacks'] = {
-        $before = & $core { $script:QuietEngine }
+        $before = [FrenchExDev2.QuietCli.QuietSession]::Engine
         $database = & $core { [string](Get-QuietConfigurationSnapshot).Values['telemetry.database'] }
         $dbBefore = if ($database -and [IO.File]::Exists($database)) { (Get-FileHash -LiteralPath $database).Hash } else { $null }
         $file = quiet -Script (Join-Path $root 'inert.ps1') -AsObject -DataFactory { throw 'factory ran' } -Output { throw 'output ran' } missing-quiet-script-executable
-        if ($file -isnot [IO.FileInfo] -or ![object]::ReferenceEquals($before, (& $core { $script:QuietEngine }))) { throw 'ScriptGenerationNotInert' }
+        if ($file -isnot [IO.FileInfo] -or ![object]::ReferenceEquals($before, ([FrenchExDev2.QuietCli.QuietSession]::Engine))) { throw 'ScriptGenerationNotInert' }
         $bytes = [IO.File]::ReadAllBytesAsync($file.FullName).GetAwaiter().GetResult()
         $text = [Text.Encoding]::UTF8.GetString($bytes)
         if ($text.Contains("`r") -or $bytes[0] -eq 0xef -or $text.Contains("Add('-Script')") -or $text.Contains("Add('-TimeoutSeconds')")) { throw 'ScriptSourceContractChanged' }

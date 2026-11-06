@@ -1,0 +1,2 @@
+# Excluded from Grep/Glob (ripgrep) searches
+artifacts/

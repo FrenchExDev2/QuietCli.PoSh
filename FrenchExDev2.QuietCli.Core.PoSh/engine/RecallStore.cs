@@ -7,6 +7,8 @@ namespace FrenchExDev2.QuietCli;
 public static class RecallStore
 {
     internal const int ManifestLimit = 65536;
+    /// <summary>Attempts to publish a checkpoint manifest before reporting the failure.</summary>
+    private const int ManifestPublishAttempts = 4;
     internal static readonly JsonSerializerOptions JsonOptions = new() { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, MaxDepth = 16 };
     /// <summary>Durable user data location; the facade passes any configured root explicitly.</summary>
     public static string DefaultRoot
@@ -63,7 +65,7 @@ public static class RecallStore
             return new RecallCapture(directory, metadata, false);
         }
         bool active = IsRecording(directory);
-        using var reader = new RecallJournalReader(directory, metadata.RecallId, active ? metadata.JournalLength : length, !active);
+        using var reader = new RecallJournalReader(directory, metadata.RecallId, active ? metadata.JournalLength : length, !active, metadata.JournalLength);
         while (await reader.ReadNextAsync() != null) { }
         long received = Math.Max(metadata.ReceivedBytes, reader.ObservedEnd);
         metadata = metadata with { State = active ? "Recording" : metadata.State == "Failed" ? "Failed" : "Interrupted", SourceComplete = false, ReceivedBytes = received, StoredBytes = reader.StoredBytes, EventCount = reader.EventCount, JournalLength = reader.ValidLength, GapCount = reader.GapCount + (received > reader.ObservedEnd ? 1 : 0), DurableBytes = Math.Min(metadata.DurableBytes, reader.StoredBytes) };
@@ -121,8 +123,22 @@ public static class RecallStore
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(metadata, JsonOptions);
         if (bytes.Length > ManifestLimit) throw new InvalidDataException("RecallManifestLimit");
         string temporary = Path.Combine(directory, "manifest-" + Guid.NewGuid().ToString("N") + ".tmp");
-        await using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.WriteThrough)) { await file.WriteAsync(bytes); await file.FlushAsync(); }
-        File.Move(temporary, Path.Combine(directory, "manifest.json"), true);
+        try
+        {
+            await using (var file = RecallPrivateFiles.CreateNew(temporary, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.WriteThrough)) { await file.WriteAsync(bytes); await file.FlushAsync(); }
+            // A concurrent reader, scanner or indexer can briefly hold the destination; retry a few times before failing.
+            for (int attempt = 1; ; attempt++)
+            {
+                try { File.Move(temporary, Path.Combine(directory, "manifest.json"), true); return; }
+                catch (Exception failure) when (failure is IOException or UnauthorizedAccessException && attempt < ManifestPublishAttempts) { await Task.Delay(25 * attempt); }
+            }
+        }
+        catch
+        {
+            // The unique temporary file is never reused, so a failed checkpoint must not leave it behind.
+            try { File.Delete(temporary); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            throw;
+        }
     }
 
     /// <summary>Validates checked counter relationships, identity and inert analysis settings.</summary>

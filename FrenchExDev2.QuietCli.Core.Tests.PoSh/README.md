@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./../icons/logo.png" alt="Requirement-As-Code logo" width="150px" />
+  <img src="./../icons/logo.png" alt="QuietCli logo" width="150px" />
 </p>
 
 # FrenchExDev2.QuietCli.Core.Tests.PoSh
@@ -10,8 +10,8 @@ Module de tests indépendant du moteur. Dépend du module Core, jamais l’inver
 
 `./scripts/Invoke-WorkspaceCi.ps1 -Suite AgentInstructions -SkipBuild` runs the focused
 monitored suite. It checks generated reference preservation/idempotence, malformed markers,
-UTF-8/BOM handling, WhatIf, linked paths, installed-layout resources and targeted reference
-mutations. Eleven marked Core-only examples in `docs/agents/SKILL.md` execute against an owned
+UTF-8/BOM handling, WhatIf, linked paths, installed-layout resources, document-set consistency (concise, self-contained, every command named, `SKILL.md` generated from `AGENTS.md`) and targeted reference
+mutations. Eleven marked Core-only examples in `docs/agents/AGENTS.md` (4) and `docs/agents/examples.md` (7) execute against an owned
 Git fixture and verify business objects, bounded JSON/YAML, gain reporting, memory/durable
 Recall, replay and ZIP export/import. Core/All includes the same regression. This targeted
 development evidence does not replace release qualification or a Gallery installation test.
