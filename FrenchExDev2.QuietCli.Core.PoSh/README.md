@@ -50,6 +50,10 @@ Les appels enfants héritent du contexte ; ils retournent un objet par défaut. 
 
 `Get-QuietCliGain` returns a `PSCustomObject` by default (`-AsObject` remains supported). Use `-AsYaml` or `-AsJson` to format the report; `-AsJson -Compress` selects compact JSON. `-Compress` is only valid with `-AsJson`, and output formats are mutually exclusive. Reading or formatting this report never creates invocation or delivery telemetry and does not contribute to measured delivery gains.
 
+Without `-From`, `-To` or `-Days`, the report selects all history. Omitted or null boundaries remain null in the report and do not restrict that side of the time range. `-Days 7` explicitly selects a trailing seven-day window ending at `-To`, or now when omitted. An explicit `-From` overrides `-Days`. `-MaxEvents` still limits the scan; `Complete=false` means the selected history was not fully scanned.
+
+`ReductionBytes` compares deduplicated business sources associated with actual root deliveries against the bytes of every corresponding delivery. It stays null when the scan, source/analysis completeness or required byte measurements do not support that comparison. `Complete=true` describes scan completeness, not source completeness. Object-only calls do not establish delivery savings. `NativeTokens` remains null because native output is not tokenized; optional tokenization counts only actual delivered text. Missing allocation samples also leave the aggregate allocation total null rather than treating missing measurements as zero.
+
 `Get-QuietCliGain` lit tous les contextes par défaut. `-C nom`, `-Generic`, `-SessionId`, `-From`, `-To` filtrent le rapport. Les sources uniques sont dédupliquées ; les réductions inconnues restent nulles. Les rôles auxiliaires ne gonflent pas le gain métier.
 
 Les tokens natifs restent inconnus. La tokenisation exacte, optionnelle, concerne uniquement une livraison déjà produite : `-Tokenizer o200k_base` ou `cl100k_base`. Le défaut est `off`.

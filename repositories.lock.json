@@ -1,31 +1,33 @@
 {
+  "SDK": "11.0.100-rc.3.26522.148",
+  "Runtime": "11.0.0-rc.3.26522.148",
   "Projects": [
     {
       "Path": "FrenchExDev2.QuietCli.Core.PoSh",
-      "SourceSHA256": "6430F7E95DA6F26CCB8DDDC822355D77FFA8802E024D70291A58016A1EF51675",
       "Name": "FrenchExDev2.QuietCli.Core.PoSh",
+      "SourceSHA256": "F7730C10B7B9FD57B426D7B18D9B7EE570C0A3FA80A6727569F960002AB6FA64",
       "Dependencies": []
     },
     {
       "Path": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
-      "SourceSHA256": "7FC5E4C9E22F944BCEC09E295197D069D7BFDFE6162E0C67466FF9B60FE21098",
       "Name": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
+      "SourceSHA256": "70E266DEB821057A5345E5EB0B0F708D2F5D1468E93C79FC2B64A5DDA090699D",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Core.PoSh"
       ]
     },
     {
       "Path": "FrenchExDev2.QuietCli.Git.PoSh",
-      "SourceSHA256": "CBC476930ECDD83BEC8CC424741C3129CE411BC01BF671CF32B42878E71AA40F",
       "Name": "FrenchExDev2.QuietCli.Git.PoSh",
+      "SourceSHA256": "CBC476930ECDD83BEC8CC424741C3129CE411BC01BF671CF32B42878E71AA40F",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Core.PoSh"
       ]
     },
     {
       "Path": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
-      "SourceSHA256": "394CE7DE96E503D08384CE9F759D8C0A002E9CF2820F9FD6A54B9FC1DC47BDBC",
       "Name": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
+      "SourceSHA256": "394CE7DE96E503D08384CE9F759D8C0A002E9CF2820F9FD6A54B9FC1DC47BDBC",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Git.PoSh",
         "FrenchExDev2.QuietCli.Core.Tests.PoSh"
@@ -33,12 +35,10 @@
     }
   ],
   "Layout": "Monorepo",
-  "SchemaVersion": 3,
-  "SDK": "11.0.100-rc.3.26522.148",
   "Repository": {
-    "Remote": "https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh.git",
     "Name": "FrenchExDev2.QuietCli.PoSh",
-    "SourceSHA256": "CA3D7092435B46697AD5E10ADF50568C6D9A83E630E9F2DDDE81ACAF569A48F1"
+    "SourceSHA256": "06C4E0DFD8684EE4DEDAFCAD382CC8D859DA37F81ED68B470B835E946FEA3EF6",
+    "Remote": "https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh.git"
   },
-  "Runtime": "11.0.0-rc.3.26522.148"
+  "SchemaVersion": 3
 }

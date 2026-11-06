@@ -11,9 +11,11 @@ function Test-QuietGainOutput {
         $original=${function:Get-QuietCliGain}
         $send=${function:Send-QuietRequest}
         $script:gainTestWrites=0
+        $script:gainTestSelection=$null
         function Send-QuietRequest {
             param($Request)
             if($Request.Action -eq 'save'){$script:gainTestWrites++}
+            if($Request.Action -eq 'gain'){$script:gainTestSelection=$Request.Clone()}
             & $send $Request
         }
         $context='gain-output-'+[guid]::NewGuid().ToString('N')
@@ -22,6 +24,24 @@ function Test-QuietGainOutput {
         $from=[DateTimeOffset]::UtcNow.AddMinutes(-1);$to=$from.AddMinutes(2)
         $check={
             $options=@{Context=$context;From=$from;To=$to}
+            foreach($bounds in @(@{},@{From=$null;To=$null})){
+                $all=Get-QuietCliGain -C $context @bounds
+                if($all.GetType().FullName -ne 'System.Management.Automation.PSCustomObject'){throw 'GainDefaultObjectInvariant'}
+                if($null -ne $all.From -or $null -ne $all.To -or $all.Invocations -ne 1 -or $script:gainTestSelection.From -ne -62135596800000L -or $script:gainTestSelection.To -ne 253402300799999L){throw 'GainUnboundedTimeInvariant'}
+            }
+            $since=Get-QuietCliGain -C $context -From $from
+            if($since.From -ne $from -or $null -ne $since.To){throw 'GainLowerBoundInvariant'}
+            $until=Get-QuietCliGain -C $context -To $to
+            if($null -ne $until.From -or $until.To -ne $to){throw 'GainUpperBoundInvariant'}
+            foreach($days in @(1,7,30,365)){
+                $window=Get-QuietCliGain -C $context -Days $days -To $to
+                if($window.From -ne $to.AddDays(-$days) -or $window.To -ne $to){throw 'GainExplicitDaysInvariant'}
+            }
+            $overridden=Get-QuietCliGain @options -Days 7
+            if($overridden.From -ne $from){throw 'GainFromOverridesDaysInvariant'}
+            $rejected=$false
+            try{$null=Get-QuietCliGain -From $to -To $from}catch{$rejected=$_.Exception.Message -eq 'InvalidTimeRange'}
+            if(!$rejected){throw 'GainReversedRangeAccepted'}
             $object=Get-QuietCliGain @options
             if($object.GetType().FullName -ne 'System.Management.Automation.PSCustomObject' -or $object.Invocations -ne 1 -or $object.RootDeliveries -ne 1 -or $object.RootDeliveryBytes -ne 17){throw 'GainDefaultObjectInvariant'}
             foreach($groupBy in @('Context','Command','Session','Module','Role','Outcome')){
@@ -53,6 +73,7 @@ function Test-QuietGainOutput {
             $mutations=@(
                 @('DefaultJson','return $report','return (ConvertTo-Json -InputObject $report -Depth 20)'),
                 @('IgnoreCompress','-Compress:$Compress','-Compress'),
+                @('ImplicitSevenDays','$lower=if(', 'if($null -eq $From){$From=[DateTimeOffset]::UtcNow.AddDays(-7)}; $lower=if('),
                 @('TrackReport','$query=@{Action=''gain'';','$null=Send-QuietRequest @{Action=''save'';Kind=''invocation'';Metadata=@{InvocationId=[guid]::NewGuid().ToString();Context=$Context;Command=''mutant''}}; $query=@{Action=''gain'';')
             )
             foreach($mutation in $mutations){
@@ -61,17 +82,18 @@ function Test-QuietGainOutput {
                 ${function:Get-QuietCliGain}=[scriptblock]::Create($source.Replace($mutation[1],$mutation[2]))
                 $killed=$false
                 try{& $check}catch{
-                    if($_.Exception.Message -notin @('GainDefaultObjectInvariant','GainJsonWhitespaceInvariant','GainReportRecordedTelemetry')){throw}
+                    if($_.Exception.Message -notin @('GainDefaultObjectInvariant','GainJsonWhitespaceInvariant','GainReportRecordedTelemetry','GainUnboundedTimeInvariant')){throw}
                     $killed=$true
                 }
                 if(!$killed){throw "GainMutantSurvived:$($mutation[0])"}
                 ${function:Get-QuietCliGain}=$original
             }
-            [pscustomobject]@{Seed=68131;GeneratedFilters=16;InvalidFormats=6;MutantsKilled=3;State='Success'}
+            [pscustomobject]@{Seed=68131;GeneratedFilters=16;InvalidFormats=6;TimeBoundaryCases=10;MutantsKilled=4;State='Success'}
         }finally{
             ${function:Get-QuietCliGain}=$original
             ${function:Send-QuietRequest}=$send
             Remove-Variable gainTestWrites -Scope Script
+            Remove-Variable gainTestSelection -Scope Script
         }
     }
 }

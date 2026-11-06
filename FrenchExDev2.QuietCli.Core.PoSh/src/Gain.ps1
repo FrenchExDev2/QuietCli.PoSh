@@ -52,11 +52,11 @@ Reports measured counters across all contexts by default, without creating a mis
     .PARAMETER ModuleId
     Optional registered business module identity.
     .PARAMETER Days
-    Number of past days, default seven.
+    Optional trailing window ending at To or now. Ignored when From is supplied.
     .PARAMETER From
-    Inclusive lower time boundary; overrides Days.
+    Optional inclusive lower time boundary; overrides Days. Null means no lower boundary.
     .PARAMETER To
-    Exclusive upper time boundary.
+    Optional exclusive upper time boundary. Null means no upper boundary.
     .PARAMETER GroupBy
     Context, Command, Session, Module, Role or Outcome.
     .PARAMETER AsObject
@@ -70,13 +70,18 @@ Reports measured counters across all contexts by default, without creating a mis
     .PARAMETER MaxEvents
     Maximum telemetry events scanned by this report; a limit is explicitly marked incomplete.
     #>
-    [CmdletBinding()]param([Alias('C')][string]$Context,[switch]$Generic,[string]$SessionId,[string]$ModuleId,[int]$Days=7,[DateTimeOffset]$From,[DateTimeOffset]$To=[DateTimeOffset]::UtcNow,[ValidateSet('Context','Command','Session','Module','Role','Outcome')][string]$GroupBy='Context',[switch]$AsObject,[switch]$AsYaml,[switch]$AsJson,[switch]$Compress,[ValidateRange(1,1000000)][int]$MaxEvents=10000)
+    [CmdletBinding()]param([Alias('C')][string]$Context,[switch]$Generic,[string]$SessionId,[string]$ModuleId,[ValidateRange(1,3650000)][int]$Days,[Nullable[DateTimeOffset]]$From,[Nullable[DateTimeOffset]]$To,[ValidateSet('Context','Command','Session','Module','Role','Outcome')][string]$GroupBy='Context',[switch]$AsObject,[switch]$AsYaml,[switch]$AsJson,[switch]$Compress,[ValidateRange(1,1000000)][int]$MaxEvents=10000)
     if(([int][bool]$AsObject+[int][bool]$AsYaml+[int][bool]$AsJson) -gt 1){throw 'OutputFormatsAreExclusive'}
     if($PSBoundParameters.ContainsKey('Compress') -and !$AsJson){throw 'CompressRequiresAsJson'}
     if($Generic -and $PSBoundParameters.ContainsKey('Context')){throw 'ContextAndGenericAreExclusive'}
-    if(!$PSBoundParameters.ContainsKey('From')){$From=$To.AddDays(-$Days)}
-    if($From -ge $To){throw 'InvalidTimeRange'}
-    $query=@{Action='gain';From=$From.ToUnixTimeMilliseconds();To=$To.ToUnixTimeMilliseconds();Generic=[bool]$Generic;GroupBy=$GroupBy;MaxEvents=$MaxEvents}
+    if($null -eq $From -and $PSBoundParameters.ContainsKey('Days')){
+        if($null -eq $To){$To=[DateTimeOffset]::UtcNow}
+        $From=$To.AddDays(-$Days)
+    }
+    if($null -ne $From -and $null -ne $To -and $From -ge $To){throw 'InvalidTimeRange'}
+    $lower=if($null -eq $From){[DateTimeOffset]::MinValue.ToUnixTimeMilliseconds()}else{$From.ToUnixTimeMilliseconds()}
+    $upper=if($null -eq $To){[DateTimeOffset]::MaxValue.ToUnixTimeMilliseconds()}else{$To.ToUnixTimeMilliseconds()}
+    $query=@{Action='gain';From=$lower;To=$upper;Generic=[bool]$Generic;GroupBy=$GroupBy;MaxEvents=$MaxEvents}
     if($PSBoundParameters.ContainsKey('Context')){$query.Context=$Context}
     if($SessionId){$query.SessionId=$SessionId}
     if($ModuleId){$query.ModuleId=$ModuleId}
