@@ -13,7 +13,7 @@ Creates one fresh caller-local runtime and attaches interactive adapters.
         InvocationId=$id;ParentId=$(if($parent){$parent.InvocationId}else{$null});RootId=$(if($parent){$parent.RootId}else{$id});SessionId=$script:QuietSession;Context=$context
         Request=$Request;Data=$null;State=$(if($Request.ContainsKey('State')){$Request.State}else{@{}})
         Lifecycle='Created';Execution=$null;Children=[Collections.Generic.List[object]]::new();Sources=[ordered]@{}
-        AnalysisComplete=$true;Errors=[Collections.Generic.List[object]]::new();CallbackMs=0.0;NativeStarted=$false;StartState='NotStarted';CompleteInvoked=$false;InputClosed=$false;Completed=$false;Handler=$null
+        AnalysisComplete=$true;Errors=[Collections.Generic.List[object]]::new();CallbackMs=0.0;CompleteAllocation=$null;NativeStarted=$false;StartState='NotStarted';CompleteInvoked=$false;InputClosed=$false;Completed=$false;Handler=$null
         TextStreams=@{}
     }
     if($Request.ContainsKey('Data')){$runtime.Data=$Request.Data}

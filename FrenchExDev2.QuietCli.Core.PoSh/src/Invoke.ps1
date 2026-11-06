@@ -112,6 +112,8 @@ Owns one caller-local lifecycle and preserves assigned child failures.
     Validated facade options.
     #>
     param([hashtable]$Request)
+    Import-QuietManagedEngine
+    $allocation = [FrenchExDev2.QuietCli.AllocationMeter]::new()
     # A new root request may establish a fresh engine; no outstanding invocation is retried.
     if ($script:QuietStack.Count -eq 0 -and $script:QuietEngine -and $script:QuietEngine.Broken) { Stop-QuietEngine }
     $runtime = New-QuietRuntime $Request
@@ -215,6 +217,8 @@ Owns one caller-local lifecycle and preserves assigned child failures.
                 NativeTokens                     =$null
                 ReductionBytes                   =$null
                 StorageError                     =$null
+                Allocation                       =$null
+                CompleteAllocation               =$runtime.CompleteAllocation
             }
             Deliveries    =[Collections.Generic.List[object]]::new()
             Internal      =@{Sources =$runtime.Sources
@@ -226,6 +230,7 @@ Owns one caller-local lifecycle and preserves assigned child failures.
         $result.PSObject.TypeNames.Insert(0, 'QuietCli2.Result')
         Set-QuietFinalProperty $result Execution $execution
         Set-QuietFinalProperty $result Completeness $result.Completeness
+        $result.Measurement.Allocation = $allocation.Stop()
         Save-QuietResultMetadata $result
     }
     finally {
@@ -321,6 +326,7 @@ Drives the separate native process without retaining its streams.
     Set-QuietLifecycle $Runtime Completing
     if ($request.ContainsKey('Complete')) {
         $watch = [Diagnostics.Stopwatch]::StartNew()
+        $allocation = [FrenchExDev2.QuietCli.AllocationMeter]::new()
         try {
             if ($Runtime.CompleteInvoked) { throw 'CompleteAlreadyInvoked' }
             $Runtime.CompleteInvoked = $true
@@ -331,6 +337,9 @@ Drives the separate native process without retaining its streams.
             $Runtime.AnalysisComplete = $false
             $Runtime.Errors.Add(@{Code = 'CompleteCallbackFailed'; Phase = 'Complete'; Message = $_.Exception.Message })
         }
-        finally { $Runtime.CallbackMs += $watch.Elapsed.TotalMilliseconds }
+        finally {
+            $Runtime.CompleteAllocation = $allocation.Stop()
+            $Runtime.CallbackMs += $watch.Elapsed.TotalMilliseconds
+        }
     }
 }

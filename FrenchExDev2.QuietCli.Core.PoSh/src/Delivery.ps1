@@ -93,8 +93,8 @@ Produces and measures one actual bounded delivery; no whole-result serialization
         $InputObject.Deliveries.Clear()
         $InputObject.Deliveries.Add([pscustomobject]@{DeliveryId=$deliveryId;Format=$(if($AsYaml){'yaml'}else{'json'});Text=$text;Bytes=$size;Tokens=$tokens})
         $InputObject.Measurement.OutputBytes=$size;$InputObject.Measurement.OutputTokens=$tokens;$InputObject.Measurement.Status='Delivered'
-        $native=0L;foreach($source in $InputObject.Internal.Sources.Values){if($source.Role -eq 'Business'){$native+=if($null -ne $source.TerminalBytesRead){$source.TerminalBytesRead}else{[long]$source.StdoutBytesRead+[long]$source.StderrBytesRead}}}
-        if($InputObject.Completeness.Source -and $InputObject.Completeness.Analysis){$InputObject.Measurement.ReductionBytes=$native-$size}
+        Import-QuietManagedEngine
+        $InputObject.Measurement.ReductionBytes=[FrenchExDev2.QuietCli.MeasurementTelemetry]::Reduction($InputObject.Internal.Sources.Values,$InputObject.Completeness,$size,$script:QuietMetadataAdapter)
         if($env:QUIETCLI2_TRACKING -ne '0'){
             try{$metadata=Get-QuietMetadata $InputObject;$metadata.DeliveryId=$deliveryId;$metadata.OutputBytes=$size;$metadata.OutputTokens=$tokens;$metadata.TokenProfile=$Tokenizer;$metadata.TokenVersion=$tokenVersion;$metadata.Format=if($AsYaml){'yaml'}else{'json'};$metadata.Truncated=$document.Truncation.Applied;$metadata.SerializationMs=$serializationMs;$null=Send-QuietRequest @{Action='save';Kind='delivery';Metadata=$metadata}}
             catch{$InputObject.Measurement.StorageError=$_.Exception.Message;$InputObject.Measurement.Status='StorageUnavailable'}

@@ -130,7 +130,7 @@ Exchanges one bounded metadata frame and an optional transient byte block.
     $Header.Version=$script:QuietProtocol.Version;$Header.RequestId=[guid]::NewGuid().ToString('N')
     $directRead=$script:QuietEngine.Mode -eq 'InProcess' -and $Header.Action -eq 'next'
     $directControl=$script:QuietEngine.Mode -eq 'InProcess' -and $Header.Action -in @('input','eof','cancel','resize','release')
-    $directMetadata=$script:QuietEngine.Mode -eq 'InProcess' -and $Header.Action -in @('hello','start','save','gain','gain-poll','gain-next','gain-release','scrub','shutdown')
+    $directMetadata=$script:QuietEngine.Mode -eq 'InProcess' -and $Header.Action -in @('hello','allocations','start','save','gain','gain-poll','gain-next','gain-release','scrub','shutdown')
     if(!$directRead -and !$directControl -and !$directMetadata){
     $encoded=$script:QuietUtf8.GetBytes((ConvertTo-Json -InputObject $Header -Depth 32 -Compress))
     if($encoded.Length -gt $script:QuietProtocol.HeaderLimit){throw 'ControlFrameTooLarge'}
@@ -196,8 +196,23 @@ Closes the owned engine normally and flushes accepted measurement writes. #>
 function Get-QuietEngine {
     <#
 .SYNOPSIS
-Returns engine identity and protocol counters, without native output. #>
-    [CmdletBinding()]param()
+Returns engine identity and optional process-wide allocation diagnostics, without native output.
+    .PARAMETER IncludeAllocations
+    Samples caller and engine process counters explicitly, including background workers and concurrent work.
+    .PARAMETER Precise
+    Opts into the higher-cost precise process counter; requires IncludeAllocations.
+    #>
+    [CmdletBinding()]param([switch]$IncludeAllocations,[switch]$Precise)
+    if($Precise -and !$IncludeAllocations){throw 'AllocationPrecisionRequiresIncludeAllocations'}
     Start-QuietEngine
-    [pscustomobject]@{SessionId=$script:QuietSession;Mode=$script:QuietEngine.Mode;Engine=$script:QuietEngine.Info;Requests=$script:QuietEngine.Requests;DirectRequests=$script:QuietEngine.DirectRequests;MetadataJsonRequests=$script:QuietEngine.MetadataJsonRequests;ProtocolInputBytes=$script:QuietEngine.InputBytes;ProtocolOutputBytes=$script:QuietEngine.OutputBytes;Database=$script:QuietEngine.Database}
+    $allocations=$null
+    if($IncludeAllocations){
+        Import-QuietManagedEngine
+        $caller=[FrenchExDev2.QuietCli.ProcessAllocationSnapshot]::Capture([bool]$Precise)
+        $engine=if($script:QuietEngine.Mode -eq 'InProcess'){$caller}else{(Send-QuietRequest @{Action='allocations';Precise=[bool]$Precise}).Header.Data}
+        $allocations=[pscustomobject]@{Caller=$caller;Engine=$engine;SharedProcess=($caller.ProcessId -eq $engine.ProcessId);Attribution='All managed threads and concurrent work; diagnostics only. Shared caller/engine samples must not be added.'}
+    }
+    $identity=[pscustomobject]@{SessionId=$script:QuietSession;Mode=$script:QuietEngine.Mode;Engine=$script:QuietEngine.Info;Requests=$script:QuietEngine.Requests;DirectRequests=$script:QuietEngine.DirectRequests;MetadataJsonRequests=$script:QuietEngine.MetadataJsonRequests;ProtocolInputBytes=$script:QuietEngine.InputBytes;ProtocolOutputBytes=$script:QuietEngine.OutputBytes;Database=$script:QuietEngine.Database}
+    if($IncludeAllocations){$identity|Add-Member -NotePropertyName Allocations -NotePropertyValue $allocations}
+    return $identity
 }

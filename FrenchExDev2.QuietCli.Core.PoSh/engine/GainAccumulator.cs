@@ -7,7 +7,9 @@ internal sealed class GainAccumulator
     private readonly Dictionary<string, SourceMeasurement> sources = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Case-sensitive business grouping, ordered in the host culture.</summary>
     private readonly SortedDictionary<string, int[]> groups = new(StringComparer.CurrentCulture);
-    /// <summary>Selected root invocation identities.</summary>
+    /// <summary>Native sources associated with actual root business deliveries only.</summary>
+    private readonly Dictionary<string, SourceMeasurement> deliveredSources = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Selected business root identities, including calls without serialization.</summary>
     private readonly HashSet<string> rootIds = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Roots with actual deliveries.</summary>
     private readonly HashSet<string> deliveryIds = new(StringComparer.OrdinalIgnoreCase);
@@ -17,8 +19,14 @@ internal sealed class GainAccumulator
     private int invocations, roots, deliveries;
     /// <summary>Total actual root delivery bytes.</summary>
     private long delivered;
-    /// <summary>Whether every selected root analysis and delivery size is known.</summary>
-    private bool analysesComplete = true, deliverySizesKnown = true;
+    /// <summary>Whether all actual business deliveries have complete source snapshots and known sizes.</summary>
+    private bool deliveriesComplete = true, deliverySizesKnown = true;
+    /// <summary>Root-only allocation totals avoid counting a nested invocation twice.</summary>
+    private long allocated, completeAllocated;
+    /// <summary>Allocation coverage; missing historical samples remain unknown.</summary>
+    private int measuredRoots, completeSamples, measuredCompleteSamples;
+    /// <summary>Explicit thread-change counts explain unknown allocation totals.</summary>
+    private int allocationThreadChanges, completeThreadChanges;
 
     /// <summary>Validates grouping before scanning any database.</summary>
     /// <param name="groupBy">Context, Command, Session, Module, Role or Outcome.</param>
@@ -33,13 +41,36 @@ internal sealed class GainAccumulator
     internal void Add(MeasurementRecord row)
     {
         bool root = string.IsNullOrEmpty(row.ParentId);
+        bool businessRole = row.Role == null || string.Equals(row.Role, "Business", StringComparison.OrdinalIgnoreCase);
         if (row.DeliveryId != null)
         {
-            if (root) { deliveries++; deliveryIds.Add(row.InvocationId); deliverySizesKnown &= row.OutputBytes.HasValue; delivered = checked(delivered + (row.OutputBytes ?? 0)); }
+            if (root && businessRole)
+            {
+                deliveries++; deliveryIds.Add(row.InvocationId);
+                deliverySizesKnown &= row.OutputBytes.HasValue;
+                delivered = checked(delivered + (row.OutputBytes ?? 0));
+                deliveriesComplete &= row.Completeness is { Source: true, Analysis: true } && row.Sources != null;
+                foreach (var source in row.Sources ?? [])
+                {
+                    if (string.Equals(source.Role, "Business", StringComparison.OrdinalIgnoreCase)) deliveriesComplete &= source.Complete && MeasurementTelemetry.SourceBytes(source).HasValue;
+                    deliveredSources[source.InvocationId] = source;
+                }
+            }
             return;
         }
         invocations++;
-        if (root) { roots++; rootIds.Add(row.InvocationId); analysesComplete &= row.Completeness?.Analysis == true; }
+        if (root)
+        {
+            roots++; if (businessRole) rootIds.Add(row.InvocationId);
+            if (row.Allocation?.AllocatedBytes is { } bytes) { measuredRoots++; allocated = checked(allocated + bytes); }
+            if (row.Allocation?.Status == "ThreadChanged") allocationThreadChanges++;
+            if (row.CompleteAllocation is { } sample)
+            {
+                completeSamples++;
+                if (sample.Status == "ThreadChanged") completeThreadChanges++;
+                if (sample.AllocatedBytes is { } completeBytes) { measuredCompleteSamples++; completeAllocated = checked(completeAllocated + completeBytes); }
+            }
+        }
         foreach (var source in row.Sources ?? []) sources[source.InvocationId] = source;
         string key = groupBy switch {
             "CONTEXT" => row.Context ?? "(generic)", "COMMAND" => row.Command ?? "", "SESSION" => row.SessionId ?? "",
@@ -50,7 +81,7 @@ internal sealed class GainAccumulator
         if (!string.Equals(row.Outcome, "Success", StringComparison.OrdinalIgnoreCase)) counts[2]++;
     }
 
-    /// <summary>Builds the same report counters without retaining or transferring source events.</summary>
+    /// <summary>Separates all observed work, actual serialization gains and root allocation costs.</summary>
     /// <param name="complete">Whether the event budget included the entire selected range.</param>
     internal GainReport Build(bool complete)
     {
@@ -62,9 +93,30 @@ internal sealed class GainAccumulator
             if (string.Equals(source.Role, "Business", StringComparison.OrdinalIgnoreCase)) business = checked(business + bytes); else auxiliary = checked(auxiliary + bytes);
             if (!source.Complete) incomplete++;
         }
+        long comparedBusiness = 0; bool comparedSourcesKnown = true;
+        foreach (var source in deliveredSources.Values)
+        {
+            if (!string.Equals(source.Role, "Business", StringComparison.OrdinalIgnoreCase)) continue;
+            long? bytes = MeasurementTelemetry.SourceBytes(source);
+            comparedSourcesKnown &= source.Complete && bytes.HasValue;
+            comparedBusiness = checked(comparedBusiness + (bytes ?? 0));
+        }
         long? deliveryBytes = deliveries > 0 && deliverySizesKnown ? delivered : null;
-        long? reduction = incomplete == 0 && complete && roots > 0 && analysesComplete && deliverySizesKnown && deliveries == roots && deliveryIds.SetEquals(rootIds) ? checked(business - delivered) : null;
-        var summary = new { Complete = complete, Invocations = invocations, Roots = roots, UniqueNativeSources = sources.Count, StdinBytesWritten = stdin, BusinessBytesObserved = business, AuxiliaryBytesObserved = auxiliary, IncompleteSources = incomplete, RootDeliveryBytes = deliveryBytes, ReductionBytes = reduction, NativeTokens = (long?)null, Comparability = "Observed effective native business output; source and delivered object may be projected. Context subtotals are not additive." };
+        long? reduction = complete && deliveries > 0 && deliveriesComplete && deliverySizesKnown && comparedSourcesKnown ? checked(comparedBusiness - delivered) : null;
+        var summary = new {
+            Complete = complete, Invocations = invocations, Roots = roots, UniqueNativeSources = sources.Count,
+            StdinBytesWritten = stdin, BusinessBytesObserved = business, AuxiliaryBytesObserved = auxiliary, IncompleteSources = incomplete,
+            RootDeliveries = deliveries, SerializedRoots = deliveryIds.Count, UnserializedRoots = rootIds.Count(id => !deliveryIds.Contains(id)),
+            SerializedBusinessBytesObserved = comparedBusiness, RootDeliveryBytes = deliveryBytes, ReductionBytes = reduction,
+            AllocationMeasuredRoots = measuredRoots, RootInvocationAllocatedBytes = complete && roots > 0 && measuredRoots == roots ? (long?)allocated : null,
+            AllocationThreadChangedRoots = allocationThreadChanges,
+            RootCompleteAllocationSamples = completeSamples, RootCompleteAllocationMeasuredSamples = measuredCompleteSamples,
+            RootCompleteAllocationThreadChanges = completeThreadChanges,
+            RootCompleteAllocatedBytes = complete && completeSamples > 0 && completeSamples == measuredCompleteSamples ? (long?)completeAllocated : null,
+            AllocationScope = "CallerThread; Complete is included in invocation allocations; nested invocations are not added again. Not retained object size.",
+            NativeTokens = (long?)null,
+            Comparability = "Actual root business deliveries only; associated native sources deduplicated once, every serialization counted. Object-only work is observed separately. Context subtotals are not additive."
+        };
         return new GainReport(summary, groups.Select(group => new GainGroup(group.Key, group.Value[0], group.Value[1], group.Value[2])).ToArray());
     }
 }

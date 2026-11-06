@@ -74,7 +74,14 @@ internal static class Program
         string directory = Path.Combine(Path.GetTempPath(), "quietcli2-store-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         await using var store = new MeasurementStore(Path.Combine(directory, "gains.sqlite"));
+        if (arguments.Contains("--telemetry-only"))
+        {
+            await TelemetryCases.RunAsync(Case, store);
+            Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Cases = results }));
+            return failed == 0 ? 0 : 1;
+        }
         await SecondPassCases.RunAsync(Case, store, directory);
+        await TelemetryCases.RunAsync(Case, store);
         await CoreMigrationCases.RunAsync(Case, directory, Path.GetFullPath(Path.Combine(arguments[0], "../../../../..")));
         await Case("available stdin wakes a backpressured caller without stdout", InputBackpressureCases.ReadyInputDoesNotWaitForOutputAsync);
         await Case("business data forbidden in SQLite metadata", async () =>

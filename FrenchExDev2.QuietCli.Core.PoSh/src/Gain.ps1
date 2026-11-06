@@ -6,18 +6,10 @@ Projects execution counters only; never touches the business Data property.
     Local result whose public business data must not be inspected.
     #>
     param($Result)
-    $execution=@{State=$Result.Execution.State;ElapsedMs=$Result.Execution.ElapsedMs;CallbackMs=$Result.Execution.CallbackMs;Children=$Result.Execution.Children;EffectStatus=$Result.Execution.EffectStatus;Native=$null;Issues=@()}
-    if($Result.Execution.Native){
-        $native=@{}
-        foreach($field in @('ProcessId','Transport','ReadBlockBytes','ExitCode','Outcome','StdinBytesWritten','StdoutBytesRead','StderrBytesRead','TerminalBytesRead','ElapsedMs','SourceComplete','Error','State','EffectStatus')){
-            if($Result.Execution.Native.ContainsKey($field)){$native[$field]=$Result.Execution.Native[$field]}
-        }
-        $execution.Native=$native
-    }
-    $execution.Issues=@(foreach($issue in $Result.Execution.Issues){@{InvocationId=$issue.InvocationId;Outcome=$issue.Outcome;EffectStatus=$issue.EffectStatus;Error=(ConvertTo-QuietErrorCodes $issue.Error)}})
-    $metadata=@{InvocationId=$Result.InvocationId;ParentId=$Result.ParentId;RootId=$Result.RootId;SessionId=$Result.SessionId;Context=$Result.Context;Command=[IO.Path]::GetFileName($Result.Internal.Request.FilePath);Role=$Result.Internal.Request.Role;Outcome=$Result.Outcome;Completeness=$Result.Completeness;Sources=@($Result.Internal.Sources.Values);Execution=$execution;Error=(ConvertTo-QuietErrorCodes $Result.Error);CallbackMs=$Result.Execution.CallbackMs}
+    Import-QuietManagedEngine
+    $metadata=@{InvocationId=$Result.InvocationId;ParentId=$Result.ParentId;RootId=$Result.RootId;SessionId=$Result.SessionId;Context=$Result.Context;Command=[IO.Path]::GetFileName($Result.Internal.Request.FilePath);Role=$Result.Internal.Request.Role;Outcome=$Result.Outcome;Completeness=$Result.Completeness;Sources=$Result.Internal.Sources.Values;Execution=$Result.Execution;Error=$Result.Error;Allocation=$Result.Measurement.Allocation;CompleteAllocation=$Result.Measurement.CompleteAllocation}
     if($Result.Internal.Handler){$metadata.HandlerId=$Result.Internal.Handler.Id;$metadata.ModuleVersion=$Result.Internal.Handler.ModuleVersion}
-    return $metadata
+    return [FrenchExDev2.QuietCli.MeasurementTelemetry]::Project($metadata,$script:QuietMetadataAdapter)
 }
 function Save-QuietResultMetadata {
     <#

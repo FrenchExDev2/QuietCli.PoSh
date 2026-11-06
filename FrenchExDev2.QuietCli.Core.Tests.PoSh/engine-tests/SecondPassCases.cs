@@ -66,8 +66,8 @@ internal static class SecondPassCases
             accumulator.Add(new MeasurementRecord("root-a", Context: "Alpha", Outcome: "Success", Completeness: complete, Sources: [native, new("probe", "Probe", 3, 5, 0, Complete: true)]));
             accumulator.Add(new MeasurementRecord("child", ParentId: "root-a", Context: "Alpha", Outcome: "Failed", Sources: [native]));
             accumulator.Add(new MeasurementRecord("root-b", Context: "alpha", Outcome: "Success", Completeness: complete, Sources: [new("terminal", "Business", 2, TerminalBytesRead: 50, Complete: true)]));
-            accumulator.Add(new MeasurementRecord("root-a", DeliveryId: "delivery-a", OutputBytes: 40));
-            accumulator.Add(new MeasurementRecord("root-b", DeliveryId: "delivery-b", OutputBytes: 10));
+            accumulator.Add(new MeasurementRecord("root-a", DeliveryId: "delivery-a", OutputBytes: 40, Completeness: complete, Sources: [native]));
+            accumulator.Add(new MeasurementRecord("root-b", DeliveryId: "delivery-b", OutputBytes: 10, Completeness: complete, Sources: [new("terminal", "Business", 2, TerminalBytesRead: 50, Complete: true)]));
             var report = accumulator.Build(true); var summary = JsonSerializer.SerializeToElement(report.Summary);
             Check(summary.GetProperty("Invocations").GetInt32() == 3 && summary.GetProperty("Roots").GetInt32() == 2, "Invocation classification changed");
             Check(summary.GetProperty("UniqueNativeSources").GetInt32() == 3 && summary.GetProperty("BusinessBytesObserved").GetInt64() == 160 && summary.GetProperty("AuxiliaryBytesObserved").GetInt64() == 5 && summary.GetProperty("StdinBytesWritten").GetInt64() == 6, "Native source de-duplication or PTY counts changed");

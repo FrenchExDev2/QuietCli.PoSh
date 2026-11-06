@@ -40,6 +40,7 @@ internal static class MeasurementModels
         foreach (var issue in record.Execution?.Issues ?? []) { Text(issue.InvocationId, 128, true); Text(issue.Outcome, 32); Text(issue.EffectStatus, 32); foreach (var error in issue.Error ?? []) { Code(error.Code); Code(error.Phase); } }
         Nonnegative(record.OutputBytes); Nonnegative(record.OutputTokens);
         Number(record.CallbackMs); Number(record.SerializationMs);
+        Allocation(record.Allocation); Allocation(record.CompleteAllocation);
         if (record.Execution is { } execution) {
             Text(execution.State, 32); Text(execution.EffectStatus, 32); Number(execution.ElapsedMs); Number(execution.CallbackMs);
             if (execution.Native is { } native) { Text(native.State, 32); Text(native.Transport, 16); Text(native.Outcome, 32); Text(native.EffectStatus, 32); Code(native.Error); Nonnegative(native.StdinBytesWritten); Nonnegative(native.StdoutBytesRead); Nonnegative(native.StderrBytesRead); Nonnegative(native.TerminalBytesRead); Number(native.ElapsedMs); }
@@ -61,6 +62,18 @@ internal static class MeasurementModels
     /// <summary>Checks an elapsed duration.</summary>
     /// <param name="value">Finite nonnegative milliseconds.</param>
     private static void Number(double? value) { if (value.HasValue && (!double.IsFinite(value.Value) || value < 0)) throw new InvalidDataException("InvalidMeasurementDuration"); }
+
+    /// <summary>Rejects inconsistent allocation intervals without inspecting business values.</summary>
+    /// <param name="value">Optional caller-thread allocation sample.</param>
+    private static void Allocation(AllocationMeasurement? value)
+    {
+        if (value == null) return;
+        Nonnegative(value.AllocatedBytes);
+        if (value.StartThreadId <= 0 || value.EndThreadId <= 0 || value.Status is not ("Measured" or "ThreadChanged")
+            || (value.Status == "Measured" && (value.StartThreadId != value.EndThreadId || !value.AllocatedBytes.HasValue))
+            || (value.Status == "ThreadChanged" && (value.StartThreadId == value.EndThreadId || value.AllocatedBytes.HasValue)))
+            throw new InvalidDataException("InvalidAllocationMeasurement");
+    }
 }
 
 /// <summary>Typed invocation/delivery telemetry. Contains no business payload.</summary>
@@ -88,7 +101,9 @@ internal static class MeasurementModels
 /// <param name="ModuleHash">Optional module digest.</param>
 /// <param name="CallbackMs">Callback elapsed milliseconds.</param>
 /// <param name="SerializationMs">Delivery serialization milliseconds.</param>
-internal sealed record MeasurementRecord(string InvocationId, string? RootId = null, string? ParentId = null, string? SessionId = null, string? Context = null, string? Role = null, string? Command = null, string? Outcome = null, ExecutionMeasurement? Execution = null, DiagnosticCode[]? Error = null, CompletenessMeasurement? Completeness = null, SourceMeasurement[]? Sources = null, string? DeliveryId = null, long? OutputBytes = null, long? OutputTokens = null, string? TokenProfile = null, string? TokenVersion = null, string? Format = null, bool? Truncated = null, string? HandlerId = null, string? ModuleVersion = null, string? ModuleHash = null, double? CallbackMs = null, double? SerializationMs = null);
+/// <param name="Allocation">Caller-thread invocation allocations before telemetry persistence and delivery.</param>
+/// <param name="CompleteAllocation">Caller-thread Complete interval, included in Allocation rather than additive.</param>
+internal sealed record MeasurementRecord(string InvocationId, string? RootId = null, string? ParentId = null, string? SessionId = null, string? Context = null, string? Role = null, string? Command = null, string? Outcome = null, ExecutionMeasurement? Execution = null, DiagnosticCode[]? Error = null, CompletenessMeasurement? Completeness = null, SourceMeasurement[]? Sources = null, string? DeliveryId = null, long? OutputBytes = null, long? OutputTokens = null, string? TokenProfile = null, string? TokenVersion = null, string? Format = null, bool? Truncated = null, string? HandlerId = null, string? ModuleVersion = null, string? ModuleHash = null, double? CallbackMs = null, double? SerializationMs = null, AllocationMeasurement? Allocation = null, AllocationMeasurement? CompleteAllocation = null);
 
 /// <summary>Safe diagnostic information without persisted exception text.</summary>
 /// <param name="Code">Stable error identifier.</param>

@@ -62,6 +62,7 @@ internal sealed class EngineSession : IAsyncDisposable
         switch (action)
         {
             case "hello": data = Information(); break;
+            case "allocations": data = ProcessAllocationSnapshot.Capture(request.GetProperty("Precise").GetBoolean()); break;
             case "start": data = await StartAsync(InvocationRequest.Parse(request)); break;
             case "next":
                 (data, payload) = await ReadAsync(invocationId); break;
@@ -116,6 +117,7 @@ internal sealed class EngineSession : IAsyncDisposable
         switch (request.Action)
         {
             case "hello": return Information();
+            case "allocations": return ProcessAllocationSnapshot.Capture(request.Precise);
             case "start": return await StartAsync(request.Start!);
             case "save": await store.SaveAsync(request.Measurement!, request.Kind!); return null;
             case "gain": return await StartGainAsync(request.Selection!);

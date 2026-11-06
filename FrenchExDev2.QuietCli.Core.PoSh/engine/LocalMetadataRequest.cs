@@ -24,6 +24,8 @@ public sealed class LocalMetadataRequest
     internal int After { get; }
     /// <summary>Explicit privacy scrub confirmation.</summary>
     internal bool Confirmed { get; }
+    /// <summary>Explicit high-cost precision opt-in for process diagnostics.</summary>
+    internal bool Precise { get; }
 
     /// <summary>Maps only explicit action fields and closed nested telemetry records.</summary>
     /// <param name="header">Facade metadata header, never a result or business object.</param>
@@ -38,6 +40,10 @@ public sealed class LocalMetadataRequest
         switch (Action)
         {
             case "hello": case "shutdown": ClosedRecord.Check(fields, []); break;
+            case "allocations":
+                ClosedRecord.Check(fields, ["Precise"]);
+                if (fields["Precise"] is not bool) throw new InvalidDataException("InvalidAllocationPrecision");
+                Precise = (bool)fields["Precise"]!; break;
             case "start":
                 Start = ClosedRecord.Read<StartOptions>(fields, adapt).ToInvocation(); break;
             case "save":
@@ -86,6 +92,7 @@ internal static class ClosedRecord
         Type? nullable = Nullable.GetUnderlyingType(type);
         if (value == null) return type.IsValueType && nullable == null ? throw new InvalidDataException("MeasurementSchemaRejected") : null;
         if (nullable != null) return Read(nullable, value, adapt);
+        if (type == typeof(AllocationMeasurement) && value is AllocationMeasurement allocation) return allocation;
         if (type == typeof(string)) return value is string text ? text : throw new InvalidDataException("MeasurementSchemaRejected");
         if (type.IsPrimitive || type == typeof(decimal))
         {
