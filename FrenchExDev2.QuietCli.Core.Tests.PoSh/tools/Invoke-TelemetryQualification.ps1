@@ -86,7 +86,8 @@ try{
     if($baseline.Execution.Outcome -ne 'Success' -or $baseline.Report.Failed -ne 0){throw 'TelemetryBaselineFailed'}
     $state.Passed+=$baseline.Report.Passed
     $state.Case='PowerShell Complete objects and SQLite in integrated and isolated hosting';Write-WorkspaceJson $statusPath $state
-    $env:QUIETCLI2_DATABASE=Join-Path $RunDirectory 'measurements.sqlite'
+    . (Join-Path $WorkspaceRoot 'scripts/TestConfiguration.ps1')
+    Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory 'measurements.sqlite')
     Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1') -Force
     Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -Force
     $samples=& (Get-Module FrenchExDev2.QuietCli.Core.Tests.PoSh) {

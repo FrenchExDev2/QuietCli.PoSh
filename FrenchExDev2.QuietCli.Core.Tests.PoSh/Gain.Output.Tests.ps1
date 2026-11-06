@@ -13,6 +13,12 @@ function Test-QuietGainOutput {
         $script:gainTestWrites=0
         $script:gainTestSelection=$null
         function Send-QuietRequest {
+            <#
+            .SYNOPSIS
+            Observes telemetry writes and report filters without changing engine responses.
+            .PARAMETER Request
+            Closed engine metadata request.
+            #>
             param($Request)
             if($Request.Action -eq 'save'){$script:gainTestWrites++}
             if($Request.Action -eq 'gain'){$script:gainTestSelection=$Request.Clone()}

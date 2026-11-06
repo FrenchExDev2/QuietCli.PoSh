@@ -115,7 +115,7 @@ internal static class RecallDurableCases
     /// <summary>Creates a case-owned report directory, retaining all failing evidence.</summary>
     private static string Root()
     {
-        string root = Environment.GetEnvironmentVariable("QUIETCLI2_RECALL_TEST_ROOT") ?? throw new InvalidOperationException("RecallTestRootRequired");
+        string root = Environment.GetEnvironmentVariable("QUIETCLI_RECALL_TEST_ROOT") ?? throw new InvalidOperationException("RecallTestRootRequired");
         string directory = Path.Combine(root, Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory); return directory;
     }
     /// <summary>Asserts an independent expected property.</summary>

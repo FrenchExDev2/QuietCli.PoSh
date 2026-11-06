@@ -15,7 +15,8 @@ param([string]$WorkspaceRoot,[string]$RunDirectory,[string]$RepositoryPath,[stri
 $ErrorActionPreference='Stop'
 $utf8=[Text.UTF8Encoding]::new($false);[Console]::InputEncoding=$utf8;[Console]::OutputEncoding=$utf8;$OutputEncoding=$utf8
 . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
-$env:QUIETCLI2_DATABASE=Join-Path $RunDirectory 'profile.sqlite'
+. (Join-Path $WorkspaceRoot 'scripts/TestConfiguration.ps1')
+Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory 'profile.sqlite') -Hosting $(if($env:QUIETCLI_EXPECT_ENGINE_MODE){$env:QUIETCLI_EXPECT_ENGINE_MODE}else{'Auto'})
 $env:GIT_OPTIONAL_LOCKS='0';$env:GIT_TERMINAL_PROMPT='0'
 Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
 $null=Import-Module $ProfilerModulePath -PassThru

@@ -42,10 +42,10 @@ function Invoke-QuietRecallTests {
         }
     }
     $cases['Recall captures mixed streams and reanalyzes without a new native request in both hosts']={
-        $oldMode=$env:QUIETCLI2_ENGINE_MODE
+        $oldMode=(Get-QuietTestConfiguration).Values['engine.hosting']
         try{
             foreach($mode in @('InProcess','Process')){
-                Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$mode
+                Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$mode
                 $r=quiet -AsObject -Recall -RecallMaxBytes All -StdoutMode Bytes -StderrMode Bytes -Output {} dotnet $fixture mixed 92161 11000
                 Assert-QuietEqual $r.Outcome Success
                 Assert-QuietEqual $r.Recall.ReceivedBytes 103161
@@ -64,7 +64,7 @@ function Invoke-QuietRecallTests {
                 $events=Get-QuietRecall $r -Reference $ref
                 Assert-QuietEqual (($events|ForEach-Object ByteCount|Measure-Object -Sum).Sum) 7
             }
-        }finally{Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$oldMode}
+        }finally{Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$oldMode}
     }
     $cases['Recall survives callback failures and preserves invalid UTF8 for byte reanalysis']={
         $r=quiet -AsObject -Recall -Output {throw 'independent parser defect'} dotnet $fixture emit 18000

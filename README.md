@@ -94,7 +94,7 @@ $json = ConvertTo-QuietJson $analysis -MaxOutputBytes 4096
 
 `-SaveRecall -AsObject` writes all received output to a durable streaming journal, independently of the memory retention budget. Combined with `-Recall`, the returned `Recall` exposes the disk view and `Recall.MemoryCapture` exposes the bounded memory view. `RecallId` is the immutable capture identity; `RecallName` is an optional nonunique searchable label.
 
-The default store is `%LOCALAPPDATA%/QuietCli2/recalls` on Windows and the platform local-data directory on Unix. Set `QUIETCLI2_RECALL_ROOT` or supply `-RecallRoot` to select another store. There is no automatic expiry or deletion. Recorded output may contain sensitive business content; retention is an explicit caller choice.
+The default store is `%LOCALAPPDATA%/QuietCli2/recalls` on Windows and the platform local-data directory on Unix. Set YAML `recall.root` or supply `-RecallRoot` to select another store. There is no automatic expiry or deletion. Recorded output may contain sensitive business content; retention is an explicit caller choice.
 
 Each capture uses a versioned JSON manifest and a checksummed binary journal. Recording uses bounded buffers and 64-bit offsets; there is no 4 GiB content ceiling. Completed journals replay through streaming cursors. Interrupted recordings recover complete checksum-valid frames and remain marked as incomplete. `DurableBytes` identifies the last confirmed filesystem checkpoint; it is not a guarantee against every hardware or power failure. Save errors remain explicit while native drainage continues.
 
@@ -135,7 +135,7 @@ See the [Recall contract](docs/recall.md) for checkpoint behavior, corruption ha
 
 `Auto` hosting selects the compatible integrated C# build from the actual PowerShell CLR: `net10.0` on .NET 10 and `net11.0` on .NET 11 or later. Business callbacks, data, decoding and framing stay caller-local. Integrated native reads and lifecycle controls use direct C# calls rather than pipe IPC.
 
-Set `QUIETCLI2_ENGINE_MODE=Process` explicitly for the isolated engine, which requires the pinned .NET 11 RC runtime. `InProcess` explicitly selects direct hosting. Set the mode before the first engine call, or use `Stop-QuietEngine` before changing it. `Get-QuietEngine` reports the actual mode, runtime, process identity and transport counters.
+Set YAML `engine.hosting: Process` explicitly for the isolated engine, which requires the pinned .NET 11 RC runtime. `InProcess` explicitly selects direct hosting. Set the mode before the first engine call, or use `Stop-QuietEngine` before changing it. `Get-QuietEngine` reports the actual mode, runtime, process identity and transport counters.
 
 Distributions target Windows x64/ARM64 and Linux glibc/musl x64/ARM64. The facade selects the actual host RID and verifies packaged resources. Pipes preserve separate stdout/stderr; PTY merges output into `TerminalBytesRead`, leaving separate stream counts unknown. Windows uses ConPTY; Linux uses verified native bridges.
 
@@ -143,24 +143,28 @@ Integrated hosting shares PowerShell's failure boundary. Process isolation provi
 
 See [hosting and performance](docs/performance-and-hosting.md) and [PowerShell/C# responsibilities](docs/powershell-csharp-boundaries.md).
 
+## Configuration
+
+See [configuration and unique tokenized deliveries](docs/configuration.md). The sole product environment override, `QUIETCLI_CONFIG_DIRECTORY`, selects the directory containing `config.yaml`. Explicit parameters override the session's YAML snapshot, then built-in defaults. Use `New-QuietCliConfiguration`, `Test-QuietCliConfiguration`, `Get-QuietCliConfiguration` and `Import-QuietCliConfiguration` to manage it explicitly.
+
 ## Measurements and privacy
 
 The result counts stdin bytes actually written, stdout/stderr bytes actually read, and merged terminal bytes for PTY. `Business`, `Probe`, `Observation` and `Infrastructure` roles separate sources. Aggregates deduplicate sources; context subtotals are not necessarily additive. Probes and reanalysis do not inflate business gains.
 
 With `-AsObject`, delivery size and reduction remain unknown. JSON/YAML bytes are measured only when their representation is produced, including the delivery envelope. The latest delivered text remains local under its `DeliveryId`; successive delivery strings do not accumulate in the result.
 
-Use `ConvertTo-QuietJson` for JSON or `Out-QuietResult -AsYaml` for YAML. There is no public `ConvertTo-QuietYaml` command; `Out-QuietResult -AsJson` also produces JSON.
+Use `ConvertTo-QuietJson` for JSON or `ConvertTo-QuietYaml` for YAML. `ConvertTo-QuietYaml` provides the symmetric YAML conversion; `Out-QuietResult -AsJson` also produces JSON.
 
 ```powershell
 $json = ConvertTo-QuietJson $r -MaxOutputBytes 4096
 $yaml = Out-QuietResult $r -AsYaml -MaxOutputBytes 4096
 ```
 
-Each successful conversion creates a new `DeliveryId` and, when tracking is enabled and storage succeeds, adds a `kind='delivery'` row to SQLite's `quiet2_events` table. Converting the same result again creates another delivery row. These rows contain metadata and measurements such as format, output bytes and serialization duration, never the delivered JSON/YAML text or business data. Offline results and `QUIETCLI2_TRACKING=0` skip these writes. A storage failure is reported through `Measurement.StorageError` and `Measurement.Status='StorageUnavailable'` while the produced text is still returned.
+The first unique representation creates a `DeliveryId` and, when tracking is enabled and storage succeeds, adds one `kind='delivery'` row to SQLite's `quiet2_events` table. Identical conversions on the same result reuse that identity and expose `AlreadyDelivered=True`; different tokenizer measurements do not create new deliveries. These rows contain metadata and measurements such as format, output bytes and serialization duration, never the delivered JSON/YAML text or business data. Offline results and `telemetry.enabled: false` skip these writes. A storage failure is reported through `Measurement.StorageError` and `Measurement.Status='StorageUnavailable'` while the produced text is still returned.
 
-Tokenization is off by default. Optional `-Tokenizer o200k_base` or `cl100k_base` counts the exact delivery text already produced. Native model-token counts remain unknown. Byte reduction alone establishes neither context-window use nor financial savings.
+Tokenization defaults to `o200k_base` and counts the exact final delivery text. `-Tokenizer cl100k_base` or `off` overrides that default. Native model-token counts remain unknown. Byte reduction alone establishes neither context-window use nor financial savings.
 
-SQLite stores closed metadata, counters, relationships and structured error codes. It excludes native output, business objects, delivered text, Recall names and callback code. Explicit Recall storage is separate from telemetry and ordinary result serialization. `QUIETCLI2_DATABASE` selects the telemetry database; `QUIETCLI2_TRACKING=0` disables measurement writes. Storage errors remain distinct from business outcomes.
+SQLite stores closed metadata, counters, relationships and structured error codes. It excludes native output, business objects, delivered text, Recall names and callback code. Explicit Recall storage is separate from telemetry and ordinary result serialization. YAML `telemetry.database` selects the database; `telemetry.enabled: false` disables measurement writes. Storage errors remain distinct from business outcomes.
 
 See [allocation and delivery metrics](docs/allocation-and-delivery-metrics.md), [Core performance qualification](FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md) and the [RTK comparison](QUIET_VS_RTK_MEASURES.md) for definitions, measured scope and limitations.
 

@@ -64,9 +64,12 @@ Produces and measures one actual bounded delivery; no whole-result serialization
     .PARAMETER Tokenizer
     off, o200k_base or cl100k_base; only actual delivery text is counted.
     #>
-    [CmdletBinding()]param([Parameter(Mandatory,ValueFromPipeline)]$InputObject,[switch]$AsJson,[switch]$AsYaml,[int]$MaxItems=20,[int]$MaxOutputBytes=4096,[ValidateSet('off','o200k_base','cl100k_base')][string]$Tokenizer='off')
+    [CmdletBinding()]param([Parameter(Mandatory,ValueFromPipeline)]$InputObject,[switch]$AsJson,[switch]$AsYaml,[int]$MaxItems,[int]$MaxOutputBytes,[ValidateSet('off','o200k_base','cl100k_base')][string]$Tokenizer)
     process{
         if($AsJson -and $AsYaml){throw 'OutputFormatsAreExclusive'}
+        if(!$PSBoundParameters.ContainsKey('MaxItems')){$MaxItems=Get-QuietSetting 'delivery.maxItems'}
+        if(!$PSBoundParameters.ContainsKey('MaxOutputBytes')){$MaxOutputBytes=Get-QuietSetting 'delivery.maxOutputBytes'}
+        if(!$PSBoundParameters.ContainsKey('Tokenizer')){$Tokenizer=Get-QuietSetting 'tokenization.tokenizer'}
         if($MaxOutputBytes -lt 256 -or $MaxItems -lt 0){throw 'InvalidDeliveryBudget'}
         $watch=[Diagnostics.Stopwatch]::StartNew();$state=@{Omitted=0L;UnknownOmissions=$false;Nodes=0};$business=$InputObject.Data
         if($InputObject.Internal.Request.ContainsKey('Projection')){$business=& $InputObject.Internal.Request.Projection $business @{MaxItems=$MaxItems;MaxOutputBytes=$MaxOutputBytes}}
@@ -83,20 +86,56 @@ Produces and measures one actual bounded delivery; no whole-result serialization
         }
         if($size -gt $MaxOutputBytes){throw 'OutputBudgetTooSmall'}
         $serializationMs=$watch.Elapsed.TotalMilliseconds
-        $tokens=$null;$tokenVersion=$null
-        if($Tokenizer -ne 'off'){
-            foreach($name in @('Microsoft.Bcl.Memory','Microsoft.ML.Tokenizers','Microsoft.ML.Tokenizers.Data.O200kBase','Microsoft.ML.Tokenizers.Data.Cl100kBase')){Assert-QuietResources "resources/tokenizers/$name.dll";[void][Reflection.Assembly]::LoadFrom((Join-Path $script:QuietRoot "resources/tokenizers/$name.dll"))}
-            $counter=[Microsoft.ML.Tokenizers.TiktokenTokenizer]::CreateForEncoding($Tokenizer,$null,$null)
-            $tokens=$counter.CountTokens($text);$tokenVersion='Microsoft.ML.Tokenizers/'+[Microsoft.ML.Tokenizers.TiktokenTokenizer].Assembly.GetName().Version.ToString()
+        $format=if($AsYaml){'yaml'}else{'json'}
+        $fingerprint=$format+':'+[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($script:QuietUtf8.GetBytes($text)))
+        if(!$InputObject.Internal.ContainsKey('DeliveryReceipts')){$InputObject.Internal.DeliveryReceipts=@{}}
+        $receipts=$InputObject.Internal.DeliveryReceipts
+        $alreadyDelivered=$receipts.ContainsKey($fingerprint)
+        if(!$alreadyDelivered){
+            if($receipts.Count -ge (Get-QuietSetting 'delivery.maxTrackedRepresentations')){throw 'DeliveryRepresentationLimit'}
+            $receipt=@{DeliveryId=[guid]::NewGuid().ToString('N');Tokens=@{};Persisted=@{};Metadata=$null}
         }
-        $deliveryId=[guid]::NewGuid().ToString('N')
+        else{$receipt=$receipts[$fingerprint]}
+        $deliveryId=$receipt.DeliveryId
+        $tokens=$null;$tokenVersion=$null;$measurementKey='off'
+        if($Tokenizer -ne 'off'){
+            if(!$script:QuietTokenizers.ContainsKey($Tokenizer)){
+                foreach($name in @('Microsoft.Bcl.Memory','Microsoft.ML.Tokenizers','Microsoft.ML.Tokenizers.Data.O200kBase','Microsoft.ML.Tokenizers.Data.Cl100kBase')){Assert-QuietResources "resources/tokenizers/$name.dll";[void][Reflection.Assembly]::LoadFrom((Join-Path $script:QuietRoot "resources/tokenizers/$name.dll"))}
+                $script:QuietTokenizers[$Tokenizer]=[Microsoft.ML.Tokenizers.TiktokenTokenizer]::CreateForEncoding($Tokenizer,$null,$null)
+            }
+            $tokenVersion='Microsoft.ML.Tokenizers/'+[Microsoft.ML.Tokenizers.TiktokenTokenizer].Assembly.GetName().Version.ToString()
+            $measurementKey=$Tokenizer+':'+$tokenVersion
+            if(!$receipt.Tokens.ContainsKey($measurementKey)){
+                $receipt.Tokens[$measurementKey]=@{TokenProfile=$Tokenizer;TokenVersion=$tokenVersion;OutputTokens=[long]$script:QuietTokenizers[$Tokenizer].CountTokens($text)}
+            }
+            $tokens=$receipt.Tokens[$measurementKey].OutputTokens
+        }
+        $receipts[$fingerprint]=$receipt
+        $offline=$InputObject.Internal.ContainsKey('Offline') -and $InputObject.Internal.Offline
+        if(!$receipt.Metadata -and !$offline){
+            $metadata=Get-QuietMetadata $InputObject;$metadata.DeliveryId=$deliveryId;$metadata.OutputBytes=$size;$metadata.OutputTokens=$tokens;$metadata.TokenProfile=$Tokenizer;$metadata.TokenVersion=$tokenVersion;$metadata.Format=$format;$metadata.Truncated=$document.Truncation.Applied;$metadata.SerializationMs=$serializationMs
+            $receipt.Metadata=$metadata
+        }
         $InputObject.Deliveries.Clear()
-        $InputObject.Deliveries.Add([pscustomobject]@{DeliveryId=$deliveryId;Format=$(if($AsYaml){'yaml'}else{'json'});Text=$text;Bytes=$size;Tokens=$tokens})
+        $InputObject.Deliveries.Add([pscustomobject]@{DeliveryId=$deliveryId;AlreadyDelivered=$alreadyDelivered;Format=$format;Text=$text;Bytes=$size;Tokens=$tokens;TokenProfile=$Tokenizer;TokenVersion=$tokenVersion})
+        $InputObject|Add-Member -NotePropertyName DeliveryId -NotePropertyValue $deliveryId -Force
+        $InputObject|Add-Member -NotePropertyName AlreadyDelivered -NotePropertyValue $alreadyDelivered -Force
+        foreach($field in @{DeliveryId=$deliveryId;AlreadyDelivered=$alreadyDelivered;TokenProfile=$Tokenizer;TokenVersion=$tokenVersion}.GetEnumerator()){
+            $InputObject.Measurement|Add-Member -NotePropertyName $field.Key -NotePropertyValue $field.Value -Force
+        }
         $InputObject.Measurement.OutputBytes=$size;$InputObject.Measurement.OutputTokens=$tokens;$InputObject.Measurement.Status='Delivered'
+        $InputObject.Measurement.StorageError=$null
         Import-QuietManagedEngine
         $InputObject.Measurement.ReductionBytes=[FrenchExDev2.QuietCli.MeasurementTelemetry]::Reduction($InputObject.Internal.Sources.Values,$InputObject.Completeness,$size,$script:QuietMetadataAdapter)
-        if($env:QUIETCLI2_TRACKING -ne '0' -and !($InputObject.Internal.ContainsKey('Offline') -and $InputObject.Internal.Offline)){
-            try{$metadata=Get-QuietMetadata $InputObject;$metadata.DeliveryId=$deliveryId;$metadata.OutputBytes=$size;$metadata.OutputTokens=$tokens;$metadata.TokenProfile=$Tokenizer;$metadata.TokenVersion=$tokenVersion;$metadata.Format=if($AsYaml){'yaml'}else{'json'};$metadata.Truncated=$document.Truncation.Applied;$metadata.SerializationMs=$serializationMs;$null=Send-QuietRequest @{Action='save';Kind='delivery';Metadata=$metadata}}
+        if((Get-QuietSetting 'telemetry.enabled') -and !$offline){
+            $storeKey=(Get-QuietSetting 'telemetry.database')+':'+$measurementKey
+            try{
+                if(!$receipt.Persisted.ContainsKey($storeKey)){
+                    $metadata=$receipt.Metadata.Clone();$metadata.TokenMeasurements=@($receipt.Tokens.Values)
+                    $null=Send-QuietRequest @{Action='save';Kind='delivery';Metadata=$metadata}
+                    $receipt.Persisted[$storeKey]=$true
+                }
+            }
             catch{$InputObject.Measurement.StorageError=$_.Exception.Message;$InputObject.Measurement.Status='StorageUnavailable'}
         }
         return $text
@@ -112,7 +151,25 @@ Produces a JSON delivery from a local result, measuring only the produced text.
     Presented entries per container.
     .PARAMETER MaxOutputBytes
     Final UTF-8 byte budget.
+    .PARAMETER Tokenizer
+    Encoding override; defaults to the effective configuration.
     #>
-    [CmdletBinding()]param([Parameter(Mandatory,ValueFromPipeline)]$InputObject,[int]$MaxItems=20,[int]$MaxOutputBytes=4096)
-    process{Out-QuietResult -InputObject $InputObject -AsJson -MaxItems $MaxItems -MaxOutputBytes $MaxOutputBytes}
+    [CmdletBinding()]param([Parameter(Mandatory,ValueFromPipeline)]$InputObject,[int]$MaxItems,[int]$MaxOutputBytes,[ValidateSet('off','o200k_base','cl100k_base')][string]$Tokenizer)
+    process{Out-QuietResult @PSBoundParameters -AsJson}
+}
+function ConvertTo-QuietYaml {
+    <#
+    .SYNOPSIS
+    Produces a YAML delivery with the same measurement and identity rules as JSON.
+    .PARAMETER InputObject
+    Local QuietCli result.
+    .PARAMETER MaxItems
+    Presented entries per container.
+    .PARAMETER MaxOutputBytes
+    Final UTF-8 byte budget.
+    .PARAMETER Tokenizer
+    Encoding override; defaults to the effective configuration.
+    #>
+    [CmdletBinding()]param([Parameter(Mandatory,ValueFromPipeline)]$InputObject,[int]$MaxItems,[int]$MaxOutputBytes,[ValidateSet('off','o200k_base','cl100k_base')][string]$Tokenizer)
+    process{Out-QuietResult @PSBoundParameters -AsYaml}
 }

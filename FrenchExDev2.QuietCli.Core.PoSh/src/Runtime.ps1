@@ -19,7 +19,7 @@ Creates one fresh caller-local runtime and attaches interactive adapters.
     if($Request.ContainsKey('Data')){$runtime.Data=$Request.Data}
     $name=if($Request.ContainsKey('RecallName')){[string]$Request.RecallName}else{[NullString]::Value}
     if($Request.ContainsKey('SaveRecall') -and $Request.SaveRecall){
-        $root=if($Request.ContainsKey('RecallRoot')){[string]$Request.RecallRoot}else{[NullString]::Value}
+        $root=Resolve-QuietRecallRoot $(if($Request.ContainsKey('RecallRoot')){[string]$Request.RecallRoot}else{''})
         $runtime.RecallWriter=[FrenchExDev2.QuietCli.RecallStore]::CreateAsync($root,$name,(Get-QuietRecallSettings $Request)).GetAwaiter().GetResult()
     }
     if($Request.ContainsKey('RecallOptions')){

@@ -19,7 +19,7 @@ Saves counters without serializing or enumerating Result.Data.
     Completed caller-local result.
     #>
     param($Result)
-    if($env:QUIETCLI2_TRACKING -eq '0'){return}
+    if(!(Get-QuietSetting 'telemetry.enabled')){return}
     try{$null=Send-QuietRequest @{Action='save';Kind='invocation';Metadata=(Get-QuietMetadata $Result)}}
     catch{$Result.Measurement.StorageError=$_.Exception.Message;$Result.Measurement.Status='StorageUnavailable'}
 }
@@ -74,6 +74,7 @@ Reports measured counters across all contexts by default, without creating a mis
     if(([int][bool]$AsObject+[int][bool]$AsYaml+[int][bool]$AsJson) -gt 1){throw 'OutputFormatsAreExclusive'}
     if($PSBoundParameters.ContainsKey('Compress') -and !$AsJson){throw 'CompressRequiresAsJson'}
     if($Generic -and $PSBoundParameters.ContainsKey('Context')){throw 'ContextAndGenericAreExclusive'}
+    if(!$PSBoundParameters.ContainsKey('MaxEvents')){$MaxEvents=Get-QuietSetting 'gain.maxEvents'}
     if($null -eq $From -and $PSBoundParameters.ContainsKey('Days')){
         if($null -eq $To){$To=[DateTimeOffset]::UtcNow}
         $From=$To.AddDays(-$Days)

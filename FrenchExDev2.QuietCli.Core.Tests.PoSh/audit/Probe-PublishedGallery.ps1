@@ -27,7 +27,8 @@ try{
     }
     $state.Passed=1;$state.Case='Executing only the modules downloaded from PSGallery';Write-WorkspaceJson $status $state
     Import-Module (Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1) -Force
-    $env:QUIETCLI2_DATABASE=Join-Path $RunDirectory transport.sqlite
+    . (Join-Path $WorkspaceRoot 'scripts/TestConfiguration.ps1')
+    Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory transport.sqlite)
     $probe=Join-Path $PSScriptRoot Probe-GalleryInstall.ps1
     $r=quiet -AsObject -Role Infrastructure -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} pwsh -NoProfile -File $probe -InstallationDirectory $installation -ExistingInstallation
     if($r.Outcome -ne 'Success' -or !$r.Data.Installed -or !$r.Data.CoreLoadedFromPackage -or !$r.Data.GitLoadedFromPackage){throw 'PublishedGalleryExecutionFailed'}

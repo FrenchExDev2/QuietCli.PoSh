@@ -220,7 +220,7 @@ If the existing domain object answers the next question, querying it avoids anot
 
 `-Recall` defaults to 16 MiB of native bytes. `-RecallMaxBytes` accepts positive integral bytes, IEC sizes such as `90KiB`, or `All`. `Head`, `Tail`, and `HeadAndTail` select which bytes remain when bounded retention fills; `All` requires `Head` and imposes no configured memory ceiling. Object overhead and process memory still matter. [Q9, Q10]
 
-`-SaveRecall` is independent of that memory budget: it streams all received output to disk without requiring unlimited RAM. With both flags, `Recall` is the disk-backed view and `Recall.MemoryCapture` is the separately bounded memory view. Default storage is durable user data (`%LOCALAPPDATA%/QuietCli2/recalls` on Windows), configurable through `QUIETCLI2_RECALL_ROOT` or `-RecallRoot`.
+`-SaveRecall` is independent of that memory budget: it streams all received output to disk without requiring unlimited RAM. With both flags, `Recall` is the disk-backed view and `Recall.MemoryCapture` is the separately bounded memory view. Default storage is durable user data (`%LOCALAPPDATA%/QuietCli2/recalls` on Windows), configurable through `QUIETCLI_RECALL_ROOT` or `-RecallRoot`.
 
 Captured records distinguish stdout and stderr and preserve their **caller-observed order**; they do not establish exact write chronology across independent pipes. PTY output is already merged, and stdin is not retained. Received, retained, omitted, durable and source-complete values remain separate. At missing ranges, partial reanalysis requires `-AllowPartial` and resets decoding/framing instead of silently joining unrelated fragments. [Q9, Q10]
 

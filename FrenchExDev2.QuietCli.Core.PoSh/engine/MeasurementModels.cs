@@ -39,6 +39,12 @@ internal static class MeasurementModels
         foreach (var error in record.Error ?? []) { Code(error.Code); Code(error.Phase); }
         foreach (var issue in record.Execution?.Issues ?? []) { Text(issue.InvocationId, 128, true); Text(issue.Outcome, 32); Text(issue.EffectStatus, 32); foreach (var error in issue.Error ?? []) { Code(error.Code); Code(error.Phase); } }
         Nonnegative(record.OutputBytes); Nonnegative(record.OutputTokens);
+        if (record.TokenMeasurements is { Length: > 16 }) throw new InvalidDataException("TokenMeasurementLimit");
+        var tokenKeys = new HashSet<(string, string)>();
+        foreach (var token in record.TokenMeasurements ?? []) {
+            Text(token.TokenVersion, 128, true); Nonnegative(token.OutputTokens);
+            if (token.TokenProfile is not ("o200k_base" or "cl100k_base") || !tokenKeys.Add((token.TokenProfile, token.TokenVersion))) throw new InvalidDataException("InvalidTokenMeasurement");
+        }
         Number(record.CallbackMs); Number(record.SerializationMs);
         Allocation(record.Allocation); Allocation(record.CompleteAllocation);
         if (record.Execution is { } execution) {
@@ -103,7 +109,14 @@ internal static class MeasurementModels
 /// <param name="SerializationMs">Delivery serialization milliseconds.</param>
 /// <param name="Allocation">Caller-thread invocation allocations before telemetry persistence and delivery.</param>
 /// <param name="CompleteAllocation">Caller-thread Complete interval, included in Allocation rather than additive.</param>
-internal sealed record MeasurementRecord(string InvocationId, string? RootId = null, string? ParentId = null, string? SessionId = null, string? Context = null, string? Role = null, string? Command = null, string? Outcome = null, ExecutionMeasurement? Execution = null, DiagnosticCode[]? Error = null, CompletenessMeasurement? Completeness = null, SourceMeasurement[]? Sources = null, string? DeliveryId = null, long? OutputBytes = null, long? OutputTokens = null, string? TokenProfile = null, string? TokenVersion = null, string? Format = null, bool? Truncated = null, string? HandlerId = null, string? ModuleVersion = null, string? ModuleHash = null, double? CallbackMs = null, double? SerializationMs = null, AllocationMeasurement? Allocation = null, AllocationMeasurement? CompleteAllocation = null);
+/// <param name="TokenMeasurements">Additional encoding-specific counts of the same representation, never delivered text.</param>
+internal sealed record MeasurementRecord(string InvocationId, string? RootId = null, string? ParentId = null, string? SessionId = null, string? Context = null, string? Role = null, string? Command = null, string? Outcome = null, ExecutionMeasurement? Execution = null, DiagnosticCode[]? Error = null, CompletenessMeasurement? Completeness = null, SourceMeasurement[]? Sources = null, string? DeliveryId = null, long? OutputBytes = null, long? OutputTokens = null, string? TokenProfile = null, string? TokenVersion = null, string? Format = null, bool? Truncated = null, string? HandlerId = null, string? ModuleVersion = null, string? ModuleHash = null, double? CallbackMs = null, double? SerializationMs = null, AllocationMeasurement? Allocation = null, AllocationMeasurement? CompleteAllocation = null, TokenMeasurement[]? TokenMeasurements = null);
+
+/// <summary>One encoding-specific measurement of an existing delivery.</summary>
+/// <param name="TokenProfile">Actual encoding.</param>
+/// <param name="TokenVersion">Actual tokenizer implementation version.</param>
+/// <param name="OutputTokens">Nonnegative measured token count.</param>
+internal sealed record TokenMeasurement(string TokenProfile, string TokenVersion, long OutputTokens);
 
 /// <summary>Safe diagnostic information without persisted exception text.</summary>
 /// <param name="Code">Stable error identifier.</param>

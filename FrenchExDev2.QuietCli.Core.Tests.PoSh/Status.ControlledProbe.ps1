@@ -20,7 +20,8 @@ $validation=Test-QuietControlledStatusAssertions
 $git=(Get-Command git -CommandType Application -ErrorAction Stop|Select-Object -First 1).Source
 $fixtures=New-QuietControlledStatusFixtures -Root (Join-Path $RunDirectory 'fixtures') -GitPath $git
 Write-WorkspaceJson (Join-Path $RunDirectory 'fixture-manifest.json') $fixtures
-$env:QUIETCLI2_DATABASE=Join-Path $RunDirectory 'measurements.sqlite'
+. (Join-Path $WorkspaceRoot 'scripts/TestConfiguration.ps1')
+Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory 'measurements.sqlite') -Hosting $(if($env:QUIETCLI_EXPECT_ENGINE_MODE){$env:QUIETCLI_EXPECT_ENGINE_MODE}else{'Auto'})
 Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
 $core=Get-Module FrenchExDev2.QuietCli.Core.PoSh
 $expectedPath=[IO.Path]::GetFullPath((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psm1'))
@@ -60,7 +61,7 @@ try{
         if((Get-Module FrenchExDev2.QuietCli.Git.PoSh) -or @(Get-QuietHandler).Count){throw 'ControlledStatusBusinessCompanionLoaded'}
         $engine=Get-QuietEngine
         if($engine.Engine.RuntimeIdentifier -cne [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier){throw 'ControlledStatusEngineRidMismatch'}
-        if($env:QUIETCLI2_EXPECT_ENGINE_MODE -and $engine.Mode -cne $env:QUIETCLI2_EXPECT_ENGINE_MODE){throw 'ControlledStatusEngineModeMismatch'}
+        if($env:QUIETCLI_EXPECT_ENGINE_MODE -and $engine.Mode -cne $env:QUIETCLI_EXPECT_ENGINE_MODE){throw 'ControlledStatusEngineModeMismatch'}
         $observed.Add(@{Name=$fixture.Name;Oracle=$oracle;Human=$human;Samples=$samples.ToArray();GitModuleLoaded=$false;RegisteredHandlers=0;EngineMode=$engine.Mode;EngineRid=$engine.Engine.RuntimeIdentifier})
         Write-WorkspaceJson (Join-Path $RunDirectory 'controlled-status.partial.json') @{Scenarios=$observed.ToArray();Validation=$validation}
         @{Kind='Progress';Scenario=$fixture.Name;Completed=$observed.Count}|ConvertTo-Json -Compress

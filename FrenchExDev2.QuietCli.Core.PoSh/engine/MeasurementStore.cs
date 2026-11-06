@@ -52,6 +52,25 @@ internal sealed class MeasurementStore : IAsyncDisposable
         string? Value(string name) => metadata.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null ? value.GetString() : null;
         string id = kind == "delivery" ? Value("DeliveryId")! : Value("InvocationId")!;
         using var database = new Database(path, true);
+        if (kind == "delivery") {
+            var record = metadata.Deserialize<MeasurementRecord>()!;
+            database.Execute("BEGIN IMMEDIATE", []);
+            try {
+                database.Execute("CREATE TABLE IF NOT EXISTS quiet2_delivery_tokens(delivery_id TEXT NOT NULL,token_profile TEXT NOT NULL,token_version TEXT NOT NULL,output_tokens INTEGER NOT NULL CHECK(output_tokens>=0),PRIMARY KEY(delivery_id,token_profile,token_version))", []);
+                database.Execute("INSERT INTO quiet2_events(id,kind,timestamp_ms,parent_id,root_id,session_id,context,role,command,outcome,payload) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING",
+                    [id, kind, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), Value("ParentId")!, Value("RootId")!, Value("SessionId")!, Value("Context")!, Value("Role")!, Value("Command")!, Value("Outcome")!, metadata.GetRawText()]);
+                var existing = database.Query("SELECT kind,payload FROM quiet2_events WHERE id=?", [id])[0];
+                var original = MeasurementProjection.Read((string)existing["payload"]).Deserialize<MeasurementRecord>()!;
+                if ((string)existing["kind"] != "delivery" || original.InvocationId != record.InvocationId || original.OutputBytes != record.OutputBytes || original.Format != record.Format) throw new InvalidDataException("DeliveryIdentityConflict");
+                foreach (var token in record.TokenMeasurements ?? []) {
+                    database.Execute("INSERT INTO quiet2_delivery_tokens(delivery_id,token_profile,token_version,output_tokens) VALUES(?,?,?,?) ON CONFLICT(delivery_id,token_profile,token_version) DO NOTHING", [id, token.TokenProfile, token.TokenVersion, token.OutputTokens]);
+                    var stored = database.Query("SELECT output_tokens FROM quiet2_delivery_tokens WHERE delivery_id=? AND token_profile=? AND token_version=?", [id, token.TokenProfile, token.TokenVersion])[0];
+                    if ((long)stored["output_tokens"] != token.OutputTokens) throw new InvalidDataException("TokenMeasurementConflict");
+                }
+                database.Execute("COMMIT", []);
+            } catch { database.Execute("ROLLBACK", []); throw; }
+            return true;
+        }
         database.Execute("INSERT INTO quiet2_events(id,kind,timestamp_ms,parent_id,root_id,session_id,context,role,command,outcome,payload) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,outcome=excluded.outcome",
             [id, kind, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), Value("ParentId")!, Value("RootId")!, Value("SessionId")!, Value("Context")!, Value("Role")!, Value("Command")!, Value("Outcome")!, metadata.GetRawText()]);
         return true;
@@ -121,6 +140,7 @@ internal sealed class MeasurementStore : IAsyncDisposable
         if (!File.Exists(path)) return accumulator.Build(true);
         using var database = new Database(path, false);
         var (selection, filters) = Select(request);
+        bool tokenTable = database.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='quiet2_delivery_tokens'", []).Count != 0;
         long? timestamp = null; string? identifier = null; int consumed = 0;
         database.Execute("BEGIN", []);
         try
@@ -144,7 +164,11 @@ internal sealed class MeasurementStore : IAsyncDisposable
                     string payload = (string)row["payload"];
                     if (System.Text.Encoding.UTF8.GetByteCount(payload) > Protocol.HeaderLimit - 4096) throw new InvalidDataException("MeasurementRowTooLarge");
                     var safe = MeasurementProjection.Read(payload);
-                    accumulator.Add(safe.Deserialize<MeasurementRecord>() ?? throw new InvalidDataException("InvalidMeasurementRecord"));
+                    var record = safe.Deserialize<MeasurementRecord>() ?? throw new InvalidDataException("InvalidMeasurementRecord");
+                    TokenMeasurement[]? tokens = record.DeliveryId != null && tokenTable
+                        ? database.Query("SELECT token_profile,token_version,output_tokens FROM quiet2_delivery_tokens WHERE delivery_id=?", [record.DeliveryId])
+                            .Select(item => new TokenMeasurement((string)item["token_profile"], (string)item["token_version"], (long)item["output_tokens"])).ToArray() : null;
+                    accumulator.Add(record, tokens);
                     consumed++; timestamp = (long)row["timestamp_ms"]; identifier = (string)row["id"];
                 }
                 if (rows.Count < count) return accumulator.Build(true);

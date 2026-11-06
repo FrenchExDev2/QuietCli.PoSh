@@ -17,8 +17,8 @@ jobs:
       - name: Qualify every applicable capability
         shell: pwsh
         env:
-          QUIETCLI2_QUALIFICATION_CONFIG: ${{ vars.QUIETCLI2_QUALIFICATION_CONFIG }}
-        run: ./scripts/Invoke-GitQualification.ps1 -ConfigurationPath $env:QUIETCLI2_QUALIFICATION_CONFIG
+          QUIETCLI_QUALIFICATION_CONFIG: ${{ vars.QUIETCLI_QUALIFICATION_CONFIG }}
+        run: ./scripts/Invoke-GitQualification.ps1 -ConfigurationPath $env:QUIETCLI_QUALIFICATION_CONFIG
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

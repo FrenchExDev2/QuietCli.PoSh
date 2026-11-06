@@ -8,13 +8,11 @@ public static class RecallStore
 {
     internal const int ManifestLimit = 65536;
     internal static readonly JsonSerializerOptions JsonOptions = new() { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, MaxDepth = 16 };
-    /// <summary>Durable user data location, overridden only by the explicit environment setting.</summary>
+    /// <summary>Durable user data location; the facade passes any configured root explicitly.</summary>
     public static string DefaultRoot
     {
         get
         {
-            string? configured = Environment.GetEnvironmentVariable("QUIETCLI2_RECALL_ROOT");
-            if (configured != null) return Path.GetFullPath(configured);
             string data = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             if (string.IsNullOrEmpty(data))
             {

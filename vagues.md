@@ -158,13 +158,13 @@ Suggestions (absents du catalogue RTK rewrite/filters comme providers dédiés, 
 1. **Session pwsh persistante (position de Jean)** — l'agent doit réutiliser une session `pwsh` déjà chargée (modules + moteur amortis) au lieu de lancer un `pwsh` neuf à chaque commande. Le **hook** reste un **shim léger de réécriture seulement** ; documenter ce mode « session persistante » pour les agents (Claude/Cursor/Codex/etc.).
 2. **RewriteForms** dans `Register-QuietHandler` + **Install-QuietHook** multi-agents (init style RTK).
 3. **Lexer shell** bash et pwsh (`&&`, `|`, `;`, wrappers `bash -c` / `pwsh -Command`).
-4. **Passthrough** sur le chemin hook, `QUIETCLI2_DISABLED`, `exclude_commands` (ne pas bloquer les commandes sans handler).
-5. **config.toml** utilisateur/projet (`~/.quietcli2/config.toml`) en complément des env `QUIETCLI2_*`.
+4. **Passthrough** sur le chemin hook, `QUIETCLI_DISABLED`, `exclude_commands` (ne pas bloquer les commandes sans handler).
+5. **config.toml** utilisateur/projet (`~/.quietcli2/config.toml`) en complément des env `QUIETCLI_*`.
 6. **discover** QuietCli qui propose les **modules à installer** via l'installateur modulaire (différence structurelle vs catalogue RTK monolithique).
 7. **Recall opt-in** uniquement échec/troncature, borné, scrub secrets ; double usage : récupération agent + **fixtures** pour qualifier des handlers.
 8. **États de couverture réels** : `Specialized`, `ExitOnly`, `Missing` ; outcomes `Partial` / `Unsupported` au lieu d'afficher un faux `Executed` complet.
 9. **Pipeline de génération de provider assistée par IA** : `New-QuietModule`, gabarit, fixtures, qualification auto.
-10. Brancher réellement **`QUIETCLI2_ENGINE_MODE=InProcess`** (documenté dans `docs/performance-and-hosting.md`, absent de `Protocol.ps1` actuel).
+10. Brancher réellement **`QUIETCLI_ENGINE_MODE=InProcess`** (documenté dans `docs/performance-and-hosting.md`, absent de `Protocol.ps1` actuel).
 11. Mettre **AGENTS.md** à jour (pump vers `quiet`).
 12. **Script de purge** de `artifacts\` (volume gitignored / bloat).
 

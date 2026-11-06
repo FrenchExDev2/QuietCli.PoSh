@@ -24,6 +24,20 @@ function Resolve-QuietRecall {
     if($InputObject.PSObject.Properties['Recall'] -and $InputObject.Recall -is [FrenchExDev2.QuietCli.RecallCapture]){return $InputObject.Recall}
     throw 'RecallCaptureRequired'
 }
+function Resolve-QuietRecallRoot {
+    <#
+    .SYNOPSIS
+    Resolves an explicit Recall store or the configured/default durable location.
+    .PARAMETER Path
+    Optional explicit store root.
+    #>
+    param([string]$Path)
+    if($Path){return [IO.Path]::GetFullPath($Path,(Get-Location).Path)}
+    $configured=Get-QuietSetting 'recall.root'
+    if($configured){return $configured}
+    Import-QuietManagedEngine
+    return [FrenchExDev2.QuietCli.RecallStore]::DefaultRoot
+}
 function Get-QuietRecall {
     <#
     .SYNOPSIS
@@ -113,7 +127,7 @@ function Invoke-QuietRecall {
     [CmdletBinding(DefaultParameterSetName='Input')]param([Parameter(Mandatory,Position=0,ParameterSetName='Input')]$InputObject,[Parameter(Mandatory,ParameterSetName='Id')][string]$RecallId,[Parameter(ParameterSetName='Id')][string]$RecallRoot,[scriptblock]$Output,[scriptblock]$Complete,$Data,[hashtable]$State=@{},[ValidateSet('Text','Bytes')][string]$StdoutMode,[ValidateSet('Text','Bytes')][string]$StderrMode,[AllowNull()][string]$RecordDelimiter,[ValidateRange(1,2147483647)][int]$MaxRecordBytes,[switch]$AllowPartial,[scriptblock]$Projection)
     Import-QuietManagedEngine
     $capture=if($PSCmdlet.ParameterSetName -eq 'Id'){
-        $root=if($RecallRoot){$RecallRoot}else{[NullString]::Value}
+        $root=Resolve-QuietRecallRoot $RecallRoot
         [FrenchExDev2.QuietCli.RecallStore]::OpenAsync($root,$RecallId).GetAwaiter().GetResult()
     }else{Resolve-QuietRecall $InputObject}
     if(!$capture.CaptureComplete -and !$AllowPartial){throw 'PartialRecallRequiresAllowPartial'}
@@ -208,7 +222,7 @@ function Import-QuietRecall {
     [CmdletBinding()]param([Parameter(Mandatory)][string]$Path,$MaxBytes='All',[string]$RecallRoot)
     Import-QuietManagedEngine
     $budget=[FrenchExDev2.QuietCli.RecallOptions]::ParseSize([string]$MaxBytes)
-    $root=if($RecallRoot){$RecallRoot}else{[NullString]::Value}
+    $root=Resolve-QuietRecallRoot $RecallRoot
     return [FrenchExDev2.QuietCli.RecallArchive]::ImportAsync($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path),$budget,$root).GetAwaiter().GetResult()
 }
 function Invoke-QuietSavedRecallRequest {
@@ -243,7 +257,7 @@ function Save-QuietRecall {
     [CmdletBinding()]param([Parameter(Mandatory,Position=0)]$InputObject,[string]$RecallName,[string]$RecallRoot,[switch]$Zip,[ValidateRange(0,9)][int]$Compress=6)
     if($PSBoundParameters.ContainsKey('Compress') -and !$Zip){throw 'CompressRequiresZip'}
     $capture=Resolve-QuietRecall $InputObject
-    $root=if($RecallRoot){[IO.Path]::GetFullPath($RecallRoot,$PWD.Path)}else{[FrenchExDev2.QuietCli.RecallStore]::DefaultRoot}
+    $root=Resolve-QuietRecallRoot $RecallRoot
     $name=if($PSBoundParameters.ContainsKey('RecallName')){$RecallName}elseif($null -ne $capture.RecallName){$capture.RecallName}else{[NullString]::Value}
     $saved=[FrenchExDev2.QuietCli.RecallStore]::SaveDirectoryAsync($capture,(Join-Path $root $capture.RecallId),$name).GetAwaiter().GetResult()
     if($Zip){$null=[FrenchExDev2.QuietCli.RecallArchive]::ExportAsync($saved,($saved.StoragePath+'.zip'),$true,$Compress).GetAwaiter().GetResult()}
@@ -264,7 +278,7 @@ function Get-QuietSavedRecall {
     #>
     [CmdletBinding()]param([string]$RecallId,[string]$RecallName,[string]$RecallRoot,[ValidateRange(1,10000)][int]$MaxItems=20)
     Import-QuietManagedEngine
-    $root=if($RecallRoot){$RecallRoot}else{[NullString]::Value}
+    $root=Resolve-QuietRecallRoot $RecallRoot
     $id=if($RecallId){[FrenchExDev2.QuietCli.RecallStore]::NormalizeId($RecallId)}else{$null}
     [FrenchExDev2.QuietCli.RecallStore]::ListAsync($root).GetAwaiter().GetResult()|Where-Object {(!$id -or $_.RecallId -eq $id) -and (!$RecallName -or $_.RecallName -like $RecallName)}|Select-Object -First $MaxItems
 }

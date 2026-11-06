@@ -170,16 +170,15 @@ jobs:
         env:
           EXPECTED_RID: ${{ matrix.rid }}
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
-          QUIETCLI2_ENGINE_MODE: ${{ matrix.mode }}
-          QUIETCLI2_EXPECT_ENGINE_MODE: ${{ matrix.mode }}
-          QUIETCLI2_GIT_PUSH_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
-          QUIETCLI2_GIT_COMMAND_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
-          QUIETCLI2_GIT_QUERY_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
-          QUIETCLI2_GIT_ATTRIBUTION_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
-          QUIETCLI2_GIT_PATH_QUERY_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
-          QUIETCLI2_GIT_REVISION_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
-          QUIETCLI2_EXPECT_HOST_VERSION: ${{ matrix.host_version }}
-          QUIETCLI2_EXPECT_RUNTIME_MAJOR: ${{ matrix.runtime_major }}
+          QUIETCLI_EXPECT_ENGINE_MODE: ${{ matrix.mode }}
+          QUIETCLI_GIT_PUSH_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
+          QUIETCLI_GIT_COMMAND_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
+          QUIETCLI_GIT_QUERY_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
+          QUIETCLI_GIT_ATTRIBUTION_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
+          QUIETCLI_GIT_PATH_QUERY_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
+          QUIETCLI_GIT_REVISION_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
+          QUIETCLI_EXPECT_HOST_VERSION: ${{ matrix.host_version }}
+          QUIETCLI_EXPECT_RUNTIME_MAJOR: ${{ matrix.runtime_major }}
         # Core/All requires fresh imports, diagnostics and owned complex Git states with no Git companion.
         run: |
           $parameters=@{Headless=$true;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID}

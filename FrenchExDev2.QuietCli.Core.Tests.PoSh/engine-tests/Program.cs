@@ -17,6 +17,12 @@ internal static class Program
             try { await assertion(); passed++; results.Add(new { Name = name, State = "Passed" }); }
             catch (Exception error) { failed++; results.Add(new { Name = name, State = "Failed", Error = error.Message }); }
         }
+        if (arguments.Contains("--configuration-delivery-only"))
+        {
+            await ConfigurationDeliveryCases.RunAsync(Case, arguments[2]);
+            Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Cases = results }));
+            return failed == 0 ? 0 : 1;
+        }
         if (arguments.Contains("--recall-only"))
         {
             await RecallCases.RunAsync(Case);

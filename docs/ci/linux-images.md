@@ -28,7 +28,7 @@ Le job d’images utilise uniquement son `GITHUB_TOKEN` éphémère, avec `conte
 
 GHCR crée initialement les packages privés et les relie au dépôt via le jeton du workflow et le label OCI `org.opencontainers.image.source`. Les jobs du dépôt peuvent réutiliser ce cache. Pour autoriser les pulls anonymes, passer ces quatre packages en visibilité publique dans les paramètres GitHub Packages. Une PR de fork qui ne peut pas lire un cache privé construit son image ; elle reste testable sans accès en écriture au registre.
 
-Les reçus se trouvent dans `artifacts/ci-images/*/image.json`. Les anciennes variables `QUIETCLI2_*_IMAGE` ne sont plus requises. La publication PSGallery reste manuelle et attend la réussite des six jobs Windows/Linux ; publier une image de banc ne publie aucun module.
+Les reçus se trouvent dans `artifacts/ci-images/*/image.json`. Les anciennes variables `QUIETCLI_*_IMAGE` ne sont plus requises. La publication PSGallery reste manuelle et attend la réussite des six jobs Windows/Linux ; publier une image de banc ne publie aucun module.
 
 Références : [runners ARM64 GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners), [authentification et visibilité GHCR](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry), [paquet Alpine ARM64](https://pkgs.alpinelinux.org/package/v3.24/community/aarch64/powershell).
 

@@ -15,12 +15,14 @@ The facade retains caller callbacks, interaction, nested invocation coordination
 ```powershell
 # Objective: Close the owned session, then use the compatible engine without pipe IPC.
 Stop-QuietEngine
-$env:QUIETCLI2_ENGINE_MODE='InProcess'
+# Set engine.hosting: InProcess in config.yaml, then reload.
+Import-QuietCliConfiguration
 Get-QuietEngine
 
 # Objective: Select the isolated .NET 11 server for the next session.
 Stop-QuietEngine
-$env:QUIETCLI2_ENGINE_MODE='Process'
+# Set engine.hosting: Process in config.yaml, then reload.
+Import-QuietCliConfiguration
 ```
 
 Both modes keep business Data in PowerShell. Imports remain inert. The compiled framer is lazy and independent of host selection. Native programs remain separate owned processes even when the engine runs locally.

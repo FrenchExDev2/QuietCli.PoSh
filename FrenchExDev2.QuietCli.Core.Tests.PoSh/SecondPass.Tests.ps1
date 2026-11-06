@@ -23,10 +23,10 @@ function Invoke-QuietSecondPassChecks {
             $delivery=$metadata.Clone();$delivery.DeliveryId='synthetic-delivery-'+$index;$delivery.OutputBytes=16L
             $null=Send-QuietRequest @{Action='save';Kind='delivery';Metadata=$delivery}
         }
-        $previousMode=$env:QUIETCLI2_ENGINE_MODE
+        $previousMode=(Get-QuietTestConfiguration).Values['engine.hosting']
         try{
             foreach($mode in @('InProcess','Process')){
-                Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$mode
+                Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$mode
         foreach($iteration in 1..3){
             foreach($implementation in $(if($iteration%2){@('PowerShell','CSharp')}else{@('CSharp','PowerShell')})){
                 $before=Get-QuietEngine;$watch=[Diagnostics.Stopwatch]::StartNew()
@@ -37,7 +37,7 @@ function Invoke-QuietSecondPassChecks {
             }
         }
             }
-        }finally{Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$previousMode}
+        }finally{Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$previousMode}
         $limited=Get-QuietCliGain -C $context -MaxEvents 511 -AsObject
         if($limited.Complete -or $null -ne $limited.ReductionBytes){throw 'LimitedGainClaimedCompleteness'}
         $empty=Get-QuietCliGain -C ($context+'-absent') -AsObject

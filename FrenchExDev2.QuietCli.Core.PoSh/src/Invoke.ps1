@@ -66,21 +66,22 @@ Separates exact facade options from the uninterpreted native argument vector.
         $request.ArgumentList = $native.ToArray()
     }
     elseif ($index -ne $Arguments.Count) { throw 'UnexpectedArgumentsAfterArgumentList' }
+    $configuration=(Get-QuietConfigurationSnapshot).Values
     $defaults = @{WorkingDirectory =(Get-Location).Path
-        TimeoutSeconds             =600
-        DrainTimeoutSeconds        =30
+        TimeoutSeconds             =$configuration['execution.timeoutSeconds']
+        DrainTimeoutSeconds        =$configuration['execution.drainTimeoutSeconds']
         Environment                =@{}
-        Transport                  ='Pipe'
-        StdoutMode                 ='Text'
-        StderrMode                 ='Text'
-        MaxRecordBytes             =1048576
-        MaxOutputBytes             =4096
-        MaxItems                   =20
+        Transport                  =$configuration['streams.transport']
+        StdoutMode                 =$configuration['streams.stdoutMode']
+        StderrMode                 =$configuration['streams.stderrMode']
+        MaxRecordBytes             =$configuration['streams.maxRecordBytes']
+        MaxOutputBytes             =$configuration['delivery.maxOutputBytes']
+        MaxItems                   =$configuration['delivery.maxItems']
         Role                       ='Business'
-        Tokenizer                  ='off'
+        Tokenizer                  =$configuration['tokenization.tokenizer']
         TerminalSize               =@(120, 40)
         SuccessExitCodes           =@(0)
-        ReadBlockBytes             =16384
+        ReadBlockBytes             =$configuration['streams.readBlockBytes']
     }
     foreach ($name in $defaults.Keys) { if (!$request.ContainsKey($name)) { $request[$name] = $defaults[$name] } }
     if (@('AsObject','AsJson','AsYaml' | Where-Object { $request.ContainsKey($_) -and $request[$_] }).Count -gt 1) { throw 'OutputFormatsAreExclusive' }
@@ -98,11 +99,12 @@ Separates exact facade options from the uninterpreted native argument vector.
     if ($request.ContainsKey('Recall') -and $request.Recall -or $request.ContainsKey('RecallMaxBytes') -or $request.ContainsKey('RecallPolicy')) {
         if (!$request.ContainsKey('Recall') -or !$request.Recall -or !$request.ContainsKey('AsObject') -or !$request.AsObject) { throw 'RecallRequiresExplicitAsObject' }
         Import-QuietManagedEngine
-        $size = if ($request.ContainsKey('RecallMaxBytes')) { [string]$request.RecallMaxBytes } else { '16MiB' }
-        $policy = if ($request.ContainsKey('RecallPolicy')) { [string]$request.RecallPolicy } else { 'Head' }
+        $size = if ($request.ContainsKey('RecallMaxBytes')) { [string]$request.RecallMaxBytes } else { $configuration['recall.maxBytes'] }
+        $policy = if ($request.ContainsKey('RecallPolicy')) { [string]$request.RecallPolicy } else { $configuration['recall.policy'] }
         $request.RecallOptions = [FrenchExDev2.QuietCli.RecallOptions]::new($size, $policy)
     }
     if (@('InputText', 'InputBytes', 'InputPath', 'Interaction' | Where-Object { $request.ContainsKey($_) }).Count -gt 1) { throw 'InputOptionsAreExclusive' }
+    if($request.Tokenizer -notin @('off','o200k_base','cl100k_base')){throw 'InvalidTokenizer'}
     if ($request.Transport -notin @('Pipe', 'Pty') -or $request.StdoutMode -notin @('Text', 'Bytes') -or $request.StderrMode -notin @('Text', 'Bytes')) { throw 'InvalidTransportOrStreamMode' }
     if ($request.Role -notin @('Business', 'Probe', 'Observation', 'Infrastructure')) { throw 'InvalidSourceRole' }
     if ($request.TimeoutSeconds -le 0 -or $request.MaxRecordBytes -lt 1 -or $request.MaxOutputBytes -lt 256 -or $request.MaxItems -lt 0) { throw 'InvalidLimits' }

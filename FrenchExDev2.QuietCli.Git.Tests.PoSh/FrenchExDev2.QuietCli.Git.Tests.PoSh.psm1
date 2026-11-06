@@ -107,20 +107,20 @@ Tests independently prepared repositories, hook counts and local bare push targe
         Assert-QuietEqual $coverage.Count 183
         Assert-QuietEqual @($coverage|Where-Object EntireInventoryQualified).Count 0
     }
-    if($env:QUIETCLI2_GIT_PUSH_MUTATION -eq '1'){$cases['push targeted mutations are detected by independent assertions']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot}}
-    if($env:QUIETCLI2_GIT_COMMAND_MUTATION -eq '1'){$cases['repository command C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Repository}}
+    if($env:QUIETCLI_GIT_PUSH_MUTATION -eq '1'){$cases['push targeted mutations are detected by independent assertions']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot}}
+    if($env:QUIETCLI_GIT_COMMAND_MUTATION -eq '1'){$cases['repository command C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Repository}}
     $repositoryCases=Get-QuietRepositoryCommandCases -RootDirectory $root -Environment $environment -WorkspaceRoot $WorkspaceRoot
     foreach($entry in $repositoryCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
-    if($env:QUIETCLI2_GIT_QUERY_MUTATION -eq '1'){$cases['query parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Query}}
+    if($env:QUIETCLI_GIT_QUERY_MUTATION -eq '1'){$cases['query parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Query}}
     $queryCases=Get-QuietGitQueryCases -RootDirectory $root -Environment $environment
     foreach($entry in $queryCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
-    if($env:QUIETCLI2_GIT_ATTRIBUTION_MUTATION -eq '1'){$cases['attribution parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Attribution}}
+    if($env:QUIETCLI_GIT_ATTRIBUTION_MUTATION -eq '1'){$cases['attribution parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Attribution}}
     $attributionCases=Get-QuietGitAttributionCases -RootDirectory $root -Environment $environment
     foreach($entry in $attributionCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
-    if($env:QUIETCLI2_GIT_PATH_QUERY_MUTATION -eq '1'){$cases['pathquery parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue PathQuery}}
+    if($env:QUIETCLI_GIT_PATH_QUERY_MUTATION -eq '1'){$cases['pathquery parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue PathQuery}}
     $pathCases=Get-QuietGitPathQueryCases -RootDirectory $root -Environment $environment -WorkspaceRoot $WorkspaceRoot
     foreach($entry in $pathCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
-    if($env:QUIETCLI2_GIT_REVISION_MUTATION -eq '1'){$cases['revision parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Revision}}
+    if($env:QUIETCLI_GIT_REVISION_MUTATION -eq '1'){$cases['revision parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Revision}}
     $revisionCases=Get-QuietGitRevisionCases -RootDirectory $root -Environment $environment
     foreach($entry in $revisionCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $indexCases=Get-QuietGitIndexOperationCases -RootDirectory $root -Environment $environment -WorkspaceRoot $WorkspaceRoot

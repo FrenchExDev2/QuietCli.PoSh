@@ -49,10 +49,10 @@ function Measure-QuietLocalOverhead {
             }
         }
     }
-    $previousMode=$env:QUIETCLI2_ENGINE_MODE
+    $previousMode=(Get-QuietTestConfiguration).Values['engine.hosting']
     try{
         foreach($mode in @('Process','InProcess')){
-            Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$mode
+            Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$mode
             $cold=[Diagnostics.Stopwatch]::StartNew();$identity=Get-QuietEngine;$cold.Stop()
             if($mode -eq 'InProcess' -and $identity.Engine.ProcessId -ne $PID){throw 'DirectEngineStartedAChild'}
             $samples.Add(@{Kind='EngineStartup';Mode=$mode;ElapsedMs=$cold.Elapsed.TotalMilliseconds;Runtime=$identity.Engine.Runtime;Scope='Helper assembly already loaded; includes identity verification and hello.'})
@@ -76,6 +76,6 @@ function Measure-QuietLocalOverhead {
             }.GetNewClosure() $Dotnet $Fixture emit 3
             if($nested.Outcome -ne 'Success' -or $counter.Count -ne 3 -or $nested.Execution.Children -ne 1){throw 'DirectCallbackOrNestedInvocationChanged'}
         }
-    }finally{Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$previousMode}
+    }finally{Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$previousMode}
     return $samples.ToArray()
 }

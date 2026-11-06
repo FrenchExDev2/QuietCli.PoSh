@@ -66,12 +66,12 @@ function Start-QuietEngine {
 .SYNOPSIS
 Starts the private engine lazily, without transferring business objects. #>
     if($script:QuietEngine -and ($script:QuietEngine.Mode -eq 'InProcess' -or !$script:QuietEngine.Process.HasExited)){return}
-    $mode=if($env:QUIETCLI2_ENGINE_MODE){$env:QUIETCLI2_ENGINE_MODE}else{'Auto'}
+    $mode=Get-QuietSetting 'engine.hosting'
     if($mode -notin @('Auto','Process','InProcess')){throw 'InvalidEngineMode'}
     if($mode -eq 'Auto'){$mode=if([Environment]::Version.Major -ge 10){'InProcess'}else{'Process'}}
     if($mode -eq 'InProcess'){
         Import-QuietManagedEngine
-        $database=if($env:QUIETCLI2_DATABASE){$env:QUIETCLI2_DATABASE}else{Join-Path ([Environment]::GetFolderPath('UserProfile')) '.quietcli2/gains.sqlite'}
+        $database=Get-QuietSetting 'telemetry.database'
         $hostEngine=[FrenchExDev2.QuietCli.InProcessEngine]::CreateAsync([IO.Path]::GetFullPath($database),$script:QuietRoot).GetAwaiter().GetResult()
         $script:QuietEngine=@{Mode='InProcess';Host=$hostEngine;Database=$database;Requests=0L;DirectRequests=0L;MetadataJsonRequests=0L;InputBytes=0L;OutputBytes=0L;Info=$null;Broken=$false}
         $script:QuietEngine.Info=(Send-QuietRequest @{Action='hello'}).Header.Data
@@ -96,7 +96,7 @@ Starts the private engine lazily, without transferring business objects. #>
         $binary=Join-Path $engineDirectory $file.Path
         if(!(Test-Path -LiteralPath $binary) -or (Get-FileHash -LiteralPath $binary -Algorithm SHA256).Hash -cne $file.SHA256){throw 'EngineBinaryIntegrityFailed'}
     }
-    $database=if($env:QUIETCLI2_DATABASE){$env:QUIETCLI2_DATABASE}else{Join-Path ([Environment]::GetFolderPath('UserProfile')) '.quietcli2/gains.sqlite'}
+    $database=Get-QuietSetting 'telemetry.database'
     $executable=if($IsWindows){Join-Path $engineDirectory 'QuietCli.Engine.exe'}else{(Get-Command dotnet -CommandType Application -ErrorAction Stop|Select-Object -First 1).Source}
     $start=[Diagnostics.ProcessStartInfo]::new($executable)
     if($IsWindows){
@@ -138,8 +138,7 @@ Exchanges one bounded metadata frame and an optional transient byte block.
     [BitConverter]::GetBytes([int]$encoded.Length).CopyTo($lengths,0)
     [BitConverter]::GetBytes([int]$Payload.Length).CopyTo($lengths,4)
     }
-    $seconds=30.0
-    if($env:QUIETCLI2_IPC_TIMEOUT_SECONDS){$seconds=[double]::Parse($env:QUIETCLI2_IPC_TIMEOUT_SECONDS,[Globalization.CultureInfo]::InvariantCulture)}
+    $seconds=Get-QuietSetting 'engine.ipcTimeoutSeconds'
     if(![double]::IsFinite($seconds) -or $seconds -lt 0.05 -or $seconds -gt 300){throw 'InvalidIpcTimeout'}
     $deadline=[Threading.CancellationTokenSource]::new([TimeSpan]::FromSeconds($seconds))
     try{

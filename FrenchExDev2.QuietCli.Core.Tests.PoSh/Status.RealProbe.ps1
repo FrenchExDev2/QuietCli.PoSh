@@ -17,7 +17,8 @@ $utf8=[Text.UTF8Encoding]::new($false)
 if(Get-Module FrenchExDev2.QuietCli.*){throw 'ContaminatedStatusProbe'}
 . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
 . (Join-Path $PSScriptRoot 'Status.Aggregation.ps1')
-$env:QUIETCLI2_DATABASE=Join-Path $RunDirectory 'real-status.sqlite'
+. (Join-Path $WorkspaceRoot 'scripts/TestConfiguration.ps1')
+Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory 'real-status.sqlite') -Hosting $(if($env:QUIETCLI_EXPECT_ENGINE_MODE){$env:QUIETCLI_EXPECT_ENGINE_MODE}else{'Auto'})
 $env:GIT_OPTIONAL_LOCKS='0'
 $env:GIT_TERMINAL_PROMPT='0'
 $env:GIT_PAGER='cat'

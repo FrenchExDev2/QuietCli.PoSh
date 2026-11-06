@@ -27,6 +27,8 @@ internal sealed class GainAccumulator
     private int measuredRoots, completeSamples, measuredCompleteSamples;
     /// <summary>Explicit thread-change counts explain unknown allocation totals.</summary>
     private int allocationThreadChanges, completeThreadChanges;
+    /// <summary>Measured delivery counts and totals separated by encoding and implementation version.</summary>
+    private readonly Dictionary<(string Profile, string Version), (long Tokens, int Deliveries)> tokenTotals = new();
 
     /// <summary>Validates grouping before scanning any database.</summary>
     /// <param name="groupBy">Context, Command, Session, Module, Role or Outcome.</param>
@@ -38,7 +40,8 @@ internal sealed class GainAccumulator
 
     /// <summary>Consumes a projected invocation or delivery, without keeping the original event.</summary>
     /// <param name="row">Closed telemetry DTO.</param>
-    internal void Add(MeasurementRecord row)
+    /// <param name="tokenMeasurements">Additional persisted encoding measurements for this delivery.</param>
+    internal void Add(MeasurementRecord row, TokenMeasurement[]? tokenMeasurements = null)
     {
         bool root = string.IsNullOrEmpty(row.ParentId);
         bool businessRole = row.Role == null || string.Equals(row.Role, "Business", StringComparison.OrdinalIgnoreCase);
@@ -47,6 +50,14 @@ internal sealed class GainAccumulator
             if (root && businessRole)
             {
                 deliveries++; deliveryIds.Add(row.InvocationId);
+                var measured = new Dictionary<(string, string), long>();
+                if (row.OutputTokens.HasValue && row.TokenProfile is "o200k_base" or "cl100k_base" && !string.IsNullOrEmpty(row.TokenVersion))
+                    measured[(row.TokenProfile, row.TokenVersion)] = row.OutputTokens.Value;
+                foreach (var token in tokenMeasurements ?? row.TokenMeasurements ?? []) measured[(token.TokenProfile, token.TokenVersion)] = token.OutputTokens;
+                foreach (var entry in measured) {
+                    tokenTotals.TryGetValue(entry.Key, out var total);
+                    tokenTotals[entry.Key] = (checked(total.Tokens + entry.Value), total.Deliveries + 1);
+                }
                 deliverySizesKnown &= row.OutputBytes.HasValue;
                 delivered = checked(delivered + (row.OutputBytes ?? 0));
                 deliveriesComplete &= row.Completeness is { Source: true, Analysis: true } && row.Sources != null;
@@ -115,7 +126,12 @@ internal sealed class GainAccumulator
             RootCompleteAllocatedBytes = complete && completeSamples > 0 && completeSamples == measuredCompleteSamples ? (long?)completeAllocated : null,
             AllocationScope = "CallerThread; Complete is included in invocation allocations; nested invocations are not added again. Not retained object size.",
             NativeTokens = (long?)null,
-            Comparability = "Actual root business deliveries only; associated native sources deduplicated once, every serialization counted. Object-only work is observed separately. Context subtotals are not additive."
+            DeliveredTokensByProfile = tokenTotals.OrderBy(item => item.Key.Profile, StringComparer.Ordinal).ThenBy(item => item.Key.Version, StringComparer.Ordinal).Select(item => new {
+                TokenProfile = item.Key.Profile, TokenVersion = item.Key.Version, OutputTokens = item.Value.Tokens,
+                MeasuredDeliveries = item.Value.Deliveries, UnmeasuredDeliveries = deliveries - item.Value.Deliveries,
+                CoverageComplete = complete && item.Value.Deliveries == deliveries
+            }).ToArray(),
+            Comparability = "Root business delivery records only; associated native sources deduplicated once. Identical representations reuse their delivery identity; historical records are not retroactively deduplicated. Object-only work is observed separately. Context subtotals are not additive."
         };
         return new GainReport(summary, groups.Select(group => new GainGroup(group.Key, group.Value[0], group.Value[1], group.Value[2])).ToArray());
     }

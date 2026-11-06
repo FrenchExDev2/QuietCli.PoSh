@@ -10,14 +10,14 @@ function Test-QuietTypedControls {
     param([string]$Fixture,[string]$Dotnet)
     & (Get-Module FrenchExDev2.QuietCli.Core.PoSh) {
         param($fixture,$dotnet)
-        $previousMode=$env:QUIETCLI2_ENGINE_MODE;$previousTracking=$env:QUIETCLI2_TRACKING
+        $previousMode=(Get-QuietTestConfiguration).Values['engine.hosting'];$previousTracking=(Get-QuietTestConfiguration).Values['telemetry.enabled']
         $bytes=[byte[]]::new(1048583)
         for($index=0;$index -lt $bytes.Length;$index++){$bytes[$index]=[byte]($index%251)}
         $expected=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))
         try{
-            $env:QUIETCLI2_TRACKING='0'
+            (Get-QuietTestConfiguration).Values['telemetry.enabled']=$false
             foreach($mode in @('InProcess','Process')){
-                Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$mode;$before=Get-QuietEngine
+                Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$mode;$before=Get-QuietEngine
                 $data=@{Hash=[Security.Cryptography.IncrementalHash]::CreateHash([Security.Cryptography.HashAlgorithmName]::SHA256);Bytes=0L;Rejected=0}
                 try{
                     $interaction={param($runtime)
@@ -57,7 +57,7 @@ function Test-QuietTypedControls {
                     if(!$rejected){throw 'DirectOversizedIdentityAccepted'}
                 }
             }
-        }finally{Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$previousMode;$env:QUIETCLI2_TRACKING=$previousTracking}
+        }finally{Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$previousMode;(Get-QuietTestConfiguration).Values['telemetry.enabled']=$previousTracking}
     } $Fixture $Dotnet
 }
 function Measure-QuietTypedControls {
@@ -72,13 +72,13 @@ function Measure-QuietTypedControls {
     param([string]$Fixture,[string]$Dotnet)
     & (Get-Module FrenchExDev2.QuietCli.Core.PoSh) {
         param($fixture,$dotnet)
-        $previousMode=$env:QUIETCLI2_ENGINE_MODE;$previousTracking=$env:QUIETCLI2_TRACKING
+        $previousMode=(Get-QuietTestConfiguration).Values['engine.hosting'];$previousTracking=(Get-QuietTestConfiguration).Values['telemetry.enabled']
         $blocks=[Collections.Generic.List[byte[]]]::new()
         foreach($index in 0..63){$block=[byte[]]::new(16384);[Array]::Fill[byte]($block,[byte]($index%251));$blocks.Add($block)}
         $hash=[Security.Cryptography.IncrementalHash]::CreateHash([Security.Cryptography.HashAlgorithmName]::SHA256)
         try{foreach($block in $blocks){$hash.AppendData($block)};$expected=[Convert]::ToHexString($hash.GetHashAndReset())}finally{$hash.Dispose()}
         try{
-            Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE='InProcess';$env:QUIETCLI2_TRACKING='0'
+            Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']='InProcess';(Get-QuietTestConfiguration).Values['telemetry.enabled']=$false
             $null=Get-QuietEngine;$hostEngine=$script:QuietEngine.Host
             foreach($iteration in 1..3){
                 foreach($implementation in $(if($iteration%2){@('Json','Typed')}else{@('Typed','Json')})){
@@ -112,6 +112,6 @@ function Measure-QuietTypedControls {
                     @{Kind='InputControls';Implementation=$implementation;Iteration=$iteration;InputBytes=1048576;ElapsedMs=$watch.Elapsed.TotalMilliseconds;Controls=$stats.Controls;ControlJsonBytes=$stats.ControlJsonBytes;ProtocolBytes=$after.ProtocolInputBytes+$after.ProtocolOutputBytes-$before.ProtocolInputBytes-$before.ProtocolOutputBytes;Scope='Local control boundary including native startup, stdin hashing, back-pressure and drainage; excludes assembly/session startup. No pipe IPC in either sample.'}
                 }
             }
-        }finally{Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$previousMode;$env:QUIETCLI2_TRACKING=$previousTracking}
+        }finally{Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$previousMode;(Get-QuietTestConfiguration).Values['telemetry.enabled']=$previousTracking}
     } $Fixture $Dotnet
 }

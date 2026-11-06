@@ -11,7 +11,8 @@ Private SQLite file for this baseline or mutant.
 #>
 [CmdletBinding()]param([Parameter(Mandatory)][string]$ModulePath,[Parameter(Mandatory)][string]$Fixture,[Parameter(Mandatory)][string]$DatabasePath)
 $ErrorActionPreference='Stop'
-$env:QUIETCLI2_DATABASE=$DatabasePath;$env:QUIETCLI2_ENGINE_MODE='InProcess'
+. (Join-Path $PSScriptRoot '../../scripts/TestConfiguration.ps1')
+Initialize-QuietTestConfiguration -DatabasePath $DatabasePath -Hosting InProcess
 Import-Module $ModulePath -Force
 $dotnet=(Get-Command dotnet -CommandType Application|Select-Object -First 1).Source
 $cases=[Collections.Generic.List[object]]::new();$passed=0;$failed=0

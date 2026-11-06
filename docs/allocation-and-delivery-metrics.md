@@ -27,7 +27,7 @@ The application does not change the caller's runspace, apartment state or synchr
 
 ## SQLite and reports
 
-The PowerShell facade supplies explicit identity and metadata references. `MeasurementTelemetry` projects execution fields and diagnostic codes in caller-local C#, never accepting `Result.Data`. The shared C# `MeasurementStore` validates closed records and serializes only their metadata to SQLite on its private sequential worker. `QUIETCLI2_TRACKING=0` disables persistence, while caller-local allocation and delivery measurements remain available.
+The PowerShell facade supplies explicit identity and metadata references. `MeasurementTelemetry` projects execution fields and diagnostic codes in caller-local C#, never accepting `Result.Data`. The shared C# `MeasurementStore` validates closed records and serializes only their metadata to SQLite on its private sequential worker. YAML `telemetry.enabled: false` disables persistence, while caller-local allocation and delivery measurements remain available.
 
 `Get-QuietCliGain` aggregates metadata in C#. `RootInvocationAllocatedBytes` is known only when every selected root has a measured sample and the report is complete. `AllocationMeasuredRoots` exposes coverage; historical rows without samples remain unknown. Root-only aggregation avoids adding child samples a second time.
 

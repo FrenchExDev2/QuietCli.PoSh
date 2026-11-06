@@ -27,7 +27,8 @@ if($ExistingInstallation){
     }
 }
 $env:PSModulePath=$root+[IO.Path]::PathSeparator+(Join-Path $PSHOME Modules)
-$env:QUIETCLI2_DATABASE=Join-Path $root measurements.sqlite
+. (Join-Path $PSScriptRoot '../../scripts/TestConfiguration.ps1')
+Initialize-QuietTestConfiguration -DatabasePath (Join-Path $root measurements.sqlite)
 Import-Module FrenchExDev2.QuietCli.Git.PoSh -ErrorAction Stop
 try{
     $core=Get-Module FrenchExDev2.QuietCli.Core.PoSh;$git=Get-Module FrenchExDev2.QuietCli.Git.PoSh

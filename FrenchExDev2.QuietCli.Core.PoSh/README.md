@@ -8,7 +8,7 @@ PowerShell Core 7.6+ facade for the C# .NET 10 / .NET 11 RC engine, with integra
 
 Import reads the integer protocol specification through asynchronous host .NET file I/O and `System.Text.Json`, with the existing version and frame-size bounds. Source paths and alias creation also use host APIs, so import does not autoload the Management or Utility cmdlet modules. Engine initialization remains lazy. The companion's focused `Import` suite measures fresh-process loading; `RealStatus` checks direct callbacks on explicitly selected real repositories without the Git companion.
 
-The same C# sources also build for `net10.0` under `lib/inprocess`. Set `$env:QUIETCLI2_ENGINE_MODE='InProcess'` before starting the engine to host it directly in PowerShell 7.6. `Stop-QuietEngine` closes the current session before a mode change. The .NET 11 assembly is loaded only when the actual PowerShell CLR is .NET 11 or later. `Auto` is the default hosting mode; it selects a compatible integrated build. `Get-QuietEngine` reports `Mode`, actual runtime, process identity and real pipe counters (zero in direct mode). Native reads and input/lifecycle controls use direct objects and byte arrays. Startup and telemetry use closed local metadata operations. Only internal raw queries and rejected-request diagnostics retain transport JSON; persisted SQLite metadata still uses its validated JSON representation. `DirectRequests` and `MetadataJsonRequests` count the selected request paths; their sum is `Requests`. These counters describe dispatch, while the protocol byte counters measure actual pipe traffic. Business Data and callbacks remain caller-local.
+The same C# sources also build for `net10.0` under `lib/inprocess`. Set YAML `engine.hosting: InProcess` before starting the engine to host it directly in PowerShell 7.6. `Stop-QuietEngine` closes the current session before a mode change. The .NET 11 assembly is loaded only when the actual PowerShell CLR is .NET 11 or later. `Auto` is the default hosting mode; it selects a compatible integrated build. `Get-QuietEngine` reports `Mode`, actual runtime, process identity and real pipe counters (zero in direct mode). Native reads and input/lifecycle controls use direct objects and byte arrays. Startup and telemetry use closed local metadata operations. Only internal raw queries and rejected-request diagnostics retain transport JSON; persisted SQLite metadata still uses its validated JSON representation. `DirectRequests` and `MetadataJsonRequests` count the selected request paths; their sum is `Requests`. These counters describe dispatch, while the protocol byte counters measure actual pipe traffic. Business Data and callbacks remain caller-local.
 
 `New-QuietByteRecordFramer` provides bounded compiled byte framing without IPC; Git uses it even with the isolated host. Loading is lazy and verifies the integrated build compatible with the actual CLR. Start a new PowerShell process after rebuilding a loaded assembly. Direct hosting shares the host's failure boundary: disposal cancels owned native processes, but cannot forcibly kill or unload code inside PowerShell. Keep `Process` when that isolation is required. See [hosting measurements](../docs/performance-and-hosting.md).
 
@@ -17,6 +17,8 @@ The same C# sources also build for `net10.0` under `lib/inprocess`. Set `$env:QU
 Les six publications sous `lib/engine/<RID>` ciblent Windows x64/ARM64 et Linux glibc/musl x64/ARM64, avec `PlatformTarget` x64 ou ARM64 et un apphost natif de même architecture. La façade sélectionne le RID réel de PowerShell. Le build vérifie l’assembly PE et l’apphost PE ou ELF sans charger l’assembly moteur dans l’hôte. Le runtime .NET 11 RC correspondant reste requis ; aucune compilation NativeAOT n’est impliquée. Le build portable reste réservé aux références et tests.
 
 Les paquets PSGallery embarquent aussi SQLite et les bridges PTY statiques des quatre RIDs Linux. Le moteur copie le bridge vérifié dans son répertoire privé exécutable ; il ne modifie pas un module installé en lecture seule. Les imports restent inertes.
+
+See [configuration and unique tokenized deliveries](../docs/configuration.md) for `~/.quietcli/config.yaml`, `QUIETCLI_CONFIG_DIRECTORY`, the four configuration cmdlets, `o200k_base` defaults, `AlreadyDelivered` and encoding-specific SQLite measurements.
 
 ## Contrat
 
@@ -56,9 +58,9 @@ Without `-From`, `-To` or `-Days`, the report selects all history. Omitted or nu
 
 `Get-QuietCliGain` lit tous les contextes par défaut. `-C nom`, `-Generic`, `-SessionId`, `-From`, `-To` filtrent le rapport. Les sources uniques sont dédupliquées ; les réductions inconnues restent nulles. Les rôles auxiliaires ne gonflent pas le gain métier.
 
-Les tokens natifs restent inconnus. La tokenisation exacte, optionnelle, concerne uniquement une livraison déjà produite : `-Tokenizer o200k_base` ou `cl100k_base`. Le défaut est `off`.
+Les tokens natifs restent inconnus. La tokenisation exacte concerne le texte final livré. Le défaut est `o200k_base` ; `-Tokenizer cl100k_base` ou `off` permet de le remplacer.
 
-SQLite enregistre uniquement les métadonnées et compteurs. `QUIETCLI2_DATABASE` choisit la base ; `QUIETCLI2_TRACKING=0` désactive les écritures. Les erreurs de stockage restent séparées du résultat métier. Aucun RECORD/replay.
+SQLite enregistre uniquement les métadonnées et compteurs. `telemetry.database` choisit la base ; `telemetry.enabled: false` désactive les écritures. Les erreurs de stockage restent séparées du résultat métier. Aucun RECORD/replay.
 
 ## Tests et dépendances
 
@@ -68,7 +70,7 @@ Le SDK et le runtime sont verrouillés dans `global.json` et le projet C#. Une r
 
 ## Limites, intégrité et confidentialité
 
-`-DrainTimeoutSeconds` borne l’attente d’EOF après sortie du processus (30 s par défaut). Une coupure de drainage rend la source incomplète, même si le processus principal a déjà terminé. `QUIETCLI2_IPC_TIMEOUT_SECONDS` borne chaque échange avec le moteur (30 s par défaut, entre 0,05 et 300 s). Un défaut de transport ferme le moteur détenu et conserve l’effet inconnu d’un démarrage non confirmé. Un nouvel appel racine indépendant peut démarrer un nouveau moteur ; l’appel interrompu n’est jamais répété.
+`-DrainTimeoutSeconds` borne l’attente d’EOF après sortie du processus (30 s par défaut). Une coupure de drainage rend la source incomplète, même si le processus principal a déjà terminé. `engine.ipcTimeoutSeconds` borne chaque échange avec le moteur (30 s par défaut, entre 0,05 et 300 s). Un défaut de transport ferme le moteur détenu et conserve l’effet inconnu d’un démarrage non confirmé. Un nouvel appel racine indépendant peut démarrer un nouveau moteur ; l’appel interrompu n’est jamais répété.
 
 `Execution` et `Completeness` du résultat final sont des snapshots détachés en lecture seule. Les transitions du runtime sont validées. `Data` reste locale et modifiable pour les prochaines livraisons.
 

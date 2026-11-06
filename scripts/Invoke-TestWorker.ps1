@@ -20,20 +20,22 @@ UTF-8 JSON array of existing repository roots; required by RealStatus.
 .PARAMETER ExpectedRuntimeIdentifier
 Required native architecture for both the PowerShell host and the separate engine.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge')][string]$Suite='All',[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
+[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery')][string]$Suite='All',[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
-$env:QUIETCLI2_DATABASE=Join-Path $RunDirectory 'measurements.sqlite'
-$env:QUIETCLI2_RECALL_TEST_ROOT=Join-Path $RunDirectory 'recall-csharp'
+. (Join-Path $PSScriptRoot 'TestConfiguration.ps1')
+$testHosting=if($env:QUIETCLI_EXPECT_ENGINE_MODE){$env:QUIETCLI_EXPECT_ENGINE_MODE}else{'Auto'}
+Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory 'measurements.sqlite') -Hosting $testHosting
+$env:QUIETCLI_RECALL_TEST_ROOT=Join-Path $RunDirectory 'recall-csharp'
 $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Tests compagnons';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;State='Running';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;Passed=0;Failed=0;Case='Starting';FinishedUtc=$null;Error=$null}
 $statusPath=Join-Path $RunDirectory 'status.json'
 Write-WorkspaceJson $statusPath $state
 $summaries=[Collections.Generic.List[object]]::new()
 $sourceIdentity=$null;$engineIdentity=$null;$profiling=$null
 try{
-    if($env:QUIETCLI2_EXPECT_RUNTIME_MAJOR -and [Environment]::Version.Major -ne [int]$env:QUIETCLI2_EXPECT_RUNTIME_MAJOR){throw 'PowerShellRuntimeMajorMismatch'}
-    if($env:QUIETCLI2_EXPECT_HOST_VERSION -and $PSVersionTable.PSVersion.ToString() -cne $env:QUIETCLI2_EXPECT_HOST_VERSION){throw 'PowerShellVersionMismatch'}
+    if($env:QUIETCLI_EXPECT_RUNTIME_MAJOR -and [Environment]::Version.Major -ne [int]$env:QUIETCLI_EXPECT_RUNTIME_MAJOR){throw 'PowerShellRuntimeMajorMismatch'}
+    if($env:QUIETCLI_EXPECT_HOST_VERSION -and $PSVersionTable.PSVersion.ToString() -cne $env:QUIETCLI_EXPECT_HOST_VERSION){throw 'PowerShellVersionMismatch'}
     if($ExpectedRuntimeIdentifier -and $state.Platform -cne $ExpectedRuntimeIdentifier){throw "HostRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($state.Platform)"}
     $sourceIdentity=Get-QuietWorkspaceIdentity $WorkspaceRoot -IncludeBinaries
     Write-WorkspaceJson (Join-Path $RunDirectory 'source-identity.json') $sourceIdentity
@@ -43,7 +45,12 @@ try{
     if(![StringComparer]::OrdinalIgnoreCase.Equals($actualCorePath,$expectedCorePath)){throw 'UnexpectedCoreModulePath'}
     $localAlias=Get-Alias quiet -ErrorAction Stop
     if(!$localAlias.ResolvedCommand -or ![StringComparer]::OrdinalIgnoreCase.Equals($localAlias.ResolvedCommand.Module.Path,$expectedCorePath)){throw 'UnexpectedQuietAliasTarget'}
-    if($Suite -in @('Recall','RecallMutation','RecallLarge')){
+    if($Suite -eq 'ConfigurationDelivery'){
+        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/ConfigurationDelivery.Tests.ps1')
+        $state.Task='Configuration, tokenization and unique delivery qualification'
+        $summary=Invoke-QuietConfigurationDeliveryTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Mutation -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
+        $state.Passed=$summary.Passed;$state.Failed=$summary.Failed;$summaries.Add($summary)
+    }elseif($Suite -in @('Recall','RecallMutation','RecallLarge')){
         Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1')
         $state.Task=$Suite+' capture and analyzer qualification'
         if($Suite -eq 'Recall'){
@@ -72,9 +79,9 @@ try{
         $summaries.Add($summary)
     }else{
         $engineIdentity=Get-QuietEngine
-        if($env:QUIETCLI2_EXPECT_ENGINE_MODE -and $engineIdentity.Mode -cne $env:QUIETCLI2_EXPECT_ENGINE_MODE){throw 'EngineHostingModeMismatch'}
-        if($env:QUIETCLI2_EXPECT_RUNTIME_MAJOR -and $engineIdentity.Mode -eq 'InProcess'){
-            $framework='.NETCoreApp,Version=v'+$env:QUIETCLI2_EXPECT_RUNTIME_MAJOR+'.0'
+        if($env:QUIETCLI_EXPECT_ENGINE_MODE -and $engineIdentity.Mode -cne $env:QUIETCLI_EXPECT_ENGINE_MODE){throw 'EngineHostingModeMismatch'}
+        if($env:QUIETCLI_EXPECT_RUNTIME_MAJOR -and $engineIdentity.Mode -eq 'InProcess'){
+            $framework='.NETCoreApp,Version=v'+$env:QUIETCLI_EXPECT_RUNTIME_MAJOR+'.0'
             if($engineIdentity.Mode -cne 'InProcess' -or $engineIdentity.Engine.ProcessId -ne $PID -or $engineIdentity.Engine.TargetFramework -cne $framework){throw 'IntegratedEngineIdentityMismatch'}
             if($engineIdentity.ProtocolInputBytes -ne 0 -or $engineIdentity.ProtocolOutputBytes -ne 0){throw 'IntegratedEngineUnexpectedPipeTraffic'}
         }

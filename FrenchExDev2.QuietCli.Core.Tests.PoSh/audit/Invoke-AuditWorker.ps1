@@ -14,7 +14,8 @@ $ErrorActionPreference='Stop';. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
 $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Régressions sécurité et logiciel';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;ProcessId=$PID;StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null;State='Running';Passed=0;Failed=0;Case='Starting independent security checks';Error=$null}
 $checks=[Collections.Generic.List[object]]::new();Write-WorkspaceJson (Join-Path $RunDirectory 'status.json') $state
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
-$env:QUIETCLI2_DATABASE=Join-Path $RunDirectory 'audit.sqlite';$env:QUIETCLI2_TRACKING='1'
+. (Join-Path $WorkspaceRoot 'scripts/TestConfiguration.ps1')
+Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory 'audit.sqlite')
 function Add-AuditEvidence {
     <#
     .SYNOPSIS
@@ -142,10 +143,10 @@ try{
         $fake=[pscustomobject]@{HasExited=$true}
         $fake|Add-Member ScriptMethod Dispose {}
         $script:QuietEngine=@{Mode='Process';Process=$fake;Broken=$false;Input=[IO.MemoryStream]::new();Output=$server;Requests=0L;InputBytes=0L;OutputBytes=0L}
-        $old=$env:QUIETCLI2_IPC_TIMEOUT_SECONDS;$env:QUIETCLI2_IPC_TIMEOUT_SECONDS='0.1'
+        $old=(Get-QuietTestConfiguration).Values['engine.ipcTimeoutSeconds'];(Get-QuietTestConfiguration).Values['engine.ipcTimeoutSeconds']='0.1'
         $watch=[Diagnostics.Stopwatch]::StartNew();$cancelled=$false
         try{$null=Send-QuietRequest @{Action='hello'}}catch{$cancelled=$script:QuietEngine.Broken}
-        finally{$script:QuietEngine.Input.Dispose();$server.Dispose();$client.Dispose();$script:QuietEngine=$null;[Environment]::SetEnvironmentVariable('QUIETCLI2_IPC_TIMEOUT_SECONDS',$old)}
+        finally{$script:QuietEngine.Input.Dispose();$server.Dispose();$client.Dispose();$script:QuietEngine=$null;(Get-QuietTestConfiguration).Values['engine.ipcTimeoutSeconds']=$old}
         @{Disconnected=$cancelled;Milliseconds=$watch.Elapsed.TotalMilliseconds}
     }
     Add-AuditEvidence REL-06 ($ipc.Disconnected -and $ipc.Milliseconds -lt 2000) $ipc

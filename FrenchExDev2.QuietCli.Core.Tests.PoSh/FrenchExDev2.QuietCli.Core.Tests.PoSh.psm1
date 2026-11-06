@@ -1,3 +1,4 @@
+. (Join-Path $PSScriptRoot 'Configuration.TestSupport.ps1')
 . (Join-Path $PSScriptRoot 'Recall.Large.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Recall.Rtk.ps1')
 . (Join-Path $PSScriptRoot 'Recall.Tools.ps1')
@@ -15,6 +16,7 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'SecondPass.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Control.Tests.ps1')
 . (Join-Path $PSScriptRoot 'CoreMigration.Tests.ps1')
+. (Join-Path $PSScriptRoot 'ConfigurationDelivery.Tests.ps1')
 function Assert-QuietEqual {
     <#
 .SYNOPSIS
@@ -67,6 +69,10 @@ Executes independent native byte and object invariants in a companion module.
     $performance=[Collections.Generic.List[object]]::new()
     $galleryEvidence=[Collections.Generic.List[object]]::new()
     $cases=[ordered]@{}
+    $cases['configuration and unique tokenized deliveries preserve their contracts']={
+        $configuration=Invoke-QuietConfigurationDeliveryTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+        if($configuration.Failed){throw ($configuration.Cases|Where-Object State -EQ Failed|ConvertTo-Json -Depth 8 -Compress)}
+    }
     $cases['Recall capture and offline analysis regressions']={
         $recall=Invoke-QuietRecallTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
         if($recall.Failed){throw ($recall.Cases|Where-Object State -EQ Failed|ConvertTo-Json -Depth 12 -Compress)}

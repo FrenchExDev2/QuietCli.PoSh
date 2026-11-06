@@ -32,7 +32,7 @@ Get-QuietSavedRecall -RecallName 'build-*'
 Get-QuietSavedRecall -RecallId $id
 ```
 
-The default root is durable user data: `%LOCALAPPDATA%/QuietCli2/recalls` on Windows and the platform local-data directory on Unix. `QUIETCLI2_RECALL_ROOT` overrides it; `-RecallRoot` explicitly selects a root for capture, lookup, import or replay. It is not a temporary report directory. There is no automatic expiry, deletion, installation or publication.
+The default root is durable user data: `%LOCALAPPDATA%/QuietCli2/recalls` on Windows and the platform local-data directory on Unix. YAML `recall.root` overrides it; `-RecallRoot` explicitly selects a root for capture, lookup, import or replay. It is not a temporary report directory. There is no automatic expiry, deletion, installation or publication.
 
 Each record uses a directory named by its canonical GUID:
 

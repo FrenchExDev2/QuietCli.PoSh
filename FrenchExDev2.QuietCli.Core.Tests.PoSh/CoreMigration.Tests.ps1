@@ -33,9 +33,9 @@ function Measure-QuietCoreMigration {
                 }
             }
         }
-        $previousMode=$env:QUIETCLI2_ENGINE_MODE
+        $previousMode=(Get-QuietTestConfiguration).Values['engine.hosting']
         try{
-            Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE='InProcess';$null=Get-QuietEngine;$hostEngine=$script:QuietEngine.Host
+            Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']='InProcess';$null=Get-QuietEngine;$hostEngine=$script:QuietEngine.Host
             foreach($iteration in 1..3){
                 foreach($implementation in $(if($iteration%2){@('Json','Typed')}else{@('Typed','Json')})){
                     $jsonBytes=0L;$watch=[Diagnostics.Stopwatch]::StartNew()
@@ -57,7 +57,7 @@ function Measure-QuietCoreMigration {
                     @{Kind='EngineMetadata';Implementation=$implementation;Iteration=$iteration;Calls=128;ElapsedMs=$watch.Elapsed.TotalMilliseconds;ControlJsonBytes=$jsonBytes;ProtocolBytes=0L;Scope='Local hello dispatch with identical engine identity; excludes session startup, native processes, persistence and IPC.'}
                 }
             }
-        }finally{Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$previousMode}
+        }finally{Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$previousMode}
         $id='registry-measure-'+[guid]::NewGuid().ToString('N');$probe=@{Calls=0}
         $binary=[IO.Path]::GetFileNameWithoutExtension($dotnet)
         Register-QuietHandler -Id $id -Definition @{Binary=$binary;VersionRange='synthetic';Execute={};TestVersion={param($version)$version -ceq 'synthetic-1'};Probe={$probe.Calls++;'synthetic-1'}.GetNewClosure()}

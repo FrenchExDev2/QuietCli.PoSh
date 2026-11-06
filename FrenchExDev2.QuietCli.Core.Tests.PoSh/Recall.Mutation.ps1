@@ -116,7 +116,7 @@ try{
     )
     $catalogue+=@(
         @{Name='ps-replay-routing';File='Invoke.ps1';From="if(`$request.ContainsKey('RecallId')){return Invoke-QuietSavedRecallRequest `$request}";To='if($false){}';Check=@'
-$root=Join-Path $env:QUIETCLI2_RECALL_TEST_ROOT ('ps-route-'+[guid]::NewGuid().ToString('N'))
+$root=Join-Path $env:QUIETCLI_RECALL_TEST_ROOT ('ps-route-'+[guid]::NewGuid().ToString('N'))
 $settings=[FrenchExDev2.QuietCli.RecallAnalysisSettings]::new('Bytes','Bytes',[NullString]::Value,1024)
 $writer=[FrenchExDev2.QuietCli.RecallStore]::CreateAsync($root,[NullString]::Value,$settings).GetAwaiter().GetResult()
 $capture=$writer.CompleteAsync($true,$null).GetAwaiter().GetResult()

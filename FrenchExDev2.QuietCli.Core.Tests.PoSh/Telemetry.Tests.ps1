@@ -8,10 +8,10 @@ function Test-QuietAllocationTelemetry {
     param([string]$WorkspaceRoot)
     $fixture=Join-Path $PSScriptRoot 'lib/fixture/QuietCli.Fixture.dll'
     $dotnet=(Get-Command dotnet -CommandType Application|Select-Object -First 1).Source
-    $previousMode=$env:QUIETCLI2_ENGINE_MODE
+    $previousMode=(Get-QuietTestConfiguration).Values['engine.hosting']
     try{
         foreach($mode in @('InProcess','Process')){
-            Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$mode
+            Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$mode
             $context='allocations-'+[guid]::NewGuid().ToString('N')
             $allocated=0L;$completeAllocated=0L
             foreach($length in @(65536,262144,1048576)){
@@ -62,7 +62,7 @@ function Test-QuietAllocationTelemetry {
             if(@($rows|Where-Object {$_.Allocation.AllocatedBytes -gt 0}).Count -ne 6){throw 'AllocationMetadataNotPersisted'}
             if(@($rows|Where-Object {$_.PSObject.Properties['Data']}).Count){throw 'BusinessDataEnteredAllocationTelemetry'}
         }
-    }finally{Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$previousMode}
+    }finally{Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$previousMode}
 }
 function Measure-QuietProcessAllocations {
     <#
@@ -74,10 +74,10 @@ function Measure-QuietProcessAllocations {
     param([string]$WorkspaceRoot)
     $fixture=Join-Path $PSScriptRoot 'lib/fixture/QuietCli.Fixture.dll'
     $dotnet=(Get-Command dotnet -CommandType Application|Select-Object -First 1).Source
-    $previousMode=$env:QUIETCLI2_ENGINE_MODE
+    $previousMode=(Get-QuietTestConfiguration).Values['engine.hosting']
     try{
         foreach($mode in @('InProcess','Process')){
-            Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$mode
+            Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$mode
             $warmup=quiet -AsObject -StdoutMode Bytes -Output {param($event,$runtime)} $dotnet $fixture emit 1
             if($warmup.Outcome -ne 'Success'){throw 'AllocationBenchmarkWarmupFailed'}
             foreach($iteration in 1..3){
@@ -96,5 +96,5 @@ function Measure-QuietProcessAllocations {
                 [pscustomobject]@{Kind='ProcessAllocationBenchmark';Mode=$mode;Iteration=$iteration;CallerProcessId=$after.Caller.ProcessId;EngineProcessId=$after.Engine.ProcessId;SharedProcess=$after.SharedProcess;Precise=$true;CallerAllocatedBytes=$caller;EngineAllocatedBytes=$engine;UniqueProcessAllocatedBytes=$(if($after.SharedProcess){$caller}else{$caller+$engine});InvocationAllocatedBytes=$r.Measurement.Allocation.AllocatedBytes;CompleteAllocatedBytes=$r.Measurement.CompleteAllocation.AllocatedBytes;NativeBytes=4194304;ElapsedMs=$watch.Elapsed.TotalMilliseconds;Scope='Process-wide managed allocation deltas, including concurrent work and sampling/control overhead; native allocations excluded. Shared caller/engine counters describe one process.'}
             }
         }
-    }finally{Stop-QuietEngine;$env:QUIETCLI2_ENGINE_MODE=$previousMode}
+    }finally{Stop-QuietEngine;(Get-QuietTestConfiguration).Values['engine.hosting']=$previousMode}
 }
