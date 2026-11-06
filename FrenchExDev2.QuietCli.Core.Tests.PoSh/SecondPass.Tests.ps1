@@ -6,6 +6,8 @@ function Invoke-QuietSecondPassChecks {
     QuietCli2 workspace whose existing companion runner owns the visible monitor.
     #>
     param([string]$WorkspaceRoot)
+    . (Join-Path $PSScriptRoot 'Gain.Output.Tests.ps1')
+    $null=Test-QuietGainOutput
     . (Join-Path $PSScriptRoot 'Telemetry.Tests.ps1')
     Test-QuietAllocationTelemetry -WorkspaceRoot $WorkspaceRoot
     Measure-QuietProcessAllocations -WorkspaceRoot $WorkspaceRoot

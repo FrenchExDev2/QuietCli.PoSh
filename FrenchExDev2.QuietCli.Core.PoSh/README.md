@@ -48,6 +48,8 @@ Les appels enfants héritent du contexte ; ils retournent un objet par défaut. 
 
 ## Mesures
 
+`Get-QuietCliGain` returns a `PSCustomObject` by default (`-AsObject` remains supported). Use `-AsYaml` or `-AsJson` to format the report; `-AsJson -Compress` selects compact JSON. `-Compress` is only valid with `-AsJson`, and output formats are mutually exclusive. Reading or formatting this report never creates invocation or delivery telemetry and does not contribute to measured delivery gains.
+
 `Get-QuietCliGain` lit tous les contextes par défaut. `-C nom`, `-Generic`, `-SessionId`, `-From`, `-To` filtrent le rapport. Les sources uniques sont dédupliquées ; les réductions inconnues restent nulles. Les rôles auxiliaires ne gonflent pas le gain métier.
 
 Les tokens natifs restent inconnus. La tokenisation exacte, optionnelle, concerne uniquement une livraison déjà produite : `-Tokenizer o200k_base` ou `cl100k_base`. Le défaut est `off`.
