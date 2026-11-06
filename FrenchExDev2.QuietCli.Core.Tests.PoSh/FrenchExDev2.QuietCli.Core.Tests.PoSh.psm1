@@ -18,6 +18,7 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'Control.Tests.ps1')
 . (Join-Path $PSScriptRoot 'CoreMigration.Tests.ps1')
 . (Join-Path $PSScriptRoot 'ConfigurationDelivery.Tests.ps1')
+. (Join-Path $PSScriptRoot 'AgentInstructions.Tests.ps1')
 function Assert-QuietEqual {
     <#
 .SYNOPSIS
@@ -465,6 +466,11 @@ Executes independent native byte and object invariants in a companion module.
         if($r.Measurement.OutputTokens -le 0){throw 'Exact delivery tokenizer was not applied'}
         Assert-QuietEqual $r.Measurement.NativeTokens $null
         Assert-QuietEqual $r.Measurement.OutputBytes ([Text.Encoding]::UTF8.GetByteCount($text))
+    }
+    $cases['production agent instructions preserve project rules and installed resources']={
+        $agentReport=Invoke-QuietAgentInstructionTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+        $integration.Add($agentReport)
+        if($agentReport.Failed){throw ('AgentInstructionQualificationFailed: '+($agentReport.Cases|Where-Object State -EQ Failed|ConvertTo-Json -Compress))}
     }
     $cases['module scaffolding creates inert handlers and independent failing test companions']={
         $parent=Join-Path $WorkspaceRoot ('artifacts/scaffold-tests/'+[guid]::NewGuid().ToString('N'))

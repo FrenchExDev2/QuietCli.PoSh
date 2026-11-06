@@ -6,7 +6,7 @@
  Description='Streaming QuietCli2 facade with automatic integrated .NET 10/11 hosting and optional isolated .NET 11 engine.'
  PowerShellVersion='7.6'
  CompatiblePSEditions=@('Core')
- FunctionsToExport=@('Invoke-QuietCli','Out-QuietResult','ConvertTo-QuietJson','Get-QuietCliGain','Repair-QuietCliMeasurementPrivacy','Register-QuietHandler','Get-QuietHandler','Unregister-QuietHandler','New-QuietModule','New-QuietByteRecordFramer','Stop-QuietEngine','Get-QuietEngine','Get-QuietRecall','Invoke-QuietRecall','New-QuietRecallReference','Export-QuietRecall','Import-QuietRecall','Save-QuietRecall','Get-QuietSavedRecall','Get-QuietCliConfiguration','Test-QuietCliConfiguration','Import-QuietCliConfiguration','New-QuietCliConfiguration','ConvertTo-QuietYaml')
+ FunctionsToExport=@('Invoke-QuietCli','Out-QuietResult','ConvertTo-QuietJson','Get-QuietCliGain','Repair-QuietCliMeasurementPrivacy','Register-QuietHandler','Get-QuietHandler','Unregister-QuietHandler','New-QuietModule','New-QuietByteRecordFramer','Stop-QuietEngine','Get-QuietEngine','Get-QuietRecall','Invoke-QuietRecall','New-QuietRecallReference','Export-QuietRecall','Import-QuietRecall','Save-QuietRecall','Get-QuietSavedRecall','Get-QuietCliConfiguration','Test-QuietCliConfiguration','Import-QuietCliConfiguration','New-QuietCliConfiguration','ConvertTo-QuietYaml','Get-QuietAgentInstruction','Add-QuietAgentInstruction')
  AliasesToExport=@('quiet')
  CmdletsToExport=@()
  VariablesToExport=@()

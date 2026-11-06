@@ -8,11 +8,45 @@ QuietCli is a streaming native-command engine for PowerShell Core 7.6+, designed
 
 Explicit Recall capture preserves native evidence for inspection and offline analyzer development. Durable recording lets work continue in another session, after a reboot or an interrupted recording, without running the original command again.
 
-The Core development manifest declares **0.2.0-preview** (`ModuleVersion='0.2.0'`, `PSData.Prerelease='preview'`). Source-checkout features and package availability are separate: building or testing does not publish a release.
+## How to install
 
-## Start with the local Core module
+Use PowerShell Core 7.6+ with PSResourceGet and Git installed. Install the published Git companion and its Core dependency from PowerShell Gallery:
 
-Use PowerShell Core 7.6+ and import the manifest from this repository:
+```powershell
+Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Repository PSGallery -Version 0.1.0 -Scope CurrentUser
+```
+
+The published `0.1.0` package also requires the .NET 11 RC runtime `11.0.0-rc.3.26522.148` for your architecture. Install that runtime separately; no SDK or source checkout is needed. See [package installation](docs/PSGallery.md) for platform requirements and distribution details.
+
+## How to use
+
+Open PowerShell in an existing Git repository, load the installed module and inspect its status:
+
+```powershell
+Import-Module FrenchExDev2.QuietCli.Git.PoSh
+
+$result = quiet -AsObject git status
+$result.Outcome
+$result.Execution
+$result.Completeness
+$result.Data
+```
+
+To produce a bounded JSON delivery:
+
+```powershell
+ConvertTo-QuietJson $result -MaxOutputBytes 4096
+```
+
+QuietCli options precede `git`; Git arguments follow it. The Git companion supplies the status handler, so no callback is needed. See the [Git module README](FrenchExDev2.QuietCli.Git.PoSh/README.md) for supported commands and limits.
+
+## Development
+
+The Core development manifest declares **0.2.0-preview** (`ModuleVersion='0.2.0'`, `PSData.Prerelease='preview'`). The sections below describe this source checkout; their features are not necessarily available in the published `0.1.0` package. Building or testing does not publish a release.
+
+### Start with the local Core module
+
+From the repository root, use a separate PowerShell Core 7.6+ session and import the local manifest:
 
 ```powershell
 Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1

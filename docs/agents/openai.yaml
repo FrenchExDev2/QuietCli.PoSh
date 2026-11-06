@@ -1,0 +1,6 @@
+interface:
+  display_name: "QuietCli"
+  short_description: "Analyze commands and deliver business results"
+  default_prompt: "Use $quiet-cli to read AGENTS.md beside this skill, select the relevant workflow in SKILL.md, and compute a documented business result with bounded delivery."
+policy:
+  allow_implicit_invocation: true

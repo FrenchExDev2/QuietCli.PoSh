@@ -1,36 +1,36 @@
-# Images Linux de la CI
+# Linux CI images
 
-Aucune machine ARM locale n’est nécessaire. GitHub exécute x64 sur `ubuntu-latest` et ARM64 sur `ubuntu-24.04-arm`. Chaque runner construit et exécute ses conteneurs de même architecture, sans QEMU. Les deux recettes multiétapes sont `.github/containers/Dockerfile.ci.debian` et `Dockerfile.ci.alpine`.
+No local ARM machine is required. GitHub runs x64 on `ubuntu-latest` and ARM64 on `ubuntu-24.04-arm`. Each runner builds and runs containers of the same architecture, without QEMU. The two multi-stage recipes are `.github/containers/Dockerfile.ci.debian` and `Dockerfile.ci.alpine`.
 
-## Premier run et cache GHCR
+## First run and GHCR cache
 
-1. `New-CiImage.ps1` calcule une empreinte SHA-256 des recettes, de leur script commun, des scripts d’image, de `global.json` et des verrouillages SDK/Git.
-2. Il cherche cette empreinte dans `ghcr.io/frenchexdev2/quietcli2-ci-{debian|alpine}-{x64|arm64}`.
-3. Si elle existe et est accessible, il résout le tag vers un digest, télécharge ce digest puis vérifie architecture, origine et empreinte déclarées dans les labels.
-4. Sinon, il construit nativement une nouvelle image. Sur un push ou déclenchement manuel du dépôt d’origine sur `main`, il la publie dans GHCR avec le tag de l’empreinte. Un changement d’entrée donne un nouveau tag ; les anciennes images ne sont ni écrasées intentionnellement ni supprimées automatiquement.
-5. Les suites sont exécutées dans un conteneur privé sans réseau, par ID d’image local vérifié. Les rapports conservent l’ID réel, le digest du registre et l’identité hôte/invité/moteur.
+1. `New-CiImage.ps1` computes a SHA-256 fingerprint of the recipes, their shared script, the image scripts, `global.json` and the SDK/Git lock files.
+2. It looks for this fingerprint in `ghcr.io/frenchexdev2/quietcli2-ci-{debian|alpine}-{x64|arm64}`.
+3. If it exists and is accessible, it resolves the tag to a digest, pulls that digest, then verifies the architecture, source and fingerprint declared in the labels.
+4. Otherwise, it builds a new image natively. On a push or manual dispatch in the upstream repository on `main`, it publishes the image to GHCR with the fingerprint as its tag. An input change produces a new tag; old images are neither intentionally overwritten nor automatically deleted.
+5. The suites run in a private container without network access, using the verified local image ID. Reports retain the actual ID, registry digest and host/guest/engine identities.
 
-Un changement uniquement dans un handler ne reconstruit pas l’image. Une pull request réutilise un cache accessible ou construit localement ; elle ne publie pas dans le cache de confiance de `main`. Les erreurs réseau/serveur du registre restent des erreurs, sans répétition automatique. Un cache absent ou inaccessible peut être construit à nouveau.
+A change confined to a handler does not rebuild the image. A pull request reuses an accessible cache or builds locally; it does not publish to the trusted `main` cache. Registry network/server errors remain errors, without automatic retries. A missing or inaccessible cache can be rebuilt.
 
-## Outils et étapes
+## Tools and stages
 
-L’étape `tools` télécharge le SDK .NET exact et vérifie son SHA-512. Elle compile Git 2.56.0 depuis l’archive SHA-256 verrouillée. Les compilateurs et sources Git ne passent pas dans l’étape finale. Le SDK reste dans l’image finale car les suites vérifient les outils et assemblages de tests.
+The `tools` stage downloads the exact .NET SDK and verifies its SHA-512 hash. It compiles Git 2.56.0 from the SHA-256-pinned archive. Compilers and Git sources are not copied into the final stage. The SDK remains in the final image because the suites verify the tools and test assemblies.
 
-Debian utilise les archives officielles PowerShell 7.6.7 x64/ARM64, vérifiées en SHA-256. Alpine utilise son paquet signé `powershell=7.6.9-r0`, disponible pour x86_64 et aarch64, avec sa dépendance .NET 10. Le SDK/runtime .NET 11 épinglé est ajouté à côté pour le moteur séparé. Une recette ne remplace jamais silencieusement PowerShell ARM64 par un exécutable x64.
+Debian uses the official PowerShell 7.6.7 x64/ARM64 archives, verified with SHA-256. Alpine uses its signed `powershell=7.6.9-r0` package, available for x86_64 and aarch64, with its .NET 10 dependency. The pinned .NET 11 SDK/runtime is installed alongside it for the isolated engine. A recipe never silently replaces ARM64 PowerShell with an x64 executable.
 
-Les bases Debian/Alpine sont verrouillées par digest d’index multiarchitecture dans les recettes et `build/ci-images.lock.json`. Les dépendances apt/apk transitives sont résolues depuis leurs dépôts signés pendant une construction : l’ensemble n’est pas présenté comme une reconstruction bit à bit reproductible. Une version de paquet retirée fait échouer le build et nécessite une mise à jour examinée du verrouillage.
+The Debian/Alpine base images are pinned by multi-architecture index digest in the recipes and `build/ci-images.lock.json`. Transitive apt/apk dependencies are resolved from their signed repositories during a build: the result is not presented as a bit-for-bit reproducible build. A withdrawn package version causes the build to fail and requires a reviewed lock-file update.
 
-Ce banc rapide utilise Git sans Rust et sans interface Tcl/Tk. Il ne remplace pas la qualification exhaustive des helpers, variantes et versions Git ; l’ancien `Containerfile.debian` reste dédié à cette préparation distincte.
+This fast test environment uses Git without Rust or the Tcl/Tk interface. It does not replace exhaustive qualification of Git helpers, variants and versions; the older `Containerfile.debian` remains dedicated to that separate preparation.
 
-## Autorisations et confidentialité
+## Permissions and privacy
 
-Le job d’images utilise uniquement son `GITHUB_TOKEN` éphémère, avec `contents: read` et `packages: write`. Il est absent des runs de pull requests. Les jobs Linux de tests possèdent seulement `packages: read` et attendent les jobs d’images sur `main`. Une concurrence par RID évite deux publications simultanées depuis les workflows Core et Git. Le login Podman reçoit le jeton par stdin dans un fichier d’authentification privé temporaire supprimé en sortie. Aucun jeton n’entre dans les arguments de build, le contexte Docker, les couches ou les rapports. La clé PSGallery est indépendante.
+The image job uses only its ephemeral `GITHUB_TOKEN`, with `contents: read` and `packages: write`. It is absent from pull request runs. Linux test jobs have only `packages: read` and wait for the image jobs on `main`. Concurrency control per RID prevents simultaneous publications from the Core and Git workflows. Podman login receives the token through stdin and stores authentication in a private temporary file deleted on exit. No token enters build arguments, the Docker context, layers or reports. The PSGallery key is independent.
 
-GHCR crée initialement les packages privés et les relie au dépôt via le jeton du workflow et le label OCI `org.opencontainers.image.source`. Les jobs du dépôt peuvent réutiliser ce cache. Pour autoriser les pulls anonymes, passer ces quatre packages en visibilité publique dans les paramètres GitHub Packages. Une PR de fork qui ne peut pas lire un cache privé construit son image ; elle reste testable sans accès en écriture au registre.
+GHCR initially creates private packages and links them to the repository through the workflow token and the OCI label `org.opencontainers.image.source`. Repository jobs can reuse this cache. To allow anonymous pulls, make these four packages public in the GitHub Packages settings. A fork PR that cannot read a private cache builds its image; it remains testable without registry write access.
 
-Les reçus se trouvent dans `artifacts/ci-images/*/image.json`. Les anciennes variables `QUIETCLI_*_IMAGE` ne sont plus requises. La publication PSGallery reste manuelle et attend la réussite des six jobs Windows/Linux ; publier une image de banc ne publie aucun module.
+Receipts are stored in `artifacts/ci-images/*/image.json`. The old `QUIETCLI_*_IMAGE` variables are no longer required. PSGallery publication remains manual and waits for all six Windows/Linux jobs to succeed; publishing a test image does not publish any module.
 
-Références : [runners ARM64 GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners), [authentification et visibilité GHCR](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry), [paquet Alpine ARM64](https://pkgs.alpinelinux.org/package/v3.24/community/aarch64/powershell).
+References: [GitHub ARM64 runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners), [GHCR authentication and visibility](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry), [Alpine ARM64 package](https://pkgs.alpinelinux.org/package/v3.24/community/aarch64/powershell).
 
 ## Native PTY compiler
 

@@ -10,6 +10,7 @@ New artifact directory.
 #>
 [CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputDirectory)
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
+. (Join-Path $PSScriptRoot 'AgentDocuments.ps1')
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 Assert-QuietPtyPublications $WorkspaceRoot
@@ -31,6 +32,7 @@ foreach($repository in $lock.Projects){
         Copy-Item -LiteralPath $item.FullName -Destination $stage -Recurse
     }
     if(!(Test-Path -LiteralPath (Join-Path $stage ($repository.Name+'.psd1')))){throw 'PackageManifestMissing'}
+    if($repository.Name -eq 'FrenchExDev2.QuietCli.Core.PoSh'){Copy-QuietProductionAgentDocuments -WorkspaceRoot $WorkspaceRoot -ModuleDirectory $stage}
     $files=foreach($file in Get-ChildItem -LiteralPath $stage -Recurse -File|Sort-Object FullName){@{Path=[IO.Path]::GetRelativePath($stage,$file.FullName).Replace('\','/');SHA256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash;Bytes=$file.Length}}
     Write-WorkspaceJson (Join-Path $OutputDirectory ($repository.Name+'.manifest.json')) @{Module=$repository.Name;Revision=(Read-QuietRepositoryValue $WorkspaceRoot @('rev-parse','--verify','HEAD'));SourceSHA256=$repository.SourceSHA256;Files=@($files)}
     $archive=Join-Path $OutputDirectory ($repository.Name+'.zip')

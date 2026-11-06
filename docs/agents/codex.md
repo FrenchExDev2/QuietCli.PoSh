@@ -1,86 +1,73 @@
 # Using QuietCli with Codex
 
-QuietCli turns native output into caller-local business objects. Codex can keep those objects
-inside a persistent PowerShell process and request bounded representations when needed. This
-avoids repeated profile/module initialization and unnecessary native executions.
+QuietCli turns native output into caller-local business objects. Codex can retain those objects
+inside one PowerShell process and request bounded representations when needed. This avoids
+repeated profile/module initialization and unnecessary native executions.
 
-This guide describes the **development checkout**, not a promise that every feature exists in
-the published `0.1.0` package. Start with the [repository README](../../README.md), the supplied
-[AGENTS.md](../../AGENTS.md) and the [Core README](../../FrenchExDev2.QuietCli.Core.PoSh/README.md).
-Use PowerShell Core 7.6+ and existing matching binaries. Importing Core does not compile C#.
+Use PowerShell Core 7.6+ with QuietCli Core installed. Git is required for the Git examples.
+No Codex hook or profile edit is needed. The instructions below use the installed module's
+public commands and the [production agent instructions](AGENTS.md).
 
-## Give Codex the supplied agent instructions
+## Generate the project's AGENTS.md after installation
 
-The instruction filename is **`AGENTS.md`**, plural. Codex discovers instructions along the
-path from the project root to its working directory, with global guidance and directory
-overrides. An arbitrary `agent.md` or this `codex.md` is not automatically an instruction file.
-See the [official instruction-discovery documentation](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
-
-When working in this monorepo, keep its supplied `AGENTS.md` and start Codex in the intended
-project directory. If Codex starts in an enclosing workspace, explicitly ask it to read this
-monorepo's instructions before working here. In another repository, merge the relevant
-QuietCli execution policy into that repository's existing `AGENTS.md`; adapt paths and preserve
-its own conventions. The supplied file also contains rules for maintaining QuietCli itself,
-which should not be copied blindly into an unrelated project.
-
-The following additional block makes persistent-shell use explicit. Replace the path once:
-
-```markdown
-## QuietCli execution with Codex
-
-- Read the selected QuietCli checkout's AGENTS.md, README.md and Core README before use.
-- Selected checkout: C:/path/to/FrenchExDev2.QuietCli.PoSh.
-- Use PowerShell Core 7.6+ with its normal profile and UTF-8 initialization.
-- Use exec_command with login: true. For interactive persistence, use tty: true,
-  keep the process alive, retain its session_id and use write_stdin for later commands.
-- Prefer one initialized PowerShell process for sequential work. Retain its PID,
-  a session identity and named QuietCli results; verify them before dependent work.
-- Import the exact local Core manifest once per process and check its loaded path.
-  Load the matching Git module only for its business handlers. Explicit Core callbacks
-  may analyze Git directly without the Git companion, as in the Core benchmark.
-- Route native commands through quiet. Define the question, required business data
-  and smallest useful delivery before executing. Read executable help or official docs.
-- Keep -AsObject results in variables. Inspect Outcome, Execution, Completeness,
-  Error and business scope. Deliver bounded views using module-qualified Core cmdlets.
-- Keep engine hosting at Auto. Rebuild only missing/stale binaries through the
-  documented workspace build, then use a fresh process for rebuilt assemblies.
-- Wait for each command's completion marker before sending dependent work.
-  If the session is lost, initialize a new process; never replay a mutation automatically.
-- Keep the repository's visible test-monitor, CI orchestration and permission rules.
-```
-
-Ask Codex to identify the instruction files it loaded. Start a new Codex run when changing
-instruction files so discovery is refreshed. `AGENTS.md` guides the agent's choices; it does
-not itself retain a process, install a hook or change tool permissions.
-
-## Initialize the selected Core once
-
-Run this in the PowerShell process that Codex will reuse, from the QuietCli monorepo root:
+Open PowerShell in the project that Codex will work on:
 
 ```powershell
-$quietRoot = (Get-Location).Path
-$coreManifest = Join-Path $quietRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'
-$loadedCore = Get-Module FrenchExDev2.QuietCli.Core.PoSh
-if (!$loadedCore -or $loadedCore.ModuleBase -ne (Split-Path $coreManifest -Parent)) {
-    Import-Module $coreManifest -ErrorAction Stop
-}
-$loadedCore = Get-Module FrenchExDev2.QuietCli.Core.PoSh
-if ($loadedCore.ModuleBase -ne (Split-Path $coreManifest -Parent)) {
-    throw 'UnexpectedQuietCliCorePath'
-}
-$loadedCore.Path
-$PID
+# Objective: Install QuietCli's production instructions in the selected project.
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
+$repository = (Get-Location).Path
+$installation = Add-QuietAgentInstruction -Path $repository -Agents
+$installation.Files | Select-Object Path, ReferencePath, Status
 ```
 
-Keep modules with overlapping command names in separate processes. Do not load legacy QuietCli
-or archived OPumper modules into this session. Existing matching `lib/` binaries need no SDK
-or rebuild. If a build is necessary, follow `scripts/Build-Workspace.ps1`, then open a fresh
-PowerShell process; reimporting cannot replace an already loaded .NET assembly reliably.
+`Add-QuietAgentInstruction` copies the installed production `AGENTS.md` and `SKILL.md` into
+`.skills` and creates or updates only its delimited QuietCli reference block in the project's
+`AGENTS.md`. Existing project instructions outside that block are preserved. Repeating the
+same command leaves unchanged files untouched. Use `-WhatIf` to preview the operation and
+`-DocumentDirectory` to choose another copy directory. For example:
+
+```powershell
+# Objective: Preview project instruction installation without writing files.
+$preview = Add-QuietAgentInstruction -Path $repository -Agents -DocumentDirectory instructions/quietcli -WhatIf
+$preview.Files | Select-Object Path, ReferencePath, Status
+
+# Objective: Read the production rules distributed with the installed module.
+$productionInstructions = Get-QuietAgentInstruction
+```
+
+These cmdlets manage files and return text or metadata; they do not start a native process or
+return a QuietCli native execution envelope. `-Claude` and `-Skills` optionally select
+`CLAUDE.md` and `SKILLS.md`; neither registers a native Codex skill. The source of the copied
+rules is the [production AGENTS.md](AGENTS.md), not QuietCli's repository maintenance file.
+
+Codex's instruction filename is **`AGENTS.md`**, plural. It discovers instructions from the
+project root toward its working directory, together with global guidance and overrides.
+See the [official instruction-discovery documentation](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+Start Codex in the selected project after generating the instructions and ask it to identify
+the files it loaded. This guide itself is reference documentation, not an automatically loaded
+instruction file. `AGENTS.md` guides tool use; it does not keep a process alive or change permissions.
+
+## Initialize the installed Core once per process
+
+Run this inside the PowerShell process that Codex will reuse:
+
+```powershell
+# Objective: Load the installed Core and retain its identity for subsequent work.
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
+$core = Get-Module FrenchExDev2.QuietCli.Core.PoSh
+$core.Path
+$PID
+$repository = (Get-Location).Path
+```
+
+Reuse that module and its `quiet` alias. Keep modules with overlapping public command names in
+separate processes; do not load legacy QuietCli or archived OPumper modules into this session.
+An installed module includes its runtime resources; importing it does not compile C#.
 
 Leave `engine.hosting` at `Auto`: a CLR 10 host selects the integrated `net10.0` build;
 CLR 11+ selects the compatible `net11.0` build. Never load a .NET 11 assembly into CLR 10.
-Explicit `Process` hosting needs the pinned .NET 11 runtime. After actual engine use,
-`Get-QuietEngine` identifies the selected host; importing the module alone leaves it lazy.
+Explicit `Process` hosting requires its matching .NET runtime. After engine use,
+`Get-QuietEngine` identifies the selected host; importing Core alone leaves it lazy.
 
 Use normal profiles (`login: true` in the exposed Codex execution tool) and reuse their UTF-8
 initialization. If a deliberately isolated process has no profile initialization, initialize
@@ -190,7 +177,7 @@ failure and source completeness. Nonterminating PowerShell errors require explic
 
 Poll if a marker has not arrived; do not submit dependent commands concurrently into the same
 shell. A truncated response does not establish completion. Preserve the session identifier,
-PID, token, loaded module path and retained variable names in task context. If those identities
+PID, token, loaded installed-module path and retained variable names in task context. If those identities
 cannot be verified, initialize a fresh process and reconstruct read-only state as needed.
 Do not automatically repeat a mutation whose previous effect is unknown. Close an owned idle
 session with `__CLOSE_CODEX_PWSH__` followed by a newline and verify process termination.
@@ -201,11 +188,11 @@ Before execution, identify the question, the required business result and the sm
 delivery. Read the executable's help or official format documentation before writing a parser.
 Facade options precede the executable; native arguments follow it verbatim.
 
-For documented Git business semantics, import the matching local Git module once:
+For documented Git business semantics, import the installed Git companion once:
 
 ```powershell
-Import-Module (Join-Path $quietRoot 'FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1') -ErrorAction Stop
-$repository = $quietRoot
+Import-Module FrenchExDev2.QuietCli.Git.PoSh -ErrorAction Stop
+$repository = (Get-Location).Path
 $result = quiet -AsObject -C codex-status -WorkingDirectory $repository git status
 ```
 
@@ -215,7 +202,7 @@ records as a complete business status model. Porcelain v1 rename/copy entries ha
 NUL-delimited path, so a record count must not be presented as a changed-file count:
 
 ```powershell
-$repository = $quietRoot
+$repository = (Get-Location).Path
 $result = quiet -AsObject -C codex-status-bytes -WorkingDirectory $repository -StdoutMode Bytes -Data @{ Bytes = 0L; Records = 0L } -Output {
     param($event, $runtime)
     if ($event.Stream -eq 'stdout') {
@@ -269,33 +256,25 @@ retains bounded in-memory native evidence, while `-SaveRecall` records a durable
 allows later analysis by `RecallId`. Offline analysis does not rerun the original executable.
 These opt-in features are distinct from shell persistence and from legacy RECORD APIs.
 
-## Measure gains and run tests
+## Measure gains
 
-The [persistent-shell benchmark](../../FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-PersistentShellBenchmark.ps1)
-compares fresh processes, sequential requests to one persistent process and repeated delivery
-of one retained result. It uses a copied disposable Git fixture, private default configurations
-and dedicated Core `-Output`/`-Complete` callbacks. Neither Git companion is loaded by the subject.
+Compare the same workload using fresh PowerShell processes, repeated requests to one process
+and repeated delivery of an already retained result. Report the third optimization separately:
+it avoids native work as well as initialization. Include process startup, profile and module
+loading in the total duration; a stopwatch around `quiet` alone misses part of that cost.
+Retain raw paired observations, host identities, sample counts and configuration. Local pipe
+measurements do not include Codex tool transport or model time.
 
-From the monorepo root:
-
-```powershell
-./FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-PersistentShellBenchmark.ps1 -Iterations 3 -CommandCounts '1,5,10'
-```
-
-This launcher opens the required visible monitor and saves reports outside the checkout.
-Read the [benchmark definitions and limitations](../../FrenchExDev2.QuietCli.Core.Tests.PoSh/README.md#persistent-powershell-benchmark)
-before interpreting results. Compare paired samples with the same host, sources, configuration
-and workload. The measurements include local process/profile/import/pipe/shutdown costs, but
-exclude Codex tool transport and model time. Retained-result savings also avoid native work;
-report them separately from persistent-shell savings. No universal acceleration factor follows
-from one local run, and three repetitions are insufficient to characterize tail latency.
+The [reproducible benchmark](../../FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-PersistentShellBenchmark.ps1)
+and its [measurement definitions](../../FrenchExDev2.QuietCli.Core.Tests.PoSh/README.md#persistent-powershell-benchmark)
+provide a separate validation tool with a disposable Git fixture, private default configurations,
+Core callbacks and a visible monitor. It is a source-distributed benchmark, not an installed
+Core cmdlet. A local run does not establish a universal acceleration factor.
 
 `Get-QuietCliGain` reports measured native/delivery volumes and available overhead measurements.
 It does not replace the external process-startup comparison. Unknown native token counts and
 unmeasured delivery sizes remain unknown; `-AsObject` alone establishes no serialization gain.
 
-Native business calls keep using `quiet`. Repository CI/build orchestration retains the
-engine-independent `scripts/Ci.Process.ps1` path, and read-only streaming monitors retain their
-documented exception. Use existing monitored launchers for tests; test strategy, qualification
-scope and release gates remain those of the supplied `AGENTS.md`. QuietCli grants no additional
-permission for network access, retries, hook installation, profile edits, pushes or publication.
+Use the host project's existing monitored launchers for tests and its documented CI orchestration.
+QuietCli grants no additional permission for network access, retries, hook installation, profile
+edits, pushes or publication.

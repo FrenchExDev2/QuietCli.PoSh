@@ -12,7 +12,7 @@ $script:QuietRecallDepth=0
 $script:QuietConfiguration=$null
 $script:QuietTokenizers=@{}
 $script:QuietUtf8=[Text.UTF8Encoding]::new($false,$true)
-foreach($source in @('Contracts','Dependencies','Protocol','Configuration','Runtime','Script','Invoke','Delivery','Registry','Gain','Scaffold','Recall')){. ([IO.Path]::Combine($PSScriptRoot,"src/$source.ps1"))}
+foreach($source in @('Contracts','Dependencies','Protocol','Configuration','Runtime','Script','Invoke','Delivery','Registry','Gain','Scaffold','Recall','Agent')){. ([IO.Path]::Combine($PSScriptRoot,"src/$source.ps1"))}
 $script:QuietProtocol=Read-QuietProtocolSpecification ([IO.Path]::Combine($PSScriptRoot,'protocol.json'))
 [void]$ExecutionContext.SessionState.InvokeProvider.Item.Set('Alias:quiet','Invoke-QuietCli')
 $ExecutionContext.SessionState.Module.OnRemove={Stop-QuietEngine}
@@ -20,3 +20,4 @@ Export-ModuleMember -Function Invoke-QuietCli,Out-QuietResult,ConvertTo-QuietJso
 Export-ModuleMember -Function Get-QuietRecall,Invoke-QuietRecall,New-QuietRecallReference,Export-QuietRecall,Import-QuietRecall
 Export-ModuleMember -Function Save-QuietRecall,Get-QuietSavedRecall
 Export-ModuleMember -Function Get-QuietCliConfiguration,Test-QuietCliConfiguration,Import-QuietCliConfiguration,New-QuietCliConfiguration,ConvertTo-QuietYaml
+Export-ModuleMember -Function Get-QuietAgentInstruction,Add-QuietAgentInstruction

@@ -26,7 +26,7 @@ UTF-8 JSON array of existing repository roots; required by RealStatus.
 .PARAMETER ExpectedRuntimeIdentifier
 Required actual PowerShell and engine runtime identifier; detects accidental architecture emulation.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','Script')][string]$Suite='All',[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
+[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script')][string]$Suite='All',[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 if($Profiler){

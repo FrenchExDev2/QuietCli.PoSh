@@ -1,22 +1,22 @@
-# CI Windows 11 ARM64
+# Windows 11 ARM64 CI
 
-Le workflow PR exécute désormais deux jobs Windows indépendants : `windows-latest` / `win-x64` et `windows-11-arm` / `win-arm64`. Les deux construisent avec le SDK .NET épinglé puis exécutent les mêmes suites Core et Git, sans ignorer les scénarios en ARM64. Les artefacts sont séparés par RID.
+The PR workflow now runs two independent Windows jobs: `windows-latest` / `win-x64` and `windows-11-arm` / `win-arm64`. Both build with the pinned .NET SDK and then run the same Core and Git suites, without skipping scenarios on ARM64. Artifacts are separated by RID.
 
-La cible `windows-11-arm` est une machine virtuelle hébergée par GitHub, pas une image OCI locale. Voir la [liste officielle des runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) et le [contenu publié de l’image Windows 11 ARM64](https://github.com/actions/runner-images/blob/main/images/windows/Windows11-Arm64-Readme.md). Ce label évolue ; le rapport conserve la version réellement utilisée. Il ne constitue pas un verrouillage reproductible du disque système. L’éligibilité du dépôt et les conditions de facturation du runner doivent être vérifiées avant son activation distante.
+The `windows-11-arm` target is a GitHub-hosted virtual machine, not a local OCI image. See the [official runner list](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) and the [published Windows 11 ARM64 image contents](https://github.com/actions/runner-images/blob/main/images/windows/Windows11-Arm64-Readme.md). This label evolves; the report retains the version actually used. It does not provide a reproducible system-disk lock. Repository eligibility and runner billing terms must be checked before enabling it remotely.
 
-`Build-Workspace.ps1` publie le moteur C# deux fois : `lib/engine/win-x64` avec `PlatformTarget=x64`, puis `lib/engine/win-arm64` avec `PlatformTarget=ARM64`. Chaque distribution contient l’assembly et son apphost Windows natif. La publication est framework-dependent : le runtime .NET 11 RC de l’architecture correspondante reste requis. Il s’agit de C# exécuté par le JIT ARM64, pas d’une publication NativeAOT.
+`Build-Workspace.ps1` publishes the C# engine twice: `lib/engine/win-x64` with `PlatformTarget=x64`, then `lib/engine/win-arm64` with `PlatformTarget=ARM64`. Each distribution contains the assembly and its native Windows apphost. Publication is framework-dependent: the .NET 11 RC runtime for the corresponding architecture is still required. This is C# executed by the ARM64 JIT, not a NativeAOT publication.
 
-Les en-têtes PE de l’assembly et de l’apphost sont vérifiés indépendamment : `0x8664` pour x64 et `0xAA64` pour ARM64. Leurs empreintes et paramètres de compilation figurent dans les manifestes de build. Le packaging exige les deux distributions et les embarque dans le module Core.
+The PE headers of the assembly and apphost are verified independently: `0x8664` for x64 and `0xAA64` for ARM64. Their hashes and compilation settings are recorded in the build manifests. Packaging requires both distributions and includes them in the Core module.
 
-`Invoke-WorkspaceCi.ps1 -ExpectedRuntimeIdentifier win-arm64` exige cette architecture pour PowerShell et pour le processus moteur séparé, ainsi qu’une publication `win-arm64`. La façade sélectionne le répertoire du RID courant et démarre son apphost. Une exécution x64 émulée échoue. Les rapports enregistrent RID, architectures OS/processus, description OS, nom de machine, PID du moteur, empreinte de son assembly et identité de build. SQLite est livrée sous `resources/runtime/runtimes/win-arm64/native`. Windows PTY utilise ConPTY.
+`Invoke-WorkspaceCi.ps1 -ExpectedRuntimeIdentifier win-arm64` requires this architecture for PowerShell and the isolated engine process, as well as a `win-arm64` publication. The facade selects the directory for the current RID and starts its apphost. An emulated x64 execution fails. Reports record the RID, OS/process architectures, OS description, machine name, engine PID, engine assembly hash and build identity. SQLite is shipped under `resources/runtime/runtimes/win-arm64/native`. Windows PTY uses ConPTY.
 
-Sur un hôte Windows ARM64 préparé :
+On a prepared Windows ARM64 host:
 
 ```powershell
-# Objectif : construire et tester localement sur ARM64, avec une fenêtre de suivi visible.
+# Goal: build and test locally on ARM64, with a visible monitoring window.
 ./scripts/Invoke-WorkspaceCi.ps1 -ExpectedRuntimeIdentifier win-arm64
 ```
 
-Une ISO seule ne permet pas d’exécuter la CI : il faut un invité installé avec PowerShell 7.6+, .NET 11 RC et Git, un disque de travail isolé et un transport de rapports. Ne pas renommer une base x64 en ARM64. Aucun disque utilisateur ni base existante n’est modifié par ce workflow.
+An ISO alone cannot run CI: an installed guest with PowerShell 7.6+, .NET 11 RC and Git, an isolated working disk and a report transport are required. Do not relabel an x64 base as ARM64. This workflow does not modify any user disk or existing database.
 
-La référence récupérée sur GitHub est la documentation du runner `windows-11-arm`, pas un disque local téléchargé. Ce job utilise donc directement l’image GitHub. Le workflow est configuré ; aucune réussite ARM n’est revendiquée avant un rapport provenant de ce runner.
+The reference retrieved from GitHub is the documentation for the `windows-11-arm` runner, not a downloaded local disk. This job therefore uses the GitHub image directly. The workflow is configured; no ARM success is claimed until a report from that runner is available.
