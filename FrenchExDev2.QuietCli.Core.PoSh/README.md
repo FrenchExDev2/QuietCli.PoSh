@@ -4,6 +4,16 @@
 
 # FrenchExDev2.QuietCli.Core.PoSh
 
+## Production agent instructions
+
+After installation, use `Add-QuietAgentInstruction -Path ./project -Agents` to copy the
+[production instructions](../docs/agents/AGENTS.md) and their skill guide into the project's
+`.skills` directory and add a managed reference in its `AGENTS.md`. Existing rules outside
+that block are preserved. `-WhatIf` previews changes. `Get-QuietAgentInstruction` reads the
+distributed rules without creating files or starting the engine. These commands return text
+or file metadata rather than native execution envelopes. See the [Codex guide](../docs/agents/codex.md)
+and [progressive Core workflows](../docs/agents/SKILL.md).
+
 PowerShell Core 7.6+ facade for the C# .NET 10 / .NET 11 RC engine, with integrated or isolated hosting. Sources live under `engine/`; compatible integrated assemblies and isolated publications are selected from `lib/`. No SDK is required to import or use a built module.
 
 Import reads the integer protocol specification through asynchronous host .NET file I/O and `System.Text.Json`, with the existing version and frame-size bounds. Source paths and alias creation also use host APIs, so import does not autoload the Management or Utility cmdlet modules. Engine initialization remains lazy. The companion's focused `Import` suite measures fresh-process loading; `RealStatus` checks direct callbacks on explicitly selected real repositories without the Git companion.

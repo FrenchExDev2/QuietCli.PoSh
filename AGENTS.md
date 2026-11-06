@@ -1,5 +1,10 @@
 # QuietCli2 monorepo
 
+## Production documentation
+
+- User-facing documentation describes the product as installed and used in production, not the development checkout or an editorial history of local changes.
+- Do not add unreleased-version annotations or rewrite documentation around development work unless explicitly requested as part of an upward version change. Consumer guides link to the distributed production instructions and use the public installation and instruction-generation commands; this root AGENTS.md governs repository development only.
+
 Read `README.md`, then the selected module README. This root is one Git repository with four internal projects. Preserve the original modules outside this root.
 
 - Interactive AI command analysis uses `quiet` from this checkout. Explicitly import the local Core manifest once per process, and the local Git manifest for Git commands. Use the `quiet` alias exported by the local Core V2 module for all native CLI calls. Existing matching binaries need no compilation; rebuild missing or stale binaries before use and start a fresh process. CI/build orchestration invokes tools directly through the engine-independent `scripts/Ci.Process.ps1` helper; it must not load the QuietCli engine or discover pump/quiet aliases to run tools. Product functional/import tests may load the product as their subject.

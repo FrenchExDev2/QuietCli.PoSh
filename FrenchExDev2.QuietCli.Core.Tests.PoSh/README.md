@@ -6,6 +6,16 @@
 
 Module de tests indépendant du moteur. Dépend du module Core, jamais l’inverse.
 
+## Production instruction and skill examples
+
+`./scripts/Invoke-WorkspaceCi.ps1 -Suite AgentInstructions -SkipBuild` runs the focused
+monitored suite. It checks generated reference preservation/idempotence, malformed markers,
+UTF-8/BOM handling, WhatIf, linked paths, installed-layout resources and targeted reference
+mutations. Eleven marked Core-only examples in `docs/agents/SKILL.md` execute against an owned
+Git fixture and verify business objects, bounded JSON/YAML, gain reporting, memory/durable
+Recall, replay and ZIP export/import. Core/All includes the same regression. This targeted
+development evidence does not replace release qualification or a Gallery installation test.
+
 ## Persistent PowerShell benchmark
 
 ```powershell
