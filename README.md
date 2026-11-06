@@ -149,6 +149,15 @@ The result counts stdin bytes actually written, stdout/stderr bytes actually rea
 
 With `-AsObject`, delivery size and reduction remain unknown. JSON/YAML bytes are measured only when their representation is produced, including the delivery envelope. The latest delivered text remains local under its `DeliveryId`; successive delivery strings do not accumulate in the result.
 
+Use `ConvertTo-QuietJson` for JSON or `Out-QuietResult -AsYaml` for YAML. There is no public `ConvertTo-QuietYaml` command; `Out-QuietResult -AsJson` also produces JSON.
+
+```powershell
+$json = ConvertTo-QuietJson $r -MaxOutputBytes 4096
+$yaml = Out-QuietResult $r -AsYaml -MaxOutputBytes 4096
+```
+
+Each successful conversion creates a new `DeliveryId` and, when tracking is enabled and storage succeeds, adds a `kind='delivery'` row to SQLite's `quiet2_events` table. Converting the same result again creates another delivery row. These rows contain metadata and measurements such as format, output bytes and serialization duration, never the delivered JSON/YAML text or business data. Offline results and `QUIETCLI2_TRACKING=0` skip these writes. A storage failure is reported through `Measurement.StorageError` and `Measurement.Status='StorageUnavailable'` while the produced text is still returned.
+
 Tokenization is off by default. Optional `-Tokenizer o200k_base` or `cl100k_base` counts the exact delivery text already produced. Native model-token counts remain unknown. Byte reduction alone establishes neither context-window use nor financial savings.
 
 SQLite stores closed metadata, counters, relationships and structured error codes. It excludes native output, business objects, delivered text, Recall names and callback code. Explicit Recall storage is separate from telemetry and ordinary result serialization. `QUIETCLI2_DATABASE` selects the telemetry database; `QUIETCLI2_TRACKING=0` disables measurement writes. Storage errors remain distinct from business outcomes.
