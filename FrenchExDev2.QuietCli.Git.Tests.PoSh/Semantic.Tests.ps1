@@ -234,7 +234,7 @@ Builds independent awkward-path, patch, history, blob and repository scenarios.
         & $assert ([Convert]::ToHexString([Convert]::FromBase64String($data.Entries[0].Path.Base64))) E9
         & $assert $data.Counts.Untracked 1
     }.GetNewClosure()
-    $cases['machine-format handler refuses a merged terminal rather than reporting empty success']={
+    $cases['PTY machine-format handler refuses a merged terminal rather than reporting empty success']={
         $r=quiet -AsObject -Transport Pty -WorkingDirectory $repo -Environment $Environment git status
         & $assert $r.Outcome Failed
         & $assert @($r.Internal.Sources.Values|Where-Object Role -EQ Business).Count 0

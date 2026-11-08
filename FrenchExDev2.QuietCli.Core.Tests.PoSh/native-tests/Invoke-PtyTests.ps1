@@ -25,9 +25,9 @@ if(!$Worker){
     $RunDirectory=Join-Path $WorkspaceRoot ('artifacts/pty-tests/'+[guid]::NewGuid().ToString('N'))
     [void][IO.Directory]::CreateDirectory($RunDirectory)
     $runner=(Get-Command pwsh -CommandType Application|Select-Object -First 1).Source
-    $process=Start-Process $runner -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $RunDirectory 'worker.stdout.log') -RedirectStandardError (Join-Path $RunDirectory 'worker.stderr.log') -ArgumentList @('-File',('"'+$PSCommandPath+'"'),'-WorkspaceRoot',('"'+$WorkspaceRoot+'"'),'-Image',$Image,'-RunDirectory',('"'+$RunDirectory+'"'),'-Worker')
+    $process=Start-Process $runner -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $RunDirectory 'worker.stdout.log') -RedirectStandardError (Join-Path $RunDirectory 'worker.stderr.log') -ArgumentList @('-File',(ConvertTo-CiArgument ($PSCommandPath)),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-Image',$Image,'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory)),'-Worker')
     $monitorPath=Join-Path $WorkspaceRoot 'scripts/Watch-Tests.ps1'
-    $monitor=Start-Process $runner -WindowStyle Normal -PassThru -ArgumentList @('-File',('"'+$monitorPath+'"'),'-RunDirectory',('"'+$RunDirectory+'"'))
+    $monitor=Start-Process $runner -WindowStyle Normal -PassThru -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory)))
     "Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$RunDirectory`""
     $summary=Wait-WorkspaceWorker -Worker $process -Monitor $monitor -Runner $runner -RunDirectory $RunDirectory -WorkspaceRoot $WorkspaceRoot -TimeoutSeconds 900
     $summary.State

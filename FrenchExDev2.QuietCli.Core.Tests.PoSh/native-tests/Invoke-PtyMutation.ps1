@@ -46,8 +46,8 @@ if(!$Worker){
     if(Test-Path $RunDirectory){throw 'MutationRunDirectoryExists'}
     [void][IO.Directory]::CreateDirectory($RunDirectory)
     $runner=(Get-Command pwsh -CommandType Application|Select-Object -First 1).Source
-    $arguments=@('-File',('"'+$PSCommandPath+'"'),'-WorkspaceRoot',('"'+$WorkspaceRoot+'"'),'-RunDirectory',('"'+$RunDirectory+'"'),'-Image',$Image,'-Worker')
-    if($CompilerPath){$arguments+=@('-CompilerPath',('"'+$CompilerPath+'"'))}
+    $arguments=@('-File',(ConvertTo-CiArgument ($PSCommandPath)),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory)),'-Image',$Image,'-Worker')
+    if($CompilerPath){$arguments+=@('-CompilerPath',(ConvertTo-CiArgument ($CompilerPath)))}
     if($ExpectedRuntimeIdentifier){$arguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
     if($RequireFuzz){$arguments+=@('-RequireFuzz','-FuzzRuns',$FuzzRuns)}
     $options=@{FilePath=$runner;ArgumentList=$arguments;PassThru=$true;RedirectStandardOutput=(Join-Path $RunDirectory 'worker.stdout.log');RedirectStandardError=(Join-Path $RunDirectory 'worker.stderr.log')}
@@ -56,7 +56,7 @@ if(!$Worker){
     $monitor=$null
     if(!$Headless){
         $monitorPath=Join-Path $WorkspaceRoot 'scripts/Watch-Tests.ps1'
-        $monitor=Start-Process $runner -WindowStyle Normal -PassThru -ArgumentList @('-File',('"'+$monitorPath+'"'),'-RunDirectory',('"'+$RunDirectory+'"'))
+        $monitor=Start-Process $runner -WindowStyle Normal -PassThru -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory)))
         "Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$RunDirectory`""
     }
     $summary=Wait-WorkspaceWorker -Worker $process -Monitor $monitor -Runner $runner -RunDirectory $RunDirectory -WorkspaceRoot $WorkspaceRoot -TimeoutSeconds 1800

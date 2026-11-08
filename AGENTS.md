@@ -31,7 +31,8 @@ Read `README.md`, then the selected module README. This root is one Git reposito
 - Linux runners build the multi-stage `.github/containers/Dockerfile.ci.*` natively: Ubuntu x64 for x64, `ubuntu-24.04-arm` for ARM64. No developer ARM machine, emulation or manually provisioned test image is required.
 - `New-CiImage.ps1` fingerprints recipes, tool/source locks and image scripts. A first upstream main push/manual run publishes missing GHCR entries; changed inputs publish new entries. Existing entries are resolved and pulled by digest, checked against their source/fingerprint/architecture labels and reused. Never publish from a pull request. Missing private cache access in a fork falls back to a local build, not to an unverified image.
 - Registry publication uses the workflow's ephemeral `GITHUB_TOKEN` with `packages: write`, stdin login and a private temporary auth file deleted on exit. Do not use PSGallery credentials for GHCR. Images contain only the test toolchain, never workspace sources, `.env`, tokens or native business output. Receipts live in `artifacts/ci-images`.
-- `publish-psgallery.yml` is manually dispatched with an exact version. `publish=false` prepares/validates; `publish=true` publishes Core then Git to PSGallery after the full `All` matrix. No branch push, tag, build or test publishes.
+- `publish-psgallery.yml` is the shared qualified packaging/publication workflow. Manual releases supply an exact version; `publish=false` prepares/validates artifacts only. The explicitly authorized `preview-psgallery.yml` wrapper publishes previews automatically for applicable pushes to the original repository's `develop` branch, only after the configured `All` qualification gate (TTY excluded in GitHub CI). PRs and forks never publish. Only Core is published; Git remains an internal development/test companion. Stable releases remain manual; builds and tests themselves never publish.
+- Preview identities keep the source numeric version and GUIDs, with a staged `preview{run-number:D8}a{attempt:D4}` suffix. Do not bump a minor version for a new build, use dot-separated prerelease labels, edit source manifests in CI, or overwrite a published identity. Artifact preparation has no Gallery secret; publication downloads and verifies the exact prepared files. Superseded automatic preview revisions are skipped before publication.
 - `repositories.lock.json` schema 3 records one repository and four project source hashes/dependency lists. Checkout the workflow commit once; no child clone is performed. Record the actual Git revision in run/build reports rather than trying to pin a file to its own future commit.
 - From this root, use `scripts/Initialize-Workspace.ps1`, `scripts/Build-Workspace.ps1`, then `scripts/Invoke-WorkspaceCi.ps1 -SkipBuild -Suite All` (or `Git` for a Git-only development check). Local test runs retain the visible monitor requirement.
 - Before an explicit commit, refresh `scripts/Update-WorkspaceLock.ps1`. `Commit-Workspace.ps1` and `Push-Workspace.ps1` now operate on the single root repository.
@@ -40,20 +41,20 @@ Read `README.md`, then the selected module README. This root is one Git reposito
 
 ## Native PTY mutation qualification
 
-- The shared ci.yml workflow owns the independent pty-mutation matrix (Linux glibc/musl, x64/ARM64). Core/All and release qualification run it; Git-only development skips it.
+- GitHub workflows exclude native TTY/PTY execution and the standalone properties, fuzzing and mutation matrix to limit duration. Pass `-SkipTty` through Windows, container and packaging test launchers. Record TTY as excluded, never successful. Local defaults and standalone campaign scripts remain available.
 - Invoke FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests/Invoke-PtyMutation.ps1 locally with its visible monitor, or with -CompilerPath gcc -Headless in CI. The existing compiler is required; no installation is implicit.
 - The unmodified 43-assertion baseline must pass before evaluating the 31 source-checked targeted mutations. Reject survivors, invalid mutants, timeouts and infrastructure errors. This catalogue does not establish exhaustive mutation coverage.
 - Preserve artifacts/pty-mutation reports and distinguish killed, survived, invalid, timed-out and infrastructure-failed mutants. Upload reports even when the gate fails.
 
-- The stable qualification-gate job waits for Windows, Linux and native mutation. Core/All requires all three to succeed; only Git-only development expects mutation to be skipped.
+- The GitHub qualification gate waits for Windows, Linux and performance evidence. Its explicit `-SkipTty` scope expects native mutation to be skipped and records the exclusion. The local default gate still requires native mutation for Core/All.
 - The reusable workflow exposes qualified_sha only after that gate passes. Gallery publication explicitly requests All, requires a successful qualification result with qualified_sha equal to github.sha, and checks out that exact revision. No previous revision's success qualifies a new delivery.
 
 - Run native C mutation through Invoke-ContainerCi.ps1 -Suite Mutation with ExpectedRuntimeIdentifier. Every Linux matrix target must succeed; image compilers are installed inside the CI images, never on the host. Windows uses the separate C# ConPTY implementation.
 
 ## CI bootstrap and mandatory native phases
 
-- Native C compilation, unit/process properties, coverage-guided fuzzing and mutation precede the .NET build matrix. They need only source files, PowerShell, GCC/Clang (or Zig for the C bridge build) and native system libraries. No Core manifest, engine assembly or built test fixture is required.
-- Native qualification requires 43 assertions including six generated property groups, 20,000 libFuzzer executions with ASan/UBSan, and 31 detected targeted mutants. Missing, skipped, failed, timed-out or incomplete phases block the matrix and publication. Assert-PtyQualification.ps1 enforces this independently of the product.
+- Local native C qualification includes compilation, unit/process properties, coverage-guided fuzzing and mutation. GitHub CI does not run these TTY campaigns. They need only source files, PowerShell, GCC/Clang (or Zig for the C bridge build) and native system libraries. No Core manifest, engine assembly or built test fixture is required.
+- Full local native qualification requires 43 assertions including six generated property groups, 20,000 libFuzzer executions with ASan/UBSan, and 31 detected targeted mutants. Missing, skipped, failed, timed-out or incomplete phases block full native qualification. They are outside the explicitly reduced GitHub CI scope. Assert-PtyQualification.ps1 enforces this independently of the product.
 - Bootstrap.ps1 is only a compatibility entry point for Ci.Process.ps1. It defines no pump/quiet aliases, provider catalogues or analysis contracts.
 
 - Native staging copies only C sources, C-only test drivers and C transport resources. It never requests compiled .NET build manifests. Probe-Independent.ps1 rejects product assemblies/manifests and traps accidental AI command calls; its independence receipt and the real guest exit code are required for CI success.
@@ -123,3 +124,14 @@ All repository text files must use UTF-8 and LF line endings on disk, including 
 - `QUIETCLI_CONFIG_DIRECTORY` is the only product configuration environment override. Other `QUIETCLI_*` test-worker controls do not configure the product. Do not restore old database, hosting or tracking environment overrides.
 - The lazy YAML snapshot, configuration cmdlets, unique representation receipts and per-encoding token measurements follow [the configuration contract](docs/configuration.md). No automatic native tokenization or Recall capture is implied.
 - `scripts/Invoke-WorkspaceCi.ps1 -Suite ConfigurationDelivery -SkipBuild` runs the focused properties, malformed YAML corpus, historical SQLite fixtures and targeted PowerShell/C# mutations with the shared visible monitor. Core/All also includes its functional baseline. Preserve the full release matrix requirements.
+
+## Run-profile tooling qualification
+
+- Use `scripts/Invoke-WorkspaceCi.ps1 -Suite RunProfiles -SkipBuild -TimeoutSeconds 600` for the complete tooling suite, and `-Suite RunProfilesMutation -TimeoutSeconds 3300` for the entire targeted catalogue. Both retain the shared visible monitor and external report directories.
+- CI runs both suites on Windows x64 stable integrated hosting for Core/All. A skipped required functional case or any surviving, crashed, invalid or timed-out mutant blocks that Windows job and qualification. Git-only development does not run tooling campaigns.
+- Benchmark properties and malformed samples, native-boundary fixtures, profiler/cache unit cases and actual-process smoke tests are distinct evidence. Never present three A/A smoke pairs as false-positive calibration or a ReadyToRun speedup.
+
+## Gallery preview qualification
+
+- Use `scripts/Invoke-WorkspaceCi.ps1 -Suite GalleryPreview -SkipBuild` for version examples/properties, malformed counters, staged-manifest checks, real offline nupkg preparation and installation, publication-boundary fixtures and targeted version mutations. Core/All includes the functional baseline.
+- Publication fixtures use aliases and a non-secret placeholder; never substitute a real Gallery key or send a real publication as a test. The `psgallery` environment must allow `develop` for automatic previews; any configured approval protection still applies and is never disabled implicitly.

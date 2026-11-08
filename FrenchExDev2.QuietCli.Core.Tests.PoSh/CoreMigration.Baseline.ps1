@@ -58,19 +58,19 @@ Resolves a versioned handler, caching successful probes by binary identity.
     param($Runtime)
     $binary=[IO.Path]::GetFileName($Runtime.Request.FilePath)
     if($IsWindows -and $binary.EndsWith('.exe',[StringComparison]::OrdinalIgnoreCase)){$binary=$binary.Substring(0,$binary.Length-4)}
-    $candidates=@($script:QuietHandlers.Values|Where-Object{$_.Binary -eq $binary})
+    $candidates=@([FrenchExDev2.QuietCli.Cmdlets.HandlerRegistry]::Handlers.Values|Where-Object{$_.Binary -eq $binary})
     if($Runtime.Request.ContainsKey('HandlerId')){$candidates=@($candidates|Where-Object Id -EQ $Runtime.Request.HandlerId)}
     $matches=[Collections.Generic.List[object]]::new()
     foreach($handler in $candidates){
         $file=Get-Item -LiteralPath $Runtime.Request.FilePath
         $key=$handler.Id+'|'+$file.FullName+'|'+$file.Length+'|'+$file.LastWriteTimeUtc.Ticks+'|'+($Runtime.Request.Environment|ConvertTo-Json -Compress)
-        if(!$script:QuietProbeCache.ContainsKey($key)){
+        if(![FrenchExDev2.QuietCli.Cmdlets.HandlerRegistry]::ProbeCache.ContainsKey($key)){
             if(!$handler.ContainsKey('Probe')){continue}
             $version=@(& $handler.Probe $Runtime)
             if($version.Count -ne 1){throw 'VersionProbeMustReturnOneValue'}
-            $script:QuietProbeCache[$key]=$version[0]
+            [FrenchExDev2.QuietCli.Cmdlets.HandlerRegistry]::ProbeCache[$key]=$version[0]
         }
-        $version=$script:QuietProbeCache[$key]
+        $version=[FrenchExDev2.QuietCli.Cmdlets.HandlerRegistry]::ProbeCache[$key]
         $versionMatch=@(& $handler.TestVersion $version)
         if($versionMatch.Count -ne 1 -or $versionMatch[0] -isnot [bool]){throw 'VersionPredicateMustReturnOneBoolean'}
         if(!$versionMatch[0]){continue}

@@ -11,8 +11,10 @@ Enables a separate pinned PowerShell and CLR profiling pass, outside benchmark s
 Explicit Profiler 4.3.0 manifest; the launcher prepares a private cache when omitted.
 .PARAMETER ClrProfilerPath
 Explicit pinned dotnet-trace DLL.
+.PARAMETER SkipTty
+Excludes native TTY/PTY execution from this run; local runs include it by default.
 .PARAMETER Suite
-Core, Git, All, Import, mandatory Integration, or explicit-repository RealStatus.
+Core, Git, All, Import, mandatory Integration, explicit-repository RealStatus, or complete RunProfiles/RunProfilesMutation tooling qualification.
 .PARAMETER RunDirectory
 New output directory; generated when omitted.
 .PARAMETER Headless
@@ -30,7 +32,7 @@ Development only: wildcard selecting Core cases by name; the run is partial and 
 .PARAMETER StopOnFirstFailure
 Development only: stops the Core run at the first failing case; the run is incomplete.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script')][string]$Suite='All',[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure)
+[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview')][string]$Suite='All',[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 if($Profiler){
@@ -47,11 +49,12 @@ if(Test-Path -LiteralPath $RunDirectory){throw 'TestRunDirectoryExists'}
 $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
 $workerPath=Join-Path $PSScriptRoot 'Invoke-TestWorker.ps1'
 $monitorPath=Join-Path $PSScriptRoot 'Watch-Tests.ps1'
-$workerArguments=@('-File',('"'+$workerPath+'"'),'-WorkspaceRoot',('"'+$WorkspaceRoot+'"'),'-RunDirectory',('"'+$RunDirectory+'"'),'-Suite',$Suite)
+$workerArguments=@('-File',(ConvertTo-CiArgument ($workerPath)),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory)),'-Suite',$Suite)
 if($Suite -eq 'RealStatus' -and !$RepositoryConfig){throw 'RealStatusRequiresRepositoryConfig'}
-if($RepositoryConfig){$workerArguments+=@('-RepositoryConfig',('"'+[IO.Path]::GetFullPath($RepositoryConfig,$PWD.Path)+'"'))}
-if($Profiler){$workerArguments+=@('-Profiler','-ProfilerModulePath',('"'+$ProfilerModulePath+'"'),'-ClrProfilerPath',('"'+$ClrProfilerPath+'"'))}
-if($Case){$workerArguments+=@('-Case',('"'+$Case+'"'))}
+if($RepositoryConfig){$workerArguments+=@('-RepositoryConfig',(ConvertTo-CiArgument ([IO.Path]::GetFullPath($RepositoryConfig,$PWD.Path))))}
+if($Profiler){$workerArguments+=@('-Profiler','-ProfilerModulePath',(ConvertTo-CiArgument ($ProfilerModulePath)),'-ClrProfilerPath',(ConvertTo-CiArgument ($ClrProfilerPath)))}
+if($Case){$workerArguments+=@('-Case',(ConvertTo-CiArgument ($Case)))}
+if($SkipTty){$workerArguments+='-SkipTty'}
 if($StopOnFirstFailure){$workerArguments+='-StopOnFirstFailure'}
 if($ExpectedRuntimeIdentifier){$workerArguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
 $options=@{FilePath=$runner;ArgumentList=$workerArguments;PassThru=$true;RedirectStandardOutput=(Join-Path $RunDirectory 'worker.stdout.log');RedirectStandardError=(Join-Path $RunDirectory 'worker.stderr.log')}
@@ -60,7 +63,7 @@ $worker=Start-Process @options
 $monitor=$null
 if(!$Headless){
     if(!$IsWindows){$worker.Kill($true);throw 'Use the Windows host launcher for a visible local monitor; Headless is reserved for CI.'}
-    $monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',('"'+$monitorPath+'"'),'-RunDirectory',('"'+$RunDirectory+'"')) -PassThru
+    $monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory))) -PassThru
 }
 "Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$RunDirectory`""
 $summary=Wait-WorkspaceWorker -Worker $worker -RunDirectory $RunDirectory -WorkspaceRoot $WorkspaceRoot -Runner $runner -Monitor $monitor -TimeoutSeconds $TimeoutSeconds

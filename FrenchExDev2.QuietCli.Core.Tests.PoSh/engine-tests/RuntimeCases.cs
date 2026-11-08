@@ -2,6 +2,7 @@ using System.Collections;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using System.Text;
+using FrenchExDev2.QuietCli;
 using FrenchExDev2.QuietCli.Cmdlets;
 
 /// <summary>Property, fuzz and contract cases for the compiled invocation runtime (lifecycle, offline guards, text streaming).</summary>
@@ -88,6 +89,27 @@ internal static class RuntimeCases
             runtime.Request["Output"] = ScriptBlock.Create("param($e,$r) 42");
             Script(runspace, "param($rt) $null=$rt.StreamBlock('stdout',[byte[]](104,105)); $null=$rt.StreamBlock('stdout',[byte[]](106))", runtime);
             Require(!runtime.AnalysisComplete && runtime.Errors.Count == 1 && (string)((Hashtable)runtime.Errors[0])["Code"] == "OutputCallbackFailed" && (string)((Hashtable)runtime.Errors[0])["Message"] == "CallbackUnexpectedOutput", "Unexpected callback output was not rejected exactly once");
+            return Task.CompletedTask;
+        });
+
+        await run("native execution is refused for the whole duration of a recall replay", () =>
+        {
+            var state = InitialSessionState.CreateDefault2();
+            state.Commands.Add(new SessionStateCmdletEntry("Invoke-QuietCall", typeof(InvokeQuietCallCommand), null));
+            using Runspace guarded = RunspaceFactory.CreateRunspace(state);
+            guarded.Open();
+            string script = "param($path) $null = Invoke-QuietCall @{FilePath=$path;AsObject=$true;Output={}}";
+            QuietCallState.RecallDepth++;
+            try
+            {
+                for (int round = 0; round < 3; round++)
+                {
+                    try { Script(guarded, script, "missing-recall-" + Guid.NewGuid().ToString("N")); throw new InvalidOperationException("Offline execution boundary was bypassed"); }
+                    catch (Exception error) when (ConfigurationService.Innermost(error).Message == "NativeExecutionUnavailableDuringRecall") { }
+                }
+            }
+            finally { QuietCallState.RecallDepth--; }
+            Require(QuietCallState.RecallDepth == 0 && QuietCallState.Depth == 0, "Replay depth or call stack leaked");
             return Task.CompletedTask;
         });
 

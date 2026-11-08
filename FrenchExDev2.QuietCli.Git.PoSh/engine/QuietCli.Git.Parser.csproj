@@ -7,4 +7,8 @@
     <AssemblyName>QuietCli.Git.Parser</AssemblyName>
     <RestoreIgnoreFailedSources>true</RestoreIgnoreFailedSources>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Compile-time only: the PowerShell host supplies the runtime assembly. -->
+    <PackageReference Include="System.Management.Automation" Version="7.6.9" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
 </Project>

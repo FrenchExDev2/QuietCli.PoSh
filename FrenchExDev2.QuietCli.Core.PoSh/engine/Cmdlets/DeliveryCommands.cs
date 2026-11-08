@@ -150,49 +150,25 @@ internal static class ResultMetadata
 }
 
 /// <summary>Shared delivery pipeline: bounded projection, envelope, measurement and telemetry for JSON or YAML.</summary>
-public abstract class ResultDeliveryCmdlet : EngineCmdlet
+public abstract class DeliveryCmdlet : RuntimeCmdlet
 {
     /// <summary>Strict UTF-8 used for byte accounting.</summary>
     private static readonly UTF8Encoding Utf8 = new(false, true);
-
-    /// <summary>Local QuietCli result.</summary>
-    [Parameter(Position = 0, Mandatory = true, ValueFromPipeline = true)]
-    public object InputObject { get; set; } = null!;
-
-    /// <summary>Presented entries per container.</summary>
-    [Parameter(Position = 1)]
-    public int MaxItems { get; set; }
-
-    /// <summary>Final UTF-8 byte budget.</summary>
-    [Parameter(Position = 2)]
-    public int MaxOutputBytes { get; set; }
-
-    /// <summary>Encoding override; defaults to the effective configuration.</summary>
-    [Parameter(Position = 3)]
-    [ValidateSet("off", "o200k_base", "cl100k_base")]
-    public string Tokenizer { get; set; } = "";
-
-    /// <summary>True when YAML is requested.</summary>
-    protected abstract bool Yaml { get; }
-
-    /// <inheritdoc />
-    protected override void ProcessRecord()
-    {
-        try { WriteObject(Deliver()); }
-        catch (Exception error) when (error is not PipelineStoppedException and not PipelineClosedException) { FailWith(error); }
-    }
-
     /// <summary>Produces and measures one actual bounded delivery.</summary>
-    private string Deliver()
+    /// <param name="result">Local QuietCli result.</param>
+    /// <param name="maxItemsOverride">Presented entries per container, or null for the configuration.</param>
+    /// <param name="maxBytesOverride">Final UTF-8 byte budget, or null for the configuration.</param>
+    /// <param name="tokenizerOverride">Encoding override, or null for the configuration.</param>
+    /// <param name="yaml">True when YAML is requested.</param>
+    internal string Deliver(object result, int? maxItemsOverride, int? maxBytesOverride, string? tokenizerOverride, bool yaml)
     {
         var values = ConfigurationService.Snapshot(CurrentDirectory).Values;
-        int maxItems = MyInvocation.BoundParameters.ContainsKey(nameof(MaxItems)) ? MaxItems : Convert.ToInt32(values["delivery.maxItems"], CultureInfo.InvariantCulture);
-        int maxBytes = MyInvocation.BoundParameters.ContainsKey(nameof(MaxOutputBytes)) ? MaxOutputBytes : Convert.ToInt32(values["delivery.maxOutputBytes"], CultureInfo.InvariantCulture);
-        string tokenizer = MyInvocation.BoundParameters.ContainsKey(nameof(Tokenizer)) ? Tokenizer : Convert.ToString(values["tokenization.tokenizer"], CultureInfo.InvariantCulture) ?? "off";
+        int maxItems = maxItemsOverride ?? Convert.ToInt32(values["delivery.maxItems"], CultureInfo.InvariantCulture);
+        int maxBytes = maxBytesOverride ?? Convert.ToInt32(values["delivery.maxOutputBytes"], CultureInfo.InvariantCulture);
+        string tokenizer = tokenizerOverride ?? Convert.ToString(values["tokenization.tokenizer"], CultureInfo.InvariantCulture) ?? "off";
         if (maxBytes < 256 || maxItems < 0) throw new InvalidOperationException("InvalidDeliveryBudget");
         var watch = Stopwatch.StartNew();
         var state = new ProjectionState();
-        object result = InputObject;
         var internals = (IDictionary)Members.Get(result, "Internal")!;
         object? business = Members.Get(result, "Data");
         if (Members.Get(internals["Request"], "Projection") is ScriptBlock projection)
@@ -208,7 +184,7 @@ public abstract class ResultDeliveryCmdlet : EngineCmdlet
         };
         bool truncated = state.Omitted > 0;
         string text;
-        if (Yaml) { document["Completeness"] = Flags(completeness); text = RenderYaml(document); }
+        if (yaml) { document["Completeness"] = Flags(completeness); text = RenderYaml(document); }
         else text = JsonText.Compress(document, 48);
         int size = Utf8.GetByteCount(text);
         if (size > maxBytes)
@@ -227,12 +203,12 @@ public abstract class ResultDeliveryCmdlet : EngineCmdlet
                 reduced["Error"] = new OrderedDictionary { ["Code"] = code };
             }
             truncated = true;
-            text = Yaml ? RenderYaml(reduced) : JsonText.Compress(reduced, 8);
+            text = yaml ? RenderYaml(reduced) : JsonText.Compress(reduced, 8);
             size = Utf8.GetByteCount(text);
         }
         if (size > maxBytes) throw new InvalidOperationException("OutputBudgetTooSmall");
         double serializationMs = watch.Elapsed.TotalMilliseconds;
-        string format = Yaml ? "yaml" : "json";
+        string format = yaml ? "yaml" : "json";
         string fingerprint = format + ":" + Convert.ToHexString(SHA256.HashData(Utf8.GetBytes(text)));
         if (!internals.Contains("DeliveryReceipts")) internals["DeliveryReceipts"] = new Hashtable(StringComparer.OrdinalIgnoreCase);
         var receipts = (Hashtable)internals["DeliveryReceipts"]!;
@@ -315,7 +291,7 @@ public abstract class ResultDeliveryCmdlet : EngineCmdlet
 
     /// <summary>Sends one save request; a session-level Send-QuietRequest function (test seam) takes precedence over the cmdlet.</summary>
     /// <param name="header">Save request header.</param>
-    private void SaveMetadata(Hashtable header)
+    internal void SaveMetadata(Hashtable header)
     {
         if (FindFunction("Send-QuietRequest") is { } seam) { seam.ScriptBlock.Invoke(header); return; }
         EngineClient.Send(QuietSession.Engine ?? EnsureEngine(), header, [], IpcTimeout);
@@ -341,6 +317,41 @@ public abstract class ResultDeliveryCmdlet : EngineCmdlet
     }
 }
 
+/// <summary>Cmdlet surface of the delivery pipeline: one result, budgets and encoding overrides.</summary>
+public abstract class ResultDeliveryCmdlet : DeliveryCmdlet
+{
+    /// <summary>Local QuietCli result.</summary>
+    [Parameter(Position = 0, Mandatory = true, ValueFromPipeline = true)]
+    public object InputObject { get; set; } = null!;
+
+    /// <summary>Presented entries per container.</summary>
+    [Parameter(Position = 1)]
+    public int MaxItems { get; set; }
+
+    /// <summary>Final UTF-8 byte budget.</summary>
+    [Parameter(Position = 2)]
+    public int MaxOutputBytes { get; set; }
+
+    /// <summary>Encoding override; defaults to the effective configuration.</summary>
+    [Parameter(Position = 3)]
+    [ValidateSet("off", "o200k_base", "cl100k_base")]
+    public string Tokenizer { get; set; } = "";
+
+    /// <summary>True when YAML is requested.</summary>
+    protected abstract bool Yaml { get; }
+
+    /// <inheritdoc />
+    protected override void ProcessRecord()
+    {
+        try
+        {
+            var bound = MyInvocation.BoundParameters;
+            WriteObject(Deliver(InputObject, bound.ContainsKey(nameof(MaxItems)) ? MaxItems : null, bound.ContainsKey(nameof(MaxOutputBytes)) ? MaxOutputBytes : null,
+                bound.ContainsKey(nameof(Tokenizer)) ? Tokenizer : null, Yaml));
+        }
+        catch (Exception error) when (error is not PipelineStoppedException and not PipelineClosedException) { FailWith(error); }
+    }
+}
 /// <summary>Produces and measures one actual bounded delivery; no whole-result serialization.</summary>
 [Cmdlet(VerbsData.Out, "QuietResult")]
 [OutputType(typeof(string))]

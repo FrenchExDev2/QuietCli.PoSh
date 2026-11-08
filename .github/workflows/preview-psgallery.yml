@@ -1,0 +1,30 @@
+name: QuietCli2 automatic develop previews
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'FrenchExDev2.QuietCli.Core.PoSh/**'
+      - 'scripts/**'
+      - 'build/**'
+      - 'global.json'
+      - 'repositories.lock.json'
+      - '.github/workflows/preview-psgallery.yml'
+      - '.github/workflows/publish-psgallery.yml'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish publicly after full qualification; false prepares artifacts only
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+  packages: write
+jobs:
+  preview:
+    if: ${{ github.repository == 'FrenchExDev2/FrenchExDev2.QuietCli.PoSh' && github.ref == 'refs/heads/develop' }}
+    uses: ./.github/workflows/publish-psgallery.yml
+    with:
+      preview_build: true
+      publish: ${{ github.event_name == 'push' || inputs.publish == true }}

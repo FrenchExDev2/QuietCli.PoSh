@@ -72,7 +72,7 @@ function Wait-WorkspaceWorker {
     $started=[DateTimeOffset]::UtcNow;$deadline=$started.AddSeconds($TimeoutSeconds);$timedOut=$false
     $monitorPath=Join-Path $PSScriptRoot 'Watch-Tests.ps1'
     while(!$Worker.HasExited){
-        if($Monitor -and $Monitor.HasExited){$Monitor=Start-Process -FilePath $Runner -WindowStyle Normal -ArgumentList @('-File',('"'+$monitorPath+'"'),'-RunDirectory',('"'+$RunDirectory+'"')) -PassThru}
+        if($Monitor -and $Monitor.HasExited){$Monitor=Start-Process -FilePath $Runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory))) -PassThru}
         if([DateTimeOffset]::UtcNow -gt $deadline){$Worker.Kill($true);$timedOut=$true;break}
         [void][Threading.Tasks.Task]::Delay(500).GetAwaiter().GetResult()
     }

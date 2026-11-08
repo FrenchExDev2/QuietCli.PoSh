@@ -16,9 +16,9 @@ if(!$IsWindows){throw 'Use the Windows visible-monitor host launcher'}
 $run=Join-Path $WorkspaceRoot ('artifacts/github/'+$RunId+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))
 [void][IO.Directory]::CreateDirectory($run)
 $runner=(Get-Command pwsh -CommandType Application|Select-Object -First 1).Source
-$worker=Start-Process -FilePath $runner -WindowStyle Hidden -ArgumentList @('-File',('"'+(Join-Path $PSScriptRoot Invoke-GitHubRunWorker.ps1)+'"'),'-RunId',$RunId,'-Repository',$Repository,'-WorkspaceRoot',('"'+$WorkspaceRoot+'"'),'-RunDirectory',('"'+$run+'"')) -PassThru -RedirectStandardOutput (Join-Path $run worker.stdout.log) -RedirectStandardError (Join-Path $run worker.stderr.log)
+$worker=Start-Process -FilePath $runner -WindowStyle Hidden -ArgumentList @('-File',(ConvertTo-CiArgument ((Join-Path $PSScriptRoot Invoke-GitHubRunWorker.ps1))),'-RunId',$RunId,'-Repository',$Repository,'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($run))) -PassThru -RedirectStandardOutput (Join-Path $run worker.stdout.log) -RedirectStandardError (Join-Path $run worker.stderr.log)
 $monitorPath=Join-Path $PSScriptRoot Watch-Tests.ps1
-$monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',('"'+$monitorPath+'"'),'-RunDirectory',('"'+$run+'"')) -PassThru
+$monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($run))) -PassThru
 "Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$run`""
 $summary=Wait-WorkspaceWorker -Worker $worker -RunDirectory $run -WorkspaceRoot $WorkspaceRoot -Runner $runner -Monitor $monitor -TimeoutSeconds 3600
 [pscustomobject]@{State=$summary.State.State;RunId=$RunId;RunDirectory=$run;Url="https://github.com/$Repository/actions/runs/$RunId"}

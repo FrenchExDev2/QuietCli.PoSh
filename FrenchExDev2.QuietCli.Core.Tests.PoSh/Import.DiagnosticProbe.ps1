@@ -57,7 +57,7 @@ if($Mode -eq 'CmdletOperations'){
 }else{
     $null=New-Module -Name QuietImportDiagnostic -ArgumentList $root,$Mode,$rows -ScriptBlock {
         param($root,$mode,$rows)
-        foreach($name in @('Contracts','Protocol','Invoke','Delivery','Registry','Gain','Scaffold')){
+        foreach($name in @('Protocol','Invoke')){
             $path=Join-Path $root "src/$name.ps1"
             $watch=[Diagnostics.Stopwatch]::StartNew()
             switch($mode){

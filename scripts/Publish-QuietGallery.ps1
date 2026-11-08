@@ -1,10 +1,10 @@
-# Objectif : Publier les paquets vérifiés sur PSGallery, Core avant Git, uniquement sur demande explicite.
+# Objective: Publish only the validated public Core package on an explicitly authorized request.
 #requires -Version 7.6
 <#
 .SYNOPSIS
 Publishes a prepared release once, with version and destination checks and no automatic retry.
 .PARAMETER PackageDirectory
-Prepared package-set.json and its two unchanged nupkg files.
+Prepared package-set.json and its unchanged public Core nupkg.
 .PARAMETER Version
 Required exact tag or manually requested version.
 .PARAMETER ValidateOnly
@@ -23,23 +23,18 @@ foreach($package in $plan.Packages){if(Get-QuietGalleryRemoteIdentity $package.M
 $receipt=@{SchemaVersion=1;Version=$Version;Repository='PSGallery';State='Prepared';Modules=@();StartedUtc=[DateTimeOffset]::UtcNow.ToString('o')}
 $receiptPath=Join-Path $directory publication.json
 try{
-    foreach($name in @('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Git.PoSh')){
+    foreach($name in @('FrenchExDev2.QuietCli.Core.PoSh')){
         $package=$plan.Packages|Where-Object Module -CEQ $name
         if($PSCmdlet.ShouldProcess(('PSGallery/'+$name+'/'+$Version),'Publish verified PowerShell module')){
             $receipt.State='Publishing';$receipt.PendingModule=$name;Write-WorkspaceJson $receiptPath $receipt
             $publishOptions=@{NupkgPath=(Join-Path $directory $package.File);Repository='PSGallery';ApiKey=$env:PSGALLERY_API_KEY;ErrorAction='Stop'}
-            if($name -ceq 'FrenchExDev2.QuietCli.Git.PoSh'){
-                if($receipt.Modules.Count -ne 1 -or $receipt.Modules[0].Module -cne 'FrenchExDev2.QuietCli.Core.PoSh'){throw 'CorePublicationNotConfirmed'}
-                # The matching Core package is validated locally and its push is already confirmed; avoid relying on Gallery search-index propagation.
-                $publishOptions.SkipDependenciesCheck=$true
-            }
             Publish-PSResource @publishOptions
             $receipt.Modules+=@(@{Module=$name;SHA256=$package.SHA256;State='Published'})
             $receipt.PendingModule=$null
             Write-WorkspaceJson $receiptPath $receipt
         }
     }
-    $receipt.State=if($receipt.Modules.Count -eq 2){'Published'}else{'NotPublished'}
+    $receipt.State=if($receipt.Modules.Count -eq 1){'Published'}else{'NotPublished'}
 }catch{
     $receipt.State='Failed';$receipt.ErrorCode=$_.Exception.GetType().Name;$receipt.EffectStatus=if($receipt.PendingModule){'Unknown'}else{'Known'}
     Write-WorkspaceJson $receiptPath $receipt

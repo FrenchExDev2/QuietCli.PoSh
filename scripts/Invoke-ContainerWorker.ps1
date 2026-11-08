@@ -19,10 +19,12 @@ Enables a separate pinned PowerShell and CLR profiling pass, outside benchmark s
 Explicit Profiler 4.3.0 manifest; the launcher prepares a private cache when omitted.
 .PARAMETER ClrProfilerPath
 Explicit pinned dotnet-trace DLL.
+.PARAMETER SkipTty
+Excludes native TTY/PTY execution from this run; local runs include it by default.
 .PARAMETER Suite
 Companion scope or native C mutation campaign selected by the workflow.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[ValidateSet('Core','Git','All','Import','Integration','Mutation')][string]$Suite='All',[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
+[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[ValidateSet('Core','Git','All','Import','Integration','Mutation')][string]$Suite='All',[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 $owner=[guid]::NewGuid().ToString('N');$name='quietcli2-'+$owner.Substring(0,12)
 $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Tests Podman';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=$Platform;State='Preparing';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;ContainerId=$name;Passed=$null;Failed=$null;Case='Staging explicit source files';FinishedUtc=$null;Error=$null;Image=$Image;Owner=$owner}
@@ -62,6 +64,7 @@ try{
         @('-File','/workspace/FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests/Probe-Independent.ps1','-WorkspaceRoot','/workspace','-RunDirectory','/workspace/artifacts/tests/container-run')
     }else{@('-File','/workspace/scripts/Invoke-WorkspaceCi.ps1','-WorkspaceRoot','/workspace','-Headless','-SkipBuild','-RunDirectory','/workspace/artifacts/tests/container-run')}
     if($ExpectedRuntimeIdentifier){$guestArguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
+    if($SkipTty){if($Suite -eq 'Mutation'){throw 'TtyMutationCannotRunWithSkipTty'};$guestArguments+='-SkipTty'}
     if($Suite -ne 'Mutation'){$guestArguments+=@('-Suite',$Suite)}
     if($Profiler){
         $toolRoot=Join-Path $stage '.profilers'

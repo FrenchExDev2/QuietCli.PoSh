@@ -3,6 +3,29 @@ if(!(Test-Path -LiteralPath $PROFILE.CurrentUserAllHosts) -and !(Test-Path -Lite
     $ciUtf8=[Text.UTF8Encoding]::new($false)
     [Console]::InputEncoding=$ciUtf8;[Console]::OutputEncoding=$ciUtf8;$OutputEncoding=$ciUtf8
 }
+function ConvertTo-CiArgument {
+    <#
+    .SYNOPSIS
+    Quotes one value for a Start-Process argument string following the CommandLineToArgvW rules.
+    .DESCRIPTION
+    Start-Process joins an argument array with spaces and does not quote. This escapes embedded
+    quotes, doubles the backslashes that precede a quote (or the closing quote), and wraps the
+    value, so a path ending in a backslash or containing a quote cannot alter the argument vector.
+    .PARAMETER Value
+    Exact argument value.
+    #>
+    [CmdletBinding()]param([Parameter(Mandatory)][AllowEmptyString()][string]$Value)
+    $builder=[Text.StringBuilder]::new('"')
+    $backslashes=0
+    foreach($character in $Value.ToCharArray()){
+        if($character -eq '\'){$backslashes++;continue}
+        if($character -eq '"'){[void]$builder.Append('\',($backslashes*2+1)).Append('"')}
+        else{[void]$builder.Append('\',$backslashes).Append($character)}
+        $backslashes=0
+    }
+    [void]$builder.Append('\',($backslashes*2)).Append('"')
+    $builder.ToString()
+}
 function Invoke-CiProcess {
     <#
     .SYNOPSIS

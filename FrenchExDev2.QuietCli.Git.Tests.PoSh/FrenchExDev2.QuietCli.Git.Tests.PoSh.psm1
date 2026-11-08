@@ -48,7 +48,7 @@ Tests independently prepared repositories, hook counts and local bare push targe
         $schema=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/metadata/Git.ArgumentSchema.json'
         $r=quiet -AsObject -Data ([Text.StringBuilder]::new()) -Output {param($event,$runtime)if($event.Stream -eq 'stdout'){[void]$runtime.Data.Append($event.Text)}} -Complete {param($runtime)$runtime.Data.ToString()|ConvertFrom-Json} $dotnet $assembly $schema
         Assert-QuietEqual $r.Outcome Success 'Compiled Git suite process'
-        Assert-QuietEqual $r.Data.Passed 44 'Compiled Git independent cases'
+        Assert-QuietEqual $r.Data.Passed 57 'Compiled Git independent cases'
         Assert-QuietEqual $r.Data.Failed 0 'Compiled Git independent failures'
     }
     $cases['status distinguishes unborn state and Unicode untracked paths']={
@@ -120,6 +120,9 @@ Tests independently prepared repositories, hook counts and local bare push targe
     if($env:QUIETCLI_GIT_PATH_QUERY_MUTATION -eq '1'){$cases['pathquery parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue PathQuery}}
     $pathCases=Get-QuietGitPathQueryCases -RootDirectory $root -Environment $environment -WorkspaceRoot $WorkspaceRoot
     foreach($entry in $pathCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
+    if($env:QUIETCLI_GIT_SCHEMA_MUTATION -eq '1'){$cases['argument filter C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue ArgumentFilter}}
+    if($env:QUIETCLI_GIT_SCHEMA_MUTATION -eq '1'){$cases['schema parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Schema}}
+    if($env:QUIETCLI_GIT_INVOCATION_MUTATION -eq '1'){$cases['invocation parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Invocation}}
     if($env:QUIETCLI_GIT_REVISION_MUTATION -eq '1'){$cases['revision parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Revision}}
     $revisionCases=Get-QuietGitRevisionCases -RootDirectory $root -Environment $environment
     foreach($entry in $revisionCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
@@ -127,13 +130,14 @@ Tests independently prepared repositories, hook counts and local bare push targe
     foreach($entry in $indexCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $semanticCases=Get-QuietGitSemanticCases -RootDirectory $root -Environment $environment
     foreach($entry in $semanticCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
-    $passed=0;$failed=0;$results=[Collections.Generic.List[object]]::new()
+    $passed=0;$failed=0;$ttyExcluded=0;$results=[Collections.Generic.List[object]]::new()
     foreach($entry in $cases.GetEnumerator()){
+        if($env:QUIETCLI_TEST_SKIP_TTY -ceq '1' -and $entry.Key -clike 'PTY *'){$ttyExcluded++;continue}
         $failure=$null
         try{& $entry.Value;$passed++;$state='Passed'}catch{$failed++;$state='Failed';$failure=$_.Exception.Message}
         $results.Add([pscustomobject]@{Name=$entry.Key;State=$state;Error=$failure})
         if($OnProgress){& $OnProgress $entry.Key $state $passed $failed}
     }
-    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Git.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Performance=$performance.ToArray();FixtureDirectory=$root;EntireInventoryQualified=$false}
+    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Git.PoSh';Passed=$passed;Failed=$failed;TtyExcluded=$ttyExcluded;Cases=$results.ToArray();Performance=$performance.ToArray();FixtureDirectory=$root;EntireInventoryQualified=$false}
 }
 Export-ModuleMember -Function Invoke-QuietGitTests

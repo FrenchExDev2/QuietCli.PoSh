@@ -3,12 +3,10 @@ function Test-QuietGainOutput {
     .SYNOPSIS
     Checks report formats, generated filter inputs, invalid options and read-only telemetry.
     .DESCRIPTION
-    Runs against the real metadata engine in the launcher's private database. Targeted
-    mutations exercise the same independent assertions and restore the function afterwards.
+    Runs against the real metadata engine in the launcher's private database.
     #>
     param()
     & (Get-Module FrenchExDev2.QuietCli.Core.PoSh) {
-        $original=${function:Get-QuietCliGain}
         $send=Get-Command Send-QuietRequest -CommandType Cmdlet
         $script:gainTestWrites=0
         $script:gainTestSelection=$null
@@ -76,27 +74,9 @@ function Test-QuietGainOutput {
         }
         try{
             & $check
-            $mutations=@(
-                @('DefaultJson','return $report','return (ConvertTo-Json -InputObject $report -Depth 20)'),
-                @('IgnoreCompress','-Compress:$Compress','-Compress'),
-                @('ImplicitSevenDays','$lower=if(', 'if($null -eq $From){$From=[DateTimeOffset]::UtcNow.AddDays(-7)}; $lower=if('),
-                @('TrackReport','$query=@{Action=''gain'';','$null=Send-QuietRequest @{Action=''save'';Kind=''invocation'';Metadata=@{InvocationId=[guid]::NewGuid().ToString();Context=$Context;Command=''mutant''}}; $query=@{Action=''gain'';')
-            )
-            foreach($mutation in $mutations){
-                $source=$original.ToString()
-                if(!$source.Contains($mutation[1])){throw 'GainMutationAnchorMissing'}
-                ${function:Get-QuietCliGain}=[scriptblock]::Create($source.Replace($mutation[1],$mutation[2]))
-                $killed=$false
-                try{& $check}catch{
-                    if($_.Exception.Message -notin @('GainDefaultObjectInvariant','GainJsonWhitespaceInvariant','GainReportRecordedTelemetry','GainUnboundedTimeInvariant')){throw}
-                    $killed=$true
-                }
-                if(!$killed){throw "GainMutantSurvived:$($mutation[0])"}
-                ${function:Get-QuietCliGain}=$original
-            }
-            [pscustomobject]@{Seed=68131;GeneratedFilters=16;InvalidFormats=6;TimeBoundaryCases=10;MutantsKilled=4;State='Success'}
+            # The command is compiled: its mutants live in the C# configuration/delivery catalogue (GainCmdletCases).
+            [pscustomobject]@{Seed=68131;GeneratedFilters=16;InvalidFormats=6;TimeBoundaryCases=10;State='Success'}
         }finally{
-            ${function:Get-QuietCliGain}=$original
             Remove-Item Function:Send-QuietRequest -ErrorAction SilentlyContinue
             Remove-Variable gainTestWrites -Scope Script
             Remove-Variable gainTestSelection -Scope Script

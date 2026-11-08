@@ -20,11 +20,11 @@ if(!$Worker){
     if(Test-Path -LiteralPath $RunDirectory){throw 'TestRunDirectoryExists'}
     [void][IO.Directory]::CreateDirectory($RunDirectory)
     $runner=Join-Path $PSHOME 'pwsh.exe'
-    $arguments=@('-File',('"'+$PSCommandPath+'"'),'-WorkspaceRoot',('"'+$WorkspaceRoot+'"'),'-RunDirectory',('"'+$RunDirectory+'"'),'-Worker')
+    $arguments=@('-File',(ConvertTo-CiArgument ($PSCommandPath)),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory)),'-Worker')
     if($Mutation){$arguments+='-Mutation'}
     $process=Start-Process $runner -WindowStyle Hidden -ArgumentList $arguments -PassThru -RedirectStandardOutput (Join-Path $RunDirectory 'worker.stdout.log') -RedirectStandardError (Join-Path $RunDirectory 'worker.stderr.log')
     $monitorPath=Join-Path $WorkspaceRoot 'scripts/Watch-Tests.ps1'
-    $monitor=Start-Process $runner -WindowStyle Normal -ArgumentList @('-File',('"'+$monitorPath+'"'),'-RunDirectory',('"'+$RunDirectory+'"')) -PassThru
+    $monitor=Start-Process $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory))) -PassThru
     "Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$RunDirectory`""
     $summary=Wait-WorkspaceWorker -Worker $process -RunDirectory $RunDirectory -WorkspaceRoot $WorkspaceRoot -Runner $runner -Monitor $monitor -TimeoutSeconds 900
     $summary

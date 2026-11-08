@@ -84,39 +84,6 @@ Dispatches documented streaming Git semantics and refuses missing semantic handl
     }
     throw "ContractNotImplemented: $name. Inventory membership is not semantic support."
 }
-function ConvertFrom-QuietGitQuery {
-    <#
-.SYNOPSIS
-Projects streamed query records into a typed business result where implemented.
-    .PARAMETER Name
-    Git query name.
-    .PARAMETER Lines
-    Explicit business records collected by the query handler.
-    .PARAMETER ExitCode
-    Native exit condition.
-    .PARAMETER Version
-    Observed Git version.
-    #>
-    param([string]$Name,[string[]]$Lines,[int]$ExitCode,[string]$Version)
-    $data=[ordered]@{Command=$Name;GitVersion=$Version;ExitCode=$ExitCode}
-    switch($Name){
-        {$_ -in @('hash-object','write-tree','commit-tree','mktree','mktag','merge-base','rev-list')} {
-            $data.Objects=@(foreach($line in $Lines){
-                if($line -match '^[0-9a-f]{40}(?:[0-9a-f]{24})?$'){@{ObjectId=$line;Algorithm=$(if($line.Length -eq 40){'sha1'}else{'sha256'})}}
-            })
-        }
-        count-objects {$data.Counts=[ordered]@{};foreach($line in $Lines){if($line -match '^([a-z-]+): (\d+)$'){$data.Counts[$Matches[1]]=[long]$Matches[2]}};$data.SizeUnit='KiB'}
-        {$_ -in @('show-ref','ls-remote')} {
-            $data.References=@(foreach($line in $Lines){
-                if($line -match '^([0-9a-f]{40}(?:[0-9a-f]{24})?)\s+(.+)$'){@{ObjectId=$Matches[1];Name=$Matches[2]}}
-            })
-        }
-        check-ref-format {$data.Valid=$ExitCode -eq 0;$data.NormalizedName=if($Lines.Count){$Lines[0]}else{$null}}
-        symbolic-ref {$data.Exists=$ExitCode -eq 0;$data.Reference=if($Lines.Count){$Lines[0]}else{$null}}
-        default {$data.Records=$Lines;$data.Semantics='Native textual records; advanced variants remain unqualified.'}
-    }
-    return $data
-}
 function Get-QuietGitCoverage {
     <#
 .SYNOPSIS

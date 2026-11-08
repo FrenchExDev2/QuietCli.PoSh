@@ -10,6 +10,26 @@ A C# engine starts the native process and streams its output once, through bound
 
 > **Status: preview (`0.2.0-preview`).** The engine is under active development and its API may change. The Git companion module is a work in progress and is presented here as an example only. Nothing in this repository is a release qualification unless a report says so; see [Tests and qualification](README-qualification.md).
 
+## How projection works
+
+QuietCli's engine streams native output once. Your own code decides what that stream becomes, split across two callbacks with different jobs:
+
+- **`-Output`** runs once per stream event (one line of stdout or stderr). It never produces the result itself; its only job is to accumulate state into `$runtime.Data` — counters, lists, parsed fields. Nothing else leaves this callback.
+- **`-Complete`** runs once, after the stream ends. It reads `$runtime.Data` and returns the one object the call delivers — the actual business projection. This is where you decide what the command means in business terms: a status summary, a count, a list of typed records.
+
+In short: `-Output` folds raw events into accumulated state, `-Complete` projects that state into the business output you asked for. A companion module (see the Git example below) just supplies a ready-made `-Output`/`-Complete` pair — a handler — for one executable, so you don't write the fold or the projection yourself.
+
+## Roadmap: from a script to an ecosystem
+
+QuietCli is meant to grow along one path, each step adding reuse without discarding the one before it:
+
+1. **`pwsh` callback** — inline `-Output`/`-Complete` scriptblocks at the call site. Fastest to write, not reusable.
+2. **Parameterizable script** — a standalone `.ps1` projection file, loaded and reused across calls and projects without a full module.
+3. **Module** — a companion module (like the Git module) with registered handlers, tests, and a documented coverage/limits matrix.
+4. **Ecosystem** — a family of modules sharing conventions, scaffolding and qualification tooling.
+
+Each step up this path can opt into a stricter dev pipeline style — Minimal, Standard (basic tests), or Hardened (property, fuzz and mutation testing) — so a one-off script stays light while a published module can be qualified to the same rigor as QuietCli's own handlers. See [Tests and qualification](README-qualification.md) for what "qualified" means today.
+
 ## What QuietCli gives you
 
 - **Any executable, one entry point.** `quiet` (an alias of `Invoke-QuietCli`) wraps `git`, `dotnet`, `docker` or any other native command. QuietCli options come first; native arguments follow verbatim.

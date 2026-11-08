@@ -6,3 +6,5 @@
 **/bin/
 **/obj/
 **/lib/
+!/scripts/lib/
+!/scripts/lib/*.psm1

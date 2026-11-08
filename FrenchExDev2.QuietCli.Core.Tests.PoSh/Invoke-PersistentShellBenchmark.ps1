@@ -71,10 +71,10 @@ if($Role -eq 'Launch'){
     if(!$IsWindows){throw 'PersistentLocalBenchmarkRequiresWindowsVisibleMonitor'}
     if(Test-Path -LiteralPath $RunDirectory){throw 'PersistentRunDirectoryExists'}
     [void][IO.Directory]::CreateDirectory($RunDirectory)
-    $workerArgs=@('-File',('"'+$self+'"'),'-Role','Coordinator','-RunDirectory',('"'+$RunDirectory+'"'),'-Iterations',"$Iterations",'-CommandCounts',$CommandCounts)
+    $workerArgs=@('-File',(ConvertTo-CiArgument ($self)),'-Role','Coordinator','-RunDirectory',(ConvertTo-CiArgument ($RunDirectory)),'-Iterations',"$Iterations",'-CommandCounts',$CommandCounts)
     $worker=Start-Process -FilePath $runner -WindowStyle Hidden -ArgumentList $workerArgs -RedirectStandardOutput (Join-Path $RunDirectory 'worker.stdout.log') -RedirectStandardError (Join-Path $RunDirectory 'worker.stderr.log') -PassThru
     $monitorPath=Join-Path $workspace 'scripts/Watch-Tests.ps1'
-    $monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',('"'+$monitorPath+'"'),'-RunDirectory',('"'+$RunDirectory+'"')) -PassThru
+    $monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory))) -PassThru
     Write-Host "Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$RunDirectory`""
     $summary=Wait-WorkspaceWorker -Worker $worker -RunDirectory $RunDirectory -WorkspaceRoot $workspace -Runner $runner -Monitor $monitor -TimeoutSeconds $TimeoutSeconds
     [pscustomobject]@{State=$summary.State.State;RunDirectory=$RunDirectory;Statistics=$summary.Statistics;Comparisons=$summary.Comparisons}

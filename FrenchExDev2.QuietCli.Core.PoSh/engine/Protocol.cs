@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Text.Json;
 
 namespace FrenchExDev2.QuietCli;
@@ -30,13 +29,8 @@ internal sealed class Protocol(Stream input, Stream output)
         using var frame = CancellationTokenSource.CreateLinkedTokenSource(token);
         frame.CancelAfter(TimeSpan.FromSeconds(ProtocolSpecification.ReadFrameTimeoutSeconds));
         await input.ReadExactlyAsync(lengths.AsMemory(1), frame.Token).AsTask().WaitAsync(frame.Token);
-        int headerSize = BinaryPrimitives.ReadInt32LittleEndian(lengths);
-        int payloadSize = BinaryPrimitives.ReadInt32LittleEndian(lengths.AsSpan(4));
-        if (headerSize < 2 || headerSize > HeaderLimit || payloadSize < 0 || payloadSize > BlockSize)
-            throw new InvalidDataException("InvalidFrameLength");
-        byte[] header = new byte[headerSize], payload = new byte[payloadSize];
-        await input.ReadExactlyAsync(header, frame.Token).AsTask().WaitAsync(frame.Token);
-        await input.ReadExactlyAsync(payload, frame.Token).AsTask().WaitAsync(frame.Token);
+        (int headerSize, int payloadSize) = FrameCodec.ParseLengths(lengths);
+        (byte[] header, byte[] payload) = await FrameCodec.ReadBodyAsync(input, headerSize, payloadSize, frame.Token);
         using var document = JsonDocument.Parse(header);
         if (document.RootElement.GetProperty("Version").GetInt32() != ProtocolSpecification.Version)
             throw new InvalidDataException("ProtocolVersionMismatch");
@@ -55,15 +49,10 @@ internal sealed class Protocol(Stream input, Stream output)
         byte[] header = JsonSerializer.SerializeToUtf8Bytes(metadata);
         payload ??= [];
         if (header.Length > HeaderLimit || payload.Length > BlockSize) throw new InvalidDataException("ResponseTooLarge");
-        byte[] lengths = new byte[8];
-        BinaryPrimitives.WriteInt32LittleEndian(lengths, header.Length);
-        BinaryPrimitives.WriteInt32LittleEndian(lengths.AsSpan(4), payload.Length);
         await writer.WaitAsync(token);
         try
         {
-            await output.WriteAsync(lengths, token).AsTask().WaitAsync(token);
-            await output.WriteAsync(header, token).AsTask().WaitAsync(token);
-            await output.WriteAsync(payload, token).AsTask().WaitAsync(token);
+            await FrameCodec.WriteAsync(output, header, payload, token);
             await output.FlushAsync(token).WaitAsync(token);
         }
         finally { writer.Release(); }

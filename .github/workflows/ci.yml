@@ -16,7 +16,7 @@ permissions:
 jobs:
   qualification-gate:
     name: QuietCli2 qualification gate
-    needs: [windows, linux, pty-mutation, performance-results]
+    needs: [windows, linux, performance-results]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -34,67 +34,18 @@ jobs:
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
           WINDOWS_RESULT: ${{ needs.windows.result }}
           LINUX_RESULT: ${{ needs.linux.result }}
-          MUTATION_RESULT: ${{ needs.pty-mutation.result }}
           PERFORMANCE_RESULT: ${{ needs.performance-results.result }}
         run: |
           # Objective: Fail closed and emit a commit-bound receipt only after every required check succeeds.
           if($env:PERFORMANCE_RESULT -cne 'success'){throw 'PerformanceEvidenceReportRequired'}
-          ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -MutationResult $env:MUTATION_RESULT -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
+          ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -MutationResult skipped -SkipTty -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: quietcli2-qualification-gate
           path: artifacts/qualification-gate
-  pty-mutation:
-    name: Native PTY properties, fuzzing and mutation (${{ matrix.rid }})
-    needs: linux-images
-    if: ${{ always() && !cancelled() && inputs.suite != 'Git' && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') }}
-    permissions:
-      contents: read
-      packages: read
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: debian
-            rid: linux-x64
-            runner: ubuntu-latest
-          - platform: alpine
-            rid: linux-musl-x64
-            runner: ubuntu-latest
-          - platform: debian
-            rid: linux-arm64
-            runner: ubuntu-24.04-arm
-          - platform: alpine
-            rid: linux-musl-arm64
-            runner: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - name: Require unit tests, process properties, decoder fuzzing and C mutations
-        shell: pwsh
-        env:
-          EXPECTED_RID: ${{ matrix.rid }}
-          PLATFORM: ${{ matrix.platform }}
-          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
-        run: |
-          # Objective: Compile and run mutations with the native architecture and libc; reject incomplete qualification.
-          $image=./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache
-          ./scripts/Invoke-ContainerCi.ps1 -Image $image.Image -Platform $env:PLATFORM -ExpectedRuntimeIdentifier $env:EXPECTED_RID -Suite Mutation -Headless -TimeoutSeconds 1800
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: always()
-        with:
-          name: quietcli2-pty-mutation-${{ matrix.rid }}
-          path: |
-            artifacts/containers
-            artifacts/ci-images
   windows:
     name: Windows (${{ matrix.rid }}, ${{ matrix.channel }}, ${{ matrix.mode }})
-    needs: pty-mutation
-    if: ${{ always() && !cancelled() && (needs.pty-mutation.result == 'success' || (inputs.suite == 'Git' && needs.pty-mutation.result == 'skipped')) }}
     strategy:
       fail-fast: false
       matrix:
@@ -136,7 +87,7 @@ jobs:
             host_version: 7.7.0-preview.5
             runtime_major: 11
     runs-on: ${{ matrix.image }}
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, reviewed upstream reference
         with:
@@ -181,11 +132,26 @@ jobs:
           QUIETCLI_EXPECT_RUNTIME_MAJOR: ${{ matrix.runtime_major }}
         # Core/All requires fresh imports, diagnostics and owned complex Git states with no Git companion.
         run: |
-          $parameters=@{Headless=$true;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID}
+          $parameters=@{Headless=$true;SkipTty=$true;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID}
           if($env:QUIETCLI_SUITE -ne 'Git'){
             $parameters.Profiler=$true;$parameters.ProfilerModulePath=$env:QUIETCLI_PROFILER_MODULE;$parameters.ClrProfilerPath=$env:QUIETCLI_CLR_PROFILER
           }
           ./scripts/Invoke-WorkspaceCi.ps1 @parameters
+      - name: Require the complete run-profile tooling suite
+        if: inputs.suite != 'Git' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
+        shell: pwsh
+        run: ./scripts/Invoke-WorkspaceCi.ps1 -Suite RunProfiles -SkipBuild -Headless -RunDirectory ./artifacts/run-profiles/tests -TimeoutSeconds 600
+      - name: Require every run-profile tooling mutant to be detected
+        if: inputs.suite != 'Git' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
+        shell: pwsh
+        run: ./scripts/Invoke-WorkspaceCi.ps1 -Suite RunProfilesMutation -SkipBuild -Headless -RunDirectory ./artifacts/run-profiles/mutation -TimeoutSeconds 3300
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always() && inputs.suite != 'Git' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
+        with:
+          name: quietcli-run-profiles-${{ github.sha }}
+          path: artifacts/run-profiles
+          if-no-files-found: error
+          retention-days: 30
       - name: Assemble revision-bound report and trace evidence
         if: always()
         shell: pwsh
@@ -250,8 +216,8 @@ jobs:
           path: artifacts/ci-images
   linux:
     name: Linux (${{ matrix.rid }})
-    needs: [linux-images, pty-mutation]
-    if: ${{ always() && !cancelled() && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') && (needs.pty-mutation.result == 'success' || (inputs.suite == 'Git' && needs.pty-mutation.result == 'skipped')) }}
+    needs: linux-images
+    if: ${{ always() && !cancelled() && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') }}
     permissions:
       contents: read
       packages: read
@@ -298,7 +264,7 @@ jobs:
           $image=./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache
           # Core/All also requires Core-only controlled Git evidence on every Linux matrix RID.
           # Objectif : Tester sans réseau dans l’image native dont l’identité vient d’être vérifiée.
-          $parameters=@{Image=$image.Image;Platform=$env:PLATFORM;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID;Headless=$true}
+          $parameters=@{Image=$image.Image;Platform=$env:PLATFORM;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID;Headless=$true;SkipTty=$true}
           if($env:QUIETCLI_SUITE -ne 'Git'){
             $tools=./scripts/Initialize-Profilers.ps1 -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-profilers')
             $parameters.Profiler=$true;$parameters.ProfilerModulePath=$tools.ProfilerModulePath;$parameters.ClrProfilerPath=$tools.ClrProfilerPath

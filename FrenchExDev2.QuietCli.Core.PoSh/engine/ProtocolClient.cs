@@ -1,5 +1,3 @@
-using System.Buffers.Binary;
-
 namespace FrenchExDev2.QuietCli;
 
 /// <summary>One decoded engine reply, with the exact wire sizes needed for protocol counters.</summary>
@@ -22,20 +20,12 @@ public static class ProtocolClient
     {
         if (payload.Length > ProtocolSpecification.BlockSize) throw new InvalidDataException("InputBlockTooLarge");
         if (header.Length > ProtocolSpecification.HeaderLimit) throw new InvalidDataException("ControlFrameTooLarge");
-        byte[] lengths = new byte[8];
-        BinaryPrimitives.WriteInt32LittleEndian(lengths, header.Length);
-        BinaryPrimitives.WriteInt32LittleEndian(lengths.AsSpan(4), payload.Length);
-        foreach (byte[] bytes in new[] { lengths, header, payload })
-            if (bytes.Length != 0) await toEngine.WriteAsync(bytes, token).AsTask().WaitAsync(token);
+        int written = await FrameCodec.WriteAsync(toEngine, header, payload, token);
         await toEngine.FlushAsync(token).WaitAsync(token);
-        byte[] replyLengths = new byte[8];
+        byte[] replyLengths = new byte[FrameCodec.PrefixSize];
         await fromEngine.ReadExactlyAsync(replyLengths, token).AsTask().WaitAsync(token);
-        int headerSize = BinaryPrimitives.ReadInt32LittleEndian(replyLengths), payloadSize = BinaryPrimitives.ReadInt32LittleEndian(replyLengths.AsSpan(4));
-        if (headerSize < 2 || headerSize > ProtocolSpecification.HeaderLimit || payloadSize < 0 || payloadSize > ProtocolSpecification.BlockSize)
-            throw new InvalidDataException("InvalidFrameLength");
-        byte[] replyHeader = new byte[headerSize], replyPayload = new byte[payloadSize];
-        await fromEngine.ReadExactlyAsync(replyHeader, token).AsTask().WaitAsync(token);
-        await fromEngine.ReadExactlyAsync(replyPayload, token).AsTask().WaitAsync(token);
-        return new(replyHeader, replyPayload, 8 + header.Length + payload.Length, 8 + headerSize + payloadSize);
+        (int headerSize, int payloadSize) = FrameCodec.ParseLengths(replyLengths);
+        (byte[] replyHeader, byte[] replyPayload) = await FrameCodec.ReadBodyAsync(fromEngine, headerSize, payloadSize, token);
+        return new(replyHeader, replyPayload, written, FrameCodec.PrefixSize + headerSize + payloadSize);
     }
 }

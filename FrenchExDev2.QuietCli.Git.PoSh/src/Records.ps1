@@ -1,14 +1,3 @@
-function ConvertFrom-QuietGitBytes {
-    <#
-.SYNOPSIS
-Decodes a business field losslessly; invalid UTF-8 remains explicitly represented as bytes.
-    .PARAMETER Bytes
-    Exact bytes of one Git field or record.
-    #>
-    param([byte[]]$Bytes)
-    Import-QuietGitParser
-    return [FrenchExDev2.QuietCli.Git.GitRecords]::Decode($Bytes)
-}
 function New-QuietGitRecordState {
     <#
 .SYNOPSIS
@@ -133,20 +122,6 @@ Invokes a Git command with an explicit streaming business record parser.
     finally{$state.Pending.Dispose()}
     if([object]::ReferenceEquals($r.Data,$state)){$r.Data=$state.Data}
     return $r
-}
-function Get-QuietGitArguments {
-    <#
-.SYNOPSIS
-Removes only bound option units, preserving operands that look like flags and literal separators.
-    .PARAMETER Binding
-    Git-owned argument binding.
-    .PARAMETER Remove
-    Exact option names to normalize.
-    #>
-    param($Binding,[string[]]$Remove=@())
-    $result=[Collections.Generic.List[string]]::new()
-    foreach($token in $Binding.Tokens){if($token.Kind -eq 'Option' -and $token.Name -cin $Remove){continue};foreach($argument in $token.EmitArguments){$result.Add([string]$argument)}}
-    return ,$result.ToArray()
 }
 function Invoke-QuietGitRequestedFormat {
     <#

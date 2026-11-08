@@ -2,7 +2,7 @@
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Validates a published version with real dependency resolution, without changing the user's installed modules.
+Validates the published public Core package without changing the user's installed modules.
 .PARAMETER WorkspaceRoot
 QuietCli2 monorepo root.
 .PARAMETER Version
@@ -16,12 +16,12 @@ $run=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'gallery-validation') ([DateT
 [void][IO.Directory]::CreateDirectory($run)
 $runner=(Get-Command pwsh -CommandType Application|Select-Object -First 1).Source
 $workerPath=Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/Probe-PublishedGallery.ps1
-$arguments=@('-File',('"'+$workerPath+'"'),'-WorkspaceRoot',('"'+$WorkspaceRoot+'"'),'-RunDirectory',('"'+$run+'"'),'-Version',$Version)
+$arguments=@('-File',(ConvertTo-CiArgument ($workerPath)),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($run)),'-Version',$Version)
 $options=@{FilePath=$runner;ArgumentList=$arguments;PassThru=$true;RedirectStandardOutput=(Join-Path $run worker.stdout.log);RedirectStandardError=(Join-Path $run worker.stderr.log)}
 if($IsWindows){$options.WindowStyle='Hidden'}elseif(!$Headless){throw 'Use the Windows host launcher for a local visible monitor.'}
 $worker=Start-Process @options;$monitor=$null
 $monitorPath=Join-Path $PSScriptRoot Watch-Tests.ps1
-if(!$Headless){$monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',('"'+$monitorPath+'"'),'-RunDirectory',('"'+$run+'"')) -PassThru}
+if(!$Headless){$monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($run))) -PassThru}
 "Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$run`""
 $summary=Wait-WorkspaceWorker -Worker $worker -RunDirectory $run -WorkspaceRoot $WorkspaceRoot -Runner $runner -Monitor $monitor -TimeoutSeconds 300
 [pscustomobject]@{State=$summary.State.State;Passed=$summary.State.Passed;Failed=$summary.State.Failed;RunDirectory=$run;Proof=$summary.Proof}

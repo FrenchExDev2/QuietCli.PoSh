@@ -13,17 +13,20 @@ Enables a separate pinned PowerShell and CLR profiling pass, outside benchmark s
 Explicit Profiler 4.3.0 manifest; the launcher prepares a private cache when omitted.
 .PARAMETER ClrProfilerPath
 Explicit pinned dotnet-trace DLL.
+.PARAMETER SkipTty
+Excludes native TTY/PTY execution from this run; local runs include it by default.
 .PARAMETER Suite
-Core, Git, All, Import, mandatory Integration, or explicit-repository RealStatus.
+Core, Git, All, Import, mandatory Integration, explicit-repository RealStatus, or complete RunProfiles/RunProfilesMutation tooling qualification.
 .PARAMETER RepositoryConfig
 UTF-8 JSON array of existing repository roots; required by RealStatus.
 .PARAMETER ExpectedRuntimeIdentifier
 Required native architecture for both the PowerShell host and the separate engine.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script')][string]$Suite='All',[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure)
+[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview')][string]$Suite='All',[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 # Development-only selection, read by the Core case loop; never set by CI or the pre-commit gate.
+$env:QUIETCLI_TEST_SKIP_TTY=if($SkipTty){'1'}else{'0'}
 if($Case){$env:QUIETCLI_TEST_CASE=$Case}
 if($StopOnFirstFailure){$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE='1'}
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
@@ -31,7 +34,7 @@ $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
 $testHosting=if($env:QUIETCLI_EXPECT_ENGINE_MODE){$env:QUIETCLI_EXPECT_ENGINE_MODE}else{'Auto'}
 Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory 'measurements.sqlite') -Hosting $testHosting
 $env:QUIETCLI_RECALL_TEST_ROOT=Join-Path $RunDirectory 'recall-csharp'
-$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Tests compagnons';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;State='Running';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;Passed=0;Failed=0;Case='Starting';FinishedUtc=$null;Error=$null}
+$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Tests compagnons';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;State='Running';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;Passed=0;Failed=0;TtyExcluded=[bool]$SkipTty;Case='Starting';FinishedUtc=$null;Error=$null}
 $statusPath=Join-Path $RunDirectory 'status.json'
 Write-WorkspaceJson $statusPath $state
 $summaries=[Collections.Generic.List[object]]::new()
@@ -48,7 +51,19 @@ try{
     if(![StringComparer]::OrdinalIgnoreCase.Equals($actualCorePath,$expectedCorePath)){throw 'UnexpectedCoreModulePath'}
     $localAlias=Get-Alias quiet -ErrorAction Stop
     if(!$localAlias.ResolvedCommand -or ![StringComparer]::OrdinalIgnoreCase.Equals($localAlias.ResolvedCommand.Module.Path,$expectedCorePath)){throw 'UnexpectedQuietAliasTarget'}
-    if($Suite -eq 'Script'){
+    if($Suite -in @('RunProfiles','RunProfilesMutation')){
+        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-RunProfileQualification.ps1')
+        $state.Project='FrenchExDev2.QuietCli.Core.Tests.PoSh';$state.ProjectDirectory=Join-Path $WorkspaceRoot $state.Project;$state.Task=$Suite
+        $runProfileState=$state
+        $summary=Invoke-RunProfileQualification -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Mutation:($Suite -eq 'RunProfilesMutation') -OnProgress {param($name,$passed,$failed)$runProfileState.Case=$name;$runProfileState.Passed=$passed;$runProfileState.Failed=$failed;Write-WorkspaceJson $statusPath $runProfileState}
+        $state.Passed=$summary.Passed;$state.Failed=$summary.Failed;$summaries.Add($summary)
+    }elseif($Suite -eq 'GalleryPreview'){
+        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/GalleryPreview.Tests.ps1')
+        $galleryWorkerState=$state
+        $state.Project='FrenchExDev2.QuietCli.Core.Tests.PoSh';$state.ProjectDirectory=Join-Path $WorkspaceRoot $state.Project;$state.Task='Preview packages, properties, fuzz corpus and mutations'
+        $summary=Invoke-QuietGalleryPreviewTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Mutation -OnProgress {param($name,$caseState,$passed,$failed)$galleryWorkerState.Case=$name;$galleryWorkerState.Passed=$passed;$galleryWorkerState.Failed=$failed;Write-WorkspaceJson $statusPath $galleryWorkerState}
+        $state.Passed=$summary.Passed;$state.Failed=$summary.Failed;$summaries.Add($summary)
+    }elseif($Suite -eq 'Script'){
         . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Script.Tests.ps1')
         $state.Task='Reusable scripts, factories, property corpus and mutations'
         $summary=Invoke-QuietScriptTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}

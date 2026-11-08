@@ -1,6 +1,6 @@
 # Installing QuietCli from PSGallery
 
-QuietCli is distributed as `FrenchExDev2.QuietCli.Core.PoSh`. Test companion modules are not published.
+QuietCli is distributed as `FrenchExDev2.QuietCli.Core.PoSh`. The Git example and test companion modules are not published.
 
 ## Installation
 
@@ -49,8 +49,11 @@ PowerShell Gallery prerelease labels use the supported alphanumeric/hyphen form.
 
 ## Publication requirements
 
-A QuietCli release requires qualification of the delivered revision across its supported runtime and platform matrix, including the required property, fuzzing and mutation campaigns. A targeted development run or a successful run for an older revision does not qualify a new release.
+For generated preview versions, artifact-only scripts and automatic `develop` publication, see
+[preview releases](preview-releases.md). Source versions and GUIDs stay unchanged during CI packaging.
 
-Publication must be explicitly requested and must target `FrenchExDev2.QuietCli.Core.PoSh`. Build, test and package preparation do not authorize publication. Repository-wide packaging and publication commands are intentionally omitted from this QuietCli-only installation guide because they also operate on other workspace packages.
+A QuietCli release requires qualification of the delivered revision across its supported runtime and platform matrix, including the required property, fuzzing and mutation campaigns for the selected scope. GitHub CI excludes native TTY/PTY campaigns; its reports do not qualify that transport. A targeted development run or a successful run for an older revision does not qualify a new release.
+
+Stable publication is manually requested. The authorized `develop` preview workflow publishes only Core after the configured CI qualification. Build, test and package preparation do not authorize publication. Public package preparation and publication reject Git or any extra nupkg.
 
 Keep API keys out of code, CLI arguments, reports and chat. Follow [Microsoft's publishing guidelines](https://learn.microsoft.com/en-us/powershell/gallery/concepts/publishing-guidelines) and the [Publish-PSResource documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.psresourceget/publish-psresource) when preparing an explicitly authorized release.

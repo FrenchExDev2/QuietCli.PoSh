@@ -251,7 +251,12 @@ public sealed class QuietRuntime
             ["SuccessExitCodes"] = ((IEnumerable)request["SuccessExitCodes"]!).Cast<object>().ToArray(),
             ["KeepInputOpen"] = request.ContainsKey("InputBytes") || request.ContainsKey("InputText") || request.ContainsKey("Interaction"),
         };
-        if (request.ContainsKey("InputPath")) start["InputPath"] = Path.GetFullPath(Convert.ToString(QuietRuntime.Unwrap(request["InputPath"]), CultureInfo.InvariantCulture)!, workingDirectory);
+        if (request.ContainsKey("InputPath"))
+        {
+            string inputPath = Path.GetFullPath(Convert.ToString(QuietRuntime.Unwrap(request["InputPath"]), CultureInfo.InvariantCulture)!, workingDirectory);
+            if (PathGuard.HasLinkedAncestor(inputPath)) throw new InvalidOperationException("QuietInputPathLinkRejected");
+            start["InputPath"] = inputPath;
+        }
         start["ReadBlockBytes"] = Convert.ToInt32(QuietRuntime.Unwrap(request["ReadBlockBytes"]), CultureInfo.InvariantCulture);
         start["DrainTimeoutSeconds"] = Convert.ToDouble(QuietRuntime.Unwrap(request["DrainTimeoutSeconds"]), CultureInfo.InvariantCulture);
         StartState = "StartRequested";
@@ -321,7 +326,7 @@ public sealed class QuietRuntime
     /// <param name="callback">Caller-owned script block, including its lexical scope.</param>
     /// <param name="arguments">Callback arguments.</param>
     /// <param name="noOutput">Requires zero emissions for streaming consumers.</param>
-    private static (bool HasValue, object? Value) Callback(object? callback, object[] arguments, bool noOutput)
+    internal static (bool HasValue, object? Value) Callback(object? callback, object[] arguments, bool noOutput)
     {
         if (Unwrap(callback) is not ScriptBlock block) throw new InvalidOperationException("CallbackMustBeScriptBlock");
         var values = block.Invoke(arguments);
@@ -341,48 +346,33 @@ public sealed class QuietRuntime
     private static bool IsCancelled(object? token) => Unwrap(token) is CancellationToken real ? real.IsCancellationRequested : LanguagePrimitives.IsTrue(PropertyReader.Get(token, "IsCancellationRequested"));
 }
 
-/// <summary>Creates one fresh caller-local runtime and attaches the engine exchange; internal to the module.</summary>
-[Cmdlet(VerbsCommon.New, "QuietRuntime")]
-[OutputType(typeof(QuietRuntime))]
-public sealed class NewQuietRuntimeCommand : EngineCmdlet
+/// <summary>Builds caller-local runtimes bound to the engine exchange; shared by the cmdlets that start invocations.</summary>
+public abstract class RuntimeCmdlet : EngineCmdlet
 {
-    /// <summary>Explicit call options and native argument vector.</summary>
-    [Parameter(Position = 0, Mandatory = true)]
-    public Hashtable Request { get; set; } = new();
-
-    /// <summary>Enclosing runtime, if the call is nested.</summary>
-    [Parameter(Position = 1)]
-    public QuietRuntime? Parent { get; set; }
-
-    /// <summary>Identity of the PowerShell session.</summary>
-    [Parameter(Position = 2)]
-    public object? SessionId { get; set; }
-
-    /// <inheritdoc />
-    protected override void EndProcessing()
+    /// <summary>Creates one fresh runtime for a validated request.</summary>
+    /// <param name="request">Explicit call options and native argument vector.</param>
+    /// <param name="parent">Enclosing runtime, if the call is nested.</param>
+    /// <param name="sessionId">Identity of the PowerShell session.</param>
+    internal QuietRuntime CreateRuntime(Hashtable request, QuietRuntime? parent, object? sessionId)
     {
-        try
+        string id = Guid.NewGuid().ToString("N");
+        var runtime = new QuietRuntime
         {
-            string id = Guid.NewGuid().ToString("N");
-            var runtime = new QuietRuntime
-            {
-                InvocationId = id, ParentId = Parent?.InvocationId, RootId = Parent?.RootId ?? id, SessionId = SessionId, Request = Request,
-                Context = Request.ContainsKey("Context") ? Request["Context"] : Parent?.Context,
-                State = Request.ContainsKey("State") ? Request["State"] : new Hashtable(),
-            };
-            if (Request.ContainsKey("Data")) runtime.Data = Request["Data"];
-            string? name = Request.ContainsKey("RecallName") ? Convert.ToString(QuietRuntime.Unwrap(Request["RecallName"]), CultureInfo.InvariantCulture) : null;
-            if (Request.ContainsKey("SaveRecall") && LanguagePrimitives.IsTrue(Request["SaveRecall"]))
-            {
-                string root = RecallCommandSupport.ResolveRoot(Request.ContainsKey("RecallRoot") ? Convert.ToString(QuietRuntime.Unwrap(Request["RecallRoot"]), CultureInfo.InvariantCulture) : "", CurrentDirectory);
-                runtime.RecallWriter = RecallStore.CreateAsync(root, name, RecallSettings(Request)).GetAwaiter().GetResult();
-            }
-            if (Request.ContainsKey("RecallOptions"))
-                runtime.RecallCollector = new RecallCollector((RecallOptions)LanguagePrimitives.ConvertTo(Request["RecallOptions"], typeof(RecallOptions)), runtime.RecallWriter?.RecallId, name);
-            runtime.Exchange = BuildExchange();
-            WriteObject(runtime);
+            InvocationId = id, ParentId = parent?.InvocationId, RootId = parent?.RootId ?? id, SessionId = sessionId, Request = request,
+            Context = request.ContainsKey("Context") ? request["Context"] : parent?.Context,
+            State = request.ContainsKey("State") ? request["State"] : new Hashtable(),
+        };
+        if (request.ContainsKey("Data")) runtime.Data = request["Data"];
+        string? name = request.ContainsKey("RecallName") ? Convert.ToString(QuietRuntime.Unwrap(request["RecallName"]), CultureInfo.InvariantCulture) : null;
+        if (request.ContainsKey("SaveRecall") && LanguagePrimitives.IsTrue(request["SaveRecall"]))
+        {
+            string root = RecallCommandSupport.ResolveRoot(request.ContainsKey("RecallRoot") ? Convert.ToString(QuietRuntime.Unwrap(request["RecallRoot"]), CultureInfo.InvariantCulture) : "", CurrentDirectory);
+            runtime.RecallWriter = RecallStore.CreateAsync(root, name, RecallSettings(request)).GetAwaiter().GetResult();
         }
-        catch (Exception error) when (error is not PipelineStoppedException) { FailWith(error); }
+        if (request.ContainsKey("RecallOptions"))
+            runtime.RecallCollector = new RecallCollector((RecallOptions)LanguagePrimitives.ConvertTo(request["RecallOptions"], typeof(RecallOptions)), runtime.RecallWriter?.RecallId, name);
+        runtime.Exchange = BuildExchange();
+        return runtime;
     }
 
     /// <summary>Projects only inert analysis settings, without native arguments or callbacks.</summary>
@@ -410,6 +400,30 @@ public sealed class NewQuietRuntimeCommand : EngineCmdlet
     }
 }
 
+/// <summary>Creates one fresh caller-local runtime and attaches the engine exchange; internal to the module.</summary>
+[Cmdlet(VerbsCommon.New, "QuietRuntime")]
+[OutputType(typeof(QuietRuntime))]
+public sealed class NewQuietRuntimeCommand : RuntimeCmdlet
+{
+    /// <summary>Explicit call options and native argument vector.</summary>
+    [Parameter(Position = 0, Mandatory = true)]
+    public Hashtable Request { get; set; } = new();
+
+    /// <summary>Enclosing runtime, if the call is nested.</summary>
+    [Parameter(Position = 1)]
+    public QuietRuntime? Parent { get; set; }
+
+    /// <summary>Identity of the PowerShell session.</summary>
+    [Parameter(Position = 2)]
+    public object? SessionId { get; set; }
+
+    /// <inheritdoc />
+    protected override void EndProcessing()
+    {
+        try { WriteObject(CreateRuntime(Request, Parent, SessionId)); }
+        catch (Exception error) when (error is not PipelineStoppedException) { FailWith(error); }
+    }
+}
 /// <summary>Runs the native event loop of a prepared runtime; internal to the module.</summary>
 [Cmdlet(VerbsLifecycle.Invoke, "QuietNative")]
 public sealed class InvokeQuietNativeCommand : QuietCmdlet

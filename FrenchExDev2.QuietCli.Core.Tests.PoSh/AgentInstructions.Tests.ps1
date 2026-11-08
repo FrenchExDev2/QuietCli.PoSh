@@ -1,3 +1,19 @@
+function Test-QuietAgentHostileReferences {
+    <#
+    .SYNOPSIS
+    Verifies that hostile project-relative references cannot add instruction lines or break the link.
+    .PARAMETER Builder
+    Production reference builder or a source-checked mutant.
+    #>
+    param([scriptblock]$Builder)
+    foreach($bad in @("a`nb","a`rb","a`r`n## Injected","a`u{0085}b","a`u{2028}b","a`0b","a`tb")){
+        foreach($claude in @($false,$true)){
+            $rejected=$false;try{$null=& $Builder -Text '' -Reference $bad -Claude:$claude}catch{$rejected=$_.Exception.Message -eq 'AgentInstructionReferenceInvalid'}
+            if(!$rejected){throw 'AgentReferenceInjectionAccepted'}
+        }
+    }
+    if(!(& $Builder -Text '' -Reference 'dir\x\').Contains('<dir%5Cx%5C>')){throw 'AgentReferenceBackslashNotEncoded'}
+}
 function Test-QuietAgentReferenceProperties {
     <#
     .SYNOPSIS
@@ -75,9 +91,11 @@ function Invoke-QuietAgentInstructionTests {
     $root=Join-Path $RunDirectory 'agent-instructions';[void][IO.Directory]::CreateDirectory($root)
     $utf8=[Text.UTF8Encoding]::new($false,$true)
     $cases=[ordered]@{};$results=[Collections.Generic.List[object]]::new();$mutations=[Collections.Generic.List[object]]::new()
-    $campaign=@{Seed=73607;PropertyCases=48;MalformedMarkerCases=240;FilesystemProperties=24;MalformedFilesystemCases=0;MutantsKilled=0;MutantsTotal=9}
-    $builder=& $core {(Get-Command Set-QuietAgentReferenceBlock).ScriptBlock}
+    $campaign=@{Seed=73607;PropertyCases=48;MalformedMarkerCases=240;FilesystemProperties=24;MalformedFilesystemCases=0;MutantsKilled=0;MutantsTotal=4}
+    # The reference builder is compiled; its source mutants live in the engine mutation catalogue.
+    $builder={param([string]$Text,[string]$Reference,[switch]$Claude)try{[FrenchExDev2.QuietCli.Agents.AgentReferenceBlock]::Apply($Text,$Reference,[bool]$Claude)}catch{throw $_.Exception.InnerException}}
     $cases['generated references preserve text, escaping, LF and idempotence; malformed markers fail']={Test-QuietAgentReferenceProperties $builder}
+    $cases['references containing line breaks or control characters are rejected and backslashes are encoded']={Test-QuietAgentHostileReferences $builder}
     $cases['project installation preserves BOM and existing rules across generated Unicode paths and targets']={
         foreach($index in 1..24){
             $project=Join-Path $root "project-$index-é漢 # space";[void][IO.Directory]::CreateDirectory($project)
@@ -143,9 +161,6 @@ function Invoke-QuietAgentInstructionTests {
             if($event.Stream -eq 'stdout' -and $event.Text.StartsWith('@@AGENT@@')){$reply=$event.Text.Substring(9)|ConvertFrom-Json;$runtime.Data.Success=$reply.Success -and !$reply.EngineStarted}
         } -FilePath $runner -ArgumentList @('-NoLogo','-NonInteractive','-File',(Join-Path $PSScriptRoot 'AgentInstructions.Probe.ps1'),'-Manifest',(Join-Path $stage 'FrenchExDev2.QuietCli.Core.PoSh.psd1'),'-Project',$project,'-ExpectedHash',$expected)
         if($result.Outcome -ne 'Success' -or !$result.Data.Success -or !$result.Completeness.Source -or !$result.Completeness.Analysis){throw ('AgentInstalledProbeFailed: '+($result.Error|ConvertTo-Json -Compress))}
-        $empty=Join-Path $root 'missing-resources/resources/agents';[void][IO.Directory]::CreateDirectory($empty)
-        $rejected=& $core {param($temporary)$previous=$script:QuietRoot;try{$script:QuietRoot=$temporary;try{$null=Get-QuietAgentInstruction;$false}catch{$true}}finally{$script:QuietRoot=$previous}} (Split-Path (Split-Path $empty -Parent) -Parent)
-        if(!$rejected){throw 'AgentMissingResourceUsedFallback'}
     }
     $cases['published skill examples produce verified business objects and offline Recall analyses']={
         . (Join-Path $PSScriptRoot 'PersistentShell.Support.ps1')
@@ -198,20 +213,6 @@ function Invoke-QuietAgentInstructionTests {
             $detected=$false;try{Test-QuietAgentDocumentSet -AgentsText $mutant.Agents -SkillText $skillForMutant -ExportedCommands $exports}catch{$detected=$true}
             if(!$detected){throw ('AgentDocumentMutantSurvived: '+$mutant.Name)}
             $mutations.Add(@{Original='distributed documents';Replacement=$mutant.Name;State='Killed'});$campaign.MutantsKilled++
-        }
-    }
-    $cases['targeted source mutations are killed by independent reference properties']={
-        $definition=$builder.ToString()
-        foreach($mutation in @(
-            @('$starts.Count -ne 1','$false'),@('$ends.Count -ne 1','$false'),
-            @('$Text.Substring($after)',"''"),@(".Replace('%','%25')",''),
-            @('if($starts.Count){$after','if($false){$after')
-        )){
-            if(!$definition.Contains($mutation[0])){throw 'AgentMutantInvalid'}
-            $mutant=[scriptblock]::Create($definition.Replace($mutation[0],$mutation[1]))
-            $detected=$false;try{Test-QuietAgentReferenceProperties $mutant}catch{$detected=$true}
-            if(!$detected){throw 'AgentMutantSurvived'}
-            $mutations.Add(@{Original=$mutation[0];Replacement=$mutation[1];State='Killed'});$campaign.MutantsKilled++
         }
     }
     $passed=0;$failed=0

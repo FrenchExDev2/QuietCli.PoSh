@@ -12,6 +12,43 @@ function Get-QuietGalleryVersion {
     try{$null=[semver]$Version}catch{throw 'GalleryReleaseVersionMismatch'}
     return @{Version=$Version;BaseVersion=$base;Prerelease=$label}
 }
+function New-QuietGalleryPreviewVersion {
+    <#
+    .SYNOPSIS
+    Creates a Gallery-compatible, lexically ordered preview identity without changing the target release.
+    .PARAMETER BaseVersion
+    Three-part numeric target release, without a prerelease label.
+    .PARAMETER BuildNumber
+    Positive workflow run number, at most eight decimal digits.
+    .PARAMETER Attempt
+    Positive packaging attempt, at most four decimal digits; changes on a workflow rerun.
+    #>
+    param([string]$BaseVersion,[string]$BuildNumber,[string]$Attempt='1')
+    $info=Get-QuietGalleryVersion $BaseVersion
+    if($info.Prerelease){throw 'GalleryPreviewBaseVersionInvalid'}
+    $build=0L;$retry=0L
+    if($BuildNumber -cnotmatch '^[0-9]+\z' -or ![long]::TryParse($BuildNumber,[Globalization.NumberStyles]::None,[Globalization.CultureInfo]::InvariantCulture,[ref]$build) -or $build -lt 1 -or $build -gt 99999999){throw 'GalleryPreviewCounterInvalid'}
+    if($Attempt -cnotmatch '^[0-9]+\z' -or ![long]::TryParse($Attempt,[Globalization.NumberStyles]::None,[Globalization.CultureInfo]::InvariantCulture,[ref]$retry) -or $retry -lt 1 -or $retry -gt 9999){throw 'GalleryPreviewAttemptInvalid'}
+    return '{0}-preview{1:D8}a{2:D4}' -f $BaseVersion,$build,$retry
+}
+function Set-QuietGalleryStagedPrerelease {
+    <#
+    .SYNOPSIS
+    Changes only the prerelease identity of an explicitly staged module manifest, preserving its numeric version and GUID.
+    .PARAMETER Path
+    Manifest in the package staging directory; callers never pass a source manifest.
+    .PARAMETER Prerelease
+    Alphanumeric prerelease label, without a delimiter, dots or build metadata.
+    #>
+    param([string]$Path,[string]$Prerelease)
+    if($Prerelease -cnotmatch '^[A-Za-z][A-Za-z0-9]*\z'){throw 'GalleryPreviewLabelInvalid'}
+    $before=Import-PowerShellDataFile -LiteralPath $Path
+    Update-ModuleManifest -Path $Path -Prerelease $Prerelease -ErrorAction Stop
+    $text=[IO.File]::ReadAllTextAsync($Path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
+    [void][IO.File]::WriteAllTextAsync($Path,$text.Replace("`r`n","`n").Replace("`r","`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $after=Import-PowerShellDataFile -LiteralPath $Path
+    if([string]$before.ModuleVersion -cne [string]$after.ModuleVersion -or [string]$before.GUID -cne [string]$after.GUID -or (Get-QuietGalleryModuleVersion $after) -cne ([string]$before.ModuleVersion+'-'+$Prerelease)){throw 'GalleryStagedIdentityChanged'}
+}
 function Get-QuietGalleryModuleVersion {
     <#
     .SYNOPSIS
@@ -46,40 +83,12 @@ function Read-QuietGalleryXml {
         finally{$xmlReader.Dispose()}
     }finally{$reader.Dispose()}
 }
-function Set-QuietGalleryCoreDependency {
-    <#
-    .SYNOPSIS
-    Pins a freshly compressed Git package to the exact companion Core release, including prerelease.
-    .DESCRIPTION
-    PowerShell manifest version fields cannot contain prerelease labels. The NuGet dependency
-    must therefore be set explicitly before calculating or validating the package digest.
-    .PARAMETER Path
-    Newly prepared, unpublished Git nupkg.
-    .PARAMETER Version
-    Exact Core package version.
-    #>
-    param([string]$Path,[string]$Version)
-    $null=Get-QuietGalleryVersion $Version
-    $zip=[IO.Compression.ZipFile]::Open($Path,[IO.Compression.ZipArchiveMode]::Update)
-    try{
-        $entry=$zip.GetEntry('FrenchExDev2.QuietCli.Git.PoSh.nuspec')
-        if(!$entry){throw 'GalleryNuspecMissing'}
-        $xml=Read-QuietGalleryXml $entry
-        $dependencies=@($xml.SelectNodes("//*[local-name()='dependency']"))
-        if($dependencies.Count -ne 1 -or $dependencies[0].id -cne 'FrenchExDev2.QuietCli.Core.PoSh'){throw 'GalleryGitDependencyInvalid'}
-        $dependencies[0].SetAttribute('version',('['+$Version+']'))
-        $name=$entry.FullName;$entry.Delete()
-        $replacement=$zip.CreateEntry($name,[IO.Compression.CompressionLevel]::Optimal)
-        $writer=[IO.StreamWriter]::new($replacement.Open(),[Text.UTF8Encoding]::new($false))
-        try{[void]$writer.WriteAsync($xml.OuterXml).GetAwaiter().GetResult()}finally{$writer.Dispose()}
-    }finally{$zip.Dispose()}
-}
 function Test-QuietGalleryPackageSet {
     <#
     .SYNOPSIS
-    Verifies the exact Core/Git nupkg set, package identity, dependencies and architecture payloads without importing code.
+    Verifies the public Core nupkg, package identity, dependencies and architecture payloads without importing code.
     .PARAMETER PackageDirectory
-    Prepared directory containing package-set.json and exactly two installable nupkg files.
+    Prepared directory containing package-set.json and exactly one installable Core nupkg.
     .PARAMETER Version
     Optional release version required by the tag or manual workflow.
     #>
@@ -90,12 +99,11 @@ function Test-QuietGalleryPackageSet {
     $plan=Get-Content $planPath -Encoding utf8 -Raw|ConvertFrom-Json
     $release=Get-QuietGalleryVersion $plan.Version
     if($plan.SchemaVersion -ne 1 -or ($Version -and $plan.Version -cne $Version) -or $plan.BaseVersion -cne $release.BaseVersion){throw 'GalleryReleaseVersionMismatch'}
-    if($plan.CoreDependencyVersion -cne $plan.Version){throw 'GalleryCoreDependencyUnsatisfied'}
     $required=@(Get-QuietRuntimeTargets (Split-Path $PSScriptRoot -Parent))
     if($plan.Targets.Count -ne $required.Count){throw 'GalleryTargetSetIncomplete'}
     foreach($target in $required){$actual=@($plan.Targets|Where-Object Rid -CEQ $target.Rid);if($actual.Count -ne 1 -or $actual[0].Apphost -cne $target.Apphost -or $actual[0].Pty -ne $target.Pty){throw 'GalleryTargetSetInvalid'}}
-    $expected=@('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Git.PoSh')
-    if($plan.Packages.Count -ne 2 -or @(Get-ChildItem $directory -File -Filter '*.nupkg').Count -ne 2){throw 'GalleryPackageSetInvalid'}
+    $expected=@('FrenchExDev2.QuietCli.Core.PoSh')
+    if($plan.Packages.Count -ne 1 -or @(Get-ChildItem $directory -File -Filter '*.nupkg').Count -ne 1){throw 'GalleryPackageSetInvalid'}
     $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach($package in $plan.Packages){
         if($package.Module -cnotin $expected -or !$seen.Add($package.Module) -or $package.File -cne ($package.Module+'.'+$plan.Version+'.nupkg')){throw 'GalleryPackageIdentityInvalid'}
@@ -139,7 +147,7 @@ function Test-QuietGalleryPackageSet {
                     if(!$names.Contains('resources/runtime/runtimes/'+$target.Rid+'/native/'+$sqlite)){throw 'GallerySqliteMissing'}
                     if($target.Pty -and !$names.Contains('resources/transport/'+$target.Rid+'/quietcli-pty')){throw 'GalleryPtyMissing'}
                 }
-            }elseif($dependencies.Count -ne 1 -or $dependencies[0].id -cne $expected[0] -or $dependencies[0].version -cne ('['+$plan.CoreDependencyVersion+']')){throw 'GalleryGitDependencyInvalid'}
+            }
         }finally{$zip.Dispose()}
     }
     $plan
@@ -154,7 +162,7 @@ function Get-QuietGalleryRemoteIdentity {
     Validated release version.
     #>
     param([string]$Module,[string]$Version)
-    if($Module -notmatch '^FrenchExDev2\.QuietCli\.(Core|Git)\.PoSh$'){throw 'InvalidGalleryRemoteIdentity'}
+    if($Module -notmatch '^FrenchExDev2\.QuietCli\.Core\.PoSh$'){throw 'InvalidGalleryRemoteIdentity'}
     $null=Get-QuietGalleryVersion $Version
     $client=[Net.Http.HttpClient]::new();$client.Timeout=[TimeSpan]::FromSeconds(30)
     try{

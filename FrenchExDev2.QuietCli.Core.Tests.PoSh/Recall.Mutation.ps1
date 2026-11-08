@@ -31,6 +31,7 @@ function Invoke-QuietRecallMutation {
         @{Name='tail-ignores-checkpoint';File='RecallJournalReader.cs';From='when (recoverTail && start >= durableLength)';To='when (recoverTail)'}
         @{Name='tail-accepts-garbage';File='RecallJournalReader.cs';From='if (zero) return true;';To='return true;'}
         @{Name='input-guard-in-recall';File='Cmdlets/RuntimeCommands.cs';From='if (IsRecall) throw new InvalidOperationException("ProcessInputUnavailableDuringRecall");';To='if (false) throw new InvalidOperationException("ProcessInputUnavailableDuringRecall");'}
+        @{Name='native-guard-in-recall';File='Cmdlets/InvocationCommands.cs';From='if (QuietCallState.RecallDepth > 0) throw new InvalidOperationException("NativeExecutionUnavailableDuringRecall");';To='if (false) throw new InvalidOperationException("NativeExecutionUnavailableDuringRecall");'}
         @{Name='compression-upper-bound';File='Cmdlets/ArgumentCommands.cs';From='level >= 0 && level <= 9';To='level >= 0'}
         @{Name='tail-accepts-inner-torn-record';File='RecallJournalReader.cs';From='return start + HeaderLength + count + HashLength == limit;';To='return true;'}
     )
@@ -72,87 +73,5 @@ function Invoke-QuietRecallMutation {
         if($OnProgress){& $OnProgress ($mutation.Name+': '+$outcome) $outcome $passed $failed}
         if($mutation.Name -eq 'baseline' -and $outcome -ne 'Passed'){break}
     }
-    if(!$failed){
-        $powershell=Invoke-QuietRecallPowerShellMutations -WorkspaceRoot $WorkspaceRoot
-        foreach($result in $powershell){
-            if($result.Outcome -in @('Passed','Killed')){$passed++}else{$failed++}
-            $results.Add($result)
-            if($OnProgress){& $OnProgress ($result.Name+': '+$result.Outcome) $result.Outcome $passed $failed}
-        }
-        Write-WorkspaceJson (Join-Path $RunDirectory 'recall-mutation.json') $results.ToArray()
-    }
-    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Scope='Twenty C# and six PowerShell source-checked targeted mutants, not exhaustive mutation coverage.'}
-}
-function Invoke-QuietRecallPowerShellMutations {
-    <#
-    .SYNOPSIS
-    Evaluates scoped PowerShell mutants without changing module files or launching native commands.
-    .PARAMETER WorkspaceRoot
-    Original source root.
-    #>
-    param([string]$WorkspaceRoot)
-    $catalogue=@(
-        @{Name='ps-partial-guard';File='Recall.ps1';From='if(!$capture.CaptureComplete -and !$AllowPartial)';To='if($false)';Check=@'
-$collector=[FrenchExDev2.QuietCli.RecallCollector]::new([FrenchExDev2.QuietCli.RecallOptions]::new('1','Head'))
-$collector.Append('stdout',[byte[]]@(1,2))
-$capture=$collector.Snapshot($true,[FrenchExDev2.QuietCli.RecallAnalysisSettings]::new('Bytes','Bytes',[NullString]::Value,10))
-$rejected=$false;try{$null=Invoke-QuietRecall $capture -Output {}}catch{$rejected=$_.Exception.Message -eq 'PartialRecallRequiresAllowPartial'}
-if(!$rejected){throw 'Partial capture accepted without consent'}
-'@},
-        @{Name='ps-gap-reset';File='Recall.ps1';From='if($event.ObservedOffset -ne $cursor)';To='if($false)';Check=@'
-$collector=[FrenchExDev2.QuietCli.RecallCollector]::new([FrenchExDev2.QuietCli.RecallOptions]::new('5','HeadAndTail'))
-$collector.Append('stdout',[Text.Encoding]::UTF8.GetBytes('abXXcd'+[char]0))
-$capture=$collector.Snapshot($true,[FrenchExDev2.QuietCli.RecallAnalysisSettings]::new('Text','Text',([string][char]0),100))
-$a=Invoke-QuietRecall $capture -AllowPartial -Data ([Collections.Generic.List[string]]::new()) -Output {param($e,$r)$r.Data.Add($e.Text)}
-if(($a.Data -join '|') -cne 'd'){throw 'Separated fragments became a fabricated record'}
-'@},
-        @{Name='ps-native-guard';File='Invoke.ps1';From="if (`$script:QuietRecallDepth -gt 0) { throw 'NativeExecutionUnavailableDuringRecall' }";To='if ($false) {}';Check=@'
-$script:QuietRecallDepth++
-try{
-    $rejected=$false
-    try{$null=Invoke-QuietCall @{FilePath=('missing-recall-'+[guid]::NewGuid().ToString('N'));AsObject=$true;Output={}}}catch{$rejected=$_.Exception.Message -eq 'NativeExecutionUnavailableDuringRecall'}
-    if(!$rejected){throw 'Offline execution boundary was bypassed'}
-}finally{$script:QuietRecallDepth--}
-'@}
-    )
-    $catalogue+=@(
-        @{Name='ps-replay-routing';File='Invoke.ps1';From="if(`$request.ContainsKey('RecallId')){return Invoke-QuietSavedRecallRequest `$request}";To='if($false){}';Check=@'
-$root=Join-Path $env:QUIETCLI_RECALL_TEST_ROOT ('ps-route-'+[guid]::NewGuid().ToString('N'))
-$settings=[FrenchExDev2.QuietCli.RecallAnalysisSettings]::new('Bytes','Bytes',[NullString]::Value,1024)
-$writer=[FrenchExDev2.QuietCli.RecallStore]::CreateAsync($root,[NullString]::Value,$settings).GetAwaiter().GetResult()
-$capture=$writer.CompleteAsync($true,$null).GetAwaiter().GetResult()
-$result=Invoke-QuietCli -AsObject -RecallId $capture.RecallId -RecallRoot $root -Complete {42}
-if($result.Data -ne 42 -or $null -ne $result.Execution.Native){throw 'Replay did not use the offline route'}
-'@},
-        @{Name='ps-projection';File='Recall.ps1';From='if($Projection){$request.Projection=$Projection}';To='if($false){}';Check=@'
-$collector=[FrenchExDev2.QuietCli.RecallCollector]::new([FrenchExDev2.QuietCli.RecallOptions]::new('All','Head'))
-$collector.Append('stdout',[byte[]]@(1))
-$capture=$collector.Snapshot($true,[FrenchExDev2.QuietCli.RecallAnalysisSettings]::new('Bytes','Bytes',[NullString]::Value,1024))
-$result=Invoke-QuietRecall $capture -Complete {2} -Projection {param($data,$budget)@{Value=$data+7}}
-$delivery=Out-QuietResult $result|ConvertFrom-Json
-if($delivery.Data.Value -ne 9){throw 'Replay projection was discarded'}
-'@}
-    )
-    $core=Get-Module FrenchExDev2.QuietCli.Core.PoSh
-    & $core { Import-QuietManagedEngine }
-    foreach($item in $catalogue){
-        $source=[IO.File]::ReadAllTextAsync((Join-Path $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/src/'+$item.File))).GetAwaiter().GetResult()
-        foreach($mutate in @($false,$true)){
-            $outcome='Invalid';$errorText=$null
-            try{
-                if(($source.Split([string[]]@($item.From),[StringSplitOptions]::None).Count-1) -ne 1){throw 'MutationSourceMismatch'}
-                $text=if($mutate){$source.Replace($item.From,$item.To)}else{$source}
-                $tokens=$null;$errors=$null;$null=[Management.Automation.Language.Parser]::ParseInput($text,[ref]$tokens,[ref]$errors)
-                if($errors.Count){throw 'InvalidMutantSyntax'}
-                & $core {
-                    param($definitions,$assertions)
-                    . ([scriptblock]::Create($definitions))
-                    . ([scriptblock]::Create($assertions))
-                } $text $item.Check
-                $outcome=if($mutate){'Survived'}else{'Passed'}
-            }catch{$errorText=$_.ToString();if($outcome -ne 'Invalid' -or $errorText -notmatch 'MutationSourceMismatch|InvalidMutantSyntax'){$outcome=if($mutate){'Killed'}else{'BaselineFailed'}}}
-            [pscustomobject]@{Name=($item.Name+$(if(!$mutate){'-baseline'}else{''}));Outcome=$outcome;Error=$errorText}
-            if(!$mutate -and $outcome -ne 'Passed'){break}
-        }
-    }
+    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Scope='Twenty-two C# source-checked targeted mutants; replay mutants live in the configuration/delivery catalogue. Not exhaustive mutation coverage.'}
 }

@@ -1,5 +1,5 @@
 {
-  "ExpectedCases": 44,
+  "ExpectedCases": 57,
   "Catalogues": {
     "Revision": {
       "CasePrefix": "revision ",
@@ -316,6 +316,177 @@
           "File": "GitVersionRecords.cs",
           "From": "text[12..]",
           "To": "text[11..]"
+        }
+      ]
+    },
+    "Invocation": {
+      "CasePrefix": "invocation ",
+      "Mutants": [
+        {
+          "Name": "version-short",
+          "File": "GitInvocationBinder.cs",
+          "From": "if (value is \"--version\" or \"-v\")",
+          "To": "if (value is \"--version\")"
+        },
+        {
+          "Name": "missing-value-bound",
+          "File": "GitInvocationBinder.cs",
+          "From": "if (position >= arguments.Count) return Failure",
+          "To": "if (position > arguments.Count) return Failure"
+        },
+        {
+          "Name": "exec-path-name",
+          "File": "GitInvocationBinder.cs",
+          "From": "globalNames.Add(\"--exec-path=\")",
+          "To": "globalNames.Add(\"--exec-path\")"
+        },
+        {
+          "Name": "glued-lowercase",
+          "File": "GitInvocationBinder.cs",
+          "From": "value[1] is 'C' or 'c'",
+          "To": "value[1] is 'C'"
+        },
+        {
+          "Name": "glued-length",
+          "File": "GitInvocationBinder.cs",
+          "From": "value.Length > 1 && value[1]",
+          "To": "value.Length > 0 && value[1]"
+        },
+        {
+          "Name": "flag-forgotten",
+          "File": "GitInvocationBinder.cs",
+          "From": "\"--no-pager\", \"--bare\", ",
+          "To": "\"--no-pager\", "
+        },
+        {
+          "Name": "empty-command",
+          "File": "GitInvocationBinder.cs",
+          "From": "if (string.IsNullOrEmpty(name)) name = RootCommand;",
+          "To": "if (name is null) name = RootCommand;"
+        },
+        {
+          "Name": "version-anchor",
+          "File": "GitVersions.cs",
+          "From": "(?:\\.windows\\.[0-9]+)?\\z",
+          "To": "(?:\\.windows\\.[0-9]+)?"
+        },
+        {
+          "Name": "algorithm-swapped",
+          "File": "GitQueryProjection.cs",
+          "From": "line.Length == 40 ? \"sha1\" : \"sha256\"",
+          "To": "line.Length == 40 ? \"sha256\" : \"sha1\""
+        },
+        {
+          "Name": "object-case",
+          "File": "GitQueryProjection.cs",
+          "From": "{24})?\\z\", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);",
+          "To": "{24})?\\z\", RegexOptions.CultureInvariant);"
+        },
+        {
+          "Name": "rev-list-typed",
+          "File": "GitQueryProjection.cs",
+          "From": "\"merge-base\", \"rev-list\" }",
+          "To": "\"merge-base\" }"
+        },
+        {
+          "Name": "size-unit",
+          "File": "GitQueryProjection.cs",
+          "From": "data[\"SizeUnit\"] = \"KiB\"",
+          "To": "data[\"SizeUnit\"] = \"KB\""
+        },
+        {
+          "Name": "valid-inverted",
+          "File": "GitQueryProjection.cs",
+          "From": "data[\"Valid\"] = exitCode == 0",
+          "To": "data[\"Valid\"] = exitCode != 0"
+        },
+        {
+          "Name": "exists-inverted",
+          "File": "GitQueryProjection.cs",
+          "From": "data[\"Exists\"] = exitCode == 0",
+          "To": "data[\"Exists\"] = exitCode != 0"
+        },
+        {
+          "Name": "overflow-accepted",
+          "File": "GitQueryProjection.cs",
+          "From": "if (!long.TryParse(match.Groups[2].Value, out long value)) throw",
+          "To": "if (long.TryParse(match.Groups[2].Value, out long value)) throw"
+        }
+      ]
+    },
+    "Schema": {
+      "CasePrefix": "schema ",
+      "Mutants": [
+        {
+          "Name": "cache-ignores-root",
+          "File": "GitArgumentSchemaStore.cs",
+          "From": "if (cached is not null && string.Equals(cachedRoot, root, StringComparison.Ordinal)) return cached;",
+          "To": "if (cached is not null) return cached;"
+        },
+        {
+          "Name": "size-limit-widened",
+          "File": "GitArgumentSchemaStore.cs",
+          "From": "if (info.Length > MaxBytes) throw",
+          "To": "if (info.Length > MaxBytes * 2L) throw"
+        },
+        {
+          "Name": "duplicate-key-accepted",
+          "File": "GitArgumentSchemaStore.cs",
+          "From": "if (table.ContainsKey(property.Name)) throw",
+          "To": "if (table.ContainsKey(property.Name) && false) throw"
+        },
+        {
+          "Name": "keys-case-insensitive",
+          "File": "GitArgumentSchemaStore.cs",
+          "From": "new Hashtable(StringComparer.Ordinal)",
+          "To": "new Hashtable(StringComparer.OrdinalIgnoreCase)"
+        },
+        {
+          "Name": "depth-widened",
+          "File": "GitArgumentSchemaStore.cs",
+          "From": "private const int MaxDepth = 40;",
+          "To": "private const int MaxDepth = 400;"
+        },
+        {
+          "Name": "integers-as-doubles",
+          "File": "GitArgumentSchemaStore.cs",
+          "From": "JsonValueKind.Number => element.TryGetInt64(out long whole) ? (object)whole : element.GetDouble(),",
+          "To": "JsonValueKind.Number => element.GetDouble(),"
+        },
+        {
+          "Name": "array-truncated",
+          "File": "GitArgumentSchemaStore.cs",
+          "From": "element.EnumerateArray().Select(Convert).ToArray()",
+          "To": "element.EnumerateArray().Select(Convert).Take(1).ToArray()"
+        }
+      ]
+    },
+    "ArgumentFilter": {
+      "CasePrefix": "argument filter",
+      "Mutants": [
+        {
+          "Name": "names-case-insensitive",
+          "File": "GitArgumentFilter.cs",
+          "From": "remove.Contains(token.Name, StringComparer.Ordinal)",
+          "To": "remove.Contains(token.Name, StringComparer.OrdinalIgnoreCase)"
+        },
+        {
+          "Name": "kind-check-dropped",
+          "File": "GitArgumentFilter.cs",
+          "From": "token.Kind == \"Option\" && token.Name is not null",
+          "To": "token.Name is not null"
+        },
+        {
+          "Name": "emit-first-skipped",
+          "File": "GitArgumentFilter.cs",
+          "From": "foreach (string? argument in token.EmitArguments)",
+          "To": "foreach (string? argument in token.EmitArguments.Skip(1))"
+        },
+        {
+          "Name": "remove-ignored",
+          "File": "GitArgumentFilter.cs",
+          "From": "&& remove.Contains(token.Name, StringComparer.Ordinal)) continue;",
+          "To": "&& false) continue;"
         }
       ]
     }

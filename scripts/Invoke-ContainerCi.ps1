@@ -21,10 +21,12 @@ Enables a separate pinned PowerShell and CLR profiling pass, outside benchmark s
 Explicit Profiler 4.3.0 manifest; the launcher prepares a private cache when omitted.
 .PARAMETER ClrProfilerPath
 Explicit pinned dotnet-trace DLL.
+.PARAMETER SkipTty
+Excludes native TTY/PTY execution from this run; local runs include it by default.
 .PARAMETER Suite
 Companion scope, focused Import benchmark, or native C mutation campaign.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$Image,[ValidateSet('alpine','debian')][string]$Platform,[switch]$Headless,[ValidateRange(1,7200)][int]$TimeoutSeconds=900,[ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,[ValidateSet('Core','Git','All','Import','Integration','Mutation')][string]$Suite='All',[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
+[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$Image,[ValidateSet('alpine','debian')][string]$Platform,[switch]$Headless,[ValidateRange(1,7200)][int]$TimeoutSeconds=900,[ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,[ValidateSet('Core','Git','All','Import','Integration','Mutation')][string]$Suite='All',[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 if($Profiler){
     if($Suite -notin @('Core','All','Integration')){throw 'ProfilerRequiresCoreIntegration'}
@@ -36,15 +38,16 @@ if($Profiler){
 $run=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'containers') ($Platform+'-'+[DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))
 [void][IO.Directory]::CreateDirectory($run)
 $runner=(Get-Command pwsh -CommandType Application|Select-Object -First 1).Source
-$arguments=@('-File',('"'+(Join-Path $PSScriptRoot 'Invoke-ContainerWorker.ps1')+'"'),'-WorkspaceRoot',('"'+$WorkspaceRoot+'"'),'-RunDirectory',('"'+$run+'"'),'-Image',('"'+$Image+'"'),'-Platform',$Platform)
+$arguments=@('-File',(ConvertTo-CiArgument ((Join-Path $PSScriptRoot 'Invoke-ContainerWorker.ps1'))),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($run)),'-Image',(ConvertTo-CiArgument ($Image)),'-Platform',$Platform)
 if($ExpectedRuntimeIdentifier){$arguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
-if($Profiler){$arguments+=@('-Profiler','-ProfilerModulePath',('"'+$ProfilerModulePath+'"'),'-ClrProfilerPath',('"'+$ClrProfilerPath+'"'))}
+if($Profiler){$arguments+=@('-Profiler','-ProfilerModulePath',(ConvertTo-CiArgument ($ProfilerModulePath)),'-ClrProfilerPath',(ConvertTo-CiArgument ($ClrProfilerPath)))}
+if($SkipTty){if($Suite -eq 'Mutation'){throw 'TtyMutationCannotRunWithSkipTty'};$arguments+='-SkipTty'}
 $arguments+=@('-Suite',$Suite)
 $options=@{FilePath=$runner;ArgumentList=$arguments;PassThru=$true;RedirectStandardOutput=(Join-Path $run 'worker.stdout.log');RedirectStandardError=(Join-Path $run 'worker.stderr.log')};if($IsWindows){$options.WindowStyle='Hidden'}
 if(!$Headless -and !$IsWindows){throw 'A local visible monitor requires the Windows host launcher.'}
 $worker=Start-Process @options
 $monitor=$null
-if(!$Headless){$monitorPath=Join-Path $PSScriptRoot 'Watch-Tests.ps1';$monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',('"'+$monitorPath+'"'),'-RunDirectory',('"'+$run+'"')) -PassThru;"Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$run`""}
+if(!$Headless){$monitorPath=Join-Path $PSScriptRoot 'Watch-Tests.ps1';$monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($run))) -PassThru;"Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$run`""}
 $summary=Wait-WorkspaceWorker -Worker $worker -RunDirectory $run -WorkspaceRoot $WorkspaceRoot -Runner $runner -Monitor $monitor -TimeoutSeconds $TimeoutSeconds
 [pscustomobject]@{State=$summary.State.State;Platform=$summary.State.Platform;Passed=$summary.State.Passed;Failed=$summary.State.Failed;RunDirectory=$run}
 if($summary.State.State -ne 'Success'){throw "Container tests failed: $run"}

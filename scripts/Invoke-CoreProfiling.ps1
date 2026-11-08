@@ -22,7 +22,7 @@ $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
 $owned=[Collections.Generic.List[Diagnostics.Process]]::new();$collectors=[Collections.Generic.List[object]]::new()
 $report=@{State='Running';ProfilerVersion='4.3.0';ClrProfilerVersion='10.0.750501';Instrumented=$true;PowerShellLineReport='powershell-lines.json';Collectors=@();Error=$null}
 try{
-    $arguments=@('-NoProfile','-File',('"'+(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Profiler.Target.ps1')+'"'),'-WorkspaceRoot',('"'+$WorkspaceRoot+'"'),'-RunDirectory',('"'+$directory+'"'),'-RepositoryPath',('"'+$repository+'"'),'-ProfilerModulePath',('"'+$ProfilerModulePath+'"'))
+    $arguments=@('-NoProfile','-File',(ConvertTo-CiArgument ((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Profiler.Target.ps1'))),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($directory)),'-RepositoryPath',(ConvertTo-CiArgument ($repository)),'-ProfilerModulePath',(ConvertTo-CiArgument ($ProfilerModulePath)))
     $options=@{FilePath=$runner;ArgumentList=$arguments;PassThru=$true;RedirectStandardOutput=(Join-Path $directory 'target.stdout.log');RedirectStandardError=(Join-Path $directory 'target.stderr.log')}
     if($IsWindows){$options.WindowStyle='Hidden'}
     $target=Start-Process @options;$owned.Add($target)
@@ -38,7 +38,7 @@ try{
     foreach($processId in @($identity.PowerShellProcessId,$identity.EngineProcessId)|Select-Object -Unique){
         $path=Join-Path $directory ("clr-$processId.nettrace")
         $signal=Join-Path $directory ("clr-$processId.ready")
-        $collectorArguments=@('-File',('"'+(Join-Path $PSScriptRoot 'Invoke-ClrCollector.ps1')+'"'),'-ClrProfilerPath',('"'+$ClrProfilerPath+'"'),'-TargetProcessId',[string]$processId,'-OutputPath',('"'+$path+'"'),'-ReadyPath',('"'+$signal+'"'))
+        $collectorArguments=@('-File',(ConvertTo-CiArgument ((Join-Path $PSScriptRoot 'Invoke-ClrCollector.ps1'))),'-ClrProfilerPath',(ConvertTo-CiArgument ($ClrProfilerPath)),'-TargetProcessId',[string]$processId,'-OutputPath',(ConvertTo-CiArgument ($path)),'-ReadyPath',(ConvertTo-CiArgument ($signal)))
         $options=@{FilePath=$runner;ArgumentList=$collectorArguments;PassThru=$true;RedirectStandardOutput=($path+'.stdout.log');RedirectStandardError=($path+'.stderr.log')}
         if($IsWindows){$options.WindowStyle='Hidden'}
         $process=Start-Process @options;$owned.Add($process)

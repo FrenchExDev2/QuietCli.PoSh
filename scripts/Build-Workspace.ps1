@@ -9,8 +9,16 @@ Root containing global.json and the four module repositories.
 Build configuration, Release by default.
 .PARAMETER RuntimeIdentifier
 Engine distributions to embed. Windows and Linux x64/ARM64, including musl, are published by default.
+.PARAMETER ReadyToRun
+Publishes the engine precompiled (Crossgen2) instead of the plain IL build: lib/inprocess becomes a
+framework-dependent publication for -LocalRuntimeIdentifier rather than a plain `dotnet build`, and every
+lib/engine/<rid> publication adds -p:PublishReadyToRun=true. Opt-in; the default build is unchanged, so this
+is for a local cold-start A/B candidate (see docs/run-profiles.md), not for CI or release builds yet.
+.PARAMETER LocalRuntimeIdentifier
+RID of the current machine, used only by -ReadyToRun to publish lib/inprocess. Defaults to the local
+Windows architecture; override on Linux (for example linux-x64).
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Release','Debug')][string]$Configuration='Release',[Alias('WindowsRuntimeIdentifier')][ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$RuntimeIdentifier=@('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64'))
+[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Release','Debug')][string]$Configuration='Release',[Alias('WindowsRuntimeIdentifier')][ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$RuntimeIdentifier=@('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64'),[switch]$ReadyToRun,[string]$LocalRuntimeIdentifier=('win-'+([Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())))
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 Assert-QuietPtyPublications $WorkspaceRoot
@@ -33,10 +41,18 @@ foreach($framework in @('net10.0','net11.0')){
     Write-QuietBuildManifest $WorkspaceRoot $gitProject $gitOutput -Inputs $gitInputs -Configuration $Configuration
 }
 # Build a portable .NET 10 assembly for direct calls from PowerShell 7.6.
+# -ReadyToRun publishes a precompiled, framework-dependent build for -LocalRuntimeIdentifier instead of a plain
+# IL build, so this directory can be used as a cold-start A/B candidate (see docs/run-profiles.md).
 $project='FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj'
 $output='FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess'
 $inputs=@(Get-QuietBinaryInputs $WorkspaceRoot $project)
-Invoke-WorkspaceNative dotnet @('build',(Join-Path $WorkspaceRoot $project),'-f','net10.0','-c',$Configuration,'-o',(Join-Path $WorkspaceRoot $output),'--nologo') $WorkspaceRoot
+if($ReadyToRun){
+    Invoke-WorkspaceNative dotnet @('publish',(Join-Path $WorkspaceRoot $project),'-f','net10.0','-c',$Configuration,'-r',$LocalRuntimeIdentifier,'--self-contained','false','-p:PublishReadyToRun=true','-o',(Join-Path $WorkspaceRoot $output),'--nologo') $WorkspaceRoot
+}else{
+    Invoke-WorkspaceNative dotnet @('build',(Join-Path $WorkspaceRoot $project),'-f','net10.0','-c',$Configuration,'-o',(Join-Path $WorkspaceRoot $output),'--nologo') $WorkspaceRoot
+}
+# Kept as the 'portable' manifest shape even under -ReadyToRun: this directory is validated the same way
+# everywhere else (Get-QuietWorkspaceIdentity), regardless of which RID it was actually precompiled for.
 Write-QuietBuildManifest $WorkspaceRoot $project $output -Inputs $inputs -Configuration $Configuration
 foreach($rid in $RuntimeIdentifier){
     $project='FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj'
@@ -44,7 +60,9 @@ foreach($rid in $RuntimeIdentifier){
     $target=Get-QuietRuntimeTargets $WorkspaceRoot|Where-Object Rid -CEQ $rid
     $architecture=$target.PlatformTarget
     $inputs=@(Get-QuietBinaryInputs $WorkspaceRoot $project)
-    Invoke-WorkspaceNative dotnet @('publish',(Join-Path $WorkspaceRoot $project),'-f','net11.0','-c',$Configuration,'-r',$rid,'--self-contained','false',('-p:PlatformTarget='+$architecture),'-o',(Join-Path $WorkspaceRoot $output),'--nologo') $WorkspaceRoot
+    $publishArguments=@('publish',(Join-Path $WorkspaceRoot $project),'-f','net11.0','-c',$Configuration,'-r',$rid,'--self-contained','false',('-p:PlatformTarget='+$architecture),'-o',(Join-Path $WorkspaceRoot $output),'--nologo')
+    if($ReadyToRun){$publishArguments+='-p:PublishReadyToRun=true'}
+    Invoke-WorkspaceNative dotnet $publishArguments $WorkspaceRoot
     Assert-QuietRuntimePublication (Join-Path $WorkspaceRoot $output) $target
     Write-QuietBuildManifest $WorkspaceRoot $project $output -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $rid -PlatformTarget $architecture
 }

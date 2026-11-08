@@ -44,7 +44,7 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
     /// <inheritdoc />
     protected override void EndProcessing()
     {
-        try { WriteObject(Parse()); }
+        try { WriteObject(Parse(Arguments ?? [], CurrentDirectory, SessionState.Path.CurrentLocation.Path)); }
         catch (Exception error) when (error is not PipelineStoppedException) { FailWith(error); }
     }
 
@@ -55,9 +55,8 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
     private static string Text(object? value) => LanguagePrimitives.ConvertTo<string>(value) ?? "";
 
     /// <summary>Parses, validates and completes the request.</summary>
-    private Hashtable Parse()
+    internal static Hashtable Parse(object?[] args, string currentDirectory, string location)
     {
-        object?[] args = Arguments ?? [];
         var request = new Hashtable(StringComparer.OrdinalIgnoreCase);
         int index = 0;
         while (index < args.Length)
@@ -113,9 +112,8 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
                     throw new InvalidOperationException("QuietScriptUnsupportedOption: " + key);
             exportRequest = (Hashtable)request.Clone();
         }
-        IDictionary configuration = ConfigurationService.Snapshot(CurrentDirectory).Values;
-        string location = SessionState.Path.CurrentLocation.Path;
-        var defaults = new Hashtable
+        IDictionary configuration = ConfigurationService.Snapshot(currentDirectory).Values;
+                var defaults = new Hashtable
         {
             ["WorkingDirectory"] = location, ["TimeoutSeconds"] = configuration["execution.timeoutSeconds"], ["DrainTimeoutSeconds"] = configuration["execution.drainTimeoutSeconds"],
             ["Environment"] = new Hashtable(), ["Transport"] = configuration["streams.transport"], ["StdoutMode"] = configuration["streams.stdoutMode"],
@@ -155,7 +153,7 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
             Number(request["TimeoutSeconds"]), Number(request["MaxRecordBytes"]), Number(request["MaxOutputBytes"]), Number(request["MaxItems"]),
             Number(request["DrainTimeoutSeconds"]), Number(request["ReadBlockBytes"]), LanguagePrimitives.ConvertTo<double[]>(request["TerminalSize"]));
         if (!string.IsNullOrEmpty(limitError)) throw new InvalidOperationException(limitError);
-        request["WorkingDirectory"] = Path.GetFullPath(Text(request["WorkingDirectory"]), CurrentDirectory);
+        request["WorkingDirectory"] = Path.GetFullPath(Text(request["WorkingDirectory"]), currentDirectory);
         if (request.ContainsKey("Context") && string.IsNullOrWhiteSpace(Text(request["Context"]))) throw new InvalidOperationException("EmptyExplicitContext");
         if (request.ContainsKey("RecordDelimiter") && Text(request["RecordDelimiter"]).Length == 0) throw new InvalidOperationException("EmptyRecordDelimiter");
         return exportRequest ?? request;

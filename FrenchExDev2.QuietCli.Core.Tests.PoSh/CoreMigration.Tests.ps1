@@ -10,7 +10,10 @@ function Measure-QuietCoreMigration {
         param($baseline,$dotnet)
         . $baseline
         $metadata=[ordered]@{State='Finalized';Native=[pscustomobject]@{Outcome='Success';StdoutBytesRead=123L};Issues=@(foreach($index in 1..16){@{InvocationId="child-$index";Error=@(@{Code='Known';Phase='Output'})}})}
-        $copy=ConvertTo-QuietSnapshot $metadata
+        # The PowerShell wrappers were removed with the port; the benchmark calls the compiled APIs they used to forward to.
+        $freeze={param($value)if($null -eq $value){return $null};return ,([FrenchExDev2.QuietCli.CallerMetadata]::Freeze($value,$script:QuietMetadataAdapter))}
+        $render={param($value)[FrenchExDev2.QuietCli.BoundedYaml]::Render($value,$script:QuietRoot,0,[Func[object,string]]{param($scalar)ConvertTo-Json -InputObject $scalar -Depth 4 -Compress})}
+        $copy=& $freeze $metadata
         $metadata.Native.StdoutBytesRead=456L;$metadata.Issues[0].Error[0].Code='Changed'
         if($copy.Native.StdoutBytesRead -ne 123 -or $copy.Issues[0].Error[0].Code -cne 'Known'){throw 'CallerMetadataNotDetached'}
         $graph=[ordered]@{items=@(foreach($index in 1..24){[ordered]@{name="é漢🙂-$index";literal='true';enabled=$true;count=$index}});empty=@();none=$null}
@@ -20,10 +23,10 @@ function Measure-QuietCoreMigration {
                     $watch=[Diagnostics.Stopwatch]::StartNew()
                     foreach($call in 1..20){
                         if($kind -eq 'Snapshot'){
-                            $value=if($implementation -eq 'PowerShell'){ConvertTo-QuietSnapshotBaseline $metadata}else{ConvertTo-QuietSnapshot $metadata}
+                            $value=if($implementation -eq 'PowerShell'){ConvertTo-QuietSnapshotBaseline $metadata}else{& $freeze $metadata}
                             if($value.Issues.Count -ne 16 -or $value.Native.StdoutBytesRead -ne 456){throw 'SnapshotBenchmarkChangedMetadata'}
                         }else{
-                            $value=if($implementation -eq 'PowerShell'){ConvertTo-QuietYamlValueBaseline $graph}else{ConvertTo-QuietYamlValue $graph}
+                            $value=if($implementation -eq 'PowerShell'){ConvertTo-QuietYamlValueBaseline $graph}else{& $render $graph}
                             # Unicode escape spelling is serializer-owned; the independent C# parser case verifies decoded identity.
                             if(!$value.Contains('-24') -or !$value.Contains('true')){throw 'YamlBenchmarkLostContent'}
                         }
@@ -63,10 +66,10 @@ function Measure-QuietCoreMigration {
         Register-QuietHandler -Id $id -Definition @{Binary=$binary;VersionRange='synthetic';Execute={};TestVersion={param($version)$version -ceq 'synthetic-1'};Probe={$probe.Calls++;'synthetic-1'}.GetNewClosure()}
         try{
             $runtime=[pscustomobject]@{Request=@{FilePath=$dotnet;Environment=@{};HandlerId=$id};State=@{}}
-            $existingKeys=@($script:QuietProbeCache.Keys)
+            $existingKeys=@([FrenchExDev2.QuietCli.Cmdlets.HandlerRegistry]::ProbeCache.Keys)
             foreach($iteration in 1..3){
                 foreach($implementation in $(if($iteration%2){@('PowerShell','CompiledIdentity')}else{@('CompiledIdentity','PowerShell')})){
-                    foreach($key in @($script:QuietProbeCache.Keys)){if($key -cnotin $existingKeys){$script:QuietProbeCache.Remove($key)}}
+                    foreach($key in @([FrenchExDev2.QuietCli.Cmdlets.HandlerRegistry]::ProbeCache.Keys)){if($key -cnotin $existingKeys){[FrenchExDev2.QuietCli.Cmdlets.HandlerRegistry]::ProbeCache.Remove($key)}}
                     $beforeProbes=$probe.Calls;$watch=[Diagnostics.Stopwatch]::StartNew()
                     foreach($call in 1..200){
                         $handler=if($implementation -eq 'PowerShell'){Resolve-QuietHandlerBaseline $runtime}else{Resolve-QuietHandler $runtime}
@@ -77,6 +80,6 @@ function Measure-QuietCoreMigration {
                     @{Kind='RegistryResolution';Implementation=$implementation;Iteration=$iteration;Calls=200;ProbeCalls=($probe.Calls-$beforeProbes);ElapsedMs=$watch.Elapsed.TotalMilliseconds;Scope='One synthetic candidate, one cached version probe, real executable stat and child environment cache key; no native execution.'}
                 }
             }
-        }finally{Unregister-QuietHandler $id;foreach($key in @($script:QuietProbeCache.Keys)){if($key -cnotin $existingKeys){$script:QuietProbeCache.Remove($key)}}}
+        }finally{Unregister-QuietHandler $id;foreach($key in @([FrenchExDev2.QuietCli.Cmdlets.HandlerRegistry]::ProbeCache.Keys)){if($key -cnotin $existingKeys){[FrenchExDev2.QuietCli.Cmdlets.HandlerRegistry]::ProbeCache.Remove($key)}}}
     } (Join-Path $PSScriptRoot 'CoreMigration.Baseline.ps1') $Dotnet
 }

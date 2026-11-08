@@ -24,11 +24,20 @@ internal static class DeliveryCmdletCases
         var state = InitialSessionState.CreateDefault2();
         foreach (var (name, type) in new (string, Type)[] {
             ("Out-QuietResult", typeof(OutQuietResultCommand)), ("ConvertTo-QuietJson", typeof(ConvertToQuietJsonCommand)),
-            ("ConvertTo-QuietYaml", typeof(ConvertToQuietYamlCommand)), ("Get-QuietSetting", typeof(GetQuietSettingCommand)) })
+            ("ConvertTo-QuietYaml", typeof(ConvertToQuietYamlCommand)), ("Get-QuietSetting", typeof(GetQuietSettingCommand)),
+            ("Read-QuietArguments", typeof(ReadQuietArgumentsCommand)),
+            ("Invoke-QuietCall", typeof(InvokeQuietCallCommand)), ("Export-QuietCallScript", typeof(ExportQuietCallScriptCommand)), ("Invoke-QuietRecall", typeof(InvokeQuietRecallCommand)),("Register-QuietHandler", typeof(RegisterQuietHandlerCommand)), ("Unregister-QuietHandler", typeof(UnregisterQuietHandlerCommand)),
+            ("Get-QuietCliGain", typeof(GetQuietCliGainCommand)), ("Repair-QuietCliMeasurementPrivacy", typeof(RepairQuietCliMeasurementPrivacyCommand)),
+            ("Add-QuietAgentInstruction", typeof(AddQuietAgentInstructionCommand)), ("Get-QuietAgentInstruction", typeof(GetQuietAgentInstructionCommand)), ("New-QuietModule", typeof(NewQuietModuleCommand)) })
             state.Commands.Add(new SessionStateCmdletEntry(name, type, null));
         using Runspace runspace = RunspaceFactory.CreateRunspace(state);
         runspace.Open();
         ConfigurationService.Snapshot(Directory.GetCurrentDirectory()).Values["telemetry.enabled"] = false;
+        await InvocationCmdletCases.RunAsync(run, runspace);
+        await ScriptCmdletCases.RunAsync(run, runspace);
+        await RecallReplayCases.RunAsync(run, runspace);
+        await GainCmdletCases.RunAsync(run, runspace);
+        await AgentScaffoldCases.RunAsync(run, runspace);
 
         await run("delivery counts the exact tokens of the delivered text and deduplicates receipts", () =>
         {
@@ -125,10 +134,10 @@ internal static class DeliveryCmdletCases
     private static object Result(Runspace runspace, object data) => Script(runspace, NewResult, data).Single();
 
     /// <summary>Reads a member of a PowerShell object.</summary>
-    private static object? Member(object container, string name) => PSObject.AsPSObject(container).Properties[name]?.Value;
+    internal static object? Member(object container, string name) => PSObject.AsPSObject(container).Properties[name]?.Value;
 
     /// <summary>Runs a script block with positional arguments and returns its output.</summary>
-    private static List<PSObject> Script(Runspace runspace, string script, params object[] arguments)
+    internal static List<PSObject> Script(Runspace runspace, string script, params object[] arguments)
     {
         using var shell = PowerShell.Create(runspace);
         shell.AddScript(script);
@@ -140,7 +149,7 @@ internal static class DeliveryCmdletCases
     }
 
     /// <summary>Requires a terminating error whose innermost message is the code.</summary>
-    private static void Expect(Runspace runspace, string code, string script, params object[] arguments)
+    internal static void Expect(Runspace runspace, string code, string script, params object[] arguments)
     {
         try { Script(runspace, script, arguments); }
         catch (Exception error) when (ConfigurationService.Innermost(error).Message.StartsWith(code, StringComparison.Ordinal)) { return; }

@@ -90,6 +90,9 @@ internal static class Program
         AttributionCases.Run(Case);
         PathQueryCases.Run(Case);
         RevisionCases.Run(Case);
+        InvocationCases.Run(Case);
+        SchemaCases.Run(Case, arguments.Length > 0 ? arguments[0] : null);
+        ArgumentFilterCases.Run(Case, arguments.Length > 0 ? arguments[0] : null);
         var schema = Grammar();
         Case("required values empty equals values and literal separators bind independently", () => {
             var bound = GitArguments.Bind("fixture", ["-m", "--all", "--author=", "--", "--flag"], "fixture-version", schema);

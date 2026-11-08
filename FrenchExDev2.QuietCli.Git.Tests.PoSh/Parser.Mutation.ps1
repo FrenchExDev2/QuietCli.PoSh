@@ -7,7 +7,7 @@ function Invoke-QuietGitParserMutation {
     .PARAMETER Catalogue
     Source-checked parser mutation catalogue selected for the changed domain.
     #>
-    param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Push','Repository','Query','Attribution','PathQuery','Revision')][string]$Catalogue='Push')
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Push','Repository','Query','Attribution','PathQuery','Revision','Invocation','Schema','ArgumentFilter')][string]$Catalogue='Push')
     $ErrorActionPreference='Stop'
     . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
     . (Join-Path $WorkspaceRoot 'scripts/ReportPaths.ps1')

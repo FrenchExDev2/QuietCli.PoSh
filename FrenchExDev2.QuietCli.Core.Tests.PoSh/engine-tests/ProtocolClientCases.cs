@@ -55,6 +55,40 @@ internal static class ProtocolClientCases
                 await Rejected("InvalidFrameLength", () => Client(new MemoryStream(), lengths, new Random(1), "{\"Version\":1}"u8.ToArray(), []));
             }
         });
+        await run("each frame reaches the pipe in exactly one write on both sides", async () =>
+        {
+            var random = new Random(Seed + 2);
+            for (int iteration = 0; iteration < 200; iteration++)
+            {
+                byte[] payload = new byte[random.Next(0, 16385)]; random.NextBytes(payload);
+                byte[] header = Encoding.UTF8.GetBytes("{\"Version\":1,\"Pad\":\"" + new string('y', random.Next(0, 3000)) + "\"}");
+                var clientSide = new WriteCountingStream();
+                await Client(clientSide, ReplyFrame([], []), random, header, payload);
+                Require(clientSide.Writes == 1 && clientSide.Flushes == 1, $"Client wrote {clientSide.Writes} times: seed={Seed + 2} iteration={iteration}");
+                var engineSide = new WriteCountingStream();
+                await new Protocol(Stream.Null, engineSide).WriteAsync(new { Version = 1, Pad = new string('z', random.Next(0, 3000)) }, payload, CancellationToken.None);
+                Require(engineSide.Writes == 1 && engineSide.Flushes == 1, $"Engine wrote {engineSide.Writes} times: seed={Seed + 2} iteration={iteration}");
+            }
+        });
+        await run("length prefixes are accepted exactly inside the protocol bounds", () =>
+        {
+            var random = new Random(Seed + 3);
+            int[] edges = [int.MinValue, -1, 0, 1, 2, 3, 1023, 1024, 16383, 16384, 16385, 65535, 65536, 1048575, 1048576, 1048577, int.MaxValue];
+            for (int iteration = 0; iteration < 2000; iteration++)
+            {
+                int header = iteration < edges.Length * edges.Length ? edges[iteration / edges.Length] : random.Next(-5, 1100000);
+                int payload = iteration < edges.Length * edges.Length ? edges[iteration % edges.Length] : random.Next(-5, 17000);
+                byte[] prefix = new byte[8];
+                BinaryPrimitives.WriteInt32LittleEndian(prefix, header); BinaryPrimitives.WriteInt32LittleEndian(prefix.AsSpan(4), payload);
+                // Independent oracle written from the protocol.json bounds, not from the implementation.
+                bool valid = header >= 2 && header <= 1048576 && payload >= 0 && payload <= 16384;
+                bool accepted;
+                try { var parsed = FrameCodec.ParseLengths(prefix); accepted = parsed.HeaderSize == header && parsed.PayloadSize == payload; }
+                catch (InvalidDataException error) when (error.Message == "InvalidFrameLength") { accepted = false; }
+                Require(accepted == valid, $"Prefix header={header} payload={payload} valid={valid} accepted={accepted}");
+            }
+            return Task.CompletedTask;
+        });
         await run("protocol client fails on a truncated reply and honors cancellation", async () =>
         {
             byte[] full = ReplyFrame("{\"Version\":1}"u8.ToArray(), new byte[100]);
@@ -95,6 +129,25 @@ internal static class ProtocolClientCases
     }
 
     private static void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
+
+    /// <summary>Write-only stream that counts write and flush calls.</summary>
+    private sealed class WriteCountingStream : Stream
+    {
+        public int Writes { get; private set; }
+        public int Flushes { get; private set; }
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() => Flushes++;
+        public override Task FlushAsync(CancellationToken token) { Flushes++; return Task.CompletedTask; }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => Writes++;
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken token = default) { Writes++; return ValueTask.CompletedTask; }
+    }
 
     /// <summary>Read-only stream returning at most a few bytes per read.</summary>
     private sealed class FragmentedStream(byte[] data, Random random) : Stream

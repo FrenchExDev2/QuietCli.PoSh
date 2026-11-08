@@ -98,7 +98,7 @@ function Invoke-QuietRecallTests {
         $ignored=Invoke-QuietRecall $r -StdoutMode Bytes -RecordDelimiter $null -Output {param($e,$r) $r.MarkIgnored()}
         Assert-QuietEqual ($ignored.Cursor.DeclaredIgnoredSequences.Count -gt 0) $true
     }
-    $cases['Recall native failure empty timeout and terminal retain their actual source status']={
+    $cases['Recall native failure empty timeout and cancellation retain their actual source status']={
         $r=quiet -AsObject -Recall -Output {} dotnet $fixture fail
         Assert-QuietEqual $r.Outcome Failed;Assert-QuietEqual $r.Recall.RetainedBytes 17
         $empty=quiet -AsObject -Recall -Output {} dotnet $fixture emit 0
@@ -108,6 +108,8 @@ function Invoke-QuietRecallTests {
         Assert-QuietEqual $timeout.Recall.SourceComplete $false
         $cancel=quiet -AsObject -Recall -Interaction {param($r)$r.Cancel()} -Output {} dotnet $fixture hang
         Assert-QuietEqual $cancel.Outcome Cancelled;Assert-QuietEqual $cancel.Recall.SourceComplete $false
+    }
+    $cases['PTY Recall retains merged terminal source status']={
         $pty=quiet -AsObject -Recall -Transport Pty -Output {} dotnet $fixture terminal
         Assert-QuietEqual $pty.Outcome Success
         Assert-QuietEqual @($pty.Recall.Events|Where-Object Stream -NE terminal).Count 0
@@ -283,12 +285,13 @@ if(!$comparison.Equal -or $reduction.Capture.RetainedBytes -lt 1){throw 'Package
         Assert-QuietEqual $broken.Outcome Failed
         Assert-QuietEqual $broken.Data.Contains('RecallToolsBinaryIntegrityFailed') $true
     }
-    $passed=0;$failed=0;$results=[Collections.Generic.List[object]]::new()
+    $passed=0;$failed=0;$ttyExcluded=0;$results=[Collections.Generic.List[object]]::new()
     foreach($case in $cases.GetEnumerator()){
+        if($env:QUIETCLI_TEST_SKIP_TTY -ceq '1' -and $case.Key -clike 'PTY *'){$ttyExcluded++;continue}
         $errorText=$null
         try{& $case.Value;$passed++;$state='Passed'}catch{$failed++;$state='Failed';$errorText=$_.ToString()+"`n"+$_.ScriptStackTrace}
         $results.Add(@{Name=$case.Key;State=$state;Error=$errorText})
         if($OnProgress){& $OnProgress $case.Key $state $passed $failed}
     }
-    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Performance=$metrics.ToArray()}
+    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;TtyExcluded=$ttyExcluded;Cases=$results.ToArray();Performance=$metrics.ToArray()}
 }

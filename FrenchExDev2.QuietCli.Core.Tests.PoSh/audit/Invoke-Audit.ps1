@@ -19,14 +19,14 @@ if(Test-Path -LiteralPath $RunDirectory){throw 'AuditRunDirectoryExists'}
 [void][IO.Directory]::CreateDirectory($RunDirectory)
 if(!$IsWindows){throw 'Use the Windows host to open the required visible audit monitor.'}
 $pwsh=(Get-Command pwsh -CommandType Application|Select-Object -First 1).Source
-$worker=Start-Process -FilePath $pwsh -WindowStyle Hidden -ArgumentList @('-File',('"'+(Join-Path $PSScriptRoot 'Invoke-AuditWorker.ps1')+'"'),'-WorkspaceRoot',('"'+$WorkspaceRoot+'"'),'-RunDirectory',('"'+$RunDirectory+'"')) -RedirectStandardOutput (Join-Path $RunDirectory 'worker.stdout.log') -RedirectStandardError (Join-Path $RunDirectory 'worker.stderr.log') -PassThru
+$worker=Start-Process -FilePath $pwsh -WindowStyle Hidden -ArgumentList @('-File',(ConvertTo-CiArgument ((Join-Path $PSScriptRoot 'Invoke-AuditWorker.ps1'))),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory))) -RedirectStandardOutput (Join-Path $RunDirectory 'worker.stdout.log') -RedirectStandardError (Join-Path $RunDirectory 'worker.stderr.log') -PassThru
 $watch=Join-Path $WorkspaceRoot 'scripts/Watch-Tests.ps1'
-$monitor=Start-Process -FilePath $pwsh -WindowStyle Normal -ArgumentList @('-File',('"'+$watch+'"'),'-RunDirectory',('"'+$RunDirectory+'"')) -PassThru
+$monitor=Start-Process -FilePath $pwsh -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($watch)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory))) -PassThru
 "Monitor: pwsh -File `"$watch`" -RunDirectory `"$RunDirectory`""
 $deadline=[DateTimeOffset]::UtcNow.AddMinutes(4)
 while(!$worker.HasExited){
     if([DateTimeOffset]::UtcNow -gt $deadline){$worker.Kill($true);$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Audit sécurité et logiciel';Workspace=$WorkspaceRoot;ProjectDirectory=$WorkspaceRoot;Platform='win-x64';ProcessId=$worker.Id;StartedUtc=$deadline.AddMinutes(-4).ToString('o');FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o');State='Timeout';Passed=$null;Failed=$null;Case='Audit worker timed out';Error='See worker logs'};Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$state};Write-WorkspaceJson (Join-Path $RunDirectory 'status.json') $state;break}
-    if($monitor.HasExited){$monitor=Start-Process -FilePath $pwsh -WindowStyle Normal -ArgumentList @('-File',('"'+$watch+'"'),'-RunDirectory',('"'+$RunDirectory+'"')) -PassThru}
+    if($monitor.HasExited){$monitor=Start-Process -FilePath $pwsh -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($watch)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory))) -PassThru}
     [void][Threading.Tasks.Task]::Delay(500).GetAwaiter().GetResult()
 }
 if(!(Test-Path -LiteralPath (Join-Path $RunDirectory 'summary.json'))){
