@@ -43,6 +43,30 @@ Runs a CI tool directly, independently of the product engine, with bounded failu
         [pscustomobject]@{Tool=$FilePath;Outcome=$result.Outcome;Lines=$state.Lines;LogPath=$LogPath}
     }finally{if($state.Writer){$state.Writer.Dispose()}}
 }
+function ConvertTo-QuietByteCount {
+    <#
+.SYNOPSIS
+Parses a human-readable size into a byte count.
+    .PARAMETER Size
+    A bare non-negative integer (already bytes), or a number immediately or space-separated from a
+    decimal unit (`KB`/`MB`/`GB`/`TB`, powers of 1000) or binary unit (`KiB`/`MiB`/`GiB`/`TiB`,
+    powers of 1024). Case-insensitive. Examples: `"500KB"`, `"1 MiB"`, `"2GiB"`, `"750"`.
+    #>
+    param([Parameter(Mandatory)][string]$Size)
+    $match = [regex]::Match($Size.Trim(), '^(?<value>\d+(\.\d+)?)\s*(?<unit>[KMGT]i?B)?$', 'IgnoreCase')
+    if (!$match.Success) { throw ('QuietByteCountInvalid: ' + $Size) }
+    $value = [double]$match.Groups['value'].Value
+    $unit = $match.Groups['unit'].Value.ToUpperInvariant()
+    $multiplier = switch ($unit) {
+        '' { 1 }
+        'KB' { 1000 }; 'KIB' { 1024 }
+        'MB' { 1000L * 1000 }; 'MIB' { 1024L * 1024 }
+        'GB' { 1000L * 1000 * 1000 }; 'GIB' { 1024L * 1024 * 1024 }
+        'TB' { 1000L * 1000 * 1000 * 1000 }; 'TIB' { 1024L * 1024 * 1024 * 1024 }
+        default { throw ('QuietByteCountInvalid: ' + $Size) }
+    }
+    [long]($value * $multiplier)
+}
 function Write-WorkspaceJson {
     <#
 .SYNOPSIS

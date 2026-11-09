@@ -15,6 +15,10 @@ or untracked, relative to $WorkspaceRoot) has no matching change to its mirrored
 docs/scripts/ - the doc Sync-ScriptsReadme.ps1 requires to exist, but whose content it never
 inspects for staleness. Pass -NoScriptDocDriftWarning to override (silence) that warning; it never
 blocks the commit on its own regardless.
+Also warns (does not block) when a changed file - from its own `quiet git status` call, the one
+intentional use of the quiet module in this otherwise quiet-independent script - is binary content
+or larger than -MaxChangedFileSize, unless .gitattributes already marks it binary. Pass
+-NoCommitFileSnifferWarning to override (silence) that warning; it never blocks the commit either.
 Fully supports -WhatIf/-Confirm (SupportsShouldProcess): with -WhatIf, the sync gates and the drift
 warning still run and report exactly as they would for a real commit, but the workspace lock is not
 refreshed, nothing is staged and no commit is created.
@@ -47,6 +51,13 @@ Skips all three documentation-sync gates above in one switch; equivalent to pass
 .PARAMETER NoScriptDocDriftWarning
 Overrides (silences) the script/doc drift warning described above. The warning is informational
 only; it never blocks the commit whether this switch is passed or not.
+.PARAMETER MaxChangedFileSize
+Human-readable size (see Common.ps1's ConvertTo-QuietByteCount: "500KB", "1MiB", "2GiB", or a bare
+integer for raw bytes) above which a changed file is flagged by the binary/size sniffer. Default
+"500KB".
+.PARAMETER NoCommitFileSnifferWarning
+Overrides (silences) the binary/oversized-file warning described above. The warning is
+informational only; it never blocks the commit whether this switch is passed or not.
 .EXAMPLE
 ./scripts/Commit-Workspace.ps1 -Message "Add Build-Workspace DRY refactor" -CoAuthoredBy Claude
 Runs every sync gate and the drift warning, then stages and commits as usual.
@@ -61,6 +72,9 @@ nothing.
 .EXAMPLE
 ./scripts/Commit-Workspace.ps1 -Message "Commit selected changes" -NoAll
 Validates and commits the prepared index with its matching source lock; preserves unstaged changes.
+.EXAMPLE
+./scripts/Commit-Workspace.ps1 -Message "Vendor a tool" -MaxChangedFileSize 2MiB
+Raises the binary/oversized-file sniffer's threshold to 2 MiB for this run only.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
@@ -73,10 +87,13 @@ param(
     [switch]$NoDocsCreditsCheck,
     [switch]$NoCreditsCheck,
     [switch]$NoSyncChecks,
-    [switch]$NoScriptDocDriftWarning
+    [switch]$NoScriptDocDriftWarning,
+    [string]$MaxChangedFileSize = '500KB',
+    [switch]$NoCommitFileSnifferWarning
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot Common.ps1)
+$maxChangedFileBytes = ConvertTo-QuietByteCount $MaxChangedFileSize
 
 function Assert-QuietStagedWorkspaceLock {
     <#
@@ -149,6 +166,61 @@ function Test-QuietScriptDocDrift {
     }
 }
 
+function Test-QuietBinaryContent {
+    <#
+    .SYNOPSIS
+    Applies the standard git/diff NUL-byte heuristic to a file's leading bytes.
+    .PARAMETER Path
+    Absolute path of an existing, readable file.
+    #>
+    param([Parameter(Mandatory)][string]$Path)
+    $stream = [IO.File]::OpenRead($Path)
+    try {
+        $buffer = [byte[]]::new([Math]::Min(8000, $stream.Length))
+        $read = $stream.Read($buffer, 0, $buffer.Length)
+        for ($i = 0; $i -lt $read; $i++) { if ($buffer[$i] -eq 0) { return $true } }
+        return $false
+    } finally { $stream.Dispose() }
+}
+
+function Test-QuietCommitFileSniffer {
+    <#
+    .SYNOPSIS
+    Warns (non-blocking) about a changed file that is binary content or larger than MaxBytes,
+    unless it is already declared binary in .gitattributes.
+    .PARAMETER WorkspaceRoot
+    Repository whose pending changes (tracked + untracked, as `git status` reports them) are inspected.
+    .PARAMETER MaxBytes
+    Size threshold in bytes above which a non-exempted file is reported.
+    #>
+    param([Parameter(Mandatory)][string]$WorkspaceRoot, [Parameter(Mandatory)][long]$MaxBytes)
+    # The module lives next to this script's own real location, not under the (possibly disposable
+    # or fixture) $WorkspaceRoot being committed - matches the Measure-ColdStart.ps1 guard idiom.
+    $moduleRoot = Split-Path $PSScriptRoot -Parent
+    if (-not (Get-Command quiet -ErrorAction SilentlyContinue)) { Import-Module (Join-Path $moduleRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1') }
+    if (-not (Get-Module FrenchExDev2.QuietCli.Git.PoSh)) { Import-Module (Join-Path $moduleRoot 'FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1') }
+    $status = quiet -AsObject -WorkingDirectory $WorkspaceRoot git status
+    if ($status.Outcome -ne 'Success') {
+        Write-Warning "CommitFileSniffer: could not read 'git status' via quiet (Outcome=$($status.Outcome)); skipping the binary/oversized-file check."
+        return
+    }
+    foreach ($entry in @($status.Data.Entries)) {
+        if ($entry.Kind -eq 'Ignored') { continue }
+        if ($entry.Path -isnot [string]) { continue }
+        if ($entry.Status -and $entry.Status.Contains('D')) { continue }
+        $full = Join-Path $WorkspaceRoot $entry.Path
+        if (!(Test-Path -LiteralPath $full -PathType Leaf)) { continue }
+        $attr = quiet -AsObject -WorkingDirectory $WorkspaceRoot -- git check-attr binary -- $entry.Path
+        if ($attr.Outcome -eq 'Success' -and @($attr.Data.Entries).Count -and $attr.Data.Entries[0].Value -ceq 'set') { continue }
+        $size = (Get-Item -LiteralPath $full).Length
+        $isBinary = Test-QuietBinaryContent -Path $full
+        if ($isBinary -or $size -gt $MaxBytes) {
+            $reason = if ($isBinary) { 'binary content' } else { "size $size bytes exceeds $MaxBytes bytes" }
+            Write-Warning "CommitFileSniffer: $($entry.Path) ($reason). Mark it binary in .gitattributes if intentional, or pass -NoCommitFileSnifferWarning to override."
+        }
+    }
+}
+
 $knownCoAuthors = @{Claude = 'Claude Sonnet 5 <noreply@anthropic.com>'; Codex = 'Codex <noreply@openai.com>' }
 $trailers = [Collections.Generic.List[string]]::new()
 foreach ($entry in $CoAuthoredBy) {
@@ -174,6 +246,10 @@ if (!$NoScriptDocDriftWarning) {
     $untracked = @(if(!$NoAll){& git -C $WorkspaceRoot ls-files --others --exclude-standard})
     $changedPaths = @($tracked + $untracked | Where-Object { $_ } | ForEach-Object { $_.Replace('\', '/') } | Sort-Object -Unique)
     Test-QuietScriptDocDrift -ChangedPaths $changedPaths
+}
+
+if (!$NoCommitFileSnifferWarning) {
+    Test-QuietCommitFileSniffer -WorkspaceRoot $WorkspaceRoot -MaxBytes $maxChangedFileBytes
 }
 
 if($NoAll){Assert-QuietStagedWorkspaceLock -WorkspaceRoot $WorkspaceRoot}

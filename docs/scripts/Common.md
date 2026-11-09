@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The shared, load-bearing operational layer most other scripts in this folder depend on. It supplies the one approved way to shell out to a native tool with bounded failure diagnostics (`Invoke-WorkspaceNative`), the one approved way to publish JSON state atomically for a read-only monitor to observe (`Write-WorkspaceJson`), and the supervisor loop that owns a background worker process together with its dedicated visible monitor window, restarting that monitor (bounded to 3 attempts) if it dies before the run reaches a terminal state (`Wait-WorkspaceWorker`). It is dot-sourced by at least 28 other scripts in this folder (confirmed by search), making it the single most depended-upon file in the set. It is itself a hub: it dot-sources `ReportPaths.ps1`, `Ci.Process.ps1`, `SourceIdentity.ps1`, and `RuntimeTargets.ps1` (lines 1, 3, 4, 5), so every caller gets that whole chain for free with one dot-source.
+The shared, load-bearing operational layer most other scripts in this folder depend on. It supplies the one approved way to shell out to a native tool with bounded failure diagnostics (`Invoke-WorkspaceNative`), the one approved way to publish JSON state atomically for a read-only monitor to observe (`Write-WorkspaceJson`), the supervisor loop that owns a background worker process together with its dedicated visible monitor window, restarting that monitor (bounded to 3 attempts) if it dies before the run reaches a terminal state (`Wait-WorkspaceWorker`), and a single reusable parser for human-readable size thresholds (`ConvertTo-QuietByteCount`, added for `Commit-Workspace.ps1`'s binary/oversized-file sniffer, but not special-cased to it — any script needing a size threshold, such as `Test-WorkspacePackage.ps1`'s hardcoded archive limits, can reuse it instead of duplicating the parsing). It is dot-sourced by at least 28 other scripts in this folder (confirmed by search), making it the single most depended-upon file in the set. It is itself a hub: it dot-sources `ReportPaths.ps1`, `Ci.Process.ps1`, `SourceIdentity.ps1`, and `RuntimeTargets.ps1` (lines 1, 3, 4, 5), so every caller gets that whole chain for free with one dot-source.
 
 ## Usage
 
@@ -13,10 +13,13 @@ A function library; no script-level params.
 | `Invoke-WorkspaceNative` | `FilePath`, `Arguments`, `WorkingDirectory`, `TimeoutSeconds` (`ValidateRange(1,3600)`, default 600), `LogPath` (optional) |
 | `Write-WorkspaceJson` | `Path`, `Value` |
 | `Wait-WorkspaceWorker` | `Worker` (`Diagnostics.Process`), `RunDirectory`, `WorkspaceRoot`, `Runner`, `Monitor` (`Diagnostics.Process`), `TimeoutSeconds` |
+| `ConvertTo-QuietByteCount` | `Size` (`string`, mandatory) — a bare integer (bytes), or a number with a decimal (`KB`/`MB`/`GB`/`TB`, powers of 1000) or binary (`KiB`/`MiB`/`GiB`/`TiB`, powers of 1024) unit suffix, case-insensitive, optional whitespace before the unit |
 
 ```powershell
 . ./scripts/Common.ps1
 Invoke-WorkspaceNative dotnet @('build', $csproj, '-c', 'Release') $WorkspaceRoot -LogPath (Join-Path $run 'build.log')
+ConvertTo-QuietByteCount '500KB'   # 500000
+ConvertTo-QuietByteCount '1 MiB'   # 1048576
 ```
 
 ## Dependencies
@@ -38,6 +41,7 @@ Invoke-WorkspaceNative dotnet @('build', $csproj, '-c', 'Release') $WorkspaceRoo
 - DESIGN: the crash-fallback `$state` construction (used only when a worker died without ever writing `status.json`) hardcodes a specific project identity directly into this otherwise-generic worker-supervision helper — `Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh'` at line 106, and again `Project='FrenchExDev2.QuietCli.Core.Tests.PoSh'` in the fallback-fill loop at line 109. A caller supervising some other worker (e.g. a future module's own test run) would get this Core/Git project identity baked into its crash report unless its worker happened to write a correctly-identified `status.json` before dying. This is a reusability smell: a function billed as generic worker supervision silently assumes it is only ever supervising the Core+Git companion test run.
 - The comment at line 109 ("Preserve valid monitor identity even if a faulty worker replaced its status with a progress DTO") documents a real, previously-hit failure mode — a good comment, but the mitigation is itself coupled to the hardcoded project names noted above.
 - Testability: `Write-WorkspaceJson` and `Invoke-WorkspaceNative` are exercised indirectly by 12+ test files, but this is all incidental integration coverage through other suites' use of these helpers, not a focused unit test of, e.g., the Windows sharing-violation retry path (lines 61-66) or the monitor-restart-exhaustion path (line 96) in `Wait-WorkspaceWorker`. No test was found that specifically simulates "the monitor window dies 4 times in a row" to confirm the bounded-3-restarts-then-kill behavior actually triggers.
+- `ConvertTo-QuietByteCount` is pure and stateless (no filesystem/process access), so it is covered directly by `CommitWorkspace.Tests.ps1`'s `Test-QuietByteCountParsing` (decimal and binary units, a bare integer, and invalid input throwing `QuietByteCountInvalid`) rather than only incidentally through a caller.
 
 ## Verdict
 

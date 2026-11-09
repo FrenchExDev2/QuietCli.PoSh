@@ -7,6 +7,15 @@ Creates one monorepo commit. By default it refreshes the source lock and stages 
 staging any file. Both modes check documentation compliance and support `-WhatIf`/`-Confirm`.
 An optional, deduplicated `Co-Authored-By` trailer is supported; no push occurs.
 
+It also warns (non-blocking) about a changed file that is binary content or larger than
+`-MaxChangedFileSize` (default `500KB`), unless the path is already declared `binary` in
+`.gitattributes`. This follows an incident in this repository where SQLite/tokenizer/YamlDotNet
+native binaries were committed into history and had to be untracked and purged; the check reads
+the pending change set via `quiet -AsObject ... git status` (the only place in this script that
+imports and calls the `quiet` module itself, rather than `Invoke-CiProcess`/raw `git` - by the time
+this script runs, the workspace is assumed functional, so using `quiet` here is a deliberate, live
+example of the module exercising itself). Override (silence) with `-NoCommitFileSnifferWarning`.
+
 Per the repository's own prior audit (`docs/audits/2026-11-08-ecosystem-usage-review.md`, GAP-01, lines 23-27), **no caller was found anywhere in this repository**: not in any `.github/workflows/*.yml`, not dot-sourced or invoked by any other script in `scripts/`. It appears to be intended for direct, ad hoc invocation, not as part of any automated pipeline. This is now exercised by `Test-QuietCommitWorkspace` in `FrenchExDev2.QuietCli.Core.Tests.PoSh/CommitWorkspace.Tests.ps1` (run via `Invoke-QuietCoreTests`), closing the test-coverage half of GAP-01; no `.github/workflows/*.yml` caller was added, since this script is still meant for ad hoc, not automated, invocation.
 
 ## Usage
@@ -23,6 +32,8 @@ Per the repository's own prior audit (`docs/audits/2026-11-08-ecosystem-usage-re
 | `NoCreditsCheck` | `switch` | No | `$false` |
 | `NoSyncChecks` | `switch` | No | `$false` |
 | `NoScriptDocDriftWarning` | `switch` | No | `$false` |
+| `MaxChangedFileSize` | `string` | No | `'500KB'` |
+| `NoCommitFileSnifferWarning` | `switch` | No | `$false` |
 
 ```powershell
 ./scripts/Commit-Workspace.ps1 -Message "Add Build-Workspace DRY refactor" -CoAuthoredBy Claude
@@ -36,7 +47,14 @@ Per the repository's own prior audit (`docs/audits/2026-11-08-ecosystem-usage-re
 # Commit only the reviewed index, including a source lock matching those staged sources.
 ./scripts/Commit-Workspace.ps1 -Message "Commit selected changes" -NoAll -WhatIf
 ./scripts/Commit-Workspace.ps1 -Message "Commit selected changes" -NoAll
+
+# Raise the binary/oversized-file sniffer's threshold to 2 MiB for this run only.
+./scripts/Commit-Workspace.ps1 -Message "Vendor a tool" -MaxChangedFileSize 2MiB
 ```
+
+`MaxChangedFileSize` accepts a bare integer (bytes), or a number with a decimal (`KB`/`MB`/`GB`/
+`TB`) or binary (`KiB`/`MiB`/`GiB`/`TiB`) unit suffix - parsed by `Common.ps1`'s
+`ConvertTo-QuietByteCount` (see [Common.md](Common.md)).
 
 ### Prepared-index mode
 
@@ -55,7 +73,8 @@ The drift warning considers staged paths only in this mode. No commit uses `git 
 
 ## Dependencies
 
-- Dot-sources `Common.ps1` for `Invoke-WorkspaceNative`.
+- Dot-sources `Common.ps1` for `Invoke-WorkspaceNative` and `ConvertTo-QuietByteCount` (used to
+  resolve `-MaxChangedFileSize` once, at the top of the script).
 - Runs three documentation-sync gates as child scripts before staging, each individually skippable
   (`-NoScriptsReadmeCheck`, `-NoDocsCreditsCheck`, `-NoCreditsCheck`, or all at once via
   `-NoSyncChecks`): `scripts/Sync-ScriptsReadme.ps1`, `scripts/Sync-DocsCredits.ps1`,
@@ -66,6 +85,14 @@ The drift warning considers staged paths only in this mode. No commit uses `git 
   compute the paths about to be committed, then warns (`Write-Warning`, never throws) when a changed
   script under `scripts/` has no matching change to its mirrored doc under `docs/scripts/`. Override
   (silence) with `-NoScriptDocDriftWarning`.
+- Imports the `quiet` module (`FrenchExDev2.QuietCli.Core.PoSh`/`FrenchExDev2.QuietCli.Git.PoSh`,
+  guarded the same way `Measure-ColdStart.ps1` does) to run the binary/oversized-file sniffer: a
+  `quiet -AsObject ... git status` call enumerates pending changes, and a `git check-attr binary`
+  call (also via `quiet`) checks each one against `.gitattributes` before reporting it. This is a
+  deliberate, scoped exception to the rest of the script's `Invoke-CiProcess`-only pattern - by the
+  time this script runs, the workspace is assumed to already be a functional repository, so using
+  the product's own facade for this one check is safe and intentional. Override (silence) with
+  `-NoCommitFileSnifferWarning`.
 - Invokes `scripts/Update-WorkspaceLock.ps1` before staging in the default mode; `-NoAll` instead
   validates the already staged lock using `SourceIdentity.ps1` and `WorkspaceProjects.ps1`.
 - The default mutating operations are `git add --all --` and `git commit -m`. `-NoAll` only
@@ -74,8 +101,10 @@ The drift warning considers staged paths only in this mode. No commit uses `git 
 
 ## Side effects
 
-- Runs the three documentation-sync gates and the drift-warning git queries unconditionally (unless
-  skipped), including under `-WhatIf` - they are read-only and report the same way either way.
+- Runs the three documentation-sync gates, the drift-warning git queries and the binary/oversized-
+  file sniffer unconditionally (unless skipped), including under `-WhatIf` - they are read-only and
+  report the same way either way. The sniffer adds one read-only `git check-attr` call (via `quiet`)
+  per changed, non-ignored file that is not a deletion.
 - Under `-WhatIf`, or if `-Confirm` is declined: refreshes no working-tree lock, stages nothing,
   commits nothing. `-NoAll` still validates and removes its disposable index snapshot.
 - Otherwise: runs `Update-WorkspaceLock.ps1`, mutating the workspace lock file; stages everything in
@@ -86,7 +115,8 @@ The drift warning considers staged paths only in this mode. No commit uses `git 
 
 - DESIGN: `Repository` is `[ValidateSet('Workspace')]` with a single legal value. A parameter that can only ever take one value functions as documentation dressed up as a parameter — it does add a small amount of defensive "reject a request for an independent module commit" value per its own comment, but it is unusual API surface for a constant.
 - RESOLVED (was DESIGN/BUG-risk): `git add --all --` stages absolutely everything in the working tree with no scoping. The script now has a `-WhatIf`/`SupportsShouldProcess` guard around the lock refresh, `git add` and `git commit`, closing the gap the repository's own prior audit flagged (GAP-01, lines 23-27, "medium severity").
-- RESOLVED (was Testability): `FrenchExDev2.QuietCli.Core.Tests.PoSh/CommitWorkspace.Tests.ps1` exercises the real script in disposable repositories: default commit flow, `-WhatIf`, documentation gates and overrides, script/doc drift, and prepared-index behavior. It reports 15 property executions, four malformed staged-lock inputs and eight targeted mutations. It checks gate wiring and staged scope, rather than duplicating the three sync generators' internal rules.
+- RESOLVED (was Testability): `FrenchExDev2.QuietCli.Core.Tests.PoSh/CommitWorkspace.Tests.ps1` exercises the real script in disposable repositories: default commit flow, `-WhatIf`, documentation gates and overrides, script/doc drift, the binary/oversized-file sniffer, and prepared-index behavior. It reports 25 property executions, ten fuzz inputs (`ConvertTo-QuietByteCount`'s valid/invalid cases) and eleven targeted mutations. It checks gate wiring and staged scope, rather than duplicating the three sync generators' internal rules.
+- LIMITATION: the binary sniffer's content check is the standard git/diff NUL-byte heuristic (first ~8000 bytes), the same one `git diff` itself uses to decide "Binary files ... differ". It would false-positive on a legitimately UTF-16-encoded text file; this is accepted here because `AGENTS.md` already mandates UTF-8 everywhere in this repository.
 - The `$knownCoAuthors` map hardcodes two agent identities (`Claude`, `Codex`) inline in the script body, even though the adjacent doc comment points to `docs/agents/README.md` as "the documented list" — so the script's actual single source of truth is this inline map, not the document it cites, and the two could silently drift apart.
 - The new script/doc drift warning only compares file *paths* (did the mirrored `.md` change at all), never content - a doc touched for an unrelated reason (e.g. a credits-block refresh) silences the warning without the script's own documentation necessarily having been updated.
 - **Prepared-index boundary:** `scripts/Commit-Workspace.ps1:81`'s `Assert-QuietStagedWorkspaceLock`
@@ -105,8 +135,9 @@ The drift warning considers staged paths only in this mode. No commit uses `git 
 
 The default remains a whole-workspace checkpoint. `-NoAll` provides an exact prepared-index commit
 with staged source-lock and documentation checks, preserving unrelated working changes. Tests use
-disposable repositories and independent assertions for preview, scoping, lock validation and gate
-wiring. The drift warning remains path-based, and the index must remain stable during commit.
+disposable repositories and independent assertions for preview, scoping, lock validation, gate
+wiring and the new binary/oversized-file sniffer. The drift warning remains path-based, the sniffer
+never blocks a commit, and the index must remain stable during commit.
 
 <!-- credits:begin -->
 ## Credits

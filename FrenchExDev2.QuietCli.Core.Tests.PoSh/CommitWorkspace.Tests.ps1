@@ -65,18 +65,49 @@ function Get-QuietCommitWorkspaceHeadRevision {
     (& git -C $Path rev-parse HEAD).Trim()
 }
 
+function Test-QuietByteCountParsing {
+    <#
+    .SYNOPSIS
+    Checks Common.ps1's ConvertTo-QuietByteCount against decimal and binary units, a bare integer
+    and invalid input, independently of any fixture repository.
+    #>
+    foreach ($case in @(
+        @{ Size = '750'; Expected = 750L },
+        @{ Size = '500KB'; Expected = 500000L },
+        @{ Size = '1 MiB'; Expected = 1048576L },
+        @{ Size = '2GiB'; Expected = 2147483648L },
+        @{ Size = '1TB'; Expected = 1000000000000L },
+        @{ Size = '0'; Expected = 0L }
+    )) {
+        $actual = ConvertTo-QuietByteCount $case.Size
+        if ($actual -ne $case.Expected) { throw ("ByteCountParseFailed: size=$($case.Size) expected=$($case.Expected) actual=$actual") }
+    }
+    foreach ($invalid in @('abc', '-5', '5XB')) {
+        $threw = $false
+        try { $null = ConvertTo-QuietByteCount $invalid } catch { $threw = $_.Exception.Message -ceq ('QuietByteCountInvalid: ' + $invalid) }
+        if (!$threw) { throw ("ByteCountParseAcceptedInvalidInput: $invalid") }
+    }
+    # An empty string never reaches the function body - PowerShell's own Mandatory binding rejects
+    # it first, with a locale-dependent message, so only presence of a failure is asserted here.
+    $threw = $false
+    try { $null = ConvertTo-QuietByteCount '' } catch { $threw = $true }
+    if (!$threw) { throw 'ByteCountParseAcceptedEmptyString' }
+}
+
 function Test-QuietCommitWorkspace {
     <#
     .SYNOPSIS
-    Checks Commit-Workspace.ps1's documentation-sync gates, script/doc drift warning and -WhatIf
-    contract, and confirms it still refreshes the lock, stages once, commits exactly once and never
-    configures a remote - including under targeted mutants of the new gating logic.
+    Checks Commit-Workspace.ps1's documentation-sync gates, script/doc drift warning, binary/
+    oversized-file sniffer and -WhatIf contract, and confirms it still refreshes the lock, stages
+    once, commits exactly once and never configures a remote - including under targeted mutants of
+    the gating logic.
     .DESCRIPTION
     Exercises the real script against disposable fixture repositories only; this never runs against
     the actual monorepo checkout. It does not re-verify the three Sync-*.ps1 gates' own internal
     correctness (missing/stale detection, generated content) - only that Commit-Workspace.ps1 wires
-    each of them in, honors its own -No* override switches, and that the new drift warning fires for
-    exactly the right paths without ever blocking the commit.
+    each of them in, honors its own -No* override switches, and that the drift and file-sniffer
+    warnings fire for exactly the right paths without ever blocking the commit. Also checks
+    Common.ps1's ConvertTo-QuietByteCount in isolation (no fixture repository needed).
     .PARAMETER WorkspaceRoot
     Real repository containing scripts/Commit-Workspace.ps1 and its sync-gate dependencies.
     .PARAMETER RunDirectory
@@ -226,7 +257,58 @@ function Test-QuietCommitWorkspace {
             if ($matching.Count -ne 1) { throw ("ScriptDocDriftPropertyFailed: seed=97120 round=$round name=$driftedName") }
             if (@($warnings | Where-Object { $_.Message -match 'scripts/Tracked\.ps1' }).Count) { throw "ScriptDocDriftFalsePositiveOnUnchangedDocumentedScript: round=$round" }
         }
+
+        # E: an untracked file containing a NUL byte, not declared binary in .gitattributes, is
+        # reported and the commit still succeeds (non-blocking).
+        $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
+        [void][IO.File]::WriteAllBytesAsync((Join-Path $fixture 'blob.bin'), [byte[]]@(66, 76, 0, 79, 66)).GetAwaiter().GetResult()
+        $before = Get-QuietCommitWorkspaceHeadRevision $fixture
+        $warnings = @(& $candidate -Message 'Binary sniffer' -WorkspaceRoot $fixture 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+        if (@($warnings | Where-Object { $_.Message -match '^CommitFileSniffer: blob\.bin \(binary content\)' }).Count -ne 1) { throw 'CommitFileSnifferBinaryWarningMissing' }
+        if ((Get-QuietCommitWorkspaceHeadRevision $fixture) -ceq $before) { throw 'CommitFileSnifferMustNotBlockCommit' }
+
+        # F: a file declared binary in .gitattributes produces no sniffer warning even though it
+        # contains a NUL byte.
+        $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
+        [void][IO.File]::AppendAllTextAsync((Join-Path $fixture '.gitattributes'), "*.exempt binary`n", $utf8).GetAwaiter().GetResult()
+        [void][IO.File]::WriteAllBytesAsync((Join-Path $fixture 'blob.exempt'), [byte[]]@(66, 76, 0, 79, 66)).GetAwaiter().GetResult()
+        $warnings = @(& $candidate -Message 'Exempted binary' -WorkspaceRoot $fixture 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+        if (@($warnings | Where-Object { $_.Message -match 'CommitFileSniffer' }).Count) { throw 'CommitFileSnifferExemptionBypassed' }
+
+        # G: a plain-text file over the (test-supplied, small) MaxChangedFileSize threshold is
+        # reported with a size-based reason; -NoCommitFileSnifferWarning silences it entirely.
+        $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
+        [void][IO.File]::WriteAllTextAsync((Join-Path $fixture 'large.txt'), ('x' * 200), $utf8).GetAwaiter().GetResult()
+        $warnings = @(& $candidate -Message 'Oversized file' -WorkspaceRoot $fixture -MaxChangedFileSize 100 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+        if (@($warnings | Where-Object { $_.Message -match '^CommitFileSniffer: large\.txt \(size \d+ bytes exceeds 100 bytes\)' }).Count -ne 1) { throw 'CommitFileSnifferSizeWarningMissing' }
+
+        $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
+        [void][IO.File]::WriteAllTextAsync((Join-Path $fixture 'large.txt'), ('x' * 200), $utf8).GetAwaiter().GetResult()
+        $warnings = @(& $candidate -Message 'Oversized file silenced' -WorkspaceRoot $fixture -MaxChangedFileSize 100 -NoCommitFileSnifferWarning 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+        if ($warnings.Count) { throw 'NoCommitFileSnifferWarningDidNotSilenceIt' }
+
+        # G2 (property): the sniffer warns iff a changed file is binary or exceeds the threshold,
+        # across randomly generated sizes and byte patterns.
+        $random = [Random]::new(260779)
+        for ($round = 0; $round -lt 10; $round++) {
+            $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
+            $threshold = 50
+            $isBinary = ($round % 2) -eq 0
+            $size = if ($round -lt 5) { $random.Next(10, $threshold - 1) } else { $random.Next($threshold + 1, $threshold + 40) }
+            $bytes = [byte[]]::new($size)
+            $random.NextBytes($bytes)
+            if ($isBinary) { $bytes[0] = 0 } else { for ($i = 0; $i -lt $bytes.Length; $i++) { if ($bytes[$i] -eq 0) { $bytes[$i] = 65 } } }
+            $name = 'property' + $round + '.dat'
+            [void][IO.File]::WriteAllBytesAsync((Join-Path $fixture $name), $bytes).GetAwaiter().GetResult()
+            $expectWarning = $isBinary -or $size -gt $threshold
+            $warnings = @(& $candidate -Message 'Sniffer property round' -WorkspaceRoot $fixture -MaxChangedFileSize $threshold 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+            $matching = @($warnings | Where-Object { $_.Message -match [regex]::Escape($name) })
+            if ($expectWarning -and $matching.Count -ne 1) { throw ("CommitFileSnifferPropertyMissedExpectedWarning: seed=260779 round=$round size=$size isBinary=$isBinary") }
+            if (!$expectWarning -and $matching.Count) { throw ("CommitFileSnifferPropertyFalsePositive: seed=260779 round=$round size=$size") }
+        }
     }
+
+    Test-QuietByteCountParsing
 
     & $verify $sourcePath $fixtureRoot $realScripts $utf8
 
@@ -238,7 +320,10 @@ function Test-QuietCommitWorkspace {
         @{Id = 'drift-override-ignored'; Find = 'if (!$NoScriptDocDriftWarning) {'; Replace = 'if ($true) {' },
         @{Id = 'noall-adds-working-tree'; Find = 'if (!$NoAll -and $PSCmdlet.ShouldProcess($WorkspaceRoot, "git add --all --")) {'; Replace = 'if ($PSCmdlet.ShouldProcess($WorkspaceRoot, "git add --all --")) {' },
         @{Id = 'noall-refreshes-working-lock'; Find = "if (!`$NoAll -and `$PSCmdlet.ShouldProcess(`$WorkspaceRoot, 'Refresh workspace lock (Update-WorkspaceLock.ps1)')) {"; Replace = "if (`$PSCmdlet.ShouldProcess(`$WorkspaceRoot, 'Refresh workspace lock (Update-WorkspaceLock.ps1)')) {" },
-        @{Id = 'noall-skips-index-validation'; Find = 'if($NoAll){Assert-QuietStagedWorkspaceLock -WorkspaceRoot $WorkspaceRoot}'; Replace = 'if($false){Assert-QuietStagedWorkspaceLock -WorkspaceRoot $WorkspaceRoot}' }
+        @{Id = 'noall-skips-index-validation'; Find = 'if($NoAll){Assert-QuietStagedWorkspaceLock -WorkspaceRoot $WorkspaceRoot}'; Replace = 'if($false){Assert-QuietStagedWorkspaceLock -WorkspaceRoot $WorkspaceRoot}' },
+        @{Id = 'file-sniffer-override-ignored'; Find = 'if (!$NoCommitFileSnifferWarning) {'; Replace = 'if ($false) {' },
+        @{Id = 'file-sniffer-size-check-weakened'; Find = 'if ($isBinary -or $size -gt $MaxBytes) {'; Replace = 'if ($isBinary -and $size -gt $MaxBytes) {' },
+        @{Id = 'file-sniffer-exemption-bypassed'; Find = "if (`$attr.Outcome -eq 'Success' -and @(`$attr.Data.Entries).Count -and `$attr.Data.Entries[0].Value -ceq 'set') { continue }"; Replace = "if (`$false) { continue }" }
     )
     $results = [Collections.Generic.List[object]]::new()
     foreach ($mutant in $mutants) {
@@ -253,7 +338,7 @@ function Test-QuietCommitWorkspace {
         if ($errors.Count) { throw ('CommitWorkspaceMutantInvalid: ' + $mutant.Id) }
         $detected = $false; $detail = $null
         try { & $verify $candidatePath $fixtureRoot $realScripts $utf8 } catch { $detected = $true; $detail = $_.Exception.Message }
-        if($detected -and $detail -notmatch '^(WhatIfMustNotCommit|WhatIfMustNotStage|WhatIfAttemptedNativeMutation|MissingScriptDocGateDidNotBlock|ScriptDocDriftWarningMissing|NoScriptDocDriftWarningDidNotSilenceIt|NoAllIncludedUnstagedContent|NoAllIncludedUnselectedFile|NoAllWorkingTreeLockChanged|NoAllEmptyIndexAccepted|NoAllDamagedLockAcceptedOrIndexChanged)'){
+        if($detected -and $detail -notmatch '^(WhatIfMustNotCommit|WhatIfMustNotStage|WhatIfAttemptedNativeMutation|MissingScriptDocGateDidNotBlock|ScriptDocDriftWarningMissing|NoScriptDocDriftWarningDidNotSilenceIt|NoAllIncludedUnstagedContent|NoAllIncludedUnselectedFile|NoAllWorkingTreeLockChanged|NoAllEmptyIndexAccepted|NoAllDamagedLockAcceptedOrIndexChanged|CommitFileSnifferBinaryWarningMissing|CommitFileSnifferMustNotBlockCommit|CommitFileSnifferExemptionBypassed|CommitFileSnifferSizeWarningMissing|NoCommitFileSnifferWarningDidNotSilenceIt|CommitFileSnifferPropertyMissedExpectedWarning|CommitFileSnifferPropertyFalsePositive)'){
             throw ('CommitWorkspaceMutantInfrastructureFailure: '+$mutant.Id+': '+$detail)
         }
         $results.Add(@{Name = $mutant.Id; State = if ($detected) { 'Killed' } else { 'Survived' }; Diagnostic = $detail })
@@ -261,11 +346,11 @@ function Test-QuietCommitWorkspace {
     }
     $report = @{
         Seed              = 97120
-        PropertyExecutions = 15
-        FuzzInputs        = 4
+        PropertyExecutions = 25
+        FuzzInputs        = 10
         Mutations         = $results.ToArray()
         SourceSHA256      = (Get-FileHash $sourcePath -Algorithm SHA256).Hash
-        Scope             = "Documentation-sync gate wiring, script/doc drift detection and the -WhatIf/commit-once/no-remote contract against disposable fixture repositories; the three Sync-*.ps1 gates' own internal correctness is not re-verified here."
+        Scope             = "Documentation-sync gate wiring, script/doc drift detection, the binary/oversized-file sniffer and the -WhatIf/commit-once/no-remote contract against disposable fixture repositories; the three Sync-*.ps1 gates' own internal correctness is not re-verified here."
     }
     Write-WorkspaceJson (Join-Path $RunDirectory 'commit-workspace.json') $report
     [pscustomobject]$report
