@@ -11,7 +11,7 @@ on:
       - 'AGENTS.md'
       - '.gitattributes'
   push:
-    branches: [main]
+    branches: [develop]
     paths: *core_paths
 permissions:
   contents: read

@@ -1,7 +1,7 @@
 # QuietCli: agent instructions
 
 `quiet` runs a native command and turns its output into a caller-local business object: typed data
-plus the evidence that it is complete. Source and issues: <https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh>.
+plus the evidence that it is complete. Source and issues: <https://github.com/FrenchExDev2/QuietCli.PoSh>.
 For any command below, use `Get-Help <command> -Full`; `Get-Command -Module QuietCli` lists them all.
 
 This file is the whole production contract. It is not the QuietCli repository's maintenance rules.
@@ -132,5 +132,5 @@ $compactJson = ConvertTo-QuietJson $recent -MaxItems 5 -MaxOutputBytes 4096
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh/blob/HEAD/CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/HEAD/CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->

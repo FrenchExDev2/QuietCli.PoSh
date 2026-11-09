@@ -5,7 +5,8 @@
 Verifies that a checked-out monorepo is structurally sound as a single-repository, multi-project
 layout: every discovered internal project has its own manifest (`<name>.psd1`), none of them is secretly
 a nested git repository, and (when `-Restore` is passed) the recorded source lock
-(`repositories.lock.json`) matches the actual on-disk source hashes. This operationalizes the
+(`repositories.lock.json`) matches the actual on-disk source hashes, then restores Core's pinned
+third-party resources (`Restore-CoreResources.ps1`) so a fresh clone is ready to build. This operationalizes the
 `AGENTS.md` "Monorepos multi-projets" rule that a monorepo has one `.git` at its root and no child
 submodules. It is a verification/bootstrap step rather than something invoked by other scripts in this
 folder (no caller was found via grep across `scripts/`); it is meant to be run directly by a developer
@@ -26,7 +27,9 @@ Example:
 
 - Dot-sources `Common.ps1` (line 12), which in turn dot-sources `ReportPaths.ps1`, `Ci.Process.ps1`, `SourceIdentity.ps1`, `RuntimeTargets.ps1`.
 - Calls `Get-QuietWorkspaceProjects` (presumably defined in one of the dot-sourced files or a lib module — not located within this review's scope; likely `WorkspaceProjects.ps1`, which is not dot-sourced here directly, so it must come transitively or this is a latent dependency gap) and `Get-QuietWorkspaceIdentity`.
-- When `-Restore` is *not* set, delegates to `Update-WorkspaceLock.ps1` (line 27) to regenerate the lock.
+- When `-Restore` is set, delegates to `Restore-CoreResources.ps1` (line 27) after the lock check succeeds,
+  to populate Core's untracked SQLite/tokenizers/YamlDotNet binaries from their pinned NuGet sources.
+- When `-Restore` is *not* set, delegates to `Update-WorkspaceLock.ps1` (line 28) to regenerate the lock.
 - Reads `repositories.lock.json` from `$WorkspaceRoot` with `Get-Content -Encoding utf8 -Raw` (line 22).
 - Filesystem assumption: `$WorkspaceRoot/.git` must exist (line 14); each project folder named by `Get-QuietWorkspaceProjects` must contain `<name>.psd1` and must *not* contain a `.git` folder.
 - No external native tool invocation (no git/dotnet/docker shell-outs) in this file itself.

@@ -59,7 +59,7 @@ jobs:
         with:
           dotnet-version: 11.0.100-rc.3.26522.148
           cache: true
-          cache-dependency-path: PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh/**/*.csproj
+          cache-dependency-path: '**/*.csproj'
       - name: Verify the qualified source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
@@ -116,7 +116,7 @@ jobs:
           if-no-files-found: ignore
   publish:
     needs: [qualification, package]
-    if: ${{ inputs.publish == true && github.repository == 'FrenchExDev2/FrenchExDev2.QuietCli.PoSh' && needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }}
+    if: ${{ inputs.publish == true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }}
     runs-on: windows-latest
     timeout-minutes: 10
     environment: psgallery

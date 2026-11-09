@@ -4,7 +4,9 @@
     {"name":"Core", "path":"FrenchExDev2.QuietCli.Core.PoSh"},
     {"name":"Core.Tests", "path":"FrenchExDev2.QuietCli.Core.Tests.PoSh"},
     {"name":"Git", "path":"FrenchExDev2.QuietCli.Git.PoSh"},
-    {"name":"Git.Tests", "path":"FrenchExDev2.QuietCli.Git.Tests.PoSh"}
+    {"name":"Git.Tests", "path":"FrenchExDev2.QuietCli.Git.Tests.PoSh"},
+    {"name":"Vagrant", "path":"FrenchExDev2.QuietCli.Vagrant.PoSh"},
+    {"name":"Vagrant.Tests", "path":"FrenchExDev2.QuietCli.Vagrant.Tests.PoSh"}
   ],
   "settings": {
     "files.encoding":"utf8",

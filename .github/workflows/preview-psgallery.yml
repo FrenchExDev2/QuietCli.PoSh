@@ -23,7 +23,7 @@ permissions:
   packages: write
 jobs:
   preview:
-    if: ${{ github.repository == 'FrenchExDev2/FrenchExDev2.QuietCli.PoSh' && github.ref == 'refs/heads/develop' }}
+    if: ${{ github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' }}
     uses: ./.github/workflows/publish-psgallery.yml
     with:
       preview_build: true

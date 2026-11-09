@@ -227,7 +227,7 @@ In PowerShell 7.6+, using Git installed during bootstrap:
 ```powershell
 $checkout = Join-Path $HOME 'src/QuietCli'
 New-Item -ItemType Directory -Path (Split-Path $checkout -Parent) -Force | Out-Null
-git clone --branch develop https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh.git $checkout
+git clone --branch develop https://github.com/FrenchExDev2/QuietCli.PoSh.git $checkout
 if ($LASTEXITCODE -ne 0) { throw 'CheckoutFailed' }
 Set-Location $checkout
 ```

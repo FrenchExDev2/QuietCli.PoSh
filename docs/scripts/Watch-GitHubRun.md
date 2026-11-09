@@ -17,7 +17,7 @@ it") from "watching it happen." It is a human/CI-facing entry point, not somethi
 [CmdletBinding()]param(
     [Parameter(Mandatory)][long]$RunId,
     [string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),
-    [ValidatePattern('^[\w.-]+/[\w.-]+$')][string]$Repository='FrenchExDev2/FrenchExDev2.QuietCli.PoSh'
+    [ValidatePattern('^[\w.-]+/[\w.-]+$')][string]$Repository='FrenchExDev2/QuietCli.PoSh'
 )
 ```
 
@@ -25,7 +25,7 @@ it") from "watching it happen." It is a human/CI-facing entry point, not somethi
 - `WorkspaceRoot` (string, optional) — QuietCli2 monorepo root; defaults to the script's parent
   directory.
 - `Repository` (string, optional, validated as `owner/repo`) — GitHub repository to observe; defaults
-  to `'FrenchExDev2/FrenchExDev2.QuietCli.PoSh'`.
+  to `'FrenchExDev2/QuietCli.PoSh'`.
 
 Example:
 

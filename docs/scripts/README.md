@@ -63,6 +63,7 @@ file by hand, run:
 - [`Push-Workspace.ps1`](../../scripts/Push-Workspace.ps1) -> [documentation](Push-Workspace.md)
 - [`Remove-DevelopmentWorkstationRun.ps1`](../../scripts/Remove-DevelopmentWorkstationRun.ps1) -> [documentation](Remove-DevelopmentWorkstationRun.md)
 - [`ReportPaths.ps1`](../../scripts/ReportPaths.ps1) -> [documentation](ReportPaths.md)
+- [`Restore-CoreResources.ps1`](../../scripts/Restore-CoreResources.ps1) -> [documentation](Restore-CoreResources.md)
 - [`RuntimeTargets.ps1`](../../scripts/RuntimeTargets.ps1) -> [documentation](RuntimeTargets.md)
 - [`Show-ColdStartMatrixReport.ps1`](../../scripts/Show-ColdStartMatrixReport.ps1) -> [documentation](Show-ColdStartMatrixReport.md)
 - [`Show-ColdStartReport.ps1`](../../scripts/Show-ColdStartReport.ps1) -> [documentation](Show-ColdStartReport.md)

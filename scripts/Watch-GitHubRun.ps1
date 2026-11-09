@@ -10,7 +10,7 @@ QuietCli2 monorepo root.
 .PARAMETER Repository
 GitHub owner/repository to observe.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][long]$RunId,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidatePattern('^[\w.-]+/[\w.-]+$')][string]$Repository='FrenchExDev2/FrenchExDev2.QuietCli.PoSh')
+[CmdletBinding()]param([Parameter(Mandatory)][long]$RunId,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidatePattern('^[\w.-]+/[\w.-]+$')][string]$Repository='FrenchExDev2/QuietCli.PoSh')
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot Common.ps1)
 if(!$IsWindows){throw 'Use the Windows visible-monitor host launcher'}
 $run=Join-Path $WorkspaceRoot ('artifacts/github/'+$RunId+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))

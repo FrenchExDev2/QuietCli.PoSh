@@ -56,7 +56,7 @@ The commands start in a parent directory of your choice and clone the whole mono
 ```powershell
 $checkout = Join-Path $HOME 'src/QuietCli'
 New-Item -ItemType Directory -Path (Split-Path $checkout -Parent) -Force | Out-Null
-git clone --branch develop https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh.git $checkout
+git clone --branch develop https://github.com/FrenchExDev2/QuietCli.PoSh.git $checkout
 if ($LASTEXITCODE -ne 0) { throw 'CheckoutFailed' }
 Set-Location $checkout
 ./scripts/Initialize-Workspace.ps1 -Restore

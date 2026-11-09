@@ -48,7 +48,7 @@ function Get-QuietCiImagePlan {
     $containerfileText=Get-QuietModuleContainerfile -Platform $declaration.Containerfile.Platform -Objective $declaration.Containerfile.Objective -Stages $declaration.Containerfile.Stages
     $inputPaths=@($declaration.InputPaths)+@($coreContractPath)
     $fingerprint=Get-QuietCiFingerprint -WorkspaceRoot $WorkspaceRoot -InputPaths $inputPaths -ContainerfileText $containerfileText
-    [pscustomobject]@{Rid=$RuntimeIdentifier;Architecture=$declaration.Architecture;Platform=$declaration.Platform;Base=$declaration.Base;ContainerfileText=$containerfileText;Arguments=$declaration.Arguments;Fingerprint=$fingerprint;RegistryPath="frenchexdev2/quietcli2-ci-$($declaration.Platform)-$($declaration.Architecture)";Source='https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh'}
+    [pscustomobject]@{Rid=$RuntimeIdentifier;Architecture=$declaration.Architecture;Platform=$declaration.Platform;Base=$declaration.Base;ContainerfileText=$containerfileText;Arguments=$declaration.Arguments;Fingerprint=$fingerprint;RegistryPath="frenchexdev2/quietcli2-ci-$($declaration.Platform)-$($declaration.Architecture)";Source='https://github.com/FrenchExDev2/QuietCli.PoSh'}
 }
 function Get-QuietModuleContainerfile {
     <#
@@ -152,7 +152,7 @@ function Get-QuietCiModuleImagePlan {
     $core=Get-QuietCiImagePlan $WorkspaceRoot $RuntimeIdentifier
     $containerfileText=Get-QuietModuleContainerfile -Platform $ContainerfileFragment.Platform -Objective $ContainerfileFragment.Objective -Stages $ContainerfileFragment.Stages
     $fingerprint=Get-QuietCiFingerprint -WorkspaceRoot $WorkspaceRoot -InputPaths $ModuleInputPaths -ContainerfileText $containerfileText -ParentFingerprint $core.Fingerprint
-    [pscustomobject]@{Rid=$RuntimeIdentifier;Architecture=$core.Architecture;Platform=$core.Platform;Core=$core;ContainerfileText=$containerfileText;Arguments=$ModuleArguments;Fingerprint=$fingerprint;RegistryPath="frenchexdev2/quietcli2-ci-$($core.Platform)-$($core.Architecture)-$($Module.ToLowerInvariant())";Source='https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh'}
+    [pscustomobject]@{Rid=$RuntimeIdentifier;Architecture=$core.Architecture;Platform=$core.Platform;Core=$core;ContainerfileText=$containerfileText;Arguments=$ModuleArguments;Fingerprint=$fingerprint;RegistryPath="frenchexdev2/quietcli2-ci-$($core.Platform)-$($core.Architecture)-$($Module.ToLowerInvariant())";Source='https://github.com/FrenchExDev2/QuietCli.PoSh'}
 }
 function Get-QuietCiLocalImageArchitecture {
     <#
@@ -247,7 +247,7 @@ function Invoke-QuietCiImageBuild {
     # A non-native target architecture only runs through Podman's own qemu emulation, never on the CI publication
     # path: that one stays pinned to each architecture's native runner, enforced below regardless of this check.
     if(!$podmanNativeArch -and $PublishCache){throw 'NativeLinuxImageBuildRequired'}
-    if($PublishCache -and (!$RegistryCache -or $env:GITHUB_REPOSITORY -cne 'FrenchExDev2/FrenchExDev2.QuietCli.PoSh' -or $env:GITHUB_REF -cne 'refs/heads/main' -or $env:GITHUB_EVENT_NAME -cnotin @('push','workflow_dispatch'))){throw 'CiImagePublicationNotAuthorizedForThisEvent'}
+    if($PublishCache -and (!$RegistryCache -or $env:GITHUB_REPOSITORY -cne 'FrenchExDev2/QuietCli.PoSh' -or $env:GITHUB_REF -cne 'refs/heads/develop' -or $env:GITHUB_EVENT_NAME -cnotin @('push','workflow_dispatch'))){throw 'CiImagePublicationNotAuthorizedForThisEvent'}
     $directory=Join-Path $WorkspaceRoot ('artifacts/ci-images/'+$ArtifactPrefix+'-'+[guid]::NewGuid().ToString('N'))
     [void][IO.Directory]::CreateDirectory($directory)
     # One file per build, independent of console interleaving under -MaxConcurrency, so a failed

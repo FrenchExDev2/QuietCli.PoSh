@@ -65,7 +65,7 @@ function Test-QuietAgentDocumentSet {
     if($AgentsText.Contains("`r") -or $SkillText.Contains("`r")){throw 'AgentDocumentNotLf'}
     if(($AgentsText -split "`n").Count -gt 150){throw 'AgentDocumentNotConcise'}
     if([regex]::IsMatch($AgentsText,'\]\((?!https?://|#)')){throw 'AgentDocumentHasRelativeLink'}
-    foreach($pointer in @('Get-Help','https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh')){
+    foreach($pointer in @('Get-Help','https://github.com/FrenchExDev2/QuietCli.PoSh')){
         if(!$AgentsText.Contains($pointer)){throw ('AgentDocumentMissingPointer: '+$pointer)}
     }
     foreach($command in $ExportedCommands){

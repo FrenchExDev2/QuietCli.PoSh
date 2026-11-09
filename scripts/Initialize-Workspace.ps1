@@ -2,11 +2,14 @@
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Verifies the monorepo structure; Restore checks committed source hashes instead of cloning child repositories.
+Verifies the monorepo structure; Restore checks committed source hashes instead of cloning child
+repositories, then restores Core's pinned third-party resources (see Restore-CoreResources.ps1) so a
+fresh clone is ready to build.
 .PARAMETER WorkspaceRoot
 QuietCli2 monorepo root.
 .PARAMETER Restore
-Verifies the existing source lock, without modifying source files or selecting a branch.
+Verifies the existing source lock and restores Core's pinned third-party resources, without modifying
+source files or selecting a branch.
 #>
 [CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Restore)
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
@@ -24,5 +27,6 @@ if($Restore){
     $identity=Get-QuietWorkspaceIdentity $WorkspaceRoot
     foreach($project in $identity.Projects){$expected=@($lock.Projects|Where-Object Name -CEQ $project.Name);if($expected.Count -ne 1 -or $expected[0].SourceSHA256 -cne $project.SourceSHA256){throw ('ProjectSourceLockMismatch: '+$project.Name)}}
     if($lock.Repository.SourceSHA256 -cne $identity.Repository.SourceSHA256){throw 'MonorepoSourceLockMismatch'}
+    & (Join-Path $PSScriptRoot Restore-CoreResources.ps1) -WorkspaceRoot $WorkspaceRoot
 }else{& (Join-Path $PSScriptRoot Update-WorkspaceLock.ps1) -WorkspaceRoot $WorkspaceRoot}
 [pscustomobject]@{Layout='Monorepo';Repositories=1;Projects=$names.Count;Restored=$false;Verified=$true}

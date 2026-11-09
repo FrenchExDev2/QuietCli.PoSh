@@ -10,3 +10,10 @@
 !/scripts/lib/*.psm1
 !/docs/scripts/lib/
 !/docs/scripts/lib/*.md
+/.cache/
+# Third-party binaries restored from NuGet by scripts/Restore-CoreResources.ps1; see
+# resources/dependencies.lock.json and docs/scripts/Restore-CoreResources.md. The quietcli-pty
+# native binaries (resources/transport/) are source-built, not downloaded, and stay tracked.
+/FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/
+/FrenchExDev2.QuietCli.Core.PoSh/resources/tokenizers/*.dll
+/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/*.dll

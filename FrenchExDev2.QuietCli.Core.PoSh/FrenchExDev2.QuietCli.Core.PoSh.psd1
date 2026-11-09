@@ -11,7 +11,7 @@
  CmdletsToExport=@('New-QuietModule','Get-QuietAgentInstruction','Add-QuietAgentInstruction','Register-QuietHandler','Get-QuietHandler','Unregister-QuietHandler','Out-QuietResult','ConvertTo-QuietJson','ConvertTo-QuietYaml','New-QuietByteRecordFramer','Invoke-QuietRecall','Get-QuietCliConfiguration','Test-QuietCliConfiguration','Import-QuietCliConfiguration','New-QuietCliConfiguration','Get-QuietRecall','New-QuietRecallReference','Export-QuietRecall','Import-QuietRecall','Save-QuietRecall','Get-QuietSavedRecall','Stop-QuietEngine','Get-QuietEngine','Get-QuietCliGain','Repair-QuietCliMeasurementPrivacy')
  VariablesToExport=@()
  PrivateData=@{
-  PSData=@{Prerelease='preview';Tags=@('QuietCli','AI','CLI','Windows','Linux','ARM64');LicenseUri='https://opensource.org/license/mit';ProjectUri='https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh';ReleaseNotes='Preview of automatic integrated .NET 10/11 hosting and compiled record framing. Optional isolated .NET 11 RC engine. Native platform qualification is reported separately.'}
+  PSData=@{Prerelease='preview';Tags=@('QuietCli','AI','CLI','Windows','Linux','ARM64');LicenseUri='https://opensource.org/license/mit';ProjectUri='https://github.com/FrenchExDev2/QuietCli.PoSh';ReleaseNotes='Preview of automatic integrated .NET 10/11 hosting and compiled record framing. Optional isolated .NET 11 RC engine. Native platform qualification is reported separately.'}
   QuietCli=@{ProtocolVersion=1;TestsModule='FrenchExDev2.QuietCli.Core.Tests.PoSh';Publishable=$true;PackageName='QuietCli'}
  }
 }

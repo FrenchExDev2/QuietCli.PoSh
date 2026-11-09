@@ -14,7 +14,7 @@ almost certainly run in the same CI gate/apply pairing pattern as `Sync-Credits.
 symmetric: no `-Apply` reports only, `-Apply` writes, `-Apply -WhatIf` previews).
 
 The two distributed files `docs/agents/AGENTS.md` and `docs/agents/SKILL.md` use the public absolute
-`https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh/blob/HEAD/CREDITS.md` link. They are copied
+`https://github.com/FrenchExDev2/QuietCli.PoSh/blob/HEAD/CREDITS.md` link. They are copied
 into consumer projects without the repository's credits file, so a relative link would violate their
 self-contained contract. Other documentation retains its relative credits link. After changing
 AGENTS.md, regenerate SKILL.md with `Sync-SkillDocument.ps1` and check both sync gates again.

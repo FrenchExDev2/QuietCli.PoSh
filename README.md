@@ -26,7 +26,7 @@ In short: `-Output` folds raw events into accumulated state, `-Complete` project
 Callbacks can also call `$runtime.Emit($event)` to collect business events and notify `-Listeners`
 without producing pipeline output. Every emitted event is also kept on `$runtime.Events`, in order,
 whether or not a listener is attached — so `-Complete` can read it directly, and the finished result
-reports the same list under `Data.Events`. `-UI` exposes a separate live presentation surface. The
+reports the same list under its own top-level `Events` field, alongside `Data`. `-UI` exposes a separate live presentation surface. The
 [streaming guide](README-streaming.md) explains these contracts, and the
 [Vagrant companion](FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) uses both for per-machine progress.
 
@@ -113,7 +113,7 @@ The commands start in a parent directory of your choice and clone the whole mono
 ```powershell
 $checkout = Join-Path $HOME 'src/QuietCli'
 New-Item -ItemType Directory -Path (Split-Path $checkout -Parent) -Force | Out-Null
-git clone --branch develop https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh.git $checkout
+git clone --branch develop https://github.com/FrenchExDev2/QuietCli.PoSh.git $checkout
 if ($LASTEXITCODE -ne 0) { throw 'CheckoutFailed' }
 Set-Location $checkout
 ./scripts/Initialize-Workspace.ps1 -Restore

@@ -88,7 +88,7 @@ $report = foreach ($file in $files) {
     $relativeDir = [System.IO.Path]::GetRelativePath($file.DirectoryName, (Split-Path -Parent $creditsFullPath)) -replace '\\', '/'
     $creditsRelative = if ($relativeDir -eq '.') { $creditsName } else { $relativeDir.TrimEnd('/') + '/' + $creditsName }
     $creditsTarget = if ($file.FullName -in $portableAgentDocs) {
-        'https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh/blob/HEAD/CREDITS.md'
+        'https://github.com/FrenchExDev2/QuietCli.PoSh/blob/HEAD/CREDITS.md'
     } else { $creditsRelative }
     $expectedBlock = New-CreditsBlock -RelativePath $creditsTarget
 

@@ -4,7 +4,7 @@
 
 Related: [Development](README-development.md), [Tests and qualification](README-qualification.md), [package installation](docs/README-PSGallery.md).
 
-The [public repository](https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh) has one root checkout. Open `QuietCli2.code-workspace` in VS Code. Shared scripts own build, package verification and dependency-aware CI; modules retain their declared package boundaries. Builds and tests do not commit, push or publish.
+The [public repository](https://github.com/FrenchExDev2/QuietCli.PoSh) has one root checkout. Open `QuietCli2.code-workspace` in VS Code. Shared scripts own build, package verification and dependency-aware CI; modules retain their declared package boundaries. Builds and tests do not commit, push or publish.
 
 `New-WorkspacePackage.ps1` creates module archives and SHA-256 manifests. `Test-WorkspacePackage.ps1` verifies paths, sizes, hashes and manifests before extraction; `-TestImport` explicitly enables execution of verified package code. File integrity is distinct from author authentication. Gallery publication requires qualification of the exact delivered revision. Stable releases remain manual; [automatic develop previews](docs/README-preview-releases.md) use staged unique identities and the same qualification gate.
 

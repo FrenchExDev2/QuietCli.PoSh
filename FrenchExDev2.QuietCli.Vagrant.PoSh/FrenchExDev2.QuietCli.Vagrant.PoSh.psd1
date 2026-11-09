@@ -4,7 +4,7 @@
  Description='Streaming Vagrant handlers for QuietCli2 (up/provision via --machine-readable). Qualification against a real vagrant binary remains partial.'
  FunctionsToExport=@();AliasesToExport=@();CmdletsToExport=@();VariablesToExport=@()
  PrivateData=@{
-  PSData=@{Prerelease='preview';Tags=@('QuietCli','Vagrant','AI','Windows','Linux');LicenseUri='https://opensource.org/license/mit';ProjectUri='https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh';ReleaseNotes='Initial preview: up/provision handlers over --machine-readable, -Listeners/-UI integration.'}
+  PSData=@{Prerelease='preview';Tags=@('QuietCli','Vagrant','AI','Windows','Linux');LicenseUri='https://opensource.org/license/mit';ProjectUri='https://github.com/FrenchExDev2/QuietCli.PoSh';ReleaseNotes='Initial preview: up/provision handlers over --machine-readable, -Listeners/-UI integration.'}
   QuietCli=@{Binary='vagrant';TestsModule='FrenchExDev2.QuietCli.Vagrant.Tests.PoSh';Qualification='Partial';Publishable=$false}
  }
 }

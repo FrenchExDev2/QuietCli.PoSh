@@ -13,7 +13,7 @@ on:
       - '.github/workflows/scripts-docs-check.yml'
       - '.github/workflows/scripts-docs-apply.yml'
   push:
-    branches: [main]
+    branches: [develop]
     paths: *scripts_docs_paths
   workflow_dispatch:
 

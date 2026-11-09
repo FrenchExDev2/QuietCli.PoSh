@@ -18,7 +18,7 @@ on:
       - '.github/workflows/sync-credits-check.yml'
       - '.github/workflows/sync-credits-apply.yml'
   push:
-    branches: [main]
+    branches: [develop]
     paths: *credits_paths
   workflow_dispatch:
 

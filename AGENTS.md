@@ -30,7 +30,7 @@ Read `README.md`, then the selected module README. This root is one Git reposito
 
 ## Monorepo projects and dependency-aware CI
 
-- One public repository: `FrenchExDev2/FrenchExDev2.QuietCli.PoSh`. Keep the six existing directories as projects; do not recreate child repositories.
+- One public repository: `FrenchExDev2/QuietCli.PoSh`. Keep the six existing directories as projects; do not recreate child repositories.
 - `FrenchExDev2.QuietCli.Core.PoSh` owns the facade, engine, runtime catalogue and native bridges. `Core.Tests` owns its C#/PowerShell assertions. `Git` depends on Core. `Git.Tests` depends on Git and Core.Tests.
 - `Vagrant` is a pure PowerShell consumer of Core; `Vagrant.Tests` depends on Vagrant and Core.Tests. `-Suite Vagrant` runs fixtures without installing Vagrant. `All` includes all three companions, including release validation through the existing shared workflow.
 - `scripts/WorkspaceProjects.ps1` discovers project manifests and their dependency order. The host/container launchers build `Suite` validation/completion dynamically from declared test companions. `All` is an execution mode, never a module. `Get-QuietWorkspacePackages` separates explicit public-package eligibility from local source/test archives: tests are always excluded, and undeclared business modules default to non-publishable. See [the catalogue contract](docs/README-workspace-projects.md).
