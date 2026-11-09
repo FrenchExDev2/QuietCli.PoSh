@@ -41,6 +41,7 @@ Repository development follows the root [AGENTS.md](../AGENTS.md). Consumer-proj
 - [Development](../README-development.md): source checkout, prerequisites and builds.
 - [Projects, suites and package eligibility](README-workspace-projects.md): reusable manifest discovery, dynamic suite parameters and explicit public-package policy.
 - [Development workstation](../README-development-workstation.md): platform-specific installations and the host-aware prerequisite installer, including VS Code Stable/Insiders.
+- [Local workflows with wrkflw](scripts/README-wrkflw-plan.md): pinned workstation integration, released capabilities and the explicit backlog of PowerShell usage helpers.
 - [Editor extensions](README-development-editor-extensions.md): export the installed inventory and install/update the saved set in Stable or Insiders with `-WhatIf` and `-Update`.
 - [Tests and qualification](../README-qualification.md): companion suites, property testing, fuzzing, mutation campaigns and qualification limits.
 - [Repository and distribution](../README-distribution.md): monorepo layout, packaging and publication gates.

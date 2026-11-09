@@ -19,7 +19,7 @@ SupportsShouldProcess - but it still throws ScriptsDocsMissing first: a missing 
 tolerated, Apply or not, because the index cannot claim full coverage while it is false.
 .PARAMETER ScriptsPath
 Directory scanned for *.ps1/*.psm1 files, recursively. Defaults to this script's own directory
-(scripts/). This script itself is always excluded from the scan.
+(scripts/). Includes this script, which has its own mirrored documentation.
 .PARAMETER DocsPath
 Directory the table of contents (README.md) is read from/written to, and under which each script's
 mirrored doc is expected. Defaults to docs/scripts under this repository root.
@@ -48,7 +48,6 @@ $ErrorActionPreference = 'Stop'
 if (-not (Test-Path -LiteralPath $ScriptsPath)) { throw "ScriptsPathMissing: $ScriptsPath" }
 
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-$selfFullPath = $PSCommandPath
 $readmePath = Join-Path $DocsPath 'README.md'
 
 function New-ScriptsDocEntry {
@@ -152,7 +151,6 @@ function New-ScriptsReadmeContent {
 
 $scriptFiles = @(
     Get-ChildItem -LiteralPath $ScriptsPath -Recurse -File -Include '*.ps1', '*.psm1' |
-        Where-Object { $_.FullName -ne $selfFullPath } |
         Sort-Object FullName
 )
 

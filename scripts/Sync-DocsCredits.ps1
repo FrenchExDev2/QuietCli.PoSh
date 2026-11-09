@@ -10,6 +10,8 @@ markers, linking the mandatory CREDITS.md file. Default (no -Apply) mode only re
 compliance state and writes nothing. -Apply writes the missing or stale block into every
 non-compliant file, honoring -WhatIf/-Confirm through SupportsShouldProcess. -Apply -WhatIf
 previews exactly what -Apply would write.
+The distributed docs/agents/AGENTS.md and SKILL.md use the public absolute credits URL because
+they must remain self-contained when copied into consumer projects; other docs use relative links.
 .PARAMETER DocsPath
 Documentation directory scanned for *.md files. Defaults to docs under this repository root.
 Every docs/**/*.md file is scanned by default, including the agents, audits and ci subfolders; use
@@ -62,7 +64,7 @@ function New-CreditsBlock {
     .SYNOPSIS
     Builds the regex-identifiable credits block for one docs/*.md file.
     .PARAMETER RelativePath
-    CREDITS.md path relative to the document that will carry the block, forward-slash separated.
+    Relative credits path, or the public absolute URL for distributed agent documents.
     #>
     param([Parameter(Mandatory)][string]$RelativePath)
     $lines = @(
@@ -81,10 +83,14 @@ $files = @(
 ) | Where-Object { $_.FullName -ne $creditsFullPath } | Sort-Object FullName -Unique
 
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+$portableAgentDocs = @('agents/AGENTS.md', 'agents/SKILL.md') | ForEach-Object { [IO.Path]::GetFullPath((Join-Path $DocsPath $_)) }
 $report = foreach ($file in $files) {
     $relativeDir = [System.IO.Path]::GetRelativePath($file.DirectoryName, (Split-Path -Parent $creditsFullPath)) -replace '\\', '/'
     $creditsRelative = if ($relativeDir -eq '.') { $creditsName } else { $relativeDir.TrimEnd('/') + '/' + $creditsName }
-    $expectedBlock = New-CreditsBlock -RelativePath $creditsRelative
+    $creditsTarget = if ($file.FullName -in $portableAgentDocs) {
+        'https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh/blob/HEAD/CREDITS.md'
+    } else { $creditsRelative }
+    $expectedBlock = New-CreditsBlock -RelativePath $creditsTarget
 
     $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
     $match = $blockRegex.Match($content)
@@ -98,7 +104,7 @@ $report = foreach ($file in $files) {
         } else {
             $content.TrimEnd("`r", "`n") + "`n`n" + $expectedBlock + "`n"
         }
-        [System.IO.File]::WriteAllText($file.FullName, $newContent, $utf8NoBom)
+        [void][System.IO.File]::WriteAllTextAsync($file.FullName, $newContent, $utf8NoBom).GetAwaiter().GetResult()
         $state = "$state (Applied)"
     }
 

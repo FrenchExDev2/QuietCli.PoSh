@@ -77,6 +77,31 @@ try{
             if($report.State -notin @('Ready','NeedsInstallation')){throw 'ControlModeInvalidReport'}
             [void]$receipts.Add(@{Platform='Windows';Mode=$options.Keys -join ',';State=$report.State;Components=$report.Components})
         }
+        $smokeState.Case='Verified wrkflw archive, local listing and valid/invalid workflow definitions';Write-WorkspaceJson $statusPath $smokeState
+        $toolRoot=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'toolchains') 'wrkflw-0.8.0'
+        $target=Get-DevelopmentHost
+        $spec=Get-DevelopmentSpecification $WorkspaceRoot $target
+        $workflowPlan=New-DevelopmentPlan $target $WorkspaceRoot $toolRoot $spec -Skipped @('Editor','Containers','Native','Profilers')
+        # Only this isolated user tool is installed; other workstation components remain untouched.
+        & (Get-Module DevelopmentWorkstation) {param($plan) Install-DevelopmentWrkflw $plan} $workflowPlan
+        $workflowInventory=Get-DevelopmentInventory $workflowPlan
+        if($workflowInventory.Workflows.State -cne 'Ready'){throw 'WrkflwInstalledVersionNotVerified'}
+        $fixtureRoot=Join-Path $RunDirectory 'wrkflw-fixture'
+        $workflowDirectory=Join-Path $fixtureRoot '.github/workflows'
+        [void][IO.Directory]::CreateDirectory($workflowDirectory)
+        $validPath=Join-Path $workflowDirectory 'ci.yml'
+        $invalidPath=Join-Path $fixtureRoot 'invalid.yml'
+        $valid="name: Local Unicode-é fixture`non: push`njobs:`n  check:`n    runs-on: ubuntu-latest`n    steps:`n      - run: echo fixture`n"
+        [void][IO.File]::WriteAllTextAsync($validPath,$valid,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+        [void][IO.File]::WriteAllTextAsync($invalidPath,"jobs: [`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+        $tool=$workflowInventory.Workflows.Path
+        $listing=Invoke-DevelopmentCommand $tool @('list','--jobs') $fixtureRoot -Capture -AllowFailure -TimeoutSeconds 30
+        $validResult=Invoke-DevelopmentCommand $tool @('validate',$validPath) $fixtureRoot -Capture -AllowFailure -TimeoutSeconds 30
+        $invalidResult=Invoke-DevelopmentCommand $tool @('validate',$invalidPath) $fixtureRoot -Capture -AllowFailure -TimeoutSeconds 30
+        if($listing.Outcome -cne 'Success' -or !@($listing.Lines|Where-Object {$_ -match 'check'}).Count){throw 'WrkflwLocalJobListingFailed'}
+        if($validResult.Outcome -cne 'Success' -or $validResult.ExitCode -ne 0){throw 'WrkflwValidDefinitionRejected'}
+        if($invalidResult.Outcome -ceq 'Success' -or $invalidResult.ExitCode -ne 1){throw 'WrkflwMalformedDefinitionAccepted'}
+        [void]$receipts.Add(@{Platform='Windows';Mode='WrkflwArchiveAndDefinitions';Version=$workflowInventory.Workflows.Version;ArtifactSHA256=$spec.Wrkflw.Artifact.SHA256;ToolPath=$tool;ListingExitCode=$listing.ExitCode;ValidDefinitionExitCode=$validResult.ExitCode;InvalidDefinitionExitCode=$invalidResult.ExitCode;Scope='Real native archive/version/list/validate only; no workflow steps, containers or remote execution'})
         $row.State='Success';$row.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o');$smokeState.Passed++;Write-WorkspaceJson $statusPath $smokeState
     }
     $guest=@'

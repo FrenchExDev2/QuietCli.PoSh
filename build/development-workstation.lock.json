@@ -12,6 +12,16 @@
     { "Architecture": "x64", "Url": "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.1/MinGit-2.56.0-64-bit.zip", "SHA256": "064b440ff870ed5198527e8f3a92cdf5bd2fd0fedf5e718af95e3fdaddeff718" },
     { "Architecture": "arm64", "Url": "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.1/MinGit-2.56.0-arm64.zip", "SHA256": "cb3b0f2d486ea52673227151a5baf5bc13861ff80e74e94e46d614d1bfcd5c06" }
   ],
+  "Wrkflw": {
+    "Version": "0.8.0",
+    "Source": "https://api.github.com/repos/bahdotsh/wrkflw/releases/tags/v0.8.0",
+    "Artifacts": [
+      { "Rid": "win-x64", "Url": "https://github.com/bahdotsh/wrkflw/releases/download/v0.8.0/wrkflw-x86_64-pc-windows-msvc.zip", "SHA256": "4ef968a5164402dd8284fe250a363a0a6d2e66e6c1b34f7e27b4b71a2554f369" },
+      { "Rid": "linux-x64", "Url": "https://github.com/bahdotsh/wrkflw/releases/download/v0.8.0/wrkflw-x86_64-unknown-linux-gnu.tar.gz", "SHA256": "d7140aa917da5bb13a2f27eab6c592bb019cbe4977e14390d579992087a6a902" },
+      { "Rid": "linux-arm64", "Url": "https://github.com/bahdotsh/wrkflw/releases/download/v0.8.0/wrkflw-aarch64-unknown-linux-gnu.tar.gz", "SHA256": "44b9d02e3624aa808dfab22bbcc12f65564079e30bc5b7d82a3f32e1f0830234" },
+      { "Rid": "linux-musl-x64", "Url": "https://github.com/bahdotsh/wrkflw/releases/download/v0.8.0/wrkflw-x86_64-unknown-linux-musl.tar.gz", "SHA256": "7606fecdc6816f8d1503929f41f1a9d57b25362b13193aaef2732df061a4de30" }
+    ]
+  },
   "ZigVersion": "0.15.2",
   "ZigSource": "https://ziglang.org/download/index.json",
   "LinuxZig": [

@@ -34,11 +34,15 @@ doc under `docs/scripts/`) and only writes when told to. It never trusts the exi
 
 ### [`scripts/Sync-ScriptsReadme.ps1`](../scripts/Sync-ScriptsReadme.ps1)
 
-Scans every `*.ps1`/`*.psm1` under `scripts/` recursively (excluding itself), computes each one's
+Scans every `*.ps1`/`*.psm1` under `scripts/` recursively, including itself, computes each one's
 mirrored doc path under `docs/scripts/`, and renders `docs/scripts/README.md` as a table of contents
 grouped by subdirectory (`Root scripts`, `` scripts/lib/ ``, `` scripts/RunProfiles/ ``, and any future
 subdirectory - the grouping is generic, not hardcoded to today's two), each entry linking the script
 and its doc.
+
+The generator has its own [mirrored documentation](scripts/Sync-ScriptsReadme.md). Including it
+uniformly makes the gate return the same index when checking the working tree or a temporary
+export of the prepared Git index, as used by `Commit-Workspace.ps1 -NoAll`.
 
 - No arguments: reports compliance and writes nothing.
   - Throws `ScriptsDocsMissing` the moment any script has no doc - this is the actual gate, and it

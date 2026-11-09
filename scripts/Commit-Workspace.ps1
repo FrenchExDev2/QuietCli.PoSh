@@ -2,7 +2,24 @@
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Stages the monorepo and its refreshed project lock, then commits once; never pushes.
+Commits the monorepo once, either staging all changes or preserving a prepared index; never pushes.
+.DESCRIPTION
+Before staging, runs this ecosystem's own documentation-sync gates - scripts/README coverage
+(Sync-ScriptsReadme.ps1), docs credits blocks (Sync-DocsCredits.ps1) and the aggregated
+CREDITS.md (Sync-Credits.ps1) - each of which throws on non-compliance exactly as it does when run
+standalone. Each gate can be skipped with its own -No* switch, or all three at once with
+-NoSyncChecks; skipping a gate here does not change the repository's actual compliance state, it
+only removes this script's own check of it.
+Separately, warns (does not block) when a script file about to be committed (working tree, staged
+or untracked, relative to $WorkspaceRoot) has no matching change to its mirrored doc under
+docs/scripts/ - the doc Sync-ScriptsReadme.ps1 requires to exist, but whose content it never
+inspects for staleness. Pass -NoScriptDocDriftWarning to override (silence) that warning; it never
+blocks the commit on its own regardless.
+Fully supports -WhatIf/-Confirm (SupportsShouldProcess): with -WhatIf, the sync gates and the drift
+warning still run and report exactly as they would for a real commit, but the workspace lock is not
+refreshed, nothing is staged and no commit is created.
+With -NoAll, the working tree and index are never refreshed or staged. An isolated temporary index
+snapshot supplies the source-lock and documentation checks, including during WhatIf preview.
 .PARAMETER Message
 Required commit message, without trailers.
 .PARAMETER WorkspaceRoot
@@ -14,18 +31,159 @@ Opt-in, no trailer by default. Co-Authored-By trailers appended after the messag
 contributing agent explicitly named by the caller; each entry is either `Name <email>` or a known
 agent name from `$knownCoAuthors` (see docs/agents/README.md for the documented list). Skips an
 entry already present verbatim in Message so a caller-supplied trailer is never duplicated.
+.PARAMETER NoAll
+Commits only the prepared index. Does not refresh the working-tree lock or stage any file.
+Requires a repositories.lock.json matching the staged sources; validates an isolated index snapshot
+before committing. Prepare and stage the matching lock together with the selected source changes.
+.PARAMETER NoScriptsReadmeCheck
+Skips the scripts/README documentation-coverage gate (Sync-ScriptsReadme.ps1).
+.PARAMETER NoDocsCreditsCheck
+Skips the docs credits-block gate (Sync-DocsCredits.ps1).
+.PARAMETER NoCreditsCheck
+Skips the aggregated CREDITS.md gate (Sync-Credits.ps1).
+.PARAMETER NoSyncChecks
+Skips all three documentation-sync gates above in one switch; equivalent to passing
+-NoScriptsReadmeCheck -NoDocsCreditsCheck -NoCreditsCheck together.
+.PARAMETER NoScriptDocDriftWarning
+Overrides (silences) the script/doc drift warning described above. The warning is informational
+only; it never blocks the commit whether this switch is passed or not.
+.EXAMPLE
+./scripts/Commit-Workspace.ps1 -Message "Add Build-Workspace DRY refactor" -CoAuthoredBy Claude
+Runs every sync gate and the drift warning, then stages and commits as usual.
+.EXAMPLE
+./scripts/Commit-Workspace.ps1 -Message "Quick fix" -NoSyncChecks -NoScriptDocDriftWarning
+Skips every documentation-sync gate and the drift warning; still refreshes the lock, stages and
+commits.
+.EXAMPLE
+./scripts/Commit-Workspace.ps1 -Message "Preview" -WhatIf
+Runs the gates and reports script/doc drift, but refreshes nothing, stages nothing and commits
+nothing.
+.EXAMPLE
+./scripts/Commit-Workspace.ps1 -Message "Commit selected changes" -NoAll
+Validates and commits the prepared index with its matching source lock; preserves unstaged changes.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$Message,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Workspace')][string]$Repository='Workspace',[string[]]$CoAuthoredBy=$null)
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot Common.ps1)
-$knownCoAuthors=@{Claude='Claude Sonnet 5 <noreply@anthropic.com>';Codex='Codex <noreply@openai.com>'}
-$trailers=[Collections.Generic.List[string]]::new()
-foreach($entry in $CoAuthoredBy){
-    $resolved=if($knownCoAuthors.ContainsKey($entry)){$knownCoAuthors[$entry]}else{$entry}
-    $trailer='Co-Authored-By: '+$resolved
-    if($Message.Contains($trailer) -or $trailers.Contains($trailer)){continue}
+[CmdletBinding(SupportsShouldProcess)]
+param(
+    [Parameter(Mandatory)][string]$Message,
+    [string]$WorkspaceRoot = (Split-Path $PSScriptRoot -Parent),
+    [ValidateSet('Workspace')][string]$Repository = 'Workspace',
+    [string[]]$CoAuthoredBy = $null,
+    [switch]$NoAll,
+    [switch]$NoScriptsReadmeCheck,
+    [switch]$NoDocsCreditsCheck,
+    [switch]$NoCreditsCheck,
+    [switch]$NoSyncChecks,
+    [switch]$NoScriptDocDriftWarning
+)
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot Common.ps1)
+
+function Assert-QuietStagedWorkspaceLock {
+    <#
+    .SYNOPSIS
+    Checks a prepared index against its own source lock without staging working-tree changes.
+    .PARAMETER WorkspaceRoot
+    Repository whose index is exported read-only to an owned temporary snapshot.
+    #>
+    param([Parameter(Mandatory)][string]$WorkspaceRoot)
+    $changes=Invoke-CiProcess -FilePath git -ArgumentList @('-C',$WorkspaceRoot,'diff','--cached','--quiet','--exit-code') -WorkingDirectory $WorkspaceRoot
+    if($changes.ExitCode -eq 0){throw 'CommitWorkspaceNothingStaged'}
+    if($changes.ExitCode -ne 1 -or $changes.Outcome -ne 'Failed'){throw 'CommitWorkspaceIndexUnavailable'}
+    $temporaryRoot=[IO.Path]::GetFullPath((Join-Path ([IO.Path]::GetTempPath()) 'QuietCli2/commit-index'))
+    $snapshot=[IO.Path]::GetFullPath((Join-Path $temporaryRoot ([guid]::NewGuid().ToString('N'))))
+    if(![IO.Path]::IsPathFullyQualified($snapshot) -or !($snapshot.StartsWith($temporaryRoot+[IO.Path]::DirectorySeparatorChar,[StringComparison]::Ordinal))){throw 'CommitWorkspaceSnapshotPathInvalid'}
+    [void][IO.Directory]::CreateDirectory($snapshot)
+    try{
+        $null=Invoke-WorkspaceNative git @('-C',$WorkspaceRoot,'checkout-index','--all',('--prefix='+$snapshot.Replace('\','/')+'/')) $WorkspaceRoot
+        $lockPath=Join-Path $snapshot 'repositories.lock.json'
+        if(!(Test-Path -LiteralPath $lockPath -PathType Leaf)){throw 'CommitWorkspaceStagedLockMissing'}
+        $lock=Get-Content -LiteralPath $lockPath -Raw -Encoding utf8|ConvertFrom-Json
+        $identity=Get-QuietWorkspaceIdentity $snapshot
+        $projects=@(Get-QuietWorkspaceProjects $snapshot)
+        if($lock.SchemaVersion -ne 3 -or $lock.Layout -cne 'Monorepo' -or
+            $lock.Repository.SourceSHA256 -cne $identity.Repository.SourceSHA256 -or
+            @($lock.Projects).Count -ne $projects.Count){throw 'CommitWorkspaceStagedLockMismatch'}
+        foreach($project in $projects){
+            $locked=@($lock.Projects|Where-Object Name -CEQ $project.Name)
+            $actual=@($identity.Projects|Where-Object Name -CEQ $project.Name)[0]
+            if($locked.Count -ne 1 -or $locked[0].Path -cne $project.Path -or
+                $locked[0].SourceSHA256 -cne $actual.SourceSHA256 -or
+                (@($locked[0].Dependencies|Sort-Object) -join "`n") -cne (@($project.Dependencies|Sort-Object) -join "`n")){
+                throw 'CommitWorkspaceStagedLockMismatch'
+            }
+        }
+        if(!$NoSyncChecks -and !$NoScriptsReadmeCheck){
+            & (Join-Path $PSScriptRoot 'Sync-ScriptsReadme.ps1') -ScriptsPath (Join-Path $snapshot 'scripts') -DocsPath (Join-Path $snapshot 'docs/scripts')
+        }
+        if(!$NoSyncChecks -and !$NoDocsCreditsCheck){
+            & (Join-Path $PSScriptRoot 'Sync-DocsCredits.ps1') -DocsPath (Join-Path $snapshot 'docs') -RootPath $snapshot -CreditsPath (Join-Path $snapshot 'CREDITS.md')
+        }
+        if(!$NoSyncChecks -and !$NoCreditsCheck){
+            & (Join-Path $PSScriptRoot 'Sync-Credits.ps1') -WorkspaceRoot $snapshot -CreditsPath (Join-Path $snapshot 'CREDITS.md')
+        }
+    }finally{
+        # The absolute, generated snapshot was checked against its dedicated temporary root above.
+        if(Test-Path -LiteralPath $snapshot){Remove-Item -LiteralPath $snapshot -Recurse -Force -WhatIf:$false -Confirm:$false}
+    }
+}
+
+function Test-QuietScriptDocDrift {
+    <#
+    .SYNOPSIS
+    Warns when a changed script file has no matching change to its mirrored doc under docs/scripts/.
+    .PARAMETER ChangedPaths
+    Repository-relative, forward-slash paths about to be committed (working tree + staged + untracked).
+    #>
+    param([Parameter(Mandatory)][AllowEmptyCollection()][string[]]$ChangedPaths)
+    $scriptsPrefix = 'scripts/'
+    $selfName = Split-Path $PSCommandPath -Leaf
+    $changedScripts = @($ChangedPaths | Where-Object {
+        $_.StartsWith($scriptsPrefix) -and $_ -match '\.(ps1|psm1)$' -and (Split-Path $_ -Leaf) -ne $selfName
+    })
+    foreach ($scriptRelative in $changedScripts) {
+        $underScripts = $scriptRelative.Substring($scriptsPrefix.Length)
+        $docRelative = 'docs/scripts/' + $underScripts.Substring(0, $underScripts.LastIndexOf('.')) + '.md'
+        if ($ChangedPaths -notcontains $docRelative) {
+            Write-Warning "ScriptDocDrift: $scriptRelative changed without a matching change to $docRelative. Update the doc, or pass -NoScriptDocDriftWarning to override."
+        }
+    }
+}
+
+$knownCoAuthors = @{Claude = 'Claude Sonnet 5 <noreply@anthropic.com>'; Codex = 'Codex <noreply@openai.com>' }
+$trailers = [Collections.Generic.List[string]]::new()
+foreach ($entry in $CoAuthoredBy) {
+    $resolved = if ($knownCoAuthors.ContainsKey($entry)) { $knownCoAuthors[$entry] } else { $entry }
+    $trailer = 'Co-Authored-By: ' + $resolved
+    if ($Message.Contains($trailer) -or $trailers.Contains($trailer)) { continue }
     $trailers.Add($trailer)
 }
-$finalMessage=if($trailers.Count){$Message.TrimEnd()+"`n`n"+($trailers -join "`n")}else{$Message}
-$null=& (Join-Path $PSScriptRoot Update-WorkspaceLock.ps1) -WorkspaceRoot $WorkspaceRoot
-$null=Invoke-WorkspaceNative git @('-C',$WorkspaceRoot,'add','--all','--') $WorkspaceRoot
-Invoke-WorkspaceNative git @('-C',$WorkspaceRoot,'commit','-m',$finalMessage) $WorkspaceRoot
+$finalMessage = if ($trailers.Count) { $Message.TrimEnd() + "`n`n" + ($trailers -join "`n") } else { $Message }
+
+if (!$NoAll -and !$NoSyncChecks -and !$NoScriptsReadmeCheck) {
+    & (Join-Path $PSScriptRoot 'Sync-ScriptsReadme.ps1') -ScriptsPath (Join-Path $WorkspaceRoot 'scripts') -DocsPath (Join-Path $WorkspaceRoot 'docs/scripts')
+}
+if (!$NoAll -and !$NoSyncChecks -and !$NoDocsCreditsCheck) {
+    & (Join-Path $PSScriptRoot 'Sync-DocsCredits.ps1') -DocsPath (Join-Path $WorkspaceRoot 'docs') -RootPath $WorkspaceRoot -CreditsPath (Join-Path $WorkspaceRoot 'CREDITS.md')
+}
+if (!$NoAll -and !$NoSyncChecks -and !$NoCreditsCheck) {
+    & (Join-Path $PSScriptRoot 'Sync-Credits.ps1') -WorkspaceRoot $WorkspaceRoot -CreditsPath (Join-Path $WorkspaceRoot 'CREDITS.md')
+}
+
+if (!$NoScriptDocDriftWarning) {
+    $tracked = @(if($NoAll){& git -C $WorkspaceRoot diff --cached --name-only}else{try { & git -C $WorkspaceRoot diff --name-only HEAD } catch { @() }})
+    $untracked = @(if(!$NoAll){& git -C $WorkspaceRoot ls-files --others --exclude-standard})
+    $changedPaths = @($tracked + $untracked | Where-Object { $_ } | ForEach-Object { $_.Replace('\', '/') } | Sort-Object -Unique)
+    Test-QuietScriptDocDrift -ChangedPaths $changedPaths
+}
+
+if($NoAll){Assert-QuietStagedWorkspaceLock -WorkspaceRoot $WorkspaceRoot}
+
+if (!$NoAll -and $PSCmdlet.ShouldProcess($WorkspaceRoot, 'Refresh workspace lock (Update-WorkspaceLock.ps1)')) {
+    $null = & (Join-Path $PSScriptRoot Update-WorkspaceLock.ps1) -WorkspaceRoot $WorkspaceRoot
+}
+if (!$NoAll -and $PSCmdlet.ShouldProcess($WorkspaceRoot, "git add --all --")) {
+    $null = Invoke-WorkspaceNative git @('-C', $WorkspaceRoot, 'add', '--all', '--') $WorkspaceRoot
+}
+if ($PSCmdlet.ShouldProcess($WorkspaceRoot, "git commit -m <message>")) {
+    Invoke-WorkspaceNative git @('-C', $WorkspaceRoot, 'commit', '-m', $finalMessage) $WorkspaceRoot
+}

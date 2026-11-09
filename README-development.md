@@ -3,7 +3,7 @@
 [Back to the QuietCli overview](README.md) · [Tests and qualification](README-qualification.md) · [Repository and distribution](README-distribution.md)
 
 Prepare a new machine with the [development workstation guide](README-development-workstation.md):
-PowerShell bootstrap, the exact .NET SDK, Git, VS Code Stable/Insiders, Podman and native/diagnostic tools
+PowerShell bootstrap, the exact .NET SDK, Git, VS Code Stable/Insiders, Podman, wrkflw and native/diagnostic tools
 on Windows, Debian, Ubuntu, Alpine and Fedora. Its host-aware installer also offers read-only checks.
 
 The local workflow is **checkout → verify sources → build → fresh PowerShell session → import local manifests → execute → inspect YAML**. The public installed module is `QuietCli`; the source projects retain their internal directory and manifest names.

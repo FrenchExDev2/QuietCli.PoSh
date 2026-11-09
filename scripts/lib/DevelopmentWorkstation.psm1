@@ -107,6 +107,57 @@ function Test-DevelopmentVagrantVersion {
     $version -ge [version]'2.3.0' -and $version -lt [version]'2.5.0'
 }
 
+function Get-DevelopmentWrkflwSpecification {
+    <#
+    .SYNOPSIS
+    Validates reviewed wrkflw release identities and selects only a native host artifact.
+    .PARAMETER Configuration
+    Version, provenance URL and checksum-pinned artifacts from the workstation lock.
+    .PARAMETER Target
+    Validated native host description; missing upstream artifacts remain unsupported.
+    #>
+    param($Configuration,$Target)
+    $version=$null
+    if(!$Configuration -or $Configuration.Version -cnotmatch '\A[0-9]+\.[0-9]+\.[0-9]+\z' -or
+        ![version]::TryParse($Configuration.Version,[ref]$version) -or
+        $Configuration.Source -cne ('https://api.github.com/repos/bahdotsh/wrkflw/releases/tags/v'+$Configuration.Version)){
+        throw 'WorkstationWrkflwLockInvalid'
+    }
+    $triples=@{
+        'win-x64'='x86_64-pc-windows-msvc'
+        'linux-x64'='x86_64-unknown-linux-gnu'
+        'linux-arm64'='aarch64-unknown-linux-gnu'
+        'linux-musl-x64'='x86_64-unknown-linux-musl'
+    }
+    $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach($artifact in $Configuration.Artifacts){
+        if(!$triples.ContainsKey([string]$artifact.Rid) -or !$seen.Add([string]$artifact.Rid)){
+            throw 'WorkstationWrkflwArtifactNotUniqueOrUnsupported'
+        }
+        $suffix=if($artifact.Rid -ceq 'win-x64'){'zip'}else{'tar.gz'}
+        $expected='https://github.com/bahdotsh/wrkflw/releases/download/v'+$Configuration.Version+'/wrkflw-'+$triples[$artifact.Rid]+'.'+$suffix
+        if($artifact.Url -cne $expected -or $artifact.SHA256 -cnotmatch '\A[a-f0-9]{64}\z'){
+            throw 'WorkstationWrkflwArtifactIdentityInvalid'
+        }
+    }
+    if($seen.Count -ne $triples.Count){throw 'WorkstationWrkflwArtifactsMissing'}
+    $selected=@($Configuration.Artifacts|Where-Object Rid -CEQ $Target.Rid)
+    [pscustomobject]@{Version=[string]$Configuration.Version;Source=[string]$Configuration.Source;Artifact=$(if($selected.Count){$selected[0]}else{$null})}
+}
+
+function Test-DevelopmentWrkflwVersion {
+    <#
+    .SYNOPSIS
+    Accepts only the exact stable wrkflw banner selected by the reviewed lock.
+    .PARAMETER Text
+    Observed version banner, without its terminal newline.
+    .PARAMETER ExpectedVersion
+    Stable version from the validated workstation specification.
+    #>
+    param([string]$Text,[string]$ExpectedVersion)
+    [string]::Equals($Text,('wrkflw '+$ExpectedVersion),[StringComparison]::Ordinal)
+}
+
 function Get-DevelopmentSpecification {
     <#
     .SYNOPSIS
@@ -148,6 +199,7 @@ function Get-DevelopmentSpecification {
         ZigVersion=$zig.Version;Zig=$compiler[0];GitVersion=$git.GitVersion;GitSource=$gitSource[0]
         WindowsGit=$(if($windows){@($lock.WindowsGit|Where-Object Architecture -CEQ $Target.Architecture)[0]}else{$null})
         PowerShellFramework=$powerShellFramework
+        Wrkflw=Get-DevelopmentWrkflwSpecification $lock.Wrkflw $Target
     }
 }
 
@@ -207,7 +259,7 @@ function Get-DevelopmentInventory {
     param($Plan)
     $target=$Plan.Target;$root=$Plan.InstallRoot;$spec=$Plan.Specification
     $inventory=[ordered]@{}
-    foreach($name in @('System','Sdk','Git','Editor','Native','Profilers','Containers')){
+    foreach($name in @('System','Sdk','Git','Editor','Native','Profilers','Containers','Workflows')){
         $inventory[$name]=[pscustomobject]@{Name=$name;State='Missing';Version=$null;Path=$null;Detail=$null}
         if($Plan.Skipped -contains $name){$inventory[$name].State='Excluded'}
     }
@@ -243,6 +295,21 @@ function Get-DevelopmentInventory {
     }
     $git=Find-DevelopmentApplication git @((Join-Path $root $(if($target.Id -ceq 'windows'){'git/cmd/git.exe'}else{'git/bin/git'})))
     if($git){$query=Invoke-DevelopmentCommand $git @('--version') -Capture -AllowFailure;$inventory.Git.Path=$git;$inventory.Git.Version=($query.Lines -join '').Trim();if($query.Outcome -eq 'Success' -and (Test-DevelopmentGitVersion $inventory.Git.Version)){$inventory.Git.State='Ready'}}
+    if($inventory.Workflows.State -ne 'Excluded'){
+        if(!$spec.Wrkflw.Artifact){
+            $inventory.Workflows.State='Unsupported'
+            $inventory.Workflows.Detail="No reviewed native wrkflw $($spec.Wrkflw.Version) artifact for $($target.Rid). Use -SkipWorkflows; no emulation or source build is implicit."
+        }else{
+            $binary=if($target.Id -ceq 'windows'){'wrkflw.exe'}else{'wrkflw'}
+            $workflowTool=Find-DevelopmentApplication wrkflw @((Join-Path $root "wrkflw/$binary"))
+            if($workflowTool){
+                $query=Invoke-DevelopmentCommand $workflowTool @('--version') -Capture -AllowFailure -TimeoutSeconds 30
+                $inventory.Workflows.Path=$workflowTool
+                $inventory.Workflows.Version=($query.Lines -join "`n").TrimEnd("`r","`n")
+                if($query.Outcome -eq 'Success' -and (Test-DevelopmentWrkflwVersion $inventory.Workflows.Version $spec.Wrkflw.Version)){$inventory.Workflows.State='Ready'}
+            }
+        }
+    }
     if($inventory.Editor.State -ne 'Excluded'){
         if($target.EditorMode -ceq 'Remote'){$inventory.Editor.State='RemoteRequired';$inventory.Editor.Detail='Use VS Code on a glibc/Windows desktop with WSL or Dev Containers; native extension support varies.'}
         elseif($target.Id -ceq 'windows'){
@@ -315,7 +382,7 @@ function New-DevelopmentPlan {
     param($Target,[string]$WorkspaceRoot,[string]$InstallRoot,$Specification,[bool]$Insiders=$false,[string[]]$Skipped=@(),[string]$PodmanMachineName,[string[]]$Extensions=@(),[string]$ExtensionManifest)
     if(!$InstallRoot -or ![IO.Path]::IsPathFullyQualified($InstallRoot)){throw 'WorkstationInstallRootMustBeAbsolute'}
     if($PodmanMachineName -and $PodmanMachineName -cnotmatch '^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}$'){throw 'WorkstationMachineNameInvalid'}
-    foreach($skip in $Skipped){if($skip -cnotin @('Editor','Containers','Native','Profilers')){throw 'WorkstationSkipInvalid'}}
+    foreach($skip in $Skipped){if($skip -cnotin @('Editor','Containers','Native','Profilers','Workflows')){throw 'WorkstationSkipInvalid'}}
     $required=@('ms-vscode.PowerShell','ms-dotnettools.csharp','ms-vscode-remote.remote-containers')+$(if($Target.Id -ceq 'windows'){@('ms-vscode-remote.remote-wsl')}else{@()})
     [pscustomobject]@{Target=$Target;WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot);InstallRoot=[IO.Path]::GetFullPath($InstallRoot);Specification=$Specification;Insiders=$Insiders;Skipped=@($Skipped);PodmanMachineName=$PodmanMachineName;Extensions=@(($required+$Extensions)|Sort-Object -Unique);ExtensionManifest=$ExtensionManifest}
 }
@@ -349,7 +416,7 @@ function Get-DevelopmentArchive {
     #>
     param([string]$Url,[string]$Digest,[string]$Destination,[ValidateSet('SHA256','SHA512')][string]$Algorithm='SHA256')
     $length=if($Algorithm -ceq 'SHA512'){128}else{64}
-    if($Digest -cnotmatch ('^[a-fA-F0-9]{'+$length+'}$') -or $Url -cnotmatch '^https://(builds\.dotnet\.microsoft\.com/dotnet/|ziglang\.org/download/|github\.com/git-for-windows/git/releases/download/|codeload\.github\.com/git/git/tar\.gz/refs/tags/|releases\.hashicorp\.com/vagrant/)'){throw 'WorkstationArtifactIdentityInvalid'}
+    if($Digest -cnotmatch ('^[a-fA-F0-9]{'+$length+'}$') -or $Url -cnotmatch '^https://(builds\.dotnet\.microsoft\.com/dotnet/|ziglang\.org/download/|github\.com/git-for-windows/git/releases/download/|github\.com/bahdotsh/wrkflw/releases/download/v[0-9]+\.[0-9]+\.[0-9]+/wrkflw-[a-z0-9_-]+\.(zip|tar\.gz)\z|codeload\.github\.com/git/git/tar\.gz/refs/tags/|releases\.hashicorp\.com/vagrant/)'){throw 'WorkstationArtifactIdentityInvalid'}
     if(!(Test-Path -LiteralPath $Destination)){
         [void][IO.Directory]::CreateDirectory((Split-Path $Destination -Parent))
         $partial=$Destination+'.partial-'+[guid]::NewGuid().ToString('N')
@@ -460,6 +527,21 @@ function Install-DevelopmentNativeTools {
     }else{Expand-DevelopmentArchive $archive $destination 1}
 }
 
+function Install-DevelopmentWrkflw {
+    <#
+    .SYNOPSIS
+    Installs the verified native wrkflw archive beside existing system tools, without Cargo.
+    .PARAMETER Plan
+    Reviewed release artifact and isolated installation root.
+    #>
+    param($Plan)
+    $tool=$Plan.Specification.Wrkflw.Artifact
+    if(!$tool){throw "WorkstationWrkflwArtifactUnavailable: $($Plan.Target.Rid)"}
+    $fileName='wrkflw-'+$Plan.Specification.Wrkflw.Version+'-'+[IO.Path]::GetFileName(([uri]$tool.Url).AbsolutePath)
+    $archive=Get-DevelopmentArchive $tool.Url $tool.SHA256 (Join-Path $Plan.InstallRoot ('downloads/'+$fileName))
+    Expand-DevelopmentArchive $archive (Join-Path $Plan.InstallRoot 'wrkflw')
+}
+
 function Install-DevelopmentEditor {
     <#
     .SYNOPSIS
@@ -566,7 +648,7 @@ function Write-DevelopmentActivation {
     param($Plan,$Inventory)
     $quote={param($s) "'"+$s.Replace("'","''")+"'"}
     $paths=[Collections.Generic.List[string]]::new()
-    foreach($component in @('Sdk','Git','Native','Editor')){
+    foreach($component in @('Sdk','Git','Native','Editor','Workflows')){
         if($Inventory[$component].Path){
             $directory=Split-Path $Inventory[$component].Path -Parent
             if($component -ceq 'Editor' -and $Plan.Target.Id -ceq 'windows'){$directory=Join-Path $directory 'bin'}
@@ -608,6 +690,7 @@ function Invoke-DevelopmentProvisioning {
         return $report
     }
     try{
+        if($actions -contains 'Workflows' -and !$Plan.Specification.Wrkflw.Artifact){throw "WorkstationWrkflwArtifactUnavailable: $($Plan.Target.Rid). Use -SkipWorkflows."}
         [void][IO.Directory]::CreateDirectory($Plan.InstallRoot)
         if($Plan.Target.Id -cne 'windows' -and $actions -contains 'System'){
             $packages=@(Get-DevelopmentPackages $Plan.Target System)
@@ -620,6 +703,7 @@ function Invoke-DevelopmentProvisioning {
         $current=Get-DevelopmentInventory $Plan
         if($current.Git.State -ne 'Ready'){Install-DevelopmentGit $Plan}
         if($actions -contains 'Native'){Install-DevelopmentNativeTools $Plan}
+        if($actions -contains 'Workflows'){Install-DevelopmentWrkflw $Plan}
         if($actions -contains 'Editor'){Install-DevelopmentEditor $Plan}
         if($actions -contains 'Profilers'){$null=& (Join-Path $Plan.WorkspaceRoot 'scripts/Initialize-Profilers.ps1') -OutputDirectory (Join-Path $Plan.InstallRoot 'profilers')}
         if($Plan.Skipped -notcontains 'Containers' -and ($actions -contains 'Containers' -or $Plan.PodmanMachineName)){$report.RestartRequired=Initialize-DevelopmentPodman $Plan}

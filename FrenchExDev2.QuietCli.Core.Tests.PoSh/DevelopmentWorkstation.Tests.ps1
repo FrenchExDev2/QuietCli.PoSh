@@ -48,8 +48,47 @@ function Test-QuietDevelopmentWorkstation {
                     if(!$rejected){throw 'Host payload accepted'};$counts.FuzzInputs++
                 }
                 $target=Get-DevelopmentHost Windows x64
-                $spec=[pscustomobject]@{SdkVersion='11.0.100-rc.3.26522.148';ZigVersion='0.15.2';PowerShellFramework=$null}
-                $plan=New-DevelopmentPlan $target $output (Join-Path $output 'owned-install') $spec -Insiders $true -Skipped @('Editor','Native','Profilers','Containers')
+                $workflowLock=[pscustomobject]@{
+                    Version='0.8.0';Source='https://api.github.com/repos/bahdotsh/wrkflw/releases/tags/v0.8.0'
+                    Artifacts=@(
+                        [pscustomobject]@{Rid='win-x64';Url='https://github.com/bahdotsh/wrkflw/releases/download/v0.8.0/wrkflw-x86_64-pc-windows-msvc.zip';SHA256=('a'*64)}
+                        [pscustomobject]@{Rid='linux-x64';Url='https://github.com/bahdotsh/wrkflw/releases/download/v0.8.0/wrkflw-x86_64-unknown-linux-gnu.tar.gz';SHA256=('b'*64)}
+                        [pscustomobject]@{Rid='linux-arm64';Url='https://github.com/bahdotsh/wrkflw/releases/download/v0.8.0/wrkflw-aarch64-unknown-linux-gnu.tar.gz';SHA256=('c'*64)}
+                        [pscustomobject]@{Rid='linux-musl-x64';Url='https://github.com/bahdotsh/wrkflw/releases/download/v0.8.0/wrkflw-x86_64-unknown-linux-musl.tar.gz';SHA256=('d'*64)}
+                    )
+                }
+                foreach($rid in @('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){
+                    $selected=Get-DevelopmentWrkflwSpecification $workflowLock ([pscustomobject]@{Rid=$rid})
+                    $supported=$rid -notin @('win-arm64','linux-musl-arm64')
+                    if(($null -ne $selected.Artifact) -ne $supported -or ($supported -and $selected.Artifact.Rid -cne $rid)){throw 'Wrkflw native artifact selection failed'}
+                    $counts.Properties++
+                }
+                foreach($change in @('version','source','host','duplicate','missing','url','digest','digest-newline')){
+                    $bad=$workflowLock|ConvertTo-Json -Depth 5|ConvertFrom-Json
+                    switch($change){
+                        version {$bad.Version='0.8.0-dev'}
+                        source {$bad.Source='https://example.invalid/wrkflw'}
+                        host {$bad.Artifacts[0].Rid='win-arm64'}
+                        duplicate {$bad.Artifacts+=,$bad.Artifacts[0]}
+                        missing {$bad.Artifacts=@($bad.Artifacts|Select-Object -Skip 1)}
+                        url {$bad.Artifacts[0].Url+='?unreviewed=true'}
+                        digest {$bad.Artifacts[0].SHA256='bad-digest'}
+                        digest-newline {$bad.Artifacts[0].SHA256+="`n"}
+                    }
+                    $rejected=$false;try{$null=Get-DevelopmentWrkflwSpecification $bad $target}catch{$rejected=$true}
+                    if(!$rejected){throw "Malformed wrkflw lock accepted: $change"};$counts.FuzzInputs++
+                }
+                if(!(Test-DevelopmentWrkflwVersion 'wrkflw 0.8.0' '0.8.0')){throw 'Pinned wrkflw rejected'}
+                for($index=0;$index -lt 200;$index++){
+                    $text='wrkflw 0.'+$random.Next(0,30)+'.'+$random.Next(0,30)
+                    $expected=$text -ceq 'wrkflw 0.8.0'
+                    if((Test-DevelopmentWrkflwVersion $text '0.8.0') -ne $expected){throw 'Wrkflw exact version property failed'};$counts.Properties++
+                    foreach($suffix in @('-dev',';echo injected',"`nextra",[string][char]0)){
+                        if(Test-DevelopmentWrkflwVersion ('wrkflw 0.8.0'+$suffix) '0.8.0'){throw 'Malformed wrkflw banner accepted'};$counts.FuzzInputs++
+                    }
+                }
+                $spec=[pscustomobject]@{SdkVersion='11.0.100-rc.3.26522.148';ZigVersion='0.15.2';PowerShellFramework=$null;Wrkflw=(Get-DevelopmentWrkflwSpecification $workflowLock $target)}
+                $plan=New-DevelopmentPlan $target $output (Join-Path $output 'owned-install') $spec -Insiders $true -Skipped @('Editor','Native','Profilers','Containers','Workflows')
                 if(!$plan.Insiders -or $plan.Extensions -notcontains 'ms-vscode-remote.remote-wsl'){throw 'Editor channel/Windows extension selection failed'}
                 $alpine=Get-DevelopmentHost Linux arm64 "ID=alpine`nVERSION_ID=3.24"
                 $alpinePlan=New-DevelopmentPlan $alpine $output (Join-Path $output 'owned-alpine') $spec
@@ -63,13 +102,13 @@ function Test-QuietDevelopmentWorkstation {
                 foreach($name in @('--default','a b','a;remove','../escape')){$rejected=$false;try{$null=New-DevelopmentPlan $target $output $plan.InstallRoot $spec -PodmanMachineName $name}catch{$rejected=$true};if(!$rejected){throw 'Invalid machine argument accepted'}}
                 $counts.Examples+=12
 
-                $script:ObservedSdk=$spec.SdkVersion;$script:ObservedRuntimes=@()
+                $script:ObservedSdk=$spec.SdkVersion;$script:ObservedRuntimes=@();$script:ObservedWrkflw=$null
                 function script:Find-DevelopmentApplication {
                     <#
                     .SYNOPSIS
                     Supplies an isolated native or installation boundary for independent assertions.
                     #>
-param($Name,$Preferred) if($Name -in @('dotnet','git')){return (Join-Path $output $Name)};return $null}
+param($Name,$Preferred) if($Name -in @('dotnet','git') -or ($Name -ceq 'wrkflw' -and $script:ObservedWrkflw)){return (Join-Path $output $Name)};return $null}
                 function script:Invoke-DevelopmentCommand {
                     <#
                     .SYNOPSIS
@@ -77,11 +116,73 @@ param($Name,$Preferred) if($Name -in @('dotnet','git')){return (Join-Path $outpu
                     #>
 
                     param($FilePath,$Arguments,$WorkingDirectory,[switch]$Capture,[switch]$AllowFailure,$TimeoutSeconds)
-                    $text=if($Arguments[0] -ceq '--list-runtimes'){$script:ObservedRuntimes}elseif([IO.Path]::GetFileName($FilePath) -ceq 'git'){'git version 2.56.0.windows.3'}else{$script:ObservedSdk}
+                    $text=if($Arguments[0] -ceq '--list-runtimes'){$script:ObservedRuntimes}elseif([IO.Path]::GetFileName($FilePath) -ceq 'git'){'git version 2.56.0.windows.3'}elseif([IO.Path]::GetFileName($FilePath) -ceq 'wrkflw'){$script:ObservedWrkflw}else{$script:ObservedSdk}
                     [pscustomobject]@{Outcome='Success';ExitCode=0;Lines=@($text|Where-Object {$null -ne $_});Diagnostics=@()}
                 }
                 $good=Get-DevelopmentInventory $plan
                 if($good.Sdk.State -ne 'Ready' -or $good.Git.State -ne 'Ready'){throw 'Compatible installations not retained'}
+                $workflowPlan=New-DevelopmentPlan $target $output (Join-Path $output "workflow tools ' Unicode-é") $spec -Skipped @('Editor','Native','Profilers','Containers')
+                if((Get-DevelopmentInventory $workflowPlan).Workflows.State -cne 'Missing'){throw 'Missing wrkflw reported ready'}
+                foreach($banner in @('wrkflw 0.8.1','wrkflw 0.8.0-dev','WRKFLW 0.8.0','wrkflw 0.8.0 extra')){
+                    $script:ObservedWrkflw=$banner
+                    if((Get-DevelopmentInventory $workflowPlan).Workflows.State -ceq 'Ready'){throw 'Unpinned wrkflw inventory accepted'};$counts.Examples++
+                }
+                $script:ObservedWrkflw='wrkflw 0.8.0'
+                $workflowReady=Get-DevelopmentInventory $workflowPlan
+                if($workflowReady.Workflows.State -cne 'Ready'){throw 'Pinned wrkflw inventory not ready'}
+                $unsupportedPlan=New-DevelopmentPlan (Get-DevelopmentHost Windows arm64) $output (Join-Path $output 'unsupported-must-not-exist') ([pscustomobject]@{SdkVersion=$spec.SdkVersion;ZigVersion=$spec.ZigVersion;PowerShellFramework=$null;Wrkflw=(Get-DevelopmentWrkflwSpecification $workflowLock ([pscustomobject]@{Rid='win-arm64'}))}) -Skipped @('Editor','Native','Profilers','Containers')
+                $unsupported=Get-DevelopmentInventory $unsupportedPlan
+                if($unsupported.Workflows.State -cne 'Unsupported'){throw 'Unpublished wrkflw architecture reported ready'}
+                $unsupportedReport=Invoke-DevelopmentProvisioning $unsupportedPlan $unsupported -ShouldApply {$true}
+                if($unsupportedReport.State -cne 'Failed' -or $unsupportedReport.Error -notlike 'WorkstationWrkflwArtifactUnavailable:*' -or (Test-Path -LiteralPath $unsupportedPlan.InstallRoot)){throw 'Unsupported wrkflw was installed or performed preceding effects'}
+                $unsupportedPlan.Skipped+=,'Workflows'
+                if((Get-DevelopmentInventory $unsupportedPlan).Workflows.State -cne 'Excluded'){throw 'Wrkflw exclusion was not honored'}
+                [void][IO.Directory]::CreateDirectory($workflowPlan.InstallRoot)
+                $activationInventory=[ordered]@{Sdk=[pscustomobject]@{State='Excluded';Path=$null};Git=[pscustomobject]@{Path=$null};Native=[pscustomobject]@{State='Excluded';Path=$null};Editor=[pscustomobject]@{Path=$null};Workflows=[pscustomobject]@{Path=(Join-Path $workflowPlan.InstallRoot 'wrkflw/wrkflw.exe')}}
+                $activation=Write-DevelopmentActivation $workflowPlan $activationInventory
+                $savedPath=$env:PATH
+                try{
+                    . $activation
+                    . $activation
+                    $workflowDirectory=Join-Path $workflowPlan.InstallRoot 'wrkflw'
+                    $activated=@($env:PATH -split [regex]::Escape([string][IO.Path]::PathSeparator))
+                    if($activated[0] -cne $workflowDirectory -or @($activated|Where-Object {$_ -ceq $workflowDirectory}).Count -ne 1){throw 'Wrkflw activation missing, escaped incorrectly or duplicated'}
+                }finally{$env:PATH=$savedPath}
+                $counts.Examples+=6
+                $archivePath=Join-Path $output 'wrkflw-cache.zip'
+                [void][IO.File]::WriteAllTextAsync($archivePath,'independent archive fixture',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+                $archiveHash=(Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash
+                if((Get-DevelopmentArchive $workflowLock.Artifacts[0].Url $archiveHash $archivePath) -cne $archivePath){throw 'Verified wrkflw cache was not reused'}
+                $rejected=$false;try{$null=Get-DevelopmentArchive $workflowLock.Artifacts[0].Url ('0'*64) $archivePath}catch{$rejected=$_.Exception.Message -ceq 'WorkstationCacheDigestMismatch'}
+                if(!$rejected){throw 'Corrupt wrkflw cache accepted'}
+                foreach($url in @('https://github.com.evil.invalid/bahdotsh/wrkflw/releases/download/v0.8.0/wrkflw-x86_64-pc-windows-msvc.zip',($workflowLock.Artifacts[0].Url+'?alternate'),($workflowLock.Artifacts[0].Url+"`n"))){
+                    $rejected=$false;try{$null=Get-DevelopmentArchive $url $archiveHash $archivePath}catch{$rejected=$_.Exception.Message -ceq 'WorkstationArtifactIdentityInvalid'}
+                    if(!$rejected){throw 'Unreviewed wrkflw archive URL accepted'};$counts.FuzzInputs++
+                }
+                $script:ArchiveRequest=$null;$script:ExtractionRequest=$null
+                function script:Get-DevelopmentArchive {
+                    <#
+                    .SYNOPSIS
+                    Records an artifact request without opening the network.
+                    #>
+                    param($Url,$Digest,$Destination,$Algorithm)
+                    $script:ArchiveRequest=@($Url,$Digest,$Destination)
+                    'verified-wrkflw-fixture.zip'
+                }
+                function script:Expand-DevelopmentArchive {
+                    <#
+                    .SYNOPSIS
+                    Records extraction into the owned tool directory without starting a process.
+                    #>
+                    param($Archive,$Destination,$StripComponents)
+                    $script:ExtractionRequest=@($Archive,$Destination)
+                }
+                Install-DevelopmentWrkflw $workflowPlan
+                $expectedArtifact=$workflowLock.Artifacts[0]
+                $expectedCache=Join-Path $workflowPlan.InstallRoot 'downloads/wrkflw-0.8.0-wrkflw-x86_64-pc-windows-msvc.zip'
+                if($script:ArchiveRequest[0] -cne $expectedArtifact.Url -or $script:ArchiveRequest[1] -cne $expectedArtifact.SHA256 -or $script:ArchiveRequest[2] -cne $expectedCache -or
+                    $script:ExtractionRequest[0] -cne 'verified-wrkflw-fixture.zip' -or $script:ExtractionRequest[1] -cne (Join-Path $workflowPlan.InstallRoot 'wrkflw')){throw 'Wrkflw installation lost artifact identity or isolation'}
+                $counts.Examples+=3
                 $extensionFixture=[ordered]@{Editor=[pscustomobject]@{State='Ready';Detail='Missing extensions: ms-vscode.PowerShell'}}
                 if((@(Get-DevelopmentActions $extensionFixture) -join ',') -cne 'Extensions'){throw 'Missing editor extensions were reported ready'}
                 foreach($version in @('11.0.100','11.0.101','11.0.100-rc.3.26522.148-extra','12.0.100')){
@@ -97,7 +198,7 @@ param($Name,$Preferred) if($Name -in @('dotnet','git')){return (Join-Path $outpu
                 for($i=0;$i -lt 200;$i++){
                     $inventory=[ordered]@{}
                     $expected=[Collections.Generic.List[string]]::new()
-                    foreach($name in @('System','Sdk','Git','Editor','Native','Profilers','Containers')){
+                    foreach($name in @('System','Sdk','Git','Editor','Native','Profilers','Containers','Workflows')){
                         $state=@('Ready','Missing','Excluded','RemoteRequired')[$random.Next(0,4)]
                         $inventory[$name]=[pscustomobject]@{Name=$name;State=$state;Version=$null;Path=$null;Detail=$null}
                         if($state -ceq 'Missing'){[void]$expected.Add($name)}
@@ -140,6 +241,29 @@ param($Plan,$Inventory)'activation-fixture.ps1'}
                 if($first.State -cne 'Ready' -or $script:SdkInstalls -ne 1){throw 'First install did not verify independently'}
                 $again=Invoke-DevelopmentProvisioning $plan $good -ShouldApply {$true}
                 if($again.State -cne 'Ready' -or $script:SdkInstalls -ne 1){throw 'Compatible tool was reinstalled'}
+                $script:WorkflowInstalls=0
+                function script:Install-DevelopmentWrkflw {
+                    <#
+                    .SYNOPSIS
+                    Counts workflow installations without downloading or changing the host.
+                    #>
+                    param($Plan) $script:WorkflowInstalls++
+                }
+                $script:FakeInventory=$workflowReady
+                $workflowMissing=[ordered]@{}
+                foreach($key in $workflowReady.Keys){$workflowMissing[$key]=$workflowReady[$key].PSObject.Copy()}
+                $workflowMissing.Workflows.State='Missing'
+                foreach($check in @($true,$false)){
+                    $null=Invoke-DevelopmentProvisioning $workflowPlan $workflowMissing -CheckOnly:$check -ShouldApply {$false}
+                    if($script:WorkflowInstalls){throw 'Wrkflw installed in a control mode'}
+                }
+                $installedWorkflow=Invoke-DevelopmentProvisioning $workflowPlan $workflowMissing -ShouldApply {$true}
+                $null=Invoke-DevelopmentProvisioning $workflowPlan $workflowReady -ShouldApply {$true}
+                if($installedWorkflow.State -cne 'Ready' -or $script:WorkflowInstalls -ne 1){throw 'Wrkflw installation missing or not idempotent'}
+                $script:FakeInventory=$workflowMissing
+                $unverifiedWorkflow=Invoke-DevelopmentProvisioning $workflowPlan $workflowMissing -ShouldApply {$true}
+                if($unverifiedWorkflow.State -cne 'Failed' -or $unverifiedWorkflow.Error -notlike '*Workflows*'){throw 'Unverified wrkflw install reported success'}
+                $script:FakeInventory=$good;$counts.Examples+=5
                 function script:Install-DevelopmentSdk {
                     <#
                     .SYNOPSIS
@@ -182,7 +306,15 @@ param($Plan)$false}
         @{Id='ignore-podman-selection';Find='if($Name){return $Name}';Replace='if($false){return $Name}'},
         @{Id='hide-install-failures';Find="catch{`$report.State='Failed';";Replace="catch{`$report.State='Ready';"},
         @{Id='hide-reboot';Find="`$report.State='RestartRequired'";Replace="`$report.State='Ready'"},
-        @{Id='hide-powershell-framework';Find='if($spec.PSObject.Properties[''PowerShellFramework''] -and $spec.PowerShellFramework)';Replace='if($false)'}
+        @{Id='hide-powershell-framework';Find='if($spec.PSObject.Properties[''PowerShellFramework''] -and $spec.PowerShellFramework)';Replace='if($false)'},
+        @{Id='accept-any-wrkflw-version';Find="[string]::Equals(`$Text,('wrkflw '+`$ExpectedVersion),[StringComparison]::Ordinal)";Replace='$true'},
+        @{Id='ignore-wrkflw-digest';Find="`$artifact.SHA256 -cnotmatch '\A[a-f0-9]{64}\z'";Replace='$false'},
+        @{Id='ignore-wrkflw-url';Find='$artifact.Url -cne $expected';Replace='$false'},
+        @{Id='fallback-wrkflw-architecture';Find='$Configuration.Artifacts|Where-Object Rid -CEQ $Target.Rid';Replace='$Configuration.Artifacts|Where-Object Rid -CEQ ''win-x64'''},
+        @{Id='omit-wrkflw-install';Find="if(`$actions -contains 'Workflows'){Install-DevelopmentWrkflw `$Plan}";Replace=''},
+        @{Id='omit-wrkflw-activation';Find="@('Sdk','Git','Native','Editor','Workflows')";Replace="@('Sdk','Git','Native','Editor')"},
+        @{Id='ignore-wrkflw-cache-checksum';Find="if((Get-FileHash -LiteralPath `$Destination -Algorithm `$Algorithm).Hash -ine `$Digest)";Replace='if($false)'},
+        @{Id='wrong-wrkflw-download-checksum';Find='$archive=Get-DevelopmentArchive $tool.Url $tool.SHA256';Replace='$archive=Get-DevelopmentArchive $tool.Url (''0''*64)'}
     )
     $results=[Collections.Generic.List[object]]::new()
     foreach($mutation in $mutations){

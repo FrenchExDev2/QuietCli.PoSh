@@ -16,6 +16,7 @@ It can run before QuietCli has been built: native tools use the independent CI p
 | VS Code | Stable by default; **`-Insiders`** selects Insiders | WinGet on Windows; official DEB/RPM on glibc Linux; remote editing on Alpine | `code --version` or `code-insiders --version` |
 | Editor extensions | Saved Insiders inventory plus the minimum PowerShell/C#/remote set | Shared extension synchronizer in the selected channel | `code --list-extensions` or `code-insiders --list-extensions` |
 | Podman | Distribution/current official release; Windows release requires Windows 11 and virtualization | Distribution packages or WinGet, then WSL/machine preparation | `podman info --format json` |
+| wrkflw | **0.8.0**, local GitHub Actions listing, validation and execution | SHA-256-locked official native archive; `-SkipWorkflows` excludes it | `wrkflw --version`; a version check does not qualify workflows |
 | Vagrant | Stable **>= 2.3.0, < 2.5.0** for the Vagrant companion; **Windows/Debian/Ubuntu/Fedora only**, not Alpine | Official HashiCorp apt repository, WinGet/MSI or Fedora build -- see [Vagrant](#vagrant-windowsdebianubuntufedora-only) below; `./scripts/Install-ModuleWorkstation.ps1 -Modules Vagrant` | `vagrant --version` |
 | GCC / Clang | Linux C properties, libFuzzer and ASan/UBSan/LSan | Distribution compiler, headers and compiler-runtime packages | `gcc --version`; `clang --version`; native qualification below |
 | Zig | **0.15.2**, from `build/zig.lock.json` | Checksum-verified portable archive | `zig version` |
@@ -42,6 +43,31 @@ The automated recipes cover native x64 and ARM64 on **Windows 11; Debian 12/13; 
 Fedora 43/44; Alpine 3.23/3.24**. Unknown distributions, versions and emulated PowerShell processes are
 rejected. These recipes describe installation targets, not an assertion that every target has passed
 the product's release matrix. Existing product qualification covers its recorded hosts only.
+
+### Local workflows with wrkflw
+
+The default installer includes wrkflw in the `Workflows` component. It preserves an existing exact
+0.8.0 installation; otherwise it extracts the reviewed binary into `<InstallRoot>/wrkflw`, keeps its
+verified archive in `<InstallRoot>/downloads`, and includes the tool in the generated session activation
+script. Rust and Cargo are not needed. The lock's release URLs and SHA-256 digests are reviewed inputs;
+setup never resolves a moving latest release or changes a profile.
+
+Published native artifacts cover Windows x64, glibc Linux x64/ARM64 and musl Linux x64. **Windows ARM64
+and Alpine ARM64 require `-SkipWorkflows`**: the component reports `Unsupported` and a mutating setup
+fails before other provisioning if no reviewed native artifact exists. Setup does not substitute an
+emulated binary. This exception narrows the wrkflw component, not the remaining workstation recipes.
+
+After activation, 0.8.0 supports listing with `list --jobs`, definition checks with `validate`,
+execution with `run --runtime podman`, and interactive use with `tui --runtime podman`.
+It has no `plan`, general JSON output or MCP interface. Emulation runs commands and is not a dry run.
+The planned PowerShell helpers and their `-WhatIf` contract are documented in
+[scripts to create](docs/scripts/README-wrkflw-plan.md); they are not implemented commands.
+Installing or checking wrkflw does not launch any workflow, container or remote run. Existing test
+monitors, CI images and release qualification remain required for actual execution.
+
+Sources: [0.8.0 release](https://github.com/bahdotsh/wrkflw/releases/tag/v0.8.0),
+[MIT license](https://github.com/bahdotsh/wrkflw/blob/v0.8.0/LICENSE) and
+[versioned CLI contract](https://github.com/bahdotsh/wrkflw/blob/v0.8.0/crates/wrkflw/src/main.rs).
 
 ## Bootstrap PowerShell and obtain the checkout
 
@@ -367,9 +393,14 @@ From a Windows host with working Podman, run the companion smoke launcher:
 
 ```powershell
 ./FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-DevelopmentWorkstationSmoke.ps1
+
+# Windows controls and wrkflw archive/list/validation smoke only; no Podman required.
+./FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-DevelopmentWorkstationSmoke.ps1 -Targets Windows
 ```
 
-It opens the shared visible monitor. Windows exercises read-only control modes; Debian, Ubuntu,
+It opens the shared visible monitor. Windows exercises read-only control modes, installs only the
+reviewed wrkflw binary in an external toolchain cache, and checks real job listing plus valid/invalid
+workflow definition exit codes without executing workflow steps. Debian, Ubuntu,
 Alpine and Fedora perform real package/tool installations inside disposable containers, with a
 read-only source snapshot. Editor and nested Podman installation are excluded in those guests.
 The guest checks activation, a second idempotent installation and a small sanitizer/linker probe;

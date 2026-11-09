@@ -13,6 +13,12 @@ written by `scripts/Sync-DocsCredits.ps1`", confirmed in `scripts/Sync-Credits.p
 almost certainly run in the same CI gate/apply pairing pattern as `Sync-Credits.ps1` (its behavior is
 symmetric: no `-Apply` reports only, `-Apply` writes, `-Apply -WhatIf` previews).
 
+The two distributed files `docs/agents/AGENTS.md` and `docs/agents/SKILL.md` use the public absolute
+`https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh/blob/HEAD/CREDITS.md` link. They are copied
+into consumer projects without the repository's credits file, so a relative link would violate their
+self-contained contract. Other documentation retains its relative credits link. After changing
+AGENTS.md, regenerate SKILL.md with `Sync-SkillDocument.ps1` and check both sync gates again.
+
 ## Usage
 
 ```
@@ -48,8 +54,8 @@ Examples (from the doc comment):
 ## Dependencies
 
 - No dot-sourced scripts and no `Common.ps1` dependency — entirely self-contained, using only built-in
-  PowerShell cmdlets (`Get-ChildItem`, `Get-Content`, regex) and `[System.IO.File]::WriteAllText`.
-- No external process is shelled out to.
+  PowerShell cmdlets (`Get-ChildItem`, `Get-Content`, regex) and asynchronous UTF-8 file writes.
+- No external process is shelled out to; public absolute links are generated without network access.
 - Filesystem assumptions: `DocsPath`, `RootPath`, and `CreditsPath` must already exist (explicit
   `throw` guards at lines 54-56) — it does not create `docs/` or `CREDITS.md` itself.
 
@@ -59,11 +65,17 @@ Examples (from the doc comment):
   `Missing`/`Stale`/`UpToDate`.
 - `-Apply` (with `ShouldProcess` approval per file): rewrites each non-compliant file in place — either
   replacing an existing stale block in place (line 97) or appending a new block after two trailing
-  newlines (line 99) — using UTF-8 without BOM (`$utf8NoBom`, line 83, 101).
+  newlines — using UTF-8 without BOM and `WriteAllTextAsync(...).GetAwaiter().GetResult()`.
 - Throws `DocsCreditsNonCompliant: ...` (lines 110-112) listing every file still non-compliant after
   the run, which fails the calling CI job in check mode.
 
 ## Findings
+
+- **Portability regression fixed:** the generated relative footer previously made the distributed
+  agent documents fail `Test-QuietAgentDocumentSet` in
+  `FrenchExDev2.QuietCli.Core.Tests.PoSh/AgentInstructions.Tests.ps1:67`. The generator now uses an
+  absolute public link for exactly those two portable documents. Existing independent tests still
+  reject relative links and hand-edited generated SKILL bodies; that contract was not weakened.
 
 - No bugs found in the core regex-based block detection/replacement (lines 48-52, 90-100) — the
   `Singleline` regex scoped between literal begin/end markers correctly handles multi-line content
@@ -84,11 +96,10 @@ Examples (from the doc comment):
   in the new block (lines 89-100) — a file with CRLF line endings would get a clean LF block spliced
   into a CRLF document, producing mixed line endings on disk, in violation of the repository's
   "UTF-8 and LF line endings on disk" rule.
-- Testability gap: no Pester test file references `Sync-DocsCredits.ps1`, `New-CreditsBlock`, or the
-  compliance-state logic (`Missing`/`Stale`/`UpToDate`) — searched `*.Tests.ps1` under both
-  `*.Tests.PoSh` projects, no hits. As with `Sync-Credits.ps1`, the only exercise this logic gets is
-  whatever CI workflow runs it against real repository content; there is no unit test for the
-  anchor/relative-path computation, the `-NoRecurse` behavior, or the stale-vs-missing branch.
+- Coverage: `CommitWorkspace.Tests.ps1` exercises this script's real fixture generation and gate
+  wiring, including staged documentation. `AgentInstructions.Tests.ps1` independently checks the
+  self-contained distributed result and rejects relative-link document mutants. Full generator
+  coverage for cross-drive relative paths, `-NoRecurse` and every replacement branch remains a gap.
 - No security concern: operates only on repository-local Markdown files with no secrets or network
   involvement.
 

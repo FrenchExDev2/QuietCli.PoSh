@@ -23,6 +23,8 @@ Excludes Podman and WSL/machine preparation.
 Excludes Zig and Linux native property/fuzz/mutation compiler packages.
 .PARAMETER SkipProfilers
 Excludes the pinned PowerShell and CLR diagnostic tools.
+.PARAMETER SkipWorkflows
+Excludes the pinned wrkflw local workflow tool, including hosts without a published native artifact.
 .PARAMETER CheckOnly
 Probes local tools and reports missing components without any download or write.
 .PARAMETER ExtensionManifest
@@ -43,6 +45,7 @@ param(
     [switch]$SkipContainers,
     [switch]$SkipNativeTools,
     [switch]$SkipProfilers,
+    [switch]$SkipWorkflows,
     [switch]$CheckOnly,
     [string]$ExtensionManifest=(Join-Path $WorkspaceRoot 'build/vscode-extensions.json')
 )
@@ -51,7 +54,7 @@ Import-Module (Join-Path $PSScriptRoot 'lib/DevelopmentWorkstation.psm1')
 Import-Module (Join-Path $PSScriptRoot 'lib/EditorExtensions.psm1')
 $target=Get-DevelopmentHost
 if(!$InstallRoot){$InstallRoot=if($target.Id -ceq 'windows'){Join-Path $env:LOCALAPPDATA 'QuietCli2/development'}else{Join-Path $HOME '.local/share/QuietCli2/development'}}
-$skipped=@(if($SkipEditor){'Editor'};if($SkipContainers){'Containers'};if($SkipNativeTools){'Native'};if($SkipProfilers){'Profilers'})
+$skipped=@(if($SkipEditor){'Editor'};if($SkipContainers){'Containers'};if($SkipNativeTools){'Native'};if($SkipProfilers){'Profilers'};if($SkipWorkflows){'Workflows'})
 $specification=Get-DevelopmentSpecification $WorkspaceRoot $target
 $extensionIds=@(if(!$SkipEditor){Read-EditorExtensionManifest $ExtensionManifest|ForEach-Object Id})
 $plan=New-DevelopmentPlan $target $WorkspaceRoot $InstallRoot $specification -Insiders ([bool]$Insiders) -Skipped $skipped -PodmanMachineName $PodmanMachineName -Extensions $extensionIds -ExtensionManifest $ExtensionManifest

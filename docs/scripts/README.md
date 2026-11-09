@@ -70,6 +70,7 @@ file by hand, run:
 - [`Sync-Credits.ps1`](../../scripts/Sync-Credits.ps1) -> [documentation](Sync-Credits.md)
 - [`Sync-DevelopmentEditorExtensions.ps1`](../../scripts/Sync-DevelopmentEditorExtensions.ps1) -> [documentation](Sync-DevelopmentEditorExtensions.md)
 - [`Sync-DocsCredits.ps1`](../../scripts/Sync-DocsCredits.ps1) -> [documentation](Sync-DocsCredits.md)
+- [`Sync-ScriptsReadme.ps1`](../../scripts/Sync-ScriptsReadme.ps1) -> [documentation](Sync-ScriptsReadme.md)
 - [`Sync-SkillDocument.ps1`](../../scripts/Sync-SkillDocument.ps1) -> [documentation](Sync-SkillDocument.md)
 - [`Test-SdkReadiness.ps1`](../../scripts/Test-SdkReadiness.ps1) -> [documentation](Test-SdkReadiness.md)
 - [`Test-WorkspacePackage.ps1`](../../scripts/Test-WorkspacePackage.ps1) -> [documentation](Test-WorkspacePackage.md)

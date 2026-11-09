@@ -8,6 +8,7 @@
 . (Join-Path $PSScriptRoot 'DevelopmentWorkstation.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Emit.Tests.ps1')
 . (Join-Path $PSScriptRoot 'WorkspaceProjects.Tests.ps1')
+. (Join-Path $PSScriptRoot 'CommitWorkspace.Tests.ps1')
 . (Join-Path $PSScriptRoot 'RuntimeDiagnosis.Tests.ps1')
 . (Join-Path $PSScriptRoot 'CiImageRecipe.Tests.ps1')
 . (Join-Path $PSScriptRoot 'WorkstationResources.Tests.ps1')
@@ -81,6 +82,7 @@ Executes independent native byte and object invariants in a companion module.
     $cases=[ordered]@{}
     $cases['native Emit listeners preserve Unicode order and bounded JSON/YAML deliveries']={Test-QuietEmitListeners -WorkspaceRoot $WorkspaceRoot}
     $cases['workspace project discovery keeps suite modes and package publication policy separate']={Test-QuietWorkspaceProjects -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['commit workspace documentation gates, script/doc drift and the -WhatIf/commit-once/no-remote contract']={Test-QuietCommitWorkspace -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['container runtime diagnosis separates image bootstrap from ABI and RID selection']={Test-QuietRuntimeDiagnosis -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['Alpine image recipe installs locked PowerShell and separates its runtime from the SDK']={Test-QuietCiImageRecipe -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['configuration and unique tokenized deliveries preserve their contracts']={

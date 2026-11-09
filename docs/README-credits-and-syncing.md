@@ -62,7 +62,9 @@ This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which rec
 <!-- credits:end -->
 ```
 
-The link path is computed per file with `[System.IO.Path]::GetRelativePath`, so it stays correct
+The two distributed files `docs/agents/AGENTS.md` and `SKILL.md` use an absolute public GitHub
+credits URL so their links survive copying into consumer projects. Other documents use a link
+computed per file with `[System.IO.Path]::GetRelativePath`, so it stays correct
 regardless of how deep the document lives under `docs/`.
 
 - No arguments: reports each file's compliance and writes nothing. Throws if anything is
