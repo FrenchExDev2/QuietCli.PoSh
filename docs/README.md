@@ -45,6 +45,7 @@ Repository development follows the root [AGENTS.md](../AGENTS.md). Consumer-proj
 - [Tests and qualification](../README-qualification.md): companion suites, property testing, fuzzing, mutation campaigns and qualification limits.
 - [Repository and distribution](../README-distribution.md): monorepo layout, packaging and publication gates.
 - [Credits and syncing](README-credits-and-syncing.md): why `CREDITS.md` is generated, the two sync scripts, their check/apply workflows and how to run the sync locally.
+- [Every script has a doc](README-scripts-have-docs.md): the `docs/scripts/` documentation gate, the generated [index](scripts/README.md), and its check/apply workflows.
 - [Linux CI images](ci/linux-images.md): native architecture builds, GHCR cache, toolchain integrity and permissions.
 - [Container runtime diagnosis](README-container-runtime-diagnosis.md): distinguish image startup configuration from raw-RID native-resource selection using isolated, monitored controls.
 - [Module-specific CI containers](README-module-specific-ci-container.md): the reusable contract a Core-consumer module (for example Git) uses to build its own derived CI image on top of Core's.

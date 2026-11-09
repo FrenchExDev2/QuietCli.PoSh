@@ -9,16 +9,17 @@ Required commit message, without trailers.
 QuietCli2 monorepo root.
 .PARAMETER Repository
 Only Workspace exists; retained to reject accidental requests for independent module commits.
-.PARAMETER CoAuthor
-Co-Authored-By trailers appended after the message, one per contributing agent; each entry is
-either `Name <email>` or a known agent name resolved below. Skips an entry already present
-verbatim in Message so a caller-supplied trailer is never duplicated.
+.PARAMETER CoAuthoredBy
+Opt-in, no trailer by default. Co-Authored-By trailers appended after the message, one per
+contributing agent explicitly named by the caller; each entry is either `Name <email>` or a known
+agent name from `$knownCoAuthors` (see docs/agents/README.md for the documented list). Skips an
+entry already present verbatim in Message so a caller-supplied trailer is never duplicated.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$Message,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Workspace')][string]$Repository='Workspace',[string[]]$CoAuthor=@('Claude','Codex'))
+[CmdletBinding()]param([Parameter(Mandatory)][string]$Message,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Workspace')][string]$Repository='Workspace',[string[]]$CoAuthoredBy=$null)
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot Common.ps1)
 $knownCoAuthors=@{Claude='Claude Sonnet 5 <noreply@anthropic.com>';Codex='Codex <noreply@openai.com>'}
 $trailers=[Collections.Generic.List[string]]::new()
-foreach($entry in $CoAuthor){
+foreach($entry in $CoAuthoredBy){
     $resolved=if($knownCoAuthors.ContainsKey($entry)){$knownCoAuthors[$entry]}else{$entry}
     $trailer='Co-Authored-By: '+$resolved
     if($Message.Contains($trailer) -or $trailers.Contains($trailer)){continue}

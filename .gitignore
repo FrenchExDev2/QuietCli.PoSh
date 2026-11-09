@@ -8,3 +8,5 @@
 **/lib/
 !/scripts/lib/
 !/scripts/lib/*.psm1
+!/docs/scripts/lib/
+!/docs/scripts/lib/*.md

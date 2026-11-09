@@ -1,0 +1,34 @@
+name: QuietCli2 Scripts docs check
+
+# Report-only: verifies that every scripts/*.ps1 and scripts/*.psm1 file (recursively, including
+# lib/ and RunProfiles/) has a matching doc under docs/scripts/, and that docs/scripts/README.md -
+# the table of contents - still reflects that set. Never writes anything; see
+# docs/README-scripts-have-docs.md for the why/how and scripts-docs-apply.yml for the companion
+# workflow that writes the fix.
+on:
+  pull_request:
+    paths: &scripts_docs_paths
+      - 'scripts/**'
+      - 'docs/scripts/**'
+      - '.github/workflows/scripts-docs-check.yml'
+      - '.github/workflows/scripts-docs-apply.yml'
+  push:
+    branches: [main]
+    paths: *scripts_docs_paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check every script has a doc and docs/scripts/README.md is current
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check scripts/ documentation coverage and the generated index
+        shell: pwsh
+        run: ./scripts/Sync-ScriptsReadme.ps1

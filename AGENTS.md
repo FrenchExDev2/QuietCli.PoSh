@@ -1,5 +1,10 @@
 # QuietCli2 monorepo
 
+## Script-first automation
+
+- Any automatable operation on this repository is done through a script under `scripts/` (discover what already exists with `Get-ChildItem scripts -Recurse`, or browse the [scripts documentation index](docs/scripts/README.md)), never an ad hoc inline command improvised for one occasion. Extend an existing script before writing a new one that overlaps it.
+- At the start of every discussion that touches this repository, actively look for the opportunity to turn a manual or ad hoc sequence into a new or extended script under `scripts/`. A one-off command typed into a shell is a missed script, not a shortcut. A new or changed script must ship with its own doc under `docs/scripts/`, mirroring its subdirectory - see [Every script has a doc](docs/README-scripts-have-docs.md); the gate is `scripts/Sync-ScriptsReadme.ps1`.
+
 ## Production documentation
 
 - The public PowerShell module and Gallery package are named `QuietCli`; they provide Core. `FrenchExDev2.QuietCli.Core.PoSh` is the internal source project name, never a public package identity. Use `Install-PSResource -Name QuietCli` and `Import-Module QuietCli` in consumer instructions; retain explicit local manifest paths only for source development. Public packaging must use the `QuietCli` identity.
@@ -41,6 +46,7 @@ Read `README.md`, then the selected module README. This root is one Git reposito
 - `repositories.lock.json` schema 3 records one repository and six project source hashes/dependency lists. Checkout the workflow commit once; no child clone is performed. Record the actual Git revision in run/build reports rather than trying to pin a file to its own future commit.
 - From this root, use `scripts/Initialize-Workspace.ps1`, `scripts/Build-Workspace.ps1`, then `scripts/Invoke-WorkspaceCi.ps1 -SkipBuild -Suite All` (or `Git` for a Git-only development check). Local test runs retain the visible monitor requirement.
 - Before an explicit commit, refresh `scripts/Update-WorkspaceLock.ps1`. `Commit-Workspace.ps1` and `Push-Workspace.ps1` now operate on the single root repository.
+- `Commit-Workspace.ps1` adds no `Co-Authored-By` trailer by default; pass `-CoAuthoredBy` (one or more of `Claude`, `Codex`, or a literal `Name <email>`) only when the agent that produced the change should be credited in that specific commit. Known names resolve to: `Claude` -> `Claude Sonnet 5 <noreply@anthropic.com>`, `Codex` -> `Codex <noreply@openai.com>`.
 - PSGallery credentials belong only to the `psgallery` environment secret `PSGALLERY_API_KEY`. Never commit the workspace `.env`, print its token, pass it as a native command argument, or copy it into reports.
 - The migration preserves the four former local Git directories under ignored `artifacts/monorepo-migration`. Do not delete that archive or restore nested Git metadata during routine builds.
 
@@ -160,6 +166,14 @@ All repository text files must use UTF-8 and LF line endings on disk, including 
 - The paragraph is a regex-identifiable block surrounded by `<!-- credits:begin -->` / `<!-- credits:end -->` markers, matching this section's own `<!-- docs-credits:begin/end -->` convention. Never hand-edit a block out of sync with its generator.
 - Use [`scripts/Sync-DocsCredits.ps1`](scripts/Sync-DocsCredits.ps1) to check and apply it: no arguments reports compliance (recursively) without writing; `-Apply` writes the missing or stale block into every non-compliant `docs/**/*.md` or root `README*.md` file; `-Apply -WhatIf` previews that write without touching any file; `-NoRecurse` limits either mode to `docs/*.md`'s direct children. A new or renamed `docs/**/*.md` or root `README*.md` file must pass `-Apply` before being committed. The companion GitHub workflows [`sync-credits-check.yml`](.github/workflows/sync-credits-check.yml) and [`sync-credits-apply.yml`](.github/workflows/sync-credits-apply.yml) run this and `Sync-Credits.ps1`; see [docs/README-credits-and-syncing.md](docs/README-credits-and-syncing.md).
 <!-- docs-credits:end -->
+
+<!-- scripts-have-docs:begin -->
+## Every script has a doc
+
+- Every file under `scripts/` (`*.ps1`, `*.psm1`, recursively, including `lib/` and `RunProfiles/`) must have a matching Markdown doc under `docs/scripts/`, mirroring its subdirectory: `scripts/lib/Foo.psm1` is documented at `docs/scripts/lib/Foo.md`, `scripts/RunProfiles/bar.profile.ps1` at `docs/scripts/RunProfiles/bar.profile.md`, a root `scripts/Baz.ps1` at `docs/scripts/Baz.md`. When you add, rename, move or materially change a script's behavior (parameters, side effects, dependencies, known gaps), update its doc in the same change: purpose, usage, dependencies, side effects, a critical findings review (bugs, convention violations against this file, design smells, missing validation, test-coverage gaps — with file:line references) and a verdict.
+- Find a script's existing doc, or confirm one is missing, from the generated index [`docs/scripts/README.md`](docs/scripts/README.md) — it links every script to its doc, grouped by subdirectory. Never guess a doc's path by filename alone; the index is the source of truth for what already exists and what still needs writing.
+- Use [`scripts/Sync-ScriptsReadme.ps1`](scripts/Sync-ScriptsReadme.ps1) to check and apply the index: no arguments reports compliance and throws `ScriptsDocsMissing` the moment any script has no doc, or `ScriptsReadmeNonCompliant` if the index is stale — this is the gate, and it never writes. `-Apply` regenerates `docs/scripts/README.md` once every script is documented; `-Apply -WhatIf` previews that write without touching any file. `-Apply` cannot resolve a missing doc, only the index's own staleness. The companion GitHub workflows [`scripts-docs-check.yml`](.github/workflows/scripts-docs-check.yml) and [`scripts-docs-apply.yml`](.github/workflows/scripts-docs-apply.yml) run this; see [docs/README-scripts-have-docs.md](docs/README-scripts-have-docs.md).
+<!-- scripts-have-docs:end -->
 
 ## Gallery preview qualification
 

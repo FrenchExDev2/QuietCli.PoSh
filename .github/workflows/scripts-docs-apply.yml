@@ -1,0 +1,38 @@
+name: QuietCli2 Scripts docs apply
+
+# Manual only: regenerates docs/scripts/README.md from the scripts/ and docs/scripts/ trees actually
+# on disk, then commits and pushes that result directly to the branch this run was dispatched on.
+# Never runs on pull_request or push - triggering it is the explicit approval to write and push, per
+# docs/README-scripts-have-docs.md. It cannot fix a missing script doc, only the index's own
+# staleness - that failure (ScriptsDocsMissing) must be fixed by adding the doc before this can
+# succeed. Companion read-only workflow: scripts-docs-check.yml.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    name: Apply scripts docs index and push
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: true
+      - name: Regenerate docs/scripts/README.md
+        shell: pwsh
+        run: ./scripts/Sync-ScriptsReadme.ps1 -Apply
+      - name: Commit and push the result, if anything changed
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add --all -- docs/scripts/README.md
+          if (git diff --cached --quiet) {
+            Write-Host 'Nothing to commit: docs/scripts/README.md is already up to date.'
+          } else {
+            git commit -m 'Sync docs/scripts/README.md'
+            git push origin "HEAD:${{ github.ref }}"
+          }
