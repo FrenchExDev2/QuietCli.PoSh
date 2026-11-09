@@ -24,9 +24,36 @@ QuietCli's engine streams native output once. Your own code decides what that st
 In short: `-Output` folds raw events into accumulated state, `-Complete` projects that state into the business output you asked for. A companion module (see the Git example below) just supplies a ready-made `-Output`/`-Complete` pair — a handler — for one executable, so you don't write the fold or the projection yourself.
 
 Callbacks can also call `$runtime.Emit($event)` to collect business events and notify `-Listeners`
-without producing pipeline output. `-UI` exposes a separate live presentation surface. The
+without producing pipeline output. Every emitted event is also kept on `$runtime.Events`, in order,
+whether or not a listener is attached — so `-Complete` can read it directly, and the finished result
+reports the same list under `Data.Events`. `-UI` exposes a separate live presentation surface. The
 [streaming guide](README-streaming.md) explains these contracts, and the
 [Vagrant companion](FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) uses both for per-machine progress.
+
+```powershell
+$r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
+    -RecordDelimiter "`n" -Data @{ Version = $null } `
+    -Listeners {
+        param($event, $runtime)
+        Write-Host "SDK version emitted: $event"
+    } `
+    -Output {
+        param($event, $runtime)
+        if ($event.Stream -eq 'stdout') {
+            $runtime.Data.Version = $event.Text.Trim()
+            $runtime.Emit($runtime.Data.Version)
+        }
+    } `
+    -Complete {
+        param($runtime)
+        [pscustomobject]@{ SdkVersion = $runtime.Data.Version; Emitted = $runtime.Events }
+    } `
+    dotnet --version
+```
+
+`-Listeners` accepts one scriptblock or an array of scriptblocks and runs each one synchronously as
+`$runtime.Emit(...)` is called. `-Complete` needs no listener to see the same values: it reads
+`$runtime.Events` directly, which is why `Emitted` above duplicates what the listener already printed.
 
 ## Roadmap: from a script to an ecosystem
 
