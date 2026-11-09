@@ -16,3 +16,9 @@ The first mutation campaign failed to copy the baseline apphost from its deeply 
 - The shared launcher provided a visible monitor for each run and saved terminal results before closure. Source identity checks passed at the end of both runs.
 
 The mutation campaign is explicitly requested with QUIETCLI_GIT_PUSH_MUTATION=1 when the push implementation or its tests/tooling changes; reproduction is documented in the companion README. Its catalogue does not establish exhaustive coverage. These targeted Git-only checks do not replace release qualification, the Git version compatibility matrix or unexecuted Linux/ARM64 checks for this revision. No commit, push or publication was performed.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

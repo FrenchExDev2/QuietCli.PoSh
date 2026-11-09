@@ -20,3 +20,9 @@ Gallery tests verify suffix preservation, rejection of stripped/wrong versions, 
 - FrenchExDev2.QuietCli.Git.PoSh.0.2.0-preview.nupkg: FDD5C0C4A417CC9084AD9B10D86F9530D162B3232550F58AFF4A283AB804D807
 
 Durable local artifacts: artifacts/tests/integrated-matrix-20261105 and artifacts/gallery-preview-20261105. Full frozen run trees and the read-only monitor scripts remain at C:\Users\serard\AppData\Local\Temp\quietcli-integrated-matrix-cb628f1f. The JSON summaries retain host versions, engine identities, test results and build/source fingerprints. The live PTY task was left running independently; its later source changes are outside this frozen evidence.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

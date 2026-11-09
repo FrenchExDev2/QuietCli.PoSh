@@ -16,3 +16,9 @@ Exact local receipts and source/binary identities are retained in those run dire
 The native assertions cover tracked paths/stages/requested formats; local refs and explicitly requested local advertisements; SHA-1 blob hashing against an independently calculated object header; revision parents; ancestry/non-ancestry/native errors; counters; version; ref validation; detached symbolic refs. Advanced output shapes use RequestedFormat or fail explicitly; they are not silently filtered into misleading object lists. Qualification remains Pending in Get-QuietGitCoverage, which now exposes HandlerLanguage and ParserTypes.
 
 Official sources: [ls-files](https://git-scm.com/docs/git-ls-files), [for-each-ref](https://git-scm.com/docs/git-for-each-ref), [show-ref](https://git-scm.com/docs/git-show-ref), [ls-remote](https://git-scm.com/docs/git-ls-remote), [rev-list](https://git-scm.com/docs/git-rev-list), [count-objects](https://git-scm.com/docs/git-count-objects). No push or publication was performed.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

@@ -54,6 +54,17 @@ function Invoke-QuietGalleryPreviewTests {
     . (Join-Path $WorkspaceRoot 'scripts/Gallery.ps1')
     $previewRoot=Join-Path $RunDirectory 'gallery-preview';[void][IO.Directory]::CreateDirectory($previewRoot)
     $cases=[ordered]@{};$results=[Collections.Generic.List[object]]::new();$mutants=[Collections.Generic.List[object]]::new()
+    $identityEvidence=[Collections.Generic.List[object]]::new()
+    $cases['public QuietCli staging preserves sources and rejects executable manifests']={
+        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/GalleryIdentity.Tests.ps1')
+        $identity=Invoke-QuietGalleryIdentityTests -RunDirectory $previewRoot -Mutation:$Mutation
+        $identityEvidence.Add($identity)
+        foreach($mutant in $identity.Mutations){$mutants.Add($mutant)}
+    }
+    $cases['timestamp preview tags preserve manifest versions and enforce local creation boundaries']={
+        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/PreviewTag.Tests.ps1')
+        Invoke-QuietPreviewTagTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Mutation:$Mutation
+    }
     $cases['preview identities have deterministic ordering, uniqueness and strict generated boundaries']={
         Test-QuietPreviewVersionProperties -Create (Get-Command New-QuietGalleryPreviewVersion)
     }
@@ -117,7 +128,7 @@ function Invoke-QuietGalleryPreviewTests {
             if($line.Stream -eq 'stdout' -and $line.Text.StartsWith('{')){$data.Report=$line.Text|ConvertFrom-Json}
         }
         $expected=Get-Content -LiteralPath (Join-Path $previewRoot 'packages/package-set.json') -Raw -Encoding utf8|ConvertFrom-Json
-        if($execution.Outcome -cne 'Success' -or $capture.Report.GitModuleLoaded -or $capture.Report.NativeExecution -cne 'Success' -or !$capture.Report.Installed -or $capture.Report.PackageVersion -cne $expected.Version){throw 'PreviewInstallationFailed'}
+        if($execution.Outcome -cne 'Success' -or $capture.Report.ModuleName -cne 'QuietCli' -or !$capture.Report.GeneratedScript -or $capture.Report.ScaffoldDependency -cne 'QuietCli' -or $capture.Report.GitModuleLoaded -or $capture.Report.NativeExecution -cne 'Success' -or !$capture.Report.Installed -or $capture.Report.PackageVersion -cne $expected.Version){throw 'PreviewInstallationFailed'}
     }
     $cases['publication uses the validated artifacts in Core-only scope without real credentials or network']={
         $previewPublicationCalls=[Collections.Generic.List[string]]::new()
@@ -141,7 +152,7 @@ function Invoke-QuietGalleryPreviewTests {
             #>
             param([string]$NupkgPath,[string]$Repository,[string]$ApiKey,[switch]$SkipDependenciesCheck,[object]$ErrorAction)
             if(!$NupkgPath.EndsWith('.nupkg') -or $Repository -cne 'PSGallery'){throw 'PreviewPublicationDestination'}
-            if(![IO.Path]::GetFileName($NupkgPath).StartsWith('FrenchExDev2.QuietCli.Core.PoSh.',[StringComparison]::Ordinal) -or $SkipDependenciesCheck -or $previewPublicationCalls.Count){throw 'OnlyCorePublicationAllowed'}
+            if(![IO.Path]::GetFileName($NupkgPath).StartsWith('QuietCli.',[StringComparison]::Ordinal) -or $SkipDependenciesCheck -or $previewPublicationCalls.Count){throw 'OnlyCorePublicationAllowed'}
             $previewPublicationCalls.Add([IO.Path]::GetFileName($NupkgPath))
         }
         Set-Alias Get-PSResourceRepository Invoke-PreviewFixtureRepository -Scope Local
@@ -161,10 +172,11 @@ function Invoke-QuietGalleryPreviewTests {
         $original=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
         $extra=Join-Path $directory 'FrenchExDev2.QuietCli.Git.PoSh.fixture.nupkg'
         try{
-            foreach($variant in @('extra-archive','git-identity','extra-plan-entry')){
+            foreach($variant in @('extra-archive','git-identity','source-identity','extra-plan-entry')){
                 $plan=$original|ConvertFrom-Json
                 if($variant -eq 'extra-archive'){[void][IO.File]::WriteAllBytesAsync($extra,[byte[]]@(1)).GetAwaiter().GetResult()}
                 elseif($variant -eq 'git-identity'){$plan.Packages[0].Module='FrenchExDev2.QuietCli.Git.PoSh'}
+                elseif($variant -eq 'source-identity'){$plan.Packages[0].Module='FrenchExDev2.QuietCli.Core.PoSh'}
                 else{$plan.Packages+=@{Module='FrenchExDev2.QuietCli.Git.PoSh';File='forbidden.nupkg'}}
                 Write-WorkspaceJson $path $plan
                 $rejected=$false
@@ -178,6 +190,13 @@ function Invoke-QuietGalleryPreviewTests {
         }
     }
     if($Mutation){
+        $cases['compiled module identity mutations are detected without changing source projects']={
+            . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/ConfigurationDelivery.Mutation.ps1')
+            $directory=Join-Path $previewRoot 'compiled-identity';[void][IO.Directory]::CreateDirectory($directory)
+            $compiled=Invoke-QuietConfigurationDeliveryEngine -WorkspaceRoot $WorkspaceRoot -RunDirectory $directory -Mutation -MutationName @('module-session-identity','module-session-validation','script-module-identity','scaffold-module-identity')
+            Write-WorkspaceJson (Join-Path $directory 'summary.json') $compiled
+            if($compiled.Failed -or $compiled.Mutations.Count -ne 4 -or @($compiled.Mutations|Where-Object State -CNE Killed).Count){throw 'CompiledModuleIdentityMutationFailed'}
+        }
         $cases['version mutations are all detected by independent examples, properties and malformed inputs']={
             $path=Join-Path $WorkspaceRoot 'scripts/Gallery.ps1';$source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
             $catalogue=@(
@@ -216,7 +235,7 @@ function Invoke-QuietGalleryPreviewTests {
         $results.Add([pscustomobject]@{Name=$entry.Key;State=$state;Error=$errorText})
         if($OnProgress){$null=& $OnProgress $entry.Key $state $passed $failed}
     }
-    $summary=[pscustomobject]@{Project='GalleryPreview';Passed=$passed;Failed=$failed;Seed=82719;GeneratedInputs=128;Cases=$results.ToArray();Mutations=$mutants.ToArray();ExternalPublication=$false}
+    $summary=[pscustomobject]@{Project='GalleryPreview';Passed=$passed;Failed=$failed;Seed=82719;GeneratedInputs=128;PublicIdentity=$identityEvidence.ToArray();Cases=$results.ToArray();Mutations=$mutants.ToArray();ExternalPublication=$false}
     Write-WorkspaceJson (Join-Path $previewRoot 'summary.json') $summary
     return $summary
 }

@@ -1,0 +1,193 @@
+{
+  "SchemaVersion": 1,
+  "SourceEditor": "Insiders",
+  "SourceEditorVersion": "1.146.0-insider",
+  "ExportedUtc": "2026-11-08T16:57:57.1175028+00:00",
+  "Extensions": [
+    {
+      "Id": "anthropic.claude-code",
+      "InstalledVersion": "2.1.319",
+      "PreRelease": false
+    },
+    {
+      "Id": "christian-kohler.npm-intellisense",
+      "InstalledVersion": "1.4.5",
+      "PreRelease": false
+    },
+    {
+      "Id": "davidanson.vscode-markdownlint",
+      "InstalledVersion": "0.62.1",
+      "PreRelease": false
+    },
+    {
+      "Id": "dbaeumer.vscode-eslint",
+      "InstalledVersion": "3.0.34",
+      "PreRelease": false
+    },
+    {
+      "Id": "edtroleis.vscode-wsl-distro-manager",
+      "InstalledVersion": "0.0.6",
+      "PreRelease": false
+    },
+    {
+      "Id": "esbenp.prettier-vscode",
+      "InstalledVersion": "12.4.0",
+      "PreRelease": false
+    },
+    {
+      "Id": "frenchexdev.powershell-watchdog",
+      "InstalledVersion": "0.5.5",
+      "PreRelease": false
+    },
+    {
+      "Id": "ganymede404.vscode-codex-usage",
+      "InstalledVersion": "0.2.4",
+      "PreRelease": false
+    },
+    {
+      "Id": "github.vscode-github-actions",
+      "InstalledVersion": "0.32.3",
+      "PreRelease": false
+    },
+    {
+      "Id": "golang.go",
+      "InstalledVersion": "0.58.0",
+      "PreRelease": false
+    },
+    {
+      "Id": "ironmansoftware.powershellprotools",
+      "InstalledVersion": "2024.12.0",
+      "PreRelease": false
+    },
+    {
+      "Id": "mechatroner.rainbow-csv",
+      "InstalledVersion": "3.24.1",
+      "PreRelease": false
+    },
+    {
+      "Id": "microsoft-aspire.aspire-vscode",
+      "InstalledVersion": "1.24.0",
+      "PreRelease": false
+    },
+    {
+      "Id": "ms-azuretools.vscode-containers",
+      "InstalledVersion": "2.5.3",
+      "PreRelease": false
+    },
+    {
+      "Id": "ms-dotnettools.csdevkit",
+      "InstalledVersion": "3.40.215",
+      "PreRelease": false
+    },
+    {
+      "Id": "ms-dotnettools.csharp",
+      "InstalledVersion": "11.7.18",
+      "PreRelease": true
+    },
+    {
+      "Id": "ms-dotnettools.vscode-dotnet-runtime",
+      "InstalledVersion": "3.2.0",
+      "PreRelease": false
+    },
+    {
+      "Id": "ms-python.debugpy",
+      "InstalledVersion": "2026.6.0",
+      "PreRelease": false
+    },
+    {
+      "Id": "ms-python.python",
+      "InstalledVersion": "2026.10.0",
+      "PreRelease": false
+    },
+    {
+      "Id": "ms-python.vscode-pylance",
+      "InstalledVersion": "2026.4.1",
+      "PreRelease": false
+    },
+    {
+      "Id": "ms-python.vscode-python-envs",
+      "InstalledVersion": "1.42.0",
+      "PreRelease": false
+    },
+    {
+      "Id": "ms-vscode-remote.remote-containers",
+      "InstalledVersion": "0.472.0",
+      "PreRelease": true
+    },
+    {
+      "Id": "ms-vscode-remote.remote-ssh",
+      "InstalledVersion": "0.129.2026100915",
+      "PreRelease": true
+    },
+    {
+      "Id": "ms-vscode-remote.remote-ssh-edit",
+      "InstalledVersion": "0.87.0",
+      "PreRelease": false
+    },
+    {
+      "Id": "ms-vscode-remote.remote-wsl",
+      "InstalledVersion": "1.104.7",
+      "PreRelease": false
+    },
+    {
+      "Id": "ms-vscode-remote.vscode-remote-extensionpack",
+      "InstalledVersion": "0.26.0",
+      "PreRelease": false
+    },
+    {
+      "Id": "ms-vscode.powershell",
+      "InstalledVersion": "2026.1.2",
+      "PreRelease": true
+    },
+    {
+      "Id": "ms-vscode.remote-explorer",
+      "InstalledVersion": "0.6.2026100809",
+      "PreRelease": true
+    },
+    {
+      "Id": "ms-vscode.remote-server",
+      "InstalledVersion": "1.6.2026092109",
+      "PreRelease": true
+    },
+    {
+      "Id": "openai.chatgpt",
+      "InstalledVersion": "26.1021.22027",
+      "PreRelease": false
+    },
+    {
+      "Id": "openai.codex-audio",
+      "InstalledVersion": "26.1021.22027",
+      "PreRelease": false
+    },
+    {
+      "Id": "streetsidesoftware.code-spell-checker",
+      "InstalledVersion": "4.10.0",
+      "PreRelease": false
+    },
+    {
+      "Id": "tijnndev27.open-in-wsl-terminal",
+      "InstalledVersion": "1.0.0",
+      "PreRelease": false
+    },
+    {
+      "Id": "tomoki1207.pdf",
+      "InstalledVersion": "1.2.2",
+      "PreRelease": false
+    },
+    {
+      "Id": "typescriptteam.native-preview",
+      "InstalledVersion": "1.0.2",
+      "PreRelease": false
+    },
+    {
+      "Id": "utiltools.kubernetes-dashboard-utiltools",
+      "InstalledVersion": "1.0.4",
+      "PreRelease": false
+    },
+    {
+      "Id": "vitest.explorer",
+      "InstalledVersion": "1.52.2",
+      "PreRelease": false
+    }
+  ]
+}

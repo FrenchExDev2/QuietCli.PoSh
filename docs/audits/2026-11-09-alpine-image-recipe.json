@@ -1,0 +1,398 @@
+{
+  "RecipeTestScope": {
+    "Failed": 0,
+    "Passed": 1,
+    "Skipped": 65,
+    "Partial": true
+  },
+  "Qualification": "ImageBootstrapSmokeOnly",
+  "RecipeTestsRun": "C:/Users/serard/AppData/Local/Temp/QuietCli2/874a99c9b658/tests/20261109-093326-cf7d1b",
+  "SmokeRun": "C:/Users/serard/AppData/Local/Temp/QuietCli2/874a99c9b658/alpine-image/968059536e6141a78d0f897bcb309301",
+  "RecipeSourceSHA256": "AA51D47D1D89E9D1983690640F0A914E3911A5502818EABA974162D5C7B13CEE",
+  "Runtime": {
+    "Diagnosis": {
+      "SchemaVersion": 1,
+      "Decision": "AssetSelection",
+      "Findings": [
+        "ReportedRidDiffersFromRequestedPortableTarget",
+        "RawRidAssetMissingButExpectedAssetLoadsWithVerifiedHash"
+      ],
+      "NextSteps": [
+        "Review raw-RID resource paths and CI identity comparisons; qualify any explicit portable-RID mapping before adopting it."
+      ],
+      "ExpectedRuntimeIdentifier": "linux-musl-x64",
+      "BootstrapConfigurationProblem": false,
+      "AssetSelectionProblem": true,
+      "UsableProbeCount": 2,
+      "ReportedRuntimeIdentifiers": [
+        "alpine.3.24-x64"
+      ],
+      "RecreateUnchangedContainerFixesIssue": false,
+      "WholeProductCompatibilityProven": false,
+      "Qualification": "DiagnosticOnly"
+    },
+    "Qualification": "DiagnosticOnly",
+    "Image": {
+      "Id": "14226520251bfa04fc2a45b36b758474eff0e2b08d1d2b96bbcd33cfa9eb2f49",
+      "Architecture": "amd64",
+      "Os": "linux"
+    },
+    "State": {
+      "Project": "FrenchExDev2.QuietCli.Core.PoSh",
+      "Error": null,
+      "Case": "AssetSelection",
+      "Task": "Container runtime and RID diagnosis",
+      "ProjectDirectory": "C:\\code\\FrenchExDev\\FrenchExDev_i2\\PoSh\\FrenchExDev\\QuietCliEcosystem\\FrenchExDev2.QuietCli.PoSh\\FrenchExDev2.QuietCli.Core.PoSh",
+      "ProcessId": 29464,
+      "Failed": null,
+      "FinishedUtc": "2026-11-09T10:36:54.2683965+01:00",
+      "ContainerId": "quietcli-runtime-b9f2d53d89aa",
+      "Passed": null,
+      "Runs": [
+        {
+          "Platform": "alpine.3.24-x64",
+          "FinishedUtc": "2026-11-09T10:36:39.397378+01:00",
+          "State": "Success",
+          "StartedUtc": "2026-11-09T10:36:34.6644873+01:00",
+          "Identity": "quietcli-runtime-b9f2d53d89aa/Default"
+        },
+        {
+          "Platform": "alpine.3.24-x64",
+          "FinishedUtc": "2026-11-09T10:36:42.6029252+01:00",
+          "State": "Success",
+          "StartedUtc": "2026-11-09T10:36:39.4028615+01:00",
+          "Identity": "quietcli-runtime-b9f2d53d89aa/Root0"
+        },
+        {
+          "Platform": "-",
+          "FinishedUtc": "2026-11-09T10:36:43.5735535+01:00",
+          "State": "Failed",
+          "StartedUtc": "2026-11-09T10:36:42.6045815+01:00",
+          "Identity": "quietcli-runtime-b9f2d53d89aa/Root1"
+        }
+      ],
+      "Platform": "alpine.3.24-x64",
+      "State": "Success",
+      "StartedUtc": "2026-11-09T10:36:30.1321696+01:00",
+      "Cleanup": "RemovedOwnedContainer",
+      "Workspace": "C:\\code\\FrenchExDev\\FrenchExDev_i2\\PoSh\\FrenchExDev\\QuietCliEcosystem\\FrenchExDev2.QuietCli.PoSh"
+    },
+    "Observations": [
+      {
+        "Name": "Default",
+        "RuntimeRoot": null,
+        "Outcome": "Success",
+        "Execution": {
+          "Arguments": [
+            "exec",
+            "quietcli-runtime-b9f2d53d89aa",
+            "pwsh",
+            "-File",
+            "/diagnostic/Probe-ContainerRuntime.ps1",
+            "-OutputPath",
+            "/diagnostic/Default.json",
+            "-AssetsRoot",
+            "/diagnostic/assets",
+            "-ExpectedRuntimeIdentifier",
+            "linux-musl-x64"
+          ],
+          "Outcome": "Success",
+          "ExitCode": 0,
+          "ElapsedMs": 4100.7065,
+          "Diagnostics": []
+        },
+        "Probe": {
+          "SchemaVersion": 1,
+          "Phase": "Complete",
+          "Linux": true,
+          "PowerShellVersion": "7.6.9",
+          "RuntimeIdentifier": "alpine.3.24-x64",
+          "FrameworkMajor": 10,
+          "FrameworkDescription": ".NET 10.0.14",
+          "RuntimeDirectory": "/usr/lib/dotnet/shared/Microsoft.NETCore.App/10.0.14/",
+          "ProcessArchitecture": "x64",
+          "OSArchitecture": "x64",
+          "HostExecutable": "/usr/lib/powershell/pwsh",
+          "ElfMachine": 62,
+          "Libc": "Musl",
+          "LoadedLibcPaths": [
+            "/lib/ld-musl-x86_64.so.1"
+          ],
+          "OSRelease": {
+            "VERSION_ID": "3.24.3",
+            "ID": "alpine"
+          },
+          "RuntimeRoots": {
+            "DOTNET_ROOT_X64": null,
+            "DOTNET_ROOT_ARM64": null,
+            "DOTNET_ROOT": "/usr/lib/dotnet"
+          },
+          "RawNative": {
+            "Path": "/diagnostic/assets/alpine.3.24-x64/libe_sqlite3.so",
+            "HashMatches": false,
+            "Outcome": "Missing"
+          },
+          "ExpectedNative": {
+            "Path": "/diagnostic/assets/linux-musl-x64/libe_sqlite3.so",
+            "SQLiteVersion": "3.53.3",
+            "HashMatches": true,
+            "SHA256": "647B7B5886526691AED58E0FCBB56DC1E6DEA8B1F9F5390782F0C95269250DB1",
+            "Outcome": "Success"
+          }
+        }
+      },
+      {
+        "Name": "Root0",
+        "RuntimeRoot": "/usr/lib/dotnet",
+        "Outcome": "Success",
+        "Execution": {
+          "Arguments": [
+            "exec",
+            "--env",
+            "DOTNET_ROOT=/usr/lib/dotnet",
+            "--env",
+            "DOTNET_ROOT_X64=/usr/lib/dotnet",
+            "quietcli-runtime-b9f2d53d89aa",
+            "pwsh",
+            "-File",
+            "/diagnostic/Probe-ContainerRuntime.ps1",
+            "-OutputPath",
+            "/diagnostic/Root0.json",
+            "-AssetsRoot",
+            "/diagnostic/assets",
+            "-ExpectedRuntimeIdentifier",
+            "linux-musl-x64"
+          ],
+          "Outcome": "Success",
+          "ExitCode": 0,
+          "ElapsedMs": 2614.5924,
+          "Diagnostics": []
+        },
+        "Probe": {
+          "SchemaVersion": 1,
+          "Phase": "Complete",
+          "Linux": true,
+          "PowerShellVersion": "7.6.9",
+          "RuntimeIdentifier": "alpine.3.24-x64",
+          "FrameworkMajor": 10,
+          "FrameworkDescription": ".NET 10.0.14",
+          "RuntimeDirectory": "/usr/lib/dotnet/shared/Microsoft.NETCore.App/10.0.14/",
+          "ProcessArchitecture": "x64",
+          "OSArchitecture": "x64",
+          "HostExecutable": "/usr/lib/powershell/pwsh",
+          "ElfMachine": 62,
+          "Libc": "Musl",
+          "LoadedLibcPaths": [
+            "/lib/ld-musl-x86_64.so.1"
+          ],
+          "OSRelease": {
+            "VERSION_ID": "3.24.3",
+            "ID": "alpine"
+          },
+          "RuntimeRoots": {
+            "DOTNET_ROOT": "/usr/lib/dotnet",
+            "DOTNET_ROOT_ARM64": null,
+            "DOTNET_ROOT_X64": "/usr/lib/dotnet"
+          },
+          "RawNative": {
+            "Outcome": "Missing",
+            "Path": "/diagnostic/assets/alpine.3.24-x64/libe_sqlite3.so",
+            "HashMatches": false
+          },
+          "ExpectedNative": {
+            "SHA256": "647B7B5886526691AED58E0FCBB56DC1E6DEA8B1F9F5390782F0C95269250DB1",
+            "Outcome": "Success",
+            "Path": "/diagnostic/assets/linux-musl-x64/libe_sqlite3.so",
+            "SQLiteVersion": "3.53.3",
+            "HashMatches": true
+          }
+        }
+      },
+      {
+        "Name": "Root1",
+        "RuntimeRoot": "/usr/share/dotnet",
+        "Outcome": "Failed",
+        "Execution": {
+          "Arguments": [
+            "exec",
+            "--env",
+            "DOTNET_ROOT=/usr/share/dotnet",
+            "--env",
+            "DOTNET_ROOT_X64=/usr/share/dotnet",
+            "quietcli-runtime-b9f2d53d89aa",
+            "pwsh",
+            "-File",
+            "/diagnostic/Probe-ContainerRuntime.ps1",
+            "-OutputPath",
+            "/diagnostic/Root1.json",
+            "-AssetsRoot",
+            "/diagnostic/assets",
+            "-ExpectedRuntimeIdentifier",
+            "linux-musl-x64"
+          ],
+          "Outcome": "Failed",
+          "ExitCode": 150,
+          "ElapsedMs": 561.9913,
+          "Diagnostics": [
+            "You must install or update .NET to run this application.",
+            "",
+            "App: /usr/lib/powershell/pwsh",
+            "Architecture: x64",
+            "Framework: 'Microsoft.NETCore.App', version '10.0.0' (x64)",
+            ".NET location: /usr/share/dotnet",
+            "",
+            "The following frameworks were found:",
+            "  11.0.0-rc.3.26522.148 at [/usr/share/dotnet/shared/Microsoft.NETCore.App]",
+            "",
+            "Learn more:",
+            "https://aka.ms/dotnet/app-launch-failed",
+            "",
+            "To install missing framework, download:",
+            "https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=10.0.0&arch=x64&rid=linux-musl-x64&os=linux-musl"
+          ]
+        },
+        "Probe": null
+      }
+    ]
+  },
+  "Smoke": {
+    "State": {
+      "Task": "Alpine image build and runtime smoke",
+      "ContainerId": "quietcli-sdk-abe5dec100a1",
+      "Project": "FrenchExDev2.QuietCli.Core.PoSh",
+      "FinishedUtc": "2026-11-09T10:36:56.1465429+01:00",
+      "Passed": 9,
+      "StartedUtc": "2026-11-09T10:35:32.5398772+01:00",
+      "Platform": "alpine.3.24-x64",
+      "ProjectDirectory": "C:\\code\\FrenchExDev\\FrenchExDev_i2\\PoSh\\FrenchExDev\\QuietCliEcosystem\\FrenchExDev2.QuietCli.PoSh\\FrenchExDev2.QuietCli.Core.PoSh",
+      "Workspace": "C:\\code\\FrenchExDev\\FrenchExDev_i2\\PoSh\\FrenchExDev\\QuietCliEcosystem\\FrenchExDev2.QuietCli.PoSh",
+      "Failed": 0,
+      "ProcessId": 30928,
+      "Error": null,
+      "Cleanup": "OwnedProbeAbsent",
+      "State": "Success",
+      "Case": "Check the pinned SDK with the same image defaults"
+    },
+    "Backend": {
+      "Outcome": "Success",
+      "ExitCode": 0,
+      "Stdout": [
+        "linux amd64"
+      ],
+      "Stderr": []
+    },
+    "Diagnosis": {
+      "SchemaVersion": 1,
+      "Decision": "AssetSelection",
+      "Findings": [
+        "ReportedRidDiffersFromRequestedPortableTarget",
+        "RawRidAssetMissingButExpectedAssetLoadsWithVerifiedHash"
+      ],
+      "NextSteps": [
+        "Review raw-RID resource paths and CI identity comparisons; qualify any explicit portable-RID mapping before adopting it."
+      ],
+      "ExpectedRuntimeIdentifier": "linux-musl-x64",
+      "BootstrapConfigurationProblem": false,
+      "AssetSelectionProblem": true,
+      "UsableProbeCount": 2,
+      "ReportedRuntimeIdentifiers": [
+        "alpine.3.24-x64"
+      ],
+      "RecreateUnchangedContainerFixesIssue": false,
+      "WholeProductCompatibilityProven": false,
+      "Qualification": "DiagnosticOnly"
+    },
+    "Sdk": {
+      "Outcome": "Success",
+      "ExitCode": 0,
+      "Stdout": [
+        "11.0.100-rc.3.26522.148"
+      ],
+      "Stderr": []
+    },
+    "Checks": [
+      {
+        "Passed": true,
+        "Name": "The Podman backend is native Linux for the selected architecture"
+      },
+      {
+        "Passed": true,
+        "Name": "The builder returned a local image without publication"
+      },
+      {
+        "Passed": true,
+        "Name": "PowerShell starts with the unchanged image defaults"
+      },
+      {
+        "Passed": true,
+        "Name": "The installed PowerShell version matches the locked package"
+      },
+      {
+        "Passed": true,
+        "Name": "Stable PowerShell uses the distribution CLR 10"
+      },
+      {
+        "Passed": true,
+        "Name": "The expected musl SQLite asset actually loads"
+      },
+      {
+        "Passed": true,
+        "Name": "No runtime-root bootstrap correction is needed"
+      },
+      {
+        "Passed": true,
+        "Name": "Runtime diagnostic container removal was confirmed"
+      },
+      {
+        "Passed": true,
+        "Name": "The .NET CLI still starts the pinned SDK under the same defaults"
+      }
+    ],
+    "Image": {
+      "Image": "14226520251bfa04fc2a45b36b758474eff0e2b08d1d2b96bbcd33cfa9eb2f49",
+      "RuntimeIdentifier": "linux-musl-x64",
+      "Fingerprint": "e4c8171c44d8e6b99b05d51e0c9eeb3ec0512ab3706ca360aef296f54bdf5c4e",
+      "Base": "docker.io/library/alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a",
+      "Registry": "ghcr.io/frenchexdev2/quietcli2-ci-alpine-x64:e4c8171c44d8e6b99b05d51e0c9eeb3ec0512ab3706ca360aef296f54bdf5c4e",
+      "RegistryDigest": null,
+      "CacheHit": false,
+      "Published": false,
+      "RunnerArchitecture": "X64",
+      "Dockerfile": "C:\\code\\FrenchExDev\\FrenchExDev_i2\\PoSh\\FrenchExDev\\QuietCliEcosystem\\FrenchExDev2.QuietCli.PoSh\\artifacts\\ci-images\\linux-musl-x64-313e72cf20ee49b9bf384193e191ec06\\Containerfile",
+      "LogPath": "C:\\code\\FrenchExDev\\FrenchExDev_i2\\PoSh\\FrenchExDev\\QuietCliEcosystem\\FrenchExDev2.QuietCli.PoSh\\artifacts\\ci-images\\linux-musl-x64-313e72cf20ee49b9bf384193e191ec06\\podman.log"
+    },
+    "Qualification": "ImageBootstrapSmokeOnly"
+  },
+  "Date": "2026-11-09",
+  "RecipeTests": {
+    "GeneratedPlans": 200,
+    "Seed": 20261109,
+    "SourceSHA256": "AA51D47D1D89E9D1983690640F0A914E3911A5502818EABA974162D5C7B13CEE",
+    "MalformedInputs": 9,
+    "TargetExamples": 4,
+    "Mutations": [
+      {
+        "Name": "powershell-installation-removed",
+        "Outcome": "Killed"
+      },
+      {
+        "Name": "powershell-package-unpinned",
+        "Outcome": "Killed"
+      },
+      {
+        "Name": "alpine-host-root-points-at-sdk",
+        "Outcome": "Killed"
+      },
+      {
+        "Name": "alpine-sdk-path-shadowed",
+        "Outcome": "Killed"
+      },
+      {
+        "Name": "package-final-newline-accepted",
+        "Outcome": "Killed"
+      }
+    ]
+  },
+  "SchemaVersion": 1,
+  "ContainerfileSHA256": "37DB7D22278134287FF39C04322258658145FEA8E57E9BFCB9C93FD708DA885B"
+}

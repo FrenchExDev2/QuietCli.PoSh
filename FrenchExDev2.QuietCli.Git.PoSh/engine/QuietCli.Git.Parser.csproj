@@ -9,6 +9,6 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Compile-time only: the PowerShell host supplies the runtime assembly. -->
-    <PackageReference Include="System.Management.Automation" Version="7.6.9" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="System.Management.Automation" PrivateAssets="all" ExcludeAssets="runtime" />
   </ItemGroup>
 </Project>

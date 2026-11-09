@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Management.Automation;
 using System.Text;
+using Spectre.Console;
 
 namespace FrenchExDev2.QuietCli.Cmdlets;
 
@@ -78,6 +79,14 @@ public sealed class QuietRuntime
     public object? Recall { get; set; }
     /// <summary>Sequences the analysis declared ignored.</summary>
     public HashSet<long> IgnoredSequences { get; } = [];
+    /// <summary>Observers invoked synchronously by <see cref="Emit"/>, in order; empty unless the caller passed -Listeners.</summary>
+    public ScriptBlock[] Listeners { get; internal set; } = [];
+    /// <summary>Every value passed to <see cref="Emit"/>, collected in order regardless of whether any listener is attached.</summary>
+    public List<object?> Events { get; } = [];
+    /// <summary>Indexes into <see cref="Listeners"/> that failed and are skipped for the remainder of this call.</summary>
+    private HashSet<int>? disabledListeners;
+    /// <summary>Live presentation frame for -UI; null (zero cost) unless the caller requested it.</summary>
+    public QuietUiRenderer? Ui { get; internal set; }
 
     /// <summary>Moves the lifecycle forward; any other transition is rejected.</summary>
     /// <param name="next">Running, Draining, Completing or Finalized.</param>
@@ -298,7 +307,7 @@ public sealed class QuietRuntime
     }
 
     /// <summary>Appends one diagnostic record.</summary>
-    private void AddError(string code, string phase, string message) => Errors.Add(new Hashtable { ["Code"] = code, ["Phase"] = phase, ["Message"] = message });
+    internal void AddError(string code, string phase, string message) => Errors.Add(new Hashtable { ["Code"] = code, ["Phase"] = phase, ["Message"] = message });
 
     /// <summary>Builds the transient event object handed to output callbacks.</summary>
     private static PSObject NewEvent(string stream, string kind, byte[]? bytes, string? text, int? byteCount)
@@ -322,6 +331,26 @@ public sealed class QuietRuntime
         finally { CallbackMs += watch.Elapsed.TotalMilliseconds; }
     }
 
+    /// <summary>Records one event and pushes it to every attached listener, in order; never affects <see cref="AnalysisComplete"/> or the invocation's <c>Outcome</c>.</summary>
+    /// <param name="evt">Caller-owned event value; normalized the same way as a callback return value.</param>
+    public void Emit(object? evt)
+    {
+        object? value = Normalize(evt);
+        Events.Add(value);
+        if (Listeners.Length == 0) return;
+        for (int i = 0; i < Listeners.Length; i++)
+        {
+            if (disabledListeners?.Contains(i) == true) continue;
+            var watch = Stopwatch.StartNew();
+            try { Callback(Listeners[i], [value!, this], true); }
+            catch (Exception error) { (disabledListeners ??= []).Add(i); AddError("ListenerFailed", "Emit", $"Listener[{i}]: {error.Message}"); }
+            finally { CallbackMs += watch.Elapsed.TotalMilliseconds; }
+        }
+    }
+
+    /// <summary>Applies the same PSObject-unwrapping rule used for a callback's return value, so <see cref="Events"/> and listener payloads follow the same convention as -Complete.</summary>
+    private static object? Normalize(object? evt) => evt is PSObject wrapped ? (wrapped.BaseObject is PSCustomObject ? wrapped : wrapped.BaseObject) : evt;
+
     /// <summary>Enforces zero/one callback emissions and preserves a single array as one business value.</summary>
     /// <param name="callback">Caller-owned script block, including its lexical scope.</param>
     /// <param name="arguments">Callback arguments.</param>
@@ -338,6 +367,17 @@ public sealed class QuietRuntime
 
     /// <summary>Removes a PowerShell wrapper from a plain value.</summary>
     internal static object? Unwrap(object? value) => value is PSObject wrapped ? wrapped.BaseObject : value;
+
+    /// <summary>Accepts a single ScriptBlock or a sequence of ScriptBlock values for -Listeners; rejects anything else.</summary>
+    /// <param name="value">Raw -Listeners argument.</param>
+    internal static ScriptBlock[] NormalizeListeners(object? value)
+    {
+        object? unwrapped = Unwrap(value);
+        if (unwrapped is ScriptBlock single) return [single];
+        if (unwrapped is IEnumerable sequence and not string)
+            return sequence.Cast<object?>().Select(item => Unwrap(item) as ScriptBlock ?? throw new InvalidOperationException("ListenerMustBeScriptBlock")).ToArray();
+        throw new InvalidOperationException("ListenerMustBeScriptBlock");
+    }
 
     /// <summary>Equivalent of Test-Path -LiteralPath for files and directories.</summary>
     private static bool PathExists(string path) => File.Exists(path) || Directory.Exists(path);
@@ -363,6 +403,29 @@ public abstract class RuntimeCmdlet : EngineCmdlet
             State = request.ContainsKey("State") ? request["State"] : new Hashtable(),
         };
         if (request.ContainsKey("Data")) runtime.Data = request["Data"];
+        runtime.Listeners = request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : [];
+        if (request.ContainsKey("UI") && LanguagePrimitives.IsTrue(request["UI"]))
+        {
+            int maxLines = 1;
+            if (request.ContainsKey("MaxLines"))
+            {
+                maxLines = Convert.ToInt32(QuietRuntime.Unwrap(request["MaxLines"]), CultureInfo.InvariantCulture);
+                if (maxLines <= 0) throw new InvalidOperationException("MaxLinesMustBePositive");
+            }
+            IUiSurface surface;
+            try { surface = AnsiConsole.Profile.Capabilities.Interactive ? new SpectreLiveSurface() : new AppendOnlySurface(); }
+            catch (Exception error)
+            {
+                // A second -UI call concurrently Live in this same process (Spectre forbids nested Live/Status/Progress
+                // sessions) falls back to the append-only surface rather than failing the whole invocation.
+                runtime.AddError("UiRenderUnavailable", "Ui", error.Message);
+                surface = new AppendOnlySurface();
+            }
+            runtime.Ui = new QuietUiRenderer(maxLines, surface, runtime.AddError);
+            string directory = Convert.ToString(QuietRuntime.Unwrap(request["WorkingDirectory"]), CultureInfo.InvariantCulture) ?? CurrentDirectory;
+            string tool = Path.GetFileName(Convert.ToString(QuietRuntime.Unwrap(request["FilePath"]), CultureInfo.InvariantCulture) ?? "native");
+            runtime.Ui.SetHeader([$"Project: {Path.GetFileName(directory)} | Task: {tool}", directory]);
+        }
         string? name = request.ContainsKey("RecallName") ? Convert.ToString(QuietRuntime.Unwrap(request["RecallName"]), CultureInfo.InvariantCulture) : null;
         if (request.ContainsKey("SaveRecall") && LanguagePrimitives.IsTrue(request["SaveRecall"]))
         {

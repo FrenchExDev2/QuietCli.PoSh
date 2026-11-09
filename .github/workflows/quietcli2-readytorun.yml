@@ -1,0 +1,140 @@
+name: QuietCli2 ReadyToRun profiling
+
+# Manual and informational only: measures whether a ReadyToRun build of the Core module's engine reduces
+# cold-start time on this runner, per docs/README-readytorun_profiling.md. Runs once on Windows directly, and once per
+# Linux distribution/architecture (debian/alpine x x64/arm64, mirroring ci.yml's linux matrix) inside that
+# platform's prepared Podman image, each producing its own full report (nupkg cost, first-call timing, footprint,
+# hosted-path cost). A shared GitHub runner is not a controlled machine, so this never gates qualification or
+# publication (see ci.yml's qualification-gate) and its A/A control can legitimately fail the noise-floor check on
+# a noisy runner; that is a report, not a build failure to chase.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readytorun:
+    name: ReadyToRun cold-start report (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 11.0.100-rc.3.26522.148
+          cache: true
+          cache-dependency-path: PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh/**/*.csproj
+      - name: Build the baseline module
+        shell: pwsh
+        run: ./scripts/Build-Workspace.ps1
+      - name: Build the ReadyToRun candidate
+        shell: pwsh
+        run: |
+          $candidate = ./scripts/New-ReadyToRunCandidate.ps1
+          "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV
+      - name: Run the A/A-gated A/B cold-start comparison
+        shell: pwsh
+        env:
+          CANDIDATE_MODULE: ${{ env.CANDIDATE_MODULE }}
+        run: |
+          # Objective: Report the comparison without failing the job on an unstable noise floor or an
+          # inconclusive/slower verdict — this workflow is informational evidence, not a gate.
+          try {
+            ./scripts/Invoke-ColdStartGate.ps1 -CandidateModule $env:CANDIDATE_MODULE -CandidateLabel readytorun -Arguments @{ MeasurePackageSize = $true }
+          } catch {
+            Write-Warning "ReadyToRun cold-start report did not complete cleanly: $_"
+          }
+      - name: Render the latest report
+        if: always()
+        shell: pwsh
+        run: |
+          if (Get-ChildItem ./artifacts/coldstart/ab-*.json -ErrorAction SilentlyContinue) {
+            ./scripts/Show-ColdStartReport.ps1
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quietcli2-readytorun-${{ github.sha }}
+          path: artifacts/coldstart
+          if-no-files-found: error
+          retention-days: 30
+
+  readytorun-linux:
+    name: ReadyToRun cold-start report (${{ matrix.platform }}, ${{ matrix.rid }})
+    permissions:
+      contents: read
+      packages: read
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: debian
+            rid: linux-x64
+            runner: ubuntu-latest
+          - platform: alpine
+            rid: linux-musl-x64
+            runner: ubuntu-latest
+          - platform: debian
+            rid: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: alpine
+            rid: linux-musl-arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 11.0.100-rc.3.26522.148
+          cache: true
+          cache-dependency-path: PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh/**/*.csproj
+      - name: Verify monorepo source lock
+        shell: pwsh
+        run: ./scripts/Initialize-Workspace.ps1 -Restore
+      - name: Build the baseline module for every distribution
+        shell: pwsh
+        run: ./scripts/Build-Workspace.ps1
+      - name: Build the ReadyToRun candidate for this platform's RID
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+        run: |
+          $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -RuntimeIdentifier $env:EXPECTED_RID
+          "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV
+      - name: Run the A/A-gated A/B cold-start comparison inside the prepared platform image
+        shell: pwsh
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          EXPECTED_RID: ${{ matrix.rid }}
+          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          # Objective: Report the per-platform comparison (nupkg cost, first-call timing, footprint, hosted-path
+          # cost) without failing the job on an unstable noise floor or an inconclusive/slower verdict — informational
+          # evidence, not a gate, same policy as the Windows job above.
+          try {
+            $image = ./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache
+            ./scripts/Invoke-ContainerColdStart.ps1 -Image $image.Image -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -Headless
+          } catch {
+            Write-Warning "ReadyToRun cold-start report did not complete cleanly: $_"
+          }
+      - name: Render the latest report
+        if: always()
+        shell: pwsh
+        run: |
+          $guest = Get-ChildItem ./artifacts/coldstart-containers -Filter 'guest' -Recurse -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($guest -and (Get-ChildItem (Join-Path $guest.FullName 'ab-*.json') -ErrorAction SilentlyContinue)) {
+            ./scripts/Show-ColdStartReport.ps1 -ArtifactsDirectory $guest.FullName
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quietcli2-readytorun-${{ matrix.rid }}-${{ github.sha }}
+          path: artifacts/coldstart-containers
+          if-no-files-found: error
+          retention-days: 30

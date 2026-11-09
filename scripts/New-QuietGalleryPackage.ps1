@@ -16,9 +16,10 @@ Optional alphanumeric label applied only to staged manifests. Source versions, G
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1');. (Join-Path $PSScriptRoot 'Gallery.ps1')
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path);$OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 if(Test-Path -LiteralPath $OutputDirectory){throw 'GalleryOutputAlreadyExists'}
-$names=@('FrenchExDev2.QuietCli.Core.PoSh')
-$manifests=@(foreach($name in $names){Import-PowerShellDataFile (Join-Path (Join-Path $WorkspaceRoot $name) ($name+'.psd1'))})
-$release=Get-QuietGalleryModuleVersion $manifests[0]
+$sourceName='FrenchExDev2.QuietCli.Core.PoSh'
+$publicName='QuietCli'
+$manifest=Import-PowerShellDataFile (Join-Path (Join-Path $WorkspaceRoot $sourceName) ($sourceName+'.psd1'))
+$release=Get-QuietGalleryModuleVersion $manifest
 $sourceVersion=$release
 $releaseInfo=Get-QuietGalleryVersion $release
 if($PSBoundParameters.ContainsKey('Prerelease')){
@@ -29,11 +30,14 @@ if($PSBoundParameters.ContainsKey('Prerelease')){
 if($Version -and $Version -cne $release){throw 'GalleryReleaseVersionMismatch'}
 $stage=Join-Path $OutputDirectory workspace-packages
 $null=& (Join-Path $PSScriptRoot 'New-WorkspacePackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $stage
+$publicStage=Join-Path $OutputDirectory 'public-modules'
+[void][IO.Directory]::CreateDirectory($publicStage)
+Copy-QuietGalleryCoreModule -SourceDirectory (Join-Path $stage $sourceName) -ModuleDirectory (Join-Path $publicStage $publicName)
 $modulePath=$env:PSModulePath;$packages=[Collections.Generic.List[object]]::new()
 try{
-    $env:PSModulePath=$stage+[IO.Path]::PathSeparator+$modulePath
-    foreach($name in $names){
-        $module=Join-Path $stage $name
+    $env:PSModulePath=$publicStage+[IO.Path]::PathSeparator+$modulePath
+    foreach($name in @($publicName)){
+        $module=Join-Path $publicStage $name
         if($PSBoundParameters.ContainsKey('Prerelease')){Set-QuietGalleryStagedPrerelease -Path (Join-Path $module ($name+'.psd1')) -Prerelease $Prerelease}
         $compressed=Compress-PSResource -Path $module -DestinationPath $OutputDirectory -PassThru -ErrorAction Stop
         $path=if($compressed -is [IO.FileInfo]){$compressed.FullName}else{[string]$compressed}

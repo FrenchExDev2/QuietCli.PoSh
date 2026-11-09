@@ -24,18 +24,27 @@ Excludes native TTY/PTY execution from this run; local runs include it by defaul
 .PARAMETER Suite
 Companion scope or native C mutation campaign selected by the workflow.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[ValidateSet('Core','Git','All','Import','Integration','Mutation')][string]$Suite='All',[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
+[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
+dynamicparam {
+    . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
+    $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
+    New-QuietWorkspaceSuiteParameter -WorkspaceRoot $selectedRoot -Scope Container
+}
+end {
+$Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 $owner=[guid]::NewGuid().ToString('N');$name='quietcli2-'+$owner.Substring(0,12)
 $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Tests Podman';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=$Platform;State='Preparing';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;ContainerId=$name;Passed=$null;Failed=$null;Case='Staging explicit source files';FinishedUtc=$null;Error=$null;Image=$Image;Owner=$owner}
 $status=Join-Path $RunDirectory 'status.json'
+$companionSelection=@(Get-QuietWorkspaceTestSuites $WorkspaceRoot | Where-Object {$Suite -eq 'All' -or $_.Name -eq $Suite})
+if($companionSelection.Count){$state.Project=$companionSelection.Project -join ' + ';$state.ProjectDirectory=$companionSelection.ProjectDirectory -join ' | '}
 if($Suite -eq 'Import'){$state.Project='FrenchExDev2.QuietCli.Core.PoSh';$state.Task='Core import cost in fresh pwsh sessions'}
 if($Suite -eq 'Mutation'){$state.Project='FrenchExDev2.QuietCli.Core.PoSh';$state.Task='PTY properties, fuzzing and mutation'}
 Write-WorkspaceJson $status $state
 $created=$false
 try{
     $stage=Join-Path $RunDirectory 'workspace';[void][IO.Directory]::CreateDirectory($stage)
-    $sourceDirectories=if($Suite -eq 'Mutation'){@('FrenchExDev2.QuietCli.Core.PoSh/native','FrenchExDev2.QuietCli.Core.PoSh/resources/transport','FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests')}else{@('scripts','build','.github/containers','.github/workflows','FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh','FrenchExDev2.QuietCli.Git.PoSh','FrenchExDev2.QuietCli.Git.Tests.PoSh')}
+    $sourceDirectories=if($Suite -eq 'Mutation'){@('FrenchExDev2.QuietCli.Core.PoSh/native','FrenchExDev2.QuietCli.Core.PoSh/resources/transport','FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests')}else{@('scripts','build','.github/containers','.github/workflows')+@((Get-QuietWorkspaceProjects $WorkspaceRoot).Path)}
     foreach($directory in $sourceDirectories){
         $source=Join-Path $WorkspaceRoot $directory
         foreach($file in Get-ChildItem -LiteralPath $source -Recurse -File -Force){
@@ -48,12 +57,12 @@ try{
     }
     if($Suite -eq 'Mutation'){
         [void][IO.Directory]::CreateDirectory((Join-Path $stage scripts))
-        foreach($file in @('ReportPaths.ps1','Ci.Process.ps1','Common.ps1','SourceIdentity.ps1','RuntimeTargets.ps1','Assert-PtyQualification.ps1','Watch-Tests.ps1','Monitor.Time.ps1')){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $stage ('scripts/'+$file))}
+        foreach($file in @('ReportPaths.ps1','Ci.Process.ps1','Common.ps1','SourceIdentity.ps1','WorkspaceProjects.ps1','RuntimeTargets.ps1','Assert-PtyQualification.ps1','Watch-Tests.ps1','Monitor.Time.ps1')){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $stage ('scripts/'+$file))}
         $productFiles=@(Get-ChildItem $stage -Recurse -File|Where-Object Extension -In @('.dll','.csproj','.psd1','.psm1'))
         if($productFiles.Count){throw 'NativeStageMustNotContainProductBuildsOrModules'}
         Write-WorkspaceJson (Join-Path $RunDirectory 'bootstrap.json') @{Mode='Direct CI processes';ProductBuildFiles=0;NativeSourceSHA256=(Get-FileHash (Join-Path $stage 'FrenchExDev2.QuietCli.Core.PoSh/native/quietcli-pty.c') -Algorithm SHA256).Hash}
     }else{
-        foreach($file in @('global.json','repositories.lock.json')){if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot $file)){Copy-Item -LiteralPath (Join-Path $WorkspaceRoot $file) -Destination $stage}}
+        foreach($file in @('global.json','Directory.Packages.props','repositories.lock.json')){if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot $file)){Copy-Item -LiteralPath (Join-Path $WorkspaceRoot $file) -Destination $stage}}
         Write-WorkspaceJson (Join-Path $stage 'transport-origin.json') (Get-QuietWorkspaceIdentity $WorkspaceRoot -IncludeBinaries)
     }
     $imageState=@{Id=$null}
@@ -76,7 +85,9 @@ try{
         if(Test-Path $receipt){Copy-Item -LiteralPath $receipt -Destination (Join-Path $RunDirectory 'tool-receipt.json')}
     }
     $memoryLimits=if($Suite -eq 'Mutation'){@('--memory','1g','--memory-swap','1g')}else{@()}
-    $null=Invoke-WorkspaceNative podman (@('create','--pull=never','--name',$name,'--label',('org.frenchexdev.quietcli2.owner='+$owner),'--network','none')+$memoryLimits+@('--entrypoint','pwsh',$imageState.Id)+$guestArguments) $WorkspaceRoot -TimeoutSeconds 30
+    # Alpine's framework-dependent PowerShell uses the distribution .NET 10 runtime; the SDK has its own .NET 11 root.
+    $runtimeEnvironment=if($Platform -eq 'alpine'){@('--env','DOTNET_ROOT=/usr/lib/dotnet')}else{@()}
+    $null=Invoke-WorkspaceNative podman (@('create','--pull=never','--name',$name,'--label',('org.frenchexdev.quietcli2.owner='+$owner),'--network','none')+$memoryLimits+$runtimeEnvironment+@('--entrypoint','pwsh',$imageState.Id)+$guestArguments) $WorkspaceRoot -TimeoutSeconds 30
     $created=$true
     $null=Invoke-WorkspaceNative podman @('cp',($stage.Replace('\','/')+'/.'),($name+':/workspace')) $WorkspaceRoot -TimeoutSeconds 90
     $state.State='Running';$state.Case='Container running; elapsed time is a heartbeat, test counters not yet available';Write-WorkspaceJson $status $state
@@ -138,3 +149,5 @@ finally{
     Write-WorkspaceJson $status $state
 }
 if($state.State -ne 'Success'){exit 1}
+
+}

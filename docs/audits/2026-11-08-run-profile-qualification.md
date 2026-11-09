@@ -71,3 +71,9 @@ export for durable retention.
   A/B comparison remain unmeasured. Concurrent qualification timings are not controlled performance comparisons.
 - Linux, ARM64 and the full release matrix were not executed by this tooling task. CI wiring is present; remote success,
   publication and qualification of a future committed revision are not established by these local results.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

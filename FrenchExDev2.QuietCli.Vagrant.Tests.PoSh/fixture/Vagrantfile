@@ -1,0 +1,35 @@
+# CI/manual-verification fixture for the FrenchExDev2.QuietCli.Vagrant.PoSh module -- see README.md in this
+# directory for the provider choice (Docker, no VirtualBox/libvirt and no nested virtualization needed on a
+# hosted CI runner) and the documented, best-effort Podman alternative.
+Vagrant.configure("2") do |config|
+  prefix = ENV.fetch("QUIETCLI_VAGRANT_PREFIX", "ci-fixture")
+  raise "Invalid fixture prefix" unless prefix.match?(/\A[a-z][a-z0-9-]{0,55}\z/)
+  config.ssh.username   = "vagrant"
+  config.ssh.insert_key = true
+  config.vm.boot_timeout = 60
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.define "web" do |web|
+    web.vm.provider "docker" do |d|
+      d.build_dir       = "."
+      d.dockerfile      = "Dockerfile.vagrant"
+      d.name            = "#{prefix}-web"
+      d.force_host_vm   = false
+      d.has_ssh         = true
+      d.remains_running = true
+    end
+    web.vm.provision "shell", inline: "echo 'provisioning web'"
+  end
+
+  config.vm.define "db" do |db|
+    db.vm.provider "docker" do |d|
+      d.build_dir       = "."
+      d.dockerfile      = "Dockerfile.vagrant"
+      d.name            = "#{prefix}-db"
+      d.force_host_vm   = false
+      d.has_ssh         = true
+      d.remains_running = true
+    end
+    db.vm.provision "shell", inline: "echo 'provisioning db'"
+  end
+end

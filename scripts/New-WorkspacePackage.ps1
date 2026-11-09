@@ -2,7 +2,7 @@
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Packages four independently versioned modules; never publishes them.
+Packages every locked, independently versioned source/test module; never publishes them.
 .PARAMETER WorkspaceRoot
 QuietCli2 root.
 .PARAMETER OutputDirectory

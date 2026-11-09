@@ -23,7 +23,7 @@ foreach($package in $plan.Packages){if(Get-QuietGalleryRemoteIdentity $package.M
 $receipt=@{SchemaVersion=1;Version=$Version;Repository='PSGallery';State='Prepared';Modules=@();StartedUtc=[DateTimeOffset]::UtcNow.ToString('o')}
 $receiptPath=Join-Path $directory publication.json
 try{
-    foreach($name in @('FrenchExDev2.QuietCli.Core.PoSh')){
+    foreach($name in $plan.Packages.Module){
         $package=$plan.Packages|Where-Object Module -CEQ $name
         if($PSCmdlet.ShouldProcess(('PSGallery/'+$name+'/'+$Version),'Publish verified PowerShell module')){
             $receipt.State='Publishing';$receipt.PendingModule=$name;Write-WorkspaceJson $receiptPath $receipt

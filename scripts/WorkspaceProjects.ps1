@@ -1,0 +1,155 @@
+#requires -Version 7.6
+function Get-QuietWorkspaceProjects {
+    <#
+    .SYNOPSIS
+    Discovers inert module manifests and orders local projects by their declared dependencies.
+    .PARAMETER WorkspaceRoot
+    Monorepo containing immediate FrenchExDev2.QuietCli.*.PoSh project directories.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorkspaceRoot)
+    $root=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
+    $projects=[Collections.Generic.List[object]]::new()
+    $names=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach($directory in Get-ChildItem -LiteralPath $root -Directory | Sort-Object Name){
+        if($directory.Name -notlike 'FrenchExDev2.QuietCli.*.PoSh'){continue}
+        if($directory.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'WorkspaceProjectLinkRejected'}
+        if(!$names.Add($directory.Name)){throw 'WorkspaceProjectNameCollision'}
+        $manifestPath=Join-Path $directory.FullName ($directory.Name+'.psd1')
+        if(!(Test-Path -LiteralPath $manifestPath -PathType Leaf)){throw ('ProjectManifestMissing: '+$directory.Name)}
+        if((Get-Item -LiteralPath $manifestPath).Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'WorkspaceProjectLinkRejected'}
+        # Validate the text encoding before the inert data-file reader parses it; no module code is imported.
+        $null=[IO.File]::ReadAllTextAsync($manifestPath,[Text.UTF8Encoding]::new($false,$true)).GetAwaiter().GetResult()
+        $manifest=Import-PowerShellDataFile -LiteralPath $manifestPath -ErrorAction Stop
+        $required=@(foreach($entry in $manifest['RequiredModules']){if($entry -is [string]){$entry}else{[string]$entry['ModuleName']}})
+        $metadata=if($manifest['PrivateData'] -and $manifest['PrivateData']['QuietCli']){$manifest['PrivateData']['QuietCli']}else{@{}}
+        $isTest=$directory.Name.EndsWith('.Tests.PoSh',[StringComparison]::OrdinalIgnoreCase)
+        $suite=if(!$isTest){$directory.Name.Substring('FrenchExDev2.QuietCli.'.Length,$directory.Name.Length-'FrenchExDev2.QuietCli.'.Length-'.PoSh'.Length)}else{$null}
+        $tests=if($metadata['TestsModule']){[string]$metadata['TestsModule']}else{$null}
+        $projects.Add([pscustomobject]@{
+            Name=$directory.Name;Path=$directory.Name;Directory=$directory.FullName;ManifestPath=$manifestPath
+            IsTest=$isTest;Suite=$suite;TestsModule=$tests;TestCommand=if($suite){'Invoke-Quiet'+$suite+'Tests'}else{$null}
+            RequiredModules=$required;Dependencies=@();Manifest=$manifest
+        })
+    }
+    if(!$projects.Count){throw 'WorkspaceProjectsNotFound'}
+    foreach($project in $projects){$project.Dependencies=@($project.RequiredModules | Where-Object {$names.Contains($_)})}
+    $ordered=[Collections.Generic.List[object]]::new()
+    $emitted=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    while($ordered.Count -lt $projects.Count){
+        $progress=$false
+        foreach($project in $projects){
+            if($emitted.Contains($project.Name)){continue}
+            if(@($project.Dependencies | Where-Object {!$emitted.Contains($_)}).Count){continue}
+            $ordered.Add($project);[void]$emitted.Add($project.Name);$progress=$true
+        }
+        if(!$progress){throw 'WorkspaceProjectDependencyCycle'}
+    }
+    $ordered.ToArray()
+}
+
+function Get-QuietWorkspaceTestSuites {
+    <#
+    .SYNOPSIS
+    Resolves business modules to declared test companions and exported runner commands.
+    .PARAMETER WorkspaceRoot
+    Selected source workspace.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorkspaceRoot)
+    $projects=@(Get-QuietWorkspaceProjects $WorkspaceRoot)
+    foreach($project in $projects){
+        if($project.IsTest){continue}
+        if(!$project.TestsModule){throw ('WorkspaceTestModuleUndeclared: '+$project.Name)}
+        $tests=@($projects | Where-Object Name -CEQ $project.TestsModule)
+        if($tests.Count -ne 1 -or !$tests[0].IsTest -or $tests[0].Dependencies -cnotcontains $project.Name){throw ('WorkspaceTestModuleInvalid: '+$project.Name)}
+        if($tests[0].Manifest.FunctionsToExport -cnotcontains $project.TestCommand){throw ('WorkspaceTestRunnerNotExported: '+$project.TestCommand)}
+        [pscustomobject]@{Name=$project.Suite;Project=$project.Name;ProjectDirectory=$project.Directory;TestsModule=$tests[0].Name;TestsManifest=$tests[0].ManifestPath;Command=$project.TestCommand}
+    }
+}
+
+function Get-QuietWorkspacePackages {
+    <#
+    .SYNOPSIS
+    Lists publishable and non-publishable source packages with their explicit eligibility reason.
+    .DESCRIPTION
+    Test companions are never publishable. Other modules require a boolean Publishable declaration
+    in PrivateData.QuietCli; missing declarations deny publication. Suite modes such as All are
+    not projects and never enter this catalogue. Eligibility never authorizes publication.
+    .PARAMETER WorkspaceRoot
+    Selected monorepo, defaulting to this script's workspace.
+    .PARAMETER Publishable
+    Returns only explicitly publishable business packages.
+    .PARAMETER NonPublishable
+    Returns only excluded packages, including every test companion.
+    #>
+    [CmdletBinding()]
+    param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Publishable,[switch]$NonPublishable)
+    if($Publishable -and $NonPublishable){throw 'WorkspacePackageFiltersAreExclusive'}
+    foreach($project in Get-QuietWorkspaceProjects $WorkspaceRoot){
+        $private=$project.Manifest['PrivateData']
+        $metadata=if($private -and $private['QuietCli']){$private['QuietCli']}else{@{}}
+        if($metadata.ContainsKey('Publishable') -and $metadata['Publishable'] -isnot [bool]){throw ('WorkspacePublishableMustBeBoolean: '+$project.Name)}
+        $eligible=!$project.IsTest -and $metadata.ContainsKey('Publishable') -and $metadata['Publishable']
+        $reason=if($project.IsTest){'TestProject'}elseif(!$metadata.ContainsKey('Publishable')){'PublicationNotDeclared'}elseif(!$eligible){'PublicationDisabled'}else{'ExplicitlyPublishable'}
+        $packageName=if($metadata['PackageName']){[string]$metadata['PackageName']}else{$project.Name}
+        if($packageName -cnotmatch '^[A-Za-z][A-Za-z0-9_.-]{0,127}$'){throw ('WorkspacePackageNameInvalid: '+$project.Name)}
+        if(($Publishable -and !$eligible) -or ($NonPublishable -and $eligible)){continue}
+        [pscustomobject]@{Name=$project.Name;PackageName=$packageName;Publishable=[bool]$eligible;Reason=$reason;IsTest=$project.IsTest;Path=$project.Path;ManifestPath=$project.ManifestPath}
+    }
+}
+
+function Get-QuietWorkspaceSuiteNames {
+    <#
+    .SYNOPSIS
+    Combines discovered companion suites with the supported orchestration modes for one launcher.
+    .PARAMETER WorkspaceRoot
+    Selected source workspace.
+    .PARAMETER Scope
+    Host supports all focused local modes; Container supports its existing portable modes.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Host','Container')][string]$Scope='Host')
+    $special=if($Scope -eq 'Container'){@('All','Import','Integration','Mutation')}else{@('All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview')}
+    $suites=@(Get-QuietWorkspaceTestSuites $WorkspaceRoot)
+    foreach($suite in $suites){if($special -contains $suite.Name){throw ('WorkspaceSuiteNameConflict: '+$suite.Name)}}
+    @($suites.Name)+$special
+}
+
+function New-QuietWorkspaceSuiteParameter {
+    <#
+    .SYNOPSIS
+    Creates the dynamic Suite parameter with native ValidateSet validation and tab completion.
+    .PARAMETER WorkspaceRoot
+    Workspace whose inert manifests define the available companions.
+    .PARAMETER Scope
+    Supported launcher modes.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Host','Container')][string]$Scope='Host')
+    $attributes=[Collections.ObjectModel.Collection[Attribute]]::new()
+    $attributes.Add([Management.Automation.ParameterAttribute]::new())
+    $attributes.Add([Management.Automation.ValidateSetAttribute]::new([string[]]@(Get-QuietWorkspaceSuiteNames $WorkspaceRoot -Scope $Scope)))
+    $parameter=[Management.Automation.RuntimeDefinedParameter]::new('Suite',[string],$attributes)
+    $parameters=[Management.Automation.RuntimeDefinedParameterDictionary]::new()
+    $parameters.Add('Suite',$parameter)
+    return $parameters
+}
+
+function Get-QuietWorkspaceSuiteSelection {
+    <#
+    .SYNOPSIS
+    Expands All to the dependency-ordered discovered companion runners.
+    .PARAMETER WorkspaceRoot
+    Selected source workspace.
+    .PARAMETER Suite
+    All or one companion suite name; focused orchestration modes are dispatched by their launcher.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[string]$Suite='All')
+    $suites=@(Get-QuietWorkspaceTestSuites $WorkspaceRoot)
+    if($Suite -eq 'All'){return $suites}
+    $selected=@($suites | Where-Object Name -IEQ $Suite)
+    if($selected.Count -ne 1){throw ('WorkspaceCompanionSuiteUnknown: '+$Suite)}
+    $selected
+}

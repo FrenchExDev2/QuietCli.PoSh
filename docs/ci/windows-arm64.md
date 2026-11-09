@@ -20,3 +20,9 @@ On a prepared Windows ARM64 host:
 An ISO alone cannot run CI: an installed guest with PowerShell 7.6+, .NET 11 RC and Git, an isolated working disk and a report transport are required. Do not relabel an x64 base as ARM64. This workflow does not modify any user disk or existing database.
 
 The reference retrieved from GitHub is the documentation for the `windows-11-arm` runner, not a downloaded local disk. This job therefore uses the GitHub image directly. The workflow is configured; no ARM success is claimed until a report from that runner is available.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

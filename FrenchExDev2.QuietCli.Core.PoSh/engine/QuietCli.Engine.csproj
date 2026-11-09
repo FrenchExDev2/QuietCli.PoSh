@@ -13,7 +13,8 @@
   <ItemGroup><InternalsVisibleTo Include="QuietCli.Engine.Tests" /></ItemGroup>
   <ItemGroup>
     <!-- Compile-time only: the PowerShell host supplies the runtime assembly; the isolated engine never loads cmdlet types. -->
-    <PackageReference Include="System.Management.Automation" Version="7.6.9" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="System.Management.Automation" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="Spectre.Console" />
   </ItemGroup>
   <ItemGroup><Content Include="../protocol.json" Link="protocol.json" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
 </Project>

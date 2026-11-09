@@ -2,11 +2,11 @@
 
 Always read the envelope before the data: `Outcome`, `Execution`, `Completeness.Source`,
 `Completeness.Analysis` and `Error`. Never retry automatically; a failed command may have had an
-effect. Deliver diagnostics with `FrenchExDev2.QuietCli.Core.PoSh\Out-QuietResult $result -MaxItems 8 -MaxOutputBytes 4096`.
+effect. Deliver diagnostics with `Out-QuietResult $result -MaxItems 8 -MaxOutputBytes 4096`.
 
 The first three rows' codes (`HandlerNotFound`, non-zero `ExitCode`, `RecallRequiresExplicitAsObject`)
 were reproduced on the repository's local Core module. The other rows follow the documented
-contracts in `AGENTS.md`, `examples.md` and `docs/recall.md` and were not reproduced here.
+contracts in `AGENTS.md`, `examples.md` and `docs/README-recall.md` and were not reproduced here.
 
 ## Symptoms
 
@@ -27,9 +27,9 @@ contracts in `AGENTS.md`, `examples.md` and `docs/recall.md` and were not reprod
 
 ## Loading problems
 
-- **Wrong module version loaded.** Check `(Get-Module FrenchExDev2.QuietCli.Core.PoSh).Path`. Do not
+- **Wrong module version loaded.** Check `(Get-Module QuietCli).Path`. Do not
   accept an older installed release silently; import the selected source module explicitly.
-- **Legacy modules in the process.** Never load legacy QuietCli or archived OPumper modules in the
+- **Legacy modules in the process.** Do not mix QuietCli releases or load archived OPumper modules in the
   same process; they share public command names. Start a new process.
 - **Hosting.** Leave `engine.hosting` at `Auto`. A CLR 10 process selects the `net10.0` build;
   CLR 11+ selects `net11.0`. `Get-QuietEngine` reports the host actually used. Never load the
@@ -44,3 +44,9 @@ contracts in `AGENTS.md`, `examples.md` and `docs/recall.md` and were not reprod
 - Do not treat a zero exit code as proof of complete analysis.
 - Do not enable retries, hooks, network access or profile changes to work around a failure; the
   engine grants none of them.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

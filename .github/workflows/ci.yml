@@ -95,6 +95,8 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 11.0.100-rc.3.26522.148
+          cache: true
+          cache-dependency-path: PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh/**/*.csproj
       - name: Verify monorepo source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
@@ -176,8 +178,30 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           compression-level: 1
+  linux-matrix:
+    name: Linux matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Define the native Linux platform/RID/runner matrix once for every consumer job
+        id: matrix
+        shell: pwsh
+        run: |
+          # Objective: single source of truth shared by linux-images, linux-git-images and linux,
+          # instead of three hand-duplicated YAML copies of the same four native targets.
+          $rows=@(
+            [ordered]@{platform='debian';rid='linux-x64';runner='ubuntu-latest'},
+            [ordered]@{platform='alpine';rid='linux-musl-x64';runner='ubuntu-latest'},
+            [ordered]@{platform='debian';rid='linux-arm64';runner='ubuntu-24.04-arm'},
+            [ordered]@{platform='alpine';rid='linux-musl-arm64';runner='ubuntu-24.04-arm'}
+          )
+          $json=(@{include=$rows}|ConvertTo-Json -Depth 4 -Compress)
+          [void][IO.File]::AppendAllTextAsync($env:GITHUB_OUTPUT,"matrix=$json`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
   linux-images:
     name: Image (${{ matrix.rid }})
+    needs: linux-matrix
     if: github.repository == 'FrenchExDev2/FrenchExDev2.QuietCli.PoSh' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     permissions:
       contents: read
@@ -187,16 +211,7 @@ jobs:
       cancel-in-progress: false
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - rid: linux-x64
-            runner: ubuntu-latest
-          - rid: linux-musl-x64
-            runner: ubuntu-latest
-          - rid: linux-arm64
-            runner: ubuntu-24.04-arm
-          - rid: linux-musl-arm64
-            runner: ubuntu-24.04-arm
+      matrix: ${{ fromJson(needs.linux-matrix.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 35
     steps:
@@ -214,10 +229,40 @@ jobs:
         with:
           name: quietcli2-image-${{ matrix.rid }}
           path: artifacts/ci-images
+  linux-git-images:
+    name: Git image (${{ matrix.rid }})
+    needs: [linux-matrix, linux-images]
+    if: github.repository == 'FrenchExDev2/FrenchExDev2.QuietCli.PoSh' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (inputs.suite == 'Git' || inputs.suite == 'All')
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: quietcli2-git-image-${{ matrix.rid }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.linux-matrix.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Publish a missing Git module image or reuse its verified digest
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
+        run: ./scripts/New-CiModuleImage.ps1 -Module Git -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -PublishCache
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quietcli2-git-image-${{ matrix.rid }}
+          path: artifacts/ci-images
   linux:
     name: Linux (${{ matrix.rid }})
-    needs: linux-images
-    if: ${{ always() && !cancelled() && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') }}
+    needs: [linux-images, linux-git-images]
+    if: ${{ always() && !cancelled() && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') && (needs.linux-git-images.result == 'success' || needs.linux-git-images.result == 'skipped') }}
     permissions:
       contents: read
       packages: read
@@ -246,6 +291,8 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 11.0.100-rc.3.26522.148
+          cache: true
+          cache-dependency-path: PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh/**/*.csproj
       - name: Verify monorepo source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
@@ -261,7 +308,11 @@ jobs:
           QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
         run: |
           # Objectif : Réutiliser le cache publié ; construire localement si une PR ne peut pas y accéder.
-          $image=./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache
+          $image = if ($env:QUIETCLI_SUITE -eq 'Core') {
+            ./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache
+          } else {
+            ./scripts/New-CiModuleImage.ps1 -Module Git -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache
+          }
           # Core/All also requires Core-only controlled Git evidence on every Linux matrix RID.
           # Objectif : Tester sans réseau dans l’image native dont l’identité vient d’être vérifiée.
           $parameters=@{Image=$image.Image;Platform=$env:PLATFORM;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID;Headless=$true;SkipTty=$true}

@@ -1,4 +1,4 @@
-name: QuietCli2 Core and dependent Git
+name: QuietCli2 Core
 on:
   pull_request:
     paths: &core_paths
@@ -16,10 +16,10 @@ on:
 permissions:
   contents: read
 jobs:
-  core-and-git:
+  core:
     permissions:
       contents: read
       packages: write
     uses: ./.github/workflows/ci.yml
     with:
-      suite: All
+      suite: Core

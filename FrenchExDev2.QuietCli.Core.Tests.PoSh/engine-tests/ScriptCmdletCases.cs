@@ -19,6 +19,35 @@ internal static class ScriptCmdletCases
     /// <param name="runspace">Runspace that exposes the compiled cmdlets under test.</param>
     internal static async Task RunAsync(Func<string, Func<Task>, Task> run, Runspace runspace)
     {
+        await run("generated calls preserve imported module identity and reject malformed names", () =>
+        {
+            string savedRoot = QuietSession.Root, savedName = QuietSession.ModuleName;
+            var random = new Random(Seed + 2);
+            try
+            {
+                string[] names = ["QuietCli", "FrenchExDev2.QuietCli.Core.PoSh", new string('Q', 128), .. Enumerable.Range(0, 24).Select(index => "Module" + random.Next(100000) + ".Core_" + index)];
+                foreach (string name in names)
+                {
+                    QuietSession.Initialize(savedRoot, name);
+                    string source = ScriptDefinitionBuilder.Build(new Hashtable {
+                        ["Script"] = Path.Combine(Path.GetTempPath(), "identity-" + Guid.NewGuid().ToString("N") + ".ps1"),
+                        ["FilePath"] = "absent", ["Complete"] = ScriptBlock.Create("param($runtime) $runtime.Data"),
+                    }, Path.GetTempPath(), out _);
+                    Require(source.Contains("Get-Module -Name " + name + ")") && source.Contains("Import-Module " + name + " -MinimumVersion 0.2.0")
+                        && source.Contains(name + "\\Invoke-QuietCli @callArguments") && !source.Contains("__QUIET_MODULE__"), "Generated module identity differs: " + name);
+                    foreach (string invalid in new[] { "", "1bad", "bad name", "QuietCli\n", "QuietCli;throw", "../QuietCli", "éCore", new string('Q', 129) })
+                    {
+                        bool rejected = false;
+                        try { QuietSession.Initialize("unexpected-root", invalid); }
+                        catch (ArgumentException) { rejected = true; }
+                        Require(rejected && QuietSession.ModuleName == name && QuietSession.Root == savedRoot, "Invalid module identity changed the session");
+                    }
+                }
+            }
+            finally { QuietSession.Initialize(savedRoot, savedName); }
+            return Task.CompletedTask;
+        });
+
         await run("script literals round-trip nested data, Unicode and hostile strings (seeded property)", () =>
         {
             var random = new Random(Seed);

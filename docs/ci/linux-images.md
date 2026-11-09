@@ -1,6 +1,6 @@
 # Linux CI images
 
-No local ARM machine is required. GitHub runs x64 on `ubuntu-latest` and ARM64 on `ubuntu-24.04-arm`. Each runner builds and runs containers of the same architecture, without QEMU. The two multi-stage recipes are `.github/containers/Dockerfile.ci.debian` and `Dockerfile.ci.alpine`.
+No local ARM machine is required for the GitHub matrix. GitHub runs x64 on `ubuntu-latest` and ARM64 on `ubuntu-24.04-arm`. Each runner builds and runs containers of the same architecture, without QEMU. Core declares its multi-stage recipe in `FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1`; the shared renderer writes the generated Containerfile into each build's receipt directory. A Windows PowerShell client can also invoke a local build through its Linux Podman backend.
 
 ## First run and GHCR cache
 
@@ -14,13 +14,15 @@ A change confined to a handler does not rebuild the image. A pull request reuses
 
 ## Tools and stages
 
-The `tools` stage downloads the exact .NET SDK and verifies its SHA-512 hash. It compiles Git 2.56.0 from the SHA-256-pinned archive. Compilers and Git sources are not copied into the final stage. The SDK remains in the final image because the suites verify the tools and test assemblies.
+The `tools` stage downloads the exact .NET SDK and verifies its SHA-512 hash. The SDK remains in the final image because the suites verify the tools and test assemblies. Core's final stage explicitly installs the distribution Git package for its Core-only fixtures; companion modules declare their own additional requirements independently.
 
-Debian uses the official PowerShell 7.6.7 x64/ARM64 archives, verified with SHA-256. Alpine uses its signed `powershell=7.6.9-r0` package, available for x86_64 and aarch64, with its .NET 10 dependency. The pinned .NET 11 SDK/runtime is installed alongside it for the isolated engine. A recipe never silently replaces ARM64 PowerShell with an x64 executable.
+Debian uses the official PowerShell x64/ARM64 archives, verified with the lock's SHA-256. Alpine explicitly installs its signed `powershell=$POWERSHELL_PACKAGE` package using the locked version and its distribution .NET 10 dependency. `DOTNET_ROOT=/usr/lib/dotnet` selects that runtime for stable PowerShell; `/usr/share/dotnet` remains first on `PATH` for the separately pinned .NET 11 SDK/runtime. A recipe never silently replaces ARM64 PowerShell with an x64 executable.
+
+See [container runtime diagnosis](../README-container-runtime-diagnosis.md) for building an image from these inputs without a pre-existing cache. `FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-AlpineImageSmoke.ps1` builds the Alpine image and checks unchanged-default PowerShell startup, the pinned package/runtime, native SQLite and SDK execution with visible monitoring. Image bootstrap and module RID/resource selection remain separate conclusions.
 
 The Debian/Alpine base images are pinned by multi-architecture index digest in the recipes and `build/ci-images.lock.json`. Transitive apt/apk dependencies are resolved from their signed repositories during a build: the result is not presented as a bit-for-bit reproducible build. A withdrawn package version causes the build to fail and requires a reviewed lock-file update.
 
-This fast test environment uses Git without Rust or the Tcl/Tk interface. It does not replace exhaustive qualification of Git helpers, variants and versions; the older `Containerfile.debian` remains dedicated to that separate preparation.
+This fast test environment uses Git without Rust or the Tcl/Tk interface. It does not replace exhaustive qualification of Git helpers, variants and versions.
 
 ## Permissions and privacy
 
@@ -34,8 +36,14 @@ References: [GitHub ARM64 runners](https://docs.github.com/en/actions/reference/
 
 ## Native PTY compiler
 
-The final Debian image includes gcc and libc6-dev; the final Alpine image includes gcc and musl-dev. The standalone local PTY campaign can compile and run its baseline and targeted mutants inside these same native x64/ARM64 images without guest network access. GitHub workflows exclude this campaign and pass `-SkipTty` to ordinary test workers. Invoke-ContainerCi.ps1 -Suite Mutation retains reports and rejects a mismatched runtime identifier. Dockerfile changes alter the content fingerprint, so old images without the compiler are not accepted as the new image plan.
+Native campaign tools are opt-in when resolving the image plan through `MUTATION_TESTING`. That variant includes the GCC/Clang development packages declared for its distribution; the ordinary runtime/diagnostic image does not require them. The standalone local PTY campaign can then compile and run its baseline and targeted mutants without guest network access. GitHub workflows exclude this campaign and pass `-SkipTty` to ordinary test workers. Invoke-ContainerCi.ps1 -Suite Mutation retains reports and rejects a mismatched runtime identifier. The rendered package changes alter the content fingerprint, so a runtime-only image is not accepted as the compiler-enabled plan.
 
-Native qualification also requires all 43 baseline assertions (including process properties) and 20,000 coverage-guided decoder executions under ASan/UBSan. CI images contain GCC, G++, Clang and compiler-rt (Debian: libclang-rt-dev; Alpine: compiler-rt). The ordinary CI process runner has no product-engine dependency. The native campaign remains a separate local qualification scope; it no longer precedes or blocks the GitHub .NET matrix or Gallery workflow. CI receipts explicitly exclude TTY qualification.
+Native qualification also requires all 43 baseline assertions (including process properties) and 20,000 coverage-guided decoder executions under ASan/UBSan. Compiler-enabled images contain GCC, G++, Clang and compiler-rt (Debian: libclang-rt-dev; Alpine: compiler-rt). The ordinary CI process runner has no product-engine dependency. The native campaign remains a separate local qualification scope; it no longer precedes or blocks the GitHub .NET matrix or Gallery workflow. CI receipts explicitly exclude TTY qualification.
 
 Native mutation containers have a 1 GiB cgroup memory limit. On musl the fuzzer requires that external limit before disabling its defective internal RSS-monitor thread; ASan, UBSan and LeakSanitizer remain enabled. The delivery guard requires at least 20,000 executed fuzz inputs, all process properties and all 31 targeted mutants. Runtime-leak reproducers are retained for the separate future libFuzzer patch.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

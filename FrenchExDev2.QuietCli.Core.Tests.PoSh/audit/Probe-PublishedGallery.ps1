@@ -18,11 +18,11 @@ $proof=$null
 try{
     $installation=Join-Path $RunDirectory modules
     [void][IO.Directory]::CreateDirectory($installation)
-    $saveOptions=@{Name='FrenchExDev2.QuietCli.Core.PoSh';Version=$Version;Repository='PSGallery';Path=$installation;TrustRepository=$true;PassThru=$true;Quiet=$true;ErrorAction='Stop'}
+    $saveOptions=@{Name='QuietCli';Version=$Version;Repository='PSGallery';Path=$installation;TrustRepository=$true;PassThru=$true;Quiet=$true;ErrorAction='Stop'}
     if($Version.Contains('-')){$saveOptions.Prerelease=$true}
     $resources=@(Save-PSResource @saveOptions)
     $baseVersion=($Version -split '-',2)[0]
-    foreach($name in @('FrenchExDev2.QuietCli.Core.PoSh')){
+    foreach($name in @('QuietCli')){
         if(!(Test-Path (Join-Path (Join-Path (Join-Path $installation $name) $baseVersion) ($name+'.psd1')))){throw ('GalleryDependencyDownloadMissing: '+$name)}
     }
     $state.Passed=1;$state.Case='Executing only the modules downloaded from PSGallery';Write-WorkspaceJson $status $state

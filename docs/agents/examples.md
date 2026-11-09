@@ -15,7 +15,7 @@ A projection narrows what is delivered; it does not change the original source o
 # Objective: Keep full commit objects local and expose only identifiers and subjects.
 # The release-review call supplied -Projection $reviewProjection before execution.
 
-$reviewJson = FrenchExDev2.QuietCli.Core.PoSh\ConvertTo-QuietJson $recent -MaxItems 5 -MaxOutputBytes 4096
+$reviewJson = ConvertTo-QuietJson $recent -MaxItems 5 -MaxOutputBytes 4096
 ```
 
 `-MaxItems` bounds each presented container; `-MaxOutputBytes` bounds the final UTF-8 envelope.
@@ -66,7 +66,7 @@ $review = Invoke-QuietRecall -InputObject $capture -RecordDelimiter "`n" -Data @
     [pscustomobject]@{ ReviewedCommits = $runtime.Data.Commits.Count; RequiresReview = ($candidates.Count -gt 0); Candidates = $candidates }
 }
 if ($review.Outcome -ne 'Success' -or !$review.Completeness.Source -or !$review.Completeness.Analysis) { throw 'ReplayIncomplete' }
-$reviewYaml = FrenchExDev2.QuietCli.Core.PoSh\Out-QuietResult $review -AsYaml -MaxItems 5 -MaxOutputBytes 4096
+$reviewYaml = Out-QuietResult $review -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 ```
 
 Recall replays bytes through new callbacks with fresh state; it runs no stored code and does not
@@ -97,7 +97,7 @@ original variable nor the executable:
 ```powershell
 # Objective: Rebuild the commit business object from a saved journal without native execution.
 $restored = quiet -AsObject -RecallId $recallId -RecallRoot $recallRoot -RecordDelimiter "`n" -Data @{ Commits = [Collections.Generic.List[object]]::new() } -Output $commitOutput -Complete $commitComplete
-$restoredJson = FrenchExDev2.QuietCli.Core.PoSh\ConvertTo-QuietJson $restored -MaxItems 5 -MaxOutputBytes 4096
+$restoredJson = ConvertTo-QuietJson $restored -MaxItems 5 -MaxOutputBytes 4096
 ```
 
 Do not append native arguments to a `-RecallId` call. A name is a searchable label, not an identity;
@@ -126,3 +126,9 @@ compression and 9 asks for the highest level, not a guaranteed reduction. Small 
 input can grow. Without `-Zip`, `-Compress` is rejected. Existing destinations are never overwritten.
 Imports verify integrity and reject malformed records and unsafe archive paths; integrity is not
 author authentication. Recall retains native content, so export only what may be shared.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

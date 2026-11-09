@@ -9,7 +9,7 @@ foreach($source in @('Protocol','Invoke')){. ([IO.Path]::Combine($PSScriptRoot,"
 $script:QuietProtocol=Read-QuietProtocolSpecification ([IO.Path]::Combine($PSScriptRoot,'protocol.json'))
 # The verified engine assembly also carries the compiled cmdlets; importing it here avoids compiling their scripts.
 Import-QuietManagedEngine
-[FrenchExDev2.QuietCli.QuietSession]::Initialize($PSScriptRoot)
+[FrenchExDev2.QuietCli.QuietSession]::Initialize($PSScriptRoot, $ExecutionContext.SessionState.Module.Name)
 Import-Module -Assembly $script:QuietManagedAssembly
 $script:QuietSession=[FrenchExDev2.QuietCli.QuietSession]::SessionId
 $script:QuietMetadataAdapter=[FrenchExDev2.QuietCli.MetadataAdapter]::Instance

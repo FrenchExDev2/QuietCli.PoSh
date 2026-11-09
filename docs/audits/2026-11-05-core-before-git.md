@@ -41,3 +41,9 @@ Snapshots/YAML use synthetic graphs and exclude native execution, callbacks and 
 The old functions are retained only in Core.Tests/CoreMigration.Baseline.ps1. C# cases independently verify snapshot detachment/read-only behavior/cycles, standard YAML semantics and dependency isolation, safe typed persistence/rejection recovery, and canonical cache identity/file invalidation.
 
 Official dependency sources: [YamlDotNet](https://github.com/aaubry/YamlDotNet), [NuGet 18.1.0](https://www.nuget.org/packages/YamlDotNet/18.1.0), [pinned upstream license](https://github.com/aaubry/YamlDotNet/blob/748334a8fa7c227740018b284b71ad95cc6b7fc7/LICENSE.txt).
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

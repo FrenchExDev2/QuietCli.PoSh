@@ -44,6 +44,7 @@ function Invoke-QuietRecallMutation {
             foreach($file in Get-QuietSourceFiles (Join-Path $WorkspaceRoot $relative)){if($file.Path -notmatch '\.(cs|csproj)$'){continue};$to=Join-Path $target $file.Path;[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($to));Copy-Item -LiteralPath (Join-Path (Join-Path $WorkspaceRoot $relative) $file.Path) -Destination $to}
         }
         Copy-Item -LiteralPath (Join-Path $WorkspaceRoot 'global.json') -Destination $destination
+        Copy-Item -LiteralPath (Join-Path $WorkspaceRoot 'Directory.Packages.props') -Destination $destination
         Copy-Item -LiteralPath (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/protocol.json') -Destination (Join-Path $destination 'FrenchExDev2.QuietCli.Core.PoSh')
         $outcome='InfrastructureFailed';$detail=$null
         try{

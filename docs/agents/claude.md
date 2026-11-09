@@ -11,7 +11,7 @@ delimited reference block. For Claude Code, select `-Claude`:
 
 ```powershell
 # Objective: Preview, then install QuietCli's production instructions for Claude Code.
-Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
+Import-Module QuietCli -ErrorAction Stop
 $repository = (Get-Location).Path
 $preview = Add-QuietAgentInstruction -Path $repository -Claude -WhatIf
 $preview.Files | Select-Object Path, ReferencePath, Status
@@ -54,3 +54,9 @@ what the module automates.
 
 These come from the workspace and project `AGENTS.md` files and are repository maintenance rules,
 not part of the distributed production instructions.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

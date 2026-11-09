@@ -1,0 +1,20 @@
+# Dockerfile.vagrant -- minimal SSH-capable image; has_ssh=true is required because Vagrant's shell
+# provisioner talks SSH to the target even under the docker provider (confirmed via HashiCorp community
+# discussion, see the fixture README's sources) -- without it the provisioner silently no-ops.
+FROM alpine:3.20
+
+RUN apk add --no-cache openssh bash sudo wget \
+    && adduser -D -s /bin/bash vagrant \
+    && echo 'vagrant:vagrant' | chpasswd \
+    && printf '\nPasswordAuthentication no\nPermitRootLogin no\n' >> /etc/ssh/sshd_config \
+    && echo "vagrant ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/vagrant \
+    && ssh-keygen -A \
+    && mkdir -p /home/vagrant/.ssh \
+    && wget -qO /home/vagrant/.ssh/authorized_keys \
+         https://raw.githubusercontent.com/hashicorp/vagrant/main/keys/vagrant.pub \
+    && chown -R vagrant:vagrant /home/vagrant/.ssh \
+    && chmod 700 /home/vagrant/.ssh \
+    && chmod 600 /home/vagrant/.ssh/authorized_keys
+
+EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D", "-e"]

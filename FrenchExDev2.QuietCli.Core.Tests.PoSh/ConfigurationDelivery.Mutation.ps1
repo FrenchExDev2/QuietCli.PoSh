@@ -10,8 +10,10 @@ function Invoke-QuietConfigurationDeliveryEngine {
     Enables the targeted source catalogue.
     .PARAMETER OnProgress
     Shared visible-monitor callback.
+    .PARAMETER MutationName
+    Optional exact mutant names for a targeted development campaign; the report records partial catalogue coverage.
     #>
-    param([string]$WorkspaceRoot,[string]$RunDirectory,[switch]$Mutation,[scriptblock]$OnProgress)
+    param([string]$WorkspaceRoot,[string]$RunDirectory,[switch]$Mutation,[scriptblock]$OnProgress,[string[]]$MutationName=@())
     $native=Join-Path $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/'+[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier+'/native')
     $yaml=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'
     $runCases={
@@ -27,7 +29,7 @@ function Invoke-QuietConfigurationDeliveryEngine {
     $baseline=& $runCases (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/engine-tests/QuietCli.Engine.Tests.dll')
     Write-WorkspaceJson (Join-Path $RunDirectory 'compiled-baseline.json') $baseline
     if($baseline.Execution.Outcome -ne 'Success' -or $baseline.Report.Failed){throw 'ConfigurationDeliveryEngineBaselineFailed'}
-    $outcomes=[Collections.Generic.List[object]]::new();$passed=$baseline.Report.Passed;$failed=0
+    $outcomes=[Collections.Generic.List[object]]::new();$passed=$baseline.Report.Passed;$failed=0;$catalogueCount=0
     if($Mutation){
         $catalogue=@(
             @{Name='yaml-size-limit';File='ConfigurationYaml.cs';From='if (count > 65536)';To='if (false)'},
@@ -92,8 +94,34 @@ function Invoke-QuietConfigurationDeliveryEngine {
             @{Name='agent-install-declined';File='Agents/AgentInstaller.cs';From='else if (declined) status';To='else if (false) status'},
             @{Name='agent-install-bom-strict';File='Agents/AgentDocuments.cs';From='new(false, true)';To='new(false, false)'},
             @{Name='scaffold-no-overwrite';File='Scaffolding/ModuleScaffold.cs';From='if (Path.Exists(target) || Path.Exists(tests))';To='if (false)'},
-            @{Name='scaffold-tests-name';File='Scaffolding/ModuleScaffold.cs';From='name[..^".PoSh".Length] + ".Tests.PoSh"';To='name + ".Tests"'}
+            @{Name='scaffold-tests-name';File='Scaffolding/ModuleScaffold.cs';From='name[..^".PoSh".Length] + ".Tests.PoSh"';To='name + ".Tests"'},
+            @{Name='module-session-identity';File='QuietSession.cs';From='ModuleName = moduleName;';To='ModuleName = "QuietCli";'},
+            @{Name='module-session-validation';File='QuietSession.cs';From='if (!System.Text.RegularExpressions.Regex.IsMatch(moduleName,';To='if (false && !System.Text.RegularExpressions.Regex.IsMatch(moduleName,'},
+            @{Name='script-module-identity';File='Cmdlets/ScriptCommands.cs';From='Prologue.Replace("__QUIET_MODULE__", QuietSession.ModuleName, StringComparison.Ordinal)';To='Prologue.Replace("__QUIET_MODULE__", "QuietCli", StringComparison.Ordinal)'},
+            @{Name='scaffold-module-identity';File='Scaffolding/ModuleScaffold.cs';From='[(QuietSession.ModuleName, "0.2.0")]';To='[("FrenchExDev2.QuietCli.Core.PoSh", "0.2.0")]'},
+            @{Name='emit-events-not-recorded';File='Cmdlets/RuntimeCommands.cs';From='Events.Add(value);';To='_ = value;'},
+            @{Name='emit-listener-not-disabled-after-failure';File='Cmdlets/RuntimeCommands.cs';From='(disabledListeners ??= []).Add(i);';To=';'},
+            @{Name='emit-listener-skip-check-removed';File='Cmdlets/RuntimeCommands.cs';From='if (disabledListeners?.Contains(i) == true) continue;';To='if (false) continue;'},
+            @{Name='emit-nested-inherits-listeners';File='Cmdlets/RuntimeCommands.cs';From='runtime.Listeners = request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : [];';To='runtime.Listeners = parent?.Listeners ?? (request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : []);'},
+            @{Name='emit-listener-array-item-not-validated';File='Cmdlets/RuntimeCommands.cs';From='Select(item => Unwrap(item) as ScriptBlock ?? throw new InvalidOperationException("ListenerMustBeScriptBlock")).ToArray();';To='Select(item => Unwrap(item) as ScriptBlock).ToArray()!;'},
+            @{Name='maxlines-requires-ui-guard-removed';File='Cmdlets/ArgumentCommands.cs';From='if (request.ContainsKey("MaxLines") && !Flag(request, "UI")) throw new InvalidOperationException("MaxLinesRequiresUI");';To=';'},
+            @{Name='maxlines-nonpositive-silently-coerced';File='Cmdlets/RuntimeCommands.cs';From='if (maxLines <= 0) throw new InvalidOperationException("MaxLinesMustBePositive");';To='maxLines = Math.Max(1, maxLines);'},
+            @{Name='ui-tail-fifo-head-not-advanced';File='Cmdlets/UiRenderer.cs';From='lane.Head = (lane.Head + 1) % lane.Tail.Length;';To='lane.Head = 0;'},
+            @{Name='ui-tail-count-not-capped';File='Cmdlets/UiRenderer.cs';From='if (lane.Count < lane.Tail.Length) lane.Count++;';To='lane.Count++;'},
+            @{Name='ui-lane-order-not-insertion';File='Cmdlets/UiRenderer.cs';From='laneOrder.Add(key);';To='laneOrder.Insert(0, key);'},
+            @{Name='ui-format-machine-prefix-always-shown';File='Cmdlets/UiRenderer.cs';From='string machinePart = machine is { Length: > 0 } && !string.Equals(machine, laneKey, StringComparison.Ordinal) ? $"[{machine}]" : "";';To='string machinePart = machine is { Length: > 0 } ? $"[{machine}]" : "";'},
+            @{Name='splat-value-options-lost';File='Cmdlets/ArgumentCommands.cs';From='request[option] = args[index];';To='request[option] = match.Success ? null : args[index];'},
+            @{Name='event-delivery-not-projected';File='Cmdlets/DeliveryCommands.cs';From='["Events"] = safeEvents';To='["Events"] = null'},
+            @{Name='ui-final-frame-omitted';File='Cmdlets/UiRenderer.cs';From='if (!failed) DrawFrame();';To=';'},
+            @{Name='ui-viewport-height-ignored';File='Cmdlets/UiFrameLayout.cs';From='height = Math.Max(1, height);';To='height = 10000;'},
+            @{Name='ui-viewport-width-ignored';File='Cmdlets/UiFrameLayout.cs';From='if (clean.GetCellWidth() <= width) return clean;';To='return clean;'},
+            @{Name='ui-viewport-task-identity-lost';File='Cmdlets/UiFrameLayout.cs';From=' T:{Fit(task, width - 5 - projectWidth)}';To=' {Fit(task, width - 5 - projectWidth)}'}
         )
+        $catalogueCount=$catalogue.Count
+        if($MutationName.Count){
+            foreach($name in $MutationName){if($name -cnotin $catalogue.Name){throw ('UnknownConfigurationDeliveryMutant: '+$name)}}
+            $catalogue=@($catalogue|Where-Object {$_.Name -cin $MutationName})
+        }
         foreach($mutant in $catalogue){
             if($OnProgress){& $OnProgress ('C# mutation: '+$mutant.Name) 'Running' $passed $failed}
             $directory=Join-Path $RunDirectory ('mutations/'+$mutant.Name)
@@ -105,7 +133,7 @@ function Invoke-QuietConfigurationDeliveryEngine {
                     [IO.File]::Copy((Join-Path $WorkspaceRoot ($relative+'/'+$file.Path)),$destination)
                 }
             }
-            foreach($relative in @('global.json','FrenchExDev2.QuietCli.Core.PoSh/protocol.json')){[IO.File]::Copy((Join-Path $WorkspaceRoot $relative),(Join-Path $directory $relative))}
+            foreach($relative in @('global.json','Directory.Packages.props','FrenchExDev2.QuietCli.Core.PoSh/protocol.json')){[IO.File]::Copy((Join-Path $WorkspaceRoot $relative),(Join-Path $directory $relative))}
             $path=Join-Path $directory ('FrenchExDev2.QuietCli.Core.PoSh/engine/'+$mutant.File)
             $source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
             if(([regex]::Matches($source,[regex]::Escape($mutant.From))).Count -ne 1){throw ('ConfigurationDeliveryMutationAnchorInvalid: '+$mutant.Name)}
@@ -119,5 +147,5 @@ function Invoke-QuietConfigurationDeliveryEngine {
             if($outcome -eq 'Killed'){$passed++}else{$failed++}
         }
     }
-    return [pscustomobject]@{Passed=$passed;Failed=$failed;Baseline=$baseline.Report;Mutations=$outcomes.ToArray()}
+    return [pscustomobject]@{Passed=$passed;Failed=$failed;Baseline=$baseline.Report;CatalogueCount=$catalogueCount;FullCatalogue=([bool]$Mutation -and !$MutationName.Count);Mutations=$outcomes.ToArray()}
 }

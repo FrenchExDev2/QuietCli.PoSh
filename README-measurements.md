@@ -21,4 +21,10 @@ Tokenization defaults to `o200k_base` and counts the exact final delivery text. 
 
 SQLite stores closed metadata, counters, relationships and structured error codes. It excludes native output, business objects, delivered text, Recall names and callback code. Explicit Recall storage is separate from telemetry and ordinary result serialization. YAML `telemetry.database` selects the database; `telemetry.enabled: false` disables measurement writes. Storage errors remain distinct from business outcomes.
 
-See [allocation and delivery metrics](docs/allocation-and-delivery-metrics.md), [Core performance qualification](FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md) and the [RTK comparison](QUIET_VS_RTK_MEASURES.md) for definitions, measured scope and limitations.
+See [allocation and delivery metrics](docs/README-allocation-and-delivery-metrics.md), [Core performance qualification](FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md) and the [RTK comparison](QUIET_VS_RTK_MEASURES.md) for definitions, measured scope and limitations. For the concrete mechanics behind retention and privacy — the closed-DTO projection, the irreversible scrub and resource-integrity checks — see [privacy and integrity internals](docs/README-privacy-and-integrity-internals.md).
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

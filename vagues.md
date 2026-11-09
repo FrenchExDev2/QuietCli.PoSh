@@ -164,7 +164,7 @@ Suggestions (absents du catalogue RTK rewrite/filters comme providers dédiés, 
 7. **Recall opt-in** uniquement échec/troncature, borné, scrub secrets ; double usage : récupération agent + **fixtures** pour qualifier des handlers.
 8. **États de couverture réels** : `Specialized`, `ExitOnly`, `Missing` ; outcomes `Partial` / `Unsupported` au lieu d'afficher un faux `Executed` complet.
 9. **Pipeline de génération de provider assistée par IA** : `New-QuietModule`, gabarit, fixtures, qualification auto.
-10. Brancher réellement **`QUIETCLI_ENGINE_MODE=InProcess`** (documenté dans `docs/performance-and-hosting.md`, absent de `Protocol.ps1` actuel).
+10. Brancher réellement **`QUIETCLI_ENGINE_MODE=InProcess`** (documenté dans `docs/README-performance-and-hosting.md`, absent de `Protocol.ps1` actuel).
 11. Mettre **AGENTS.md** à jour (pump vers `quiet`).
 12. **Script de purge** de `artifacts\` (volume gitignored / bloat).
 

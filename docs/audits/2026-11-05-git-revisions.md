@@ -9,3 +9,9 @@ Windows x64 Git 2.56.0.windows.3 passed 64/64 scenarios on PowerShell 7.6.9/.NET
 Limits: development evidence is Windows x64 on one native Git version. Other versions, architectures, Linux and full option combinations remain unqualified. Requested-format fallback is explicit, not a typed semantic guarantee. No publication or push occurred.
 
 References: [rev-parse](https://git-scm.com/docs/git-rev-parse), [describe](https://git-scm.com/docs/git-describe), [name-rev](https://git-scm.com/docs/git-name-rev), [shortlog](https://git-scm.com/docs/git-shortlog). Native installed help is the immediate argument reference.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

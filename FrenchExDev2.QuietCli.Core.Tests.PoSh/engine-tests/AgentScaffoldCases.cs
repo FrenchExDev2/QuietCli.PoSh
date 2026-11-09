@@ -164,7 +164,7 @@ internal static class AgentScaffoldCases
                     var manifest = Manifest(runspace, Path.Combine(module, name + ".psd1"));
                     var required = ((object[])manifest["RequiredModules"]!).Cast<System.Collections.Hashtable>().ToArray();
                     var data = (System.Collections.Hashtable)((System.Collections.Hashtable)manifest["PrivateData"]!)["QuietCli"]!;
-                    Require(required.Length == 1 && (string)required[0]["ModuleName"]! == "FrenchExDev2.QuietCli.Core.PoSh" && (string)manifest["RootModule"]! == name + ".psm1" && (string)data["Binary"]! == binary && (string)data["TestsModule"]! == testName && (string)data["Qualification"]! == "NotImplemented", "Business manifest wrong");
+                    Require(required.Length == 1 && (string)required[0]["ModuleName"]! == "QuietCli" && (string)required[0]["ModuleVersion"]! == "0.2.0" && (string)manifest["RootModule"]! == name + ".psm1" && (string)data["Binary"]! == binary && (string)data["TestsModule"]! == testName && (string)data["Qualification"]! == "NotImplemented", "Business manifest wrong");
                     var testManifest = Manifest(runspace, Path.Combine(tests, testName + ".psd1"));
                     var testRequired = ((object[])testManifest["RequiredModules"]!).Cast<System.Collections.Hashtable>().Select(item => (string)item["ModuleName"]!).ToArray();
                     Require(testRequired.SequenceEqual([name, "FrenchExDev2.QuietCli.Core.Tests.PoSh"]) && Guid.TryParse((string)testManifest["GUID"]!, out _), "Test manifest wrong");

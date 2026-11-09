@@ -1,4 +1,5 @@
 # Objectif : Partager une identité déterministe des sources et des binaires entre verrouillage, build et tests.
+. (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
 function Get-QuietSourceFiles {
     <#
     .SYNOPSIS
@@ -74,7 +75,8 @@ function Get-QuietBinaryInputs {
     $files=foreach($root in $roots){foreach($file in Get-QuietSourceFiles $root){$file.Path=[IO.Path]::GetRelativePath($WorkspaceRoot,(Join-Path $root $file.Path)).Replace('\','/');$file}}
     $sdk=Join-Path $WorkspaceRoot 'global.json'
     $spec=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/protocol.json'
-    @($files)+@([pscustomobject]@{Path='global.json';Bytes=(Get-Item $sdk).Length;SHA256=(Get-FileHash $sdk -Algorithm SHA256).Hash},[pscustomobject]@{Path='FrenchExDev2.QuietCli.Core.PoSh/protocol.json';Bytes=(Get-Item $spec).Length;SHA256=(Get-FileHash $spec -Algorithm SHA256).Hash})
+    $packages=Join-Path $WorkspaceRoot 'Directory.Packages.props'
+    @($files)+@([pscustomobject]@{Path='global.json';Bytes=(Get-Item $sdk).Length;SHA256=(Get-FileHash $sdk -Algorithm SHA256).Hash},[pscustomobject]@{Path='FrenchExDev2.QuietCli.Core.PoSh/protocol.json';Bytes=(Get-Item $spec).Length;SHA256=(Get-FileHash $spec -Algorithm SHA256).Hash},[pscustomobject]@{Path='Directory.Packages.props';Bytes=(Get-Item $packages).Length;SHA256=(Get-FileHash $packages -Algorithm SHA256).Hash})
 }
 function Write-QuietBuildManifest {
     <#
@@ -147,14 +149,14 @@ function Read-QuietRepositoryValue {
 function Get-QuietWorkspaceIdentity {
     <#
     .SYNOPSIS
-    Captures one repository, four project identities and the binaries actually tested.
+    Captures one repository, discovered project identities and the binaries actually tested.
     .PARAMETER WorkspaceRoot
     QuietCli2 root.
     .PARAMETER IncludeBinaries
     Verifies build/source associations and records binary digests.
     #>
     param([string]$WorkspaceRoot,[switch]$IncludeBinaries)
-    $children=@('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh','FrenchExDev2.QuietCli.Git.PoSh','FrenchExDev2.QuietCli.Git.Tests.PoSh')
+    $children=@((Get-QuietWorkspaceProjects $WorkspaceRoot).Name)
     $revision=$null;$remote=$null;$dirty=$false
     $allowedFiles=$null
     if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot '.git')){

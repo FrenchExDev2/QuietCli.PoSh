@@ -16,4 +16,75 @@ function ConvertFrom-RunColdSample {
     }
     return [pscustomobject]@{ Import = $values[0]; First = $values[1]; Second = $values[2] }
 }
-Export-ModuleMember -Function ConvertFrom-RunColdSample
+function Get-RunModuleFootprintBytes {
+    <#
+    .SYNOPSIS
+    Total on-disk size, in bytes, of every file under a module's root directory.
+    .DESCRIPTION
+    The module root is the manifest's containing directory, so this covers the manifest itself plus every
+    assembly it loads (managed and native, IL or ReadyToRun). A ReadyToRun build embeds native code the IL build
+    does not, so this number is expected to grow for a ReadyToRun candidate even when cold-start time improves.
+    .PARAMETER ManifestPath
+    Path to the module's .psd1 manifest.
+    #>
+    param([Parameter(Mandatory)][string]$ManifestPath)
+    $root = Split-Path -Parent ([IO.Path]::GetFullPath($ManifestPath))
+    $files = [IO.Directory]::EnumerateFiles($root, '*', [IO.SearchOption]::AllDirectories)
+    $total = 0L
+    foreach ($file in $files) { $total += [IO.FileInfo]::new($file).Length }
+    return $total
+}
+
+function Get-RunModuleHostedPathBytes {
+    <#
+    .SYNOPSIS
+    On-disk size, in bytes, of only the engine files on the hosting path this process actually loads.
+    .DESCRIPTION
+    Get-RunModuleFootprintBytes sums the whole module directory, including every bundled RID whether or not it
+    is used; this isolates just the lib/inprocess (CLR10, Auto hosting) or lib/engine/<RuntimeIdentifier>
+    (CLR11+) directory, so a ReadyToRun build's active cost can be compared without the other RIDs' dead weight.
+    .PARAMETER ManifestPath
+    Path to the module's .psd1 manifest.
+    .PARAMETER RuntimeIdentifier
+    RID folder to check under lib/engine on CLR11+; ignored on CLR10, which always hosts from lib/inprocess.
+    Defaults to this process's own RID.
+    #>
+    param([Parameter(Mandatory)][string]$ManifestPath, [string]$RuntimeIdentifier = [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)
+    $root = Split-Path -Parent ([IO.Path]::GetFullPath($ManifestPath))
+    $hosted = if ($PSVersionTable.PSVersion.Major -ge 11) {
+        Join-Path $root "lib/engine/$RuntimeIdentifier"
+    }
+    else { Join-Path $root 'lib/inprocess' }
+    if (-not (Test-Path -LiteralPath $hosted -PathType Container)) { throw "RunModuleHostedPathMissing: $hosted" }
+    $total = 0L
+    foreach ($file in [IO.Directory]::EnumerateFiles($hosted, '*', [IO.SearchOption]::AllDirectories)) { $total += [IO.FileInfo]::new($file).Length }
+    return $total
+}
+
+function Get-RunModulePackageBytes {
+    <#
+    .SYNOPSIS
+    Packages a module with Compress-PSResource and returns the resulting .nupkg size, in bytes.
+    .DESCRIPTION
+    Get-RunModuleFootprintBytes reports the raw on-disk sum; this reports what a PSGallery-style feed would
+    actually serve, after nupkg (zip) compression. The two can diverge: native ReadyToRun code and already-compressed
+    managed IL do not compress the same way, so a candidate's compressed size is not guaranteed to track its raw
+    footprint. Packages into a throwaway temporary directory and removes it afterward; never writes into the
+    module's own directory.
+    .PARAMETER ManifestPath
+    Path to the module's .psd1 manifest; its containing directory is packaged as-is.
+    #>
+    param([Parameter(Mandatory)][string]$ManifestPath)
+    $root = Split-Path -Parent ([IO.Path]::GetFullPath($ManifestPath))
+    $scratch = Join-Path ([IO.Path]::GetTempPath()) ('quietcli-coldstart-pkg-' + [guid]::NewGuid().ToString('N'))
+    [void][IO.Directory]::CreateDirectory($scratch)
+    try {
+        $compressed = Compress-PSResource -Path $root -DestinationPath $scratch -PassThru -ErrorAction Stop
+        $path = if ($compressed -is [IO.FileInfo]) { $compressed.FullName } else { [string]$compressed }
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "RunModulePackageMissing: $path" }
+        return [IO.FileInfo]::new($path).Length
+    }
+    finally { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Export-ModuleMember -Function ConvertFrom-RunColdSample, Get-RunModuleFootprintBytes, Get-RunModuleHostedPathBytes, Get-RunModulePackageBytes

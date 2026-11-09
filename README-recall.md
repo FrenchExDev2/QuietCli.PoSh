@@ -2,7 +2,7 @@
 
 [Back to the QuietCli overview](README.md)
 
-Opt-in capture of native evidence for inspection, offline analyzer development and work that continues in another session. Full contract: [Recall documentation](docs/recall.md). Related: [Streaming and callbacks](README-streaming.md).
+Opt-in capture of native evidence for inspection, offline analyzer development and work that continues in another session. Full contract: [Recall documentation](docs/README-recall.md). Related: [Streaming and callbacks](README-streaming.md).
 
 ## In-memory evidence
 
@@ -78,4 +78,10 @@ Directory export is the default for repeated replay. `-Zip` selects streaming ZI
 
 Import validates the supported format, sizes, offsets and SHA-256 integrity with bounded allocations. It loads inert data, never arbitrary serialized types or scripts. `-MaxBytes` bounds accepted native payload; `All` permits large disk-backed evidence without loading it all into RAM. Existing destinations are not overwritten. Integrity checks do not authenticate the author.
 
-See the [Recall contract](docs/recall.md) for checkpoint behavior, corruption handling, live-reader limits and all public APIs.
+See the [Recall contract](docs/README-recall.md) for checkpoint behavior, corruption handling, live-reader limits and all public APIs.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

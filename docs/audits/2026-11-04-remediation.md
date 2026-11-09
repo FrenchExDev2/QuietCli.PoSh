@@ -61,3 +61,9 @@ Les rapports par run conservent états, cas, identités des sources/binaires et 
 La cible [Windows 11 ARM64](../ci/windows-arm64.md) est ajoutée au workflow avec contrôle d’architecture. Le moteur est publié pour x64 et ARM64, assembly et apphost vérifiés par en-têtes PE puis embarqués dans Core ; aucun run ARM distant n’est déclaré réussi sans preuve de ce runner. Les révisions/remotes non renseignés et les images CI non configurées restent des prérequis de publication ; les scripts ne les inventent pas.
 
 L’inventaire des dépendances fournit une provenance et des licences, pas un audit exhaustif des avis de vulnérabilité. Les hashes n’authentifient pas un auteur de paquet. Le vérificateur n’exécute les modules qu’avec `-TestImport` explicite, après vérification de l’ensemble ; cette option exécute du code avec les droits de l’appelant.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

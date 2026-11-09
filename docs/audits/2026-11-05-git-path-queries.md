@@ -11,3 +11,9 @@ An initial native attribute test omitted the outer PowerShell separator and cons
 Full Git release, Linux/ARM64 and unimplemented formats remain explicitly unqualified. Existing Core/native PTY implementations were unchanged. No push or publication was performed.
 
 References: [raw diff](https://git-scm.com/docs/git-diff-index#_raw_output_format), [attributes](https://git-scm.com/docs/git-check-attr), [ignore](https://git-scm.com/docs/git-check-ignore), [mailmap](https://git-scm.com/docs/git-check-mailmap), [grep](https://git-scm.com/docs/git-grep).
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

@@ -43,17 +43,17 @@ Then start a fresh PowerShell 7.6+ process before importing rebuilt assemblies. 
 ### From PowerShell Gallery, when this preview is published
 
 ```powershell
-Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh -Version '0.2.0-preview' -Prerelease -Repository PSGallery -Scope CurrentUser
-Import-Module FrenchExDev2.QuietCli.Core.PoSh
+Install-PSResource -Name QuietCli -Version '0.2.0-preview' -Prerelease -Repository PSGallery -Scope CurrentUser
+Import-Module QuietCli
 ```
 
-The historical stable package is not evidence that this development preview is available. See [package installation](docs/PSGallery.md).
+The historical stable package is not evidence that this development preview is available. See [package installation](docs/README-PSGallery.md).
 <!-- TODO Jean: Verify publication of 0.2.0-preview before presenting the Gallery command as an available installation path. -->
 
 ## Quickstart: Core alone, one native command
 
 From a built checkout, these nine lines count stdout bytes from `pwsh -v`; no business provider is needed.
-For a Gallery installation, replace the first line with `Import-Module FrenchExDev2.QuietCli.Core.PoSh`.
+For a Gallery installation, replace the first line with `Import-Module QuietCli`.
 
 ```powershell
 Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
@@ -246,3 +246,9 @@ Proposed milestones, not completed release claims:
 [Streaming and results](README-streaming.md) · [Hosting / PTY](README-hosting.md) · [Recall](README-recall.md) · [Measurements](README-measurements.md)
 [Configuration](README-configuration.md) · [Modules](README-modules.md) · [Development](README-development.md) · [Qualification](README-qualification.md)
 <!-- TODO Jean: If adopted as README.md, retarget inbound links to existing section anchors or preserve compatible anchors. -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

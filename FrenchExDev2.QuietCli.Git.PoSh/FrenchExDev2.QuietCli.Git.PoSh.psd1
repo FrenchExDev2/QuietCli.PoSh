@@ -5,6 +5,6 @@
  FunctionsToExport=@('Get-QuietGitCoverage','Remove-QuietGitArtifact');AliasesToExport=@();CmdletsToExport=@();VariablesToExport=@()
  PrivateData=@{
   PSData=@{Prerelease='preview';Tags=@('QuietCli','Git','AI','Windows','Linux','ARM64');LicenseUri='https://opensource.org/license/mit';ProjectUri='https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh';ReleaseNotes='Preview of compiled local record framing with the matching Core preview dependency. Full command/version qualification remains incomplete.'}
-  QuietCli=@{Binary='git';TestsModule='FrenchExDev2.QuietCli.Git.Tests.PoSh';Qualification='Partial'}
+  QuietCli=@{Binary='git';TestsModule='FrenchExDev2.QuietCli.Git.Tests.PoSh';Qualification='Partial';Publishable=$false}
  }
 }

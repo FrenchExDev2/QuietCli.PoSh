@@ -134,8 +134,8 @@ internal static class ScriptDefinitionBuilder
         """;
 
     private const string Prologue = """
-        if (!(Get-Module -Name FrenchExDev2.QuietCli.Core.PoSh)) {
-            Import-Module FrenchExDev2.QuietCli.Core.PoSh -MinimumVersion 0.2.0 -ErrorAction Stop
+        if (!(Get-Module -Name __QUIET_MODULE__)) {
+            Import-Module __QUIET_MODULE__ -MinimumVersion 0.2.0 -ErrorAction Stop
         }
         $quietArguments = [Collections.Generic.List[object]]::new()
         """;
@@ -148,7 +148,7 @@ internal static class ScriptDefinitionBuilder
         $quietArguments.Add('-ArgumentList')
         $quietArguments.Add($ArgumentList)
         $callArguments = $quietArguments.ToArray()
-        FrenchExDev2.QuietCli.Core.PoSh\Invoke-QuietCli @callArguments
+        __QUIET_MODULE__\Invoke-QuietCli @callArguments
         """;
 
     /// <summary>Validates the options and renders the definition; nothing is executed or written.</summary>
@@ -174,7 +174,7 @@ internal static class ScriptDefinitionBuilder
         {
             Header,
             $"param([string]$FilePath = {binary}, [string[]]$ArgumentList = {arguments}, [string]$WorkingDirectory = {working})",
-            Prologue,
+            Prologue.Replace("__QUIET_MODULE__", QuietSession.ModuleName, StringComparison.Ordinal),
         };
         foreach (string key in request.Keys.Cast<object>().Select(k => Convert.ToString(k, CultureInfo.InvariantCulture) ?? "").OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
         {
@@ -195,7 +195,7 @@ internal static class ScriptDefinitionBuilder
                 lines.Add($"$quietArguments.Add(({literal}))");
             }
         }
-        lines.Add(Epilogue);
+        lines.Add(Epilogue.Replace("__QUIET_MODULE__", QuietSession.ModuleName, StringComparison.Ordinal));
         string source = string.Join("\n", lines).Replace("\r\n", "\n").Replace("\r", "\n") + "\n";
         if (source.Length > MaximumSourceCharacters) throw new InvalidOperationException("QuietScriptSourceLimit");
         Parser.ParseInput(source, out _, out ParseError[] errors);

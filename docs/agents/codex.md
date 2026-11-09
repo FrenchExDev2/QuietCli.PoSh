@@ -17,7 +17,7 @@ Open PowerShell in the project that Codex will work on:
 
 ```powershell
 # Objective: Install QuietCli's production instructions in the selected project.
-Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
+Import-Module QuietCli -ErrorAction Stop
 $repository = (Get-Location).Path
 $installation = Add-QuietAgentInstruction -Path $repository -Agents
 $installation.Files | Select-Object Path, ReferencePath, Status
@@ -56,15 +56,15 @@ Run this inside the PowerShell process that Codex will reuse:
 
 ```powershell
 # Objective: Load the installed Core and retain its identity for subsequent work.
-Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
-$core = Get-Module FrenchExDev2.QuietCli.Core.PoSh
+Import-Module QuietCli -ErrorAction Stop
+$core = Get-Module QuietCli
 $core.Path
 $PID
 $repository = (Get-Location).Path
 ```
 
 Reuse that module and its `quiet` alias. Keep modules with overlapping public command names in
-separate processes; do not load legacy QuietCli or archived OPumper modules into this session.
+separate processes; do not mix QuietCli releases or load archived OPumper modules into this session.
 An installed module includes its runtime resources; importing it does not compile C#.
 
 Leave `engine.hosting` at `Auto`: a CLR 10 host selects the integrated `net10.0` build;
@@ -160,12 +160,12 @@ Check the actual result before using it, and expose only a bounded delivery to C
 
 ```powershell
 if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis -or $result.Error.Count) {
-    FrenchExDev2.QuietCli.Core.PoSh\Out-QuietResult $result -MaxItems 8 -MaxOutputBytes 4096
+    Out-QuietResult $result -MaxItems 8 -MaxOutputBytes 4096
     throw 'QuietCliExecutionOrAnalysisIncomplete'
 }
 $execution = $result.Execution
 $completeness = $result.Completeness
-FrenchExDev2.QuietCli.Core.PoSh\Out-QuietResult $result -MaxItems 8 -MaxOutputBytes 4096
+Out-QuietResult $result -MaxItems 8 -MaxOutputBytes 4096
 ```
 
 `-AsObject` keeps `Data` local without enumerating or serializing it. Assigning `$result` in
@@ -210,3 +210,9 @@ the external process-startup comparison described above.
 Use the host project's existing monitored launchers for tests and its documented CI orchestration.
 QuietCli grants no additional permission for network access, retries, hook installation, profile
 edits, pushes or publication.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

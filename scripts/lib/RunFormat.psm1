@@ -27,6 +27,22 @@ function Format-RunDuration {
     return $sign + $text
 }
 
+function Format-RunDataSize {
+    <#
+    .SYNOPSIS
+    Formats a byte count as a compact MiB figure (2 decimals). Unknown values render as a dash.
+    .PARAMETER Bytes
+    Size in bytes; negative values keep their sign.
+    .PARAMETER Signed
+    Also prefixes a non-negative value with '+', for a candidate-minus-baseline difference.
+    #>
+    param($Bytes, [switch]$Signed)
+    if ($null -eq $Bytes -or [double]::IsNaN([double]$Bytes)) { return '-' }
+    $mib = [double]$Bytes / 1MB
+    $sign = if ($Signed -and $mib -ge 0) { '+' } else { '' }
+    return "$sign$($mib.ToString('F2', [Globalization.CultureInfo]::InvariantCulture)) MiB"
+}
+
 function Format-RunCell {
     <#
     .SYNOPSIS
@@ -61,7 +77,9 @@ function Format-RunTable {
     param([string[]]$Headers, [object[]]$Rows = @(), [int[]]$RightAligned = @(), [int]$Width = 0)
     if ($Width -le 0) {
         $Width = 110
-        try { if (-not [Console]::IsOutputRedirected -and -not [Console]::IsErrorRedirected) { $Width = [Console]::WindowWidth } } catch { $Width = 110 }
+        try {
+            if (-not [Console]::IsOutputRedirected -and -not [Console]::IsErrorRedirected -and [Console]::WindowWidth -gt 0) { $Width = [Console]::WindowWidth }
+        } catch { $Width = 110 }
     }
     $count = $Headers.Count
     $widths = [int[]]::new($count)
@@ -115,4 +133,4 @@ function ConvertTo-RunSingleQuoted {
     return "'" + [regex]::Replace($Value, "['‘’‚‛]", '$0$0') + "'"
 }
 
-Export-ModuleMember -Function Format-RunDuration, Format-RunTable, Format-RunCounters, ConvertTo-RunSingleQuoted
+Export-ModuleMember -Function Format-RunDuration, Format-RunDataSize, Format-RunTable, Format-RunCounters, ConvertTo-RunSingleQuoted

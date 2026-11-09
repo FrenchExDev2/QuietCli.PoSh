@@ -2,7 +2,7 @@
 
 Scope: `scripts/New-RunProfile.ps1`, `scripts/Invoke-RunProfile.ps1`, `scripts/Measure-ColdStart.ps1`,
 `scripts/lib/Run*.psm1`, profiles `coldstart-100` and `coldstart-1000`.
-How the tooling works: [../run-profiles.md](../run-profiles.md).
+How the tooling works: [../README-run-profiles.md](../README-run-profiles.md).
 
 ## Launch commands
 
@@ -100,3 +100,9 @@ zero in the final state. The catalogue is in `RunProfiles.Mutation.ps1`.
 
 See the [8 November qualification audit](2026-11-08-run-profile-qualification.md) for the final 46-case functional
 suite, full campaign and targeted reprise, source identities, Core/Git regression results and remaining measurement limits.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

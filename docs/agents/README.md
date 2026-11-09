@@ -45,3 +45,9 @@ the Core package (`resources/agents`). `Add-QuietAgentInstruction` copies only `
 
 Production usage instructions are separate from the repository maintenance rules in the
 project-level [AGENTS.md](../../AGENTS.md).
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

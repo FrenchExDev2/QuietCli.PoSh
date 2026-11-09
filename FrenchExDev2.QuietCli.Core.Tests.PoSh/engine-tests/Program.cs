@@ -40,6 +40,7 @@ internal static class Program
             string moduleRoot = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(arguments[2])!, "..", ".."));
             await ConfigurationCmdletCases.RunAsync(Case, moduleRoot);
             await DeliveryCmdletCases.RunAsync(Case, moduleRoot);
+            await UiRendererCases.RunAsync(Case);
             Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Partial = caseFilter is not null, Incomplete = stoppedAt is not null, StoppedAt = stoppedAt, Skipped = skipped, Cases = results }));
             return failed == 0 ? 0 : 1;
         }

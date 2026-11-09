@@ -6,29 +6,99 @@
 
 > **Status: under development (`0.2.0-preview`).** This module is the worked example of a QuietCli companion module. Its catalogue is growing, its API may change, and **the complete inventory is not qualified**. Read [Coverage and limits](#coverage-and-limits) before relying on a command.
 
-Git business handlers for the [QuietCli](../README.md) engine. Instead of writing `-Output` and `-Complete` callbacks, you run `quiet -AsObject git <command>` and the module supplies a parser that turns Git's output into typed business data. It depends explicitly on `FrenchExDev2.QuietCli.Core.PoSh >= 0.2.0`.
+Git business handlers for the [QuietCli](../README.md) engine. Instead of writing `-Output` and `-Complete` callbacks, you run `quiet -AsObject git <command>` and the module supplies a parser that turns Git's output into typed business data. Use the Core and Git source projects from the same checkout. This Git companion is not published on PowerShell Gallery; the public `QuietCli` package provides Core.
 
 ## Quick start
 
-From a source checkout, import the Core and Git manifests, then run inside an existing Git repository:
+[Checkout and build](#check-out-and-build) · [Import, execute and read YAML](#import-execute-and-read-yaml)
+
+### Check out and build
+
+Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100-rc.3.26522.148`). Build before importing the local modules. Close sessions that already loaded this checkout's assemblies before rebuilding.
+
+The commands start in a parent directory of your choice and clone the whole monorepo into `$HOME/src/QuietCli`. For an existing checkout, set `$checkout` to its root and skip the clone. Git performs this initial bootstrap before local `quiet` is available; the build script uses the engine-independent process helper.
 
 ```powershell
-Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
-Import-Module ./FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1
-
-# Goal: observe the repository selected by -WorkingDirectory, labelled "project" in measurements.
-$r = quiet -AsObject -C project -WorkingDirectory $repository git status
-$r.Outcome
-$r.Completeness
-$r.Data
-
-# Goal: separate the PowerShell option separator from the native one.
-$r = quiet -AsObject -- git status -- 'a file'
+$checkout = Join-Path $HOME 'src/QuietCli'
+New-Item -ItemType Directory -Path (Split-Path $checkout -Parent) -Force | Out-Null
+git clone --branch develop https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh.git $checkout
+if ($LASTEXITCODE -ne 0) { throw 'CheckoutFailed' }
+Set-Location $checkout
+./scripts/Initialize-Workspace.ps1 -Restore
+./scripts/Build-Workspace.ps1
 ```
 
-QuietCli options precede `git`; Git's global options follow `git`. Business input is never sent to a probe or an observation. Parsers for machine formats require separate pipes: a PTY request that is incompatible fails explicitly before the business execution. A direct callback can still supply its own analysis of a merged terminal stream.
+All paths are relative to the monorepo root. `-Restore` verifies the committed source lock; on an intentionally edited checkout, `./scripts/Initialize-Workspace.ps1` without `-Restore` refreshes the local lock. A successful build creates the compiled engine and companion binaries; it does not publish or install a Gallery package.
 
-Importing the module registers an inert catalogue. The first invocation observes the Git binary version; later probes use a cache tied to its identity. The declared range is stable Git `>= 2.40.0 < 2.57.0`, including `.windows.N` variants. A declared range is not a qualification of every version in it.
+### Import, execute and read YAML
+
+**Open a new PowerShell Core 7.6+ session with its normal profile**, then paste the following block. Reassigning `$checkout` makes the new session independent of variables from the build session.
+
+```powershell
+$checkout = Join-Path $HOME 'src/QuietCli'
+Set-Location $checkout
+Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1 -ErrorAction Stop
+Import-Module ./FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1 -ErrorAction Stop
+Get-Alias quiet
+
+# The checkout is itself an existing Git repository.
+$repository = $checkout
+$statusView = {
+    param($data, $budget)
+    [pscustomobject]@{
+        Branch = $data.Branch
+        Staged = $data.Counts.Staged
+        Unstaged = $data.Counts.Unstaged
+        Untracked = $data.Counts.Untracked
+    }
+}
+$r = quiet -AsObject -C project -WorkingDirectory $repository -Projection $statusView git status
+if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count) {
+    throw 'IncompleteGitStatus'
+}
+Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
+```
+
+Illustrative YAML excerpt for a clean checkout of `develop`; invocation IDs and other envelope metadata are omitted. Branch and counters reflect your repository's actual state.
+
+```yaml
+"Outcome": "Success"
+"Context": "project"
+"Data":
+  "Branch": "develop"
+  "Staged": 0
+  "Unstaged": 0
+  "Untracked": 0
+"Completeness":
+  "Source": true
+  "Analysis": true
+```
+
+The registered `git status` handler is the execution contract: it parses porcelain v2 into the complete local object in `$r.Data`. `$statusView` selects the four business fields delivered as YAML. `-AsObject` keeps the object local; `Out-QuietResult -AsYaml` formats that same result without rerunning Git.
+
+To demonstrate both option separators against the real `README.md` path, in the same initialized session:
+
+```powershell
+$fileStatus = quiet -AsObject -C readme-only -WorkingDirectory $repository -Projection $statusView -- git status -- README.md
+if ($fileStatus.Outcome -ne 'Success' -or !$fileStatus.Completeness.Source -or !$fileStatus.Completeness.Analysis -or $fileStatus.Error.Count) { throw 'IncompleteGitStatus' }
+Out-QuietResult $fileStatus -AsYaml -MaxItems 5 -MaxOutputBytes 4096
+```
+
+For a clean checkout, the excerpt is:
+
+```yaml
+"Outcome": "Success"
+"Context": "readme-only"
+"Data":
+  "Branch": "develop"
+  "Staged": 0
+  "Unstaged": 0
+  "Untracked": 0
+```
+
+This second contract scopes observation to `README.md`; a modification to that file changes its counters. QuietCli options precede `git`; Git's global options follow it. Business input is never sent to a probe or an observation. Machine-format parsers require separate pipes; incompatible PTY requests fail before business execution.
+
+Import registers an inert catalogue. The first invocation observes the Git binary version; later probes use an identity-bound cache. The declared range is stable Git `>= 2.40.0 < 2.57.0`, including `.windows.N` variants. A declared range is not qualification of every version.
 
 ## Implemented command families
 

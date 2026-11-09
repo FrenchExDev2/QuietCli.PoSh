@@ -9,7 +9,7 @@ Read the help or official documentation of any other executable before adapting 
 
 ```powershell
 # Objective: List the installed .NET SDKs as typed objects.
-Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
+Import-Module QuietCli -ErrorAction Stop
 $workingDirectory = (Get-Location).Path
 $sdkOutput = {
     param($event, $runtime)
@@ -24,10 +24,10 @@ $sdkComplete = {
 }
 $sdks = quiet -AsObject -C sdk-inventory -WorkingDirectory $workingDirectory -RecordDelimiter "`n" -Data @{ Sdks = [Collections.Generic.List[object]]::new() } -Output $sdkOutput -Complete $sdkComplete -FilePath dotnet -ArgumentList @('--list-sdks')
 if ($sdks.Outcome -ne 'Success' -or !$sdks.Completeness.Source -or !$sdks.Completeness.Analysis -or $sdks.Error.Count) {
-    FrenchExDev2.QuietCli.Core.PoSh\Out-QuietResult $sdks -MaxItems 5 -MaxOutputBytes 4096
+    Out-QuietResult $sdks -MaxItems 5 -MaxOutputBytes 4096
     throw 'DotnetSdkInventoryIncomplete'
 }
-FrenchExDev2.QuietCli.Core.PoSh\Out-QuietResult $sdks -MaxItems 5 -MaxOutputBytes 4096
+Out-QuietResult $sdks -MaxItems 5 -MaxOutputBytes 4096
 ```
 
 Verified on this repository's local module: the call returns `Outcome` `Success` with both
@@ -49,3 +49,9 @@ Verified on this repository's local module: the call returns `Outcome` `Success`
 It is not an automated test: `AgentInstructions.Tests.ps1` runs only the `quiet-example` blocks of
 `AGENTS.md` and `examples.md`. If this parser becomes reusable, it belongs in a companion business module with its own
 independently asserted tests, as the project rules require.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

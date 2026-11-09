@@ -340,6 +340,16 @@ try {
         foreach ($pair in $expected.GetEnumerator()) { Assert-That ((Format-RunDuration $pair.Key) -ceq $pair.Value) "$($pair.Key) -> $(Format-RunDuration $pair.Key), expected $($pair.Value)" }
         Assert-That ((Format-RunDuration $null) -ceq '-') 'unknown'
     }
+    Test-Case 'format: compact data sizes round to 2 decimals, signed adds a leading + only when non-negative' {
+        Assert-That ((Format-RunDataSize 1MB) -ceq '1.00 MiB') 'exact MiB'
+        Assert-That ((Format-RunDataSize (1.5 * 1MB)) -ceq '1.50 MiB') 'fractional MiB'
+        Assert-That ((Format-RunDataSize 0) -ceq '0.00 MiB') 'zero'
+        Assert-That ((Format-RunDataSize (-2 * 1MB)) -ceq '-2.00 MiB') 'negative keeps its sign unsigned'
+        Assert-That ((Format-RunDataSize $null) -ceq '-') 'unknown'
+        Assert-That ((Format-RunDataSize (1MB) -Signed) -ceq '+1.00 MiB') 'signed positive gets a +'
+        Assert-That ((Format-RunDataSize 0 -Signed) -ceq '+0.00 MiB') 'signed zero gets a + (non-negative)'
+        Assert-That ((Format-RunDataSize (-1MB) -Signed) -ceq '-1.00 MiB') 'signed negative keeps its own sign, no double sign'
+    }
     Test-Case 'format: control characters are rejected in literals; quotes of every kind are doubled' {
         foreach ($bad in "a`nb", "a`rb", "a`tb", "a$([char]0)b", "a$([char]0x7F)b") { Assert-Throws { ConvertTo-RunSingleQuoted $bad } 'RunLiteralControlCharacter' }
         Assert-That ((ConvertTo-RunSingleQuoted "it's") -ceq "'it''s'") 'ASCII quote'

@@ -1,5 +1,7 @@
 # Objective: Execute CI tools directly without loading the product being built or tested.
-if(!(Test-Path -LiteralPath $PROFILE.CurrentUserAllHosts) -and !(Test-Path -LiteralPath $PROFILE.CurrentUserCurrentHost)){
+$ciAllHostsProfile=if($PROFILE){$PROFILE.CurrentUserAllHosts}
+$ciCurrentHostProfile=if($PROFILE){$PROFILE.CurrentUserCurrentHost}
+if((!$ciAllHostsProfile -or !(Test-Path -LiteralPath $ciAllHostsProfile)) -and (!$ciCurrentHostProfile -or !(Test-Path -LiteralPath $ciCurrentHostProfile))){
     $ciUtf8=[Text.UTF8Encoding]::new($false)
     [Console]::InputEncoding=$ciUtf8;[Console]::OutputEncoding=$ciUtf8;$OutputEncoding=$ciUtf8
 }

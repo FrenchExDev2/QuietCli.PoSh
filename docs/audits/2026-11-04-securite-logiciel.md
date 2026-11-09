@@ -278,3 +278,9 @@ Le lexer Git est la zone de plus forte concentration de branches : `Get-GitArgum
 6. Refactorer les états, le typage, les lecteurs Git et les politiques partagées à l’aide des tests existants et des contre-exemples de cet audit.
 
 Une fermeture de ces constats doit conserver les bytecounts exacts, l’absence de capture automatique, l’objet métier local, les callbacks imbriqués et **zéro sérialisation métier avec `-AsObject`**. Les améliorations de sécurité et de conception ne doivent pas réintroduire le travail superflu que l’API cherche précisément à éviter.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

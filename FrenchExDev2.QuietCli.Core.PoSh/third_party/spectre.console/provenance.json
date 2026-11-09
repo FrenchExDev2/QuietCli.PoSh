@@ -1,0 +1,24 @@
+{
+  "LicenseSource": "https://raw.githubusercontent.com/spectreconsole/spectre.console/bbbb5729dde27b58deee44f447a788eea46ee451/LICENSE.md",
+  "License": "MIT",
+  "LicenseSHA256": "B32426D2CF42942A29C99F94E78EF9354FD09FE41FF7F4E1D5F4BF4B4A60CC4E",
+  "Packages": [
+    {
+      "Id": "spectre.console",
+      "Version": "0.57.2",
+      "NuGetSource": "https://api.nuget.org/v3-flatcontainer/spectre.console/0.57.2/spectre.console.0.57.2.nupkg",
+      "NupkgSHA512Base64": "kMSmL1BZn5ikX74rSvNDA4zP2YV6GJFAU8dhAzCOTkvl2tosq4D3YX+HygbQGzNR0cG5NW1B+SdqUUAIPvde0g==",
+      "NuspecSHA256": "C92359895B558C0C36BD135E44CB1F73EF38947CEA92A95D646F2ED25FD102A1"
+    },
+    {
+      "Id": "spectre.console.ansi",
+      "Version": "0.57.2",
+      "NuGetSource": "https://api.nuget.org/v3-flatcontainer/spectre.console.ansi/0.57.2/spectre.console.ansi.0.57.2.nupkg",
+      "NupkgSHA512Base64": "pnSNAJ/G4M95ktegypSMnjRU7K6M9gJ/hgfY+N9IWgoJ0RrEGR8H6xDJ7QKAcPVToEUxwXnYfb8qaJBsEDBjRg==",
+      "NuspecSHA256": "92AF89486FDA9ED660592A2C18786375B7D2E68AD3E5425122EE95343945B487"
+    }
+  ],
+  "SchemaVersion": 1,
+  "Repository": "https://github.com/spectreconsole/spectre.console",
+  "Commit": "bbbb5729dde27b58deee44f447a788eea46ee451"
+}

@@ -2,17 +2,19 @@
 
 ## Production documentation
 
+- The public PowerShell module and Gallery package are named `QuietCli`; they provide Core. `FrenchExDev2.QuietCli.Core.PoSh` is the internal source project name, never a public package identity. Use `Install-PSResource -Name QuietCli` and `Import-Module QuietCli` in consumer instructions; retain explicit local manifest paths only for source development. Public packaging must use the `QuietCli` identity.
+- Keep documentation up to date whenever a change affects documented behavior, public commands, configuration, installation, workflows or qualification scope. Update the affected READMEs, guides, contracts and examples in the same change, and maintain the [documentation index](docs/README.md) when documents are added, renamed or removed. Preserve dated audits as historical evidence; record new results separately rather than rewriting their original scope or outcomes.
 - User-facing documentation describes the product as installed and used in production, not the development checkout or an editorial history of local changes.
 - Do not add unreleased-version annotations or rewrite documentation around development work unless explicitly requested as part of an upward version change. Consumer guides link to the distributed production instructions and use the public installation and instruction-generation commands; this root AGENTS.md governs repository development only.
 
-Read `README.md`, then the selected module README. This root is one Git repository with four internal projects. Preserve the original modules outside this root.
+Read `README.md`, then the selected module README. This root is one Git repository with six internal projects (Core, Git, Vagrant and their test companions). Preserve the original modules outside this root.
 
 - Interactive AI command analysis uses `quiet` from this checkout. Explicitly import the local Core manifest once per process, and the local Git manifest for Git commands. Use the `quiet` alias exported by the local Core V2 module for all native CLI calls. Existing matching binaries need no compilation; rebuild missing or stale binaries before use and start a fresh process. CI/build orchestration invokes tools directly through the engine-independent `scripts/Ci.Process.ps1` helper; it must not load the QuietCli engine or discover pump/quiet aliases to run tools. Product functional/import tests may load the product as their subject.
 - The .NET 11 RC engine can run isolated or inside a .NET 11+ host. Never load its assembly into a .NET 10 PowerShell process.
 - The engine also targets net10.0 under lib/inprocess. Auto hosting selects this verified build for CLR 10 and the portable net11.0 build under lib/engine for CLR 11+, including PowerShell Preview. YAML engine.hosting=Process explicitly selects isolation; InProcess explicitly selects direct hosting. Both hosts share EngineSession. Never add a business-object serialization step to the direct read path.
 - The Windows CI matrix requires stable/.NET 10 and preview/.NET 11 integrated hosting on x64 and ARM64, plus both isolated-host architecture checks. build/powershell-hosts.lock.json pins official ZIP hashes. Workers must use the selected PSHOME executable and verify actual host version, CLR, RID, engine target framework and PID. No preview or architecture failure may be treated as a skipped success.
 - Never capture or spool native output automatically. Count bytes, dispatch bounded transient blocks and release them. Business handlers retain only their explicit business data.
-- Explicit `-Recall -AsObject` and `-SaveRecall -AsObject` are the opt-in exceptions: retain bounded caller-local evidence or a durable streaming journal, never in SQLite or ordinary deliveries. Offline identity-based replay and optional ZIP64 transport follow [the Recall contract](docs/recall.md). Core includes Recall regressions; `-Suite Recall` and `-Suite RecallMutation` provide focused monitored development runs, not release qualification.
+- Explicit `-Recall -AsObject` and `-SaveRecall -AsObject` are the opt-in exceptions: retain bounded caller-local evidence or a durable streaming journal, never in SQLite or ordinary deliveries. Offline identity-based replay and optional ZIP64 transport follow [the Recall contract](docs/README-recall.md). Core includes Recall regressions; `-Suite Recall` and `-Suite RecallMutation` provide focused monitored development runs, not release qualification.
 - `-AsObject` must not enumerate or serialize business Data, even for metrics. It must not transfer Data to the engine. Unknown delivery sizes stay null.
 - Keep source-reference names out of executable identifiers, comments and test code. Preserve attribution and original license text in notices/provenance.
 - Business modules contain no tests. Put fixtures and assertions in their companion projects.
@@ -23,21 +25,37 @@ Read `README.md`, then the selected module README. This root is one Git reposito
 
 ## Monorepo projects and dependency-aware CI
 
-- One public repository: `FrenchExDev2/FrenchExDev2.QuietCli.PoSh`. Keep the four existing directories as projects; do not recreate child repositories.
+- One public repository: `FrenchExDev2/FrenchExDev2.QuietCli.PoSh`. Keep the six existing directories as projects; do not recreate child repositories.
 - `FrenchExDev2.QuietCli.Core.PoSh` owns the facade, engine, runtime catalogue and native bridges. `Core.Tests` owns its C#/PowerShell assertions. `Git` depends on Core. `Git.Tests` depends on Git and Core.Tests.
-- `core-ci.yml` filters Core/Core.Tests and shared infrastructure paths, then calls `ci.yml` with `suite=All`: Core changes must also validate Git.
+- `Vagrant` is a pure PowerShell consumer of Core; `Vagrant.Tests` depends on Vagrant and Core.Tests. `-Suite Vagrant` runs fixtures without installing Vagrant. `All` includes all three companions, including release validation through the existing shared workflow.
+- `scripts/WorkspaceProjects.ps1` discovers project manifests and their dependency order. The host/container launchers build `Suite` validation/completion dynamically from declared test companions. `All` is an execution mode, never a module. `Get-QuietWorkspacePackages` separates explicit public-package eligibility from local source/test archives: tests are always excluded, and undeclared business modules default to non-publishable. See [the catalogue contract](docs/README-workspace-projects.md).
+- `core-ci.yml` filters Core/Core.Tests and shared infrastructure paths, then calls `ci.yml` with `suite=Core`: a Core-only change validates Core alone and does not run the Git suite or its mutation campaigns.
 - `git-ci.yml` filters Git/Git.Tests and calls the same reusable workflow with `suite=Git`. A commit touching both groups may run both workflows; no applicable dependency check may be silently dropped to reduce that overlap.
+- Release qualification stays the exception: `publish-psgallery.yml` always requests `suite=All`, so Git is still validated against Core before any publication even though routine Core development no longer triggers it.
 - `ci.yml` is the shared manual/reusable implementation. It builds all six runtime publications, runs the selected companion suites and checks the actual host/guest RID.
 - Linux runners build the multi-stage `.github/containers/Dockerfile.ci.*` natively: Ubuntu x64 for x64, `ubuntu-24.04-arm` for ARM64. No developer ARM machine, emulation or manually provisioned test image is required.
 - `New-CiImage.ps1` fingerprints recipes, tool/source locks and image scripts. A first upstream main push/manual run publishes missing GHCR entries; changed inputs publish new entries. Existing entries are resolved and pulled by digest, checked against their source/fingerprint/architecture labels and reused. Never publish from a pull request. Missing private cache access in a fork falls back to a local build, not to an unverified image.
 - Registry publication uses the workflow's ephemeral `GITHUB_TOKEN` with `packages: write`, stdin login and a private temporary auth file deleted on exit. Do not use PSGallery credentials for GHCR. Images contain only the test toolchain, never workspace sources, `.env`, tokens or native business output. Receipts live in `artifacts/ci-images`.
 - `publish-psgallery.yml` is the shared qualified packaging/publication workflow. Manual releases supply an exact version; `publish=false` prepares/validates artifacts only. The explicitly authorized `preview-psgallery.yml` wrapper publishes previews automatically for applicable pushes to the original repository's `develop` branch, only after the configured `All` qualification gate (TTY excluded in GitHub CI). PRs and forks never publish. Only Core is published; Git remains an internal development/test companion. Stable releases remain manual; builds and tests themselves never publish.
 - Preview identities keep the source numeric version and GUIDs, with a staged `preview{run-number:D8}a{attempt:D4}` suffix. Do not bump a minor version for a new build, use dot-separated prerelease labels, edit source manifests in CI, or overwrite a published identity. Artifact preparation has no Gallery secret; publication downloads and verifies the exact prepared files. Superseded automatic preview revisions are skipped before publication.
-- `repositories.lock.json` schema 3 records one repository and four project source hashes/dependency lists. Checkout the workflow commit once; no child clone is performed. Record the actual Git revision in run/build reports rather than trying to pin a file to its own future commit.
+- `repositories.lock.json` schema 3 records one repository and six project source hashes/dependency lists. Checkout the workflow commit once; no child clone is performed. Record the actual Git revision in run/build reports rather than trying to pin a file to its own future commit.
 - From this root, use `scripts/Initialize-Workspace.ps1`, `scripts/Build-Workspace.ps1`, then `scripts/Invoke-WorkspaceCi.ps1 -SkipBuild -Suite All` (or `Git` for a Git-only development check). Local test runs retain the visible monitor requirement.
 - Before an explicit commit, refresh `scripts/Update-WorkspaceLock.ps1`. `Commit-Workspace.ps1` and `Push-Workspace.ps1` now operate on the single root repository.
 - PSGallery credentials belong only to the `psgallery` environment secret `PSGALLERY_API_KEY`. Never commit the workspace `.env`, print its token, pass it as a native command argument, or copy it into reports.
 - The migration preserves the four former local Git directories under ignored `artifacts/monorepo-migration`. Do not delete that archive or restore nested Git metadata during routine builds.
+
+<!-- module-license-credits:begin -->
+- Each business module (`Core`, `Git`, `Vagrant` — never a `.Tests` companion) must ship its own `LICENSE_CREDITS.md`, declaring the third-party license(s) its native dependency uses, with reference links. This is part of the module contract alongside its manifest and declared test companion.
+- The root [`CREDITS.md`](CREDITS.md) is generated, never hand-edited: `scripts/Sync-Credits.ps1` discovers every business module through `Get-QuietWorkspaceProjects` and aggregates its `LICENSE_CREDITS.md` into the root file, each wrapped in its own `<!-- module-credits:<Name>:begin/end -->` marker. No arguments reports compliance without writing; `-Apply` regenerates `CREDITS.md`; `-Apply -WhatIf` previews that write without touching any file.
+- A new business module is not complete until it ships `LICENSE_CREDITS.md` and `scripts/Sync-Credits.ps1 -Apply` has regenerated the root file. Run `scripts/Sync-DocsCredits.ps1 -Apply` afterward only if `CREDITS.md`'s own relative path changed.
+<!-- module-license-credits:end -->
+
+## NuGet dependency map (Central Package Management)
+
+- `Directory.Packages.props` at this root centralizes NuGet versions for the whole sub-tree (`Core`, `Core.Tests`, `Git`); no `.csproj` under this root pins its own `Version=` on a `<PackageReference>` any more.
+- `System.Management.Automation` (`7.6.9`) — the PowerShell host assembly. Compile-only (`PrivateAssets="all" ExcludeAssets="runtime"`) on `Core/engine` and `Git/engine`, since the host process already supplies it at runtime; loaded normally (no those attributes) in `Core.Tests/engine-tests`, which must actually run against it.
+- `Spectre.Console` (`0.57.2`) — renders the `-UI`/`-MaxLines` live frame (`QuietUiRenderer`, `Core/engine/Cmdlets/UiRenderer.cs`). Referenced normally (copied to the module's output) on `Core/engine` only — nothing else supplies this assembly.
+- Before bumping either version, run `dotnet list package --outdated` from this root (the authoritative source — not a web search) and never downgrade a pinned version on the strength of a possibly stale web result.
 
 ## Native PTY mutation qualification
 
@@ -122,7 +140,7 @@ All repository text files must use UTF-8 and LF line endings on disk, including 
 ## Configuration and delivery validation
 
 - `QUIETCLI_CONFIG_DIRECTORY` is the only product configuration environment override. Other `QUIETCLI_*` test-worker controls do not configure the product. Do not restore old database, hosting or tracking environment overrides.
-- The lazy YAML snapshot, configuration cmdlets, unique representation receipts and per-encoding token measurements follow [the configuration contract](docs/configuration.md). No automatic native tokenization or Recall capture is implied.
+- The lazy YAML snapshot, configuration cmdlets, unique representation receipts and per-encoding token measurements follow [the configuration contract](docs/README-configuration.md). No automatic native tokenization or Recall capture is implied.
 - `scripts/Invoke-WorkspaceCi.ps1 -Suite ConfigurationDelivery -SkipBuild` runs the focused properties, malformed YAML corpus, historical SQLite fixtures and targeted PowerShell/C# mutations with the shared visible monitor. Core/All also includes its functional baseline. Preserve the full release matrix requirements.
 
 ## Run-profile tooling qualification
@@ -130,6 +148,18 @@ All repository text files must use UTF-8 and LF line endings on disk, including 
 - Use `scripts/Invoke-WorkspaceCi.ps1 -Suite RunProfiles -SkipBuild -TimeoutSeconds 600` for the complete tooling suite, and `-Suite RunProfilesMutation -TimeoutSeconds 3300` for the entire targeted catalogue. Both retain the shared visible monitor and external report directories.
 - CI runs both suites on Windows x64 stable integrated hosting for Core/All. A skipped required functional case or any surviving, crashed, invalid or timed-out mutant blocks that Windows job and qualification. Git-only development does not run tooling campaigns.
 - Benchmark properties and malformed samples, native-boundary fixtures, profiler/cache unit cases and actual-process smoke tests are distinct evidence. Never present three A/A smoke pairs as false-positive calibration or a ReadyToRun speedup.
+
+## SDK readiness
+
+@AGENTS-SDK-READINESS.md
+
+<!-- docs-credits:begin -->
+## Mandatory CREDITS.md linkage
+
+- Every `docs/**/*.md` file (recursively, including `agents`, `audits` and `ci`) and every root `README.md`/`README-*.md` file must end with a dedicated paragraph linking the mandatory [`CREDITS.md`](CREDITS.md). `CREDITS.md` itself is mandatory and generated (see "Each business module" below) from every discovered module's `LICENSE_CREDITS.md`; do not hand-edit it directly.
+- The paragraph is a regex-identifiable block surrounded by `<!-- credits:begin -->` / `<!-- credits:end -->` markers, matching this section's own `<!-- docs-credits:begin/end -->` convention. Never hand-edit a block out of sync with its generator.
+- Use [`scripts/Sync-DocsCredits.ps1`](scripts/Sync-DocsCredits.ps1) to check and apply it: no arguments reports compliance (recursively) without writing; `-Apply` writes the missing or stale block into every non-compliant `docs/**/*.md` or root `README*.md` file; `-Apply -WhatIf` previews that write without touching any file; `-NoRecurse` limits either mode to `docs/*.md`'s direct children. A new or renamed `docs/**/*.md` or root `README*.md` file must pass `-Apply` before being committed. The companion GitHub workflows [`sync-credits-check.yml`](.github/workflows/sync-credits-check.yml) and [`sync-credits-apply.yml`](.github/workflows/sync-credits-apply.yml) run this and `Sync-Credits.ps1`; see [docs/README-credits-and-syncing.md](docs/README-credits-and-syncing.md).
+<!-- docs-credits:end -->
 
 ## Gallery preview qualification
 

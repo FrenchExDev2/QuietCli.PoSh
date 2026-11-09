@@ -50,7 +50,7 @@ try {
         [Console]::Out.WriteLine('@@CODEX_DONE@@' + (ConvertTo-Json $codexCompletion -Compress))
     }
 } finally {
-    if (Get-Module FrenchExDev2.QuietCli.Core.PoSh) { Stop-QuietEngine }
+    if (Get-Module QuietCli) { Stop-QuietEngine }
 }
 ```
 
@@ -85,3 +85,9 @@ failure and source completeness. Nonterminating PowerShell errors require explic
 - Do not automatically repeat a mutation whose previous effect is unknown.
 - Close an owned idle session with `__CLOSE_CODEX_PWSH__` followed by a newline and verify process termination.
 - When evidence must outlive the process, use Recall (`-SaveRecall`); see [../recall.md](../recall.md).
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

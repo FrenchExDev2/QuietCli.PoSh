@@ -68,3 +68,9 @@ misaligned, prefix size 9. Each ran the full 67-case suite; the source file was 
 4. Real two-process behavior (engine standard pipes) is covered only by the existing integration suites, which were
    not run here.
 5. `Invoke-WorkspaceCi.ps1 -Suite Core` and the `Integration` suite are still required before publication.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

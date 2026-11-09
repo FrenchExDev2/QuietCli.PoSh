@@ -1,0 +1,40 @@
+name: QuietCli2 Credits sync apply
+
+# Manual only: regenerates CREDITS.md from every module's LICENSE_CREDITS.md and writes the
+# missing/stale credits footer into every docs/*.md and root README*.md file, then commits and
+# pushes that result directly to the branch this run was dispatched on. Never runs on pull_request
+# or push - triggering it is the explicit approval to write and push, per
+# docs/README-credits-and-syncing.md. Companion read-only workflow: sync-credits-check.yml.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    name: Apply credits sync and push
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: true
+      - name: Regenerate CREDITS.md from every module's LICENSE_CREDITS.md
+        shell: pwsh
+        run: ./scripts/Sync-Credits.ps1 -Apply
+      - name: Write the credits footer into every docs/*.md and root README*.md file
+        shell: pwsh
+        run: ./scripts/Sync-DocsCredits.ps1 -Apply
+      - name: Commit and push the result, if anything changed
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add --all -- CREDITS.md docs README.md README-*.md
+          if (git diff --cached --quiet) {
+            Write-Host 'Nothing to commit: CREDITS.md and every docs/README credits footer are already up to date.'
+          } else {
+            git commit -m 'Sync CREDITS.md and docs/README credits footers'
+            git push origin "HEAD:${{ github.ref }}"
+          }

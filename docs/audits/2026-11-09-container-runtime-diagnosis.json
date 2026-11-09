@@ -1,0 +1,650 @@
+{
+  "PolicyTestScope": {
+    "Passed": 1,
+    "Skipped": 64,
+    "Partial": true,
+    "Failed": 0
+  },
+  "Runs": [
+    {
+      "FinishedUtc": "2026-11-09T10:02:01.5127466+01:00",
+      "RunDirectory": "C:\\Users\\serard\\AppData\\Local\\Temp\\QuietCli2\\874a99c9b658\\runtime-diagnosis\\12e098052d1f4a9193735bca0307d7c6",
+      "StartedUtc": "2026-11-09T10:01:41.1568887+01:00",
+      "Cleanup": "RemovedOwnedContainer",
+      "Diagnosis": {
+        "SchemaVersion": 1,
+        "Decision": "BootstrapAndAssetSelection",
+        "Findings": [
+          "DefaultHostFailsButExplicitRuntimeRootWorks",
+          "ReportedRidDiffersFromRequestedPortableTarget",
+          "RawRidAssetMissingButExpectedAssetLoadsWithVerifiedHash"
+        ],
+        "NextSteps": [
+          "Correct the PowerShell runtime-root configuration; rebuild only if the image recipe changes.",
+          "Review raw-RID resource paths and CI identity comparisons; qualify any explicit portable-RID mapping before adopting it."
+        ],
+        "ExpectedRuntimeIdentifier": "linux-musl-x64",
+        "BootstrapConfigurationProblem": true,
+        "AssetSelectionProblem": true,
+        "UsableProbeCount": 1,
+        "ReportedRuntimeIdentifiers": [
+          "alpine.3.24-x64"
+        ],
+        "RecreateUnchangedContainerFixesIssue": false,
+        "WholeProductCompatibilityProven": false,
+        "Qualification": "DiagnosticOnly"
+      },
+      "Image": {
+        "Id": "43c31918a5a487938145c1c81ac45cfbcc171aa8f82f458d4d78d1dbdc4a435c",
+        "Architecture": "amd64",
+        "Os": "linux"
+      },
+      "State": "Success",
+      "Observations": [
+        {
+          "Name": "Default",
+          "RuntimeRoot": null,
+          "Outcome": "Failed",
+          "Execution": {
+            "Arguments": [
+              "exec",
+              "quietcli-runtime-5df8728b2210",
+              "pwsh",
+              "-File",
+              "/diagnostic/Probe-ContainerRuntime.ps1",
+              "-OutputPath",
+              "/diagnostic/Default.json",
+              "-AssetsRoot",
+              "/diagnostic/assets",
+              "-ExpectedRuntimeIdentifier",
+              "linux-musl-x64"
+            ],
+            "Outcome": "Failed",
+            "ExitCode": 150,
+            "ElapsedMs": 492.931,
+            "Diagnostics": [
+              "You must install or update .NET to run this application.",
+              "",
+              "App: /usr/lib/powershell/pwsh",
+              "Architecture: x64",
+              "Framework: 'Microsoft.NETCore.App', version '10.0.0' (x64)",
+              ".NET location: /usr/share/dotnet",
+              "",
+              "The following frameworks were found:",
+              "  11.0.0-rc.3.26522.148 at [/usr/share/dotnet/shared/Microsoft.NETCore.App]",
+              "",
+              "Learn more:",
+              "https://aka.ms/dotnet/app-launch-failed",
+              "",
+              "To install missing framework, download:",
+              "https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=10.0.0&arch=x64&rid=linux-musl-x64&os=linux-musl"
+            ]
+          },
+          "Probe": null
+        },
+        {
+          "Name": "Root0",
+          "RuntimeRoot": "/usr/lib/dotnet",
+          "Outcome": "Success",
+          "Execution": {
+            "Arguments": [
+              "exec",
+              "--env",
+              "DOTNET_ROOT=/usr/lib/dotnet",
+              "--env",
+              "DOTNET_ROOT_X64=/usr/lib/dotnet",
+              "quietcli-runtime-5df8728b2210",
+              "pwsh",
+              "-File",
+              "/diagnostic/Probe-ContainerRuntime.ps1",
+              "-OutputPath",
+              "/diagnostic/Root0.json",
+              "-AssetsRoot",
+              "/diagnostic/assets",
+              "-ExpectedRuntimeIdentifier",
+              "linux-musl-x64"
+            ],
+            "Outcome": "Success",
+            "ExitCode": 0,
+            "ElapsedMs": 3539.7018,
+            "Diagnostics": []
+          },
+          "Probe": {
+            "SchemaVersion": 1,
+            "Phase": "Complete",
+            "Linux": true,
+            "PowerShellVersion": "7.6.9",
+            "RuntimeIdentifier": "alpine.3.24-x64",
+            "FrameworkMajor": 10,
+            "FrameworkDescription": ".NET 10.0.14",
+            "RuntimeDirectory": "/usr/lib/dotnet/shared/Microsoft.NETCore.App/10.0.14/",
+            "ProcessArchitecture": "x64",
+            "OSArchitecture": "x64",
+            "HostExecutable": "/usr/lib/powershell/pwsh",
+            "ElfMachine": 62,
+            "Libc": "Musl",
+            "LoadedLibcPaths": [
+              "/lib/ld-musl-x86_64.so.1"
+            ],
+            "OSRelease": {
+              "VERSION_ID": "3.24.3",
+              "ID": "alpine"
+            },
+            "RuntimeRoots": {
+              "DOTNET_ROOT_X64": "/usr/lib/dotnet",
+              "DOTNET_ROOT": "/usr/lib/dotnet",
+              "DOTNET_ROOT_ARM64": null
+            },
+            "RawNative": {
+              "Outcome": "Missing",
+              "HashMatches": false,
+              "Path": "/diagnostic/assets/alpine.3.24-x64/libe_sqlite3.so"
+            },
+            "ExpectedNative": {
+              "Outcome": "Success",
+              "HashMatches": true,
+              "Path": "/diagnostic/assets/linux-musl-x64/libe_sqlite3.so",
+              "SHA256": "647B7B5886526691AED58E0FCBB56DC1E6DEA8B1F9F5390782F0C95269250DB1",
+              "SQLiteVersion": "3.53.3"
+            }
+          }
+        },
+        {
+          "Name": "Root1",
+          "RuntimeRoot": "/usr/share/dotnet",
+          "Outcome": "Failed",
+          "Execution": {
+            "Arguments": [
+              "exec",
+              "--env",
+              "DOTNET_ROOT=/usr/share/dotnet",
+              "--env",
+              "DOTNET_ROOT_X64=/usr/share/dotnet",
+              "quietcli-runtime-5df8728b2210",
+              "pwsh",
+              "-File",
+              "/diagnostic/Probe-ContainerRuntime.ps1",
+              "-OutputPath",
+              "/diagnostic/Root1.json",
+              "-AssetsRoot",
+              "/diagnostic/assets",
+              "-ExpectedRuntimeIdentifier",
+              "linux-musl-x64"
+            ],
+            "Outcome": "Failed",
+            "ExitCode": 150,
+            "ElapsedMs": 554.0283,
+            "Diagnostics": [
+              "You must install or update .NET to run this application.",
+              "",
+              "App: /usr/lib/powershell/pwsh",
+              "Architecture: x64",
+              "Framework: 'Microsoft.NETCore.App', version '10.0.0' (x64)",
+              ".NET location: /usr/share/dotnet",
+              "",
+              "The following frameworks were found:",
+              "  11.0.0-rc.3.26522.148 at [/usr/share/dotnet/shared/Microsoft.NETCore.App]",
+              "",
+              "Learn more:",
+              "https://aka.ms/dotnet/app-launch-failed",
+              "",
+              "To install missing framework, download:",
+              "https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=10.0.0&arch=x64&rid=linux-musl-x64&os=linux-musl"
+            ]
+          },
+          "Probe": null
+        }
+      ],
+      "Inputs": {
+        "Scripts": [
+          {
+            "SHA256": "A761513F5DE2D18AD942503893396D31B8D69B2F845059CA011682ABBC2A141C",
+            "Path": "Ci.Process.ps1"
+          },
+          {
+            "SHA256": "7158CA7CB9E3D71EB70615115F1963033BAE661868BE9B34AA9C19709F678FB3",
+            "Path": "Probe-ContainerRuntime.ps1"
+          },
+          {
+            "SHA256": "74966CCC96B9400B615A0C59E1AF5B363149C9171F69D7CDC719C29C4D0DE236",
+            "Path": "RuntimeDiagnosis.psm1"
+          },
+          {
+            "SHA256": "4C55E2F5906EAF12B743C507AAF762F002BC858A754E36488B146F01314AEAEC",
+            "Path": "RuntimeTargets.ps1"
+          }
+        ],
+        "Assets": [
+          {
+            "Rid": "linux-x64",
+            "SHA256": "B0F5C48026FEDCF9F05CF31C6FADF9E1E001CA59CD85AA68B8B6814E52C18A07"
+          },
+          {
+            "Rid": "linux-arm64",
+            "SHA256": "707FFF6B18C1F083158E7A543C8D2545D5485F547FFD96DB29679A95F52878D5"
+          },
+          {
+            "Rid": "linux-musl-x64",
+            "SHA256": "647B7B5886526691AED58E0FCBB56DC1E6DEA8B1F9F5390782F0C95269250DB1"
+          },
+          {
+            "Rid": "linux-musl-arm64",
+            "SHA256": "530E2F74F259FE04FAA4B595336E671FAB5EEDBB6F4E94DAD59494EFB7B00C2A"
+          }
+        ],
+        "SourceBindings": [
+          {
+            "SHA256": "895794034067BA59D6024D0E1217D0DA5B37DFEEA6965617EC063E26680ECA68",
+            "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/EngineSession.cs",
+            "RelevantLines": [
+              {
+                "Text": "Database.NativeDirectory = Path.Combine(moduleRoot, \"resources\", \"runtime\", \"runtimes\", System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier, \"native\");",
+                "Line": 37
+              },
+              {
+                "Text": "private object Information() => new { ProtocolVersion = ProtocolSpecification.Version, Runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription, TargetFramework = typeof(EngineSession).Assembly.GetCustomAttributes(typeof(System.Runtime.Versioning.TargetFrameworkAttribute), false).Cast<System.Runtime.Versioning.TargetFrameworkAttribute>().Single().FrameworkName, ProcessId = Environment.ProcessId, RuntimeIdentifier = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier, BuildRuntimeIdentifier = buildRuntime, BlockSize = Protocol.BlockSize, QueueBlocks = ProtocolSpecification.QueueBlocks, AssemblySHA256 = assemblyHash, SourceSHA256 = sourceHash, Capture = false };",
+                "Line": 89
+              }
+            ]
+          },
+          {
+            "SHA256": "6876BE0EB53D5CC3A785509E73D7CE78A955D935CC073FD5CED3B1C15F313048",
+            "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/TerminalBridge.cs",
+            "RelevantLines": [
+              {
+                "Text": "string bundled = Path.Combine(moduleRoot, \"resources\", \"transport\", System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier, \"quietcli-pty\");",
+                "Line": 19
+              }
+            ]
+          },
+          {
+            "SHA256": "7FF86603CFF162D8BD03387080A3D904C2EB402C48B5635932B9278EA6F6CBBB",
+            "Path": "scripts/Invoke-TestWorker.ps1",
+            "RelevantLines": [
+              {
+                "Text": "if($ExpectedRuntimeIdentifier -and $state.Platform -cne $ExpectedRuntimeIdentifier){throw \"HostRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($state.Platform)\"}",
+                "Line": 52
+              }
+            ]
+          }
+        ],
+        "Image": {
+          "Id": "43c31918a5a487938145c1c81ac45cfbcc171aa8f82f458d4d78d1dbdc4a435c",
+          "Architecture": "amd64",
+          "Os": "linux"
+        }
+      }
+    },
+    {
+      "FinishedUtc": "2026-11-09T10:02:16.8806797+01:00",
+      "RunDirectory": "C:\\Users\\serard\\AppData\\Local\\Temp\\QuietCli2\\874a99c9b658\\runtime-diagnosis\\f414aea4b37f428b98d82963b26b689e",
+      "StartedUtc": "2026-11-09T10:01:55.0872777+01:00",
+      "Cleanup": "RemovedOwnedContainer",
+      "Diagnosis": {
+        "SchemaVersion": 1,
+        "Decision": "NoMismatchObserved",
+        "Findings": [],
+        "NextSteps": [],
+        "ExpectedRuntimeIdentifier": "linux-x64",
+        "BootstrapConfigurationProblem": false,
+        "AssetSelectionProblem": false,
+        "UsableProbeCount": 3,
+        "ReportedRuntimeIdentifiers": [
+          "linux-x64"
+        ],
+        "RecreateUnchangedContainerFixesIssue": null,
+        "WholeProductCompatibilityProven": false,
+        "Qualification": "DiagnosticOnly"
+      },
+      "Image": {
+        "Id": "deae35efba53bf08342132303a0624c14529b84c3710dada5a619cc185aa48cb",
+        "Architecture": "amd64",
+        "Os": "linux"
+      },
+      "State": "Success",
+      "Observations": [
+        {
+          "Name": "Default",
+          "RuntimeRoot": null,
+          "Outcome": "Success",
+          "Execution": {
+            "Arguments": [
+              "exec",
+              "quietcli-runtime-2fa8f578f948",
+              "pwsh",
+              "-File",
+              "/diagnostic/Probe-ContainerRuntime.ps1",
+              "-OutputPath",
+              "/diagnostic/Default.json",
+              "-AssetsRoot",
+              "/diagnostic/assets",
+              "-ExpectedRuntimeIdentifier",
+              "linux-x64"
+            ],
+            "Outcome": "Success",
+            "ExitCode": 0,
+            "ElapsedMs": 1958.2256,
+            "Diagnostics": []
+          },
+          "Probe": {
+            "SchemaVersion": 1,
+            "Phase": "Complete",
+            "Linux": true,
+            "PowerShellVersion": "7.6.7",
+            "RuntimeIdentifier": "linux-x64",
+            "FrameworkMajor": 10,
+            "FrameworkDescription": ".NET 10.0.13",
+            "RuntimeDirectory": "/opt/powershell/",
+            "ProcessArchitecture": "x64",
+            "OSArchitecture": "x64",
+            "HostExecutable": "/opt/powershell/pwsh",
+            "ElfMachine": 62,
+            "Libc": "Gnu",
+            "LoadedLibcPaths": [
+              "/usr/lib/x86_64-linux-gnu/libc.so.6"
+            ],
+            "OSRelease": {
+              "VERSION_ID": "12",
+              "ID": "debian"
+            },
+            "RuntimeRoots": {
+              "DOTNET_ROOT_ARM64": null,
+              "DOTNET_ROOT_X64": null,
+              "DOTNET_ROOT": "/usr/share/dotnet"
+            },
+            "RawNative": {
+              "Path": "/diagnostic/assets/linux-x64/libe_sqlite3.so",
+              "SHA256": "B0F5C48026FEDCF9F05CF31C6FADF9E1E001CA59CD85AA68B8B6814E52C18A07",
+              "Outcome": "Success",
+              "HashMatches": true,
+              "SQLiteVersion": "3.53.3"
+            },
+            "ExpectedNative": {
+              "Path": "/diagnostic/assets/linux-x64/libe_sqlite3.so",
+              "SHA256": "B0F5C48026FEDCF9F05CF31C6FADF9E1E001CA59CD85AA68B8B6814E52C18A07",
+              "Outcome": "Success",
+              "HashMatches": true,
+              "SQLiteVersion": "3.53.3"
+            }
+          }
+        },
+        {
+          "Name": "Root0",
+          "RuntimeRoot": "/usr/lib/dotnet",
+          "Outcome": "Success",
+          "Execution": {
+            "Arguments": [
+              "exec",
+              "--env",
+              "DOTNET_ROOT=/usr/lib/dotnet",
+              "--env",
+              "DOTNET_ROOT_X64=/usr/lib/dotnet",
+              "quietcli-runtime-2fa8f578f948",
+              "pwsh",
+              "-File",
+              "/diagnostic/Probe-ContainerRuntime.ps1",
+              "-OutputPath",
+              "/diagnostic/Root0.json",
+              "-AssetsRoot",
+              "/diagnostic/assets",
+              "-ExpectedRuntimeIdentifier",
+              "linux-x64"
+            ],
+            "Outcome": "Success",
+            "ExitCode": 0,
+            "ElapsedMs": 1510.8668,
+            "Diagnostics": []
+          },
+          "Probe": {
+            "SchemaVersion": 1,
+            "Phase": "Complete",
+            "Linux": true,
+            "PowerShellVersion": "7.6.7",
+            "RuntimeIdentifier": "linux-x64",
+            "FrameworkMajor": 10,
+            "FrameworkDescription": ".NET 10.0.13",
+            "RuntimeDirectory": "/opt/powershell/",
+            "ProcessArchitecture": "x64",
+            "OSArchitecture": "x64",
+            "HostExecutable": "/opt/powershell/pwsh",
+            "ElfMachine": 62,
+            "Libc": "Gnu",
+            "LoadedLibcPaths": [
+              "/usr/lib/x86_64-linux-gnu/libc.so.6"
+            ],
+            "OSRelease": {
+              "VERSION_ID": "12",
+              "ID": "debian"
+            },
+            "RuntimeRoots": {
+              "DOTNET_ROOT_ARM64": null,
+              "DOTNET_ROOT_X64": "/usr/lib/dotnet",
+              "DOTNET_ROOT": "/usr/lib/dotnet"
+            },
+            "RawNative": {
+              "Outcome": "Success",
+              "SHA256": "B0F5C48026FEDCF9F05CF31C6FADF9E1E001CA59CD85AA68B8B6814E52C18A07",
+              "Path": "/diagnostic/assets/linux-x64/libe_sqlite3.so",
+              "HashMatches": true,
+              "SQLiteVersion": "3.53.3"
+            },
+            "ExpectedNative": {
+              "Outcome": "Success",
+              "SHA256": "B0F5C48026FEDCF9F05CF31C6FADF9E1E001CA59CD85AA68B8B6814E52C18A07",
+              "Path": "/diagnostic/assets/linux-x64/libe_sqlite3.so",
+              "HashMatches": true,
+              "SQLiteVersion": "3.53.3"
+            }
+          }
+        },
+        {
+          "Name": "Root1",
+          "RuntimeRoot": "/usr/share/dotnet",
+          "Outcome": "Success",
+          "Execution": {
+            "Arguments": [
+              "exec",
+              "--env",
+              "DOTNET_ROOT=/usr/share/dotnet",
+              "--env",
+              "DOTNET_ROOT_X64=/usr/share/dotnet",
+              "quietcli-runtime-2fa8f578f948",
+              "pwsh",
+              "-File",
+              "/diagnostic/Probe-ContainerRuntime.ps1",
+              "-OutputPath",
+              "/diagnostic/Root1.json",
+              "-AssetsRoot",
+              "/diagnostic/assets",
+              "-ExpectedRuntimeIdentifier",
+              "linux-x64"
+            ],
+            "Outcome": "Success",
+            "ExitCode": 0,
+            "ElapsedMs": 1546.4458,
+            "Diagnostics": []
+          },
+          "Probe": {
+            "SchemaVersion": 1,
+            "Phase": "Complete",
+            "Linux": true,
+            "PowerShellVersion": "7.6.7",
+            "RuntimeIdentifier": "linux-x64",
+            "FrameworkMajor": 10,
+            "FrameworkDescription": ".NET 10.0.13",
+            "RuntimeDirectory": "/opt/powershell/",
+            "ProcessArchitecture": "x64",
+            "OSArchitecture": "x64",
+            "HostExecutable": "/opt/powershell/pwsh",
+            "ElfMachine": 62,
+            "Libc": "Gnu",
+            "LoadedLibcPaths": [
+              "/usr/lib/x86_64-linux-gnu/libc.so.6"
+            ],
+            "OSRelease": {
+              "VERSION_ID": "12",
+              "ID": "debian"
+            },
+            "RuntimeRoots": {
+              "DOTNET_ROOT": "/usr/share/dotnet",
+              "DOTNET_ROOT_X64": "/usr/share/dotnet",
+              "DOTNET_ROOT_ARM64": null
+            },
+            "RawNative": {
+              "SQLiteVersion": "3.53.3",
+              "Path": "/diagnostic/assets/linux-x64/libe_sqlite3.so",
+              "HashMatches": true,
+              "Outcome": "Success",
+              "SHA256": "B0F5C48026FEDCF9F05CF31C6FADF9E1E001CA59CD85AA68B8B6814E52C18A07"
+            },
+            "ExpectedNative": {
+              "SQLiteVersion": "3.53.3",
+              "Path": "/diagnostic/assets/linux-x64/libe_sqlite3.so",
+              "HashMatches": true,
+              "Outcome": "Success",
+              "SHA256": "B0F5C48026FEDCF9F05CF31C6FADF9E1E001CA59CD85AA68B8B6814E52C18A07"
+            }
+          }
+        }
+      ],
+      "Inputs": {
+        "SourceBindings": [
+          {
+            "SHA256": "895794034067BA59D6024D0E1217D0DA5B37DFEEA6965617EC063E26680ECA68",
+            "RelevantLines": [
+              {
+                "Line": 37,
+                "Text": "Database.NativeDirectory = Path.Combine(moduleRoot, \"resources\", \"runtime\", \"runtimes\", System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier, \"native\");"
+              },
+              {
+                "Line": 89,
+                "Text": "private object Information() => new { ProtocolVersion = ProtocolSpecification.Version, Runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription, TargetFramework = typeof(EngineSession).Assembly.GetCustomAttributes(typeof(System.Runtime.Versioning.TargetFrameworkAttribute), false).Cast<System.Runtime.Versioning.TargetFrameworkAttribute>().Single().FrameworkName, ProcessId = Environment.ProcessId, RuntimeIdentifier = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier, BuildRuntimeIdentifier = buildRuntime, BlockSize = Protocol.BlockSize, QueueBlocks = ProtocolSpecification.QueueBlocks, AssemblySHA256 = assemblyHash, SourceSHA256 = sourceHash, Capture = false };"
+              }
+            ],
+            "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/EngineSession.cs"
+          },
+          {
+            "SHA256": "6876BE0EB53D5CC3A785509E73D7CE78A955D935CC073FD5CED3B1C15F313048",
+            "RelevantLines": [
+              {
+                "Line": 19,
+                "Text": "string bundled = Path.Combine(moduleRoot, \"resources\", \"transport\", System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier, \"quietcli-pty\");"
+              }
+            ],
+            "Path": "FrenchExDev2.QuietCli.Core.PoSh/engine/TerminalBridge.cs"
+          },
+          {
+            "SHA256": "7FF86603CFF162D8BD03387080A3D904C2EB402C48B5635932B9278EA6F6CBBB",
+            "RelevantLines": [
+              {
+                "Line": 52,
+                "Text": "if($ExpectedRuntimeIdentifier -and $state.Platform -cne $ExpectedRuntimeIdentifier){throw \"HostRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($state.Platform)\"}"
+              }
+            ],
+            "Path": "scripts/Invoke-TestWorker.ps1"
+          }
+        ],
+        "Image": {
+          "Id": "deae35efba53bf08342132303a0624c14529b84c3710dada5a619cc185aa48cb",
+          "Architecture": "amd64",
+          "Os": "linux"
+        },
+        "Assets": [
+          {
+            "Rid": "linux-x64",
+            "SHA256": "B0F5C48026FEDCF9F05CF31C6FADF9E1E001CA59CD85AA68B8B6814E52C18A07"
+          },
+          {
+            "Rid": "linux-arm64",
+            "SHA256": "707FFF6B18C1F083158E7A543C8D2545D5485F547FFD96DB29679A95F52878D5"
+          },
+          {
+            "Rid": "linux-musl-x64",
+            "SHA256": "647B7B5886526691AED58E0FCBB56DC1E6DEA8B1F9F5390782F0C95269250DB1"
+          },
+          {
+            "Rid": "linux-musl-arm64",
+            "SHA256": "530E2F74F259FE04FAA4B595336E671FAB5EEDBB6F4E94DAD59494EFB7B00C2A"
+          }
+        ],
+        "Scripts": [
+          {
+            "Path": "Ci.Process.ps1",
+            "SHA256": "A761513F5DE2D18AD942503893396D31B8D69B2F845059CA011682ABBC2A141C"
+          },
+          {
+            "Path": "Probe-ContainerRuntime.ps1",
+            "SHA256": "7158CA7CB9E3D71EB70615115F1963033BAE661868BE9B34AA9C19709F678FB3"
+          },
+          {
+            "Path": "RuntimeDiagnosis.psm1",
+            "SHA256": "74966CCC96B9400B615A0C59E1AF5B363149C9171F69D7CDC719C29C4D0DE236"
+          },
+          {
+            "Path": "RuntimeTargets.ps1",
+            "SHA256": "4C55E2F5906EAF12B743C507AAF762F002BC858A754E36488B146F01314AEAEC"
+          }
+        ]
+      }
+    }
+  ],
+  "Source": [
+    {
+      "Path": "scripts/Invoke-ContainerRuntimeDiagnosis.ps1",
+      "SHA256": "A65113023A448F0C8738C6FBFEA8590C99C165ADC471817CB8EC35F9ED206BAD"
+    },
+    {
+      "Path": "scripts/Probe-ContainerRuntime.ps1",
+      "SHA256": "7158CA7CB9E3D71EB70615115F1963033BAE661868BE9B34AA9C19709F678FB3"
+    },
+    {
+      "Path": "scripts/lib/RuntimeDiagnosis.psm1",
+      "SHA256": "74966CCC96B9400B615A0C59E1AF5B363149C9171F69D7CDC719C29C4D0DE236"
+    },
+    {
+      "Path": "FrenchExDev2.QuietCli.Core.Tests.PoSh/RuntimeDiagnosis.Tests.ps1",
+      "SHA256": "4342DA29BFAE5E70ED5578C1D85514562B091CC66D3DAD257019E7087BD51856"
+    }
+  ],
+  "PolicyTests": {
+    "Seed": 20261109,
+    "Properties": 200,
+    "Mutations": [
+      {
+        "Name": "bootstrap-fault-hidden",
+        "Outcome": "Killed"
+      },
+      {
+        "Name": "elf-machine-ignored",
+        "Outcome": "Killed"
+      },
+      {
+        "Name": "libc-ignored",
+        "Outcome": "Killed"
+      },
+      {
+        "Name": "native-hash-ignored",
+        "Outcome": "Killed"
+      },
+      {
+        "Name": "asset-selection-hidden",
+        "Outcome": "Killed"
+      },
+      {
+        "Name": "partial-probe-accepted",
+        "Outcome": "Killed"
+      },
+      {
+        "Name": "diagnostic-promoted-to-qualification",
+        "Outcome": "Killed"
+      }
+    ],
+    "Examples": 15,
+    "MalformedInputs": 3500,
+    "SourceSHA256": "74966CCC96B9400B615A0C59E1AF5B363149C9171F69D7CDC719C29C4D0DE236"
+  },
+  "Qualification": "DiagnosticOnly",
+  "PolicyTestRun": "C:\\Users\\serard\\AppData\\Local\\Temp\\QuietCli2\\874a99c9b658\\tests\\20261109-085749-f9b588",
+  "Date": "2026-11-09",
+  "SchemaVersion": 1
+}

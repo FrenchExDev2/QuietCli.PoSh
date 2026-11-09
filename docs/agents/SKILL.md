@@ -6,14 +6,14 @@ description: Use when running a native command (git, dotnet, or any executable) 
 
 `quiet` runs a native command and turns its output into a caller-local business object: typed data
 plus the evidence that it is complete. Source and issues: <https://github.com/FrenchExDev2/FrenchExDev2.QuietCli.PoSh>.
-For any command below, use `Get-Help <command> -Full`; `Get-Command -Module FrenchExDev2.QuietCli.Core.PoSh` lists them all.
+For any command below, use `Get-Help <command> -Full`; `Get-Command -Module QuietCli` lists them all.
 
 This file is the whole production contract. It is not the QuietCli repository's maintenance rules.
 
 ## Rules
 
 1. Before executing, define the question, the business data required and the smallest useful delivery. Keep unknown measurements unknown.
-2. Use PowerShell Core 7.6+ with its normal profile and UTF-8 initialization. Import `FrenchExDev2.QuietCli.Core.PoSh` once per process. Never load legacy QuietCli or OPumper modules in the same process.
+2. Use PowerShell Core 7.6+ with its normal profile and UTF-8 initialization. Import `QuietCli` once per process. Do not mix QuietCli releases or archived OPumper modules in the same process.
 3. Read the executable's help or official format documentation before writing a parser. A handler listed in the inventory is not proof that a variant or platform is supported.
 4. Run native commands through `quiet`, with a registered handler or explicit `-Output` and `-Complete` callbacks. Without either, the command is rejected before it runs. CI orchestration and read-only streaming monitors keep their host's documented exceptions.
 5. Set `-WorkingDirectory`. QuietCli options precede the executable; native arguments follow verbatim. Use `-FilePath` and `-ArgumentList` for exact argument vectors.
@@ -79,7 +79,7 @@ Require complete evidence before using it:
 ```powershell
 # Objective: Require complete evidence before using the commit count.
 if ($count.Outcome -ne 'Success' -or !$count.Completeness.Source -or !$count.Completeness.Analysis -or $count.Error.Count) {
-    FrenchExDev2.QuietCli.Core.PoSh\Out-QuietResult $count -MaxItems 5 -MaxOutputBytes 4096
+    Out-QuietResult $count -MaxItems 5 -MaxOutputBytes 4096
     throw 'CommitCountIncomplete'
 }
 $commitCount = $count.Data.ReachableCommits
@@ -118,9 +118,9 @@ Deliver bounded JSON or YAML from the retained object, without running Git again
 <!-- quiet-example: bounded-deliveries -->
 ```powershell
 # Objective: Deliver the same observed result in bounded JSON and YAML forms.
-$json = FrenchExDev2.QuietCli.Core.PoSh\Out-QuietResult $recent -AsJson -MaxItems 5 -MaxOutputBytes 4096
-$yaml = FrenchExDev2.QuietCli.Core.PoSh\Out-QuietResult $recent -AsYaml -MaxItems 5 -MaxOutputBytes 4096
-$compactJson = FrenchExDev2.QuietCli.Core.PoSh\ConvertTo-QuietJson $recent -MaxItems 5 -MaxOutputBytes 4096
+$json = Out-QuietResult $recent -AsJson -MaxItems 5 -MaxOutputBytes 4096
+$yaml = Out-QuietResult $recent -AsYaml -MaxItems 5 -MaxOutputBytes 4096
+$compactJson = ConvertTo-QuietJson $recent -MaxItems 5 -MaxOutputBytes 4096
 ```
 
 ## When a result is not Success
@@ -131,4 +131,10 @@ $compactJson = FrenchExDev2.QuietCli.Core.PoSh\ConvertTo-QuietJson $recent -MaxI
 | `Outcome` `Failed`, `Execution.Native.ExitCode` non-zero | The native command failed | Read its documented exit codes; declare `-SuccessExitCodes` only for documented successes |
 | `Completeness.Source` or `.Analysis` false | Output not fully drained, or the analyzer did not finish | Treat `Data` as unusable; fix the parser, then observe again |
 | Exception `RecallRequiresExplicitAsObject` | `-Recall` or `-SaveRecall` without `-AsObject` | Add `-AsObject` |
-| Wrong module path, or binaries missing | A stale release is loaded, or the C# engine is not built | Check `(Get-Module FrenchExDev2.QuietCli.Core.PoSh).Path`; rebuild, then use a fresh process |
+| Wrong module path, or binaries missing | A stale release is loaded, or the C# engine is not built | Check `(Get-Module QuietCli).Path`; rebuild, then use a fresh process |
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

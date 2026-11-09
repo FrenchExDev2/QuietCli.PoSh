@@ -43,3 +43,9 @@ All three native campaign bootstrap receipts name that same C digest. Their summ
 The new language-independent property/fuzz/mutation policy is recorded in both workspace and repository AGENTS.md. The native results above do not establish those campaigns for the migrated PowerShell/C# components; their listed functional and comparative tests must not be presented as equivalent evidence. Any missing language/component campaign remains an explicit qualification gap under that policy.
 
 No commit, push or publication was performed.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

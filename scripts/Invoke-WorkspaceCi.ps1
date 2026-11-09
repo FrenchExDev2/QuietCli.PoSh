@@ -14,7 +14,7 @@ Explicit pinned dotnet-trace DLL.
 .PARAMETER SkipTty
 Excludes native TTY/PTY execution from this run; local runs include it by default.
 .PARAMETER Suite
-Core, Git, All, Import, mandatory Integration, explicit-repository RealStatus, or complete RunProfiles/RunProfilesMutation tooling qualification.
+Core, Git, Vagrant, All, Import, mandatory Integration, explicit-repository RealStatus, or complete RunProfiles/RunProfilesMutation tooling qualification.
 .PARAMETER RunDirectory
 New output directory; generated when omitted.
 .PARAMETER Headless
@@ -32,7 +32,14 @@ Development only: wildcard selecting Core cases by name; the run is partial and 
 .PARAMETER StopOnFirstFailure
 Development only: stops the Core run at the first failing case; the run is incomplete.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview')][string]$Suite='All',[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure)
+[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure)
+dynamicparam {
+    . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
+    $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
+    New-QuietWorkspaceSuiteParameter -WorkspaceRoot $selectedRoot -Scope Host
+}
+end {
+$Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 if($Profiler){
@@ -63,9 +70,11 @@ $worker=Start-Process @options
 $monitor=$null
 if(!$Headless){
     if(!$IsWindows){$worker.Kill($true);throw 'Use the Windows host launcher for a visible local monitor; Headless is reserved for CI.'}
-    $monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory))) -PassThru
+    $monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory))) -RedirectStandardError (Join-Path $RunDirectory 'monitor.stderr.log') -PassThru
 }
 "Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$RunDirectory`""
 $summary=Wait-WorkspaceWorker -Worker $worker -RunDirectory $RunDirectory -WorkspaceRoot $WorkspaceRoot -Runner $runner -Monitor $monitor -TimeoutSeconds $TimeoutSeconds
 [pscustomobject]@{State=$summary.State.State;Passed=$summary.State.Passed;Failed=$summary.State.Failed;RunDirectory=$RunDirectory}
 if($summary.State.State -ne 'Success'){throw "Companion tests failed. See $RunDirectory"}
+
+}

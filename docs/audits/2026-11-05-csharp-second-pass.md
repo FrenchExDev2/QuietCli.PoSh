@@ -1,6 +1,6 @@
 # Second C# extraction validation - 5 November 2026
 
-Strict incremental UTF-8 decoding/text framing and telemetry aggregation now run in C#. Text framing stays in the caller process in both engine modes. Gain aggregation consumes safe SQLite metadata and returns only summary counters and aggregate group pages. See [the boundary review](../powershell-csharp-boundaries.md) for remaining candidates and behavior constraints.
+Strict incremental UTF-8 decoding/text framing and telemetry aggregation now run in C#. Text framing stays in the caller process in both engine modes. Gain aggregation consumes safe SQLite metadata and returns only summary counters and aggregate group pages. See [the boundary review](../README-powershell-csharp-boundaries.md) for remaining candidates and behavior constraints.
 
 ## Executed validation
 
@@ -48,3 +48,9 @@ pwsh -File C:\Users\serard\AppData\Local\Temp\quietcli-csharp-pass2-20443dd0\scr
 ```
 
 To reproduce against a new checkout, build with scripts/Build-Workspace.ps1 and use the normal scripts/Invoke-WorkspaceCi.ps1 -SkipBuild -Suite All launcher under each pinned host. The launcher owns the required visible monitor. Do not reuse a running PowerShell process after rebuilding an assembly it has loaded. Remote matrix/release qualification remains separate.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

@@ -37,3 +37,9 @@ Paths below are relative to the QuietCli2 monorepo unless stated otherwise. Repo
 Earlier failed attempts remain preserved. A controlled glibc startup diagnostic reproduced ASan 14 PIE crashes in an empty program; it is distinct from the musl RSS shutdown leak. Only the Clang 14 glibc x64 test executable uses the checked non-PIE compatibility layout; shipped transport binaries retain their hardening requirements.
 
 Local execution here covers Linux x64. ARM64 qualification is configured in the workflow but was not executed on this host. This prepared LLVM-main image is an explicit local test image; default workflow image recipes were not replaced by it. No commit, push or publication was performed by this qualification.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

@@ -6,6 +6,7 @@
 . (Join-Path $PSScriptRoot 'RepositoryCommands.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Parser.Mutation.ps1')
 . (Join-Path $PSScriptRoot 'Migration.Tests.ps1')
+. (Join-Path $PSScriptRoot 'CiImages.Tests.ps1')
 #requires -Version 7.6
 . (Join-Path $PSScriptRoot 'Semantic.Tests.ps1')
 function Invoke-GitFixture {
@@ -130,11 +131,13 @@ Tests independently prepared repositories, hook counts and local bare push targe
     foreach($entry in $indexCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $semanticCases=Get-QuietGitSemanticCases -RootDirectory $root -Environment $environment
     foreach($entry in $semanticCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
+    $ciImageCases=Get-QuietGitCiImageCases -WorkspaceRoot $WorkspaceRoot
+    foreach($entry in $ciImageCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $passed=0;$failed=0;$ttyExcluded=0;$results=[Collections.Generic.List[object]]::new()
     foreach($entry in $cases.GetEnumerator()){
         if($env:QUIETCLI_TEST_SKIP_TTY -ceq '1' -and $entry.Key -clike 'PTY *'){$ttyExcluded++;continue}
         $failure=$null
-        try{& $entry.Value;$passed++;$state='Passed'}catch{$failed++;$state='Failed';$failure=$_.Exception.Message}
+        try{$null=& $entry.Value;$passed++;$state='Passed'}catch{$failed++;$state='Failed';$failure=$_.Exception.Message}
         $results.Add([pscustomobject]@{Name=$entry.Key;State=$state;Error=$failure})
         if($OnProgress){& $OnProgress $entry.Key $state $passed $failed}
     }

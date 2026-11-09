@@ -26,7 +26,9 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Gallery.ps1')
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
-foreach($name in @('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh','FrenchExDev2.QuietCli.Git.PoSh','FrenchExDev2.QuietCli.Git.Tests.PoSh')){
+# This list only forbids writing generated artifacts inside source modules. It never selects public packages;
+# New-QuietGalleryPackage.ps1 still explicitly stages and validates only the public QuietCli Core package.
+foreach($name in (Get-QuietWorkspaceProjects $WorkspaceRoot).Name){
     $moduleRoot=(Join-Path $WorkspaceRoot $name)+[IO.Path]::DirectorySeparatorChar
     if($OutputDirectory.StartsWith($moduleRoot,[StringComparison]::OrdinalIgnoreCase)){throw 'GalleryPreviewOutputInsideModule'}
 }

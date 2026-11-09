@@ -11,16 +11,16 @@ namespace FrenchExDev2.QuietCli.Cmdlets;
 public sealed class ReadQuietArgumentsCommand : QuietCmdlet
 {
     /// <summary>Boolean facade switches; a trailing colon form carries an explicit value.</summary>
-    private static readonly string[] Switches = ["AsObject", "AsJson", "AsYaml", "Recall", "SaveRecall", "Zip", "AllowPartial"];
+    private static readonly string[] Switches = ["AsObject", "AsJson", "AsYaml", "Recall", "SaveRecall", "Zip", "AllowPartial", "UI"];
 
     /// <summary>Facade options that consume the following argument.</summary>
     private static readonly string[] Values =
     [
-        "Output", "Complete", "Context", "Data", "State", "WorkingDirectory", "TimeoutSeconds", "DrainTimeoutSeconds", "Environment", "Transport",
+        "Output", "Complete", "Listeners", "Context", "Data", "State", "WorkingDirectory", "TimeoutSeconds", "DrainTimeoutSeconds", "Environment", "Transport",
         "StdoutMode", "StderrMode", "InputText", "InputBytes", "InputPath", "Interaction", "RecordDelimiter", "MaxRecordBytes", "MaxOutputBytes",
         "MaxItems", "Role", "HandlerId", "CancellationFile", "CancellationToken", "Projection", "Tokenizer", "FilePath", "ArgumentList", "TerminalSize",
         "SuccessExitCodes", "ReadBlockBytes", "RecallMaxBytes", "RecallPolicy", "RecallId", "RecallName", "RecallRoot", "Compress", "Script",
-        "DataFactory", "StateFactory",
+        "DataFactory", "StateFactory", "MaxLines",
     ];
 
     /// <summary>Options a saved-capture replay may combine with its identifier.</summary>
@@ -68,12 +68,18 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
             if (match.Success)
             {
                 name = match.Groups[1].Value;
-                string suffix = match.Groups[2].Value;
-                if (suffix.Length > 0) switchValue = bool.Parse(suffix);
-                else if (index + 1 < args.Length) { index++; switchValue = LanguagePrimitives.IsTrue(args[index]); }
             }
             if (string.Equals(name, "C", StringComparison.OrdinalIgnoreCase)) name = "Context";
-            if (Canonical(Switches, name) is { } flag) { request[flag] = switchValue; index++; continue; }
+            if (Canonical(Switches, name) is { } flag)
+            {
+                if (match.Success)
+                {
+                    string suffix = match.Groups[2].Value;
+                    if (suffix.Length > 0) switchValue = bool.Parse(suffix);
+                    else if (index + 1 < args.Length) { index++; switchValue = LanguagePrimitives.IsTrue(args[index]); }
+                }
+                request[flag] = switchValue; index++; continue;
+            }
             if (Canonical(Values, name) is not { } option) throw new InvalidOperationException("UnknownQuietOption: " + argument);
             index++;
             if (index >= args.Length) throw new InvalidOperationException("MissingQuietOptionValue: " + option);
@@ -127,6 +133,7 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
         bool saving = Flag(request, "SaveRecall");
         if (request.ContainsKey("AllowPartial") && !request.ContainsKey("RecallId")) throw new InvalidOperationException("AllowPartialRequiresReplay");
         if (saving && !Flag(request, "AsObject")) throw new InvalidOperationException("SaveRecallRequiresExplicitAsObject");
+        if (request.ContainsKey("MaxLines") && !Flag(request, "UI")) throw new InvalidOperationException("MaxLinesRequiresUI");
         if (request.ContainsKey("RecallName"))
         {
             string recallName = Text(request["RecallName"]);

@@ -10,13 +10,13 @@ your project's `.skills` directory and writes a short, delimited reference block
 reads. Text outside that block is never touched, and repeating the command changes nothing.
 
 **QuietCli installs no hook, profile change or agent setting.** The engine grants no such permission; the command
-only writes the files listed in its result. The command ships with the Core module of this checkout (0.2.0-preview);
-check that an older published package has it with `Get-Command Add-QuietAgentInstruction`.
+only writes the files listed in its result. The command is provided by `QuietCli`;
+check its availability in the installed version with `Get-Command Add-QuietAgentInstruction`.
 
 Preview first, from the project the agent will work on:
 
 ```powershell
-Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
+Import-Module QuietCli -ErrorAction Stop
 $project = (Get-Location).Path
 $preview = Add-QuietAgentInstruction -Path $project -Agents -WhatIf
 $preview.Files | Select-Object Path, ReferencePath, Status
@@ -45,3 +45,9 @@ Start the agent's shell with its normal PowerShell profile so that `quiet` and U
 Guides for each client, an example with a non-Git executable and a troubleshooting table are indexed in
 [agent documents](docs/agents/README.md): [Claude Code](docs/agents/claude.md), [Codex](docs/agents/codex.md),
 [troubleshooting](docs/agents/troubleshooting.md).
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

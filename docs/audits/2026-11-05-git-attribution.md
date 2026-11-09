@@ -9,3 +9,9 @@ Evidence: artifacts/tests/git-attribution-stable-2 passed 53/53 under Windows st
 Generated path/group tests retain seeds 74051/74052; 20,000 bounded malformed inputs per compiled execution use seed 74053. This is deterministic fuzzing, not coverage-guided fuzzing. Native tests use supported 1 KiB reads, and cover Unicode quoted names, content CR, uncommitted lines, selected annotate ranges, explicit incremental records, reflog selectors/messages and missing predicates. Linux/ARM64 and all Git versions/options remain unqualified locally. Existing Core/native PTY code was unchanged.
 
 Sources: [blame porcelain](https://git-scm.com/docs/git-blame#_the_porcelain_format), [reflog](https://git-scm.com/docs/git-reflog), [Git path quoting](https://github.com/git/git/blob/v2.56.0/quote.c). No push or publication was performed.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

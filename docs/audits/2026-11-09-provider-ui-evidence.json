@@ -1,0 +1,594 @@
+{
+  "SchemaVersion": 1,
+  "Date": "2026-11-09",
+  "Revision": "aa576e9bd8afc98b3f284d74a52d50b6c9a4783a",
+  "Dirty": true,
+  "TestedSourceSHA256": "6EC13890E584969ABA049861D4B126C61950C14FB7212BAB3C496944D7F3CFD5",
+  "ReportRoot": "C:/Users/serard/AppData/Local/Temp/QuietCli2/874a99c9b658",
+  "Runs": [
+    {
+      "Run": "tests/20261109-074826-e7fd15",
+      "State": "Success",
+      "Passed": 145,
+      "Failed": 0,
+      "Error": null,
+      "StartedUtc": "2026-11-09T08:48:27.6203592+01:00",
+      "FinishedUtc": "2026-11-09T09:00:47.473224+01:00",
+      "Platform": "win-x64",
+      "PowerShellVersion": "7.6.9",
+      "HostRuntime": ".NET 10.0.14",
+      "Engine": {
+        "ProtocolVersion": 1,
+        "Runtime": ".NET 10.0.14",
+        "TargetFramework": ".NETCoreApp,Version=v10.0",
+        "ProcessId": 33272,
+        "RuntimeIdentifier": "win-x64",
+        "BuildRuntimeIdentifier": "portable",
+        "BlockSize": 16384,
+        "QueueBlocks": 16,
+        "AssemblySHA256": "04DCB454A46E15E833FD4E8D5BAB84C1B98DAA5D2D688A69568A2866EDFD726E",
+        "SourceSHA256": "636C79F64C8B76ED5E3AFA0F9478FD358E7212ECEAD9963CF5C5D3DB662C0053",
+        "Capture": false
+      },
+      "Cleanup": null
+    },
+    {
+      "Run": "tests/20261109-080144-16628f",
+      "State": "Success",
+      "Passed": 145,
+      "Failed": 0,
+      "Error": null,
+      "StartedUtc": "2026-11-09T09:01:46.1307395+01:00",
+      "FinishedUtc": "2026-11-09T09:14:44.9897272+01:00",
+      "Platform": "win-x64",
+      "PowerShellVersion": "7.7.0-preview.5",
+      "HostRuntime": ".NET 11.0.0-rc.1.26425.128",
+      "Engine": {
+        "ProtocolVersion": 1,
+        "Runtime": ".NET 11.0.0-rc.1.26425.128",
+        "TargetFramework": ".NETCoreApp,Version=v11.0",
+        "ProcessId": 31300,
+        "RuntimeIdentifier": "win-x64",
+        "BuildRuntimeIdentifier": "portable",
+        "BlockSize": 16384,
+        "QueueBlocks": 16,
+        "AssemblySHA256": "62E3B9E22A7987BA4157B8EAE8648392086B3C9B27B3B686B971F042BF311022",
+        "SourceSHA256": "636C79F64C8B76ED5E3AFA0F9478FD358E7212ECEAD9963CF5C5D3DB662C0053",
+        "Capture": false
+      },
+      "Cleanup": null
+    },
+    {
+      "Run": "tests/20261109-074524-50738f",
+      "State": "Success",
+      "Passed": 176,
+      "Failed": 0,
+      "Error": null,
+      "StartedUtc": "2026-11-09T08:45:25.7526529+01:00",
+      "FinishedUtc": "2026-11-09T09:05:59.5963111+01:00",
+      "Platform": "win-x64",
+      "PowerShellVersion": "7.6.9",
+      "HostRuntime": ".NET 10.0.14",
+      "Engine": {
+        "ProtocolVersion": 1,
+        "Runtime": ".NET 10.0.14",
+        "TargetFramework": ".NETCoreApp,Version=v10.0",
+        "ProcessId": 24912,
+        "RuntimeIdentifier": "win-x64",
+        "BuildRuntimeIdentifier": "portable",
+        "BlockSize": 16384,
+        "QueueBlocks": 16,
+        "AssemblySHA256": "04DCB454A46E15E833FD4E8D5BAB84C1B98DAA5D2D688A69568A2866EDFD726E",
+        "SourceSHA256": "636C79F64C8B76ED5E3AFA0F9478FD358E7212ECEAD9963CF5C5D3DB662C0053",
+        "Capture": false
+      },
+      "Cleanup": null
+    },
+    {
+      "Run": "tests/20261109-073426-e0903a",
+      "State": "Success",
+      "Passed": 14,
+      "Failed": 0,
+      "Error": null,
+      "StartedUtc": "2026-11-09T08:34:28.0056246+01:00",
+      "FinishedUtc": "2026-11-09T08:35:55.9671027+01:00",
+      "Platform": "win-x64",
+      "PowerShellVersion": "7.6.9",
+      "HostRuntime": ".NET 10.0.14",
+      "Engine": {
+        "ProtocolVersion": 1,
+        "Runtime": ".NET 10.0.14",
+        "TargetFramework": ".NETCoreApp,Version=v10.0",
+        "ProcessId": 8148,
+        "RuntimeIdentifier": "win-x64",
+        "BuildRuntimeIdentifier": "portable",
+        "BlockSize": 16384,
+        "QueueBlocks": 16,
+        "AssemblySHA256": "221DB1A582929D1C77C4B3A970F1C9713C42C5E1AD7FD6E9403F26B1A2F33A79",
+        "SourceSHA256": "4AFC27D639F0B1AB84C67F7EAA284A408312D7F91A36685460220B5CCCDEED5C",
+        "Capture": false
+      },
+      "Cleanup": null
+    },
+    {
+      "Run": "vagrant-provider/7a43fb249d7c4b94985786d87ba9da82",
+      "State": "Success",
+      "Passed": 25,
+      "Failed": 0,
+      "Error": null,
+      "StartedUtc": "2026-11-09T08:33:14.352773+01:00",
+      "FinishedUtc": "2026-11-09T08:34:46.5781755+01:00",
+      "Platform": "Windows x64 / Docker API",
+      "PowerShellVersion": null,
+      "HostRuntime": null,
+      "Engine": null,
+      "Cleanup": "Success"
+    },
+    {
+      "Run": "ui-console/cc3cac10cc7d4470a803cbbc51dd2a60",
+      "State": "Success",
+      "Passed": 7,
+      "Failed": 0,
+      "Error": null,
+      "StartedUtc": "2026-11-09T08:45:14.7025612+01:00",
+      "FinishedUtc": "2026-11-09T08:45:20.8594311+01:00",
+      "Platform": "win-x64",
+      "PowerShellVersion": null,
+      "HostRuntime": null,
+      "Engine": null,
+      "Cleanup": null
+    },
+    {
+      "Run": "containers/debian-20261109-072306-ceba1d",
+      "State": "Success",
+      "Passed": 13,
+      "Failed": 0,
+      "Error": null,
+      "StartedUtc": "2026-11-09T08:23:07.5869904+01:00",
+      "FinishedUtc": "2026-11-09T08:23:46.2598859+01:00",
+      "Platform": "linux-x64",
+      "PowerShellVersion": null,
+      "HostRuntime": null,
+      "Engine": null,
+      "Cleanup": "RemovedOwnedContainer"
+    },
+    {
+      "Run": "tests/20261109-072716-62cc00",
+      "State": "Success",
+      "Passed": 11,
+      "Failed": 0,
+      "Error": null,
+      "StartedUtc": "2026-11-09T08:27:17.5210471+01:00",
+      "FinishedUtc": "2026-11-09T08:29:36.7734822+01:00",
+      "Platform": "win-x64",
+      "PowerShellVersion": "7.6.9",
+      "HostRuntime": ".NET 10.0.14",
+      "Engine": {
+        "ProtocolVersion": 1,
+        "Runtime": ".NET 10.0.14",
+        "TargetFramework": ".NETCoreApp,Version=v10.0",
+        "ProcessId": 22128,
+        "RuntimeIdentifier": "win-x64",
+        "BuildRuntimeIdentifier": "portable",
+        "BlockSize": 16384,
+        "QueueBlocks": 16,
+        "AssemblySHA256": "221DB1A582929D1C77C4B3A970F1C9713C42C5E1AD7FD6E9403F26B1A2F33A79",
+        "SourceSHA256": "4AFC27D639F0B1AB84C67F7EAA284A408312D7F91A36685460220B5CCCDEED5C",
+        "Capture": false
+      },
+      "Cleanup": null
+    },
+    {
+      "Run": "containers/alpine-20261109-072702-fa996e",
+      "State": "Crash",
+      "Passed": null,
+      "Failed": null,
+      "Error": "Workspace operation failed: podman (Failed)",
+      "StartedUtc": "2026-11-09T08:27:03.7667247+01:00",
+      "FinishedUtc": "2026-11-09T08:27:15.7563349+01:00",
+      "Platform": "alpine",
+      "PowerShellVersion": null,
+      "HostRuntime": null,
+      "Engine": null,
+      "Cleanup": "RemovedOwnedContainer"
+    },
+    {
+      "Run": "containers/alpine-20261109-073324-23f54f",
+      "State": "Crash",
+      "Passed": 0,
+      "Failed": 1,
+      "Error": "GuestArchitectureMismatch",
+      "StartedUtc": "2026-11-09T08:33:25.38913+01:00",
+      "FinishedUtc": "2026-11-09T08:33:46.0610839+01:00",
+      "Platform": "alpine",
+      "PowerShellVersion": null,
+      "HostRuntime": null,
+      "Engine": null,
+      "Cleanup": "RemovedOwnedContainer"
+    }
+  ],
+  "CompiledBaselinePassed": 86,
+  "CompiledCatalogueCount": 84,
+  "FullCompiledCatalogue": true,
+  "CompiledMutations": [
+    {
+      "Name": "yaml-size-limit",
+      "State": "Killed"
+    },
+    {
+      "Name": "yaml-inert-tags",
+      "State": "Killed"
+    },
+    {
+      "Name": "delivery-initial-profile",
+      "State": "Killed"
+    },
+    {
+      "Name": "token-conflict-transaction",
+      "State": "Killed"
+    },
+    {
+      "Name": "configuration-budget-range",
+      "State": "Killed"
+    },
+    {
+      "Name": "delivery-receipt-dedup",
+      "State": "Killed"
+    },
+    {
+      "Name": "delivery-token-count",
+      "State": "Killed"
+    },
+    {
+      "Name": "delivery-reduction-bytes",
+      "State": "Killed"
+    },
+    {
+      "Name": "delivery-surrogate-guard",
+      "State": "Killed"
+    },
+    {
+      "Name": "delivery-dictionary-bound",
+      "State": "Killed"
+    },
+    {
+      "Name": "script-escape-ascii-only",
+      "State": "Killed"
+    },
+    {
+      "Name": "script-escape-none",
+      "State": "Killed"
+    },
+    {
+      "Name": "script-cycle-guard",
+      "State": "Killed"
+    },
+    {
+      "Name": "script-character-budget",
+      "State": "Killed"
+    },
+    {
+      "Name": "script-node-budget",
+      "State": "Killed"
+    },
+    {
+      "Name": "script-no-overwrite",
+      "State": "Killed"
+    },
+    {
+      "Name": "script-link-rejected",
+      "State": "Killed"
+    },
+    {
+      "Name": "pathguard-reparse-bit",
+      "State": "Killed"
+    },
+    {
+      "Name": "input-path-link-rejected",
+      "State": "Killed"
+    },
+    {
+      "Name": "script-callback-required",
+      "State": "Killed"
+    },
+    {
+      "Name": "script-recall-options",
+      "State": "Killed"
+    },
+    {
+      "Name": "factory-isolation",
+      "State": "Killed"
+    },
+    {
+      "Name": "factory-cardinality",
+      "State": "Killed"
+    },
+    {
+      "Name": "replay-partial-guard",
+      "State": "Killed"
+    },
+    {
+      "Name": "replay-callback-required",
+      "State": "Killed"
+    },
+    {
+      "Name": "replay-gap-reset",
+      "State": "Killed"
+    },
+    {
+      "Name": "replay-tail-reset",
+      "State": "Killed"
+    },
+    {
+      "Name": "replay-depth-restore",
+      "State": "Killed"
+    },
+    {
+      "Name": "replay-projection",
+      "State": "Killed"
+    },
+    {
+      "Name": "replay-delimiter-clear",
+      "State": "Killed"
+    },
+    {
+      "Name": "replay-budget-range",
+      "State": "Killed"
+    },
+    {
+      "Name": "replay-source-completeness",
+      "State": "Killed"
+    },
+    {
+      "Name": "replay-routing",
+      "State": "Killed"
+    },
+    {
+      "Name": "gain-from-overrides-days",
+      "State": "Killed"
+    },
+    {
+      "Name": "gain-days-end",
+      "State": "Killed"
+    },
+    {
+      "Name": "gain-formats-exclusive",
+      "State": "Killed"
+    },
+    {
+      "Name": "gain-compress-requires-json",
+      "State": "Killed"
+    },
+    {
+      "Name": "gain-time-range",
+      "State": "Killed"
+    },
+    {
+      "Name": "gain-unbounded-lower",
+      "State": "Killed"
+    },
+    {
+      "Name": "gain-poll-action",
+      "State": "Killed"
+    },
+    {
+      "Name": "gain-release-completed",
+      "State": "Killed"
+    },
+    {
+      "Name": "gain-release-lost",
+      "State": "Killed"
+    },
+    {
+      "Name": "gain-first-report",
+      "State": "Killed"
+    },
+    {
+      "Name": "gain-empty-session",
+      "State": "Killed"
+    },
+    {
+      "Name": "gain-yaml-array",
+      "State": "Killed"
+    },
+    {
+      "Name": "scrub-confirmed",
+      "State": "Killed"
+    },
+    {
+      "Name": "scrub-whatif",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-ref-start-count",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-ref-end-count",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-ref-order",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-ref-tail-lost",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-ref-injection",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-ref-backslash",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-ref-percent",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-ref-replace-existing",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-write-conflict",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-write-link",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-write-ancestor",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-install-unchanged",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-install-declined",
+      "State": "Killed"
+    },
+    {
+      "Name": "agent-install-bom-strict",
+      "State": "Killed"
+    },
+    {
+      "Name": "scaffold-no-overwrite",
+      "State": "Killed"
+    },
+    {
+      "Name": "scaffold-tests-name",
+      "State": "Killed"
+    },
+    {
+      "Name": "module-session-identity",
+      "State": "Killed"
+    },
+    {
+      "Name": "module-session-validation",
+      "State": "Killed"
+    },
+    {
+      "Name": "script-module-identity",
+      "State": "Killed"
+    },
+    {
+      "Name": "scaffold-module-identity",
+      "State": "Killed"
+    },
+    {
+      "Name": "emit-events-not-recorded",
+      "State": "Killed"
+    },
+    {
+      "Name": "emit-listener-not-disabled-after-failure",
+      "State": "Killed"
+    },
+    {
+      "Name": "emit-listener-skip-check-removed",
+      "State": "Killed"
+    },
+    {
+      "Name": "emit-nested-inherits-listeners",
+      "State": "Killed"
+    },
+    {
+      "Name": "emit-listener-array-item-not-validated",
+      "State": "Killed"
+    },
+    {
+      "Name": "maxlines-requires-ui-guard-removed",
+      "State": "Killed"
+    },
+    {
+      "Name": "maxlines-nonpositive-silently-coerced",
+      "State": "Killed"
+    },
+    {
+      "Name": "ui-tail-fifo-head-not-advanced",
+      "State": "Killed"
+    },
+    {
+      "Name": "ui-tail-count-not-capped",
+      "State": "Killed"
+    },
+    {
+      "Name": "ui-lane-order-not-insertion",
+      "State": "Killed"
+    },
+    {
+      "Name": "ui-format-machine-prefix-always-shown",
+      "State": "Killed"
+    },
+    {
+      "Name": "splat-value-options-lost",
+      "State": "Killed"
+    },
+    {
+      "Name": "event-delivery-not-projected",
+      "State": "Killed"
+    },
+    {
+      "Name": "ui-final-frame-omitted",
+      "State": "Killed"
+    },
+    {
+      "Name": "ui-viewport-height-ignored",
+      "State": "Killed"
+    },
+    {
+      "Name": "ui-viewport-width-ignored",
+      "State": "Killed"
+    },
+    {
+      "Name": "ui-viewport-task-identity-lost",
+      "State": "Killed"
+    }
+  ],
+  "PowerShellMutations": [
+    {
+      "Name": "unescape-comma-removed",
+      "Outcome": "Killed"
+    },
+    {
+      "Name": "escaped-newline-not-restored",
+      "Outcome": "Killed"
+    },
+    {
+      "Name": "malformed-short-line-returned-as-event",
+      "Outcome": "Killed"
+    },
+    {
+      "Name": "provisioner-trigger-anchor-broken",
+      "Outcome": "Killed"
+    },
+    {
+      "Name": "real-machine-prefix-not-stripped",
+      "Outcome": "Killed"
+    },
+    {
+      "Name": "provisioner-detail-channel-accepted",
+      "Outcome": "Killed"
+    },
+    {
+      "Name": "ui-write-lane-key-wrong",
+      "Outcome": "Killed"
+    }
+  ],
+  "RubyFixtureGuard": {
+    "BaselineRejectsUpper": true,
+    "GuardRemovedAcceptsUpper": true,
+    "Outcome": "Killed",
+    "SourceRestored": true
+  },
+  "Qualification": "Partial",
+  "Unexecuted": [
+    "Physical Ctrl+C",
+    "ARM64",
+    "Isolated-host matrix",
+    "Full release/performance/native-C matrix"
+  ]
+}

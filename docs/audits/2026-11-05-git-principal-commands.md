@@ -31,3 +31,9 @@ Official format references: [Git status porcelain v2](https://git-scm.com/docs/g
 ## Filesystem line endings
 
 All repository text is UTF-8 with LF on disk, enforced by .gitattributes, .editorconfig and the source assertion. The JSON generator and dependency notice importer produce LF. Thirty-two existing source/evidence files were normalized; changed evidence hashes retain OriginalSHA256 provenance. Binary resources and immutable run evidence were preserved. The workspace and repository AGENTS.md also record the LF requirement. Compiler-based mutations were already qualified before the formatting-only pass; unrelated campaigns were not repeated solely for line-ending changes.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

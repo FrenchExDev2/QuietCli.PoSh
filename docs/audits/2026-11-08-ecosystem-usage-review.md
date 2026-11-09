@@ -13,7 +13,7 @@ This module already carries one of the most rigorous audit trails in the workspa
 pass on [4 November](2026-11-04-securite-logiciel.md) with 10 findings, all closed and independently
 re-verified on Windows/Alpine/Debian in the [5 November remediation](2026-11-04-remediation.md); a tracked,
 incremental PowerShell→C# migration documented in
-[`docs/powershell-csharp-boundaries.md`](../powershell-csharp-boundaries.md) with four completed passes;
+[`docs/README-powershell-csharp-boundaries.md`](../README-powershell-csharp-boundaries.md) with four completed passes;
 and per-area audits for the frame codec, run-profile tooling, PTY streams and every major Git command family.
 This review does not repeat that work. It reports only what independent reading turned up that those documents
 do not already cover, plus a few explicit confirmations worth stating because they were checked, not assumed.
@@ -74,7 +74,7 @@ from future findings.
 4 November security audit (SEC-02, SEC-03, DES-01, REL-02) — no longer exist as PowerShell source; their
 responsibilities now live in `engine/Cmdlets/*.cs` (`HandlerCommands.cs`, `GainCommands.cs`,
 `ModuleScaffold.cs`/`ScriptCommands.cs`, `DeliveryCommands.cs`, `RuntimeCommands.cs`). This is not a surprise
-or an undocumented change: `docs/powershell-csharp-boundaries.md` tracks each move explicitly, by file, with
+or an undocumented change: `docs/README-powershell-csharp-boundaries.md` tracks each move explicitly, by file, with
 its own validation.
 
 The gap is narrower than "the migration is undocumented" — it is that the boundaries document does not say,
@@ -82,7 +82,7 @@ for each moved file, whether the specific security remediations the 4 November a
 (message scrubbing in `Gain.ps1`'s former home, the metadata whitelist depth check, the binary-extension
 identity fix) were carried into the C# replacement or re-verified there. Today a reader has to manually bridge
 the security audit and the boundaries document to answer that question; neither document answers it alone.
-Suggested closure: a one-line cross-reference in `powershell-csharp-boundaries.md` per moved file, pointing at
+Suggested closure: a one-line cross-reference in `README-powershell-csharp-boundaries.md` per moved file, pointing at
 the finding it inherited and whether/where that finding's regression test followed it.
 
 ### Confirmed, not re-litigated
@@ -120,7 +120,7 @@ an aggregate "N commands supported" number that would hide the `Pending` qualifi
 
 ## Method and limits
 
-Read: both root-level `AGENTS.md`/`README.md` pairs, `docs/powershell-csharp-boundaries.md`, nine prior audits
+Read: both root-level `AGENTS.md`/`README.md` pairs, `docs/README-powershell-csharp-boundaries.md`, nine prior audits
 (4–8 November), `scripts/Publish-QuietGallery.ps1`, `scripts/Push-Workspace.ps1`, `scripts/Commit-Workspace.ps1`,
 `FrenchExDev2.QuietCli.Core.PoSh/src/Invoke.ps1`, the Core and Git module manifests, the Git module's
 `README.md` coverage section, and `.gitignore`. Directory discovery initially timed out against this checkout's
@@ -131,3 +131,9 @@ Not done: no build, no test run, no `git log`/`git status` on this checkout, no 
 beyond confirming file existence by name, and no re-verification of any of the nine prior audits' own dynamic
 evidence (test counts, SHA-256 digests, mutation scores) — those are taken as reported. No commit, push or
 workspace mutation was performed while producing this document.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

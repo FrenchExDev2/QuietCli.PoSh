@@ -93,7 +93,9 @@ function Copy-PackageEntryBounded {
     }finally{$hash.Dispose()}
 }
 if(Test-Path -LiteralPath $ExtractionDirectory){throw 'ExtractionDirectoryAlreadyExists'}
-$expected=@('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh','FrenchExDev2.QuietCli.Git.PoSh','FrenchExDev2.QuietCli.Git.Tests.PoSh')
+. (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
+$projectCatalogue=@(Get-QuietWorkspaceProjects (Split-Path $PSScriptRoot -Parent))
+$expected=@($projectCatalogue.Name)
 $manifests=@(Get-ChildItem -LiteralPath $PackageDirectory -Filter '*.manifest.json' -File)
 $archives=@(Get-ChildItem -LiteralPath $PackageDirectory -Filter '*.zip' -File)
 if($manifests.Count -ne $expected.Count -or $archives.Count -ne $expected.Count){throw 'PackageSetIncompleteOrUnexpected'}
@@ -167,9 +169,10 @@ if($TestImport){
     $previousModulePath=$env:PSModulePath
     try{
         $env:PSModulePath=$ExtractionDirectory+[IO.Path]::PathSeparator+$previousModulePath
-        Import-Module (Join-Path $ExtractionDirectory 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1') -Force
-        Import-Module (Join-Path $ExtractionDirectory 'FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1') -Force
+        foreach($project in $projectCatalogue){
+            if(!$project.IsTest){Import-Module (Join-Path $ExtractionDirectory ($project.Name+'/'+$project.Name+'.psd1')) -Force}
+        }
         $handlers=@(Get-QuietHandler).Count
     }finally{$env:PSModulePath=$previousModulePath}
 }
-[pscustomobject]@{Verified=$true;Authenticated=$false;ImportTested=[bool]$TestImport;ExtractionDirectory=$ExtractionDirectory;Files=$fileCount;UncompressedBytes=$total;Handlers=$handlers}
+[pscustomobject]@{Verified=$true;Authenticated=$false;ImportTested=[bool]$TestImport;ExtractionDirectory=$ExtractionDirectory;Files=$fileCount;UncompressedBytes=$total;Handlers=$handlers;Modules=$expected;ImportedModules=$(if($TestImport){@($projectCatalogue | Where-Object {!$_.IsTest} | ForEach-Object Name)}else{@()})}

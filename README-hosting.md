@@ -2,7 +2,7 @@
 
 [Back to the QuietCli overview](README.md)
 
-How the engine is hosted and how it talks to native processes. Related: [performance and hosting](docs/performance-and-hosting.md), [PowerShell/C# responsibilities](docs/powershell-csharp-boundaries.md), [package installation](docs/PSGallery.md).
+How the engine is hosted and how it talks to native processes. Related: [performance and hosting](docs/README-performance-and-hosting.md), [PowerShell/C# responsibilities](docs/README-powershell-csharp-boundaries.md), [package installation](docs/README-PSGallery.md).
 
 `Auto` hosting selects the compatible integrated C# build from the actual PowerShell CLR: `net10.0` on .NET 10 and `net11.0` on .NET 11 or later. Business callbacks, data, decoding and framing stay caller-local. Integrated native reads and lifecycle controls use direct C# calls rather than pipe IPC.
 
@@ -12,4 +12,10 @@ Distributions target Windows x64/ARM64 and Linux glibc/musl x64/ARM64. The facad
 
 Integrated hosting shares PowerShell's failure boundary. Process isolation provides a separate engine boundary. A timeout stops the owned native process, but cannot forcibly interrupt an arbitrary blocked PowerShell callback. Callbacks must cooperate with cancellation. `-DrainTimeoutSeconds` bounds waiting for EOF after native exit; interrupted drainage is explicitly incomplete. Communication failures never trigger automatic command retries and can leave a mutation's effect unknown.
 
-See [hosting and performance](docs/performance-and-hosting.md) and [PowerShell/C# responsibilities](docs/powershell-csharp-boundaries.md).
+See [hosting and performance](docs/README-performance-and-hosting.md) and [PowerShell/C# responsibilities](docs/README-powershell-csharp-boundaries.md).
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

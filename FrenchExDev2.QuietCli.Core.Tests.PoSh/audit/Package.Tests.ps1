@@ -2,15 +2,17 @@
 function New-AuditPackageFixture {
     <#
     .SYNOPSIS
-    Creates four small synthetic module packages with independently calculated manifests.
+    Creates small synthetic module packages for the selected source catalogue with independent manifests.
     .PARAMETER Path
     New package directory.
     .PARAMETER Attack
     Optional controlled boundary violation.
+    .PARAMETER WorkspaceRoot
+    Trusted source workspace whose project names define this verification fixture.
     #>
-    param([string]$Path,[ValidateSet('normal','foreign','case','traversal')][string]$Attack='normal')
+    param([string]$Path,[ValidateSet('normal','foreign','case','traversal')][string]$Attack='normal',[Parameter(Mandatory)][string]$WorkspaceRoot)
     [void][IO.Directory]::CreateDirectory($Path)
-    foreach($name in @('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh','FrenchExDev2.QuietCli.Git.PoSh','FrenchExDev2.QuietCli.Git.Tests.PoSh')){
+    foreach($name in (Get-QuietWorkspaceProjects $WorkspaceRoot).Name){
         $entries=[Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)
         $entries[$name+'.psd1']="@{RootModule='$name.psm1';ModuleVersion='0.0.1';FunctionsToExport=@()}"
         $entries[$name+'.psm1']="[void][IO.File]::WriteAllTextAsync((Join-Path `$PSScriptRoot 'audit-import-marker.txt'),'synthetic',[Text.UTF8Encoding]::new(`$false)).GetAwaiter().GetResult()"
@@ -44,7 +46,7 @@ function Invoke-AuditPackageChecks {
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     foreach($case in @(@{Name='data-only';Attack='normal';Reason=$null},@{Name='foreign';Attack='foreign';Reason='ArchiveModuleBoundaryViolation'},@{Name='case';Attack='case';Reason='DuplicatePackagePath'},@{Name='traversal';Attack='traversal';Reason='ArchiveUnsafePath'},@{Name='file-quota';Attack='normal';Reason='ArchiveDirectoryLimit';Files=1},@{Name='byte-quota';Attack='normal';Reason='ArchiveSizeLimit';Bytes=1})){
         $path=Join-Path $RunDirectory ('packages-'+$case.Name)
-        New-AuditPackageFixture $path $case.Attack
+        New-AuditPackageFixture $path $case.Attack -WorkspaceRoot $WorkspaceRoot
         if($case.ContainsKey('Files')){
             foreach($file in Get-ChildItem -LiteralPath $path -Filter '*.manifest.json'){
                 $manifest=Get-Content $file.FullName -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable

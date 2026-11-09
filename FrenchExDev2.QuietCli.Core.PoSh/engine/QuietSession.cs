@@ -9,6 +9,9 @@ public static class QuietSession
     /// <summary>Module root directory that holds <c>resources</c>, <c>lib</c> and the manifest.</summary>
     public static string Root { get; private set; } = "";
 
+    /// <summary>Imported module identity used by generated scripts and companion dependencies.</summary>
+    public static string ModuleName { get; private set; } = "QuietCli";
+
     /// <summary>Session configuration snapshot, read lazily from the YAML file.</summary>
     public static ConfigurationSnapshot? Configuration { get; set; }
 
@@ -23,10 +26,14 @@ public static class QuietSession
 
     /// <summary>Starts a fresh session for the module being imported.</summary>
     /// <param name="root">Module root directory.</param>
-    public static void Initialize(string root)
+    /// <param name="moduleName">Public package name or explicit source module identity.</param>
+    public static void Initialize(string root, string moduleName = "QuietCli")
     {
+        if (!System.Text.RegularExpressions.Regex.IsMatch(moduleName, @"\A[A-Za-z][A-Za-z0-9_.-]{0,127}\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant))
+            throw new ArgumentException("QuietModuleNameInvalid", nameof(moduleName));
         lock (gate) {
             Root = root;
+            ModuleName = moduleName;
             Configuration = null;
             Engine = null;
             SessionId = Guid.NewGuid().ToString("N");

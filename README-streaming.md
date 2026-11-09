@@ -26,6 +26,7 @@ Nested native calls from callbacks have their own results and retain visible fai
 | `Completeness.Analysis` | Did the analyzer see every record and finish? | `True`, or `False` after a callback failure |
 | `Error` | Which structured error codes were raised? | Empty on success; for example `HandlerNotFound` |
 | `Data` | The business result built by your callbacks or a handler | Whatever `-Complete` returned |
+| `Events` | Business events emitted during the call | Ordered values passed to `$runtime.Emit(...)` |
 
 A zero exit code does not prove a complete analysis. Use this guard before consuming `Data`:
 
@@ -39,6 +40,19 @@ The [agent failure table](docs/agents/AGENTS.md) lists what to do for each non-s
 
 ## Callback pitfalls
 
+`-Listeners` accepts one scriptblock or an array of scriptblocks. Call `$runtime.Emit($event)` from
+`-Output`, `-Complete` or a handler to collect the event and invoke every listener with `(event, runtime)`
+in registration order. Listener callbacks produce no pipeline output. A failing listener is disabled for
+that call and adds `ListenerFailed` to `Error`; other listeners and business analysis continue. Events
+are retained even without listeners, so emit only the business information you need. Nested calls have
+their own listeners unless they are explicitly forwarded. JSON/YAML deliveries apply `MaxItems` to
+`Events` and report omitted items without altering the local array.
+
+`-UI` provides a live presentation surface through `$runtime.Ui.Write($event, $lane)` and
+`$runtime.Ui.NewLine($lane)`. `-MaxLines` selects the positive history depth per lane and requires
+`-UI`. Emit does not automatically write to this surface. The [Vagrant companion](FrenchExDev2.QuietCli.Vagrant.PoSh/README.md)
+supplies both event emission and per-machine presentation.
+
 - **Options precede the executable.** `quiet -AsObject -C label git status`: QuietCli options first, native arguments after, verbatim. For an exact argument vector use `-FilePath` and `-ArgumentList`.
 - **Emit nothing from `-Output`.** Incidental pipeline output is an error. Discard method return values with `[void]`.
 - **Return one value from `-Complete`.** Use the unary comma (`,$array`) to return an array as a single value.
@@ -49,3 +63,9 @@ The [agent failure table](docs/agents/AGENTS.md) lists what to do for each non-s
 ## Reusable scripts
 
 `quiet -Script ./Tool.ps1 ...` writes a readable call definition instead of running it. See the [Core module README](FrenchExDev2.QuietCli.Core.PoSh/README.md#reusable-scripts-and-business-factories) for the rules and limits.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

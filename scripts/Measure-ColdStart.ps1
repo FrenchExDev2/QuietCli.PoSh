@@ -14,6 +14,15 @@ difference is "faster" or "slower" only when the confidence interval excludes ze
 leveled logs and counters to standard error. With -ProfileImport, one extra child per variant imports the module
 under the pinned PSProfiler and a top-50 JSON report is written (profiled runs are never part of the samples).
 
+Also reports each variant's on-disk footprint: the total size, in bytes, of every file under its manifest's
+directory, plus a narrower hosted-path size covering only the lib/inprocess (CLR10) or lib/engine/<rid> (CLR11+)
+directory this process actually loads, since the full footprint includes every bundled RID whether or not it is
+used. This is a static build-artifact measurement, not a timed sample — it exists because a ReadyToRun build
+trades a larger on-disk footprint (embedded native code) for a smaller first-call cost, and that tradeoff should be
+visible next to the timing verdict, not just assumed. With -MeasurePackageSize, also packages each variant with
+Compress-PSResource and reports the resulting .nupkg size, since compression does not always track the raw
+on-disk difference.
+
 .PARAMETER BaselineModule
 Module manifest of the reference build.
 
@@ -59,6 +68,11 @@ Pinned Profiler manifest; found automatically in the QuietCli2 cache when omitte
 .PARAMETER ProfileDirectory
 Directory receiving the PSProfiler reports.
 
+.PARAMETER MeasurePackageSize
+Also packages each variant with Compress-PSResource and reports the resulting .nupkg size. Off by default: it
+requires a real, publishable module manifest (name, version, GUID, author), which a minimal test fixture manifest
+is not, and it is slower than the raw on-disk footprint that is always reported.
+
 .PARAMETER OutputPath
 Optional UTF-8 JSON file receiving parameters, environment, counters and every raw pair.
 
@@ -89,12 +103,13 @@ param(
     [switch]$ProfileImport,
     [string]$ProfilerModulePath,
     [string]$ProfileDirectory = (Join-Path ([IO.Path]::GetTempPath()) 'QuietCli2-coldstart-profiles'),
+    [switch]$MeasurePackageSize,
     [string]$OutputPath,
     [ValidateSet('Trace', 'Debug', 'Info', 'Warn', 'Error', 'Off')][string]$LogLevel = 'Info',
     [string]$LogPath
 )
 $ErrorActionPreference = 'Stop'
-foreach ($module in 'RunFormat', 'RunStatistics', 'RunProfiler', 'RunEncoding', 'RunColdStart') { Import-Module (Join-Path $PSScriptRoot "lib/$module.psm1") }
+foreach ($module in 'RunFormat', 'RunStatistics', 'RunProfiler', 'RunEncoding', 'RunColdStart') { Import-Module (Join-Path $PSScriptRoot "lib/$module.psm1") -Force }
 $logger = New-RunLogger -Level $LogLevel -Component 'coldstart' -LogPath $LogPath
 $clock = [Diagnostics.Stopwatch]::StartNew()
 
@@ -196,9 +211,14 @@ $variants = @(
     @{ Label = $BaselineLabel; Module = [IO.Path]::GetFullPath($BaselineModule) }
     @{ Label = $CandidateLabel; Module = [IO.Path]::GetFullPath($CandidateModule) }
 )
-foreach ($variant in $variants) { $variant.Worker = Get-WorkerScript $variant.Module $ChildCommand }
-$logger.Info("baseline '$BaselineLabel' = $($variants[0].Module)")
-$logger.Info("candidate '$CandidateLabel' = $($variants[1].Module)")
+foreach ($variant in $variants) {
+    $variant.Worker = Get-WorkerScript $variant.Module $ChildCommand
+    $variant.FootprintBytes = Get-RunModuleFootprintBytes -ManifestPath $variant.Module
+    $variant.HostedBytes = Get-RunModuleHostedPathBytes -ManifestPath $variant.Module
+    $variant.PackageBytes = if ($MeasurePackageSize) { $logger.Time("package.$($variant.Label)", { Get-RunModulePackageBytes -ManifestPath $variant.Module }) } else { $null }
+}
+$logger.Info("baseline '$BaselineLabel' = $($variants[0].Module) ($(Format-RunDataSize $variants[0].FootprintBytes) on disk$(if ($MeasurePackageSize) { ", $(Format-RunDataSize $variants[0].PackageBytes) packaged" }))")
+$logger.Info("candidate '$CandidateLabel' = $($variants[1].Module) ($(Format-RunDataSize $variants[1].FootprintBytes) on disk$(if ($MeasurePackageSize) { ", $(Format-RunDataSize $variants[1].PackageBytes) packaged" }))")
 $logger.Info("plan: $Warmup warm-up + $Runs measured pairs, seed $Seed, child '$($ChildCommand -join ' ')'")
 
 $random = [Random]::new($Seed)
@@ -264,9 +284,21 @@ if ($ProfileImport) {
     }
 }
 
+$footprintDifferenceBytes = $variants[1].FootprintBytes - $variants[0].FootprintBytes
+$hostedDifferenceBytes = $variants[1].HostedBytes - $variants[0].HostedBytes
+$packageDifferenceBytes = if ($MeasurePackageSize) { $variants[1].PackageBytes - $variants[0].PackageBytes } else { $null }
+$footprintRows = @(
+    , @($BaselineLabel, (Format-RunDataSize $variants[0].FootprintBytes), (Format-RunDataSize $variants[0].HostedBytes), (Format-RunDataSize $variants[0].PackageBytes))
+    , @($CandidateLabel, (Format-RunDataSize $variants[1].FootprintBytes), (Format-RunDataSize $variants[1].HostedBytes), (Format-RunDataSize $variants[1].PackageBytes))
+    , @('Difference (candidate - baseline)', (Format-RunDataSize $footprintDifferenceBytes -Signed), (Format-RunDataSize $hostedDifferenceBytes -Signed), (Format-RunDataSize $packageDifferenceBytes -Signed))
+)
+
 ''
 "Project: QuietCli.Core.PoSh | Task: cold-start A/B ($($pairs.Count) measured pairs, $Warmup warm-up, seed $Seed)"
 "Workspace: $((Split-Path $PSScriptRoot -Parent))"
+''
+"Module footprint: 'On disk' is every file under the module root (every bundled RID, used or not); 'Hosted path' is only the lib/inprocess or lib/engine/<rid> directory this process actually loads (Auto hosting); 'Package' is the .nupkg size Compress-PSResource would$(if (-not $MeasurePackageSize) { ' (run with -MeasurePackageSize to fill it, shown as - otherwise)' }) publish. Static, not a timing measurement."
+Format-RunTable -Headers @('Variant', 'On disk', 'Hosted path', 'Package (.nupkg)') -Rows $footprintRows -RightAligned @(1, 2, 3)
 ''
 Format-RunTable -Headers @('Phase', 'Variant', 'N', 'Duration (median)', 'Duration (Q1)', 'Duration (Q3)', 'Duration (min)') -Rows $distributionRows -RightAligned @(2, 3, 4, 5, 6)
 ''
@@ -278,8 +310,9 @@ foreach ($report in $profileReports) { "PSProfiler report: $report" }
 if ($OutputPath) {
     $document = [ordered]@{
         Parameters  = [ordered]@{ BaselineModule = $variants[0].Module; CandidateModule = $variants[1].Module; BaselineLabel = $BaselineLabel; CandidateLabel = $CandidateLabel; Runs = $Runs; Warmup = $Warmup; ChildCommand = $ChildCommand; Seed = $Seed; BootstrapResamples = $BootstrapResamples; Confidence = $Confidence }
-        Environment = [ordered]@{ PowerShell = $PSVersionTable.PSVersion.ToString(); Os = [Runtime.InteropServices.RuntimeInformation]::OSDescription; Clr = [Environment]::Version.ToString() }
+        Environment = [ordered]@{ MachineName = [Environment]::MachineName; PowerShell = $PSVersionTable.PSVersion.ToString(); Os = [Runtime.InteropServices.RuntimeInformation]::OSDescription; Clr = [Environment]::Version.ToString(); RuntimeIdentifier = [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier }
         Counters    = $logger.Snapshot()
+        Footprint   = [ordered]@{ BaselineBytes = $variants[0].FootprintBytes; CandidateBytes = $variants[1].FootprintBytes; DifferenceBytes = $footprintDifferenceBytes; BaselineHostedBytes = $variants[0].HostedBytes; CandidateHostedBytes = $variants[1].HostedBytes; HostedDifferenceBytes = $hostedDifferenceBytes; BaselinePackageBytes = $variants[0].PackageBytes; CandidatePackageBytes = $variants[1].PackageBytes; PackageDifferenceBytes = $packageDifferenceBytes }
         Summary     = $summary
         Pairs       = $pairs
         Profiles    = $profileReports

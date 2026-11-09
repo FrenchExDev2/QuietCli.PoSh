@@ -26,7 +26,7 @@ internal static class ModuleScaffold
         foreach (string directory in new[] { target, tests, Path.Combine(target, "src") }) Directory.CreateDirectory(directory);
         Write(Path.Combine(target, name + ".psm1"), ModuleSource.Replace("__MODULE__", name));
         Write(Path.Combine(target, "src", "Handler.ps1"), HandlerSource.Replace("__MODULE__", name).Replace("__BINARY__", binary));
-        Write(Path.Combine(target, name + ".psd1"), Manifest(name, [("FrenchExDev2.QuietCli.Core.PoSh", "0.1.0")], "@()",
+        Write(Path.Combine(target, name + ".psd1"), Manifest(name, [(QuietSession.ModuleName, "0.2.0")], "@()",
             $"@{{QuietCli=@{{Binary='{binary}';TestsModule='{testName}';Qualification='NotImplemented'}}}}"));
         Write(Path.Combine(tests, testName + ".psm1"), TestSource);
         Write(Path.Combine(tests, testName + ".psd1"), Manifest(testName, [(name, "0.1.0"), ("FrenchExDev2.QuietCli.Core.Tests.PoSh", "0.1.0")], "'Invoke-ModuleTests'", null));

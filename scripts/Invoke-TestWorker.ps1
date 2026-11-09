@@ -16,13 +16,20 @@ Explicit pinned dotnet-trace DLL.
 .PARAMETER SkipTty
 Excludes native TTY/PTY execution from this run; local runs include it by default.
 .PARAMETER Suite
-Core, Git, All, Import, mandatory Integration, explicit-repository RealStatus, or complete RunProfiles/RunProfilesMutation tooling qualification.
+Core, Git, Vagrant, All, Import, mandatory Integration, explicit-repository RealStatus, or complete RunProfiles/RunProfilesMutation tooling qualification.
 .PARAMETER RepositoryConfig
 UTF-8 JSON array of existing repository roots; required by RealStatus.
 .PARAMETER ExpectedRuntimeIdentifier
 Required native architecture for both the PowerShell host and the separate engine.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[ValidateSet('Core','Git','All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview')][string]$Suite='All',[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure)
+[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure)
+dynamicparam {
+    . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
+    $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
+    New-QuietWorkspaceSuiteParameter -WorkspaceRoot $selectedRoot -Scope Host
+}
+end {
+$Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 # Development-only selection, read by the Core case loop; never set by CI or the pre-commit gate.
@@ -115,16 +122,20 @@ try{
         }
         if($ExpectedRuntimeIdentifier -and $engineIdentity.Engine.RuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw "EngineRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($engineIdentity.Engine.RuntimeIdentifier)"}
         if($ExpectedRuntimeIdentifier -and $engineIdentity.Mode -ne 'InProcess' -and $engineIdentity.Engine.BuildRuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw 'EnginePublicationRuntimeMismatch'}
-        foreach($selected in $(if($Suite -eq 'All'){@('Core','Git')}else{@($Suite)})){
-            $project="FrenchExDev2.QuietCli.$selected.PoSh"
+        # Parser/handler qualification uses the owned process fixture; it never installs Vagrant or a provider.
+        foreach($selection in Get-QuietWorkspaceSuiteSelection -WorkspaceRoot $WorkspaceRoot -Suite $Suite){
+            $selected=$selection.Name
+            $project=$selection.Project
             $state.Project=$project;$state.ProjectDirectory=Join-Path $WorkspaceRoot $project
-            Import-Module (Join-Path $WorkspaceRoot "FrenchExDev2.QuietCli.$selected.Tests.PoSh/FrenchExDev2.QuietCli.$selected.Tests.PoSh.psd1") -Force
+            Import-Module $selection.TestsManifest -Force
             $basePassed=$state.Passed;$baseFailed=$state.Failed
             $progress={param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$basePassed+$passed;$state.Failed=$baseFailed+$failed;Write-WorkspaceJson $statusPath $state}
-            $command=Get-Command "Invoke-Quiet$($selected)Tests"
-            if($selected -eq 'Core'){
-                $summary=& $command -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress $progress
-            }else{$summary=& $command -WorkspaceRoot $WorkspaceRoot -OnProgress $progress}
+            $command=Get-Command ($selection.TestsModule+'\'+$selection.Command) -ErrorAction Stop
+            $parameters=@{WorkspaceRoot=$WorkspaceRoot;OnProgress=$progress}
+            if($command.Parameters.ContainsKey('RunDirectory')){$parameters.RunDirectory=$RunDirectory}
+            $outputs=@(& $command @parameters)
+            if($outputs.Count -ne 1){throw ('CompanionRunnerMustReturnOneSummary: '+$selection.Name)}
+            $summary=$outputs[0]
             $summaries.Add($summary)
             Write-WorkspaceJson (Join-Path $RunDirectory ($selected.ToLowerInvariant()+'-suite.json')) $summary
             if($selected -eq 'Core' -and ($summary.Partial -or $summary.Incomplete)){
@@ -158,3 +169,5 @@ finally{
     Write-WorkspaceJson $statusPath $state
 }
 if($state.State -ne 'Success'){exit 1}
+
+}

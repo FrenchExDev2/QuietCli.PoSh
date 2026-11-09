@@ -175,11 +175,12 @@ public abstract class DeliveryCmdlet : RuntimeCmdlet
             business = Collapse(projection.Invoke(business, new Hashtable { ["MaxItems"] = maxItems, ["MaxOutputBytes"] = maxBytes }));
         object? view = QuietProjection.Project(business, state, maxItems, Math.Min(2048, maxBytes));
         object? safeError = QuietProjection.Project(Members.Get(result, "Error"), state, maxItems, 256);
+        object? safeEvents = QuietProjection.Project(Members.Get(result, "Events"), state, maxItems, Math.Min(2048, maxBytes));
         object? completeness = Members.Get(result, "Completeness");
         var document = new OrderedDictionary
         {
             ["SchemaVersion"] = 1, ["Outcome"] = Members.Get(result, "Outcome"), ["InvocationId"] = Members.Get(result, "InvocationId"), ["Context"] = Members.Get(result, "Context"),
-            ["Data"] = view, ["Completeness"] = completeness, ["Error"] = safeError,
+            ["Data"] = view, ["Completeness"] = completeness, ["Error"] = safeError, ["Events"] = safeEvents,
             ["Truncation"] = new OrderedDictionary { ["Applied"] = state.Omitted > 0, ["Omitted"] = state.Omitted, ["OmittedExact"] = !state.UnknownOmissions },
         };
         bool truncated = state.Omitted > 0;

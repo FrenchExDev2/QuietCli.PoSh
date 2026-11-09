@@ -26,6 +26,93 @@ Test-Case 'benchmark: malformed, non-finite, negative and incomplete child sampl
     }
 }
 
+Test-Case 'benchmark: module footprint sums every file under the manifest directory, nested and at the root alike' {
+    $random = [Random]::new($Seed + 13)
+    for ($index = 0; $index -lt [Math]::Min($Iterations, 20); $index++) {
+        $root = Join-Path $work ('footprint-' + [guid]::NewGuid().ToString('N'))
+        [void][IO.Directory]::CreateDirectory($root)
+        $manifest = Join-Path $root 'module.psd1'
+        $expected = 0L
+        foreach ($file in @('module.psd1', 'lib/engine.dll', 'lib/native/engine.so', 'docs/readme.txt')) {
+            $path = Join-Path $root $file
+            [void][IO.Directory]::CreateDirectory((Split-Path -Parent $path))
+            $size = $random.Next(0, 5000)
+            [IO.File]::WriteAllBytes($path, [byte[]]::new($size))
+            $expected += $size
+        }
+        $actual = Get-RunModuleFootprintBytes -ManifestPath $manifest
+        Assert-That ($actual -eq $expected) "footprint mismatch at $index`: expected $expected, got $actual"
+    }
+    $empty = Join-Path $work ('footprint-empty-' + [guid]::NewGuid().ToString('N'))
+    [void][IO.Directory]::CreateDirectory($empty)
+    $onlyManifest = Join-Path $empty 'module.psd1'
+    [IO.File]::WriteAllBytes($onlyManifest, [byte[]]::new(0))
+    Assert-That ((Get-RunModuleFootprintBytes -ManifestPath $onlyManifest) -eq 0) 'empty manifest-only directory must report zero'
+}
+
+Test-Case 'benchmark: hosted-path footprint sums only the active lib/inprocess or lib/engine/<rid> directory, ignoring other RIDs and files outside it' {
+    $rid = [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+    $hostedRelative = if ($PSVersionTable.PSVersion.Major -ge 11) { "lib/engine/$rid" } else { 'lib/inprocess' }
+    $otherRid = if ($rid -eq 'win-x64') { 'linux-x64' } else { 'win-x64' }
+    $random = [Random]::new($Seed + 15)
+    for ($index = 0; $index -lt [Math]::Min($Iterations, 20); $index++) {
+        $root = Join-Path $work ('hosted-' + [guid]::NewGuid().ToString('N'))
+        [void][IO.Directory]::CreateDirectory($root)
+        $manifest = Join-Path $root 'module.psd1'
+        $expected = 0L
+        foreach ($file in @("$hostedRelative/engine.dll", "$hostedRelative/native/engine.so")) {
+            $path = Join-Path $root $file
+            [void][IO.Directory]::CreateDirectory((Split-Path -Parent $path))
+            $size = $random.Next(0, 5000)
+            [IO.File]::WriteAllBytes($path, [byte[]]::new($size))
+            $expected += $size
+        }
+        foreach ($outside in @('module.psd1', "lib/engine/$otherRid/engine.dll", 'docs/readme.txt')) {
+            $path = Join-Path $root $outside
+            [void][IO.Directory]::CreateDirectory((Split-Path -Parent $path))
+            [IO.File]::WriteAllBytes($path, [byte[]]::new($random.Next(0, 5000)))
+        }
+        $actual = Get-RunModuleHostedPathBytes -ManifestPath $manifest -RuntimeIdentifier $rid
+        Assert-That ($actual -eq $expected) "hosted-path footprint mismatch at $index`: expected $expected, got $actual"
+    }
+    $missing = Join-Path $work ('hosted-missing-' + [guid]::NewGuid().ToString('N'))
+    [void][IO.Directory]::CreateDirectory($missing)
+    $missingManifest = Join-Path $missing 'module.psd1'
+    [IO.File]::WriteAllBytes($missingManifest, [byte[]]::new(0))
+    Assert-Throws { Get-RunModuleHostedPathBytes -ManifestPath $missingManifest -RuntimeIdentifier $rid } 'RunModuleHostedPathMissing'
+}
+
+Test-Case 'benchmark: a packaged module reports a real, positive .nupkg size that grows with its payload (skipped when Compress-PSResource is unavailable)' {
+    try { Get-Command Compress-PSResource -ErrorAction Stop | Out-Null } catch { $counters.Skipped++; $counters.Passed--; return }
+    function New-PackageFixtureModule {
+        <#
+        .SYNOPSIS
+        Creates a disposable module with a deterministic payload for package-size assertions.
+        .PARAMETER Root
+        Owned fixture directory whose leaf name determines the module name.
+        .PARAMETER PayloadBytes
+        Number of generated payload bytes; zero creates the manifest-only fixture.
+        #>
+        param([string]$Root, [int]$PayloadBytes)
+        [void][IO.Directory]::CreateDirectory($Root)
+        $name = Split-Path -Leaf $Root
+        $manifest = Join-Path $Root "$name.psd1"
+        New-ModuleManifest -Path $manifest -ModuleVersion '1.0.0' -Guid ([guid]::NewGuid()) -Author 'fixture' -Description 'fixture'
+        if ($PayloadBytes -gt 0) {
+            $buffer = [byte[]]::new($PayloadBytes)
+            [Random]::new($Seed + 14).NextBytes($buffer)
+            [IO.File]::WriteAllBytes((Join-Path $Root 'payload.bin'), $buffer)
+        }
+        return $manifest
+    }
+    $smallManifest = New-PackageFixtureModule -Root (Join-Path $work ('pkg-small-' + [guid]::NewGuid().ToString('N'))) -PayloadBytes 0
+    $bigManifest = New-PackageFixtureModule -Root (Join-Path $work ('pkg-big-' + [guid]::NewGuid().ToString('N'))) -PayloadBytes 500000
+    $smallBytes = Get-RunModulePackageBytes -ManifestPath $smallManifest
+    $bigBytes = Get-RunModulePackageBytes -ManifestPath $bigManifest
+    Assert-That ($smallBytes -gt 0) "manifest-only package must not be empty: $smallBytes"
+    Assert-That ($bigBytes -gt $smallBytes) "a 500000-byte random payload must grow the package: small=$smallBytes big=$bigBytes"
+}
+
 function Invoke-BenchmarkFixture {
     <#
     .SYNOPSIS
@@ -44,8 +131,12 @@ function Invoke-BenchmarkFixture {
     param([int]$Warmup = 1, [int[]]$FailCalls = @(), [int]$MaxFailedPairs = 5, [switch]$Duplicate, [switch]$ProfileImport)
     $fixture = Join-Path $work ('bench-' + [guid]::NewGuid().ToString('N'))
     [void][IO.Directory]::CreateDirectory($fixture)
-    $baseline = Join-Path $fixture 'baseline.psd1'; $candidate = Join-Path $fixture 'candidate.psd1'
+    $baselineRoot = Join-Path $fixture 'baseline'; $candidateRoot = Join-Path $fixture 'candidate'
+    [void][IO.Directory]::CreateDirectory($baselineRoot); [void][IO.Directory]::CreateDirectory($candidateRoot)
+    $baseline = Join-Path $baselineRoot 'baseline.psd1'; $candidate = Join-Path $candidateRoot 'candidate.psd1'
     Write-RunTextFile $baseline '@{}'; Write-RunTextFile $candidate '@{}'
+    [IO.File]::WriteAllBytes((Join-Path $baselineRoot 'engine.dll'), [byte[]]::new(1000))
+    [IO.File]::WriteAllBytes((Join-Path $candidateRoot 'engine.dll'), [byte[]]::new(2500))
     $state = @{ Calls = [Collections.Generic.List[string]]::new(); FailCalls = $FailCalls; Duplicate = [bool]$Duplicate }
     function Invoke-FixtureNative {
         <# .SYNOPSIS
@@ -82,6 +173,7 @@ Test-Case 'benchmark: the real script preserves paired identity, excludes warm-u
     for ($index = 0; $index -lt 8; $index += 2) { Assert-That ($first.Calls[$index] -ne $first.Calls[$index+1]) 'a pair ran one variant twice' }
     Assert-That ($first.Report.Pairs.Count -eq 3 -and $first.Report.Counters.'pair.warmup' -eq 1) 'warm-up leaked into samples'
     Assert-That ($first.Report.Counters.'run.started' -eq 8 -and $first.Report.Counters.'bootstrap.resamples' -eq 300) 'counters'
+    Assert-That ($first.Report.Footprint.DifferenceBytes -eq 1500 -and $first.Report.Footprint.CandidateBytes -eq ($first.Report.Footprint.BaselineBytes + 1500)) "footprint: $($first.Report.Footprint | ConvertTo-Json -Compress)"
     foreach ($pair in $first.Report.Pairs) {
         Assert-That ($pair.Baseline.Import -eq 10.25 -and $pair.Candidate.Import -eq 11.25 -and $pair.Baseline.Second -eq 30.75) 'variant identity changed'
     }

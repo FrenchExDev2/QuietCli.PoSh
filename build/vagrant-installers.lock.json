@@ -1,0 +1,10 @@
+{
+  "SchemaVersion": 1,
+  "Version": "2.4.9",
+  "Source": "https://releases.hashicorp.com/vagrant/2.4.9/vagrant_2.4.9_SHA256SUMS",
+  "Artifacts": [
+    { "Platform": "windows", "Architecture": "x64", "File": "vagrant_2.4.9_windows_amd64.msi", "SHA256": "3bdd967927705872a70c7c98e0576afd5acd9dd73b527695f4d9dd75dd26cbe3" },
+    { "Platform": "deb", "Architecture": "x64", "File": "vagrant_2.4.9-1_amd64.deb", "SHA256": "42d830d05e6e9e647f8a5c854d9f5295e319dac74edd37d54b97b4f29cbbd70d" },
+    { "Platform": "rpm", "Architecture": "x64", "File": "vagrant-2.4.9-1.x86_64.rpm", "SHA256": "c1fb7932939d69c2aac0864e1877999f6394136515008bd32b8e21b97e824b0c" }
+  ]
+}

@@ -52,4 +52,10 @@ The frozen run tree remains at C:\Users\serard\AppData\Local\Temp\quietcli-contr
 pwsh -File C:\Users\serard\AppData\Local\Temp\quietcli-controls-98111fe4\scripts\Watch-Tests.ps1 -RunDirectory C:\Users\serard\AppData\Local\Temp\quietcli-controls-98111fe4\artifacts\tests\host-stable-ready
 ```
 
-For a new run, build with scripts/Build-Workspace.ps1 and use scripts/Invoke-WorkspaceCi.ps1 -SkipBuild -Suite All under each pinned PowerShell host. The launcher opens the required monitor. Restart PowerShell after rebuilding an assembly already loaded into it. Remaining migration candidates are listed in [the boundary review](../powershell-csharp-boundaries.md).
+For a new run, build with scripts/Build-Workspace.ps1 and use scripts/Invoke-WorkspaceCi.ps1 -SkipBuild -Suite All under each pinned PowerShell host. The launcher opens the required monitor. Restart PowerShell after rebuilding an assembly already loaded into it. Remaining migration candidates are listed in [the boundary review](../README-powershell-csharp-boundaries.md).
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->
