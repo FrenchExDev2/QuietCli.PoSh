@@ -403,4 +403,28 @@ function Invoke-DotNetContainerPull {
     [pscustomobject]@{Image=$Image;Platform=$Platform;Status='Pulled';Digest=$data.Digest}
 }
 
-Export-ModuleMember -Function Get-DotNetReadiness,Get-DotNetSdkRelease,Get-DotNetInstallation,Invoke-DotNetContainerPull
+function Get-DotNetRuntimeRelease {
+    <#
+    .SYNOPSIS
+    Resolves an exact runtime and its archive hashes from official channel metadata.
+    .PARAMETER Version
+    Complete published runtime version.
+    .PARAMETER Preleases
+    Permits preview and RC runtime versions.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param([Parameter(Mandatory)][string]$Version,[Alias('Prerelease','Prereleases')][switch]$Preleases)
+    $parsed=[System.Management.Automation.SemanticVersion]$Version
+    if($parsed.PreReleaseLabel -and !$Preleases){throw 'Prerelease runtime requires -Preleases.'}
+    $channel="$($parsed.Major).$($parsed.Minor)"
+    if(!$PSCmdlet.ShouldProcess($Version,'Read official runtime metadata')){return}
+    $response=Invoke-DotNetReadinessHttp -Uri "https://builds.dotnet.microsoft.com/dotnet/release-metadata/$channel/releases.json"
+    if($response.StatusCode -ne 200){throw "Runtime metadata returned HTTP $($response.StatusCode)."}
+    $metadata=ConvertFrom-Json $response.Body -AsHashtable -Depth 64
+    if($metadata['channel-version'] -ne $channel){throw 'Runtime metadata channel mismatch.'}
+    $matches=@($metadata.releases|Where-Object {$_['runtime'] -and $_.runtime.version -eq $Version})
+    if($matches.Count -ne 1){throw 'Runtime version must resolve to one published release.'}
+    [pscustomobject]@{Version=$Version;Files=$matches[0].runtime.files}
+}
+
+Export-ModuleMember -Function Get-DotNetReadiness,Get-DotNetSdkRelease,Get-DotNetRuntimeRelease,Get-DotNetInstallation,Invoke-DotNetContainerPull

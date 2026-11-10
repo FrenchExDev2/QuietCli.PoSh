@@ -29,6 +29,7 @@ file by hand, run:
 - [`Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.ps1) -> [documentation](Export-CiFailureDiagnostics.md)
 - [`Gallery.ps1`](../../scripts/Gallery.ps1) -> [documentation](Gallery.md)
 - [`Get-CiImageForDevelopment.ps1`](../../scripts/Get-CiImageForDevelopment.ps1) -> [documentation](Get-CiImageForDevelopment.md)
+- [`Get-DotNetBaseImages.ps1`](../../scripts/Get-DotNetBaseImages.ps1) -> [documentation](Get-DotNetBaseImages.md)
 - [`GitHubCi.ps1`](../../scripts/GitHubCi.ps1) -> [documentation](GitHubCi.md)
 - [`Import-DotNetTooling.ps1`](../../scripts/Import-DotNetTooling.ps1) -> [documentation](Import-DotNetTooling.md)
 - [`Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.ps1) -> [documentation](Initialize-CiEnvironment.md)
@@ -104,7 +105,9 @@ file by hand, run:
 - [`Test-SdkReadiness.ps1`](../../scripts/Test-SdkReadiness.ps1) -> [documentation](Test-SdkReadiness.md)
 - [`Test-WorkspacePackage.ps1`](../../scripts/Test-WorkspacePackage.ps1) -> [documentation](Test-WorkspacePackage.md)
 - [`TestConfiguration.ps1`](../../scripts/TestConfiguration.ps1) -> [documentation](TestConfiguration.md)
+- [`Update-DotNetCiLock.ps1`](../../scripts/Update-DotNetCiLock.ps1) -> [documentation](Update-DotNetCiLock.md)
 - [`Update-DotNetGlobalJson.ps1`](../../scripts/Update-DotNetGlobalJson.ps1) -> [documentation](Update-DotNetGlobalJson.md)
+- [`Update-DotNetRuntimeFrameworkVersion.ps1`](../../scripts/Update-DotNetRuntimeFrameworkVersion.ps1) -> [documentation](Update-DotNetRuntimeFrameworkVersion.md)
 - [`Update-EnvFile.ps1`](../../scripts/Update-EnvFile.ps1) -> [documentation](Update-EnvFile.md)
 - [`Update-QuietDependencies.ps1`](../../scripts/Update-QuietDependencies.ps1) -> [documentation](Update-QuietDependencies.md)
 - [`Update-WorkspaceLock.ps1`](../../scripts/Update-WorkspaceLock.ps1) -> [documentation](Update-WorkspaceLock.md)
@@ -118,6 +121,7 @@ file by hand, run:
 ## `scripts/lib/`
 
 - [`lib/DevelopmentWorkstation.psm1`](../../scripts/lib/DevelopmentWorkstation.psm1) -> [documentation](lib/DevelopmentWorkstation.md)
+- [`lib/DotNetLocks.psm1`](../../scripts/lib/DotNetLocks.psm1) -> [documentation](lib/DotNetLocks.md)
 - [`lib/DotNetProvisioning.psm1`](../../scripts/lib/DotNetProvisioning.psm1) -> [documentation](lib/DotNetProvisioning.md)
 - [`lib/DotNetReadiness.psm1`](../../scripts/lib/DotNetReadiness.psm1) -> [documentation](lib/DotNetReadiness.md)
 - [`lib/EditorExtensions.psm1`](../../scripts/lib/EditorExtensions.psm1) -> [documentation](lib/EditorExtensions.md)

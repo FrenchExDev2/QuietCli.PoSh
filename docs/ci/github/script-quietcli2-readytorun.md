@@ -1,6 +1,6 @@
 # quietcli2-readytorun.yml
 
-<!-- workflow-source-sha256: 8773E64832B62BF000CEEA7803653499E882D6F151C9C99D4ADED4032A555645 -->
+<!-- workflow-source-sha256: 3E7050C563E835372898CF39CD8F53AA3F58ACB23B5B15684FC9DFBED466638A -->
 
 ## Purpose
 
@@ -9,6 +9,11 @@ Informational IL-versus-ReadyToRun cold-start comparison, separate from producti
 ## Triggers
 
 Manual workflow_dispatch only. No push, schedule or reusable caller; no qualification/publication job depends on this workflow.
+
+
+## .NET SDK source pin
+
+The reviewed setup-dotnet steps read the checked-out global.json through global-json-file, so the CI, publication preparation and manual ReadyToRun jobs follow the selected SDK instead of embedding an old RC string. This source review does not establish hosted execution or full matrix qualification.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies

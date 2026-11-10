@@ -158,6 +158,83 @@ Copy-Item -LiteralPath '<BackupPath returned by the updater>' `
 # Review the exact paths, then repeat without WhatIf.
 ```
 
+## Synchronize CI SDK hashes and Debian/Alpine bases
+
+Changing global.json does not automatically rewrite the independent CI lock. Use:
+
+```powershell
+# WhatIf makes no registry or Microsoft metadata requests.
+./scripts/Update-DotNetCiLock.ps1 -IncludeDevelopmentLock -RefreshBaseImages -WhatIf
+
+# Resolve and inspect the proposed CI/Windows lock documents without writing.
+$plans = ./scripts/Update-DotNetCiLock.ps1 -IncludeDevelopmentLock `
+    -RefreshBaseImages -PlanOnly
+
+# Apply with original-byte backups.
+./scripts/Update-DotNetCiLock.ps1 -IncludeDevelopmentLock -RefreshBaseImages -Confirm
+```
+
+The command refreshes SDK SHA-512 values for all four Linux RIDs and, when requested,
+Windows x64/ARM64 ZIPs. It retains unrelated Git, Zig, PowerShell and other tool pins.
+The separately pinned .NET 10 runtime serves Alpine PowerShell; it is not the .NET 11
+SDK/runtime used by the projects. Use an explicit `-AlpineRuntimeVersion 10.0.15` when
+you intend to change that host runtime and refresh its two musl hashes.
+
+The lock's `Base` entries are **OS base images** (Debian/Alpine). The image build then
+downloads the exact .NET SDK archive and verifies its SDK_SHA512 before extraction.
+`-RefreshBaseImages` updates the digest of the **existing tags**; it does not choose
+a different distribution version. Registry index bytes must match their reported digest
+and include Linux amd64/arm64. No container client, daemon or layer download is needed.
+
+To inspect available official tags or select a different tag deliberately:
+
+```powershell
+./scripts/Get-DotNetBaseImages.ps1 -Image debian -Name bookworm -Limit 20
+./scripts/Get-DotNetBaseImages.ps1 -Image alpine -Name 3.24 -Limit 20
+./scripts/Update-DotNetCiLock.ps1 -DebianTag bookworm-slim -AlpineTag 3.24 -PlanOnly
+```
+
+Tag discovery returns one bounded page, with HasMore when another page exists. Updating
+an index digest keeps the selected tag's OS policy. A different Debian codename or Alpine
+release can require adjusting native packages or the pinned PowerShell package: registry
+availability is not build compatibility. Build and run the required CI matrix before
+claiming that a new distribution version is qualified. Failed/malformed metadata leaves
+the selected lock batch unchanged. Writes are atomic per file, with unique backups.
+
+## Update RuntimeFrameworkVersion in source projects
+
+An SDK version such as `11.0.100` and its runtime version `11.0.0` are separate pins:
+
+```powershell
+./scripts/Update-DotNetRuntimeFrameworkVersion.ps1 -WhatIf
+$projects = ./scripts/Update-DotNetRuntimeFrameworkVersion.ps1 -PlanOnly
+
+# Defaults to the runtime paired with global.json's exact published SDK.
+./scripts/Update-DotNetRuntimeFrameworkVersion.ps1 -Confirm
+
+# Or select an exact runtime version explicitly.
+./scripts/Update-DotNetRuntimeFrameworkVersion.ps1 -Version 11.0.0 -Confirm
+```
+
+The default scope is net11.0 project/props files inside this checkout. Discovery prunes
+generated/toolchain directories. The updater handles an explicit net11.0 property/group
+condition and unconditional pins in single-target net11.0 projects. Other framework
+properties and surrounding XML/comments survive. Ambiguous conditions, unconditional
+multi-target pins, DTDs and links fail instead of triggering a broad text replacement.
+Use `-Path`, `-Framework`, `-Preleases` and explicit `-AllowDowngrade` for deliberate
+scope/version changes. Original-byte backups precede each atomic changed-file replacement.
+
+After changing SDK/runtime/lock sources, refresh repository metadata:
+
+```powershell
+./scripts/Update-WorkspaceLock.ps1
+```
+
+Its SDK and runtime labels follow global.json and the engine's net11.0 runtime property.
+SDK setup steps in CI, package preparation and the manual ReadyToRun workflow also read
+global.json. Rebuild before relying on compiled payloads: changing a runtime pin does not
+rebuild assemblies or runtimeconfig files, nor qualify an existing binary under the new pin.
+
 ## Use the installation in a new terminal
 
 `-ActivateSession` changes only the current process PATH/DOTNET_ROOT; it never persists
@@ -183,6 +260,7 @@ $setup = Install-DotNetEnvironment -Channel 11.0 -UpdateGlobalJson -WhatIf
 
 ./scripts/Invoke-DotNetTests.ps1
 ./scripts/Invoke-DotNetTests.ps1 -Suite Provisioning
+./scripts/Invoke-DotNetTests.ps1 -Suite Locks
 # Equivalent shared launcher:
 ./scripts/Invoke-WorkspaceCi.ps1 -Suite DotNet -SkipBuild
 ```
@@ -197,9 +275,10 @@ that offline evidence.
 
 Detailed script reviews and parameter contracts: [script index](docs/scripts/README.md),
 [readiness library](docs/scripts/lib/DotNetReadiness.md),
-[provisioning library](docs/scripts/lib/DotNetProvisioning.md).
+[provisioning library](docs/scripts/lib/DotNetProvisioning.md),
+[CI/runtime/base-image library](docs/scripts/lib/DotNetLocks.md).
 The libraries live under `scripts/lib/` as required by **RAC-PS-003**;
-**RAC-NET-001–007** in [AGENTS.md](AGENTS.md) define their effect boundaries.
+**RAC-NET-001–009** in [AGENTS.md](AGENTS.md) define their effect boundaries.
 
 Official references: [Microsoft SDK/runtime installation](https://learn.microsoft.com/en-us/dotnet/core/install/windows),
 [global.json](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json),

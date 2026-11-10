@@ -20,3 +20,6 @@
 # Portable .NET toolchains and original-byte SDK-pin backups
 .dotnet/
 global.json.bak-*
+*.json.bak-*
+*.csproj.bak-*
+*.props.bak-*

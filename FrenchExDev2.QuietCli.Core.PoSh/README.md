@@ -27,7 +27,7 @@ Command-specific parsing belongs in callbacks or companion modules. Core does no
 | PowerShell | Core 7.6 or later |
 | Platforms | Windows x64/ARM64; Linux glibc or musl x64/ARM64 |
 | Default hosting | `Auto`: compatible integrated .NET 10 or .NET 11+ build |
-| Isolated hosting | `Process` requires the pinned .NET 11 RC runtime for the selected architecture |
+| Isolated hosting | `Process` requires the pinned .NET 11 runtime for the selected architecture |
 | Native tools | Install the executables you intend to invoke separately |
 
 A built module needs no SDK to import or use. Import does not compile C#, start the engine or run a native command. Distributed targets and executed qualification are separate; see [tests and qualification](../README-qualification.md).
@@ -47,7 +47,7 @@ Import-Module QuietCli -ErrorAction Stop
 
 ### Local checkout and first command
 
-Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100-rc.3.26522.148`). Build before importing the local modules. Close sessions that already loaded this checkout's assemblies before rebuilding.
+Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100`). Build before importing the local modules. Close sessions that already loaded this checkout's assemblies before rebuilding.
 
 **1. Check out and build.**
 
@@ -102,7 +102,7 @@ YAML excerpt; invocation IDs and other envelope metadata are omitted. The versio
 "Outcome": "Success"
 "Context": "sdk-version"
 "Data":
-  "SdkVersion": "11.0.100-rc.3.26522.148"
+  "SdkVersion": "11.0.100"
 "Completeness":
   "Source": true
   "Analysis": true
@@ -144,7 +144,7 @@ YAML excerpt; invocation IDs and other envelope metadata are omitted. The versio
 "Outcome": "Success"
 "Context": "sdk-version"
 "Data":
-  "SdkVersion": "11.0.100-rc.3.26522.148"
+  "SdkVersion": "11.0.100"
 "Completeness":
   "Source": true
   "Analysis": true

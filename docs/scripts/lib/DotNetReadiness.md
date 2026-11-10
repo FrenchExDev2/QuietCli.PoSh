@@ -3,7 +3,7 @@
 ## Purpose
 
 Share release selection, manifest checks and typed native inventories for .NET tooling.
-Exports Get-DotNetReadiness, Get-DotNetSdkRelease, Get-DotNetInstallation and
+Exports Get-DotNetReadiness, Get-DotNetSdkRelease, Get-DotNetRuntimeRelease, Get-DotNetInstallation and
 Invoke-DotNetContainerPull. [User guide](../../../README-dotnet-and-global-dot-json.md).
 
 ## Usage and parameters
@@ -48,7 +48,7 @@ and all operating systems remain separate qualification work.
 
 Purpose: Reads bounded public HTTP evidence without retries or certificate bypasses.
 
-Boundary: **Library**. Preview API: **Library**. Guarded functions: 4.
+Boundary: **Library**. Preview API: **Library**. Guarded functions: 5.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->

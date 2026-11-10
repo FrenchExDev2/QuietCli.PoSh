@@ -1,6 +1,6 @@
 # publish-psgallery.yml
 
-<!-- workflow-source-sha256: 1A18E58B64C142EFB12FF962C5C50F7D338D8031BF9E05D0E74740174EF570B5 -->
+<!-- workflow-source-sha256: A68C81690128BEEDA9DBC4BADEF7DDC5F01D00343D2F1E319DE86D37B9914D9E -->
 
 ## Purpose
 
@@ -9,6 +9,11 @@ Prepare one verified public QuietCli nupkg, then optionally publish those exact 
 ## Triggers
 
 workflow_call and workflow_dispatch. Version, publish and preview_build inputs control stable/manual or reusable preview delivery; job-level conditions enforce qualification and publication scope.
+
+
+## .NET SDK source pin
+
+The reviewed setup-dotnet steps read the checked-out global.json through global-json-file, so the CI, publication preparation and manual ReadyToRun jobs follow the selected SDK instead of embedding an old RC string. This source review does not establish hosted execution or full matrix qualification.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies

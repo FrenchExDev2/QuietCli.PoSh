@@ -445,7 +445,9 @@ Executes independent native byte and object invariants in a companion module.
                 if($manifest.RuntimeIdentifier -cne $target.Rid -or $manifest.PlatformTarget -cne $target.PlatformTarget){throw 'Compiler target metadata mismatch'}
                 Assert-QuietRuntimePublication (Join-Path $root $output) $target
                 $configuration=Get-Content -LiteralPath (Join-Path (Join-Path $root $output) 'QuietCli.Engine.runtimeconfig.json') -Encoding utf8 -Raw|ConvertFrom-Json
-                if($configuration.runtimeOptions.framework.version -cne '11.0.0-rc.3.26522.148'){throw 'Published engine runtime changed'}
+                [xml]$runtimeProject=Get-Content (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj') -Raw -Encoding utf8
+                $expectedRuntime=@($runtimeProject.SelectNodes('//RuntimeFrameworkVersion')|Where-Object {$_.GetAttribute('Condition') -match 'net11\.0'})
+                if($expectedRuntime.Count -ne 1 -or $configuration.runtimeOptions.framework.version -cne $expectedRuntime[0].InnerText){throw 'Published engine runtime does not match its source pin'}
             }
         } $WorkspaceRoot
         $identity=Get-QuietEngine

@@ -12,7 +12,7 @@ Select focused offline .NET automation campaigns through the existing shared lau
 ./scripts/Invoke-WorkspaceCi.ps1 -Suite DotNet -SkipBuild
 ```
 
-Suite selects Readiness, Provisioning, Layout or All; RunDirectory preserves an explicit
+Suite selects Readiness, Provisioning, Layout, Locks or All; RunDirectory preserves an explicit
 new report location; TimeoutSeconds bounds the owned worker (default 120 seconds).
 
 ## Dependencies and effects

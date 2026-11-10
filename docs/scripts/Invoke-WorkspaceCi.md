@@ -68,7 +68,7 @@ This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which 
 
 ## .NET tooling review
 
-The DotNet host suite accepts DotNetSuite Readiness|Provisioning|Layout|All and always skips product compilation. It still uses the shared worker, visible monitor, owned timeout and external report root. This focused automation scope is not Core/All release qualification; scripts/Invoke-WorkspaceCi.ps1 passes the selected DotNetSuite to its worker explicitly.
+The DotNet host suite accepts DotNetSuite Readiness|Provisioning|Layout|Locks|All and always skips product compilation. It still uses the shared worker, visible monitor, owned timeout and external report root. This focused automation scope is not Core/All release qualification; scripts/Invoke-WorkspaceCi.ps1 passes the selected DotNetSuite to its worker explicitly.
 
 <!-- script-contract:begin -->
 ## Execution contract

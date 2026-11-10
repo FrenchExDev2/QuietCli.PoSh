@@ -100,7 +100,7 @@ jobs:
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
-          dotnet-version: 11.0.100-rc.3.26522.148
+          global-json-file: global.json
           cache: true
           cache-dependency-path: '**/*.csproj'
       - uses: ./.github/actions/cache-resources
@@ -419,7 +419,7 @@ jobs:
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
-          dotnet-version: 11.0.100-rc.3.26522.148
+          global-json-file: global.json
           cache: true
           cache-dependency-path: '**/*.csproj'
       - uses: ./.github/actions/cache-resources

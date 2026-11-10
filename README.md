@@ -89,7 +89,7 @@ Each step up this path can opt into a stricter dev pipeline style — Minimal, S
 | PowerShell | Core 7.6 or later |
 | Operating systems | Windows and Linux (glibc and musl) |
 | Architectures | x64 and ARM64 |
-| Hosting | Automatic: the integrated build matching the PowerShell CLR (.NET 10 or .NET 11+). The isolated `Process` host needs the pinned .NET 11 RC runtime. See [Hosting](README-hosting.md) |
+| Hosting | Automatic: the integrated build matching the PowerShell CLR (.NET 10 or .NET 11+). The isolated `Process` host needs the pinned .NET 11 runtime. See [Hosting](README-hosting.md) |
 | Native tools | Installed separately; QuietCli never installs the executables you call |
 
 Configured platforms are not the same as qualified platforms. See [Tests and qualification](README-qualification.md) for what has actually been executed.
@@ -106,6 +106,8 @@ $report = ./scripts/Test-DotNetReadiness.ps1
 ```
 
 Use `scripts/Update-DotNetGlobalJson.ps1` for a separate SDK pin update. See the guide for exact versions, preview/RC selection, container configuration and complete installation commands.
+
+After changing the SDK pin, use `scripts/Update-DotNetCiLock.ps1 -IncludeDevelopmentLock -RefreshBaseImages` to synchronize archive hashes and the existing Debian/Alpine tag digests, and `scripts/Update-DotNetRuntimeFrameworkVersion.ps1` to update source runtime pins. Preview with `-WhatIf` or inspect resolved changes with `-PlanOnly`; the guide explains backups, tag discovery and the remaining build qualification.
 
 ## How to install
 
@@ -126,7 +128,7 @@ For container-based source checks, `./scripts/Initialize-CiEnvironment.ps1 -Targ
 checkout's ignored runtime preset. Explicit `-ContainerRuntime` overrides `.env`; otherwise discovery
 is the fallback. See [local/GitHub environment initialization](docs/ci/environment.md).
 
-Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100-rc.3.26522.148`). Build before importing the local modules. Close sessions that already loaded this checkout's assemblies before rebuilding.
+Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100`). Build before importing the local modules. Close sessions that already loaded this checkout's assemblies before rebuilding.
 
 For SDK/runtimes installation, container image downloads and SDK pin updates, see [the .NET and global.json guide](README-dotnet-and-global-dot-json.md).
 
@@ -183,7 +185,7 @@ YAML excerpt; invocation IDs and other envelope metadata are omitted. The versio
 "Outcome": "Success"
 "Context": "sdk-version"
 "Data":
-  "SdkVersion": "11.0.100-rc.3.26522.148"
+  "SdkVersion": "11.0.100"
 "Completeness":
   "Source": true
   "Analysis": true
@@ -242,7 +244,7 @@ YAML excerpt; invocation IDs and other envelope metadata are omitted. The versio
 "Outcome": "Success"
 "Context": "sdk-version"
 "Data":
-  "SdkVersion": "11.0.100-rc.3.26522.148"
+  "SdkVersion": "11.0.100"
 "Completeness":
   "Source": true
   "Analysis": true

@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 4D6CA1BD4DEA0A2584401287BB5F48C707F10BFFB3F9A31BFEFE11528D6CD39E -->
+<!-- workflow-source-sha256: A24C3886913EA18F6343A09B754CE67D3C5DF9427CC962C6C0E4D5789D0AEEFD -->
 
 ## Purpose
 
@@ -9,6 +9,11 @@ Shared qualification for the selected Core, Git or All source scope across six W
 ## Triggers
 
 Reusable workflow_call accepts suite; workflow_dispatch uses All. Core/Git callers provide path-filtered PR/develop events. Image publication is restricted in job conditions to upstream develop pushes/manual dispatch; PR images are never published.
+
+
+## .NET SDK source pin
+
+The reviewed setup-dotnet steps read the checked-out global.json through global-json-file, so the CI, publication preparation and manual ReadyToRun jobs follow the selected SDK instead of embedding an old RC string. This source review does not establish hosted execution or full matrix qualification.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
