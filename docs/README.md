@@ -53,6 +53,31 @@ Repository development follows the root [AGENTS.md](../AGENTS.md). Consumer-proj
 - [Windows ARM64 CI](ci/windows-arm64.md): runner identity, engine publications and architecture checks.
 - [Preview versions and GitHub publication](README-preview-releases.md): version identities, local tags, artifact preparation and publication receipts.
 
+## Roadmaps and proposals
+
+- [Requested i3 delivery and acceptance scenarios](ROADMAP-Delivery-FrenchExDev-i3.md): a local Manager work environment, minimal prerequisites, controlled self-hosting and eight acceptance scenarios.
+- [Executable planning assessment](scripts/Invoke-RoadmapContract.md): check all roadmap contracts and proposed dependency graphs, independently of product qualification.
+- [Software ecosystem factory: corrected master plan](ROADMAP-Ecosystem-Generator.md): decisions, bootstrap, workspaces, migration waves and the linked sub-plans.
+- [Completeness review of the Claude plan](ROADMAP-Factory-Review.md): dated findings and corrections, with the original snapshot identity.
+- [FAC: Requirements-as-Code and common kinds](ROADMAP-Requirements-As-Code.md): proposed design, implementation, test and observability scope.
+- [GEN: SoftwareEcosystem.Generator — produire et maintenir des écosystèmes](ROADMAP-SoftwareEcosystem-Generator.md): proposed design, implementation, test and observability scope.
+- [GP: GitProject — opérations Git mono-dépôt et chemins d’instances](ROADMAP-GitProject.md): proposed design, implementation, test and observability scope.
+- [SM: SoftwareEcosystem.Manager — catalogues, clones et instances](ROADMAP-SoftwareEcosystem-Manager.md): proposed design, implementation, test and observability scope.
+- [REG: Local NuGet Registry — artefacts et configurations par instance](ROADMAP-Local-NuGet-Registry.md): proposed design, implementation, test and observability scope.
+- [ADP: Adoption — QuietCli et GitHubEcosystem](ROADMAP-Socle-Adoption.md): proposed design, implementation, test and observability scope.
+- [FND: Fondations partagées — Result, Builder et adaptateurs RaC](ROADMAP-Shared-Foundations.md): proposed design, implementation, test and observability scope.
+- [FSM: FiniteStateMachine — reprise autonome](ROADMAP-FiniteStateMachine.md): proposed design, implementation, test and observability scope.
+- [IEC: IEC61499 — modèle neutre, runtime et génération](ROADMAP-IEC61499.md): proposed design, implementation, test and observability scope.
+- [CON: Conduit — adaptateur IEC/QuietCli](ROADMAP-Conduit.md): proposed design, implementation, test and observability scope.
+- [MSG: DockerCompose.Bundle — messagerie de développement](ROADMAP-Messaging-DockerCompose.md): proposed design, implementation, test and observability scope.
+- [EXT: Extensions — Packer.Bundle et adaptateur Vagrant](ROADMAP-Bundle-Extensions.md): proposed design, implementation, test and observability scope.
+- [DOG: Dogfooding — la factory comme produit et premier consommateur](ROADMAP-Factory-Dogfooding.md): proposed design, implementation, test and observability scope.
+- [CORE: Core — pipelines, composition et bus](ROADMAP-Core-Pipelines.md): proposed design, implementation, test and observability scope.
+- [HOST: WorkspaceHost — héberger des instances selon plusieurs organisations](ROADMAP-SoftwareEcosystem-WorkspaceHost.md): proposed design, implementation, test and observability scope.
+- [MIG: Migration FrenchExDev → FrenchExDev2 — inventaire, vagues et bascule](ROADMAP-Migration-FrenchExDev2.md): proposed design, implementation, test and observability scope.
+
+Roadmaps are working proposals written in French for the requested review. Product APIs remain proposed; the [requirements registry](requirements/software-ecosystem-factory.requirements.json) records planned verification without executed product evidence. The [canonical roadmap contracts](requirements/software-ecosystem-factory.roadmaps.json) own delivery views, proposed dependency graphs and pattern decisions. The planning checker is implemented separately and cannot qualify those products.
+
 ## Performance and profiling
 
 - [Core performance evidence](../FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md): measurement definitions, controlled workloads and reproduction.

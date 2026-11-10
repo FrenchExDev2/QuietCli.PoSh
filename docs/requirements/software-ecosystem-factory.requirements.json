@@ -1,0 +1,4060 @@
+{
+  "schemaVersion": 1,
+  "inventoryId": "software-ecosystem-factory",
+  "revision": "2026-11-10",
+  "status": "Proposed",
+  "scope": "Planning baseline; not implementation or qualification evidence.",
+  "sourcePlan": {
+    "path": "C:/Users/serard/.claude/plans/challenge-ce-plan-au-calm-canyon.md",
+    "archivePath": "../audits/2026-11-10-claude-ecosystem-plan.source.txt",
+    "sha256": "F5152D511CEBEAAADF2CC95A17C827085E80582459092D7CC8B6B11511144534",
+    "reviewedOn": "2026-11-10"
+  },
+  "kinds": [
+    "design",
+    "impl",
+    "test",
+    "obs"
+  ],
+  "workItems": [
+    {
+      "id": "FAC-design",
+      "kind": "design",
+      "plan": "ROADMAP-Requirements-As-Code.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:FAC/design"
+    },
+    {
+      "id": "FAC-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-Requirements-As-Code.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:FAC/impl"
+    },
+    {
+      "id": "FAC-test",
+      "kind": "test",
+      "plan": "ROADMAP-Requirements-As-Code.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:FAC/test"
+    },
+    {
+      "id": "FAC-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-Requirements-As-Code.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:FAC/obs"
+    },
+    {
+      "id": "GEN-design",
+      "kind": "design",
+      "plan": "ROADMAP-SoftwareEcosystem-Generator.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:GEN/design"
+    },
+    {
+      "id": "GEN-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-SoftwareEcosystem-Generator.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:GEN/impl"
+    },
+    {
+      "id": "GEN-test",
+      "kind": "test",
+      "plan": "ROADMAP-SoftwareEcosystem-Generator.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:GEN/test"
+    },
+    {
+      "id": "GEN-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-SoftwareEcosystem-Generator.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:GEN/obs"
+    },
+    {
+      "id": "GP-design",
+      "kind": "design",
+      "plan": "ROADMAP-GitProject.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:GP/design"
+    },
+    {
+      "id": "GP-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-GitProject.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:GP/impl"
+    },
+    {
+      "id": "GP-test",
+      "kind": "test",
+      "plan": "ROADMAP-GitProject.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:GP/test"
+    },
+    {
+      "id": "GP-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-GitProject.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:GP/obs"
+    },
+    {
+      "id": "SM-design",
+      "kind": "design",
+      "plan": "ROADMAP-SoftwareEcosystem-Manager.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:SM/design"
+    },
+    {
+      "id": "SM-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-SoftwareEcosystem-Manager.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:SM/impl"
+    },
+    {
+      "id": "SM-test",
+      "kind": "test",
+      "plan": "ROADMAP-SoftwareEcosystem-Manager.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:SM/test"
+    },
+    {
+      "id": "SM-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-SoftwareEcosystem-Manager.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:SM/obs"
+    },
+    {
+      "id": "REG-design",
+      "kind": "design",
+      "plan": "ROADMAP-Local-NuGet-Registry.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:REG/design"
+    },
+    {
+      "id": "REG-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-Local-NuGet-Registry.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:REG/impl"
+    },
+    {
+      "id": "REG-test",
+      "kind": "test",
+      "plan": "ROADMAP-Local-NuGet-Registry.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:REG/test"
+    },
+    {
+      "id": "REG-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-Local-NuGet-Registry.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:REG/obs"
+    },
+    {
+      "id": "ADP-design",
+      "kind": "design",
+      "plan": "ROADMAP-Socle-Adoption.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:ADP/design"
+    },
+    {
+      "id": "ADP-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-Socle-Adoption.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:ADP/impl"
+    },
+    {
+      "id": "ADP-test",
+      "kind": "test",
+      "plan": "ROADMAP-Socle-Adoption.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:ADP/test"
+    },
+    {
+      "id": "ADP-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-Socle-Adoption.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:ADP/obs"
+    },
+    {
+      "id": "FND-design",
+      "kind": "design",
+      "plan": "ROADMAP-Shared-Foundations.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:FND/design"
+    },
+    {
+      "id": "FND-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-Shared-Foundations.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:FND/impl"
+    },
+    {
+      "id": "FND-test",
+      "kind": "test",
+      "plan": "ROADMAP-Shared-Foundations.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:FND/test"
+    },
+    {
+      "id": "FND-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-Shared-Foundations.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:FND/obs"
+    },
+    {
+      "id": "FSM-design",
+      "kind": "design",
+      "plan": "ROADMAP-FiniteStateMachine.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:FSM/design"
+    },
+    {
+      "id": "FSM-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-FiniteStateMachine.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:FSM/impl"
+    },
+    {
+      "id": "FSM-test",
+      "kind": "test",
+      "plan": "ROADMAP-FiniteStateMachine.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:FSM/test"
+    },
+    {
+      "id": "FSM-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-FiniteStateMachine.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:FSM/obs"
+    },
+    {
+      "id": "IEC-design",
+      "kind": "design",
+      "plan": "ROADMAP-IEC61499.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:IEC/design"
+    },
+    {
+      "id": "IEC-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-IEC61499.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:IEC/impl"
+    },
+    {
+      "id": "IEC-test",
+      "kind": "test",
+      "plan": "ROADMAP-IEC61499.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:IEC/test"
+    },
+    {
+      "id": "IEC-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-IEC61499.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:IEC/obs"
+    },
+    {
+      "id": "CON-design",
+      "kind": "design",
+      "plan": "ROADMAP-Conduit.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:CON/design"
+    },
+    {
+      "id": "CON-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-Conduit.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:CON/impl"
+    },
+    {
+      "id": "CON-test",
+      "kind": "test",
+      "plan": "ROADMAP-Conduit.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:CON/test"
+    },
+    {
+      "id": "CON-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-Conduit.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:CON/obs"
+    },
+    {
+      "id": "MSG-design",
+      "kind": "design",
+      "plan": "ROADMAP-Messaging-DockerCompose.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:MSG/design"
+    },
+    {
+      "id": "MSG-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-Messaging-DockerCompose.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:MSG/impl"
+    },
+    {
+      "id": "MSG-test",
+      "kind": "test",
+      "plan": "ROADMAP-Messaging-DockerCompose.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:MSG/test"
+    },
+    {
+      "id": "MSG-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-Messaging-DockerCompose.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:MSG/obs"
+    },
+    {
+      "id": "EXT-design",
+      "kind": "design",
+      "plan": "ROADMAP-Bundle-Extensions.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:EXT/design"
+    },
+    {
+      "id": "EXT-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-Bundle-Extensions.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:EXT/impl"
+    },
+    {
+      "id": "EXT-test",
+      "kind": "test",
+      "plan": "ROADMAP-Bundle-Extensions.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:EXT/test"
+    },
+    {
+      "id": "EXT-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-Bundle-Extensions.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:EXT/obs"
+    },
+    {
+      "id": "DOG-design",
+      "kind": "design",
+      "plan": "ROADMAP-Factory-Dogfooding.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:DOG/design"
+    },
+    {
+      "id": "DOG-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-Factory-Dogfooding.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:DOG/impl"
+    },
+    {
+      "id": "DOG-test",
+      "kind": "test",
+      "plan": "ROADMAP-Factory-Dogfooding.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:DOG/test"
+    },
+    {
+      "id": "DOG-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-Factory-Dogfooding.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:DOG/obs"
+    },
+    {
+      "id": "CORE-design",
+      "kind": "design",
+      "plan": "ROADMAP-Core-Pipelines.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:CORE/design"
+    },
+    {
+      "id": "CORE-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-Core-Pipelines.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:CORE/impl"
+    },
+    {
+      "id": "CORE-test",
+      "kind": "test",
+      "plan": "ROADMAP-Core-Pipelines.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:CORE/test"
+    },
+    {
+      "id": "CORE-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-Core-Pipelines.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:CORE/obs"
+    },
+    {
+      "id": "HOST-design",
+      "kind": "design",
+      "plan": "ROADMAP-SoftwareEcosystem-WorkspaceHost.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:HOST/design"
+    },
+    {
+      "id": "HOST-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-SoftwareEcosystem-WorkspaceHost.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:HOST/impl"
+    },
+    {
+      "id": "HOST-test",
+      "kind": "test",
+      "plan": "ROADMAP-SoftwareEcosystem-WorkspaceHost.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:HOST/test"
+    },
+    {
+      "id": "HOST-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-SoftwareEcosystem-WorkspaceHost.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:HOST/obs"
+    },
+    {
+      "id": "MIG-design",
+      "kind": "design",
+      "plan": "ROADMAP-Migration-FrenchExDev2.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:MIG/design"
+    },
+    {
+      "id": "MIG-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-Migration-FrenchExDev2.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:MIG/impl"
+    },
+    {
+      "id": "MIG-test",
+      "kind": "test",
+      "plan": "ROADMAP-Migration-FrenchExDev2.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:MIG/test"
+    },
+    {
+      "id": "MIG-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-Migration-FrenchExDev2.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:MIG/obs"
+    },
+    {
+      "id": "I3-design",
+      "kind": "design",
+      "plan": "ROADMAP-Delivery-FrenchExDev-i3.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:I3/design"
+    },
+    {
+      "id": "I3-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-Delivery-FrenchExDev-i3.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:I3/impl"
+    },
+    {
+      "id": "I3-test",
+      "kind": "test",
+      "plan": "ROADMAP-Delivery-FrenchExDev-i3.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:I3/test"
+    },
+    {
+      "id": "I3-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-Delivery-FrenchExDev-i3.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:I3/obs"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "FAC-011",
+      "feature": "FAC",
+      "statement": "Chaque roadmap définit résultat utilisateur, livrables par kind, dépendances typées, décision de patterns et gates distinctes.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Requirements-As-Code.md",
+          "section": "Contrat de roadmap et validation"
+        }
+      ],
+      "dependsOn": [
+        "FAC-002",
+        "FAC-003",
+        "FAC-008"
+      ],
+      "kindLinks": [
+        "FAC-design",
+        "FAC-impl",
+        "FAC-test",
+        "FAC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FAC-011-AC1",
+          "given": "une roadmap absente du modèle, un livrable manquant, un lien orphelin ou un cycle de prérequis",
+          "when": "contrôler PlanConsistent",
+          "then": "le contrôle refuse cette baseline et distingue les décisions ImplementationReady des preuves produit absentes",
+          "verification": {
+            "id": "FAC-011-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "GP-005",
+      "feature": "GP",
+      "statement": "Le Manager peut créer une instance depuis un dépôt local sans écraser une destination existante.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-GitProject.md",
+          "section": "GP0 pour le Manager local"
+        }
+      ],
+      "dependsOn": [
+        "GP-001",
+        "GP-002",
+        "FAC-004"
+      ],
+      "kindLinks": [
+        "GP-design",
+        "GP-impl",
+        "GP-test",
+        "GP-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "GP-005-AC1",
+          "given": "un dépôt local possédé et une destination absente puis occupée",
+          "when": "prévisualiser et appliquer le clone local",
+          "then": "WhatIf ne crée rien ; seule la destination absente est créée, la destination occupée est refusée et la source ne change pas",
+          "verification": {
+            "id": "GP-005-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "SM-004",
+      "feature": "SM",
+      "statement": "Le Manager minimal gère le catalogue et les opérations locales sans découverte distante ni Generator runtime obligatoire.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-Manager.md",
+          "section": "SM0 local et SM1 distant"
+        }
+      ],
+      "dependsOn": [
+        "HOST-002",
+        "HOST-003",
+        "GP-005"
+      ],
+      "kindLinks": [
+        "SM-design",
+        "SM-impl",
+        "SM-test",
+        "SM-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "SM-004-AC1",
+          "given": "deux instances enregistrées et aucun réseau ni Generator installé",
+          "when": "lister, inspecter puis préparer une opération locale via le Manager et ses paquets HOST/GP",
+          "then": "le catalogue local reste disponible, l'opération possède un reçu et les données distantes indisponibles restent Unknown",
+          "verification": {
+            "id": "SM-004-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "I3-001",
+      "feature": "I3",
+      "statement": "i3 contient une installation Manager versionnée utilisable en session fraîche sans sources i2.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Delivery-FrenchExDev-i3.md",
+          "section": "Scénarios d'acceptation de l'environnement"
+        }
+      ],
+      "dependsOn": [
+        "SM-004",
+        "HOST-004",
+        "GEN-005"
+      ],
+      "kindLinks": [
+        "I3-design",
+        "I3-impl",
+        "I3-test",
+        "I3-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "I3-001-AC1",
+          "given": "i3 configuré, une session PowerShell fraîche et les sources i2 inaccessibles",
+          "when": "charger le Manager depuis les modules installés et contrôler la fermeture des paquets",
+          "then": "version, source et hashes correspondent au lock réel ; aucun module source voisin ni configuration globale modifiée",
+          "verification": {
+            "id": "I3-001-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "I3-002",
+      "feature": "I3",
+      "statement": "Le catalogue gère au moins deux instances locales distinctes d'un même dépôt et le checkout Manager.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Delivery-FrenchExDev-i3.md",
+          "section": "Scénarios d'acceptation de l'environnement"
+        }
+      ],
+      "dependsOn": [
+        "SM-003",
+        "HOST-001",
+        "HOST-002"
+      ],
+      "kindLinks": [
+        "I3-design",
+        "I3-impl",
+        "I3-test",
+        "I3-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "I3-002-AC1",
+          "given": "deux clones locaux d'un même repositoryId et le checkout de développement du Manager",
+          "when": "enregistrer puis réenregistrer chaque identité et injecter une collision de chemin",
+          "then": "trois identités distinctes sont consultables, aucun doublon n'est créé et la collision est refusée sans mutation",
+          "verification": {
+            "id": "I3-002-T1",
+            "method": "property",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "I3-003",
+      "feature": "I3",
+      "statement": "La consultation et l'inspection locales de i3 fonctionnent hors réseau.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Delivery-FrenchExDev-i3.md",
+          "section": "Scénarios d'acceptation de l'environnement"
+        }
+      ],
+      "dependsOn": [
+        "SM-004"
+      ],
+      "kindLinks": [
+        "I3-design",
+        "I3-impl",
+        "I3-test",
+        "I3-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "I3-003-AC1",
+          "given": "un catalogue local valide et un provider distant inaccessible",
+          "when": "lister et inspecter les instances sans choisir une opération distante",
+          "then": "les états locaux restent disponibles, aucune requête réseau n'est requise et l'état distant est Unknown",
+          "verification": {
+            "id": "I3-003-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "I3-004",
+      "feature": "I3",
+      "statement": "Une création d'instance locale propose puis applique des effets bornés avec préconditions revérifiées.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Delivery-FrenchExDev-i3.md",
+          "section": "Scénarios d'acceptation de l'environnement"
+        }
+      ],
+      "dependsOn": [
+        "GP-005",
+        "HOST-005"
+      ],
+      "kindLinks": [
+        "I3-design",
+        "I3-impl",
+        "I3-test",
+        "I3-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "I3-004-AC1",
+          "given": "un dépôt local sélectionné et un plan de nouvelle instance",
+          "when": "faire WhatIf puis modifier la destination avant apply",
+          "then": "WhatIf ne crée rien et apply refuse le plan périmé ; le cas non périmé crée une instance et son reçu cohérent",
+          "verification": {
+            "id": "I3-004-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "I3-005",
+      "feature": "I3",
+      "statement": "Le travail humain et les instances concurrentes restent protégés pendant échec, interruption et reprise.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Delivery-FrenchExDev-i3.md",
+          "section": "Scénarios d'acceptation de l'environnement"
+        }
+      ],
+      "dependsOn": [
+        "SM-002",
+        "SM-003",
+        "FAC-004"
+      ],
+      "kindLinks": [
+        "I3-design",
+        "I3-impl",
+        "I3-test",
+        "I3-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "I3-005-AC1",
+          "given": "des fichiers humains modifiés, deux opérations sur une instance et une interruption injectée",
+          "when": "appliquer puis demander une reprise",
+          "then": "aucun reset/clean/écrasement n'a lieu, les opérations incompatibles sont refusées et un effet inconnu exige résolution explicite avant répétition",
+          "verification": {
+            "id": "I3-005-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "I3-006",
+      "feature": "I3",
+      "statement": "L'environnement peut être reproduit depuis les artefacts figés dans une racine isolée.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Delivery-FrenchExDev-i3.md",
+          "section": "Scénarios d'acceptation de l'environnement"
+        }
+      ],
+      "dependsOn": [
+        "I3-001",
+        "FAC-001"
+      ],
+      "kindLinks": [
+        "I3-design",
+        "I3-impl",
+        "I3-test",
+        "I3-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "I3-006-AC1",
+          "given": "archives et lock vérifiés, cache vide, racine temporaire et sources i2 inaccessibles",
+          "when": "installer explicitement et reconstruire le catalogue témoin",
+          "then": "les versions/hashes et identités sémantiques correspondent ; les chemins sont adaptés et seuls les champs volatils documentés sont exclus de comparaison",
+          "verification": {
+            "id": "I3-006-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "I3-007",
+      "feature": "I3",
+      "statement": "L'auto-gestion du Manager sépare la version N active et la candidate N+1 avec retour local contrôlé.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Delivery-FrenchExDev-i3.md",
+          "section": "Cycles et auto-gestion sur le poste de développement"
+        }
+      ],
+      "dependsOn": [
+        "I3-001",
+        "DOG-002"
+      ],
+      "kindLinks": [
+        "I3-design",
+        "I3-impl",
+        "I3-test",
+        "I3-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "I3-007-AC1",
+          "given": "N actif et artefacts figés d'une candidate N+1, puis une candidate défaillante",
+          "when": "préparer, vérifier, décider l'activation puis exercer le retour vers N",
+          "then": "aucun test n'écrase N, l'échec bloque l'activation, le catalogue reste compatible ou une migration réversible est prouvée et le retour local est démontré",
+          "verification": {
+            "id": "I3-007-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "I3-008",
+      "feature": "I3",
+      "statement": "i3 fournit les commandes documentées, diagnostics et preuves nécessaires à sa recette.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Delivery-FrenchExDev-i3.md",
+          "section": "Scénarios d'acceptation de l'environnement"
+        }
+      ],
+      "dependsOn": [
+        "HOST-003",
+        "FAC-005",
+        "FAC-009",
+        "FAC-011"
+      ],
+      "kindLinks": [
+        "I3-design",
+        "I3-impl",
+        "I3-test",
+        "I3-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "I3-008-AC1",
+          "given": "Manager installé et campagnes de qualification des composants sélectionnés",
+          "when": "exercer les façades, consulter aide/diagnostics et décider I3Accepted",
+          "then": "docs miroir et index concordent ; rapports portent sources/environnement/hashes, résultats property/fuzz/mutation distincts, moniteur visible et état terminal ; aucun NotRun n'est assimilé à Passed",
+          "verification": {
+            "id": "I3-008-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FAC-001",
+      "feature": "FAC",
+      "statement": "Tout écosystème possède ses propres versions, configuration et release, sans dépendance source externe.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Requirements-As-Code.md",
+          "section": "Contrat commun"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 ; critères transversaux des deux roadmaps"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "FAC-design",
+        "FAC-impl",
+        "FAC-test",
+        "FAC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FAC-001-AC1",
+          "given": "deux écosystèmes .NET et un profil NodeTools",
+          "when": "générer puis restaurer dans des racines isolées",
+          "then": "chaque repo a ses propres CPM/manifests/locks et aucun import parent ou source sœur",
+          "verification": {
+            "id": "FAC-001-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FAC-002",
+      "feature": "FAC",
+      "statement": "Toute capacité est liée à un besoin, un AC, un plan par kind, un test et une preuve.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Requirements-As-Code.md",
+          "section": "Contrat commun"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 ; critères transversaux des deux roadmaps"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "FAC-design",
+        "FAC-impl",
+        "FAC-test",
+        "FAC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FAC-002-AC1",
+          "given": "une exigence ou un lien orphelin dans le registre",
+          "when": "valider la traçabilité",
+          "then": "le manque est bloquant pour implementation-ready/qualification et n’est jamais remplacé par une case cochée",
+          "verification": {
+            "id": "FAC-002-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FAC-003",
+      "feature": "FAC",
+      "statement": "Les quatre kinds design, impl, test et obs sont explicites et indépendants.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Requirements-As-Code.md",
+          "section": "Contrat commun"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 ; critères transversaux des deux roadmaps"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "FAC-design",
+        "FAC-impl",
+        "FAC-test",
+        "FAC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FAC-003-AC1",
+          "given": "un sous-plan où impl est terminé mais sans preuves",
+          "when": "calculer son état",
+          "then": "design/impl/test/obs restent séparés et la release n’est pas qualifiée",
+          "verification": {
+            "id": "FAC-003-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FAC-004",
+      "feature": "FAC",
+      "statement": "Chaque opération définit succès, refus, erreur, annulation, timeout et nettoyage possédé.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Requirements-As-Code.md",
+          "section": "Contrat commun"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 ; critères transversaux des deux roadmaps"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "FAC-design",
+        "FAC-impl",
+        "FAC-test",
+        "FAC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FAC-004-AC1",
+          "given": "une opération longue et ses ressources",
+          "when": "forcer chacune des issues pertinentes",
+          "then": "un état terminal et les diagnostics sont sauvegardés ; aucune ressource étrangère n’est supprimée",
+          "verification": {
+            "id": "FAC-004-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FAC-005",
+      "feature": "FAC",
+      "statement": "Toute façade et commande disposent de docs et instructions consommateurs cohérentes.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Requirements-As-Code.md",
+          "section": "Contrat commun"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 ; critères transversaux des deux roadmaps"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "FAC-design",
+        "FAC-impl",
+        "FAC-test",
+        "FAC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FAC-005-AC1",
+          "given": "une signature modifiée et ses docs miroir",
+          "when": "valider les contrats et les liens",
+          "then": "la dérive est détectée et les guides installés n’exigent pas le checkout de développement",
+          "verification": {
+            "id": "FAC-005-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FAC-006",
+      "feature": "FAC",
+      "statement": "Les profils sont versionnés, composables et mis à jour explicitement.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Requirements-As-Code.md",
+          "section": "Contrat commun"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 ; critères transversaux des deux roadmaps"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "FAC-design",
+        "FAC-impl",
+        "FAC-test",
+        "FAC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FAC-006-AC1",
+          "given": "deux profils en conflit ou une nouvelle version incompatible",
+          "when": "préparer une génération ou une mise à jour",
+          "then": "le conflit est diagnostiqué avant écriture et aucun latest implicite n’est sélectionné",
+          "verification": {
+            "id": "FAC-006-T1",
+            "method": "fuzz",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FAC-007",
+      "feature": "FAC",
+      "statement": "Une release publie exactement les artefacts qualifiés avec autorisation et cible explicites.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Requirements-As-Code.md",
+          "section": "Contrat commun"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 ; critères transversaux des deux roadmaps"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "FAC-design",
+        "FAC-impl",
+        "FAC-test",
+        "FAC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FAC-007-AC1",
+          "given": "un artefact ou source différent du reçu de qualification",
+          "when": "préparer une publication",
+          "then": "la publication est bloquée ; PR/fork/preview/stable respectent leur politique propre et aucun build ne publie implicitement",
+          "verification": {
+            "id": "FAC-007-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FAC-008",
+      "feature": "FAC",
+      "statement": "Les choix de patterns sont justifiés et relient forces, conséquences et vérifications.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Requirements-As-Code.md",
+          "section": "Contrat commun"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 ; critères transversaux des deux roadmaps"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "FAC-design",
+        "FAC-impl",
+        "FAC-test",
+        "FAC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FAC-008-AC1",
+          "given": "un nouveau composant de la factory",
+          "when": "passer la revue design",
+          "then": "la décision cite problème, participants, alternative, invariants et tests sans imposer un pattern spéculatif",
+          "verification": {
+            "id": "FAC-008-T1",
+            "method": "review",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FAC-009",
+      "feature": "FAC",
+      "statement": "Les preuves de test respectent scope, moniteur, stockage et confidentialité.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Requirements-As-Code.md",
+          "section": "Contrat commun"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 ; critères transversaux des deux roadmaps"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "FAC-design",
+        "FAC-impl",
+        "FAC-test",
+        "FAC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FAC-009-AC1",
+          "given": "une campagne de test locale ou CI",
+          "when": "exécuter puis terminer la campagne",
+          "then": "identités, progression et terminal sont observables ; property/fuzz/mutation et lacunes sont séparés ; aucun secret ni sortie brute automatique",
+          "verification": {
+            "id": "FAC-009-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FAC-010",
+      "feature": "FAC",
+      "statement": "La configuration est résolue explicitement et protège les frontières de portée.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Requirements-As-Code.md",
+          "section": "Contrat commun"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 ; critères transversaux des deux roadmaps"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "FAC-design",
+        "FAC-impl",
+        "FAC-test",
+        "FAC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FAC-010-AC1",
+          "given": "paramètres, config locale et défauts contradictoires",
+          "when": "résoudre puis prévisualiser l’opération",
+          "then": "la précédence est déterministe et aucune valeur secrète, écriture globale ou exécution de .env n’est implicite",
+          "verification": {
+            "id": "FAC-010-T1",
+            "method": "property",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-001",
+      "feature": "GEN",
+      "statement": "Générer deux fois les mêmes entrées produit le même contenu et aucune modification à la seconde application.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-Generator.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§3 G.1–G.7"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "GEN-design",
+        "GEN-impl",
+        "GEN-test",
+        "GEN-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "GEN-001-AC1",
+          "given": "un dépôt témoin et des profils épinglés",
+          "when": "appliquer deux fois le même plan valide",
+          "then": "la deuxième application ne modifie aucun fichier",
+          "verification": {
+            "id": "GEN-001-T1",
+            "method": "property",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-002",
+      "feature": "GEN",
+      "statement": "Une mise à jour préserve le contenu humain et rejette un plan devenu obsolète.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-Generator.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§3 G.1–G.7"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "GEN-design",
+        "GEN-impl",
+        "GEN-test",
+        "GEN-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "GEN-002-AC1",
+          "given": "une région modifiée après le preview",
+          "when": "appliquer ce plan",
+          "then": "le conflit est rapporté avant écrasement et les fichiers humains sont conservés",
+          "verification": {
+            "id": "GEN-002-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-003",
+      "feature": "GEN",
+      "statement": "Chaque façade délègue à une commande réutilisable avec contrat explicite.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-Generator.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§3 G.1–G.7"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "GEN-design",
+        "GEN-impl",
+        "GEN-test",
+        "GEN-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "GEN-003-AC1",
+          "given": "une fonction exportée et deux façades",
+          "when": "appeler directement puis via chaque façade",
+          "then": "paramètres, résultats, erreurs et WhatIf conservent le contrat sans logique métier dupliquée",
+          "verification": {
+            "id": "GEN-003-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-004",
+      "feature": "GEN",
+      "statement": "Chaque capacité livre conjointement exigences, aide, docs, tests et instructions de consommation.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-Generator.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§3 G.1–G.7"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "GEN-design",
+        "GEN-impl",
+        "GEN-test",
+        "GEN-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "GEN-004-AC1",
+          "given": "une opération nouvelle",
+          "when": "générer son plan",
+          "then": "les fichiers liés sont présents ou Draft explicite et aucun Draft ne satisfait une gate de qualification",
+          "verification": {
+            "id": "GEN-004-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-005",
+      "feature": "GEN",
+      "statement": "Le générateur et ses profils respectent les frontières de paquets sans cycle bootstrap.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-Generator.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§3 G.1–G.7"
+        }
+      ],
+      "dependsOn": [
+        "FAC-001"
+      ],
+      "kindLinks": [
+        "GEN-design",
+        "GEN-impl",
+        "GEN-test",
+        "GEN-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "GEN-005-AC1",
+          "given": "un checkout isolé sans QuietCli, GP ni registry manager source",
+          "when": "construire G0 puis installer GP packagé pour G2",
+          "then": "chaque étape déclare ses seuls prérequis et aucune dépendance GP vers Generator n’apparaît",
+          "verification": {
+            "id": "GEN-005-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "GP-001",
+      "feature": "GP",
+      "statement": "Les conventions de dépôt ne réécrivent jamais les identités de paquets existantes.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-GitProject.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§4 GP.1–GP.6"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "GP-design",
+        "GP-impl",
+        "GP-test",
+        "GP-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "GP-001-AC1",
+          "given": "le dépôt QuietCli.PoSh et son paquet public QuietCli",
+          "when": "valider ou générer son catalogue",
+          "then": "QuietCli reste l’identité de consommation et les identités dépôt/projet/paquet restent distinctes",
+          "verification": {
+            "id": "GP-001-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "GP-002",
+      "feature": "GP",
+      "statement": "Le résolveur garantit que chaque instance appartient à la racine autorisée.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-GitProject.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§4 GP.1–GP.6"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "GP-design",
+        "GP-impl",
+        "GP-test",
+        "GP-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "GP-002-AC1",
+          "given": "des segments invalides, collisions et liens de répertoire",
+          "when": "résoudre puis préparer une écriture",
+          "then": "aucun chemin hors racine ou alias en conflit n’est accepté",
+          "verification": {
+            "id": "GP-002-T1",
+            "method": "fuzz",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "GP-003",
+      "feature": "GP",
+      "statement": "Un commit -NoAll valide exactement le snapshot stagé et préserve le reste.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-GitProject.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§4 GP.1–GP.6"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "GP-design",
+        "GP-impl",
+        "GP-test",
+        "GP-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "GP-003-AC1",
+          "given": "des changements stagés et non stagés distincts",
+          "when": "prévisualiser puis demander le commit dans un dépôt fixture",
+          "then": "seul l’index sélectionné est validé et committé ; WhatIf ne modifie rien",
+          "verification": {
+            "id": "GP-003-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "GP-004",
+      "feature": "GP",
+      "statement": "Création et push restent des opérations explicites sans modification rétroactive de branche.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-GitProject.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§4 GP.1–GP.6"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "GP-design",
+        "GP-impl",
+        "GP-test",
+        "GP-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "GP-004-AC1",
+          "given": "un dépôt neuf et un dépôt existant sur une autre branche",
+          "when": "créer le premier ou inspecter le second",
+          "then": "develop n’est appliqué qu’au neuf ; aucun push, force ou renommage implicite",
+          "verification": {
+            "id": "GP-004-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "SM-001",
+      "feature": "SM",
+      "statement": "La découverte filtre et pagine sans fabriquer les métadonnées manquantes.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-Manager.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§5 SM.1–SM.7"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "SM-design",
+        "SM-impl",
+        "SM-test",
+        "SM-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "SM-001-AC1",
+          "given": "un catalogue distant paginé avec forks, privés et accès partiels",
+          "when": "demander le profil par défaut",
+          "then": "les filtres sont appliqués, la complétude est rapportée et les manifests inconnus restent inconnus",
+          "verification": {
+            "id": "SM-001-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "SM-002",
+      "feature": "SM",
+      "statement": "La synchronisation ne détruit aucun travail local et distingue fetch/pull.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-Manager.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§5 SM.1–SM.7"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "SM-design",
+        "SM-impl",
+        "SM-test",
+        "SM-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "SM-002-AC1",
+          "given": "une instance dirty ou divergente",
+          "when": "demander une synchronisation",
+          "then": "un refus explicite préserve les fichiers et aucune force ou résolution silencieuse n’a lieu",
+          "verification": {
+            "id": "SM-002-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "SM-003",
+      "feature": "SM",
+      "statement": "Deux workspaces et deux instances sont isolés.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-Manager.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§5 SM.1–SM.7"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "SM-design",
+        "SM-impl",
+        "SM-test",
+        "SM-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "SM-003-AC1",
+          "given": "deux racines et deux instances du même dépôt",
+          "when": "cloner puis inspecter en parallèle",
+          "then": "chemins, verrous et états sont propres à chaque instance sans collision",
+          "verification": {
+            "id": "SM-003-T1",
+            "method": "property",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "REG-001",
+      "feature": "REG",
+      "statement": "ID/version de paquet est immuable et une publication interrompue ne devient pas restaurable.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Local-NuGet-Registry.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§6 R.1–R.3"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "REG-design",
+        "REG-impl",
+        "REG-test",
+        "REG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "REG-001-AC1",
+          "given": "deux paquets d’identité égale mais de contenu différent",
+          "when": "publier puis simuler une interruption ou une seconde publication",
+          "then": "le conflit échoue et aucun paquet partiellement publié n’est présenté accepté",
+          "verification": {
+            "id": "REG-001-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "REG-002",
+      "feature": "REG",
+      "statement": "Une instance restaure ses dépendances depuis les artefacts déclarés sans checkout frère.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Local-NuGet-Registry.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§6 R.1–R.3"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "REG-design",
+        "REG-impl",
+        "REG-test",
+        "REG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "REG-002-AC1",
+          "given": "un cache isolé et une config explicitement sélectionnée",
+          "when": "restaurer la version CPM épinglée",
+          "then": "la source attendue suffit ou l’échec est explicite ; aucune source voisine ne masque l’absence",
+          "verification": {
+            "id": "REG-002-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "REG-003",
+      "feature": "REG",
+      "statement": "Configurer une instance n’altère pas les configurations utilisateur/globales.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Local-NuGet-Registry.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§6 R.1–R.3"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "REG-design",
+        "REG-impl",
+        "REG-test",
+        "REG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "REG-003-AC1",
+          "given": "deux instances et leur état initial",
+          "when": "configurer la première avec WhatIf puis appliquer",
+          "then": "seule la portée sélectionnée change après application et WhatIf reste sans écriture",
+          "verification": {
+            "id": "REG-003-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "ADP-001",
+      "feature": "ADP",
+      "statement": "L’adoption conserve les contrats publics et identités installées.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Socle-Adoption.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§7 et critères des deux roadmaps existantes"
+        }
+      ],
+      "dependsOn": [
+        "GEN-003",
+        "GP-003"
+      ],
+      "kindLinks": [
+        "ADP-design",
+        "ADP-impl",
+        "ADP-test",
+        "ADP-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "ADP-001-AC1",
+          "given": "les usages existants de QuietCli et GitHub",
+          "when": "appliquer l’adaptation dans un checkout témoin",
+          "then": "les usages restent compatibles ou une migration versionnée explicite bloque la bascule",
+          "verification": {
+            "id": "ADP-001-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "ADP-002",
+      "feature": "ADP",
+      "statement": "Les capacités communes restent utilisables hors du checkout QuietCli.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Socle-Adoption.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§7 et critères des deux roadmaps existantes"
+        }
+      ],
+      "dependsOn": [
+        "REG-002"
+      ],
+      "kindLinks": [
+        "ADP-design",
+        "ADP-impl",
+        "ADP-test",
+        "ADP-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "ADP-002-AC1",
+          "given": "le kit packagé et GitHub isolé",
+          "when": "exécuter les fonctions puis leurs façades",
+          "then": "aucun import source QuietCli ni build de dépôt voisin ne survient",
+          "verification": {
+            "id": "ADP-002-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FND-001",
+      "feature": "FND",
+      "statement": "Chaque fondation requise dispose d’un paquet autonome avant la bascule de son consommateur.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Shared-Foundations.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§8, §11 M.1/M.6, §12 et §16"
+        }
+      ],
+      "dependsOn": [
+        "REG-002"
+      ],
+      "kindLinks": [
+        "FND-design",
+        "FND-impl",
+        "FND-test",
+        "FND-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FND-001-AC1",
+          "given": "la fermeture des dépendances de FSM ou Bundle",
+          "when": "restaurer sans les sources legacy",
+          "then": "toutes les dépendances réellement requises sont résolues depuis les paquets identifiés",
+          "verification": {
+            "id": "FND-001-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FND-002",
+      "feature": "FND",
+      "statement": "La génération réutilise les émetteurs existants et leur packaging est qualifié.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Shared-Foundations.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§8, §11 M.1/M.6, §12 et §16"
+        }
+      ],
+      "dependsOn": [
+        "FND-001"
+      ],
+      "kindLinks": [
+        "FND-design",
+        "FND-impl",
+        "FND-test",
+        "FND-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FND-002-AC1",
+          "given": "un consommateur Bundle depuis des nupkg",
+          "when": "compiler les AdditionalFiles et charger les analyzers",
+          "then": "les types attendus sont générés sans nouvel émetteur Builder ni dépendance source implicite",
+          "verification": {
+            "id": "FND-002-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FSM-001",
+      "feature": "FSM",
+      "statement": "La reprise préserve les transitions et les choix de concurrence explicites.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-FiniteStateMachine.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§8 Plan A"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "FSM-design",
+        "FSM-impl",
+        "FSM-test",
+        "FSM-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FSM-001-AC1",
+          "given": "un modèle identique et une séquence d’événements",
+          "when": "exécuter legacy et cible dans le même mode déclaré",
+          "then": "états, refus et annulation suivent les contrats ; aucun défaut Semaphore inventé",
+          "verification": {
+            "id": "FSM-001-T1",
+            "method": "property",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FSM-002",
+      "feature": "FSM",
+      "statement": "Typed et Rich se génèrent depuis les paquets seuls.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-FiniteStateMachine.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§8 Plan A"
+        }
+      ],
+      "dependsOn": [
+        "FND-001"
+      ],
+      "kindLinks": [
+        "FSM-design",
+        "FSM-impl",
+        "FSM-test",
+        "FSM-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FSM-002-AC1",
+          "given": "un consommateur neuf sans checkout FSM",
+          "when": "restaurer et compiler ses modèles",
+          "then": "les générateurs et leur fermeture de dépendances fonctionnent dans les cibles déclarées",
+          "verification": {
+            "id": "FSM-002-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "IEC-001",
+      "feature": "IEC",
+      "statement": "Les modes dynamique et généré préservent événement, données et ordre.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-IEC61499.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§9 B.1–B.4"
+        }
+      ],
+      "dependsOn": [
+        "FSM-001"
+      ],
+      "kindLinks": [
+        "IEC-design",
+        "IEC-impl",
+        "IEC-test",
+        "IEC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "IEC-001-AC1",
+          "given": "les modèles YAML/TOML équivalents et EI avec A=2, B=3, Gain=2",
+          "when": "exécuter chaque mode",
+          "then": "Sum=10 précède EO avec la bonne association de données",
+          "verification": {
+            "id": "IEC-001-T1",
+            "method": "property",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "IEC-002",
+      "feature": "IEC",
+      "statement": "Les graphes invalides et cycles non bornés sont diagnostiqués sans bloquer le host.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-IEC61499.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§9 B.1–B.4"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "IEC-design",
+        "IEC-impl",
+        "IEC-test",
+        "IEC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "IEC-002-AC1",
+          "given": "des entrées malformées ou un réseau cyclique",
+          "when": "valider ou exécuter avec limites déclarées",
+          "then": "un diagnostic/arrêt borné conserve les ressources et la distinction invalide/annulé/échoué",
+          "verification": {
+            "id": "IEC-002-T1",
+            "method": "fuzz",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "IEC-003",
+      "feature": "IEC",
+      "statement": "Le modèle et le runtime IEC ne dépendent pas de QuietCli.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-IEC61499.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§9 B.1–B.4"
+        }
+      ],
+      "dependsOn": [
+        "FAC-001"
+      ],
+      "kindLinks": [
+        "IEC-design",
+        "IEC-impl",
+        "IEC-test",
+        "IEC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "IEC-003-AC1",
+          "given": "les paquets IEC installés seuls",
+          "when": "importer et exécuter le réseau fixture",
+          "then": "aucun assembly, runtime ou handler QuietCli n’est requis",
+          "verification": {
+            "id": "IEC-003-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "CON-001",
+      "feature": "CON",
+      "statement": "Conduit traduit sans rendre IEC et QuietCli interdépendants.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Conduit.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§10 Plan C"
+        }
+      ],
+      "dependsOn": [
+        "IEC-003"
+      ],
+      "kindLinks": [
+        "CON-design",
+        "CON-impl",
+        "CON-test",
+        "CON-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "CON-001-AC1",
+          "given": "deux producteurs compatibles et un même binding",
+          "when": "envoyer le même événement",
+          "then": "le réseau reçoit le même événement/données sans duplication de scheduler",
+          "verification": {
+            "id": "CON-001-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "CON-002",
+      "feature": "CON",
+      "statement": "Chaque connexion libère ses abonnements sur toutes les issues.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Conduit.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§10 Plan C"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "CON-design",
+        "CON-impl",
+        "CON-test",
+        "CON-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "CON-002-AC1",
+          "given": "une connexion active puis une annulation ou erreur",
+          "when": "terminer son scope",
+          "then": "aucun abonnement ou appel possédé ne reste actif et le terminal est rapporté",
+          "verification": {
+            "id": "CON-002-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MSG-001",
+      "feature": "MSG",
+      "statement": "La migration préserve les paramètres publics consommés du DSL PowerShell.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Messaging-DockerCompose.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§11 M.1–M.5/M.7"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "MSG-design",
+        "MSG-impl",
+        "MSG-test",
+        "MSG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MSG-001-AC1",
+          "given": "les appels avec Services, Volumes, Networks et File",
+          "when": "exécuter l’adaptateur de compatibilité",
+          "then": "le Bundle typé produit un résultat équivalent sans imposer Contributors aux anciens appelants",
+          "verification": {
+            "id": "MSG-001-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MSG-002",
+      "feature": "MSG",
+      "statement": "Le profil dev-localhost ne publie aucun port sur toutes les interfaces par défaut.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Messaging-DockerCompose.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§11 M.1–M.5/M.7"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "MSG-design",
+        "MSG-impl",
+        "MSG-test",
+        "MSG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MSG-002-AC1",
+          "given": "les contributeurs RabbitMQ/NATS avec options par défaut",
+          "when": "générer et valider le compose",
+          "then": "chaque port publié a une adresse loopback explicite et les images/schémas sont identifiés",
+          "verification": {
+            "id": "MSG-002-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MSG-003",
+      "feature": "MSG",
+      "statement": "Provisionner un broker reste facultatif et extérieur aux runtimes.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Messaging-DockerCompose.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§11 M.1–M.5/M.7"
+        }
+      ],
+      "dependsOn": [
+        "CORE-006"
+      ],
+      "kindLinks": [
+        "MSG-design",
+        "MSG-impl",
+        "MSG-test",
+        "MSG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MSG-003-AC1",
+          "given": "Core InProcess sans Docker et un environnement externe explicitement démarré",
+          "when": "qualifier chaque chemin",
+          "then": "InProcess fonctionne seul ; config/up/handshake/down ont des résultats distincts et un nettoyage possédé",
+          "verification": {
+            "id": "MSG-003-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MSG-004",
+      "feature": "MSG",
+      "statement": "Les identités de publication utilisent un fournisseur réellement supporté par chaque cible.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Messaging-DockerCompose.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§11 M.1–M.5/M.7"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "MSG-design",
+        "MSG-impl",
+        "MSG-test",
+        "MSG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MSG-004-AC1",
+          "given": "un profil NuGet.org ou PowerShell Gallery",
+          "when": "préparer la publication sans la déclencher",
+          "then": "la capacité OIDC est vérifiée pour la cible ; Unsupported ou NotConfigured bloque sans repli secret silencieux",
+          "verification": {
+            "id": "MSG-004-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "EXT-001",
+      "feature": "EXT",
+      "statement": "Le partage des parseurs Vagrant conserve une seule voie d’exécution injectable.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Bundle-Extensions.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§11 M.6"
+        }
+      ],
+      "dependsOn": [
+        "CORE-002"
+      ],
+      "kindLinks": [
+        "EXT-design",
+        "EXT-impl",
+        "EXT-test",
+        "EXT-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "EXT-001-AC1",
+          "given": "un lanceur fixture injecté dans QuietCli et le parseur packagé",
+          "when": "traiter les événements Vagrant",
+          "then": "tous les lancements passent par le lanceur choisi et les flux ne sont drainés qu’une fois",
+          "verification": {
+            "id": "EXT-001-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "EXT-002",
+      "feature": "EXT",
+      "statement": "Packer réutilise le mécanisme de génération sans adopter le modèle Compose.",
+      "status": "Proposed",
+      "priority": "P1",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Bundle-Extensions.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§11 M.6"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "EXT-design",
+        "EXT-impl",
+        "EXT-test",
+        "EXT-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "EXT-002-AC1",
+          "given": "des schémas Packer versionnés",
+          "when": "générer puis compiler un consommateur isolé",
+          "then": "les contrats Packer sont préservés et aucun émetteur Builder parallèle n’est créé",
+          "verification": {
+            "id": "EXT-002-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "DOG-001",
+      "feature": "DOG",
+      "statement": "La factory consomme ses mêmes interfaces et artefacts publics pour se régénérer.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Factory-Dogfooding.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 et §3 G.7"
+        }
+      ],
+      "dependsOn": [
+        "GEN-001",
+        "GEN-005"
+      ],
+      "kindLinks": [
+        "DOG-design",
+        "DOG-impl",
+        "DOG-test",
+        "DOG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "DOG-001-AC1",
+          "given": "la version N packagée et sa description versionnée",
+          "when": "générer puis construire N+1 dans une instance isolée",
+          "then": "aucun import de source privilégié ni API privée réservée à elle-même n’est utilisé",
+          "verification": {
+            "id": "DOG-001-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "DOG-002",
+      "feature": "DOG",
+      "statement": "Le dogfooding est qualifié par un oracle indépendant du générateur.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Factory-Dogfooding.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 et §3 G.7"
+        }
+      ],
+      "dependsOn": [
+        "DOG-001"
+      ],
+      "kindLinks": [
+        "DOG-design",
+        "DOG-impl",
+        "DOG-test",
+        "DOG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "DOG-002-AC1",
+          "given": "un mutant qui altère à la fois façade et test générés",
+          "when": "évaluer la candidate",
+          "then": "les propriétés métier ou fixtures indépendantes rejettent la régression",
+          "verification": {
+            "id": "DOG-002-T1",
+            "method": "mutation",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "DOG-003",
+      "feature": "DOG",
+      "statement": "Une mise à jour défaillante est bornée et ne supprime pas les données humaines.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Factory-Dogfooding.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 et §3 G.7"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "DOG-design",
+        "DOG-impl",
+        "DOG-test",
+        "DOG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "DOG-003-AC1",
+          "given": "une interruption et une écriture humaine concurrente",
+          "when": "reprendre ou abandonner l’application",
+          "then": "le rapport détaille l’état partiel, aucun effet externe n’est rejoué et seules les ressources possédées sont nettoyées",
+          "verification": {
+            "id": "DOG-003-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "DOG-004",
+      "feature": "DOG",
+      "statement": "La couverture de factory distingue chaque consommateur et chaque kind.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Factory-Dogfooding.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "demande du 10 novembre 2026 et §3 G.7"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "DOG-design",
+        "DOG-impl",
+        "DOG-test",
+        "DOG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "DOG-004-AC1",
+          "given": "Generator, GP, REG et deux écosystèmes témoins",
+          "when": "agréger les preuves par version et plateforme",
+          "then": "les cas NotRun, Unsupported ou périmés restent des lacunes visibles",
+          "verification": {
+            "id": "DOG-004-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "CORE-001",
+      "feature": "CORE",
+      "statement": "Aucun événement n’est collecté ou livré automatiquement dans les résultats finaux.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Core-Pipelines.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§13 et ROADMAP-Core-Pipelines.md §1–§5"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "CORE-design",
+        "CORE-impl",
+        "CORE-test",
+        "CORE-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "CORE-001-AC1",
+          "given": "les formats objet, JSON et YAML",
+          "when": "émettre des événements sans collecteur explicite",
+          "then": "les résultats ne contiennent pas Events et seul le listener reçoit les événements",
+          "verification": {
+            "id": "CORE-001-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "CORE-002",
+      "feature": "CORE",
+      "statement": "Chaque appel descendant utilise le lanceur injecté sauf surcharge explicite.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Core-Pipelines.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§13 et ROADMAP-Core-Pipelines.md §1–§5"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "CORE-design",
+        "CORE-impl",
+        "CORE-test",
+        "CORE-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "CORE-002-AC1",
+          "given": "deux compositions avec des exécuteurs fixtures distincts",
+          "when": "router puis déclencher des descendants",
+          "then": "chaque lancement et flux appartient à la bonne composition sans IPC supplémentaire",
+          "verification": {
+            "id": "CORE-002-T1",
+            "method": "property",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "CORE-003",
+      "feature": "CORE",
+      "statement": "Routage et middleware sont explicables sans exécution métier.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Core-Pipelines.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§13 et ROADMAP-Core-Pipelines.md §1–§5"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "CORE-design",
+        "CORE-impl",
+        "CORE-test",
+        "CORE-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "CORE-003-AC1",
+          "given": "des routes ambiguës et un middleware tentant deux next",
+          "when": "résoudre ou valider le pipeline",
+          "then": "ambiguïté/double next est rejeté ; Explain ne lance ni processus ni probe",
+          "verification": {
+            "id": "CORE-003-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "CORE-004",
+      "feature": "CORE",
+      "statement": "Les réactions progressent sans bloquer le drainage et respectent le runspace PowerShell.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Core-Pipelines.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§13 et ROADMAP-Core-Pipelines.md §1–§5"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "CORE-design",
+        "CORE-impl",
+        "CORE-test",
+        "CORE-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "CORE-004-AC1",
+          "given": "une source active et un listener déclenchant une sonde lente",
+          "when": "programmer la sonde avec limites de file/concurrence",
+          "then": "la sonde démarre avant fin de source, stdout/stderr continuent et les callbacks restent sur leur runspace possédé",
+          "verification": {
+            "id": "CORE-004-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "CORE-005",
+      "feature": "CORE",
+      "statement": "Politiques de timing, rôle, cardinalité et erreur ont des comportements distincts.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Core-Pipelines.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§13 et ROADMAP-Core-Pipelines.md §1–§5"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "CORE-design",
+        "CORE-impl",
+        "CORE-test",
+        "CORE-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "CORE-005-AC1",
+          "given": "des événements dupliqués et des fins source succès/échec",
+          "when": "exécuter les combinaisons de listener déclarées",
+          "then": "déclenchements, gating et résultat correspondent à la politique avec isolation de deux compositions",
+          "verification": {
+            "id": "CORE-005-T1",
+            "method": "property",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "CORE-006",
+      "feature": "CORE",
+      "statement": "InProcess et un adaptateur externe partagent les contrats sans imposer de broker.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Core-Pipelines.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§13 et ROADMAP-Core-Pipelines.md §1–§5"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "CORE-design",
+        "CORE-impl",
+        "CORE-test",
+        "CORE-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "CORE-006-AC1",
+          "given": "un adapter enregistré avec redelivery et un bus InProcess",
+          "when": "émettre puis traiter selon chaque transport",
+          "then": "seuls payloads exportables passent ; effets inconnus ne sont pas réexécutés automatiquement",
+          "verification": {
+            "id": "CORE-006-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "CORE-007",
+      "feature": "CORE",
+      "statement": "Ready et Healthy sont prouvés séparément et le statut UI survit aux lignes suivantes.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Core-Pipelines.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§13 et ROADMAP-Core-Pipelines.md §1–§5"
+        }
+      ],
+      "dependsOn": [
+        "CORE-004"
+      ],
+      "kindLinks": [
+        "CORE-design",
+        "CORE-impl",
+        "CORE-test",
+        "CORE-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "CORE-007-AC1",
+          "given": "une fixture Vagrant Ready puis une sonde et des logs",
+          "when": "mettre à jour la lane puis redimensionner ou rediriger",
+          "then": "Healthy exige une sonde positive et son statut reste cohérent en TTY et headless",
+          "verification": {
+            "id": "CORE-007-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "CORE-008",
+      "feature": "CORE",
+      "statement": "L’arrêt clôt les tâches, watchers et abonnements sans attendre leur propre surveillance.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Core-Pipelines.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "claude:challenge-ce-plan-au-calm-canyon.md",
+          "section": "§13 et ROADMAP-Core-Pipelines.md §1–§5"
+        }
+      ],
+      "dependsOn": [
+        "FAC-004"
+      ],
+      "kindLinks": [
+        "CORE-design",
+        "CORE-impl",
+        "CORE-test",
+        "CORE-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "CORE-008-AC1",
+          "given": "une composition avec watcher et une fin normale/annulation/timeout",
+          "when": "terminer le scope",
+          "then": "le terminal est enregistré, ressources possédées libérées et aucune surveillance ne retient la composition",
+          "verification": {
+            "id": "CORE-008-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "HOST-001",
+      "feature": "HOST",
+      "statement": "Un workspace permet un classement par langage, logiciel, intérêt ou dépôt direct sans dimension obligatoire.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-WorkspaceHost.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "user:2026-11-10",
+          "section": "demande utilisateur du 10 novembre 2026"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "HOST-design",
+        "HOST-impl",
+        "HOST-test",
+        "HOST-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "HOST-001-AC1",
+          "given": "les profils Language, Software, Interest et DirectRepository",
+          "when": "résoudre des placements pour le même ensemble de repos",
+          "then": "chaque profil produit un chemin configurable valide et ne déduit ni paquet ni namespace de ce chemin",
+          "verification": {
+            "id": "HOST-001-T1",
+            "method": "property",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "HOST-002",
+      "feature": "HOST",
+      "statement": "L’identité d’une instance est indépendante de ses facettes et de son emplacement.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-WorkspaceHost.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "user:2026-11-10",
+          "section": "demande utilisateur du 10 novembre 2026"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "HOST-design",
+        "HOST-impl",
+        "HOST-test",
+        "HOST-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "HOST-002-AC1",
+          "given": "une instance LLVM enregistrée et une nouvelle vue par intérêt",
+          "when": "ajouter la vue ou préparer un changement de placement",
+          "then": "aucun clone ni changement d’identité amont n’est créé implicitement",
+          "verification": {
+            "id": "HOST-002-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "HOST-003",
+      "feature": "HOST",
+      "statement": "Chaque hôte dispose de fonctions réutilisables et de façades scripts documentées.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-WorkspaceHost.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "user:2026-11-10",
+          "section": "demande utilisateur du 10 novembre 2026"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "HOST-design",
+        "HOST-impl",
+        "HOST-test",
+        "HOST-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "HOST-003-AC1",
+          "given": "le scripts existant de FrenchExDev_i2 et un workspace neuf",
+          "when": "préparer leur adoption/génération",
+          "then": "les .ps1 délèguent au module HOST épinglé et aide/docs/scripts/tests/AGENTS sont liés sans écrasement",
+          "verification": {
+            "id": "HOST-003-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "HOST-004",
+      "feature": "HOST",
+      "statement": "Un hôte ne partage pas les versions et secrets de ses écosystèmes hébergés.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-WorkspaceHost.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "user:2026-11-10",
+          "section": "demande utilisateur du 10 novembre 2026"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "HOST-design",
+        "HOST-impl",
+        "HOST-test",
+        "HOST-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "HOST-004-AC1",
+          "given": "deux instances aux CPM et credentials différents",
+          "when": "charger le catalogue hôte et exécuter une opération sélectionnée",
+          "then": "seuls les contrats et ressources de l’instance ciblée sont utilisés",
+          "verification": {
+            "id": "HOST-004-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "HOST-005",
+      "feature": "HOST",
+      "statement": "Les changements de placement restent des opérations explicites et réversibles selon leur portée.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-WorkspaceHost.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "user:2026-11-10",
+          "section": "demande utilisateur du 10 novembre 2026"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "HOST-design",
+        "HOST-impl",
+        "HOST-test",
+        "HOST-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "HOST-005-AC1",
+          "given": "une instance existante avec état local et un nouveau profil",
+          "when": "prévisualiser le changement",
+          "then": "aucun déplacement ou réécriture de chemin n’a lieu avant décision dédiée ; collisions et sorties de racine sont bloquées",
+          "verification": {
+            "id": "HOST-005-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "HOST-006",
+      "feature": "HOST",
+      "statement": "Les templates de placement ne sont jamais évalués comme code.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareEcosystem-WorkspaceHost.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "user:2026-11-10",
+          "section": "demande utilisateur du 10 novembre 2026"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "HOST-design",
+        "HOST-impl",
+        "HOST-test",
+        "HOST-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "HOST-006-AC1",
+          "given": "un template malformé ou contenant une expression PowerShell",
+          "when": "résoudre le placement",
+          "then": "la validation rejette les tokens inconnus et aucune expression n’est exécutée",
+          "verification": {
+            "id": "HOST-006-T1",
+            "method": "fuzz",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MIG-001",
+      "feature": "MIG",
+      "statement": "L’inventaire couvre les catégories réelles sans les confondre avec des langages.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Migration-FrenchExDev2.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "user:2026-11-10",
+          "section": "demande utilisateur du 10 novembre 2026 ; extension des plans A/M/Adoption"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "MIG-design",
+        "MIG-impl",
+        "MIG-test",
+        "MIG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MIG-001-AC1",
+          "given": "PoSh/FrenchExDev, Net/FrenchExDev, NodeJs, Rust, VsCode, Wsl, LLVM et scripts",
+          "when": "produire l’inventaire local sans exécuter les projets",
+          "then": "chaque item reçoit un type et un statut d’évaluation explicites ; les ignorés et inaccessibles restent signalés",
+          "verification": {
+            "id": "MIG-001-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MIG-002",
+      "feature": "MIG",
+      "statement": "Chaque item possède une décision de migration et un mapping d’identité explicites.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Migration-FrenchExDev2.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "user:2026-11-10",
+          "section": "demande utilisateur du 10 novembre 2026 ; extension des plans A/M/Adoption"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "MIG-design",
+        "MIG-impl",
+        "MIG-test",
+        "MIG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MIG-002-AC1",
+          "given": "du code FrenchExDev possédé, un fork et un clone upstream",
+          "when": "préparer leur reprise",
+          "then": "la politique distingue ce qui devient FrenchExDev2, reste inchangé ou est retiré sans renommer l’amont",
+          "verification": {
+            "id": "MIG-002-T1",
+            "method": "review",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MIG-003",
+      "feature": "MIG",
+      "statement": "Les vagues respectent la fermeture réelle des dépendances et le contrat des consommateurs.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Migration-FrenchExDev2.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "user:2026-11-10",
+          "section": "demande utilisateur du 10 novembre 2026 ; extension des plans A/M/Adoption"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "MIG-design",
+        "MIG-impl",
+        "MIG-test",
+        "MIG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MIG-003-AC1",
+          "given": "un producteur partagé et plusieurs consommateurs",
+          "when": "ordonner puis qualifier une vague",
+          "then": "les paquets producteurs requis sont disponibles avant bascule et les consommateurs affectés sont vérifiés",
+          "verification": {
+            "id": "MIG-003-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MIG-004",
+      "feature": "MIG",
+      "statement": "La migration préserve données locales et secrets et n’effectue aucun déplacement implicite.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Migration-FrenchExDev2.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "user:2026-11-10",
+          "section": "demande utilisateur du 10 novembre 2026 ; extension des plans A/M/Adoption"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "MIG-design",
+        "MIG-impl",
+        "MIG-test",
+        "MIG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MIG-004-AC1",
+          "given": "un dépôt dirty, des fichiers ignorés et une config locale",
+          "when": "prévisualiser ou refuser une migration",
+          "then": "les données restent en place, secrets non copiés dans le rapport et conflits bloquants explicites",
+          "verification": {
+            "id": "MIG-004-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MIG-005",
+      "feature": "MIG",
+      "statement": "La bascule et le retrait sont conditionnés aux preuves de compatibilité et à un retour prévu.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Migration-FrenchExDev2.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "user:2026-11-10",
+          "section": "demande utilisateur du 10 novembre 2026 ; extension des plans A/M/Adoption"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "MIG-design",
+        "MIG-impl",
+        "MIG-test",
+        "MIG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MIG-005-AC1",
+          "given": "une cible migrée et des consommateurs encore legacy",
+          "when": "demander le cutover puis le retrait",
+          "then": "le retrait est bloqué sans preuves et la coexistence/stratégie de retour est documentée par item",
+          "verification": {
+            "id": "MIG-005-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MIG-006",
+      "feature": "MIG",
+      "statement": "Les scripts d’hôte et ressources de logiciel suivent une migration distincte des packages.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Migration-FrenchExDev2.md",
+          "section": "Exigences et critères d’acceptation"
+        },
+        {
+          "document": "user:2026-11-10",
+          "section": "demande utilisateur du 10 novembre 2026 ; extension des plans A/M/Adoption"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "MIG-design",
+        "MIG-impl",
+        "MIG-test",
+        "MIG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MIG-006-AC1",
+          "given": "des scripts de workspace, configs VS Code et ressources Wsl",
+          "when": "planifier leur adoption",
+          "then": "ils sont rattachés au bon propriétaire avec docs/lifecycle sans paquet ou namespace inventé",
+          "verification": {
+            "id": "MIG-006-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    }
+  ]
+}
