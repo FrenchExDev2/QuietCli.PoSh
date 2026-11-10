@@ -312,7 +312,7 @@ jobs:
   linux:
     name: Linux job container (${{ matrix.rid }})
     needs: linux-selection
-    if: ${{ needs.linux-selection.outputs.has_container == 'true' }}
+    if: ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_container == 'true' }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     permissions:
@@ -383,7 +383,7 @@ jobs:
   linux-fallback:
     name: Linux Docker fallback (${{ matrix.rid }})
     needs: linux-selection
-    if: ${{ needs.linux-selection.outputs.has_fallback == 'true' }}
+    if: ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_fallback == 'true' }}
     permissions:
       contents: read
       packages: read

@@ -148,6 +148,10 @@ function Test-QuietGitHubCi {
     $parser=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build();$reader=[IO.StringReader]::new([IO.File]::ReadAllText($workflowPath,[Text.Encoding]::UTF8))
     try{$workflow=$parser.Deserialize($reader,[object])}finally{$reader.Dispose()}
     $jobs=$workflow['jobs']
+    foreach($entry in @(@{Job='linux';Flag='has_container'},@{Job='linux-fallback';Flag='has_fallback'})){
+        $condition=[string]$jobs[$entry.Job]['if']
+        if(!$condition.Contains('!cancelled()') -or !$condition.Contains("needs.linux-selection.result == 'success'") -or !$condition.Contains(("needs.linux-selection.outputs."+$entry.Flag+" == 'true'"))){throw ('GitHubCiSelectedJobInheritedSkip: '+$entry.Job)}
+    }
     foreach($name in $jobs.Keys){foreach($dependency in @($jobs[$name]['needs'])){if($dependency -and !$jobs.ContainsKey($dependency)){throw 'GitHubWorkflowDanglingDependency'}}}
     if(!$jobs['linux']['container'] -or $jobs['windows']['container'] -or $jobs['linux-fallback']['container']){throw 'GitHubWorkflowExecutionEnvironmentChanged'}
     $direct=@($jobs['linux']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"

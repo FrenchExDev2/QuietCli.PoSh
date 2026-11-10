@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 76414116434659E08047FD00DB94AEF439B86D206EED44F1B9593CA840AE1B2B -->
+<!-- workflow-source-sha256: 9904FB46BFFFEB5074FFBB8BFC06A4BD28113A9BB36DBE7CBCDE0EC717060765 -->
 
 ## Purpose
 
@@ -50,8 +50,8 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| linux | runner ${{ matrix.runner }}; container ${{ matrix.image }} | linux-selection | ${{ needs.linux-selection.outputs.has_container == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
-| linux-fallback | runner ${{ matrix.runner }} | linux-selection | ${{ needs.linux-selection.outputs.has_fallback == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CiImage.ps1, ./scripts/New-CiModuleImage.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
+| linux | runner ${{ matrix.runner }}; container ${{ matrix.image }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_container == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
+| linux-fallback | runner ${{ matrix.runner }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_fallback == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CiImage.ps1, ./scripts/New-CiModuleImage.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 | linux-git-images | runner ${{ matrix.runner }} | linux-matrix, linux-images | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') && ((inputs.suite &#124;&#124; 'All') == 'Git' &#124;&#124; (inputs.suite &#124;&#124; 'All') == 'All') | ./scripts/New-CiModuleImage.ps1 |
 | linux-images | runner ${{ matrix.runner }} | linux-matrix | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | ./scripts/New-CiImage.ps1 |
 | linux-matrix | runner ubuntu-latest |  | default success condition |  |
@@ -68,6 +68,13 @@ flowchart TD
 Selected native Windows and Docker-fallback preparation jobs also use the shared optional resource-archive cache. The key includes runner OS and dependencies.lock.json hash; Restore-CoreResources still verifies extracted bytes. GitHub job-container preparation remains self-contained and does not depend on cache availability.
 
 Windows runs natively. Linux selection partitions verified GHCR digests into supported GitHub job containers and Docker fallback, including Alpine ARM64. Each row builds Release ReadyToRun for its tested RID and uses Invoke-GitHubCi with shared workers, SkipBuild and SkipTty. Core/All collects pinned profiler and performance evidence. Image builders explicitly select Docker. Failure bundles are bounded and redacted before 14-day upload.
+
+Both selected Linux execution jobs explicitly use `!cancelled()`, require a successful selection
+job and check their own selection flag. The status function overrides GitHub's implicit `success()`
+condition, so skipped image-publication ancestors on a PR do not skip the selected tests. Failed
+selection, cancellation and an unselected path still prevent execution. See the official
+[dependency rules](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idneeds)
+and [status functions](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#status-check-functions).
 
 ## Validation and limits
 

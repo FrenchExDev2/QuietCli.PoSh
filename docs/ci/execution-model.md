@@ -7,6 +7,12 @@ verified GitHub job containers where supported, or Docker fallback without PR im
 Windows runs directly on its native GitHub runner. Local supervision remains a separate entry point.
 The workflow is implemented locally; hosted execution remains separate qualification evidence.
 
+Linux selection writes its JSON receipt atomically and creates missing parent directories on a
+clean checkout. The selected container and Docker jobs use an explicit `!cancelled()` condition,
+require successful selection and check their own flag. This prevents skipped image-publication
+jobs on PRs from implicitly skipping the downstream test matrices; cancellation and selection
+failure still block both paths. The dependency graph below keeps publication optional on PRs.
+
 ```mermaid
 flowchart TD
     A[Workstation] --> L[Local launchers]

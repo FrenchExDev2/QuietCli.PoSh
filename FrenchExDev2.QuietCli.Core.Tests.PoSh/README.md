@@ -22,6 +22,8 @@ checks cache-availability combinations, shuffled targets, malformed references, 
 identities, terminal-state gates and targeted policy mutants. Its direct-entry fixture requires the
 worker to run in the caller's process and rejects a non-GitHub context before side effects. Adapter
 fixtures check Docker/Podman vectors for all four RIDs and the Core-to-consumer credential handoff.
+Workflow assertions also require explicit cancellation and successful-selection conditions on both
+Linux execution paths, so PR-only skipped publication ancestors do not suppress selected matrices.
 
 ```powershell
 ./FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-GitHubCiSmoke.ps1 -Image '<existing-linux-x64-toolchain-image-ID>'
