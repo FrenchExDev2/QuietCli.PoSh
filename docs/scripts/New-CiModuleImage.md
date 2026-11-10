@@ -1,6 +1,8 @@
 # New-CiModuleImage.ps1
 
-`-ContainerRuntime podman|docker` is optional; empty discovers Docker then Podman and forwards the resolved engine consistently to Core image
+Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
+
+`-ContainerRuntime podman|docker` is optional; empty reads checkout `.env`, then discovers Podman before Docker on Windows and Linux and forwards the resolved engine consistently to Core image
 preparation, the local Core tag and the derived build. GitHub selects `docker` explicitly. The
 ephemeral registry credential is retained in memory across the Core call, which removes it from
 the process environment, then restored for the derived builder and cleared from the temporary

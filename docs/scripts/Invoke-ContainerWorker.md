@@ -1,10 +1,12 @@
 # Invoke-ContainerWorker.ps1
 
+Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
+
 Before container creation, the worker logs the requested image reference, resolved immutable image
 ID, expected guest RID and owned container name. Compare this with `CI image selection` from the image
 builder to distinguish a verified cache hit from a new build and confirm which image the tests use.
 
-`-ContainerRuntime podman|docker` is optional. Empty discovers Docker then Podman through Resolve-QuietVirtEngine;
+`-ContainerRuntime podman|docker` is optional. Empty reads checkout `.env`, then discovers Podman before Docker on Windows and Linux through Resolve-QuietVirtEngine;
 the GitHub fallback supplies `docker` and `-GitHubActions` to execute `Invoke-GitHubCi.ps1` directly
 inside the guest. No local desktop launcher is started in that GitHub path. `-TimeoutSeconds`
 defaults to 360 for existing callers; GitHub supplies its explicit guest deadline through its entry.

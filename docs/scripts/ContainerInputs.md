@@ -4,7 +4,10 @@
 used by `Invoke-ContainerWorker.ps1`. It copies scripts, build metadata, documentation, GitHub
 definitions, discovered projects and built module resources. Root Markdown documents and the
 named SDK/package/source locks are included; `.env`, arbitrary root JSON files, Git internals,
-intermediate `bin`/`obj` directories and old reports are excluded.
+intermediate `bin`/`obj` directories and old reports are excluded. The optional `-ContainerRuntime`
+selection, or the source checkout's runtime key when omitted, creates a fresh staged `.env` containing
+only `QUIET_CONTAINER_RUNTIME`. Unrelated private assignments are never copied. The caller forwards
+its effective runtime explicitly; `-NativeOnly` omits this dotenv preparation.
 
 For ordinary companion suites, the helper reads the host's existing `project.assets.json` files
 and copies only their restored package directories into `artifacts/nuget-cache`. The container sets

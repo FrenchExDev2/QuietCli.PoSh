@@ -1,5 +1,7 @@
 # Invoke-ContainerColdStart.ps1
 
+Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
+
 ## Purpose and usage
 
 Local monitored launcher for a private cold-start container. GitHub invokes the worker directly.
@@ -8,7 +10,7 @@ Local monitored launcher for a private cold-start container. GitHub invokes the 
 ./scripts/Invoke-ContainerColdStart.ps1 -Image <verified-local-id> -Platform debian -CandidateModule <manifest> -ExpectedRuntimeIdentifier linux-x64 -ContainerRuntime docker
 ```
 
-WorkspaceRoot is optional; Image, Platform and CandidateModule are required. Platform accepts debian/alpine. CandidateLabel defaults to readytorun. ContainerRuntime accepts Docker/Podman; empty discovers Docker then Podman using Get-Command. TimeoutSeconds defaults to 1200. Headless is retained for compatibility; the GitHub profiling workflow no longer uses this launcher.
+WorkspaceRoot is optional; Image, Platform and CandidateModule are required. Platform accepts debian/alpine. CandidateLabel defaults to readytorun. ContainerRuntime accepts Docker/Podman; empty reads checkout `.env`, then discovers Podman before Docker on Windows and Linux using Get-Command. TimeoutSeconds defaults to 1200. Headless is retained for compatibility; the GitHub profiling workflow no longer uses this launcher.
 
 ## Dependencies and side effects
 

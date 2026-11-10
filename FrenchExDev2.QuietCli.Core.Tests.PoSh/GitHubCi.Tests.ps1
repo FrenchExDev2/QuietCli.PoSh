@@ -31,6 +31,14 @@ function Test-QuietContainerInputs {
         if(!(Test-Path -LiteralPath (Join-Path $stage $relative))){throw ('ContainerInputMissing: '+$relative)}
     }
     if((Test-Path (Join-Path $stage .env)) -or (Test-Path (Join-Path $stage secret.json)) -or (Test-Path (Join-Path $stage FrenchExDev2.QuietCli.Core.PoSh/engine/obj))){throw 'ContainerStageCopiedUndeclaredInputs'}
+    [void][IO.File]::WriteAllTextAsync((Join-Path $fixture .env),"SECRET=never-forward-this`nQUIET_CONTAINER_RUNTIME=podman`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    foreach($selection in @('','docker')){
+        $runtimeStage=Join-Path $RunDirectory ('runtime-stage-'+$(if($selection){$selection}else{'configured'}))
+        Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $runtimeStage -ContainerRuntime $selection -Confirm:$false
+        $expected=if($selection){$selection}else{'podman'}
+        $stagedText=[IO.File]::ReadAllText((Join-Path $runtimeStage .env),[Text.UTF8Encoding]::new($false,$true))
+        if($stagedText -cne ('QUIET_CONTAINER_RUNTIME="'+$expected+'"'+"`n")){throw 'ContainerStageForwardedPrivateEnvironmentOrIgnoredOverride'}
+    }
     $bad=@('../outside','x/../outside','/root/private','C:\private','x/1.0/extra',"x/1.0`n")
     foreach($relative in $bad){
         $assets.libraries.fixture.path=$relative;Write-WorkspaceJson $assetsPath $assets
@@ -133,7 +141,7 @@ function Test-QuietGitHubCiJsonReceipts {
     if(!$killed){throw 'WorkspaceJsonMissingParentMutantSurvived'}
     $scripts=Join-Path $fixture 'selector/scripts'
     [void][IO.Directory]::CreateDirectory($scripts)
-    foreach($name in @('Select-GitHubCiMatrix.ps1','Common.ps1','Ci.Process.ps1','SourceIdentity.ps1','RuntimeTargets.ps1','ReportPaths.ps1','WorkspaceProjects.ps1','GitHubCi.ps1')){
+    foreach($name in @('Select-GitHubCiMatrix.ps1','Common.ps1','EnvFile.ps1','Ci.Process.ps1','SourceIdentity.ps1','RuntimeTargets.ps1','ReportPaths.ps1','WorkspaceProjects.ps1','GitHubCi.ps1')){
         Copy-Item -LiteralPath (Join-Path $WorkspaceRoot "scripts/$name") -Destination $scripts
     }
     $adapter='function Get-QuietCiRegistryDigest { param($Plan,$Token,$Actor,[switch]$IncludeConfiguration); return $null }'
@@ -221,7 +229,7 @@ function Test-QuietGitHubCi {
             Copy-Item -LiteralPath $manifest -Destination $target
         }
     }
-    foreach($name in @('Invoke-GitHubCi.ps1','Common.ps1','Ci.Process.ps1','SourceIdentity.ps1','RuntimeTargets.ps1','ReportPaths.ps1','WorkspaceProjects.ps1')){Copy-Item -LiteralPath (Join-Path $WorkspaceRoot "scripts/$name") -Destination $scripts}
+    foreach($name in @('Invoke-GitHubCi.ps1','Common.ps1','EnvFile.ps1','Ci.Process.ps1','SourceIdentity.ps1','RuntimeTargets.ps1','ReportPaths.ps1','WorkspaceProjects.ps1')){Copy-Item -LiteralPath (Join-Path $WorkspaceRoot "scripts/$name") -Destination $scripts}
     $worker='param($WorkspaceRoot,$RunDirectory,$Suite,$ExpectedRuntimeIdentifier,[switch]$SkipTty); . (Join-Path $PSScriptRoot Common.ps1); Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State="Success";Passed=3;Failed=0};WorkerPid=$PID;Suite=$Suite;SkipTty=[bool]$SkipTty}'
     [void][IO.File]::WriteAllTextAsync((Join-Path $scripts 'Invoke-TestWorker.ps1'),$worker,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     $previous=$env:GITHUB_ACTIONS
@@ -239,6 +247,13 @@ function Test-QuietGitHubCi {
     $parser=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build();$reader=[IO.StringReader]::new([IO.File]::ReadAllText($workflowPath,[Text.Encoding]::UTF8))
     try{$workflow=$parser.Deserialize($reader,[object])}finally{$reader.Dispose()}
     $jobs=$workflow['jobs']
+    foreach($name in $jobs.Keys){
+        $steps=@($jobs[$name]['steps'])
+        for($index=0;$index -lt $steps.Count;$index++){
+            if([string]$steps[$index]['uses'] -notlike 'actions/checkout@*'){continue}
+            if($index+1 -ge $steps.Count -or [string]$steps[$index+1]['run'] -notmatch '\./scripts/Initialize-CiEnvironment\.ps1 -Target GitHub -ContainerRuntime docker' -or $steps[$index+1]['shell'] -cne 'pwsh'){throw ('GitHubEnvironmentInitializationMissing: '+$name)}
+        }
+    }
     foreach($entry in @(@{Job='linux';Flag='has_container'},@{Job='linux-fallback';Flag='has_fallback'})){
         $condition=[string]$jobs[$entry.Job]['if']
         if(!$condition.Contains('!cancelled()') -or !$condition.Contains("needs.linux-selection.result == 'success'") -or !$condition.Contains(("needs.linux-selection.outputs."+$entry.Flag+" == 'true'"))){throw ('GitHubCiSelectedJobInheritedSkip: '+$entry.Job)}

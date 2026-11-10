@@ -8,9 +8,11 @@ function Copy-QuietContainerInputs {
     Owned staging directory, outside source inputs.
     .PARAMETER NativeOnly
     Copies only the independent native campaign sources and transport resources.
+    .PARAMETER ContainerRuntime
+    Effective transport selection; only this public key is forwarded into the staged dotenv file.
     #>
     [CmdletBinding(SupportsShouldProcess)]
-    param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$Destination,[switch]$NativeOnly)
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$Destination,[switch]$NativeOnly,[ValidateSet('','podman','docker')][string]$ContainerRuntime)
     if(!$PSCmdlet.ShouldProcess($Destination,'Copy explicit container inputs and restored NuGet packages')){return}
     . (Join-Path $PSScriptRoot 'Common.ps1')
     $projects=if($NativeOnly){@()}else{@(Get-QuietWorkspaceProjects $WorkspaceRoot)}
@@ -30,6 +32,11 @@ function Copy-QuietContainerInputs {
     foreach($file in Get-ChildItem -LiteralPath $WorkspaceRoot -File -Force){
         if($file.Extension -cne '.md' -and $file.Name -cnotin @('global.json','Directory.Packages.props','repositories.lock.json','.gitattributes','.editorconfig','.gitignore','LICENSE')){continue}
         Copy-Item -LiteralPath $file.FullName -Destination $Destination
+    }
+    $runtime=if($ContainerRuntime){$ContainerRuntime}else{Get-QuietEnvValue -Path (Join-Path $WorkspaceRoot '.env') -Key QUIET_CONTAINER_RUNTIME}
+    if($null -ne $runtime){
+        if($runtime -cnotin @('podman','docker')){throw 'ContainerRuntimeConfigurationInvalid'}
+        $null=Set-QuietEnvValue -Path (Join-Path $Destination '.env') -Key QUIET_CONTAINER_RUNTIME -Value $runtime -Confirm:$false
     }
     $packages=[Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
     foreach($project in $projects){foreach($directory in Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot $project.Path) -Directory){

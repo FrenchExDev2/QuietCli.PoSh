@@ -1,7 +1,10 @@
 # Invoke-ContainerCi.ps1
 
+Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
+
 This is the local workstation container launcher. `-ContainerRuntime docker|podman` explicitly
-selects the local engine; when empty, Resolve-QuietVirtEngine discovers Docker then Podman. It opens the
+selects the local engine; when empty, Resolve-QuietVirtEngine reads the checkout dotenv key before
+discovering Podman then Docker on Windows and Linux. It opens the
 same required local monitor for either engine and forwards the selection to the shared transport.
 It never installs an engine or falls back after a selected engine fails. GitHub uses its dedicated entry point.
 

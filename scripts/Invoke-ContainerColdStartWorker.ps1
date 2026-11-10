@@ -32,7 +32,7 @@ Display name of the candidate build forwarded to the gate.
 .PARAMETER ExpectedRuntimeIdentifier
 Required architecture and libc family in the guest.
 .PARAMETER ContainerRuntime
-Docker on GitHub; empty local selection discovers Docker then Podman with Get-Command.
+Explicit selection overrides the checkout dotenv key; absent configuration uses Podman-first application discovery on Windows and Linux.
 #>
 [CmdletBinding(SupportsShouldProcess)]param(
     [Parameter(Mandatory)][string]$WorkspaceRoot,
@@ -46,7 +46,7 @@ Docker on GitHub; empty local selection discovers Docker then Podman with Get-Co
 )
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ContainerColdStartWorker')){return}
 $ErrorActionPreference = 'Stop'; . (Join-Path $PSScriptRoot 'Common.ps1')
-$ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime
+$ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 $owner = [guid]::NewGuid().ToString('N'); $name = 'quietcli2-coldstart-' + $owner.Substring(0, 12)
 $state = @{ Project = 'FrenchExDev2.QuietCli.Core.PoSh'; Task = 'ReadyToRun cold-start report'; Workspace = $WorkspaceRoot; ProjectDirectory = (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh'); Platform = $Platform; State = 'Preparing'; StartedUtc = [DateTimeOffset]::UtcNow.ToString('o'); ProcessId = $PID; ContainerId = $name; Passed = $null; Failed = $null; Case = 'Staging baseline and candidate modules'; FinishedUtc = $null; Error = $null; Image = $Image; Owner = $owner }
 $status = Join-Path $RunDirectory 'status.json'

@@ -1,6 +1,9 @@
 # New-CiImage.ps1
 
-`-ContainerRuntime podman|docker` selects the native execution adapter; empty discovers Docker then Podman through Get-Command
+Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
+
+`-ContainerRuntime podman|docker` selects the native execution adapter; empty reads the checkout's
+dotenv key before Get-Command discovery (Podman before Docker on Windows and Linux)
 for workstation compatibility. GitHub image preparation and PR fallback pass `docker` explicitly.
 Both adapters use the same recipe, fingerprint and image identity checks. `-RegistryCache` may
 reuse an accessible verified digest; `-PublishCache` remains restricted to upstream `develop`

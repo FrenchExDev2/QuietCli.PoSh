@@ -24,7 +24,7 @@ Required guest RID.
 .PARAMETER Headless
 CI-only mode without a desktop window.
 .PARAMETER ContainerRuntime
-Local container engine; empty discovers Docker then Podman. GitHub calls the worker with Docker.
+Explicit selection overrides the checkout dotenv key; absent configuration uses Podman-first application discovery on Windows and Linux.
 
 .PARAMETER TimeoutSeconds
 Maximum worker duration, including staging and cleanup.
@@ -45,7 +45,7 @@ Maximum worker duration, including staging and cleanup.
 )
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ContainerColdStart')){return}
 $ErrorActionPreference = 'Stop'; . (Join-Path $PSScriptRoot 'Common.ps1')
-$ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime
+$ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 $run = Join-Path (Get-QuietReportRoot $WorkspaceRoot 'coldstart-containers') ($Platform + '-' + [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0, 6))
 [void][IO.Directory]::CreateDirectory($run)
 $runner = (Get-Command pwsh -CommandType Application | Select-Object -First 1).Source

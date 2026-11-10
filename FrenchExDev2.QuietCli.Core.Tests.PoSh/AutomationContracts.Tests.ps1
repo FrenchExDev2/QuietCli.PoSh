@@ -28,20 +28,45 @@ function Test-QuietAutomationContracts {
         if($engineAvailability.ContainsKey($Name) -and $engineAvailability[$Name]){[pscustomobject]@{Name=$Name;CommandType='Application'}}
     }
     $runtimeCases=0
+    $runtimeFixture=Join-Path $RunDirectory 'runtime-discovery'
+    $platformResolver=[scriptblock]::Create($resolverSource)
+    if($resolverSource.Contains('$IsWindows') -or $resolverSource.Contains('$IsLinux')){throw 'ContainerRuntimePreferenceMustBePlatformIndependent'}
     foreach($docker in @($false,$true)){foreach($podman in @($false,$true)){
         $engineAvailability=@{docker=$docker;podman=$podman}
         foreach($explicit in @('','docker','podman')){foreach($requireAvailable in @($false,$true)){
-            $expected=if($explicit){$explicit}elseif($docker){'docker'}elseif($podman){'podman'}else{$null}
+            $expected=if($explicit){$explicit}elseif($podman){'podman'}elseif($docker){'docker'}else{$null}
             $mustReject=(!$expected) -or ($explicit -and $requireAvailable -and !$engineAvailability[$explicit])
             $actual=$null;$rejected=$false
-            try{$actual=Resolve-QuietVirtEngine -ContainerRuntime $explicit -Available:$requireAvailable}catch{$rejected=$true}
+            try{$actual=& $platformResolver -ContainerRuntime $explicit -Available:$requireAvailable -WorkspaceRoot $runtimeFixture}catch{$rejected=$true}
             if($rejected -ne [bool]$mustReject -or (!$rejected -and $actual -cne $expected)){throw 'ContainerRuntimeDiscoveryPropertyFailed'}
             $runtimeCases++
         }}
     }}
     $engineAvailability=@{docker=$true;podman=$true}
-    $mutant=[scriptblock]::Create($resolverSource.Replace("@('docker','podman')","@('podman','docker')"))
-    if((& $mutant -Available) -ceq 'docker'){throw 'ContainerRuntimePreferenceMutantSurvived'}
+    $preferred='podman'
+    if((Resolve-QuietVirtEngine -Available -WorkspaceRoot $runtimeFixture) -cne $preferred){throw 'ActualHostContainerPreferenceChanged'}
+    if(!$resolverSource.Contains("@('podman','docker')")){throw 'ContainerRuntimePreferenceMutationAnchorMissing'}
+    $mutant=[scriptblock]::Create($resolverSource.Replace("@('podman','docker')","@('docker','podman')"))
+    if((& $mutant -Available -WorkspaceRoot $runtimeFixture) -ceq $preferred){throw 'ContainerRuntimePreferenceMutantSurvived'}
+    foreach($configured in @('podman','docker')){
+        $null=Set-QuietEnvValue -Path (Join-Path $runtimeFixture '.env') -Key QUIET_CONTAINER_RUNTIME -Value $configured -Confirm:$false
+            if((& $platformResolver -Available -WorkspaceRoot $runtimeFixture) -cne $configured){throw 'ContainerRuntimeIgnoredEnvConfiguration'}
+            $override=if($configured -eq 'podman'){'docker'}else{'podman'}
+            if((& $platformResolver -Available -WorkspaceRoot $runtimeFixture -ContainerRuntime $override) -cne $override){throw 'ContainerRuntimeIgnoredExplicitOverride'}
+    }
+    foreach($invalid in @('invalid','','Docker')){
+        $null=Set-QuietEnvValue -Path (Join-Path $runtimeFixture '.env') -Key QUIET_CONTAINER_RUNTIME -Value $invalid -Confirm:$false
+        $rejected=$false;try{$null=Resolve-QuietVirtEngine -WorkspaceRoot $runtimeFixture}catch{$rejected=$_.Exception.Message -like 'QuietVirtEngineConfigurationInvalid:*'}
+        if(!$rejected){throw 'ContainerRuntimeInvalidConfigurationFellBackSilently'}
+        if((Resolve-QuietVirtEngine -WorkspaceRoot $runtimeFixture -ContainerRuntime docker -Available) -cne 'docker'){throw 'ExplicitRuntimeDidNotOverrideInvalidEnv'}
+    }
+    $null=Set-QuietEnvValue -Path (Join-Path $runtimeFixture '.env') -Key QUIET_CONTAINER_RUNTIME -Value podman -Confirm:$false
+    $engineAvailability=@{docker=$true;podman=$false}
+    $rejected=$false;try{$null=Resolve-QuietVirtEngine -WorkspaceRoot $runtimeFixture -Available}catch{$rejected=$_.Exception.Message -eq 'QuietVirtEngineUnavailable: podman'}
+    if(!$rejected -or (Resolve-QuietVirtEngine -WorkspaceRoot $runtimeFixture) -cne 'podman'){throw 'ConfiguredUnavailableRuntimeFellBackSilently'}
+    [void][IO.File]::WriteAllTextAsync((Join-Path $runtimeFixture '.env'),"QUIET_CONTAINER_RUNTIME=podman`nQUIET_CONTAINER_RUNTIME=docker`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $rejected=$false;try{$null=Resolve-QuietVirtEngine -WorkspaceRoot $runtimeFixture}catch{$rejected=$_.Exception.Message -like 'EnvKeyDuplicate:*'}
+    if(!$rejected){throw 'DuplicateRuntimeConfigurationAccepted'}
     Remove-Item Function:Get-Command
     $fixture=Join-Path $RunDirectory automation-contracts
     [void][IO.Directory]::CreateDirectory((Join-Path $fixture build))

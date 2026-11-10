@@ -277,7 +277,7 @@ function Invoke-QuietCiImageBuild {
     Podman for workstation runs; Docker for GitHub image preparation and PR fallback.
     #>
     param($Plan,[Parameter(Mandatory)][string]$ContextDirectory,[Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$ArtifactPrefix,[switch]$RegistryCache,[switch]$PublishCache,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime)
-    $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime
+    $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
     # The build must land in a native Linux environment matching the plan's architecture, but that environment is
     # Podman's own backend (its machine VM on Windows/macOS, or the host kernel on Linux), never the pwsh process's
     # own OS: Podman already executes every build inside a real Linux kernel regardless of where its CLI is invoked.

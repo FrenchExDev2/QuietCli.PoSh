@@ -2,22 +2,33 @@
 . (Join-Path $PSScriptRoot 'Ci.Process.ps1')
 . (Join-Path $PSScriptRoot 'SourceIdentity.ps1')
 . (Join-Path $PSScriptRoot 'RuntimeTargets.ps1')
+. (Join-Path $PSScriptRoot 'EnvFile.ps1')
 function Resolve-QuietVirtEngine {
     <#
     .SYNOPSIS
-    Selects an explicit container engine or discovers Docker then Podman on PATH without starting either.
+    Resolves an explicit engine, checkout dotenv configuration, then Podman before Docker on every host.
     .PARAMETER ContainerRuntime
-    Optional explicit engine. Empty selects the first available application, preferring Docker.
+    Optional explicit engine. Empty reads the checkout dotenv key before discovering applications.
     .PARAMETER Available
     Also requires an explicitly selected engine to exist as an application on PATH.
+    .PARAMETER WorkspaceRoot
+    Checkout owning .env; its runtime key supplies the default before application discovery.
     #>
     [CmdletBinding()]
-    param([AllowEmptyString()][ValidateSet('','docker','podman')][string]$ContainerRuntime,[switch]$Available)
+    param([AllowEmptyString()][ValidateSet('','docker','podman')][string]$ContainerRuntime,[switch]$Available,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+    if(!$ContainerRuntime){
+        $configured=Get-QuietEnvValue -Path (Join-Path $WorkspaceRoot '.env') -Key QUIET_CONTAINER_RUNTIME
+        if($null -ne $configured){
+            if($configured -cnotin @('podman','docker')){throw 'QuietVirtEngineConfigurationInvalid: QUIET_CONTAINER_RUNTIME must be podman or docker.'}
+            $ContainerRuntime=$configured
+        }
+    }
     if($ContainerRuntime){
         if($Available -and !(Get-Command $ContainerRuntime -CommandType Application -ErrorAction SilentlyContinue)){throw ('QuietVirtEngineUnavailable: '+$ContainerRuntime)}
         return $ContainerRuntime.ToLowerInvariant()
     }
-    foreach($candidate in @('docker','podman')){
+    $candidates=@('podman','docker')
+    foreach($candidate in $candidates){
         if(Get-Command $candidate -CommandType Application -ErrorAction SilentlyContinue){return $candidate}
     }
     throw 'QuietVirtEngineUnavailable: install Docker or Podman, or select an available engine explicitly.'

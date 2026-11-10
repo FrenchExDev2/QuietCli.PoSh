@@ -109,6 +109,10 @@ Import-Module QuietCli
 
 ### From a source checkout
 
+For container-based source checks, `./scripts/Initialize-CiEnvironment.ps1 -Target Local` writes the
+checkout's ignored runtime preset. Explicit `-ContainerRuntime` overrides `.env`; otherwise discovery
+is the fallback. See [local/GitHub environment initialization](docs/ci/environment.md).
+
 Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100-rc.3.26522.148`). Build before importing the local modules. Close sessions that already loaded this checkout's assemblies before rebuilding.
 
 **1. Check out and build.**

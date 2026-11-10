@@ -1,5 +1,42 @@
 # Repository automation requirements as code
 
+## RAC-PR-001: feature/fix push reporting
+
+After authorized feature/fix pushes to GitHub, the [push script](scripts/Push-Workspace.md) uses the
+[shared reporting helper](scripts/PullRequestUpdates.md) to read the PR, verify its checkpoint and
+comment via GitHub CLI. Pass a reviewed Markdown body to document implementation details and actual
+validation; the default lists current PR commits without claiming qualification. WhatIf performs
+neither push nor comment, missing PRs are not created, duplicate checkpoints are skipped, and comment
+errors remain distinct from push success. This repository rule applies to agent-authorized pushes;
+it installs no Git hook or background automation on unrelated repositories.
+
+```mermaid
+flowchart TD
+    A[Authorized push request] --> B{WhatIf?}
+    B -- Yes --> C[Preview without Git or GitHub calls]
+    B -- No --> D[Push selected branch and remote]
+    D -- Failure --> E[Report push failure]
+    D -- Success --> F{Feature or fix on GitHub?}
+    F -- No --> G[Push complete]
+    F -- Yes --> H[Read existing PR and verify checkpoint]
+    H -- Missing PR or duplicate checkpoint --> G
+    H -- Verified --> I[Comment with reviewed body or commit summary]
+    I -- Success --> G
+    H -- Error --> J[Warn that reporting failed after successful push]
+    I -- Error --> J
+```
+
+## RAC-ENV-001: shared local and GitHub resolution
+
+Configuration-dependent automation uses a shared resolver: explicit invocation options, then the
+selected checkout's `.env`, then programmatic discovery. Invalid/empty or duplicate configured
+runtime assignments fail explicitly. Discovery prefers Podman before Docker on Windows and Linux.
+`Initialize-CiEnvironment.ps1 -Target Local|GitHub` generates the preset through the guarded dotenv
+editor. Applicable GitHub jobs initialize their Docker preset after checkout. Tests cover precedence,
+platform-independent Podman preference, malformed literals, idempotence and no-write previews. Only an effective
+public runtime key is staged for containers; private dotenv files and other keys are not copied.
+See [the environment contract](ci/environment.md).
+
 ## RAC-WF-001: workflow documentation follows the source
 
 Every file matching .github/workflows/*.* has a corresponding docs/ci/github/script-<basename>.md. The authored contract describes purpose, triggers, scripts/effects and validation limits. Any change to the source requires reviewing that document and updating its workflow-source-sha256 receipt; the generator never refreshes the receipt automatically. Duplicate basenames fail.

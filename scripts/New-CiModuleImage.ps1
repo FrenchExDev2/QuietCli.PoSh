@@ -25,7 +25,7 @@ exclusive responsibility of the linux-images job calling New-CiImage.ps1 directl
 .PARAMETER PlanOnly
 Resolve inputs offline without executing a binary or reading credentials.
 .PARAMETER ContainerRuntime
-Optional Docker/Podman adapter; empty discovers Docker then Podman. GitHub selects Docker explicitly.
+Explicit selection overrides the checkout dotenv key; absent configuration uses Podman-first application discovery on Windows and Linux.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$Module,[Parameter(Mandatory)][ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$RegistryCache,[switch]$PublishCache,[switch]$PlanOnly,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime)
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot Common.ps1);. (Join-Path $PSScriptRoot CiImages.ps1)
@@ -40,7 +40,7 @@ $plan=Get-QuietCiModuleImagePlan $WorkspaceRoot $RuntimeIdentifier $Module $modu
 if($PlanOnly){return $plan}
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-CiModuleImage')){return}
 
-$ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime
+$ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 $registryCredential=$env:QUIETCLI_REGISTRY_TOKEN
 try{$coreImage=& (Join-Path $PSScriptRoot 'New-CiImage.ps1') -RuntimeIdentifier $RuntimeIdentifier -WorkspaceRoot $WorkspaceRoot -RegistryCache:$RegistryCache -ContainerRuntime $ContainerRuntime}
 finally{$env:QUIETCLI_REGISTRY_TOKEN=$registryCredential;$registryCredential=$null}

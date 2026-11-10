@@ -1,5 +1,7 @@
 # Invoke-ContainerColdStartWorker.ps1
 
+Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
+
 ## Purpose and usage
 
 Stages a built baseline/candidate and runs Invoke-ColdStartGate.ps1 in an owned networkless container.
@@ -8,7 +10,7 @@ Stages a built baseline/candidate and runs Invoke-ColdStartGate.ps1 in an owned 
 ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot <root> -RunDirectory <owned-directory> -Image <local-id> -Platform alpine -CandidateModule <manifest> -ExpectedRuntimeIdentifier linux-musl-arm64 -ContainerRuntime docker
 ```
 
-WorkspaceRoot, RunDirectory, Image, Platform and CandidateModule are required. CandidateLabel defaults to readytorun; ExpectedRuntimeIdentifier verifies the guest target. ContainerRuntime accepts Docker/Podman; empty discovers Docker then Podman using Get-Command. GitHub explicitly selects Docker on native Ubuntu CPU runners and calls this worker without Watch-Tests or an extra launcher PowerShell process.
+WorkspaceRoot, RunDirectory, Image, Platform and CandidateModule are required. CandidateLabel defaults to readytorun; ExpectedRuntimeIdentifier verifies the guest target. ContainerRuntime accepts Docker/Podman; empty reads checkout `.env`, then discovers Podman before Docker on Windows and Linux using Get-Command. GitHub explicitly selects Docker on native Ubuntu CPU runners and calls this worker without Watch-Tests or an extra launcher PowerShell process.
 
 ## Dependencies and side effects
 

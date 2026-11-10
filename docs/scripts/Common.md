@@ -6,12 +6,16 @@ objects and starts no process. Full evidence remains in the selected run directo
 
 ## Purpose
 
-`Resolve-QuietVirtEngine [-ContainerRuntime docker|podman] [-Available]` discovers Docker then
-Podman with Get-Command when the selection is empty. Explicit selection is preserved; Available
+`Resolve-QuietVirtEngine -WorkspaceRoot $root [-ContainerRuntime docker|podman] [-Available]`
+uses the explicit selection, then `QUIET_CONTAINER_RUNTIME` from the selected checkout's `.env`,
+then Get-Command discovery: Podman before Docker on Windows and Linux.
+Invalid, empty or duplicate assignments fail explicitly. A configured engine never silently falls
+back to another one. Available
 also verifies an explicit engine exists as an application. It starts no daemon, performs no network
 operation and makes no health claim. Container launchers resolve once and forward the engine;
 image PlanOnly remains offline and does not require discovery. AutomationContracts.Tests.ps1
-covers every availability/explicit-selection combination and a preference-order mutant.
+covers every availability/explicit-selection combination, the platform-independent preference, configuration precedence and a preference-order mutant. See the
+[environment contract](../ci/environment.md) for deterministic Local/GitHub initialization.
 
 The shared, load-bearing operational layer most other scripts in this folder depend on. It supplies the one approved way to shell out to a native tool with bounded failure diagnostics (`Invoke-WorkspaceNative`), the one approved way to publish JSON state atomically for a read-only monitor to observe (`Write-WorkspaceJson`), the supervisor loop that owns a background worker process together with its dedicated visible monitor window, restarting that monitor (bounded to 3 attempts) if it dies before the run reaches a terminal state (`Wait-WorkspaceWorker`), and a single reusable parser for human-readable size thresholds (`ConvertTo-QuietByteCount`, added for `Commit-Workspace.ps1`'s binary/oversized-file sniffer, but not special-cased to it — any script needing a size threshold, such as `Test-WorkspacePackage.ps1`'s hardcoded archive limits, can reuse it instead of duplicating the parsing). It is dot-sourced by at least 28 other scripts in this folder (confirmed by search), making it the single most depended-upon file in the set. It is itself a hub: it dot-sources `ReportPaths.ps1`, `Ci.Process.ps1`, `SourceIdentity.ps1`, and `RuntimeTargets.ps1` (lines 1, 3, 4, 5), so every caller gets that whole chain for free with one dot-source.
 
@@ -40,7 +44,7 @@ worker's script scope does not make the helpers available to functions defined i
 The companion's clean-process import regression checks helper source paths and prevents accidental
 helper exports; CI test execution remains independent of workstation profile initialization.
 
-- Dot-sources `ReportPaths.ps1`, `Ci.Process.ps1`, `SourceIdentity.ps1`, `RuntimeTargets.ps1` (lines 1, 3-5).
+- Dot-sources `ReportPaths.ps1`, `Ci.Process.ps1`, `SourceIdentity.ps1`, `RuntimeTargets.ps1` and `EnvFile.ps1`.
 - Shells out indirectly through `Invoke-CiProcess` (from `Ci.Process.ps1`).
 - `Wait-WorkspaceWorker` directly references a fixed sibling script path, `Join-Path $PSScriptRoot 'Watch-Tests.ps1'` (line 89), and reuses `ConvertTo-CiArgument` (also from `Ci.Process.ps1`) to rebuild a monitor-restart command line (line 98).
 
@@ -80,7 +84,7 @@ Stop-WorkspaceWorker -WorkspaceRoot <root> -RunDirectory <printed-run-directory>
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Selects an explicit container engine or discovers Docker then Podman on PATH without starting either.
+Purpose: Resolves an explicit engine, checkout dotenv configuration, then Podman before Docker on every host.
 
 Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 1.
 

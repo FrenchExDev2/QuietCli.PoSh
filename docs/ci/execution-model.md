@@ -23,7 +23,11 @@ flowchart TD
     A --> P[Local Docker or Podman container tests]
     P --> VR{ContainerRuntime supplied?}
     VR -- Yes --> VE[Use the selected engine]
-    VR -- No --> VA[Get-Command: Docker first then Podman]
+    VR -- No --> VK{Checkout .env runtime key?}
+    VK -- Absent --> VA[Get-Command: Podman before Docker on Windows and Linux]
+    VK -- Present --> VV{Exactly podman or docker?}
+    VV -- Yes --> VE
+    VV -- No --> VF[Configuration error]
     VA --> VE
     VE --> VC[Run the prepared image through the shared worker]
     VC --> R
@@ -176,8 +180,11 @@ token permissions also require real GitHub execution.
 ## Adaptation gaps to address separately
 
 - Workstation container tests accept an explicit Docker or Podman `-ContainerRuntime`. When empty,
-  `Resolve-QuietVirtEngine -Available` discovers applications with `Get-Command`, preferring Docker
-  when both exist. Discovery does not start a daemon or prove its health; missing engines fail explicitly.
+  `Resolve-QuietVirtEngine -Available -WorkspaceRoot $root` reads the checkout's `.env` runtime key
+  before discovering applications with `Get-Command`, preferring Podman before Docker on Windows and Linux. Invalid, empty or duplicate assignments fail; explicit selection always wins.
+  `Initialize-CiEnvironment.ps1 -Target Local` writes the deterministic workstation preset; GitHub
+  execution jobs initialize their Docker preset after checkout. See the [environment contract](environment.md).
+  Resolution does not start a daemon or prove its health; missing selected engines fail explicitly.
   Native workstation tests require neither. Offline image `-PlanOnly` skips engine discovery. The main
   GitHub path selects Docker and GitHub-managed job containers, with no Podman dependency on Windows.
 - Core image preparation removes `QUIETCLI_REGISTRY_TOKEN` from the child environment. The derived

@@ -3,7 +3,7 @@
 ## Purpose
 
 The local architecture/build helpers accept an empty ContainerRuntime and use the shared
-Resolve-QuietVirtEngine discovery (Docker, then Podman). Explicit selections remain unchanged.
+Resolve-QuietVirtEngine resolution: explicit selection, checkout `.env`, then Podman before Docker on Windows and Linux. See the [environment contract](../ci/environment.md).
 The public image scripts return PlanOnly metadata before discovery. A command being installed
 does not establish a working daemon, matching architecture or registry permission; those checks
 remain in the build/inspection path.
@@ -27,10 +27,10 @@ A function library; no script-level params.
 | `Get-QuietCiImagePlan` | `WorkspaceRoot`, `RuntimeIdentifier` (`ValidateSet` of 4 Linux RIDs) |
 | `Get-QuietModuleContainerfile` | `Platform` (Mandatory, `ValidateSet('debian','alpine')`), `Objective` (Mandatory), `Stages` (Mandatory) |
 | `Get-QuietCiModuleImagePlan` | `WorkspaceRoot`, `RuntimeIdentifier`, `Module` (Mandatory), `ContainerfileFragment` (Mandatory), `ModuleArguments` (Mandatory), `ModuleInputPaths` (Mandatory) |
-| `Get-QuietCiLocalImageArchitecture` | `Reference` (Mandatory), `ContainerRuntime` (empty discovers Docker then Podman) |
+| `Get-QuietCiLocalImageArchitecture` | `Reference` (Mandatory), `ContainerRuntime` (empty uses the shared resolver) |
 | `Get-QuietCiRegistryDigest` | `Plan`, `Token`, `Actor`, `IncludeConfiguration` (switch) |
 | `ConvertTo-QuietCiRegistryDiagnostic` | `Text`, `Token`, `Actor`; redacts before retention and limits each line to 2048 characters |
-| `Invoke-QuietCiImageBuild` | `Plan`, `ContextDirectory` (Mandatory), `WorkspaceRoot` (Mandatory), `ArtifactPrefix` (Mandatory), `RegistryCache`, `PublishCache`, `ContainerRuntime` (empty discovers Docker then Podman; GitHub selects `docker`) |
+| `Invoke-QuietCiImageBuild` | `Plan`, `ContextDirectory` (Mandatory), `WorkspaceRoot` (Mandatory), `ArtifactPrefix` (Mandatory), `RegistryCache`, `PublishCache`, `ContainerRuntime` (empty uses the shared resolver; GitHub selects `docker`) |
 
 ```powershell
 . ./scripts/CiImages.ps1
