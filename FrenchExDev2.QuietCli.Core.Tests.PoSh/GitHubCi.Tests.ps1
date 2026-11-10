@@ -1,3 +1,44 @@
+function Test-QuietContainerInputs {
+    <#
+    .SYNOPSIS
+    Verifies offline staging of docs and restored packages, preview effects and hostile package paths.
+    .PARAMETER WorkspaceRoot
+    Source checkout providing the real staging function and inert module manifests.
+    .PARAMETER RunDirectory
+    Owned staging/property fixtures, never a real container or registry.
+    #>
+    param([string]$WorkspaceRoot,[string]$RunDirectory)
+    . (Join-Path $WorkspaceRoot scripts/ContainerInputs.ps1)
+    $fixture=Join-Path $RunDirectory container-input-fixture
+    foreach($name in @('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh')){
+        $directory=Join-Path $fixture $name;[void][IO.Directory]::CreateDirectory($directory)
+        Copy-Item -LiteralPath (Join-Path $WorkspaceRoot ($name+'/'+$name+'.psd1')) -Destination $directory
+    }
+    foreach($relative in @('scripts/staged.ps1','build/lock.json','docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','README.md','.env','secret.json')){
+        $path=Join-Path $fixture $relative;[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path));[void][IO.File]::WriteAllTextAsync($path,'fixture-é漢',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    }
+    $cache=Join-Path $RunDirectory restored-packages
+    [void][IO.Directory]::CreateDirectory((Join-Path $cache 'system.fixture/1.0.0'))
+    [void][IO.File]::WriteAllTextAsync((Join-Path $cache system.fixture/1.0.0/content.txt),'restored-package',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $assetsPath=Join-Path $fixture FrenchExDev2.QuietCli.Core.PoSh/engine/obj/project.assets.json
+    $assets=@{libraries=@{fixture=@{type='package';path='system.fixture/1.0.0'}};packageFolders=@{$cache=@{}}}
+    Write-WorkspaceJson $assetsPath $assets
+    $stage=Join-Path $RunDirectory container-input-stage
+    $null=Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $stage -WhatIf
+    if(Test-Path -LiteralPath $stage){throw 'ContainerStagePreviewWroteFiles'}
+    Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $stage -Confirm:$false
+    foreach($relative in @('docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','artifacts/nuget-cache/system.fixture/1.0.0/content.txt')){
+        if(!(Test-Path -LiteralPath (Join-Path $stage $relative))){throw ('ContainerInputMissing: '+$relative)}
+    }
+    if((Test-Path (Join-Path $stage .env)) -or (Test-Path (Join-Path $stage secret.json)) -or (Test-Path (Join-Path $stage FrenchExDev2.QuietCli.Core.PoSh/engine/obj))){throw 'ContainerStageCopiedUndeclaredInputs'}
+    $bad=@('../outside','x/../outside','/root/private','C:\private','x/1.0/extra',"x/1.0`n")
+    foreach($relative in $bad){
+        $assets.libraries.fixture.path=$relative;Write-WorkspaceJson $assetsPath $assets
+        $rejected=$false;try{Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination (Join-Path $RunDirectory ('bad-stage-'+[guid]::NewGuid().ToString('N'))) -Confirm:$false}catch{$rejected=$_.Exception.Message -eq 'ContainerNuGetPackagePathInvalid'}
+        if(!$rejected){throw 'ContainerNuGetPathEscapeAccepted'}
+    }
+    Write-WorkspaceJson (Join-Path $RunDirectory container-inputs.json) @{Preview='No writes';RestoredPackages=1;MalformedPaths=$bad.Count;SecretsCopied=$false;ContainerStarted=$false}
+}
 function Test-QuietCompanionHelperScope {
     <#
     .SYNOPSIS

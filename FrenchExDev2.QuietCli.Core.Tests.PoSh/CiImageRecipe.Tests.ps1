@@ -33,7 +33,8 @@ function Test-QuietCiImageRecipe {
         if($Alpine){
             if('powershell=$POWERSHELL_PACKAGE' -cnotin @($final.Packages -split '\s+')){throw 'AlpinePowerShellNotInstalled'}
             if(('POWERSHELL_PACKAGE='+$Version) -cnotin @($final.Args) -or $Declaration.Arguments.POWERSHELL_PACKAGE -cne $Version){throw 'AlpinePowerShellVersionNotLocked'}
-            if($final.Env.DOTNET_ROOT -cne '/usr/lib/dotnet'){throw 'AlpinePowerShellRuntimeRootIncorrect'}
+            if($final.Env.DOTNET_ROOT -cne '/opt/pwsh-runtime'){throw 'AlpinePowerShellRuntimeRootIncorrect'}
+            if($Declaration.Arguments.RUNTIME_URL -notmatch '/Runtime/10\.0\.\d+/dotnet-runtime-10\.0\.\d+-linux-musl-(x64|arm64)\.tar\.gz\z' -or $Declaration.Arguments.RUNTIME_SHA512 -cnotmatch '\A[a-f0-9]{128}\z' -or @($final.Copy|Where-Object Spec -CEQ '/opt/pwsh-runtime /opt/pwsh-runtime').Count -ne 1){throw 'AlpinePortableRuntimeNotPinnedOrCopied'}
         }elseif($final.Env.DOTNET_ROOT -cne '/usr/share/dotnet'){throw 'DebianRuntimeRootChanged'}
         if(($final.Env.PATH -split ':')[0] -cne '/usr/share/dotnet'){throw 'PinnedSdkNotFirstOnPath'}
         if(($final.Entrypoint -join ' ') -cne 'pwsh'){throw 'PowerShellEntrypointMissing'}
@@ -66,7 +67,7 @@ function Test-QuietCiImageRecipe {
     $mutants=@(
         @{Name='powershell-installation-removed';From="if(`$platform -ceq 'alpine'){`$ciPackages+=' powershell=`$POWERSHELL_PACKAGE'}";To=''},
         @{Name='powershell-package-unpinned';From=' powershell=$POWERSHELL_PACKAGE';To=' powershell'},
-        @{Name='alpine-host-root-points-at-sdk';From="DOTNET_ROOT='/usr/lib/dotnet'";To="DOTNET_ROOT='/usr/share/dotnet'"},
+        @{Name='alpine-host-root-points-at-sdk';From="DOTNET_ROOT='/opt/pwsh-runtime'";To="DOTNET_ROOT='/usr/share/dotnet'"},
         @{Name='alpine-sdk-path-shadowed';From="PATH='/usr/share/dotnet:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'";To="PATH='/usr/bin:/bin'"},
         @{Name='package-final-newline-accepted';From='\A7\.[6-9]\.\d+-r\d+\z';To='^7\.[6-9]\.\d+-r\d+$'}
     )

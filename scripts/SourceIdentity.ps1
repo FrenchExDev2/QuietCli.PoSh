@@ -15,7 +15,7 @@ function Get-QuietSourceFiles {
     while($pending.Count){
         $directory=$pending.Pop()
         foreach($item in Get-ChildItem -LiteralPath $directory -Force){
-            if($item.Name -in @('.git','bin','obj','artifacts','.vs')){continue}
+            if($item.Name -in @('.git','bin','obj','artifacts','.vs','.profilers')){continue}
             if($item.Name -eq 'lib' -and $item.FullName -ne (Join-Path $rootPath 'scripts/lib')){continue}
             if($directory -eq $rootPath -and $item.Name -in $ExcludeChildren){continue}
             if($directory -eq $rootPath -and $item.Name -eq 'repositories.lock.json'){continue}

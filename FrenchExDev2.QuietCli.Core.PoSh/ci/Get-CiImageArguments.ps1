@@ -42,6 +42,10 @@ if($platform -ceq 'debian'){
 }else{
     if($lock.AlpinePowerShellPackage -cnotmatch '\A7\.[6-9]\.\d+-r\d+\z'){throw 'CiImagePowerShellLockInvalid'}
     $arguments.POWERSHELL_PACKAGE=$lock.AlpinePowerShellPackage
+    if($lock.AlpineRuntime -cnotmatch '\A10\.0\.\d+\z' -or $target.Runtime_SHA512 -cnotmatch '\A[a-f0-9]{128}\z'){throw 'CiImageRuntimeLockInvalid'}
+    $arguments.RUNTIME_URL="https://builds.dotnet.microsoft.com/dotnet/Runtime/$($lock.AlpineRuntime)/dotnet-runtime-$($lock.AlpineRuntime)-$RuntimeIdentifier.tar.gz"
+    $arguments.RUNTIME_SHA512=$target.Runtime_SHA512
+    $toolsArgs+=@('RUNTIME_URL','RUNTIME_SHA512')
 }
 # gcc/clang/etc. only serve a separate, local-only native mutation/ASan/UBSan campaign (docs/ci/linux-images.md);
 # the ordinary CI matrix never uses them, so they are excluded by default and only added when that campaign
@@ -53,8 +57,8 @@ if($mutationTesting){$ciPackages+=if($platform -ceq 'debian'){' gcc libc6-dev g+
 $envMap=if($platform -ceq 'debian'){
     [ordered]@{DOTNET_ROOT='/usr/share/dotnet';PATH='/usr/share/dotnet:/usr/local/bin:/usr/bin:/bin';LANG='C.UTF-8';DOTNET_CLI_TELEMETRY_OPTOUT='1';POWERSHELL_TELEMETRY_OPTOUT='1';DOTNET_NOLOGO='1'}
 }else{
-    # The framework-dependent Alpine PowerShell uses the distribution CLR; dotnet on PATH retains the pinned SDK's own root.
-    [ordered]@{DOTNET_ROOT='/usr/lib/dotnet';PATH='/usr/share/dotnet:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';LANG='C.UTF-8';DOTNET_SYSTEM_GLOBALIZATION_INVARIANT='false';DOTNET_CLI_TELEMETRY_OPTOUT='1';POWERSHELL_TELEMETRY_OPTOUT='1';DOTNET_NOLOGO='1'}
+    # Microsoft builds report the portable musl RID; the distro runtime reports an Alpine-version RID.
+    [ordered]@{DOTNET_ROOT='/opt/pwsh-runtime';PATH='/usr/share/dotnet:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';LANG='C.UTF-8';DOTNET_SYSTEM_GLOBALIZATION_INVARIANT='false';DOTNET_CLI_TELEMETRY_OPTOUT='1';POWERSHELL_TELEMETRY_OPTOUT='1';DOTNET_NOLOGO='1'}
 }
 $ciStage=[pscustomobject]@{Name='ci';From=$target.Base;Args=$null;Packages=$ciPackages;Copy=@([pscustomobject]@{Stage='tools';Spec='/opt/dotnet /usr/share/dotnet'});Run=$null;Env=$envMap;PathPrefix=$null;WorkDir='/workspace';Entrypoint=@('pwsh')}
 if($platform -ceq 'debian'){
@@ -62,6 +66,7 @@ if($platform -ceq 'debian'){
     $ciStage.Run=@('ln -s /opt/powershell/pwsh /usr/local/bin/pwsh')
 }else{
     $ciStage.Args=@('POWERSHELL_PACKAGE='+$lock.AlpinePowerShellPackage)
+    $ciStage.Copy+=[pscustomobject]@{Stage='tools';Spec='/opt/pwsh-runtime /opt/pwsh-runtime'}
 }
 $containerfile=[pscustomobject]@{
     Platform=$platform

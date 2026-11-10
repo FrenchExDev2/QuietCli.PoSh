@@ -75,7 +75,7 @@ $result = & $LauncherPath -Code {
     $runtime.Data.Native = quiet -AsObject -StdoutMode Bytes -Data @{ Bytes = 0L } -Output {
         param($event, $native)
         if ($event.Stream -eq 'stdout') { $native.Data.Bytes += $event.ByteCount }
-    } -Complete { param($native) $native.Data } -FilePath (Join-Path $PSHOME $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' })) -ArgumentList @('-NonInteractive', '-Command', '[Console]::Out.Write("é漢")')
+    } -Complete { param($native) $native.Data } -FilePath (Join-Path $PSHOME $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' })) -ArgumentList @('-NonInteractive', '-Command', '[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); [Console]::Out.Write("é漢")')
     $runtime.Data.Native
 }
 if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis -or $result.Error.Count -or $result.Data.Bytes -ne 5) { throw 'LauncherNativeCallFailed' }
@@ -89,9 +89,10 @@ try {
 [Console]::Out.Write('LauncherNativeSuccess')
 '@
         [void][IO.File]::WriteAllTextAsync($bootstrap, $source.Replace("`r`n", "`n"), [Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-        $result = quiet -AsObject -WorkingDirectory $root -RecordDelimiter "`n" -Data @{ Text = '' } -Output {
+        $result = quiet -AsObject -WorkingDirectory $root -RecordDelimiter "`n" -Data @{ Text = ''; Diagnostic = '' } -Output {
             param($event, $runtime)
             if ($event.Stream -eq 'stdout') { $runtime.Data.Text += $event.Text }
+            elseif ($runtime.Data.Diagnostic.Length -lt 4096) { $runtime.Data.Diagnostic += $event.Text }
         } -Complete { param($runtime) $runtime.Data } -FilePath (Join-Path $PSHOME $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' })) -ArgumentList @('-NonInteractive', '-File', $bootstrap, '-LauncherPath', $launcher)
         # ShouldProcess preview text is host output and can precede the final success marker.
         if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis -or $result.Error.Count -or !$result.Data.Text.EndsWith('LauncherNativeSuccess')) {
@@ -177,7 +178,7 @@ try {
     }
     $cases['generated script matches direct execution, supports overrides and recreates state'] = {
         $runner = Join-Path $PSHOME $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' })
-        $nativeArguments = @('-NoLogo','-NonInteractive','-Command', '[Console]::Error.WriteLine((ConvertTo-Json -Compress -InputObject @{PowerShell=$PSVersionTable.PSVersion.ToString();Runtime=[Environment]::Version.ToString();OutputCodePage=[Console]::OutputEncoding.CodePage;InputCodePage=[Console]::InputEncoding.CodePage;FixtureHex=[Convert]::ToHexString([Console]::OutputEncoding.GetBytes("é漢"))})); [Console]::Out.Write("é漢")')
+        $nativeArguments = @('-NoLogo','-NonInteractive','-Command', '[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); [Console]::Error.WriteLine((ConvertTo-Json -Compress -InputObject @{PowerShell=$PSVersionTable.PSVersion.ToString();Runtime=[Environment]::Version.ToString();OutputCodePage=[Console]::OutputEncoding.CodePage;InputCodePage=[Console]::InputEncoding.CodePage;FixtureHex=[Convert]::ToHexString([Console]::OutputEncoding.GetBytes("é漢"))})); [Console]::Out.Write("é漢")')
         $factory = { @{ Bytes = 0L; StateCount = 0; Completions = 0; Hex = ''; Diagnostic = '' } }
         $stateFactory = { @{ Events = 0 } }
         $output = { param($event, $runtime)

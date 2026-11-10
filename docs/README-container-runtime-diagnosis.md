@@ -72,8 +72,10 @@ native dependencies being investigated. Merely declaring `ARG POWERSHELL_PACKAGE
 `ENTRYPOINT ["pwsh"]` does not install PowerShell.
 
 For Alpine, the declaration includes `powershell=$POWERSHELL_PACKAGE` in the final-stage package
-installation, with the argument taken from the reviewed lock. PowerShell uses the distribution runtime
-through `DOTNET_ROOT=/usr/lib/dotnet`. The SDK remains first on `PATH` under `/usr/share/dotnet`, so the
+installation, with the argument taken from the reviewed lock. The main CI image now selects a separate
+Microsoft runtime, verified by its locked SHA-512, through `DOTNET_ROOT=/opt/pwsh-runtime`. This keeps
+the portable musl RID required by module selection; the distro runtime remains a diagnostic control.
+The SDK remains first on `PATH` under `/usr/share/dotnet`, so the
 same image can start stable PowerShell on CLR 10 and the pinned SDK on its own CLR 11.
 
 Verify these entries in the rendered plan after changing the declaration. No package installation on

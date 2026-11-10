@@ -1,4 +1,5 @@
-. (Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts/Common.ps1')
+$workspaceHelpers=Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts/Common.ps1'
+if(Test-Path -LiteralPath $workspaceHelpers){. $workspaceHelpers}
 . (Join-Path $PSScriptRoot 'Script.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Configuration.TestSupport.ps1')
 . (Join-Path $PSScriptRoot 'Recall.Large.Tests.ps1')
@@ -209,6 +210,7 @@ Executes independent native byte and object invariants in a companion module.
     $cases['GitHub CI separates native containers, Docker fallback and workstation launchers']={Test-QuietGitHubCi -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['GitHub CI JSON receipts create missing parents and preserve preview boundaries']={Test-QuietGitHubCiJsonReceipts -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['GitHub CI companion helpers load privately without caller profile dependencies']={Test-QuietCompanionHelperScope -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['GitHub CI container inputs include docs and restored packages without secrets or path escapes']={Test-QuietContainerInputs -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['ReadyToRun builds and loads the matching RID and CLR with portable fallbacks']={Test-QuietReadyToRun -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['automation contracts require available runtimes accurate workflow graphs and safe previews']={Test-QuietAutomationContracts -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['automation report streaming preserves Unicode fragments and bounded diagnostic tails']={Test-QuietReportStreaming -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}

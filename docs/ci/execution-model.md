@@ -33,10 +33,12 @@ flowchart TD
     GL --> C[GitHub job container]
     GL --> D[Docker fallback on native Ubuntu runner]
     C --> E
-    D --> DC[Networkless test container]
+    D --> S[Stage sources docs binaries and restored NuGet packages]
+    S --> DC[Networkless test container]
     DC --> E
     E --> T[Shared companion tests and assertions]
-    T --> F[Revision-bound reports and failure diagnostics]
+    T --> B[Collect reports and record explicit gaps on failure]
+    B --> F[Revision-bound reports and failure diagnostics]
 ```
 
 ```mermaid

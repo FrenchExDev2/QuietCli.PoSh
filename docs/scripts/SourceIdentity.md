@@ -7,6 +7,8 @@ Common.ps1 loads deterministic source/binary identity helpers. `Get-QuietWorkspa
 ## Dependencies and side effects
 
 Depends on WorkspaceProjects.ps1, RuntimeTargets.ps1 and Write-WorkspaceJson from Common.ps1. Reads source/compiled files; read-only Git metadata calls use Ci.Process.ps1. Only Write-QuietBuildManifest writes its output manifest. Source enumeration prunes generated output and rejects links. No publication, repository mutation or build is implicit.
+The `.profilers` tool cache is generated input, excluded from source enumeration and repository LF
+checks. Pinned third-party profiler files retain their original bytes and are not normalized as source.
 
 ## Critical review
 

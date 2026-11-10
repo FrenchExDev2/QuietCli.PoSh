@@ -19,7 +19,7 @@ function Get-GitHubCiExecutionMatrix {
         if($row.Reference -and $row.Reference -cnotmatch '^ghcr\.io/frenchexdev2/quietcli2-ci-[a-z0-9-]+@sha256:[a-f0-9]{64}$'){throw 'GitHubCiMutableImageRejected'}
         # GitHub's Node action host rejects Alpine ARM64; execute those actions on Ubuntu and tests in Docker.
         $useContainer=$row.Reference -and $rid -cne 'linux-musl-arm64'
-        if($useContainer){$native.Add(@{rid=$rid;platform=$platform;runner=$runner;image=$row.Reference;dotnet_root=$(if($platform -eq 'alpine'){'/usr/lib/dotnet'}else{'/usr/share/dotnet'})})}
+        if($useContainer){$native.Add(@{rid=$rid;platform=$platform;runner=$runner;image=$row.Reference;dotnet_root=$(if($platform -eq 'alpine'){'/opt/pwsh-runtime'}else{'/usr/share/dotnet'})})}
         else{$fallback.Add(@{rid=$rid;platform=$platform;runner=$runner;reason=$(if(!$row.Reference){'Verified image unavailable; build locally without publication'}else{'GitHub JavaScript actions do not support Alpine ARM64'})})}
     }
     [pscustomobject]@{Container=@{include=$native.ToArray()};Fallback=@{include=$fallback.ToArray()};HasContainer=($native.Count -gt 0);HasFallback=($fallback.Count -gt 0)}

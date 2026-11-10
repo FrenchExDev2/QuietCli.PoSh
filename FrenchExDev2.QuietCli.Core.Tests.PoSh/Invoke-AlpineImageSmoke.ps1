@@ -82,7 +82,8 @@ try{
     $state.Platform=$probe.RuntimeIdentifier
     $locked=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'build/ci-images.lock.json') -Raw -Encoding utf8|ConvertFrom-Json
     Assert-AlpineSmoke 'The installed PowerShell version matches the locked package' ($probe.PowerShellVersion -ceq ($locked.AlpinePowerShellPackage -replace '-r\d+$',''))
-    Assert-AlpineSmoke 'Stable PowerShell uses the distribution CLR 10' ($probe.FrameworkMajor -eq 10 -and $probe.RuntimeDirectory.StartsWith('/usr/lib/dotnet/'))
+    Assert-AlpineSmoke 'Stable PowerShell uses the locked Microsoft CLR 10' ($probe.FrameworkMajor -eq 10 -and $probe.RuntimeDirectory.StartsWith(('/opt/pwsh-runtime/shared/Microsoft.NETCore.App/'+$locked.AlpineRuntime+'/')))
+    Assert-AlpineSmoke 'The actual portable musl RID matches the selected native target' ($probe.RuntimeIdentifier -ceq $RuntimeIdentifier)
     Assert-AlpineSmoke 'The expected musl SQLite asset actually loads' ($probe.Libc -ceq 'Musl' -and $probe.ExpectedNative.Outcome -ceq 'Success' -and $probe.ExpectedNative.HashMatches)
     Assert-AlpineSmoke 'No runtime-root bootstrap correction is needed' (!$diagnosis.BootstrapConfigurationProblem)
     Assert-AlpineSmoke 'Runtime diagnostic container removal was confirmed' ($report.State.Cleanup -ceq 'RemovedOwnedContainer')

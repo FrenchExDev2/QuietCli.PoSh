@@ -39,6 +39,7 @@ end {
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ContainerWorker')){return}
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
+. (Join-Path $PSScriptRoot 'ContainerInputs.ps1')
 $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime
 $owner=[guid]::NewGuid().ToString('N');$name='quietcli2-'+$owner.Substring(0,12)
 $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Tests Podman';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=$Platform;State='Preparing';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;ContainerId=$name;Passed=$null;Failed=$null;Case='Staging explicit source files';FinishedUtc=$null;Error=$null;Image=$Image;Owner=$owner}
@@ -52,17 +53,7 @@ Write-WorkspaceJson $status $state
 $created=$false
 try{
     $stage=Join-Path $RunDirectory 'workspace';[void][IO.Directory]::CreateDirectory($stage)
-    $sourceDirectories=if($Suite -eq 'Mutation'){@('FrenchExDev2.QuietCli.Core.PoSh/native','FrenchExDev2.QuietCli.Core.PoSh/resources/transport','FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests')}else{@('scripts','build','.github/containers','.github/workflows')+@((Get-QuietWorkspaceProjects $WorkspaceRoot).Path)}
-    foreach($directory in $sourceDirectories){
-        $source=Join-Path $WorkspaceRoot $directory
-        foreach($file in Get-ChildItem -LiteralPath $source -Recurse -File -Force){
-            $relative=[IO.Path]::GetRelativePath($source,$file.FullName)
-            if($relative -match '(^|[\\/])(\.git|bin|obj|artifacts)[\\/]'){continue}
-            $destination=Join-Path (Join-Path $stage $directory) $relative
-            [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
-            Copy-Item -LiteralPath $file.FullName -Destination $destination
-        }
-    }
+    Copy-QuietContainerInputs -WorkspaceRoot $WorkspaceRoot -Destination $stage -NativeOnly:($Suite -eq 'Mutation') -Confirm:$false
     if($Suite -eq 'Mutation'){
         [void][IO.Directory]::CreateDirectory((Join-Path $stage scripts))
         foreach($file in @('ReportPaths.ps1','Ci.Process.ps1','Common.ps1','SourceIdentity.ps1','WorkspaceProjects.ps1','RuntimeTargets.ps1','Assert-PtyQualification.ps1','Watch-Tests.ps1','Monitor.Time.ps1','ReportStreaming.ps1')){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $stage ('scripts/'+$file))}
@@ -96,8 +87,9 @@ try{
     }
     $memoryLimits=if($Suite -eq 'Mutation'){@('--memory','1g','--memory-swap','1g')}else{@()}
     # Alpine's framework-dependent PowerShell uses the distribution .NET 10 runtime; the SDK has its own .NET 11 root.
-    $runtimeEnvironment=if($Platform -eq 'alpine'){@('--env','DOTNET_ROOT=/usr/lib/dotnet')}else{@()}
+    $runtimeEnvironment=if($Platform -eq 'alpine'){@('--env','DOTNET_ROOT=/opt/pwsh-runtime')}else{@()}
     if($GitHubActions){$runtimeEnvironment+=@('--env','GITHUB_ACTIONS=true')}
+    if($Suite -ne 'Mutation'){$runtimeEnvironment+=@('--env','NUGET_PACKAGES=/workspace/artifacts/nuget-cache')}
     $null=Invoke-WorkspaceNative $ContainerRuntime (@('create','--pull=never','--name',$name,'--label',('org.frenchexdev.quietcli2.owner='+$owner),'--network','none')+$memoryLimits+$runtimeEnvironment+@('--entrypoint','pwsh',$imageState.Id)+$guestArguments) $WorkspaceRoot -TimeoutSeconds 30
     $created=$true
     $null=Invoke-WorkspaceNative $ContainerRuntime @('cp',($stage.Replace('\','/')+'/.'),($name+':/workspace')) $WorkspaceRoot -TimeoutSeconds 90

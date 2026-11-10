@@ -10,13 +10,21 @@ Core mixes pure logic with real filesystem, Git, process and package integration
 
 ## GitHub execution policy and Docker smoke
 
-The companion loads `scripts/Common.ps1` into its own private module scope, including the CI process,
+In a source checkout, the companion loads `scripts/Common.ps1` into its own private module scope, including the CI process,
 JSON, source-identity and project-discovery helpers. Test functions do not depend on a caller script
 or workstation profile having loaded those functions. The focused case `GitHub CI companion helpers
 load privately without caller profile dependencies` verifies exact helper source paths and no export
 leaks in a bounded child PowerShell process; `-NoProfile` is intentional isolation for that regression.
 Architecture assertions distinguish portable integrated hosting from a selected ReadyToRun RID slot,
 using the actual host CLR and its build manifest. Isolated hosting still requires the native RID.
+Source-free test packages retain their offline Recall tools and do not require workspace orchestration
+scripts merely to import. Shared workspace suites still run from a prepared source checkout.
+
+Performance bundles keep a checksummed partial manifest when collection rejects a link or fails to
+read a report, so downstream rendering preserves the original gap. Linked agent-test fixtures remove
+only their link after assertions; their target stays untouched. Unicode child fixtures initialize their
+own UTF-8 output. The resource cleanup test holds its live lease in a separate process, matching Unix
+cross-process file-sharing semantics. Container-input tests cover docs, restored packages and traversal.
 
 The focused case `GitHub CI JSON receipts create missing parents and preserve preview boundaries`
 reproduces receipt publication on a clean checkout. It covers seeded Unicode writes and overwrites,

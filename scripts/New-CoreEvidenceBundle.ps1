@@ -22,19 +22,24 @@ if(![IO.Path]::IsPathRooted($relativeDestination) -and $relativeDestination -not
 [void][IO.Directory]::CreateDirectory($destination)
 $files=[Collections.Generic.List[object]]::new();$gaps=[Collections.Generic.List[string]]::new();$profileSuccess=0
 $profileReports=[Collections.Generic.List[string]]::new()
+$collectionFailures=0
 if(Test-Path -LiteralPath $source){
     $pending=[Collections.Generic.Stack[string]]::new();$pending.Push($source)
     while($pending.Count){
         foreach($item in Get-ChildItem -LiteralPath $pending.Pop() -Force){
-            if($item.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'EvidenceSourceLinkRejected'}
+            if($item.Attributes -band [IO.FileAttributes]::ReparsePoint){$gaps.Add('EvidenceSourceLinkRejected: '+[IO.Path]::GetRelativePath($source,$item.FullName));$collectionFailures++;continue}
             if($item.PSIsContainer){if($item.Name -notin @('workspace','.git','.profilers','bin','obj','lib')){$pending.Push($item.FullName)};continue}
             if($item.Extension -notin @('.json','.nettrace','.log','.txt','.xml','.csv')){continue}
             $relative=[IO.Path]::GetRelativePath($source,$item.FullName)
             $target=Join-Path $destination $relative
             [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
-            $evidenceInputStream=[IO.FileStream]::new($item.FullName,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
-            $evidenceOutputStream=[IO.FileStream]::new($target,[IO.FileMode]::Create,[IO.FileAccess]::Write,[IO.FileShare]::None)
-            try{[void]$evidenceInputStream.CopyToAsync($evidenceOutputStream).GetAwaiter().GetResult()}finally{$evidenceInputStream.Dispose();$evidenceOutputStream.Dispose()}
+            try{
+                $evidenceInputStream=[IO.FileStream]::new($item.FullName,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
+                try{
+                    $evidenceOutputStream=[IO.FileStream]::new($target,[IO.FileMode]::Create,[IO.FileAccess]::Write,[IO.FileShare]::None)
+                    try{[void]$evidenceInputStream.CopyToAsync($evidenceOutputStream).GetAwaiter().GetResult()}finally{$evidenceOutputStream.Dispose()}
+                }finally{$evidenceInputStream.Dispose()}
+            }catch{$gaps.Add('EvidenceCopyFailed: '+$relative+'; '+$_.Exception.Message);$collectionFailures++;continue}
             $files.Add(@{Path=$relative.Replace('\','/');Bytes=(Get-Item $target).Length;SHA256=(Get-FileHash $target -Algorithm SHA256).Hash})
             if($relative.Replace('\','/') -match '^(?:[^/]+/)?(?:guest/)?profiling/summary\.json$'){
                 $profileReports.Add($target)
@@ -43,7 +48,7 @@ if(Test-Path -LiteralPath $source){
     }
 }else{$gaps.Add('No report directory was produced; inspect preceding failed CI steps.')}
 foreach($path in $profileReports){
-    $profileEvidence=Get-Content $path -Raw -Encoding utf8|ConvertFrom-Json
+    try{$profileEvidence=Get-Content $path -Raw -Encoding utf8|ConvertFrom-Json}catch{$gaps.Add('Unreadable profiling evidence: '+[IO.Path]::GetRelativePath($destination,$path));$collectionFailures++;continue}
     if($profileEvidence.State -ne 'Success'){continue}
     $base=Split-Path $path -Parent
     $valid=$profileEvidence.ProfilerVersion -eq '4.3.0' -and $profileEvidence.ClrProfilerVersion -eq '10.0.750501'
@@ -65,4 +70,5 @@ Write-WorkspaceJson (Join-Path $destination 'evidence-manifest.json') @{
     Integrity='SHA-256 detects content changes; this manifest alone does not authenticate its author. GitHub artifact/run identity remains separate.'
 }
 [pscustomobject]@{Directory=$destination;Files=$files.Count;Gaps=$gaps.Count}
+if($collectionFailures){throw 'EvidenceCollectionIncomplete'}
 if($RequireProfiling -and $gaps.Count){throw 'MandatoryProfilingEvidenceMissing'}

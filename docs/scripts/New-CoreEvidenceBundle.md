@@ -26,9 +26,13 @@ Example (from `ci.yml`):
 
 ## Side effects
 
+- Collection failures retain a checksummed partial manifest with explicit `EvidenceGaps` before
+  throwing `EvidenceCollectionIncomplete`. Linked sources are never traversed; individual copy or
+  malformed profiling-JSON failures are recorded and other reports remain available. A downstream
+  performance failure therefore cannot erase the original collection cause.
 - Enforces (`EvidenceDestinationMustBeOutsideReports`, line 20) that `-OutputDirectory` is not inside `-ReportRoot`, via a relative-path check.
 - Creates `-OutputDirectory` if missing.
-- Recursively walks `-ReportRoot` (explicit stack-based traversal, not `Get-ChildItem -Recurse`, lines 25-42), **throwing** `EvidenceSourceLinkRejected` on any reparse point found anywhere in the source tree (line 28) — refuses to follow symlinks.
+- Recursively walks `-ReportRoot` with an explicit stack. Reparse points record `EvidenceSourceLinkRejected` in the manifest and are never followed; the final collection result still fails.
 - Skips the `workspace`, `.git`, `.profilers`, `bin`, `obj`, `lib` subdirectory names entirely (line 29) and only copies files with extensions `.json .nettrace .log .txt .xml .csv` (line 30).
 - Copies every eligible file into `-OutputDirectory`, preserving relative paths, and records `{Path, Bytes, SHA256}` for each.
 - Reads (but does not modify) any `profiling/summary.json`-shaped files found, cross-validating referenced trace/speedscope files' hashes.
@@ -41,12 +45,12 @@ Example (from `ci.yml`):
 - DESIGN: the reparse-point/destination-boundary/path-traversal safety logic in this script (lines 20, 28) duplicates the same *kind* of check already implemented as a reusable, independently tested function in `scripts/lib/WorkstationResources.psm1` (`Test-WorkstationDirectoryBoundary`). The two aren't identical (this script checks `-OutputDirectory` vs `-ReportRoot`, not an owned-run subtree vs a root), but the underlying safety property — "never traverse or write through a symlink, never let a destination end up inside or equal to a protected source" — is the same business rule implemented twice in two different files with two different styles. Per AGENTS.md's DRY guidance ("avoid duplicated business rules, validation or protocol logic"), these could share one helper.
 - CONVENTION: this file has **no doc-comment author-level `.SYNOPSIS`/parameter English-language issue** — unlike several of its siblings, the English comment-based help here (lines 1-12) is clean, with no stray French summary line. This is worth noting positively since several other files in this review carried a French top-line.
 - DESIGN: the hardcoded skip-list for directory names (`'workspace','.git','.profilers','bin','obj','lib'`, line 29) and the hardcoded allowed-extension list (`.json .nettrace .log .txt .xml .csv`, line 30) are inline magic literals with no named constant, parameter, or shared configuration — a future report type using a new extension (e.g. `.trace` for a different profiler, or `.md`) silently drops those files from the evidence bundle with no warning, which could produce a false "evidence complete" signal if a profiling pipeline change introduces a new output file type this script doesn't know about yet.
-- No unhandled error path found for the main copy loop; `Get-FileHash`/`ConvertFrom-Json` failures inside the profiling-validation loop (lines 44-58) are not wrapped in try/catch, so a malformed `summary.json` would throw an unhandled exception and abort the whole bundle rather than being recorded as a gap like other anomalies in this file — inconsistent with the rest of the script's "record a gap, keep going" philosophy (e.g. line 43's `else` branch when `$source` doesn't exist at all).
+- Copy failures and malformed profiling JSON are recorded as explicit gaps. The linked-evidence regression verifies that the real result summary and partial manifest survive rejection, while the linked target remains uncollected.
 - Testability: has a dedicated test — `FrenchExDev2.QuietCli.Core.Tests.PoSh/Evidence.Tests.ps1` references `scripts/New-CoreEvidenceBundle.ps1` directly (line 12 of that test file) and presumably exercises at least the happy path and the destination-boundary guard; the malformed-`summary.json` unhandled-exception path noted above was not confirmed to be covered.
 
 ## Verdict
 
-Solid, security-conscious evidence collection with a correct fail-loud design for missing mandatory profiling; the highest-priority fix is wrapping the profiling-evidence read/validate loop (lines 44-58) in a try/catch that records a gap (consistent with the rest of the file) instead of letting a malformed `summary.json` abort the whole bundle with an unhandled exception.
+Collection preserves explicit gaps and remains non-successful when required evidence is missing. The linked-input regression complements the existing binary-preservation, checksum, destination-boundary and missing-matrix cases.
 
 <!-- credits:begin -->
 ## Credits

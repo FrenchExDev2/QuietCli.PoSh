@@ -24,6 +24,7 @@ file by hand, run:
 - [`CiImages.ps1`](../../scripts/CiImages.ps1) -> [documentation](CiImages.md)
 - [`Commit-Workspace.ps1`](../../scripts/Commit-Workspace.ps1) -> [documentation](Commit-Workspace.md)
 - [`Common.ps1`](../../scripts/Common.ps1) -> [documentation](Common.md)
+- [`ContainerInputs.ps1`](../../scripts/ContainerInputs.ps1) -> [documentation](ContainerInputs.md)
 - [`Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.ps1) -> [documentation](Export-CiFailureDiagnostics.md)
 - [`Gallery.ps1`](../../scripts/Gallery.ps1) -> [documentation](Gallery.md)
 - [`Get-CiImageForDevelopment.ps1`](../../scripts/Get-CiImageForDevelopment.ps1) -> [documentation](Get-CiImageForDevelopment.md)

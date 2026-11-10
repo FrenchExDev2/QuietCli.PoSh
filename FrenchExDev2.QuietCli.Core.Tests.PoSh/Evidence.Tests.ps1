@@ -45,6 +45,18 @@ function Test-QuietEvidenceBundle {
         try{$null=& $builder -ReportRoot $inputRoot -OutputDirectory (Join-Path $root "damaged-$iteration") -Revision ('a'*40) -RequireProfiling}catch{$rejected=$_.Exception.Message -eq 'MandatoryProfilingEvidenceMissing'}
         if(!$rejected){throw 'ModifiedClrEvidenceAccepted'}
     }
+    $linkedRoot=Join-Path $root 'linked-input';$linkedOutside=Join-Path $root 'linked-outside';$linkedOutput=Join-Path $root 'linked-output'
+    [void][IO.Directory]::CreateDirectory($linkedRoot);[void][IO.Directory]::CreateDirectory($linkedOutside)
+    Write-WorkspaceJson (Join-Path $linkedRoot summary.json) @{State=@{State='Failed';Passed=1;Failed=1};Suites=@()}
+    Write-WorkspaceJson (Join-Path $linkedOutside secret.json) @{MustNotBeCollected=$true}
+    $link=Join-Path $linkedRoot unsafe-link
+    $null=New-Item -ItemType $(if($IsWindows){'Junction'}else{'SymbolicLink'}) -Path $link -Target $linkedOutside
+    try{
+        $rejected=$false
+        try{$null=& $builder -ReportRoot $linkedRoot -OutputDirectory $linkedOutput -Revision ('a'*40)}catch{$rejected=$_.Exception.Message -eq 'EvidenceCollectionIncomplete'}
+        $partial=Get-Content (Join-Path $linkedOutput evidence-manifest.json) -Raw -Encoding utf8|ConvertFrom-Json
+        if(!$rejected -or !@($partial.EvidenceGaps|Where-Object {$_ -like 'EvidenceSourceLinkRejected:*'}).Count -or 'summary.json' -cnotin $partial.Files.Path -or (Test-Path (Join-Path $linkedOutput unsafe-link/secret.json))){throw 'LinkedEvidenceLostFailureManifestOrFollowedTarget'}
+    }finally{[IO.Directory]::Delete($link)}
     $rejected=$false
     try{$null=& $builder -ReportRoot $inputRoot -OutputDirectory (Join-Path $inputRoot 'nested-output') -Revision ('a'*40)}catch{$rejected=$_.Exception.Message -eq 'EvidenceDestinationMustBeOutsideReports'}
     if(!$rejected){throw 'RecursiveEvidenceDestinationAccepted'}

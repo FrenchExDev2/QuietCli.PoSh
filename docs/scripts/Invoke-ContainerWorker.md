@@ -22,6 +22,12 @@ Linux distribution/architecture with no network access and bounded memory, while
 back to the host-side monitor. It is invoked by `Invoke-ContainerCi.ps1` as a background `pwsh -File`
 process.
 
+`ContainerInputs.ps1` owns ordinary staging, including documentation, root credits and restored NuGet
+packages selected from host assets files. `NUGET_PACKAGES` points to the staged cache, so mutation
+builds need no guest network. Native-only campaign staging remains restricted. Alpine PowerShell
+uses the separately checksum-pinned Microsoft musl runtime under `/opt/pwsh-runtime`; the SDK keeps
+its own root. This preserves strict native RID checks instead of accepting distro-specific aliases.
+
 ## Usage
 
 Parameters:

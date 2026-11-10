@@ -29,10 +29,15 @@ fetch_cached() {
 
 fetch_cached sha512 "$SDK_URL" /tmp/sdk.tar.gz "$SDK_SHA512"
 tar -xzf /tmp/sdk.tar.gz -C /opt/dotnet
+if [ -n "${RUNTIME_URL:-}" ]; then
+    mkdir -p /opt/pwsh-runtime
+    fetch_cached sha512 "$RUNTIME_URL" /tmp/runtime.tar.gz "$RUNTIME_SHA512"
+    tar -xzf /tmp/runtime.tar.gz -C /opt/pwsh-runtime
+fi
 if [ -n "${POWERSHELL_URL:-}" ]; then
     mkdir -p /opt/powershell
     fetch_cached sha256 "$POWERSHELL_URL" /tmp/powershell.tar.gz "$POWERSHELL_SHA256"
     tar -xzf /tmp/powershell.tar.gz -C /opt/powershell
     chmod 755 /opt/powershell/pwsh
 fi
-rm -rf /tmp/sdk.tar.gz /tmp/powershell.tar.gz
+rm -rf /tmp/sdk.tar.gz /tmp/powershell.tar.gz /tmp/runtime.tar.gz

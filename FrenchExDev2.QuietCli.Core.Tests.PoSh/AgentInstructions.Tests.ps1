@@ -143,9 +143,15 @@ function Invoke-QuietAgentInstructionTests {
     $cases['linked instruction directory cannot redirect writes outside the project']={
         $project=Join-Path $root 'linked-project';$outside=Join-Path $root 'outside';[void][IO.Directory]::CreateDirectory($project);[void][IO.Directory]::CreateDirectory($outside)
         $kind=if($IsWindows){'Junction'}else{'SymbolicLink'}
-        $null=New-Item -ItemType $kind -Path (Join-Path $project '.skills') -Target $outside
-        $rejected=$false;try{$null=Add-QuietAgentInstruction -Path $project -Agents}catch{$rejected=$_.Exception.Message -eq 'AgentInstructionLinkedPath'}
-        if(!$rejected -or @(Get-ChildItem $outside -Force).Count){throw 'AgentLinkRedirectedWrite'}
+        $link=Join-Path $project '.skills'
+        $null=New-Item -ItemType $kind -Path $link -Target $outside
+        try{
+            $rejected=$false;try{$null=Add-QuietAgentInstruction -Path $project -Agents}catch{$rejected=$_.Exception.Message -eq 'AgentInstructionLinkedPath'}
+            if(!$rejected -or @(Get-ChildItem $outside -Force).Count){throw 'AgentLinkRedirectedWrite'}
+        }finally{
+            # Remove only the owned link; never recurse into the target or leave it for evidence collection.
+            if((Get-Item -LiteralPath $link -Force).Attributes -band [IO.FileAttributes]::ReparsePoint){[IO.Directory]::Delete($link)}
+        }
     }
     $cases['production resources stage byte-for-byte and run after installation outside sources']={
         $stage=Join-Path $root 'installed/FrenchExDev2.QuietCli.Core.PoSh';[void][IO.Directory]::CreateDirectory($stage)

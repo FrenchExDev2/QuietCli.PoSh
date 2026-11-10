@@ -8,6 +8,8 @@ image. It rejects duplicate/missing targets, wrong native runners and mutable/fo
 Accessible images select job containers; missing images select Docker fallback without publication.
 Alpine ARM64 always selects fallback because GitHub's JavaScript action host supports Alpine on x64
 only. Checkout/upload actions remain on Ubuntu ARM64 and the tests run inside the real musl container.
+Alpine job-container rows explicitly select `DOTNET_ROOT=/opt/pwsh-runtime`, the image's locked
+Microsoft .NET 10 musl runtime. Debian rows retain `/usr/share/dotnet`.
 
 `Assert-GitHubCiLinuxResults` requires successful image selection and success for every selected
 matrix. Only an unselected path may be skipped. No required target can disappear behind a skipped job.
