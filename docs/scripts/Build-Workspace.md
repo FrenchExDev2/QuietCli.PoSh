@@ -2,7 +2,7 @@
 
 ## Purpose and usage
 
-Builds the engine, fixtures, recall tools and Git parsers in Release by default, without tests or registry publication.
+Compiles `Quietly.slnx` once in Release by default, then prepares the portable distributions declared by the discovered packages, without tests or registry publication. Both local launchers and GitHub workflows use this same entry point.
 
 ```powershell
 # Rebuild every C# project in Quietly.slnx, without preparing distributions.
@@ -26,11 +26,15 @@ Requires the pinned SDK/runtime packs, Common.ps1, valid PTY receipts and NuGet 
 
 Every manifest binds source and binary hashes. ReadyToRun receipts require the CLR native header and RTR signature; Linux architecture checks account for the native OS override in the PE machine field. Protocol.ps1 selects a slot for the actual CLR and RID, otherwise portable IL.
 
+`Get-QuietWorkspaceBuildProjects` supplies `Package`, `Project`, `TargetFramework` and `Output` from each manifest's inert `PrivateData.QuietCli.BuildProjects` declaration. Before compilation, the script checks that every declared project belongs to the solution and snapshots its compiler inputs. The solution builds every target framework, including tooling projects that have no packaged output. Each declared portable output is then prepared with `dotnet publish --no-build` (which also disables restore), and its integrity receipt is written only after success. No common solution `-o` directory mixes project outputs. A failed solution build prevents all distribution preparation.
+
+RID/ReadyToRun engine publications remain separate compilations because their architecture and Crossgen2 settings differ from portable builds. This is the only remaining compilation by project in the shared build. Adding a compiled consumer requires adding its project to the solution and declaring its outputs; neither this script nor the local/GitHub launchers needs another project list. See [the catalogue contract](../README-workspace-projects.md#compiled-distributions).
+
 ## Critical review
 
-- `scripts/Build-Workspace.ps1:23` rejects targets outside the published set. The two target frameworks are deliberately separate outputs; a Windows R2R assembly is never placed in the universal portable slot.
-- `scripts/Build-Workspace.ps1:57` and `:70` record verified ReadyToRun output. Header presence establishes format, not complete AOT execution or a performance improvement.
-- `ReadyToRun.Tests.ps1` covers all 64 target subsets, 1,152 routing properties, malformed manifests/images and two routing mutants. Actual twelve-publication compilation and a Linux Docker import are separate integration evidence.
+- The build rejects targets outside the published set. The two target frameworks are deliberately separate outputs; a Windows R2R assembly is never placed in the universal portable slot.
+- Targeted publications record verified ReadyToRun output. Header presence establishes format, not complete AOT execution or a performance improvement.
+- `ReadyToRun.Tests.ps1` covers all 64 target subsets, 1,152 routing properties, malformed manifests/images and two routing mutants, plus one solution build per invocation, declared no-build portable publications, no-effect preview, SolutionOnly and fail-fast behavior. `WorkspaceProjects.Tests.ps1` verifies new consumer declarations, generated outputs, malformed declarations and three targeted catalogue mutants. Actual twelve-publication compilation and a Linux Docker import are separate integration evidence.
 - Crossgen2 host support matters: Linux matrix jobs precompile their Linux RID; the Windows x64 packaging runner builds all six. Arbitrary cross-OS compilation is not assumed. See the official [.NET R2R restrictions](https://learn.microsoft.com/en-us/dotnet/core/deploying/ready-to-run#cross-platformarchitecture-restrictions).
 
 ## Verdict
@@ -46,7 +50,7 @@ This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which 
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Builds the engine and companion C# fixture; does not run tests or publish.
+Purpose: Builds the solution and prepares declared distributions; does not run tests or publish packages.
 
 Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 

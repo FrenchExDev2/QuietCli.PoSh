@@ -1,5 +1,13 @@
 # Repository automation requirements as code
 
+## RAC-BUILD-001: one solution build and declared consumer distributions
+
+Local and GitHub build paths delegate to `Build-Workspace.ps1`. It compiles `Quietly.slnx` exactly once for portable outputs, with `TreatWarningsAsErrors=true`, then prepares each declared distribution using `dotnet publish --no-build`. `Get-QuietWorkspaceBuildProjects` reads inert `PrivateData.QuietCli.BuildProjects` declarations and supplies the same project/framework/output values to the build and binary identity. A future compiled consumer joins the solution and declares its outputs without edits to launcher lists; pure PowerShell consumers declare no compiled outputs. Core RID/ReadyToRun publications retain their architecture-specific builds.
+
+Acceptance evidence is executable in the Core companion: the solution-build catalogue case discovers a synthetic Packer consumer, exercises 32 generated output paths, malformed declarations and three targeted source mutants, and checks generic dependency/policy hashing. The ReadyToRun case checks one solution compilation and all declared no-build portable publications for each of 64 RID subsets, no-effect WhatIf, SolutionOnly isolation and no publication after compilation failure. Container-input assertions require the solution and build policy in staged workspaces. Workflow filters include shared solution/build/package inputs, and the existing workflow documentation gate checks their receipts. Focused runs remain partial development evidence; successful hosted execution is established only by the GitHub matrix.
+
+Shared workers import companion modules with `-DisableNameChecking`; the isolated helper-import regression rejects warning output from that import. Other PowerShell warnings remain visible.
+
 ## RAC-PR-001: feature/fix push reporting
 
 After authorized feature/fix pushes to GitHub, the [push script](scripts/Push-Workspace.md) uses the

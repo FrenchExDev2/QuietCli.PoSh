@@ -14,7 +14,7 @@ function Test-QuietContainerInputs {
         $directory=Join-Path $fixture $name;[void][IO.Directory]::CreateDirectory($directory)
         Copy-Item -LiteralPath (Join-Path $WorkspaceRoot ($name+'/'+$name+'.psd1')) -Destination $directory
     }
-    foreach($relative in @('scripts/staged.ps1','build/lock.json','docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','README.md','.env','secret.json')){
+    foreach($relative in @('scripts/staged.ps1','build/lock.json','docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','README.md','Quietly.slnx','Directory.Build.props','.env','secret.json')){
         $path=Join-Path $fixture $relative;[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path));[void][IO.File]::WriteAllTextAsync($path,'fixture-é漢',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     }
     $cache=Join-Path $RunDirectory restored-packages
@@ -27,7 +27,7 @@ function Test-QuietContainerInputs {
     $null=Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $stage -WhatIf
     if(Test-Path -LiteralPath $stage){throw 'ContainerStagePreviewWroteFiles'}
     Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $stage -Confirm:$false
-    foreach($relative in @('docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','artifacts/nuget-cache/system.fixture/1.0.0/content.txt')){
+    foreach($relative in @('docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','Quietly.slnx','Directory.Build.props','artifacts/nuget-cache/system.fixture/1.0.0/content.txt')){
         if(!(Test-Path -LiteralPath (Join-Path $stage $relative))){throw ('ContainerInputMissing: '+$relative)}
     }
     if((Test-Path (Join-Path $stage .env)) -or (Test-Path (Join-Path $stage secret.json)) -or (Test-Path (Join-Path $stage FrenchExDev2.QuietCli.Core.PoSh/engine/obj))){throw 'ContainerStageCopiedUndeclaredInputs'}
@@ -66,7 +66,9 @@ function Test-QuietCompanionHelperScope {
             $helpers=@('Invoke-CiProcess','Write-WorkspaceJson','ConvertTo-QuietByteCount','Get-QuietWorkspaceProjects')
             foreach($name in $helpers){if(Test-Path ('Function:'+ $name)){throw ('CallerHelperAlreadyPresent: '+$name)}}
             Import-Module (Join-Path $root 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
-            $module=Import-Module (Join-Path $root 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -PassThru
+            $importWarnings=@()
+            $module=Import-Module (Join-Path $root 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -PassThru -DisableNameChecking -WarningVariable importWarnings
+            if($importWarnings.Count){throw 'CompanionImportEmittedWarnings'}
             $result=& $module {
                 param($root,$run,$helpers)
                 foreach($name in $helpers){

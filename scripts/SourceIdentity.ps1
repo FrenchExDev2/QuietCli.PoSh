@@ -67,16 +67,33 @@ function Get-QuietBinaryInputs {
     Relative project path.
     #>
     param([string]$WorkspaceRoot,[string]$Project)
-    $roots=@((Split-Path (Join-Path $WorkspaceRoot $Project) -Parent))
-    if($Project -match 'engine-tests'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/engine'}
-    if($Project -match 'engine-tests'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/recall-tools'}
-    if($Project -match 'recall-tools'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/engine'}
-    if($Project -like 'FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests/*'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/engine'}
+    $workspace=[IO.Path]::GetFullPath($WorkspaceRoot).TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar
+    $pending=[Collections.Generic.Stack[string]]::new();$pending.Push((Join-Path $WorkspaceRoot $Project))
+    $visited=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $roots=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    while($pending.Count){
+        $path=[IO.Path]::GetFullPath($pending.Pop())
+        if(!$path.StartsWith($workspace,[StringComparison]::OrdinalIgnoreCase)){throw 'BinaryInputOutsideWorkspace'}
+        if(!$visited.Add($path)){continue}
+        $directory=Split-Path $path -Parent;[void]$roots.Add($directory)
+        $text=Get-Content -LiteralPath $path -Raw -Encoding utf8
+        if($text -match '<!DOCTYPE'){throw 'BinaryInputDtdRejected'}
+        $document=[xml]::new();$document.XmlResolver=$null;$document.LoadXml($text)
+        foreach($reference in $document.SelectNodes('//ProjectReference[@Include]|//Compile[@Include]')){
+            $include=$reference.GetAttribute('Include')
+            if($include -match '[$*?;]'){throw ('BinaryInputExpressionUnsupported: '+$include)}
+            $dependency=[IO.Path]::GetFullPath((Join-Path $directory $include))
+            if(!$dependency.StartsWith($workspace,[StringComparison]::OrdinalIgnoreCase)){throw 'BinaryInputOutsideWorkspace'}
+            if($reference.Name -ceq 'ProjectReference'){$pending.Push($dependency)}else{[void]$roots.Add((Split-Path $dependency -Parent))}
+        }
+    }
     $files=foreach($root in $roots){foreach($file in Get-QuietSourceFiles $root){$file.Path=[IO.Path]::GetRelativePath($WorkspaceRoot,(Join-Path $root $file.Path)).Replace('\','/');$file}}
     $sdk=Join-Path $WorkspaceRoot 'global.json'
     $spec=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/protocol.json'
     $packages=Join-Path $WorkspaceRoot 'Directory.Packages.props'
     @($files)+@([pscustomobject]@{Path='global.json';Bytes=(Get-Item $sdk).Length;SHA256=(Get-FileHash $sdk -Algorithm SHA256).Hash},[pscustomobject]@{Path='FrenchExDev2.QuietCli.Core.PoSh/protocol.json';Bytes=(Get-Item $spec).Length;SHA256=(Get-FileHash $spec -Algorithm SHA256).Hash},[pscustomobject]@{Path='Directory.Packages.props';Bytes=(Get-Item $packages).Length;SHA256=(Get-FileHash $packages -Algorithm SHA256).Hash})
+    $policy=Join-Path $WorkspaceRoot 'Directory.Build.props'
+    if(Test-Path -LiteralPath $policy){[pscustomobject]@{Path='Directory.Build.props';Bytes=(Get-Item $policy).Length;SHA256=(Get-FileHash $policy -Algorithm SHA256).Hash}}
 }
 function Write-QuietBuildManifest {
     <#
@@ -178,7 +195,7 @@ function Get-QuietWorkspaceIdentity {
     $rootFiles=@(Get-QuietSourceFiles $WorkspaceRoot|Where-Object {$null -eq $allowedFiles -or $allowedFiles.Contains($_.Path)})
     $repository=@{Name='FrenchExDev2.QuietCli.PoSh';Revision=$revision;Remote=$remote;Dirty=$dirty;SourceSHA256=(Get-QuietManifestDigest $rootFiles);Files=$rootFiles}
     $binaries=@()
-    if($IncludeBinaries){foreach($output in @('FrenchExDev2.QuietCli.Core.PoSh/lib/engine','FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess','FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture','FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/engine-tests','FrenchExDev2.QuietCli.Git.PoSh/lib/parser/net10.0','FrenchExDev2.QuietCli.Git.PoSh/lib/parser/net11.0','FrenchExDev2.QuietCli.Git.Tests.PoSh/lib/parser-tests')){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $output}}
+    if($IncludeBinaries){foreach($distribution in Get-QuietWorkspaceBuildProjects $WorkspaceRoot){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $distribution.Output}}
     if($IncludeBinaries){foreach($rid in (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){
         $output='FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid
         if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot $output)){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $output}

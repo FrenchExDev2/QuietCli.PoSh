@@ -27,6 +27,7 @@ This is a pure function library with no top-level `param()` — it is loaded via
 
 Exported functions:
 
+- `Get-QuietWorkspaceBuildProjects -WorkspaceRoot <string>` — returns declared portable `Package`, `Project`, `TargetFramework` and `Output` rows from `PrivateData.QuietCli.BuildProjects`. The shared solution build and binary identity consume this same function. Missing declarations mean a pure PowerShell package with no compiled outputs. Invalid paths, frameworks absent from the project XML, duplicate/overlapping outputs, links and DTDs fail. See [compiled distributions](../README-workspace-projects.md#compiled-distributions) for a new-consumer example and the RAC-BUILD-001 contract.
 - `Get-QuietWorkspaceProjects -WorkspaceRoot <string> (mandatory)` — discovers, order-validates
   (topological sort by `RequiredModules`), and returns every `FrenchExDev2.QuietCli.*.PoSh` project
   directory under `WorkspaceRoot` as a `[pscustomobject]` with `Name`, `IsTest`, `Suite`,

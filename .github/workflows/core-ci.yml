@@ -8,6 +8,9 @@ on:
       - 'build/**'
       - '.github/**'
       - 'global.json'
+      - 'Quietly.slnx'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
       - 'AGENTS.md'
       - '.gitattributes'
   push:

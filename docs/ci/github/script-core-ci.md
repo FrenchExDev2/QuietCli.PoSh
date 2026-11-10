@@ -1,12 +1,14 @@
 # core-ci.yml
 
-<!-- workflow-source-sha256: F1266C71FFADD247D8ADC72234ABB8B656089143DE3288659955C5788791D77F -->
+<!-- workflow-source-sha256: 40765685D9F67240DC3E9AE923EC4B00444161A263B01DC3FB75F743B58912C5 -->
 
 ## Purpose
 
 Path-filtered Core development qualification through the shared CI implementation.
 
 ## Triggers
+
+Shared `Quietly.slnx`, `Directory.Build.props` and `Directory.Packages.props` changes also trigger Core qualification. The shared build compiles the solution once and prepares manifest-declared portable distributions without recompilation before targeted RID publications.
 
 PRs and develop pushes matching Core/Core.Tests, shared scripts/build/.github, SDK or repository policy paths. No direct manual trigger.
 

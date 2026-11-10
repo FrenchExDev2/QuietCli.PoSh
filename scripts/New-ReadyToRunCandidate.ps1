@@ -47,6 +47,7 @@ if(Test-Path -LiteralPath $CandidateRoot){throw 'ReadyToRunCandidateDestinationE
 New-Item -ItemType Directory -Path $CandidateRoot | Out-Null
 Copy-Item (Join-Path $WorkspaceRoot 'global.json') $CandidateRoot
 Copy-Item (Join-Path $WorkspaceRoot 'Directory.Packages.props') $CandidateRoot
+Copy-Item (Join-Path $WorkspaceRoot 'Directory.Build.props') $CandidateRoot
 Copy-Item (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh') (Join-Path $CandidateRoot 'FrenchExDev2.QuietCli.Core.PoSh') -Recurse
 
 $project = 'FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj'

@@ -150,6 +150,8 @@ All paths are relative to the monorepo root. `-Restore` verifies the committed s
 
 Open `Quietly.slnx` to browse production packages under `src` and `*.Tests.PoSh` companions under `test`, including the pure PowerShell Vagrant packages. Run `./scripts/Build-Workspace.ps1 -SolutionOnly` to rebuild all C# projects and their target frameworks without preparing distributions. `Directory.Build.props` enables `TreatWarningsAsErrors=true` throughout the repository.
 
+The default build also compiles this solution once, then prepares the distributions declared by package manifests through `Get-QuietWorkspaceBuildProjects`, followed by targeted engine RID publications. Local and GitHub CI use the same build script. See [compiled distributions and new consumers](docs/README-workspace-projects.md#compiled-distributions).
+
 **2. Import and run in a fresh session.**
 
 **Open a new PowerShell Core 7.6+ session with its normal profile**, then paste the following block. Reassigning `$checkout` makes the new session independent of variables from the build session.

@@ -30,7 +30,7 @@ function Copy-QuietContainerInputs {
     }
     if($NativeOnly){return}
     foreach($file in Get-ChildItem -LiteralPath $WorkspaceRoot -File -Force){
-        if($file.Extension -cne '.md' -and $file.Name -cnotin @('global.json','Directory.Packages.props','repositories.lock.json','.gitattributes','.editorconfig','.gitignore','LICENSE')){continue}
+        if($file.Extension -cne '.md' -and $file.Name -cnotin @('global.json','Directory.Build.props','Directory.Packages.props','Quietly.slnx','repositories.lock.json','.gitattributes','.editorconfig','.gitignore','LICENSE')){continue}
         Copy-Item -LiteralPath $file.FullName -Destination $Destination
     }
     $runtime=if($ContainerRuntime){$ContainerRuntime}else{Get-QuietEnvValue -Path (Join-Path $WorkspaceRoot '.env') -Key QUIET_CONTAINER_RUNTIME}

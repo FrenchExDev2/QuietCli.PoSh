@@ -54,12 +54,16 @@ function Test-QuietReadyToRun {
     }
     $scripts=Join-Path $fixture scripts;[void][IO.Directory]::CreateDirectory($scripts)
     Copy-Item -LiteralPath (Join-Path $WorkspaceRoot scripts/Build-Workspace.ps1) -Destination $scripts
+    Copy-Item -LiteralPath (Join-Path $WorkspaceRoot Quietly.slnx) -Destination $fixture
+    $buildDistributions=@(Get-QuietWorkspaceBuildProjects $WorkspaceRoot)
+    $FailBuild=$false
     $mock=@'
 function Assert-QuietPtyPublications { param($WorkspaceRoot) }
+function Get-QuietWorkspaceBuildProjects { param($WorkspaceRoot) $buildDistributions }
 function Assert-QuietRuntimePublication { param($Directory,$Target) }
 function Get-QuietBinaryInputs { param($WorkspaceRoot,$Project) ,@{Path='fixture';SHA256='fixture'} }
 function Get-QuietRuntimeTargets { param($WorkspaceRoot) foreach($rid in @('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){[pscustomobject]@{Rid=$rid;PlatformTarget=$(if($rid.EndsWith('arm64')){'ARM64'}else{'x64'})}} }
-function Invoke-WorkspaceNative { param($FilePath,$Arguments,$WorkingDirectory) $Commands.Add(@($Arguments)) }
+function Invoke-WorkspaceNative { param($FilePath,$Arguments,$WorkingDirectory) $Commands.Add(@($Arguments));if($FailBuild -and $Arguments[0] -ceq 'build'){throw 'FixtureSolutionBuildFailed'} }
 function Write-QuietBuildManifest { param($WorkspaceRoot,$Project,$Output,$Inputs,$Configuration,$RuntimeIdentifier,$PlatformTarget,[switch]$ReadyToRun,$ReadyToRunTargets) }
 '@
     [void][IO.File]::WriteAllTextAsync((Join-Path $scripts Common.ps1),$mock,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
@@ -67,6 +71,14 @@ function Write-QuietBuildManifest { param($WorkspaceRoot,$Project,$Output,$Input
         $selected=@(for($i=0;$i -lt 6;$i++){if($mask -band (1 -shl $i)){$rids[$i]}})
         $Commands=[Collections.Generic.List[object]]::new()
         & (Join-Path $scripts Build-Workspace.ps1) -WorkspaceRoot $fixture -ReadyToRun:([bool]$mask) -ReadyToRunRuntimeIdentifier $selected
+        $compilations=@($Commands | Where-Object {$_[0] -ceq 'build'})
+        if($compilations.Count -ne 1 -or $compilations[0][1] -cne (Join-Path $fixture Quietly.slnx) -or $compilations[0] -contains '-o'){throw 'WorkspaceMustCompileSolutionExactlyOnce'}
+        $portablePublications=@($Commands | Where-Object {$_ -contains '--no-build'})
+        if($portablePublications.Count -ne $buildDistributions.Count){throw 'WorkspacePortablePublicationCountChanged'}
+        foreach($distribution in $buildDistributions){
+            $matches=@($portablePublications | Where-Object {$_[1] -ceq (Join-Path $fixture $distribution.Project) -and $_[[Array]::IndexOf($_,'-f')+1] -ceq $distribution.TargetFramework -and $_[[Array]::IndexOf($_,'-o')+1] -ceq (Join-Path $fixture $distribution.Output)})
+            if($matches.Count -ne 1){throw 'WorkspaceDeclaredDistributionNotPreparedExactlyOnce'}
+        }
         $precompiled=@($Commands|Where-Object {$_ -contains '-p:PublishReadyToRun=true'})
         if($precompiled.Count -ne 2*$selected.Count){throw 'ReadyToRunBuildCardinalityChanged'}
         foreach($command in $precompiled){
@@ -74,6 +86,15 @@ function Write-QuietBuildManifest { param($WorkspaceRoot,$Project,$Output,$Input
             if($target -cnotin $selected -or $command -notcontains 'Release'){throw 'ReadyToRunBuildTargetChanged'}
         }
     }
+    $Commands=[Collections.Generic.List[object]]::new()
+    & (Join-Path $scripts Build-Workspace.ps1) -WorkspaceRoot $fixture -WhatIf
+    if($Commands.Count){throw 'WorkspaceBuildWhatIfInvokedNativeTool'}
+    & (Join-Path $scripts Build-Workspace.ps1) -WorkspaceRoot $fixture -SolutionOnly
+    if($Commands.Count -ne 1 -or $Commands[0][0] -cne 'build' -or $Commands[0][1] -cne (Join-Path $fixture Quietly.slnx)){throw 'WorkspaceSolutionOnlyPreparedDistributions'}
+    $Commands=[Collections.Generic.List[object]]::new();$FailBuild=$true
+    $rejected=$false;try{& (Join-Path $scripts Build-Workspace.ps1) -WorkspaceRoot $fixture}catch{$rejected=$_.Exception.Message -ceq 'FixtureSolutionBuildFailed'}
+    if(!$rejected -or $Commands.Count -ne 1){throw 'WorkspaceBuildContinuedAfterSolutionFailure'}
+    $FailBuild=$false
     $portable=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/QuietCli.Engine.dll'
     if(Test-QuietReadyToRunImage $portable){throw 'ReadyToRunPortableFallbackContaminated'}
     $random=[Random]::new(20261110)

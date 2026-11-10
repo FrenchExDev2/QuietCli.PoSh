@@ -12,7 +12,7 @@ WorkspaceRoot defaults to the repository root. CandidateRoot defaults to the tem
 
 ## Dependencies and side effects
 
-Requires Common.ps1, the pinned SDK/runtime packs and an already-built baseline. Copies Core, global.json and Directory.Packages.props; publishes into `lib/inprocess/<rid>`, verifies its R2R header and updates only the candidate portable manifest's selected slots. No baseline mutation, tests or publication.
+Requires Common.ps1, the pinned SDK/runtime packs and an already-built baseline. Copies Core, global.json, Directory.Build.props and Directory.Packages.props; publishes into `lib/inprocess/<rid>`, verifies its R2R header and updates only the candidate portable manifest's selected slots. The isolated Core candidate preserves the same warning policy and compiler-input hashes, without requiring the full workspace solution. No baseline mutation, tests or publication.
 
 ## Critical review
 

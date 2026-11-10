@@ -5,6 +5,9 @@ on:
       - 'FrenchExDev2.QuietCli.Git.PoSh/**'
       - 'FrenchExDev2.QuietCli.Git.Tests.PoSh/**'
       - '.github/workflows/git-ci.yml'
+      - 'Quietly.slnx'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
   push:
     branches: [develop]
     paths: *git_paths

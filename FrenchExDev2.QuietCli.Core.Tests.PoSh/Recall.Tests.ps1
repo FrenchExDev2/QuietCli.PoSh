@@ -265,7 +265,7 @@ Extracted four-module package root.
 param([string]$PackageRoot)
 $ErrorActionPreference='Stop'
 Import-Module (Join-Path $PackageRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
-Import-Module (Join-Path $PackageRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -WarningAction SilentlyContinue
+    Import-Module (Join-Path $PackageRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -DisableNameChecking
 $r=quiet -AsObject -Recall -Output {} pwsh -Command "'fixture'"
 if($r.Outcome -ne 'Success'){throw 'PackagedCaptureFailed'}
 $comparison=Compare-QuietRecallAnalysis $r -First @{Complete={1}} -Second @{Complete={1}}

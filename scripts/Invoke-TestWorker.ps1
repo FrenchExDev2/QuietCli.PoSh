@@ -96,7 +96,7 @@ try{
         $summary=Invoke-QuietConfigurationDeliveryTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Mutation -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
         $state.Passed=$summary.Passed;$state.Failed=$summary.Failed;$summaries.Add($summary)
     }elseif($Suite -in @('Recall','RecallMutation','RecallLarge')){
-        Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1')
+        Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -DisableNameChecking
         $state.Task=$Suite+' capture and analyzer qualification'
         if($Suite -eq 'Recall'){
             $summary=Invoke-QuietRecallTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
@@ -137,7 +137,7 @@ try{
             $selected=$selection.Name
             $project=$selection.Project
             $state.Project=$project;$state.ProjectDirectory=Join-Path $WorkspaceRoot $project
-            Import-Module $selection.TestsManifest -Force
+            Import-Module $selection.TestsManifest -Force -DisableNameChecking
             $basePassed=$state.Passed;$baseFailed=$state.Failed
             $progress={
                 param($name,$caseState,$passed,$failed)

@@ -1,6 +1,6 @@
 # git-ci.yml
 
-<!-- workflow-source-sha256: 192993C29928634EDAA945C7EC17FEAF5393C0D02C90E16FA540E3B46689EED9 -->
+<!-- workflow-source-sha256: 076824DC219AB3EE845D574384AFBEDF7A116214AD25F0CFB4A85E5C42366F3C -->
 
 ## Purpose
 
@@ -8,7 +8,7 @@ Path-filtered Git consumer qualification through the shared CI implementation.
 
 ## Triggers
 
-PRs and develop pushes matching Git/Git.Tests or this workflow. No direct manual trigger.
+PRs and develop pushes matching Git/Git.Tests, this workflow, `Quietly.slnx`, `Directory.Build.props` or `Directory.Packages.props`. No direct manual trigger. The shared build compiles the solution once and prepares manifest-declared portable distributions without recompilation before targeted RID publications.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies

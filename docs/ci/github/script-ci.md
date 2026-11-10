@@ -69,6 +69,8 @@ flowchart TD
 
 ## Scripts and effects
 
+All native/job-container build steps and Docker-fallback preparation use `Build-Workspace.ps1`, as does the local launcher. It compiles `Quietly.slnx` once, prepares portable outputs from `Get-QuietWorkspaceBuildProjects` using `dotnet publish --no-build`, then performs the existing RID/ReadyToRun engine publications. Binary identity reads the same manifest declarations. Container staging preserves `Quietly.slnx` and `Directory.Build.props`. No additional solution-only step recompiles the same projects in a matrix row. These source contracts do not establish that the hosted matrix has executed.
+
 Every checkout initializes `.env` through `Initialize-CiEnvironment.ps1 -Target GitHub
 -ContainerRuntime docker` before subsequent automation. The initializer writes only the public
 runtime selection through the shared literal editor; it preserves other keys and loads no product

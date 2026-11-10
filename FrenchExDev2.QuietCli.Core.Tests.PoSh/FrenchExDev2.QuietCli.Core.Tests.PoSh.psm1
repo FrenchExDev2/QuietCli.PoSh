@@ -213,6 +213,7 @@ Executes independent native byte and object invariants in a companion module.
     $cases['GitHub CI JSON receipts create missing parents and preserve preview boundaries']={Test-QuietGitHubCiJsonReceipts -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['GitHub CI companion helpers load privately without caller profile dependencies']={Test-QuietCompanionHelperScope -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['GitHub CI container inputs include docs and restored packages without secrets or path escapes']={Test-QuietContainerInputs -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['solution build catalogue discovers new consumers and rejects malformed distributions']={Test-QuietWorkspaceBuildProjects -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['ReadyToRun builds and loads the matching RID and CLR with portable fallbacks']={Test-QuietReadyToRun -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['automation contracts require available runtimes accurate workflow graphs and safe previews']={Test-QuietAutomationContracts -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['configuration dotenv preserves literals and deterministic local GitHub presets']={Test-QuietEnvFiles -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
