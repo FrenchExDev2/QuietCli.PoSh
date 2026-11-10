@@ -137,6 +137,8 @@ Outputs are not kept by default: each parser retains only the business values it
 
 ## Tests
 
+[Qualification: when, where and how](../README-qualification-when-where-how.md) maps Git PR triggers to actual Windows/Linux test execution, local entry points and qualification limits.
+
 The companion project [`FrenchExDev2.QuietCli.Git.Tests.PoSh`](../FrenchExDev2.QuietCli.Git.Tests.PoSh/README.md) runs functional scenarios against disposable local repositories, with compiled C# cases and targeted mutation catalogues. Counts and dates change as handlers are added, so they live in the audits and in the generated reports rather than here. A passing local campaign does not qualify other Git versions or platforms; see [Tests and qualification](../README-qualification.md).
 
 ## Third-party material

@@ -1,6 +1,6 @@
 # Tests and qualification
 
-[Back to the QuietCli overview](README.md) · [Documentation index](docs/README.md)
+[Back to the QuietCli overview](README.md) · [Qualification: when, where and how](README-qualification-when-where-how.md) · [Documentation index](docs/README.md)
 
 Qualification combines independent examples, generated properties, malformed-input fuzzing and targeted mutation campaigns in the Core, Git and Vagrant companion test projects. A successful focused run establishes only its executed scope. Reports must identify the source revision, binaries, host/runtime, RID, scenarios, exclusions and remaining gaps; missing or incomplete required evidence blocks qualification.
 
@@ -115,8 +115,8 @@ Details: [A/B protocol](docs/README-ab_testing.md), [R2R walkthrough](docs/READM
 
 | Workflow | Trigger and actual responsibility |
 | --- | --- |
-| [core-ci.yml](.github/workflows/core-ci.yml) | Path-filtered PRs and `main` pushes for Core/tests/shared infrastructure; calls reusable CI with `suite: All`, including Git consumers. |
-| [git-ci.yml](.github/workflows/git-ci.yml) | Path-filtered PRs and `main` pushes for Git/tests; calls reusable CI with `suite: Git`. |
+| [core-ci.yml](.github/workflows/core-ci.yml) | Path-filtered PRs and `develop` pushes for Core/tests/shared infrastructure; calls reusable CI with `suite: Core`. |
+| [git-ci.yml](.github/workflows/git-ci.yml) | Path-filtered PRs and `develop` pushes for Git/tests/shared solution/build/package inputs; calls reusable CI with `suite: Git`. |
 | [ci.yml](.github/workflows/ci.yml) | Reusable/manual Windows/Linux matrix, evidence aggregation and revision-bound `qualified_sha` gate. |
 | [quietcli2-readytorun.yml](.github/workflows/quietcli2-readytorun.yml) | Manual informational R2R comparison: one Windows job plus four Debian/Alpine x64/ARM64 container jobs. It does not gate qualification or publication. |
 | [qualification.yml](.github/workflows/qualification.yml) | Manual full-Git entry point on a self-hosted Linux x64 Podman/KVM runner, using `QUIETCLI_QUALIFICATION_CONFIG`. The underlying runner currently refuses exhaustive certification; see below. |

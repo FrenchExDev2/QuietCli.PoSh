@@ -12,6 +12,8 @@ Start here: [Gallery installation](#from-powershell-gallery) · [.NET SDK and gl
 
 Browse the [documentation index](docs/README.md) for usage guides, technical contracts, agent instructions, CI, profiling and dated audit evidence.
 
+Read [Qualification: when, where and how](README-qualification-when-where-how.md) for PR triggers, Windows runners, Linux containers, executed test suites, local commands and evidence limits.
+
 ## Resources
 
 [Resource preparation and integrity](README-resources.md) explains pinned payloads, on-demand automation preparation and optional GitHub caching. The [generated resource inventory](docs/resources/README.md) maps declared files to source consumers. Resource documentation and the [complete script preview review](docs/scripts/preview-support.md) are checked by the shared workspace/commit pipeline.

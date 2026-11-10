@@ -52,6 +52,7 @@ Repository development follows the root [AGENTS.md](../AGENTS.md). Consumer-proj
 - [Deterministic local/GitHub environment](ci/environment.md): dotenv editing, runtime precedence, generated presets and the RAC-ENV-001 contract.
 - [Editor extensions](README-development-editor-extensions.md): export the installed inventory and install/update the saved set in Stable or Insiders with `-WhatIf` and `-Update`.
 - [Tests and qualification](../README-qualification.md): companion suites, property testing, fuzzing, mutation campaigns and qualification limits.
+- [Qualification: when, where and how](../README-qualification-when-where-how.md): PR path filters, Windows hosts, Linux job containers/Docker fallback, actual test execution, local entry points and excluded scopes.
 - [Commit-suite boundaries and PSDrive feasibility](testing/commit-workspace.md): optional local campaigns, integration labels, physical Git fixtures and pure logic separation.
 - [Repository and distribution](../README-distribution.md): monorepo layout, packaging and publication gates.
 - [Credits and syncing](README-credits-and-syncing.md): why `CREDITS.md` is generated, the two sync scripts, their check/apply workflows and how to run the sync locally.

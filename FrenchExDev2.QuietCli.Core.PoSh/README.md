@@ -321,6 +321,8 @@ See [agent integration](../README-agents.md), the [Codex guide](../docs/agents/c
 
 ## Tests and dependencies
 
+[Qualification: when, where and how](../README-qualification-when-where-how.md) explains when Core tests run, which runners/containers execute them and how to inspect actual test evidence.
+
 Tests live in `FrenchExDev2.QuietCli.Core.Tests.PoSh`, with independent C# assertions and PowerShell scenarios. The SDK/runtime are pinned in `global.json` and the C# projects. Companion tests verify matching build inputs and binaries, including with `-SkipBuild`; supplied RIDs do not establish qualification of unexecuted platforms.
 
 From the monorepo root, `./scripts/Invoke-WorkspaceCi.ps1 -Suite Core -SkipBuild` runs Core with the shared visible monitor. `-Suite All` also validates the dependent Git companion. Focused `Import`, `Integration`, `RealStatus`, `Script`, Recall and other suites establish only their executed scope. Property, fuzzing and targeted mutation results remain distinct from platform/release qualification.

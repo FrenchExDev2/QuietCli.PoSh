@@ -6,6 +6,8 @@
 
 Module de tests compagnon séparé. Dépend de Git et des assertions de conformité du compagnon Core.
 
+Consulter [Qualification: when, where and how](../README-qualification-when-where-how.md) pour les déclencheurs de PR, les runners Windows, les conteneurs Linux, les commandes locales et la distinction entre compilation et exécution des tests.
+
 Les fixtures utilisent une identité Git dédiée, une configuration globale neutralisée et des dépôts sous `artifacts/git-fixtures`. Aucun dépôt de l’utilisateur n’est committé ou poussé. Le seul push de test vise un dépôt bare jetable local.
 
 Les assertions vérifient l’état initial, les noms Unicode, une mutation commit exécutée une seule fois via un compteur de hook indépendant, HEAD observé, les références porcelain d’un push, le cache des sondes et la distinction entre `quiet -C contexte` et `git -C répertoire`.

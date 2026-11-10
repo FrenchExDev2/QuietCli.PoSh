@@ -1,5 +1,7 @@
 # Commit companion boundaries and PSDrive feasibility
 
+[Qualification: when, where and how](../../README-qualification-when-where-how.md) maps PR triggers to runners, containers, companion execution and local report paths.
+
 ## Local checkpoint versus CI qualification
 
 Local feature/fix-branch commits and pushes do not require companion execution. Commit-Workspace runs the shared source/documentation checks and lock validation; Push-Workspace only performs the explicitly selected push. Neither script launches companion tests. Full local campaigns require an explicit request or prior agreement. Required qualification belongs to the applicable GitHub workflows and publication gates; a local checkpoint does not claim that qualification passed.

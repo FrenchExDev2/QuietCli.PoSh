@@ -26,6 +26,8 @@ With `-CollectEvents`, `$r.Events` carries every parsed `--machine-readable` lin
 
 ## Coverage and limits
 
+[Qualification: when, where and how](../README-qualification-when-where-how.md) explains local Vagrant/All test selection, the current Vagrant-only PR trigger gap and the separate real-provider smoke checks.
+
 - Only `up` and `provision` are registered; any other `vagrant` subcommand falls through to `HandlerNotFound` (supply your own `-Output`/`-Complete` for it).
 - Supported version range: `stable >=2.3.0 <2.5.0` (probed via `vagrant --version`); outside that range the handler does not match and the call falls through as unsupported.
 - `--machine-readable` is documented by HashiCorp as **partially stabilized** ("Work-In-Progress"). The generic event (`Type`/`Machine`/`Fields`/`Timestamp`) is emitted for every line regardless of `Type`, so a listener can filter on types this module does not know about. `ConvertFrom-QuietVagrantMachineReadableLine` never throws on an unrecognized shape -- it returns `$null` and the line is dropped.
