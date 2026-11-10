@@ -86,6 +86,8 @@ launcher beyond ordinary PowerShell pipeline semantics. Retain `-AsObject` resul
 locally and explicitly deliver a bounded view. Child native failures remain ordinary
 QuietCli result envelopes and must be checked by Code or its caller.
 
+Imports use `-DisableNameChecking` to suppress unapproved-verb naming warnings while preserving other warnings and terminating import errors. This launcher imports production modules only; test-companion imports belong to `Invoke-TestWorker.ps1`.
+
 ## Findings
 
 - `scripts/Invoke-Quiet.ps1:31` guards import and arbitrary Code together, so preview

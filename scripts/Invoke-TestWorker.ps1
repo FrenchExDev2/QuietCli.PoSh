@@ -135,6 +135,8 @@ try{
         }
         if($ExpectedRuntimeIdentifier -and $engineIdentity.Engine.RuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw "EngineRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($engineIdentity.Engine.RuntimeIdentifier)"}
         if($ExpectedRuntimeIdentifier -and $engineIdentity.Mode -ne 'InProcess' -and $engineIdentity.Engine.BuildRuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw 'EnginePublicationRuntimeMismatch'}
+        # RequiredModules imports do not inherit DisableNameChecking from the importing companion.
+        Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -DisableNameChecking -ErrorAction Stop
         # Parser/handler qualification uses the owned process fixture; it never installs Vagrant or a provider.
         foreach($selection in Get-QuietWorkspaceSuiteSelection -WorkspaceRoot $WorkspaceRoot -Suite $Suite){
             $selected=$selection.Name

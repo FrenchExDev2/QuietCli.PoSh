@@ -5,7 +5,7 @@ workstation tests, and direct execution in the current GitHub PowerShell process
 `Invoke-GitHubCi.ps1`. With `GITHUB_ACTIONS=true`, each ordinary companion case logs its name, state
 and actual passed/failed counters while continuing to save the same progress and terminal reports.
 
-Companion modules are imported with `-DisableNameChecking` on both ordinary suite and Recall paths. The same worker serves local and GitHub runs, so their reports omit the repeated unapproved-verb warning while retaining other PowerShell warnings. The isolated companion-import regression asserts that its test-module import emits no warning.
+Companion modules are imported with `-DisableNameChecking` on both ordinary suite and Recall paths. Before ordinary suites, Core.Tests is explicitly imported with the same option: Git.Tests and Vagrant.Tests declare it in `RequiredModules`, whose implicit imports do not inherit the caller's switch. The same worker serves local and GitHub runs, so their reports omit the repeated unapproved-verb warning while retaining other PowerShell warnings. The isolated companion-import regression asserts that its test-module import emits no warning.
 
 ## Purpose
 

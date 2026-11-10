@@ -53,7 +53,7 @@ try{
         # Companion RequiredModules resolve exported Core cmdlets from the process-global scope.
         # Core-only use preserves the original local-scope behavior.
         $scope=if($Companion.Count -and $moduleName -eq 'FrenchExDev2.QuietCli.Core.PoSh'){'Global'}else{'Local'}
-        $imported=@(Import-Module (Join-Path $moduleDirectory ($moduleName + '.psd1')) -Scope $scope -PassThru -ErrorAction Stop)
+        $imported=@(Import-Module (Join-Path $moduleDirectory ($moduleName + '.psd1')) -Scope $scope -PassThru -DisableNameChecking -ErrorAction Stop)
         $localModule=@($imported|Where-Object Name -CEQ $moduleName)
         if ($localModule.Count -ne 1 -or $localModule[0].Path -ne $expectedPath) { throw ('QuietLocalModulePathMismatch: '+$moduleName) }
         if(!$existing.Count){$introduced.Add($moduleName)}
