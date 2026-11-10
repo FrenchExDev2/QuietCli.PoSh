@@ -5,6 +5,8 @@
 Builds the engine, fixtures, recall tools and Git parsers in Release by default, without tests or registry publication.
 
 ```powershell
+# Rebuild every C# project in Quietly.slnx, without preparing distributions.
+./scripts/Build-Workspace.ps1 -SolutionOnly
 # Local portable build; all six net11.0 distributions remain embedded.
 ./scripts/Build-Workspace.ps1 -Configuration Release
 # GitHub matrix row: precompile the RID actually tested.
@@ -15,6 +17,8 @@ Builds the engine, fixtures, recall tools and Git parsers in Release by default,
 ```
 
 `WorkspaceRoot` defaults to the repository root; `Configuration` accepts Release/Debug. `RuntimeIdentifier` selects embedded net11.0 distributions (all six by default). `ReadyToRun` enables Crossgen2 for `ReadyToRunRuntimeIdentifier`, defaulting to `LocalRuntimeIdentifier`, itself the actual host RID. A precompiled target must also be in `RuntimeIdentifier`. Supplying targets without the switch fails before compilation.
+
+`SolutionOnly` rebuilds all seven C# projects and every declared target framework through `Quietly.slnx` with `--no-incremental`. The solution groups the three production packages under `src` and all `*.Tests.PoSh` companions under `test`; pure PowerShell packages appear as solution files. Repository-wide `Directory.Build.props` enables `TreatWarningsAsErrors=true` for direct project builds and solution builds alike. This mode requires no PTY publication receipts, does not update `lib/` distributions or their manifests, and rejects runtime-publication options. Standard `-WhatIf` returns before any build, restore or filesystem effect.
 
 ## Outputs and dependencies
 

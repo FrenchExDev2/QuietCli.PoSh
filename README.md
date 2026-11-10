@@ -148,6 +148,8 @@ Set-Location $checkout
 
 All paths are relative to the monorepo root. `-Restore` verifies the committed source lock; on an intentionally edited checkout, `./scripts/Initialize-Workspace.ps1` without `-Restore` refreshes the local lock. A successful build creates the compiled engine and companion binaries; it does not publish or install a Gallery package.
 
+Open `Quietly.slnx` to browse production packages under `src` and `*.Tests.PoSh` companions under `test`, including the pure PowerShell Vagrant packages. Run `./scripts/Build-Workspace.ps1 -SolutionOnly` to rebuild all C# projects and their target frameworks without preparing distributions. `Directory.Build.props` enables `TreatWarningsAsErrors=true` throughout the repository.
+
 **2. Import and run in a fresh session.**
 
 **Open a new PowerShell Core 7.6+ session with its normal profile**, then paste the following block. Reassigning `$checkout` makes the new session independent of variables from the build session.

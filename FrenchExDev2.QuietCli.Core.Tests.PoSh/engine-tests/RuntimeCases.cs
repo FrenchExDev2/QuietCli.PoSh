@@ -88,7 +88,7 @@ internal static class RuntimeCases
             runtime.Request.Remove("RecordDelimiter");
             runtime.Request["Output"] = ScriptBlock.Create("param($e,$r) 42");
             Script(runspace, "param($rt) $null=$rt.StreamBlock('stdout',[byte[]](104,105)); $null=$rt.StreamBlock('stdout',[byte[]](106))", runtime);
-            Require(!runtime.AnalysisComplete && runtime.Errors.Count == 1 && (string)((Hashtable)runtime.Errors[0])["Code"] == "OutputCallbackFailed" && (string)((Hashtable)runtime.Errors[0])["Message"] == "CallbackUnexpectedOutput", "Unexpected callback output was not rejected exactly once");
+            Require(!runtime.AnalysisComplete && runtime.Errors.Count == 1 && ((Hashtable)runtime.Errors[0])["Code"] is "OutputCallbackFailed" && ((Hashtable)runtime.Errors[0])["Message"] is "CallbackUnexpectedOutput", "Unexpected callback output was not rejected exactly once");
             return Task.CompletedTask;
         });
 

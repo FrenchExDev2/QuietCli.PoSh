@@ -44,7 +44,8 @@ internal static class DeliveryCmdletCases
             object result = Result(runspace, new Dictionary<string, object> { ["Label"] = "é漢字😀" });
             string text = (string)Script(runspace, "param($r) Out-QuietResult $r -Tokenizer o200k_base", result).Single().BaseObject;
             long expected = Convert.ToInt64(Script(runspace, "param($t) [Microsoft.ML.Tokenizers.TiktokenTokenizer]::CreateForEncoding('o200k_base',$null,$null).CountTokens($t)", text).Single().BaseObject);
-            var measurement = (PSObject)Member(result, "Measurement");
+            var measurement = Member(result, "Measurement") as PSObject
+                ?? throw new InvalidOperationException("Delivery measurement is missing or is not a PowerShell object");
             Require(Convert.ToInt64(measurement.Properties["OutputTokens"].Value) == expected && expected > 0, "Delivered token count differs from the independent count");
             Require(Convert.ToInt32(measurement.Properties["OutputBytes"].Value) == Encoding.UTF8.GetByteCount(text), "Delivered byte count differs from the UTF-8 size");
             // No native business sources: the reduction is exactly the negated delivery size.
@@ -60,7 +61,9 @@ internal static class DeliveryCmdletCases
         {
             object result = Result(runspace, new Dictionary<string, object> { ["a"] = 1 });
             Script(runspace, "param($r) $null=Out-QuietResult $r -Tokenizer off", result);
-            Require(Member(Member(result, "Measurement"), "OutputTokens") is null, "Tokens reported although the tokenizer is off");
+            object measurement = Member(result, "Measurement")
+                ?? throw new InvalidOperationException("Delivery measurement is missing");
+            Require(Member(measurement, "OutputTokens") is null, "Tokens reported although the tokenizer is off");
             return Task.CompletedTask;
         });
 
