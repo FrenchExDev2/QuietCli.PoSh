@@ -355,6 +355,18 @@ Executes independent native byte and object invariants in a companion module.
                 }
                 $gate=@($jobs['qualification-gate']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
                 if(!$gate.Contains('-MutationResult skipped -SkipTty')){throw 'TtyGateExclusionNotExplicit'}
+                if(@($jobs['qualification-gate']['needs']) -contains 'performance-results' -or $gate -match 'PERFORMANCE_RESULT|PerformanceEvidenceReportRequired'){throw 'OptionalPerformanceBlocksQualification'}
+                foreach($trigger in @('workflow_call','workflow_dispatch')){
+                    $option=$workflow['on'][$trigger]['inputs']['collect_performance']
+                    if(!$option -or $option['type'] -cne 'boolean' -or [string]$option['default'] -cne 'false'){throw 'PerformanceMustBeExplicitlyRequested'}
+                }
+                if([string]$jobs['performance-results']['if'] -cne '${{ always() && inputs.collect_performance }}'){throw 'PerformanceAggregationNotOptIn'}
+                foreach($name in @('windows','linux','linux-fallback')){
+                    $runs=@($jobs[$name]['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
+                    if($runs.Contains('if($env:QUIETCLI_SUITE -ne ''Git'')')){throw ('UnconditionalProfiling: '+$name)}
+                    $reportSteps=@($jobs[$name]['steps']|Where-Object {$_['run'] -match 'New-CorePerformanceReport.ps1'})
+                    if($reportSteps.Count -ne 1 -or [string]$reportSteps[0]['env']['QUIETCLI_COLLECT_PERFORMANCE'] -cne '${{ inputs.collect_performance }}' -or !([string]$reportSteps[0]['run']).Contains('if($env:QUIETCLI_COLLECT_PERFORMANCE -ceq ''true'')')){throw ('PerformanceReportNotOptIn: '+$name)}
+                }
             }
         }
     }

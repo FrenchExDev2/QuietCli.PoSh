@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: A24C3886913EA18F6343A09B754CE67D3C5DF9427CC962C6C0E4D5789D0AEEFD -->
+<!-- workflow-source-sha256: 95555D1559FF913D897EDACE5E39882DF190ED8FDD528F22DE31C7091D069A99 -->
 
 ## Purpose
 
@@ -8,7 +8,7 @@ Shared qualification for the selected Core, Git or All source scope across six W
 
 ## Triggers
 
-Reusable workflow_call accepts suite; workflow_dispatch uses All. Core/Git callers provide path-filtered PR/develop events. Image publication is restricted in job conditions to upstream develop pushes/manual dispatch; PR images are never published.
+Reusable workflow_call accepts suite and collect_performance (boolean, default false); workflow_dispatch uses All and exposes the same optional collect_performance checkbox. Core/Git callers provide path-filtered PR/develop events without requesting performance collection. Image publication is restricted in job conditions to upstream develop pushes/manual dispatch; PR images are never published.
 
 
 ## .NET SDK source pin
@@ -49,7 +49,6 @@ flowchart TD
     job_linux_fallback --> job_performance_results
     job_windows --> job_qualification_gate
     job_linux_result --> job_qualification_gate
-    job_performance_results --> job_qualification_gate
     event --> job_windows
 ~~~
 
@@ -62,8 +61,8 @@ flowchart TD
 | linux-matrix | runner ubuntu-latest |  | default success condition |  |
 | linux-result | runner ubuntu-latest | linux-selection, linux, linux-fallback | always() | ./scripts/GitHubCi.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
 | linux-selection | runner ubuntu-latest | linux-images, linux-git-images | ${{ always() && !cancelled() && (needs.linux-images.result == 'success' &#124;&#124; needs.linux-images.result == 'skipped') && (needs.linux-git-images.result == 'success' &#124;&#124; needs.linux-git-images.result == 'skipped') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Select-GitHubCiMatrix.ps1 |
-| performance-results | runner ubuntu-latest | windows, linux, linux-fallback | always() | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CorePerformanceReport.ps1 |
-| qualification-gate | runner ubuntu-latest | windows, linux-result, performance-results | ${{ always() }} | ./scripts/Assert-QualificationGate.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
+| performance-results | runner ubuntu-latest | windows, linux, linux-fallback | ${{ always() && inputs.collect_performance }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CorePerformanceReport.ps1 |
+| qualification-gate | runner ubuntu-latest | windows, linux-result | ${{ always() }} | ./scripts/Assert-QualificationGate.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
 | windows | runner ${{ matrix.image }} |  | default success condition | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 
 <!-- workflow-generated:end -->
@@ -77,7 +76,7 @@ engine. Explicit Docker arguments remain authoritative. See [environment resolut
 
 Selected native Windows and Docker-fallback preparation jobs also use the shared optional resource-archive cache. The key includes runner OS and dependencies.lock.json hash; Restore-CoreResources still verifies extracted bytes. GitHub job-container preparation remains self-contained and does not depend on cache availability.
 
-Windows runs natively. Linux selection partitions verified GHCR digests into supported GitHub job containers and Docker fallback, including Alpine ARM64. Each row builds Release ReadyToRun for its tested RID and uses Invoke-GitHubCi with shared workers, SkipBuild and SkipTty. Core/All collects pinned profiler and performance evidence. Image builders explicitly select Docker. Failure bundles are bounded and redacted before 14-day upload.
+Windows runs natively. Linux selection partitions verified GHCR digests into supported GitHub job containers and Docker fallback, including Alpine ARM64. Each row builds Release ReadyToRun for its tested RID and uses Invoke-GitHubCi with shared workers, SkipBuild and SkipTty. Functional evidence bundles are always collected. Only an explicit collect_performance=true request enables pinned profiling for Core/All, per-row performance reports and the combined performance-results job. Ordinary PR, develop and publication callers leave this disabled; missing performance evidence cannot fail those runs. Image builders explicitly select Docker. Failure bundles are bounded and redacted before 14-day upload.
 
 Both selected Linux execution jobs explicitly use `!cancelled()`, require a successful selection
 job and check their own selection flag. The status function overrides GitHub's implicit `success()`
@@ -88,7 +87,7 @@ and [status functions](https://docs.github.com/en/actions/reference/workflows-an
 
 ## Validation and limits
 
-linux-result validates the selected paths, performance-results requires the complete expected evidence and qualification-gate returns the exact qualified revision only after success. Native TTY campaigns are excluded. wrkflw 0.8.0 cannot qualify the expression-valued matrices locally. Source qualification precedes a separate Windows package rebuild; it does not attest byte-identical matrix/package outputs.
+linux-result validates the selected paths and qualification-gate requires only Windows and Linux success before returning the exact qualified revision. Optional performance-results is not a gate dependency. When performance collection is explicitly requested, incomplete evidence still fails its requested report; the report validator is not weakened. The workflow contract regression checks default-off inputs, guarded reports and the absence of a performance gate dependency. Native TTY campaigns are excluded. wrkflw 0.8.0 cannot qualify the expression-valued matrices locally. Source qualification precedes a separate Windows package rebuild; it does not attest byte-identical matrix/package outputs.
 
 <!-- credits:begin -->
 ## Credits
