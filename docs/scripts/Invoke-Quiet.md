@@ -1,7 +1,7 @@
 # Invoke-Quiet.ps1
 
 Runs a PowerShell scriptblock in the current process after importing the exact local
-Core manifest relative to `$PSScriptRoot`. Run from a built source checkout:
+Core manifest and optional selected companion manifests relative to `$PSScriptRoot`. Run from a built source checkout:
 
 ```powershell
 $result = ./scripts/Invoke-Quiet.ps1 -Code {
@@ -35,6 +35,12 @@ Out-QuietResult $result -AsYaml -MaxItems 5 -MaxOutputBytes 4096
   the start of the block. PowerShell comments use `#`, not `//`.
 - `Runtime` optionally supplies a non-null caller-owned object. By default every
   invocation creates a context containing fresh `Data` and `State` hashtables.
+- `Companion` accepts one or more values from the explicit `Git`, `Vagrant` set. Core
+  is always imported first; selected companions are deduplicated and imported from
+  their exact local manifests before `Code` runs. For companion dependency resolution,
+  Core is temporarily exposed in the process-global scope. Modules newly introduced by
+  this invocation are removed in reverse order after `Code`; matching modules that were
+  already loaded by the caller are retained.
 - `WhatIf` skips import and execution entirely; `Confirm` uses the standard
   PowerShell confirmation before either operation.
 
@@ -51,14 +57,25 @@ The orchestration context is separate from each native call's callback runtime. 
 does not implement native runtime methods such as `Emit` or `Cancel`, and the runner
 does not synthesize an envelope, parent invocation, measurement context or native
 process. `quiet` retains its normal callback/registered-handler requirements.
-Load any companion module explicitly inside the block when needed, including the
-local Git manifest before `quiet git ...`.
+Select a companion explicitly when registered executable semantics are required:
+
+```powershell
+./scripts/Invoke-Quiet.ps1 -Companion Git -Code {
+    param($runtime)
+    $runtime.Data.Status = quiet -AsObject -C work git status
+}
+```
+
+The fixed set is intentional: arbitrary names never become import paths. Add a new
+reviewed companion to the set when it joins this source workspace. Dynamic parameter
+discovery is unnecessary for the current two companions and would make help and static
+automation analysis less predictable.
 
 ## Dependencies and effects
 
-Requires PowerShell Core 7.6+ and the checkout's existing verified Core binaries and
-resources. Imports the `.psd1` rather than globbing `.psm1` files. A different loaded
-source path for the same Core module is rejected with a fresh-session instruction.
+Requires PowerShell Core 7.6+ and the checkout's existing verified Core/selected companion binaries and
+resources. Imports each `.psd1` rather than globbing `.psm1` files. A different loaded
+source path for any selected module is rejected with a fresh-session instruction.
 The launcher never builds, downloads dependencies, changes the profile or overrides
 engine hosting. Normal module integrity checks and automatic hosting still apply.
 
@@ -96,7 +113,7 @@ This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which 
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Runs a PowerShell block with the checkout's local QuietCli Core module.
+Purpose: Runs a PowerShell block with the checkout's local QuietCli Core and selected companion modules.
 
 Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 

@@ -12,24 +12,36 @@ $root=Join-Path ([IO.Path]::GetTempPath()) ('quiet-dotnet-layout-'+[guid]::NewGu
 $null=[IO.Directory]::CreateDirectory($root)
 $assertions=0
 function Assert-DotNetLayout {
-    <# .SYNOPSIS Enforces the layout and native-boundary contract independently of its implementation. #>
+    <#
+    .SYNOPSIS
+    Enforces the layout and native-boundary contract independently of its implementation.
+    #>
     param([bool]$Condition,[string]$Message)
     $script:assertions++
     if(!$Condition){throw "Assertion failed: $Message"}
 }
 function Test-DotNetNativeBoundary {
-    <# .SYNOPSIS Uses a process adapter fixture to check exact arguments and failure propagation. #>
+    <#
+    .SYNOPSIS
+    Uses a process adapter fixture to check exact arguments and failure propagation.
+    #>
     param([string]$ModulePath)
     $module=Import-Module $ModulePath -Force -PassThru
     try {
         & $module {
             $script:NativeOutcome='Success';$script:NativeExit=0;$script:MalformedNative=$false
             function script:Import-DotNetProcessHelper {
-                <# .SYNOPSIS Prevents loading the real process helper during adapter unit assertions. #>
+                <#
+                .SYNOPSIS
+                Prevents loading the real process helper during adapter unit assertions.
+                #>
                 param($QuietCliRoot)
             }
             function script:Invoke-CiProcess {
-                <# .SYNOPSIS Models the existing helper's callbacks, exit code and timeout outcome. #>
+                <#
+                .SYNOPSIS
+                Models the existing helper's callbacks, exit code and timeout outcome.
+                #>
                 param($FilePath,$ArgumentList,$WorkingDirectory,$TimeoutSeconds,$State,$OnOutput)
                 $script:NativeArguments=$ArgumentList
                 $text=if($script:MalformedNative){'unrecognized record'}elseif($ArgumentList[0] -eq '--list-sdks'){'11.0.100 [C:/SDK path]'}elseif($ArgumentList[0] -eq '--list-runtimes'){'Microsoft.NETCore.App 11.0.0 [C:/runtime path]'}else{'sha256:'+('a'*64)}

@@ -42,6 +42,7 @@ $Targets=@(Get-Content -LiteralPath (Join-Path $RunDirectory 'targets.json') -Ra
 Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/WorkstationResources.psm1')
 $ownership=Register-WorkstationRun $RunDirectory $WorkspaceRoot
 $runLease=[IO.FileStream]::new((Join-Path $RunDirectory 'run.lease'),[IO.FileMode]::CreateNew,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Read)
+$runLease.Lock(0,1)
 $smokeState=@{Project='FrenchExDev2.QuietCli.Core.Tests.PoSh';Task='Development workstation installation smoke';Workspace=$WorkspaceRoot;ProjectDirectory=$PSScriptRoot;Platform='Windows + Linux x64';State='Running';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;Passed=0;Failed=0;Case='Starting';Error=$null;Runs=@()}
 $receipts=[Collections.Generic.List[object]]::new();$statusPath=Join-Path $RunDirectory 'status.json'
 Write-WorkspaceJson $statusPath $smokeState

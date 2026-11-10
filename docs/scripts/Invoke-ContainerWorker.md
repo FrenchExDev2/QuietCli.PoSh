@@ -41,6 +41,7 @@ Parameters:
 - `-SkipTty` (switch, optional) — incompatible with `-Suite Mutation` (throws at line 76).
 - `-Profiler` / `-ProfilerModulePath` / `-ClrProfilerPath` (switch/string/string, optional) — stages a pinned profiler cache into the container (lines 78–86) and copies its tool receipt back to the host if present.
 - `-Suite` — dynamic parameter (lines 28–32), same pattern as `Invoke-ContainerCi.ps1`; defaults to `'All'`.
+- `-MaxConcurrency` (`int`, `1..32`, default `min(4, processor count)`) — forwarded to the guest launcher and bounds parallel-safe internal test campaigns.
 
 Example (internal invocation shape):
 ```powershell
@@ -62,6 +63,7 @@ pwsh -File ./scripts/Invoke-ContainerWorker.ps1 -WorkspaceRoot C:\repo -RunDirec
 - For `Mutation`: asserts (line 62) that no `.dll`/`.csproj`/`.psd1`/`.psm1` file exists in the staged tree, throwing `'NativeStageMustNotContainProductBuildsOrModules'` if any are found — an explicit independence guard ensuring the native mutation campaign cannot accidentally be influenced by a pre-built product module.
 - Writes `bootstrap.json` (line 63, Mutation) or `transport-origin.json` (line 66, non-Mutation) recording source identity/hashes.
 - Copies the full guest `artifacts/tests/container-run` tree back to `$RunDirectory/guest` (line 112).
+- Copies the guest suite summaries into the host `summary.json`, so the shared failure reporter can show the actual failing cases instead of an empty `0/0` diagnostic.
 - Throws on numerous specific conditions: `'PreparedImageIdentityUnavailable'`, `'GuestTestDeadlineExceeded'` (360s hardcoded deadline, line 95), `'GuestExitCodeUnconfirmed'`, `'GuestExitedNonzeroAfterSuccessReport'` (line 118 — cross-checks the guest's self-reported success against its actual process exit code, a good consistency check), `'GuestArchitectureMismatch'`, `'GuestRuntimeDoesNotMatchRequestedPlatform'`, `'NativeIndependenceUnconfirmed'` (line 129, Mutation only).
 
 ## Findings

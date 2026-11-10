@@ -26,11 +26,14 @@ Docker fallback image distribution.
 Docker fallback guest deadline; direct execution uses GitHub step/job timeouts.
 .PARAMETER Suite
 Selected shared companion suite or focused tooling campaign.
+.PARAMETER MaxConcurrency
+Maximum number of internal test workers used by parallel-safe campaigns.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[switch]$SkipBuild,
     [string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,
-    [string]$Image,[ValidateSet('debian','alpine')][string]$Platform,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800)
+    [string]$Image,[ValidateSet('debian','alpine')][string]$Platform,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,
+    [ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)))
 dynamicparam {
     . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
@@ -49,7 +52,7 @@ if(!$SkipBuild){
 if(!$RunDirectory){$RunDirectory=Join-Path $WorkspaceRoot ('artifacts/tests/github-'+[guid]::NewGuid().ToString('N').Substring(0,8))}
 if(Test-Path -LiteralPath $RunDirectory){throw 'GitHubCiRunDirectoryExists'}
 [void][IO.Directory]::CreateDirectory($RunDirectory)
-$parameters=@{WorkspaceRoot=$WorkspaceRoot;RunDirectory=$RunDirectory;Suite=$Suite;SkipTty=[bool]$SkipTty}
+$parameters=@{WorkspaceRoot=$WorkspaceRoot;RunDirectory=$RunDirectory;Suite=$Suite;SkipTty=[bool]$SkipTty;MaxConcurrency=$MaxConcurrency}
 if($ExpectedRuntimeIdentifier){$parameters.ExpectedRuntimeIdentifier=$ExpectedRuntimeIdentifier}
 if($Profiler){$parameters.Profiler=$true;$parameters.ProfilerModulePath=$ProfilerModulePath;$parameters.ClrProfilerPath=$ClrProfilerPath}
 Write-Host ('GitHub CI entry: '+(@{Suite=$Suite;ProcessId=$PID;Runtime=[Environment]::Version.ToString();HostRid=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;DockerFallback=[bool]$Image;RunDirectory=$RunDirectory}|ConvertTo-Json -Compress))

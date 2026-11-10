@@ -23,5 +23,6 @@ function Assert-QuietHostMatrix {
         }
         if(@($rows|Where-Object {$_.Value -match "(?m)^            rid: $rid\r?$" -and $_.Value -match '(?m)^            mode: Process\r?$'}).Count -ne 1){throw 'IsolatedHostCoverageRemoved'}
     }
-    if($workflow -notmatch 'needs: \[windows, linux-result, performance-results\]'){throw 'HostMatrixNotRequiredByQualification'}
+    $gate=[regex]::Match($workflow,'(?ms)^  qualification-gate:.*?(?=^  [a-z][a-z-]*:|\z)').Value
+    if($gate -notmatch '(?m)^    needs: \[windows, linux-result\]\r?$'){throw 'HostMatrixNotRequiredByQualification'}
 }

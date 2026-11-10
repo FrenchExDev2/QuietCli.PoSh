@@ -32,6 +32,7 @@ Parameters:
 - `ProfilerModulePath`, `ClrProfilerPath` (`string`, optional) — explicit pinned profiler artifacts.
 - `Case` (`string`, optional) — development-only wildcard case filter (sets `$env:QUIETCLI_TEST_CASE`).
 - `StopOnFirstFailure` (`switch`, optional) — development-only; stops the Core run at first failure (sets `$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE`).
+- `MaxConcurrency` (`int`, `ValidateRange(1,32)`, default `min(4, processor count)`) — exported as `QUIETCLI_TEST_MAX_CONCURRENCY` for parallel-safe internal campaigns.
 - `-Suite` (dynamic, default `'All'`) — `Core`, `Git`, `Vagrant`, `All`, `Import`, `Integration`, `RealStatus`, `RunProfiles`/`RunProfilesMutation`, `GalleryPreview`, `Script`, `AgentInstructions`, `ConfigurationDelivery`, `Recall`/`RecallMutation`/`RecallLarge`.
 
 Example (as actually invoked by `Invoke-WorkspaceCi.ps1`):
@@ -51,6 +52,7 @@ pwsh -File ./scripts/Invoke-TestWorker.ps1 -WorkspaceRoot . -RunDirectory ./arti
 ## Side effects
 
 - Writes `status.json` continuously via `Write-WorkspaceJson` as case-by-case progress updates (many call sites, e.g. line 46, 65, 71, 76...), plus `source-identity.json`, `source-identity-final.json`, `summary.json`, and per-selected-suite `<suite>-suite.json` files, all under `$RunDirectory`.
+- Runs the mandatory Core integration-evidence assertion only after the Core suite itself has zero failures. A failed case therefore remains the terminal diagnostic instead of being replaced by `CoreIntegrationEvidenceMissing`.
 - On any uncaught exception, writes `worker-failure.json` with message/stack/position (line 154).
 - Imports modules with `-Force`, which can reload/replace already-loaded module state in the process.
 - Calls `Stop-QuietEngine` unconditionally in the `finally` block (line 166), swallowing any error from it (`catch{}`), which stops whatever engine process the Core module may have started.

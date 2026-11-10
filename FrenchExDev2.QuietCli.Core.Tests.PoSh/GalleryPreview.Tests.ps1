@@ -144,7 +144,8 @@ function Invoke-QuietGalleryPreviewTests {
         $plan=Test-QuietGalleryPackageSet (Join-Path $previewRoot 'packages') -Version $prepared.Version
         if($plan.SourceVersion -cne $expectedSourceVersion){throw 'PreviewSourceVersionLost'}
         $preview=Get-Content -LiteralPath (Join-Path $previewRoot 'packages/preview.json') -Raw -Encoding utf8|ConvertFrom-Json
-        if($preview.SourceRevision -cnotmatch '^[a-f0-9]{40}\z' -or $preview.Published){throw 'PreviewProvenanceMissing'}
+        $hasRepository=Test-Path -LiteralPath (Join-Path $WorkspaceRoot '.git')
+        if($preview.Published -or ($hasRepository -and $preview.SourceRevision -cnotmatch '^[a-f0-9]{40}\z') -or (!$hasRepository -and $null -ne $preview.SourceRevision)){throw 'PreviewProvenanceMissing'}
         foreach($package in $plan.Packages){
             $zip=[IO.Compression.ZipFile]::OpenRead((Join-Path $previewRoot ('packages/'+$package.File)))
             try{

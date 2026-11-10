@@ -17,13 +17,19 @@ $root=Join-Path ([IO.Path]::GetTempPath()) ('dotnet-provisioning-fixtures-'+[gui
 $null=[IO.Directory]::CreateDirectory($root)
 $oldPath=$env:PATH;$oldDotnetRoot=$env:DOTNET_ROOT
 function Assert-Provisioning {
-    <# .SYNOPSIS Enforces business invariants independently of implementation branches. #>
+    <#
+    .SYNOPSIS
+    Enforces business invariants independently of implementation branches.
+    #>
     param([bool]$Condition,[string]$Message)
     $script:assertions++
     if(!$Condition){throw "Assertion failed: $Message"}
 }
 function Assert-ProvisioningThrows {
-    <# .SYNOPSIS Requires an operation to reject invalid evidence or policy. #>
+    <#
+    .SYNOPSIS
+    Requires an operation to reject invalid evidence or policy.
+    #>
     param([scriptblock]$Operation,[string]$Message)
     $rejected=$false
     try{$null=& $Operation}catch{$rejected=$true}
@@ -44,14 +50,20 @@ try {
         $script:ResolutionCalls=0;$script:InventoryCalls=0;$script:DownloadCalls=0;$script:PullCalls=0
         $script:SdkPresent=$true;$script:RuntimeComplete=$true;$script:CorruptHash=$false;$script:PullFailure=$false
         function script:Get-DotNetSdkRelease {
-            <# .SYNOPSIS Supplies a deterministic release with a real fixture archive hash. #>
+            <#
+            .SYNOPSIS
+            Supplies a deterministic release with a real fixture archive hash.
+            #>
             param($Channel,$Version,$Preleases,$Confirm)
             $script:ResolutionCalls++
             $rid=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
             @{Version='11.0.100';RuntimeVersion='11.0.0';Files=@(@{rid=$rid;name='dotnet-sdk.zip';url='https://builds.dotnet.microsoft.com/dotnet/fixture.zip';hash=$(if($script:CorruptHash){'0'*128}else{$script:FixtureHash})})}
         }
         function script:Get-DotNetInstallation {
-            <# .SYNOPSIS Supplies independent complete/incomplete SDK and runtime inventories. #>
+            <#
+            .SYNOPSIS
+            Supplies independent complete/incomplete SDK and runtime inventories.
+            #>
             param($DotNetPath,$QuietCliRoot,$Confirm)
             $script:InventoryCalls++
             @{Sdk=@{Success=$script:SdkPresent;Records=@(@{Name='SDK';Version='11.0.100'})};Runtime=@{Success=$script:RuntimeComplete;Records=@(
@@ -61,25 +73,37 @@ try {
             )}}
         }
         function script:Save-DotNetSdkArchive {
-            <# .SYNOPSIS Copies the local zip fixture instead of performing a network download. #>
+            <#
+            .SYNOPSIS
+            Copies the local zip fixture instead of performing a network download.
+            #>
             param($Uri,$Destination,$TimeoutSeconds)
             $script:DownloadCalls++
             Copy-Item -LiteralPath $script:FixtureZip -Destination $Destination
         }
         function script:Invoke-DotNetContainerPull {
-            <# .SYNOPSIS Models an explicit image pull without native calls. #>
+            <#
+            .SYNOPSIS
+            Models an explicit image pull without native calls.
+            #>
             param($ContainerRuntime,$Image,$Platform,$QuietCliRoot,$Confirm)
             $script:PullCalls++
             if($script:PullFailure){throw 'Synthetic image pull failure.'}
             [pscustomobject]@{Image=$Image;Platform=$Platform;Status='Pulled'}
         }
         function script:Resolve-DotNetContainerRuntime {
-            <# .SYNOPSIS Exercises the actual shared resolver against owned dotenv and discovery fixtures. #>
+            <#
+            .SYNOPSIS
+            Exercises the actual shared resolver against owned dotenv and discovery fixtures.
+            #>
             param($ContainerRuntime,$WorkspaceRoot)
             $script:RuntimeResolveCalls++
             . $script:CommonPath
             function Get-Command {
-                <# .SYNOPSIS Models installed clients without starting either client or a daemon. #>
+            <#
+            .SYNOPSIS
+            Models installed clients without starting either client or a daemon.
+            #>
                 param($Name,$CommandType,$ErrorAction)
                 if($Name -in @('docker','podman')){[pscustomobject]@{Name=$Name;CommandType='Application'}}
             }

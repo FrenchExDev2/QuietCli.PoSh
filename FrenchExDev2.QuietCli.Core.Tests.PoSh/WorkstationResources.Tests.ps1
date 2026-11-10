@@ -89,7 +89,7 @@ function Test-QuietWorkstationResources {
     $leasePath=Join-Path $fixtureRun 'run.lease'
     $ready=Join-Path $RunDirectory lease-ready.txt;$release=Join-Path $RunDirectory lease-release.txt
     $leaseWorker=Join-Path $RunDirectory lease-worker.ps1
-    $leaseSource='param($Path,$Ready,$Release); $lease=[IO.FileStream]::new($Path,[IO.FileMode]::CreateNew,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Read); try{[IO.File]::WriteAllText($Ready,"ready"); $deadline=[DateTimeOffset]::UtcNow.AddSeconds(30); while(![IO.File]::Exists($Release) -and [DateTimeOffset]::UtcNow -lt $deadline){[void][Threading.Tasks.Task]::Delay(100).GetAwaiter().GetResult()}}finally{$lease.Dispose()}'
+    $leaseSource='param($Path,$Ready,$Release); $lease=[IO.FileStream]::new($Path,[IO.FileMode]::CreateNew,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Read); try{$lease.Lock(0,1); [IO.File]::WriteAllText($Ready,"ready",[Text.UTF8Encoding]::new($false)); $deadline=[DateTimeOffset]::UtcNow.AddSeconds(30); while(![IO.File]::Exists($Release) -and [DateTimeOffset]::UtcNow -lt $deadline){[void][Threading.Tasks.Task]::Delay(100).GetAwaiter().GetResult()}}finally{$lease.Dispose()}'
     [void][IO.File]::WriteAllTextAsync($leaseWorker,$leaseSource,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     . (Join-Path $WorkspaceRoot scripts/Ci.Process.ps1)
     $options=@{FilePath=(Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'}));ArgumentList=@('-File',(ConvertTo-CiArgument $leaseWorker),(ConvertTo-CiArgument $leasePath),(ConvertTo-CiArgument $ready),(ConvertTo-CiArgument $release));PassThru=$true;RedirectStandardOutput=(Join-Path $RunDirectory lease-worker.stdout.log);RedirectStandardError=(Join-Path $RunDirectory lease-worker.stderr.log)}

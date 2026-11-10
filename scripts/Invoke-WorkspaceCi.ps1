@@ -32,8 +32,10 @@ Development only: wildcard selecting Core cases by name; the run is partial and 
 Development only: stops the Core run at the first failing case; the run is incomplete.
 .PARAMETER DotNetSuite
 Focused .NET tooling campaign, used only with Suite DotNet.
+.PARAMETER MaxConcurrency
+Maximum number of internal test workers used by parallel-safe campaigns.
 #>
-[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure,[ValidateSet('Readiness','Provisioning','Layout','Locks','All')][string]$DotNetSuite='All')
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure,[ValidateSet('Readiness','Provisioning','Layout','Locks','All')][string]$DotNetSuite='All',[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)))
 dynamicparam {
     . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
@@ -58,7 +60,7 @@ if(Test-Path -LiteralPath $RunDirectory){throw 'TestRunDirectoryExists'}
 $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
 $workerPath=Join-Path $PSScriptRoot 'Invoke-TestWorker.ps1'
 $monitorPath=Join-Path $PSScriptRoot 'Watch-Tests.ps1'
-$workerArguments=@('-File',(ConvertTo-CiArgument ($workerPath)),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory)),'-Suite',$Suite)
+$workerArguments=@('-File',(ConvertTo-CiArgument ($workerPath)),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory)),'-Suite',$Suite,'-MaxConcurrency',$MaxConcurrency)
 if($Suite -eq 'DotNet'){$workerArguments+=@('-DotNetSuite',$DotNetSuite)}
 if($Suite -eq 'RealStatus' -and !$RepositoryConfig){throw 'RealStatusRequiresRepositoryConfig'}
 if($RepositoryConfig){$workerArguments+=@('-RepositoryConfig',(ConvertTo-CiArgument ([IO.Path]::GetFullPath($RepositoryConfig,$PWD.Path))))}

@@ -135,12 +135,14 @@ function Invoke-QuietConfigurationDeliveryEngine {
                     [IO.File]::Copy((Join-Path $WorkspaceRoot ($relative+'/'+$file.Path)),$destination)
                 }
             }
-            foreach($relative in @('global.json','Directory.Packages.props','FrenchExDev2.QuietCli.Core.PoSh/protocol.json')){[IO.File]::Copy((Join-Path $WorkspaceRoot $relative),(Join-Path $directory $relative))}
+            foreach($relative in @('global.json','Directory.Build.props','Directory.Packages.props','FrenchExDev2.QuietCli.Core.PoSh/protocol.json')){[IO.File]::Copy((Join-Path $WorkspaceRoot $relative),(Join-Path $directory $relative))}
             $path=Join-Path $directory ('FrenchExDev2.QuietCli.Core.PoSh/engine/'+$mutant.File)
             $source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
             if(([regex]::Matches($source,[regex]::Escape($mutant.From))).Count -ne 1){throw ('ConfigurationDeliveryMutationAnchorInvalid: '+$mutant.Name)}
             [void][IO.File]::WriteAllTextAsync($path,$source.Replace($mutant.From,$mutant.To),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-            $build=Invoke-CiProcess -FilePath dotnet -ArgumentList @('build',(Join-Path $directory 'FrenchExDev2.QuietCli.Core.Tests.PoSh/engine-tests/QuietCli.Engine.Tests.csproj'),'-f','net11.0','-c','Release','-o',(Join-Path $directory 'out'),'--nologo') -WorkingDirectory $directory -TimeoutSeconds 120
+            # This campaign executes net11 only. Do not restore the engine's unused net10 target
+            # or query vulnerability feeds from a deliberately networkless CI guest.
+            $build=Invoke-CiProcess -FilePath dotnet -ArgumentList @('build',(Join-Path $directory 'FrenchExDev2.QuietCli.Core.Tests.PoSh/engine-tests/QuietCli.Engine.Tests.csproj'),'-f','net11.0','-p:TargetFrameworks=net11.0','-p:NuGetAudit=false','-c','Release','-o',(Join-Path $directory 'out'),'--nologo') -WorkingDirectory $directory -TimeoutSeconds 120
             if($build.Outcome -ne 'Success'){throw ('InvalidConfigurationDeliveryMutant: '+$mutant.Name)}
             $run=& $runCases (Join-Path $directory 'out/QuietCli.Engine.Tests.dll')
             $outcome=if($run.Execution.Outcome -eq 'Failed' -and $run.Report.Failed -gt 0){'Killed'}elseif($run.Execution.Outcome -eq 'Success' -and !$run.Report.Failed){'Survived'}else{'InfrastructureFailure'}

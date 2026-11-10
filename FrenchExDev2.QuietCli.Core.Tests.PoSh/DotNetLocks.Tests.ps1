@@ -16,19 +16,28 @@ $root=Join-Path ([IO.Path]::GetTempPath()) ('quiet-dotnet-locks-'+[guid]::NewGui
 $null=[IO.Directory]::CreateDirectory((Join-Path $root 'build'))
 $assertions=0
 function Assert-DotNetLocks {
-    <# .SYNOPSIS Requires an independently specified lock or runtime invariant. #>
+    <#
+    .SYNOPSIS
+    Requires an independently specified lock or runtime invariant.
+    #>
     param([bool]$Condition,[string]$Message)
     $script:assertions++
     if(!$Condition){throw "Assertion failed: $Message"}
 }
 function Assert-LockRejection {
-    <# .SYNOPSIS Requires invalid input or unavailable evidence to fail before acceptance. #>
+    <#
+    .SYNOPSIS
+    Requires invalid input or unavailable evidence to fail before acceptance.
+    #>
     param([scriptblock]$Operation,[string]$Message)
     $failed=$false;try{$null=& $Operation}catch{$failed=$true}
     Assert-DotNetLocks $failed $Message
 }
 function Write-LockFixture {
-    <# .SYNOPSIS Writes owned deterministic UTF-8/LF fixture data. #>
+    <#
+    .SYNOPSIS
+    Writes owned deterministic UTF-8/LF fixture data.
+    #>
     param([string]$Path,$Value)
     [IO.File]::WriteAllText($Path,($Value|ConvertTo-Json -Depth 32),[Text.UTF8Encoding]::new($false))
 }
@@ -37,7 +46,10 @@ try {
         $script:Calls=0;$script:BadHash=$false;$script:BadUri=$false;$script:MissingArchive=$false
         $script:RegistryFailure=$false;$script:BadDigest=$false;$script:MissingPlatform=$false
         function script:Get-DotNetSdkRelease {
-            <# .SYNOPSIS Supplies canonical official-shaped SDK archive records without network access. #>
+            <#
+            .SYNOPSIS
+            Supplies canonical official-shaped SDK archive records without network access.
+            #>
             param($Channel,$Version,$Preleases,$Confirm)
             $script:Calls++
             $files=@(foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64','win-x64','win-arm64')){
@@ -48,7 +60,10 @@ try {
             @{Version=$Version;RuntimeVersion='11.0.0';Files=$files}
         }
         function script:Get-DotNetRuntimeRelease {
-            <# .SYNOPSIS Supplies the separately pinned Alpine PowerShell runtime archive records. #>
+            <#
+            .SYNOPSIS
+            Supplies the separately pinned Alpine PowerShell runtime archive records.
+            #>
             param($Version,$Confirm)
             $script:Calls++
             @{Version=$Version;Files=@(foreach($rid in @('linux-musl-x64','linux-musl-arm64')){
@@ -56,7 +71,10 @@ try {
             })}
         }
         function script:Invoke-DotNetRegistryHttp {
-            <# .SYNOPSIS Models authenticated multi-platform index and bounded tag-list metadata. #>
+            <#
+            .SYNOPSIS
+            Models authenticated multi-platform index and bounded tag-list metadata.
+            #>
             param($Uri,$Bearer)
             $script:Calls++
             if($script:RegistryFailure){throw 'Synthetic registry HTTP 429.'}

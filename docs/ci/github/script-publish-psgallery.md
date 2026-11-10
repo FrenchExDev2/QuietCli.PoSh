@@ -1,6 +1,6 @@
 # publish-psgallery.yml
 
-<!-- workflow-source-sha256: A68C81690128BEEDA9DBC4BADEF7DDC5F01D00343D2F1E319DE86D37B9914D9E -->
+<!-- workflow-source-sha256: DB37B12C5E9D5BEB9D6C5330B80FA9699A32F8EC46E891CCB13974EC0EB8D175 -->
 
 ## Purpose
 
@@ -35,20 +35,20 @@ flowchart TD
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
 | package | runner windows-latest | qualification | ${{ needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-QuietGalleryPackage.ps1, ./scripts/New-QuietPreviewPackage.ps1, ./scripts/Publish-QuietGallery.ps1, ./scripts/RuntimeTargets.ps1 |
-| publish | runner windows-latest | qualification, package | ${{ inputs.publish == true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }} | ./scripts/Assert-GalleryCheckpoint.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Publish-QuietGallery.ps1 |
+| publish | runner windows-latest | qualification, package | ${{ inputs.publish == true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') && github.event.pull_request.draft != true && needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }} | ./scripts/Assert-GalleryCheckpoint.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Publish-QuietGallery.ps1 |
 | qualification | reuses ./.github/workflows/ci.yml |  | default success condition |  |
 
 <!-- workflow-generated:end -->
 
 ## Scripts and effects
 
-The package preparation job uses the shared optional archive cache before Initialize-Workspace. The cache key includes OS and resource-lock hash; resource hashes are verified independently. Publication still consumes the exact prepared artifact and has no dependency on a current develop HEAD check.
+The package preparation job uses the shared optional archive cache before Initialize-Workspace. The cache key includes OS and resource-lock hash; resource hashes are verified independently. Publication still consumes the exact prepared artifact and has no dependency on a current develop HEAD check. The publish job accepts only push or workflow_dispatch events and explicitly rejects draft pull-request payloads, including when this reusable workflow is called from another workflow.
 
 qualification reuses ci.yml with All. The Windows x64 package job checks out the qualified revision, builds Release ReadyToRun for six RIDs and CLR 10/11, verifies All, and prepares a package with RequireReadyToRun. Publication downloads the artifact, validates its SHA/version/checkpoint and uses Publish-PSResource -NupkgPath. Only the publish job receives PSGALLERY_API_KEY from the psgallery environment. Failure diagnostics are redacted and retained separately.
 
 ## Validation and limits
 
-One public Core nupkg embeds every RID; Git stays internal. Packaging rebuilds from the qualified source, rather than merging matrix binaries. Automatic previews require develop but never compare its current remote HEAD to the checkpoint. ValidateOnly performs no public publication; stable publication remains explicit.
+One public Core nupkg embeds every RID; Git stays internal. Packaging rebuilds from the qualified source, rather than merging matrix binaries. Automatic previews require develop but never compare its current remote HEAD to the checkpoint. Pull requests, including drafts, cannot reach the public publication job. ValidateOnly performs no public publication; stable publication remains explicit.
 
 <!-- credits:begin -->
 ## Credits

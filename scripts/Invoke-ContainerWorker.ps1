@@ -28,8 +28,10 @@ Explicit selection overrides the checkout dotenv key; absent configuration uses 
 Runs the direct GitHub entry point inside the fallback container, without a nested local launcher.
 .PARAMETER TimeoutSeconds
 Explicit guest execution deadline, independent of the caller's job deadline.
+.PARAMETER MaxConcurrency
+Maximum number of internal test workers used by parallel-safe guest campaigns.
 #>
-[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime,[switch]$GitHubActions,[ValidateRange(1,7200)][int]$TimeoutSeconds=360)
+[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime,[switch]$GitHubActions,[ValidateRange(1,7200)][int]$TimeoutSeconds=360,[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)))
 dynamicparam {
     . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
@@ -51,6 +53,7 @@ if($Suite -eq 'Import'){$state.Project='FrenchExDev2.QuietCli.Core.PoSh';$state.
 if($Suite -eq 'Mutation'){$state.Project='FrenchExDev2.QuietCli.Core.PoSh';$state.Task='PTY properties, fuzzing and mutation'}
 Write-WorkspaceJson $status $state
 $created=$false
+$guestSuites=@()
 try{
     $stage=Join-Path $RunDirectory 'workspace';[void][IO.Directory]::CreateDirectory($stage)
     Copy-QuietContainerInputs -WorkspaceRoot $WorkspaceRoot -Destination $stage -NativeOnly:($Suite -eq 'Mutation') -ContainerRuntime $ContainerRuntime -Confirm:$false
@@ -74,6 +77,7 @@ try{
     }else{@('-File','/workspace/scripts/Invoke-WorkspaceCi.ps1','-WorkspaceRoot','/workspace','-Headless','-SkipBuild','-RunDirectory','/workspace/artifacts/tests/container-run')}
     if($GitHubActions){$guestArguments=@('-File','/workspace/scripts/Invoke-GitHubCi.ps1','-WorkspaceRoot','/workspace','-SkipBuild','-RunDirectory','/workspace/artifacts/tests/container-run')}
     if($ExpectedRuntimeIdentifier){$guestArguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
+    if($Suite -ne 'Mutation'){$guestArguments+=@('-MaxConcurrency',$MaxConcurrency)}
     if($SkipTty){if($Suite -eq 'Mutation'){throw 'TtyMutationCannotRunWithSkipTty'};$guestArguments+='-SkipTty'}
     if($Suite -ne 'Mutation'){$guestArguments+=@('-Suite',$Suite)}
     if($Profiler){
@@ -114,6 +118,7 @@ try{
     }while($true)
     $null=Invoke-WorkspaceNative $ContainerRuntime @('cp',($name+':/workspace/artifacts/tests/container-run'),(Join-Path $RunDirectory 'guest')) $WorkspaceRoot -TimeoutSeconds 60
     $summary=Get-Content -LiteralPath (Join-Path $RunDirectory 'guest/summary.json') -Encoding utf8 -Raw|ConvertFrom-Json
+    if($summary.PSObject.Properties['Suites']){$guestSuites=@($summary.Suites)}
     $exit=@{Value=''}
     $exitInspection=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('inspect','--format','{{.State.ExitCode}}',$name) -TimeoutSeconds 15 -State $exit -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){$s.Value=$e.Text.Trim()}}
     if($exitInspection.Outcome -ne 'Success' -or $exit.Value -notmatch '^-?\d+$'){throw 'GuestExitCodeUnconfirmed'}
@@ -148,7 +153,7 @@ finally{
     $state.Cleanup='NotCreated'
     if($created){try{$null=Invoke-WorkspaceNative $ContainerRuntime @('rm','--force',$name) $WorkspaceRoot -TimeoutSeconds 20;$state.Cleanup='RemovedOwnedContainer'}catch{$state.Cleanup='Unconfirmed: owned container '+$name}}
     $state.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o')
-    Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$state}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$state;Suites=$guestSuites}
     Write-WorkspaceJson $status $state
 }
 if($state.State -ne 'Success'){exit 1}

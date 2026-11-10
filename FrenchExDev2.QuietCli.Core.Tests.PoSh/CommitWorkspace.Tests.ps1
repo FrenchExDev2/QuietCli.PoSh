@@ -29,9 +29,14 @@ function New-QuietCommitWorkspaceFixture {
         if ($LASTEXITCODE -ne 0) { throw ('CommitWorkspaceFixtureGitFailed: ' + ($arguments -join ' ')) }
     }
     $utf8 = [Text.UTF8Encoding]::new($false)
-    $moduleDirectory = Join-Path $path 'FrenchExDev2.QuietCli.Fixture.PoSh'
+    Copy-Item -LiteralPath (Join-Path (Split-Path $RealScriptsPath -Parent) 'global.json') -Destination $path
+    $moduleDirectory = Join-Path $path 'FrenchExDev2.QuietCli.Core.PoSh'
     [void][IO.Directory]::CreateDirectory($moduleDirectory)
-    [void][IO.File]::WriteAllTextAsync((Join-Path $moduleDirectory 'FrenchExDev2.QuietCli.Fixture.PoSh.psd1'), "@{ ModuleVersion = '1.0.0' }`n", $utf8).GetAwaiter().GetResult()
+    [void][IO.File]::WriteAllTextAsync((Join-Path $moduleDirectory 'FrenchExDev2.QuietCli.Core.PoSh.psd1'), "@{ ModuleVersion = '1.0.0' }`n", $utf8).GetAwaiter().GetResult()
+    [void][IO.Directory]::CreateDirectory((Join-Path $moduleDirectory 'engine'))
+    [void][IO.Directory]::CreateDirectory((Join-Path $moduleDirectory 'resources'))
+    Copy-Item -LiteralPath (Join-Path (Split-Path $RealScriptsPath -Parent) 'FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj') -Destination (Join-Path $moduleDirectory 'engine')
+    [void][IO.File]::WriteAllTextAsync((Join-Path $moduleDirectory 'resources/dependencies.lock.json'), "{`"Files`":[],`"Packages`":[]}`n", $utf8).GetAwaiter().GetResult()
     [void][IO.File]::WriteAllTextAsync((Join-Path $moduleDirectory 'LICENSE_CREDITS.md'), "## Fixture`n`nFixture module ships no third-party native dependency.`n", $utf8).GetAwaiter().GetResult()
     $scriptsDirectory = Join-Path $path 'scripts'
     $docsScriptsDirectory = Join-Path $path 'docs/scripts'
@@ -118,7 +123,13 @@ function Test-QuietCommitWorkspace {
     .PARAMETER RunDirectory
     Owned temporary fixtures and the mutation report.
     #>
-    param([string]$WorkspaceRoot, [string]$RunDirectory)
+    param([string]$WorkspaceRoot, [string]$RunDirectory, [int]$MaxConcurrency=0, [string]$CandidatePath)
+    if(!$MaxConcurrency){
+        $configured=0
+        if($env:QUIETCLI_TEST_MAX_CONCURRENCY -and ![int]::TryParse($env:QUIETCLI_TEST_MAX_CONCURRENCY,[ref]$configured)){throw 'TestMaxConcurrencyInvalid'}
+        $MaxConcurrency=if($configured){$configured}else{[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount))}
+    }
+    if($MaxConcurrency -lt 1 -or $MaxConcurrency -gt 32){throw 'TestMaxConcurrencyOutOfRange'}
     $realScripts = Join-Path $WorkspaceRoot 'scripts'
     $sourcePath = Join-Path $realScripts 'Commit-Workspace.ps1'
     $source = [IO.File]::ReadAllTextAsync($sourcePath, [Text.Encoding]::UTF8).GetAwaiter().GetResult()
@@ -316,6 +327,11 @@ function Test-QuietCommitWorkspace {
 
     Test-QuietByteCountParsing
 
+    if($CandidatePath){
+        $null=& $verify $CandidatePath $fixtureRoot $realScripts $utf8
+        return
+    }
+
     & $verify $sourcePath $fixtureRoot $realScripts $utf8
 
     $mutants = @(
@@ -331,24 +347,48 @@ function Test-QuietCommitWorkspace {
         @{Id = 'file-sniffer-size-check-weakened'; Find = 'if ($isBinary -or $size -gt $MaxBytes) {'; Replace = 'if ($isBinary -and $size -gt $MaxBytes) {' },
         @{Id = 'file-sniffer-exemption-bypassed'; Find = "if (`$attr.Outcome -eq 'Success' -and @(`$attr.Data.Entries).Count -and `$attr.Data.Entries[0].Value -ceq 'set') { continue }"; Replace = "if (`$false) { continue }" }
     )
-    $results = [Collections.Generic.List[object]]::new()
-    foreach ($mutant in $mutants) {
+    foreach($mutant in $mutants){
         if (([regex]::Matches($source, [regex]::Escape($mutant.Find))).Count -ne 1) { throw ('CommitWorkspaceMutationAnchorInvalid: ' + $mutant.Id) }
-        $candidateDirectory=Join-Path $RunDirectory ('commit-workspace-mutant-'+$mutant.Id)
-        [void][IO.Directory]::CreateDirectory($candidateDirectory)
-        # Keep the real dependency layout: a missing Common.ps1 must never count as a killed mutant.
-        Get-ChildItem -LiteralPath $realScripts -Force|Copy-Item -Destination $candidateDirectory -Recurse -Force
-        $candidatePath = Join-Path $candidateDirectory 'Commit-Workspace.ps1'
-        [void][IO.File]::WriteAllTextAsync($candidatePath, $source.Replace($mutant.Find, $mutant.Replace), $utf8).GetAwaiter().GetResult()
-        $tokens = $null; $errors = $null; $null = [Management.Automation.Language.Parser]::ParseFile($candidatePath, [ref]$tokens, [ref]$errors)
-        if ($errors.Count) { throw ('CommitWorkspaceMutantInvalid: ' + $mutant.Id) }
-        $detected = $false; $detail = $null
-        try { & $verify $candidatePath $fixtureRoot $realScripts $utf8 } catch { $detected = $true; $detail = $_.Exception.Message }
-        if($detected -and $detail -notmatch '^(WhatIfMustNotCommit|WhatIfMustNotStage|WhatIfAttemptedNativeMutation|MissingScriptDocGateDidNotBlock|ScriptDocDriftWarningMissing|NoScriptDocDriftWarningDidNotSilenceIt|NoAllIncludedUnstagedContent|NoAllIncludedUnselectedFile|NoAllWorkingTreeLockChanged|NoAllEmptyIndexAccepted|NoAllDamagedLockAcceptedOrIndexChanged|CommitFileSnifferBinaryWarningMissing|CommitFileSnifferMustNotBlockCommit|CommitFileSnifferExemptionBypassed|CommitFileSnifferSizeWarningMissing|NoCommitFileSnifferWarningDidNotSilenceIt|CommitFileSnifferPropertyMissedExpectedWarning|CommitFileSnifferPropertyFalsePositive)'){
+    }
+    $mutationWorker=Join-Path $PSScriptRoot 'CommitWorkspace.MutationWorker.ps1'
+    $parallelResults=@($mutants | ForEach-Object -ThrottleLimit $MaxConcurrency -Parallel {
+        $mutant=$_
+        try {
+            $workerScripts=$using:realScripts
+            $workerMutationWorker=$using:mutationWorker
+            $workerWorkspaceRoot=$using:WorkspaceRoot
+            $workerRunDirectory=$using:RunDirectory
+            $workerSource=$using:source
+            . (Join-Path $workerScripts 'Ci.Process.ps1')
+            $workerUtf8=[Text.UTF8Encoding]::new($false)
+            $candidateDirectory=Join-Path $workerRunDirectory ('commit-workspace-mutant-'+$mutant.Id)
+            [void][IO.Directory]::CreateDirectory($candidateDirectory)
+            # Keep the real dependency layout: a missing Common.ps1 must never count as a killed mutant.
+            Get-ChildItem -LiteralPath $workerScripts -Force|Copy-Item -Destination $candidateDirectory -Recurse -Force
+            $candidatePath=Join-Path $candidateDirectory 'Commit-Workspace.ps1'
+            [void][IO.File]::WriteAllTextAsync($candidatePath,$workerSource.Replace($mutant.Find,$mutant.Replace),$workerUtf8).GetAwaiter().GetResult()
+            $tokens=$null;$errors=$null;$null=[Management.Automation.Language.Parser]::ParseFile($candidatePath,[ref]$tokens,[ref]$errors)
+            if($errors.Count){throw ('CommitWorkspaceMutantInvalid: '+$mutant.Id)}
+            $resultPath=Join-Path $candidateDirectory 'result.json'
+            $processState=@{Lines=0}
+            $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
+            $process=Invoke-CiProcess -FilePath $runner -ArgumentList @('-File',$workerMutationWorker,'-WorkspaceRoot',$workerWorkspaceRoot,'-RunDirectory',$candidateDirectory,'-CandidatePath',$candidatePath,'-ResultPath',$resultPath) -WorkingDirectory $workerWorkspaceRoot -TimeoutSeconds 900 -State $processState -OnOutput {param($event,$state)$state.Lines++}
+            if($process.Outcome -ne 'Success' -or !(Test-Path -LiteralPath $resultPath)){throw ('CommitWorkspaceMutationWorkerFailed: '+$mutant.Id+': '+$process.Outcome+'/'+$process.ExitCode)}
+            Get-Content -LiteralPath $resultPath -Raw -Encoding utf8|ConvertFrom-Json
+        }catch{
+            [pscustomobject]@{Name=$mutant.Id;State='InfrastructureFailure';Diagnostic=$_.Exception.Message}
+        }
+    })
+    $results=[Collections.Generic.List[object]]::new()
+    foreach($mutant in $mutants){
+        $result=@($parallelResults|Where-Object Name -CEQ $mutant.Id)
+        if($result.Count -ne 1){throw ('CommitWorkspaceMutantResultMissing: '+$mutant.Id)}
+        $detail=$result[0].Diagnostic
+        if($result[0].State -eq 'InfrastructureFailure' -or ($result[0].State -eq 'Killed' -and $detail -notmatch '^(WhatIfMustNotCommit|WhatIfMustNotStage|WhatIfAttemptedNativeMutation|MissingScriptDocGateDidNotBlock|ScriptDocDriftWarningMissing|NoScriptDocDriftWarningDidNotSilenceIt|NoAllIncludedUnstagedContent|NoAllIncludedUnselectedFile|NoAllWorkingTreeLockChanged|NoAllEmptyIndexAccepted|NoAllDamagedLockAcceptedOrIndexChanged|CommitFileSnifferBinaryWarningMissing|CommitFileSnifferMustNotBlockCommit|CommitFileSnifferExemptionBypassed|CommitFileSnifferSizeWarningMissing|NoCommitFileSnifferWarningDidNotSilenceIt|CommitFileSnifferPropertyMissedExpectedWarning|CommitFileSnifferPropertyFalsePositive)')){
             throw ('CommitWorkspaceMutantInfrastructureFailure: '+$mutant.Id+': '+$detail)
         }
-        $results.Add(@{Name = $mutant.Id; State = if ($detected) { 'Killed' } else { 'Survived' }; Diagnostic = $detail })
-        if (!$detected) { throw ('CommitWorkspaceMutantSurvived: ' + $mutant.Id) }
+        $results.Add($result[0])
+        if($result[0].State -ne 'Killed'){throw ('CommitWorkspaceMutantSurvived: '+$mutant.Id)}
     }
     $report = @{
         TestKind          = 'Integration'
@@ -357,6 +397,7 @@ function Test-QuietCommitWorkspace {
         Seed              = 97120
         PropertyExecutions = 25
         FuzzInputs        = 10
+        MaxConcurrency    = $MaxConcurrency
         Mutations         = $results.ToArray()
         SourceSHA256      = (Get-FileHash $sourcePath -Algorithm SHA256).Hash
         Scope             = "Documentation-sync gate wiring, script/doc drift detection, the binary/oversized-file sniffer and the -WhatIf/commit-once/no-remote contract against disposable fixture repositories; the three Sync-*.ps1 gates' own internal correctness is not re-verified here."

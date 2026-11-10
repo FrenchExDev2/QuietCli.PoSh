@@ -14,7 +14,10 @@ $ErrorActionPreference = 'Stop'
 $module = Import-Module $ModulePath -Force -PassThru
 $assertions = 0
 function Assert-Readiness {
-    <# .SYNOPSIS Fails when an independently specified observable invariant is false. #>
+    <#
+    .SYNOPSIS
+    Fails when an independently specified observable invariant is false.
+    #>
     param([bool]$Condition, [string]$Message)
     $script:assertions++
     if (!$Condition) { throw "Assertion failed: $Message" }
@@ -32,7 +35,10 @@ try {
         $script:Versions = @('11.0.100-rc.10.1','11.0.100-rc.2.1','11.0.100','11.0.101')
         $script:TransportFailure = $false
         function script:New-FixtureMetadata {
-            <# .SYNOPSIS Creates release evidence independent of selection logic. #>
+            <#
+            .SYNOPSIS
+            Creates release evidence independent of selection logic.
+            #>
             @{ 'channel-version' = '11.0'; releases = @(foreach ($v in $script:Versions) {
                 @{ 'release-version' = '11.0.0'; 'release-date' = '2026-11-10'; sdk = @{version=$v;files=@(@{
                     name='dotnet-sdk-linux-x64.tar.gz';rid='linux-x64';url='https://builds.dotnet.microsoft.com/dotnet/Sdk/test.tar.gz';hash=('a'*128)
@@ -40,7 +46,10 @@ try {
             }) }
         }
         function script:Invoke-DotNetReadinessHttp {
-            <# .SYNOPSIS Supplies deterministic public endpoint responses without I/O. #>
+            <#
+            .SYNOPSIS
+            Supplies deterministic public endpoint responses without I/O.
+            #>
             param($Uri,$Method='GET',$TimeoutSeconds)
             $script:HttpCalls++
             if ($script:TransportFailure) { throw 'Synthetic TLS failure.' }
@@ -57,7 +66,10 @@ try {
             [pscustomobject]@{StatusCode=$script:HttpStatus;Body=$(if($script:BadBody){'malformed{'}else{$data|ConvertTo-Json -Depth 10});Digest=('sha256:'+('e'*64))}
         }
         function script:Get-DotNetReadinessLocal {
-            <# .SYNOPSIS Models independent SDK/runtime command outcomes. #>
+            <#
+            .SYNOPSIS
+            Models independent SDK/runtime command outcomes.
+            #>
             param($ProjectPath,$QuietCliRoot)
             $script:LocalCalls++
             $r=@{}

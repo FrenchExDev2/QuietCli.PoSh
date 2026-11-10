@@ -34,6 +34,7 @@ flowchart LR
 new directory under `artifacts/tests`. `-ExpectedRuntimeIdentifier` validates the selected host and
 engine. `-SkipTty` explicitly excludes terminal campaigns. `-Platform` is required with `-Image`.
 The fallback `-TimeoutSeconds` default is 1800 seconds; it does not override GitHub's job deadline.
+`-MaxConcurrency` accepts `1..32`, defaults to `min(4, processor count)`, and is forwarded through both direct and fallback-container execution to bound parallel-safe internal test campaigns.
 
 `-Profiler`, prepared profiler paths, `-RunDirectory`, `-SkipBuild` and the dynamic `-Suite` contract
 retain the shared worker semantics. Reports remain under `artifacts/tests` or the explicitly selected

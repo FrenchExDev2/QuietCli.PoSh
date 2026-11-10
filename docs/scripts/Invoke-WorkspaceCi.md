@@ -15,6 +15,7 @@ Parameters (plus the same dynamic `-Suite` parameter mechanism as `Invoke-TestWo
 - `ExpectedRuntimeIdentifier` (`string`, `ValidatePattern('^[a-z0-9-]+$')`, optional) — forwarded to the worker for runtime-identity verification.
 - `RepositoryConfig` (`string`, optional) — required (throws `RealStatusRequiresRepositoryConfig`, line 60) when `-Suite RealStatus`.
 - `SkipTty`, `Profiler`, `ProfilerModulePath`, `ClrProfilerPath`, `Case`, `StopOnFirstFailure` — forwarded verbatim to the worker.
+- `MaxConcurrency` (`int`, `ValidateRange(1,32)`, default `min(4, processor count)`) — bounds parallel-safe internal test campaigns and is forwarded to the worker.
 
 Example (as used in `.github/workflows/publish-psgallery.yml` line 76):
 ```powershell

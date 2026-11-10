@@ -22,8 +22,10 @@ UTF-8 JSON array of existing repository roots; required by RealStatus.
 Required native architecture for both the PowerShell host and the separate engine.
 .PARAMETER DotNetSuite
 Focused .NET tooling campaign, used only with Suite DotNet.
+.PARAMETER MaxConcurrency
+Maximum number of internal test workers used by parallel-safe campaigns.
 #>
-[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure,[ValidateSet('Readiness','Provisioning','Layout','Locks','All')][string]$DotNetSuite='All')
+[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure,[ValidateSet('Readiness','Provisioning','Layout','Locks','All')][string]$DotNetSuite='All',[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)))
 dynamicparam {
     . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
@@ -36,6 +38,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 # Development-only selection, read by the Core case loop; never set by CI or the pre-commit gate.
 $env:QUIETCLI_TEST_SKIP_TTY=if($SkipTty){'1'}else{'0'}
+$env:QUIETCLI_TEST_MAX_CONCURRENCY=[string]$MaxConcurrency
 if($Case){$env:QUIETCLI_TEST_CASE=$Case}
 if($StopOnFirstFailure){$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE='1'}
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
@@ -157,7 +160,7 @@ try{
                 # Filtered or stopped development run: not qualification evidence, so the full-run evidence assertion is skipped.
                 $state.Task+=if($summary.Incomplete){" [INCOMPLETE: $($summary.StoppedAt)]"}else{' [PARTIAL: case filter]'}
                 Write-WorkspaceJson $statusPath $state
-            }elseif($selected -eq 'Core'){& (Join-Path $PSScriptRoot 'Assert-CoreIntegrationEvidence.ps1') -Summary $summary}
+            }elseif($selected -eq 'Core' -and !$summary.Failed){& (Join-Path $PSScriptRoot 'Assert-CoreIntegrationEvidence.ps1') -Summary $summary}
         }
     }
     if($Profiler){

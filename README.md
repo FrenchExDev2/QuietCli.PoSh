@@ -161,28 +161,28 @@ The default build also compiles this solution once, then prepares the distributi
 ```powershell
 $checkout = Join-Path $HOME 'src/QuietCli'
 Set-Location $checkout
-Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1 -ErrorAction Stop
-Get-Alias quiet
-
-$r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
-    -RecordDelimiter "`n" -Data @{ Version = $null; Records = 0 } `
-    -Output {
-        param($event, $runtime)
-        if ($event.Stream -eq 'stdout') {
-            $runtime.Data.Version = $event.Text.Trim()
-            $runtime.Data.Records++
-        }
-    } `
-    -Complete {
-        param($runtime)
-        if ($runtime.Data.Records -ne 1) { throw 'ExpectedOneSdkVersion' }
-        [pscustomobject]@{ SdkVersion = $runtime.Data.Version }
-    } `
-    dotnet --version
-if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count) {
-    throw 'IncompleteSdkVersion'
+./scripts/Invoke-Quiet.ps1 -Companion Git,Vagrant -Code {
+    param($context)
+    $r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
+        -RecordDelimiter "`n" -Data @{ Version = $null; Records = 0 } `
+        -Output {
+            param($event, $runtime)
+            if ($event.Stream -eq 'stdout') {
+                $runtime.Data.Version = $event.Text.Trim()
+                $runtime.Data.Records++
+            }
+        } `
+        -Complete {
+            param($runtime)
+            if ($runtime.Data.Records -ne 1) { throw 'ExpectedOneSdkVersion' }
+            [pscustomobject]@{ SdkVersion = $runtime.Data.Version }
+        } `
+        dotnet --version
+    if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count) {
+        throw 'IncompleteSdkVersion'
+    }
+    Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 }
-Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 ```
 
 YAML excerpt; invocation IDs and other envelope metadata are omitted. The version shown is the SDK selected in this checkout. `-Output` reads one native record; `-Complete` creates `{ SdkVersion }`. `-AsObject` keeps that result local, and `Out-QuietResult -AsYaml` formats the same result without executing `dotnet` again.
@@ -203,10 +203,10 @@ For source automation, [`scripts/Invoke-Quiet.ps1`](docs/scripts/Invoke-Quiet.md
 loads that exact local Core module before invoking your block in the same process:
 
 ```powershell
-$result = ./scripts/Invoke-Quiet.ps1 -Code {
-    param($runtime)
-    $runtime.Data.Result = quiet -AsObject -Complete { param($native) $native.Data } dotnet --version
-    $runtime.Data.Result
+$result = ./scripts/Invoke-Quiet.ps1 -Companion Git,Vagrant -Code {
+    param($context)
+    $context.Data.Result = quiet -AsObject -Complete { param($native) $native.Data } dotnet --version
+    $context.Data.Result
 }
 ```
 
@@ -293,34 +293,38 @@ Commands for each agent, the skill form, options and verification steps are in [
 A handler is a ready-made callback pair. `quiet -AsObject git status` is shorthand for the explicit form `quiet -AsObject -Output { ... } -Complete { ... } git status ...`, where the module supplies the `-Output` parser and the `-Complete` finalizer for you. The explicit form below does the same job by hand on a small scale: it asks Git for its machine format, counts the entries of a repository and returns a typed result.
 
 ```powershell
-Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
+./scripts/Invoke-Quiet.ps1 -Code {
+    param($context)
+    # Without a companion module: you write the callbacks.
+    $r = quiet -AsObject -C git-status -RecordDelimiter "`n" `
+        -Data @{ Branch = $null; Changed = 0; Conflicted = 0; Untracked = 0 } `
+        -Output {
+            param($event, $runtime)
+            if ($event.Stream -ne 'stdout') { return }
+            $line = $event.Text.TrimEnd([char[]]"`r`n")
+            switch -Regex ($line) {
+                '^# branch\.head (?<name>.+)$' { $runtime.Data.Branch = $Matches['name'] }
+                '^[12] ' { $runtime.Data.Changed++ }
+                '^u '    { $runtime.Data.Conflicted++ }
+                '^\? '   { $runtime.Data.Untracked++ }
+            }
+        } `
+        -Complete {
+            param($runtime)
+            [pscustomobject]@{
+                Branch     = $runtime.Data.Branch
+                Changed    = $runtime.Data.Changed
+                Conflicted = $runtime.Data.Conflicted
+                Untracked  = $runtime.Data.Untracked
+            }
+        } `
+        git status --porcelain=v2 --branch
 
-# Without a companion module: you write the callbacks.
-$r = quiet -AsObject -C git-status -RecordDelimiter "`n" `
-    -Data @{ Branch = $null; Changed = 0; Conflicted = 0; Untracked = 0 } `
-    -Output {
-        param($event, $runtime)
-        if ($event.Stream -ne 'stdout') { return }
-        $line = $event.Text.TrimEnd([char[]]"`r`n")
-        switch -Regex ($line) {
-            '^# branch\.head (?<name>.+)$' { $runtime.Data.Branch = $Matches['name'] }
-            '^[12] ' { $runtime.Data.Changed++ }
-            '^u '    { $runtime.Data.Conflicted++ }
-            '^\? '   { $runtime.Data.Untracked++ }
-        }
-    } `
-    -Complete {
-        param($runtime)
-        [pscustomobject]@{
-            Branch     = $runtime.Data.Branch
-            Changed    = $runtime.Data.Changed
-            Conflicted = $runtime.Data.Conflicted
-            Untracked  = $runtime.Data.Untracked
-        }
-    } `
-    git status --porcelain=v2 --branch
-
-Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
+    if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count) {
+        throw 'IncompleteExplicitGitStatus'
+    }
+    Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
+}
 ```
 
 Illustrative YAML excerpt for branch `develop`, one modified tracked file and one untracked file. The callbacks count the selected porcelain records; `-Complete` defines these four business fields.
@@ -334,25 +338,25 @@ Illustrative YAML excerpt for branch `develop`, one modified tracked file and on
   "Untracked": 1
 ```
 
-With the Git companion loaded (it depends on Core), the same question needs no callback. The module selects its own handler for `git status`:
+With the source-development launcher selecting the Git and Vagrant companions (both depend on Core), the same question needs no callback. Git selects its own handler for `git status`; Vagrant is ready for a later call in the same block:
 
 ```powershell
-Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1 -ErrorAction Stop
-Import-Module ./FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1 -ErrorAction Stop
-
-# Run from the built checkout root; select which handler fields to deliver.
-$statusView = {
-    param($data, $budget)
-    [pscustomobject]@{
-        Branch = $data.Branch
-        Staged = $data.Counts.Staged
-        Unstaged = $data.Counts.Unstaged
-        Untracked = $data.Counts.Untracked
+./scripts/Invoke-Quiet.ps1 -Companion Git,Vagrant -Code {
+    param($context)
+    # Run from the built checkout root; select which handler fields to deliver.
+    $statusView = {
+        param($data, $budget)
+        [pscustomobject]@{
+            Branch = $data.Branch
+            Staged = $data.Counts.Staged
+            Unstaged = $data.Counts.Unstaged
+            Untracked = $data.Counts.Untracked
+        }
     }
+    $result = quiet -AsObject -WorkingDirectory (Get-Location).Path -Projection $statusView git status
+    if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis -or $result.Error.Count) { throw 'IncompleteGitStatus' }
+    Out-QuietResult $result -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 }
-$result = quiet -AsObject -WorkingDirectory (Get-Location).Path -Projection $statusView git status
-if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis -or $result.Error.Count) { throw 'IncompleteGitStatus' }
-Out-QuietResult $result -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 ```
 
 For the same illustrative repository, the handler's projected YAML is:

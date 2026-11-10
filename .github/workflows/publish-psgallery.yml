@@ -124,7 +124,7 @@ jobs:
           retention-days: 14
   publish:
     needs: [qualification, package]
-    if: ${{ inputs.publish == true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }}
+    if: ${{ inputs.publish == true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.event.pull_request.draft != true && needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }}
     runs-on: windows-latest
     timeout-minutes: 10
     environment: psgallery
