@@ -4,9 +4,9 @@ Date : 10 novembre 2026. Statut : base de conception proposée, corrigée à par
 
 ## 1. Objectif et décisions applicables
 
-Livrer d'abord **C:/code/FrenchExDev/FrenchExDev_i3 comme environnement de travail équipé de SoftwareEcosystem.Manager**, permettant de gérer plusieurs instances locales d'écosystèmes, dont le développement du Manager lui-même. La [roadmap de livraison i3](ROADMAP-Delivery-FrenchExDev-i3.md) fixe le contenu matériel et huit scénarios de recette. Le dossier seul ne suffit pas.
+Livrer **FrenchExDev2 jusqu'à l'écosystème Conduit IEC61499 PowerShell/C# encapsulant QuietCli**. Le premier moyen utilisable est **C:/code/FrenchExDev/FrenchExDev_i3**, dépôt Git personnel et workspace équipé du Manager local d'instances. La [roadmap i3](ROADMAP-Delivery-FrenchExDev-i3.md) fixe les incréments seed/accepté et dix scénarios. Le dossier seul ne suffit pas.
 
-La **software ecosystem factory** réutilisable fournit les capacités de génération, adoption, mise à jour, hébergement, tests et observabilité. Son périmètre complet dépasse le premier environnement utilisable : les domaines .NET, IEC, messaging et les évolutions Core sont des extensions selon besoin. Core reste un consommateur spécialisé. Cette passe formalise et valide le planning ; elle n'installe pas le Manager.
+La **software ecosystem factory** réutilisable fournit génération, adoption, mise à jour, hébergement, feeds locaux, tests et observabilité. Result/Builder/FSM/IEC/Requirements et les capacités Core requises servent l'objectif Conduit ; messaging et extensions restent optionnels. Cette passe livre le planning et ses moyens de validation/extraction ; elle ne provisionne pas le Manager.
 
 Cette roadmap est le plan directeur corrigé. Le [challenge daté](ROADMAP-Factory-Review.md) explique les écarts du plan Claude ; les sous-plans ci-dessous portent les décisions corrigées et leurs critères. Les anciennes sections du plan source ne constituent pas des décisions concurrentes.
 
@@ -133,8 +133,8 @@ Les profils de publication sont **par cible**. NuGet.org Trusted Publishing ne d
 1. **B0 + FAC** : préflight du poste, fermeture des archives d'amorçage, exigences et contrôle du planning. Pas de serveur de registre ou nouveau Manager pour amorcer leurs propres producteurs.
 2. **G0 + DOG0** : kit minimal, plan/preview/apply et témoin à oracle indépendant.
 3. **HOST0 et GP0** : paquets de gestion locale du catalogue/placement et des opérations mono-dépôt, sans dépendance retour. **MIG0** inventorie en parallèle les seules entrées i2 nécessaires à la première livraison.
-4. **SM0 puis I3** : Manager local hors réseau ; installation versionnée à la cible demandée ; huit scénarios de recette, auto-gestion candidate N+1 et retour vers N. G1/G2, registry .NET et domaines métier ne bloquent pas ce minimum.
-5. **G1/G2, REG et SM1** : générateurs complets, profils d'orchestration, parcours NuGet et découverte distante optionnelle. Les canaux PSResource/npm sont qualifiés séparément.
+4. **SM0 puis I3SEED** : Manager local hors réseau, dépôt personnel et répertoires de développement. Les archives seed ne dépendent pas des registres qu'elles permettront de créer.
+5. **REG et PSREG0 en parallèle, puis PSREG1/SMREG/I3** : feeds locaux, provider localhost et lifecycle Manager ; dix scénarios avec N actif/candidate N+1. G1/G2 et SM1 avancent séparément.
 6. **ADP, FND et MIG1** : témoins QuietCli/GitHub, fondations réellement requises et vagues sélectionnées avec leurs prérequis ; aucune migration globale obligatoire.
 7. **FSM puis IEC ; MSG et EXT** selon leur fermeture réelle. **CORE** progresse indépendamment de SM0 ; Conduit commence par fixture puis intègre les contrats CORE nécessaires à sa concurrence. InProcess ne dépend jamais de MSG.
 8. **DOG1** : étendre la qualification N→N+1 aux profils, distribution, pannes et consommateurs déclarés. Le feedback de conception porte sur une révision suivante et n'introduit pas de cycle bloquant dans celle en cours.
@@ -147,14 +147,30 @@ DOG et RaC ne sont pas repoussés à la fin ; la dernière étape étend une vé
 
 Cette passe livre le planning, des contrats de livraison par roadmap, le registre RaC, les graphes proposés et un contrôleur documentaire avec ses tests. Les fonctions produit, migrations, registres, workflows et packages restent à réaliser dans leurs lots. i3 n'est pas provisionné. Les résultats du contrôleur portent exclusivement sur le planning et son tooling.
 
+## Objectif final, moyens existants et progression codifiée
+
+**L'ensemble livre FrenchExDev2 jusqu'à l'écosystème Conduit**, implémentation IEC61499 pour PowerShell/C# encapsulant QuietCli (« Quietly »), composée de briques bas niveau Result, Builder, FSM, Requirements et IEC. i3 est le workspace personnel Git qui fournit les moyens d'avancer ; il n'est pas le terme de l'ensemble. Les [contrats SoftwareContract](ROADMAP-SoftwareContract.md), nom validé par l'utilisateur, et [PSResource local](ROADMAP-Local-PSResource-Registry.md) complètent ce portefeuille.
+
+L'existant ne sera pas réécrit par défaut : Result, Builder, FSM, IEC61499 et Requirements sous Net/FrenchExDev, et les outils PS Docker/Compose/Nexus, GitHub/DevPoSh/QuietCli sont des candidats à examiner. Les références source observées relient Builder→Result et FSM→Result ; aucune référence Builder n'est nécessaire à FSM dans les projets src examinés. Requirements possède aussi des références DSL et des projets générateurs, à fermer explicitement. IEC existant a ses propres projets Core ; son futur lien FSM est une décision de cible, pas un constat de dépendance actuelle. La [whitelist](requirements/migration-whitelist.json) borne les évaluations ; Kubernetes PS y figure sans approbation de migration. Voir [la gate MIG](ROADMAP-Migration-FrenchExDev2.md).
+
+Les moyens sont du code produit avant leur usage : archive seed → workspace InstanceManager et conteneurs de développement résolus par kind → logiciel implémenté/qualifié → paquet preview local `0.0.1-draft1` puis `0.0.1-dev1` → consommateur restauré isolément → étape suivante. L'instance gère feeds PSResource/NuGet, répertoires et lifecycle des containers de serveurs. La delivery locale ne dépend d'aucun workflow GitHub ; créer/pousser un remote est une opération distante distincte.
+
+Le [registre des recettes](requirements/software-ecosystem-factory.execution.json) porte producteur, vérificateur, canal et ressources exclusives de **chaque lot**. Les blocs de **chaque roadmap** en sont générés par code ; leurs commandes Proposed restent à implémenter. Le code de planning livré s'exécute pour vérifier/générer et calculer les vagues : `scripts/Invoke-RoadmapContract.ps1 -Apply`, `scripts/Get-RoadmapExecutionPlan.ps1 -Target CON`. Il ne fait pas passer une interface imaginée pour un outil installé.
+
+Découpage : B0 et FAC démarrent indépendamment ; STD puis G0/DOG0 préparent HOST0 et GP0 en parallèle. MIG0 évalue l'existant en branche parallèle. SM0 livre I3SEED, qui permet REG et PSREG0 indépendamment ; PSREG1 puis SMREG complètent I3. REG débloque RESULT et RACPKG ; RESULT débloque BUILDER et FSM **en parallèle** ; FSM débloque IEC puis CON0. CORE avance sur ses propres contrats. CON exige ensuite les moyens i3, CORE et les fondations retenues pour sa recette finale. MSG/EXT/discovery distante restent des branches optionnelles. Les frontières des paquets et leurs vrais imports, et non les noms des dossiers, décideront des dépendances runtime finales.
+
+Les vagues générées sont conservatrices : elles respectent prérequis et locks de ressources. Elles ne promettent ni équipes disponibles ni durée. Les producteurs de paquets différents peuvent construire en parallèle ; publication/promotions et index partagés exigent leurs verrous. Les preuves d'une autre source/configuration/toolchain sont invalidées. Aucun cycle de build/runtime n'est toléré au motif que le poste est personnel : seed N produit candidate N+1 sans dépendance de retour.
+
+Une dépendance de **livraison** n'interdit pas de travailler plus tôt sur le design, les fixtures et les tests du consommateur. Ainsi CORE peut se concevoir pendant le seed, mais sa preview livrée consomme les feeds REG/PSREG0. Les recettes LocalBoth exigent explicitement ces deux canaux dans leur fermeture de livraison ; cela ne crée aucune dépendance runtime vers le Manager ou le serveur de paquets.
+
 <!-- roadmap-contract:begin -->
 ## Contrat de livraison et revue d'ingénierie
 
 Vue générée depuis [le modèle des roadmaps](requirements/software-ecosystem-factory.roadmaps.json). Modifier le modèle, puis exécuter `scripts/Invoke-RoadmapContract.ps1 -Apply` ; les AC restent dans [le registre RaC](requirements/software-ecosystem-factory.requirements.json).
 
-**MASTER** — portfolio — Pilotage de la livraison i3 et des extensions.
+**MASTER** — portfolio — FrenchExDev2 vers Conduit ; i3 est un jalon.
 
-Ordonner des résultats utilisateurs, décisions et gates ; la cible de recette est i3 équipé du Manager local.
+Livrer FrenchExDev2 jusqu'à Conduit PowerShell/C# encapsulant QuietCli ; i3 personnel et registres locaux fournissent les moyens de cette progression.
 
 | Kind | Livrable planifié et vérifiable |
 | --- | --- |
@@ -163,10 +179,11 @@ Ordonner des résultats utilisateurs, décisions et gates ; la cible de recette 
 | test | Contrôle des références, de la couverture des roadmaps et du graphe proposé |
 | obs | Vue des gates, décisions ouvertes, preuves manquantes et blocages par lot |
 
-Traçabilité : FAC-011, FAC-001, FAC-002, FAC-003, FAC-004, FAC-005, FAC-006, FAC-007, FAC-008, FAC-009, FAC-010. Lots : I3, DOG1. Une relation de lot est un prérequis de livraison, pas un import runtime.
+Traçabilité : FAC-012, FAC-011, FAC-001, FAC-002, FAC-003, FAC-004, FAC-005, FAC-006, FAC-007, FAC-008, FAC-009, FAC-010. Lots : I3, CON, DOG1. Une relation de lot est un prérequis de livraison, pas un import runtime.
 
 | ID | Exigence | Vérification prévue |
 | --- | --- | --- |
+| FAC-012 | Chaque lot fournit ses moyens codifiés de production, vérification, livraison locale et activation de ses consommateurs ; Conduit est l'objectif final. | FAC-012-AC1 → FAC-012-T1 (property, NotRun) |
 | FAC-011 | Chaque roadmap définit résultat utilisateur, livrables par kind, dépendances typées, décision de patterns et gates distinctes. | FAC-011-AC1 → FAC-011-T1 (contract, NotRun) |
 | FAC-001 | Tout écosystème possède ses propres versions, configuration et release, sans dépendance source externe. | FAC-001-AC1 → FAC-001-T1 (integration, NotRun) |
 | FAC-002 | Toute capacité est liée à un besoin, un AC, un plan par kind, un test et une preuve. | FAC-002-AC1 → FAC-002-T1 (contract, NotRun) |
@@ -197,13 +214,25 @@ Alternative : Big-bang de tous les domaines rejeté : il retarde le premier usag
 
 Oracle indépendant : I3 n'a aucun ancêtre FSM, IEC, MSG, EXT ou CORE dans le graphe de livraison.
 
-**SOLID / DRY / MODULAR :** SRP par capacité ; DRY des exigences dans le registre ; modules versionnés entre écosystèmes, sans dépôt parent commun.
+**SOLID / DRY / MODULAR :** SRP par capacité ; DRY des exigences ; dépôt personnel i3 distinct des dépôts hébergés, exclus de son index.
 
 Entrée : Demande de livraison et périmètre explicités.
 
 Sortie : Chaque lot a un propriétaire avant exécution, des prérequis identifiés et une gate fondée sur ses preuves.
 
 Risque : Un graphe proposé n'est pas l'inventaire vérifié des dépendances futures.
+
+### Moyens de progression et dépendants
+
+Contrats générés depuis [les recettes](requirements/software-ecosystem-factory.execution.json). Les commandes Proposed sont à produire et qualifier ; cette vue ne les exécute pas. Chaque lot résout son logiciel et sa fermeture, prépare son répertoire de développement dans le workspace selon kind, implémente/qualifie, publie un paquet preview local puis le fait restaurer par un consommateur isolé. Les lots de preuve livrent des reçus plutôt qu'un paquet.
+
+| Lot | Moyen de produire → vérifier | Canal | Débloque | Ressources exclusives | État |
+| --- | --- | --- | --- | --- | --- |
+| I3 | Invoke-SoftwareWorkspaceAcceptance → Test-I3Acceptance | Evidence | CON, MIG1, DOG1 | i3-active-deployment, i3-host-index | Proposed |
+| CON | Invoke-ConduitAcceptance → Test-ConduitAcceptance | Evidence |  | source-Conduit, conduit-acceptance | Proposed |
+| DOG1 | Invoke-FactoryGenerationWitness → Test-FactoryGenerationWitness | Evidence |  | factory-candidate | Proposed |
+
+Parallélisme : `scripts/Get-RoadmapExecutionPlan.ps1` calcule les vagues du graphe et sépare les ressources exclusives. Une vague est une possibilité structurelle, sans estimation de capacité ni preuve de livraison. Passage au consommateur : identité/version/hash, restauration isolée, AC et reçu de reprise valides ; jamais une simple fin de script. Toute mutation respecte SoftwareContract/ShouldProcess et -WhatIf.
 
 Responsable : Unassigned. État des livrables produit : Planned. PlanConsistent contrôle la structure proposée ; ImplementationReady exige les décisions/versions/responsables ; I3Accepted et ReleaseReady exigent leurs preuves propres. Les quatre kinds restent orthogonaux, avec design, tests et observabilité travaillés ensemble.
 <!-- roadmap-contract:end -->

@@ -18,6 +18,70 @@
   ],
   "workItems": [
     {
+      "id": "STD-design",
+      "kind": "design",
+      "plan": "ROADMAP-SoftwareContract.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:STD/design"
+    },
+    {
+      "id": "STD-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-SoftwareContract.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:STD/impl"
+    },
+    {
+      "id": "STD-test",
+      "kind": "test",
+      "plan": "ROADMAP-SoftwareContract.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:STD/test"
+    },
+    {
+      "id": "STD-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-SoftwareContract.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:STD/obs"
+    },
+    {
+      "id": "PSREG-design",
+      "kind": "design",
+      "plan": "ROADMAP-Local-PSResource-Registry.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:PSREG/design"
+    },
+    {
+      "id": "PSREG-impl",
+      "kind": "impl",
+      "plan": "ROADMAP-Local-PSResource-Registry.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:PSREG/impl"
+    },
+    {
+      "id": "PSREG-test",
+      "kind": "test",
+      "plan": "ROADMAP-Local-PSResource-Registry.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:PSREG/test"
+    },
+    {
+      "id": "PSREG-obs",
+      "kind": "obs",
+      "plan": "ROADMAP-Local-PSResource-Registry.md",
+      "status": "Planned",
+      "owner": "Unassigned",
+      "deliverableRef": "roadmap:PSREG/obs"
+    },
+    {
       "id": "FAC-design",
       "kind": "design",
       "plan": "ROADMAP-Requirements-As-Code.md",
@@ -563,6 +627,668 @@
     }
   ],
   "requirements": [
+    {
+      "id": "MIG-010",
+      "feature": "MIG",
+      "statement": "La qualification PowerShell observe Get-Module après import réel isolé et compare les fonctions/cmdlets réellement exportées au contrat attendu.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Migration-FrenchExDev2.md",
+          "section": "Exports réels après chargement"
+        }
+      ],
+      "dependsOn": [
+        "MIG-008"
+      ],
+      "kindLinks": [
+        "MIG-design",
+        "MIG-impl",
+        "MIG-test",
+        "MIG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MIG-010-AC1",
+          "given": "un module explicitement sélectionné dans la whitelist et son contrat public",
+          "when": "charger son psd1/psm1 dans un processus séparé puis interroger Get-Module",
+          "then": "identité, versions, chemins, fonctions/cmdlets/alias réellement exportés et modules requis sont rapportés ; fonction privée, wildcard de manifeste, import échoué et timeout ne deviennent pas un succès ; WhatIf ne charge rien ; une copie temporaire garde une portée distincte de l'installation d'origine",
+          "verification": {
+            "id": "MIG-010-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "FAC-012",
+      "feature": "FAC",
+      "statement": "Chaque lot fournit ses moyens codifiés de production, vérification, livraison locale et activation de ses consommateurs ; Conduit est l'objectif final.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Ecosystem-Generator.md",
+          "section": "Progression codifiée"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "FAC-design",
+        "FAC-impl",
+        "FAC-test",
+        "FAC-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "FAC-012-AC1",
+          "given": "le graphe et les recettes versionnés",
+          "when": "calculer la progression",
+          "then": "chaque lot possède producteur, vérificateur, canal et ressources ; les dépendances précèdent leurs consommateurs et deux ressources exclusives ne sont pas allouées dans la même vague",
+          "verification": {
+            "id": "FAC-012-T1",
+            "method": "property",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "STD-001",
+      "feature": "STD",
+      "statement": "SoftwareContract définit les contrats et profils logiciels PowerShell/C# avec traçabilité RaC et séparation des responsabilités.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareContract.md",
+          "section": "Contrat logiciel"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "STD-design",
+        "STD-impl",
+        "STD-test",
+        "STD-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "STD-001-AC1",
+          "given": "un logiciel PS ou C# et son profil déclaré",
+          "when": "contrôler sa conformité",
+          "then": "les règles applicables produisent un état et des preuves par langage ; un profil inconnu ou un contrat incomplet est refusé sans conformité globale inventée",
+          "verification": {
+            "id": "STD-001-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "STD-002",
+      "feature": "STD",
+      "statement": "Chaque paramètre PowerShell justifie son type, domaine, validation statique ou configurée, défaut, portée, erreurs et complétion.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareContract.md",
+          "section": "Paramètres PowerShell"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "STD-design",
+        "STD-impl",
+        "STD-test",
+        "STD-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "STD-002-AC1",
+          "given": "domaines fermés et domaines issus de configuration",
+          "when": "passer une valeur inconnue, vide, ambiguë ou devenue périmée",
+          "then": "le domaine fermé utilise une validation stable ; le domaine extensible est revalidé contre le snapshot de configuration à l'exécution, sans IO ni mutation dans la complétion ; les cas malformés sont refusés avant effet",
+          "verification": {
+            "id": "STD-002-T1",
+            "method": "fuzz",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "STD-003",
+      "feature": "STD",
+      "statement": "Toute opération modifiante possède SupportsShouldProcess et WhatIf sans écriture, réseau ni processus métier, y compris à travers une façade.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareContract.md",
+          "section": "ShouldProcess"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "STD-design",
+        "STD-impl",
+        "STD-test",
+        "STD-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "STD-003-AC1",
+          "given": "une opération exportée et sa façade avec adaptateurs espions",
+          "when": "appeler WhatIf puis décliner Confirm",
+          "then": "aucun effet ni installation implicite ; validation pure permise ; Confirm et WhatIf sont transmis une seule fois au propriétaire métier ; un mutant supprimant la garde est détecté",
+          "verification": {
+            "id": "STD-003-T1",
+            "method": "mutation",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "STD-004",
+      "feature": "STD",
+      "statement": "Le logiciel est créé dans un conteneur de développement possédé résolu par kind et livré par paquet local preview immuable.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareContract.md",
+          "section": "Lifecycle"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "STD-design",
+        "STD-impl",
+        "STD-test",
+        "STD-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "STD-004-AC1",
+          "given": "un workspace InstanceManager seed et un logiciel sélectionné",
+          "when": "résoudre placement puis créer, coder, packager, publier et restaurer",
+          "then": "un répertoire de source unique respecte langage/intérêt et containment ; draft1 puis dev1 sont des identités explicites ; le consommateur isolé utilise les paquets figés sans source sœur ni workflow GitHub obligatoire",
+          "verification": {
+            "id": "STD-004-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "STD-005",
+      "feature": "STD",
+      "statement": "Chaque logiciel sépare code, tests compagnons, façades et infrastructures avec async, docs, lifecycle borné et qualification par langage.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-SoftwareContract.md",
+          "section": "Contrat logiciel"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "STD-design",
+        "STD-impl",
+        "STD-test",
+        "STD-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "STD-005-AC1",
+          "given": "un paquet avec profils PS/C#",
+          "when": "qualifier sa livraison",
+          "then": "exemples, propriétés, fuzz et mutations pertinents sont rapportés séparément ; API/docs et cancellation/disposal sont vérifiés ; un manque reste un écart explicite",
+          "verification": {
+            "id": "STD-005-T1",
+            "method": "contract",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "PSREG-001",
+      "feature": "PSREG",
+      "statement": "Un feed PSResource sur répertoire assure pack/publish/find/save/import des previews avec dépendances explicites.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Local-PSResource-Registry.md",
+          "section": "PSREG0"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "PSREG-design",
+        "PSREG-impl",
+        "PSREG-test",
+        "PSREG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "PSREG-001-AC1",
+          "given": "deux modules avec dépendance preview et un cache vide",
+          "when": "publier 0.0.1-draft1 puis 0.0.1-dev1 et restaurer chaque identité exacte",
+          "then": "version, hash et résultat fonctionnel correspondent, sans contact PSGallery public ni écrasement d'identité ; versions de même ModuleVersion sont installées dans des racines distinctes",
+          "verification": {
+            "id": "PSREG-001-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "PSREG-002",
+      "feature": "PSREG",
+      "statement": "Le feed PSResource localhost conteneur est qualifié par de vrais clients PowerShell Windows et Linux en CLI.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Local-PSResource-Registry.md",
+          "section": "PSREG1"
+        }
+      ],
+      "dependsOn": [
+        "PSREG-001"
+      ],
+      "kindLinks": [
+        "PSREG-design",
+        "PSREG-impl",
+        "PSREG-test",
+        "PSREG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "PSREG-002-AC1",
+          "given": "un provider NuGet/PSResource et une image épinglée avec port loopback",
+          "when": "démarrer, publier, rechercher, sauver et importer depuis chaque client",
+          "then": "le résultat fonctionnel et la dépendance preview sont observés par plateforme ; HTTP 200 seul ne suffit pas ; une plateforme absente reste NotRun et ne satisfait pas la recette crossplatform",
+          "verification": {
+            "id": "PSREG-002-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "PSREG-003",
+      "feature": "PSREG",
+      "statement": "InstanceManager gère les répertoires/containers de registres et leurs cycles de vie avec ShouldProcess et reprise indépendante.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Local-PSResource-Registry.md",
+          "section": "Lifecycle"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "PSREG-design",
+        "PSREG-impl",
+        "PSREG-test",
+        "PSREG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "PSREG-003-AC1",
+          "given": "Manager N actif et registres possédés",
+          "when": "prévisualiser puis start/health/stop/backup/restore et préparer N+1",
+          "then": "WhatIf est sans effet, le redémarrage préserve les paquets, seuls les volumes possédés sont concernés et une archive d'amorçage permet la reprise sans N+1",
+          "verification": {
+            "id": "PSREG-003-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "I3-009",
+      "feature": "I3",
+      "statement": "La racine i3 possède son dépôt Git personnel de préférences et état désiré avec dépôts hébergés indépendants exclus de son index.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Delivery-FrenchExDev-i3.md",
+          "section": "Dépôt personnel"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "I3-design",
+        "I3-impl",
+        "I3-test",
+        "I3-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "I3-009-AC1",
+          "given": "i3 checkout du dépôt personnel de stephaneerard et un écosystème hébergé",
+          "when": "inspecter index et reproduire les préférences sur un autre poste",
+          "then": "préférences et config désirée sont versionnées ; fichiers secrets, overrides locaux, binaires, données feeds et code des dépôts hébergés sont exclus ; aucune création distante ou submodule implicite",
+          "verification": {
+            "id": "I3-009-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "I3-010",
+      "feature": "I3",
+      "statement": "i3 seed précède les feeds ; i3 accepté fournit livraison NuGet et PSResource locale sans dépendance circulaire ni workflow distant obligatoire.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Delivery-FrenchExDev-i3.md",
+          "section": "Progression"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "I3-design",
+        "I3-impl",
+        "I3-test",
+        "I3-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "I3-010-AC1",
+          "given": "des archives seed versionnées et leurs hashes",
+          "when": "installer seed, créer les feeds et livrer la candidate Manager",
+          "then": "bootstrap est acyclique ; N reste actif pendant qualification N+1 ; NuGet/PSResource sont réellement consommés et la reprise ne dépend pas du registre en panne",
+          "verification": {
+            "id": "I3-010-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MIG-007",
+      "feature": "MIG",
+      "statement": "La migration est deny-by-default et ne sélectionne que des items de whitelist avec décision explicite Assess/Migrate/Create/Exclude.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Migration-FrenchExDev2.md",
+          "section": "Whitelist"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "MIG-design",
+        "MIG-impl",
+        "MIG-test",
+        "MIG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MIG-007-AC1",
+          "given": "une whitelist et des sources supplémentaires",
+          "when": "analyser ou préparer une migration",
+          "then": "un identifiant inconnu, doublon ou chemin sortant est refusé ; un item non approuvé reste bloqué ; aucun élément hors whitelist n'est repris implicitement",
+          "verification": {
+            "id": "MIG-007-T1",
+            "method": "property",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MIG-008",
+      "feature": "MIG",
+      "statement": "Chaque ps1/psm1/psd1 et solution/projet C# sélectionné est analysé par une bibliothèque réutilisable comptée dans la gate de migration.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Migration-FrenchExDev2.md",
+          "section": "Gate dépendances"
+        }
+      ],
+      "dependsOn": [
+        "MIG-007"
+      ],
+      "kindLinks": [
+        "MIG-design",
+        "MIG-impl",
+        "MIG-test",
+        "MIG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MIG-008-AC1",
+          "given": "AST PowerShell, références solutions/csproj et déclarations MSBuild",
+          "when": "évaluer le candidat avec son identité source et sa politique",
+          "then": "imports/dot-sourcing/requires, projets, packages et imports sont tracés ; dépendance manquante, cycle, calcul dynamique, source externe non approuvée ou graphe évalué absent bloque le passage ; scripts et builds ne sont jamais exécutés par inspection",
+          "verification": {
+            "id": "MIG-008-T1",
+            "method": "fault",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "MIG-009",
+      "feature": "MIG",
+      "statement": "Une structure vide ou .gitkeep est un candidat à créer ; un module partiellement rempli conserve son code et ses écarts sans succès de migration inventé.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Migration-FrenchExDev2.md",
+          "section": "Kubernetes"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "MIG-design",
+        "MIG-impl",
+        "MIG-test",
+        "MIG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MIG-009-AC1",
+          "given": "un dossier .gitkeep seul et un module Kubernetes contenant du code",
+          "when": "les inventorier",
+          "then": "le premier est ScaffoldCandidate sans comportement migré ; le second conserve les empreintes et dépendances réelles ; les sous-dossiers vides ne rendent pas le module entier vide",
+          "verification": {
+            "id": "MIG-009-T1",
+            "method": "property",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "CON-003",
+      "feature": "CON",
+      "statement": "La recette finale FrenchExDev2 livre Conduit IEC61499 PowerShell/C# encapsulant QuietCli depuis des paquets locaux indépendants.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Conduit.md",
+          "section": "Recette finale"
+        }
+      ],
+      "dependsOn": [],
+      "kindLinks": [
+        "CON-design",
+        "CON-impl",
+        "CON-test",
+        "CON-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "CON-003-AC1",
+          "given": "i3, paquets Result/Builder/FSM/IEC/Requirements et QuietCli figés",
+          "when": "restaurer et exercer un réseau depuis PS et C#",
+          "then": "mêmes données puis événements attendus, lifecycle/annulation et boucles bornées ; QuietCli est encapsulé sans dépendance retour ; preuves PS/C#, installation froide et conformité IEC limitée au périmètre déclaré sont distinctes",
+          "verification": {
+            "id": "CON-003-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
     {
       "id": "FAC-011",
       "feature": "FAC",

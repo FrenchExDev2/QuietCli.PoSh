@@ -74,13 +74,13 @@ try {
     $baseline = Get-RoadmapAssessment $WorkspaceRoot
     Write-WorkspaceJson (Join-Path $RunDirectory 'planning-assessment.json') $baseline
     Assert-Case 'baseline planning passes with product readiness withheld' ($baseline.Passed -and !$baseline.ImplementationReady -and $baseline.ProductQualification -ceq 'NotAssessed' -and $baseline.ReadinessGaps.Count -gt 0)
-    Assert-Case 'all files and all eight i3 acceptance scenarios are represented' ($baseline.Counts.Roadmaps -eq $files.Count -and @($registry.requirements | Where-Object feature -CEQ I3).Count -eq 8)
+    Assert-Case 'all files and all ten i3 acceptance scenarios are represented' ($baseline.Counts.Roadmaps -eq $files.Count -and @($registry.requirements | Where-Object feature -CEQ I3).Count -eq 10)
     Assert-Case 'every product evidence remains NotRun' (@($registry.requirements.acceptance.evidence | Where-Object status -CNE NotRun).Count -eq 0)
     Assert-Case 'requested delivery target is i3' ($model.target -ceq 'C:/code/FrenchExDev/FrenchExDev_i3')
     $ancestors=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $pending=[Collections.Generic.Queue[string]]::new();$pending.Enqueue('I3')
     while($pending.Count){$nodeId=$pending.Dequeue();if($ancestors.Add($nodeId)){foreach($dependency in ($model.deliveryNodes|Where-Object id -CEQ $nodeId).dependsOn){$pending.Enqueue($dependency)}}}
-    Assert-Case 'minimal i3 excludes domain engines and extended infrastructure' (@($ancestors | Where-Object {$_ -in @('FSM','IEC','MSG','EXT','CORE','REG','G2','SM1')}).Count -eq 0)
+    Assert-Case 'i3 excludes domain engines while including qualified local registries' (@($ancestors | Where-Object {$_ -in @('FSM','IEC','MSG','EXT','CORE','G2','SM1')}).Count -eq 0 -and 'REG' -cin $ancestors -and 'PSREG1' -cin $ancestors)
     Assert-Case 'Manager local runtime has only HOST and GP component dependencies' ((($model.runtimeNodes|Where-Object id -CEQ ManagerLocal).dependsOn|Sort-Object) -join ',' -ceq 'GitProject,WorkspaceHost')
 
     $faults = @(
@@ -146,7 +146,7 @@ try {
     [void][IO.Directory]::CreateDirectory((Join-Path $fixture 'docs/requirements'))
     [void][IO.Directory]::CreateDirectory((Join-Path $fixture 'docs/audits'))
     foreach($file in $files){Copy-Item -LiteralPath (Join-Path $docs $file) -Destination (Join-Path $fixture ('docs/'+$file))}
-    Copy-Item -LiteralPath (Join-Path $docs 'requirements/software-ecosystem-factory.roadmaps.json'),(Join-Path $docs 'requirements/software-ecosystem-factory.requirements.json') -Destination (Join-Path $fixture 'docs/requirements')
+    Copy-Item -LiteralPath (Join-Path $docs 'requirements/software-ecosystem-factory.roadmaps.json'),(Join-Path $docs 'requirements/software-ecosystem-factory.requirements.json'),(Join-Path $docs 'requirements/software-ecosystem-factory.execution.json') -Destination (Join-Path $fixture 'docs/requirements')
     Copy-Item -LiteralPath (Join-Path $docs 'audits/2026-11-10-claude-ecosystem-plan.source.txt') -Destination (Join-Path $fixture 'docs/audits')
     $target=Join-Path $fixture ('docs/'+$files[0])
     $text=[IO.File]::ReadAllTextAsync($target,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
@@ -200,6 +200,7 @@ try {
         Remove-Module $mutant
     }
     Write-WorkspaceJson (Join-Path $RunDirectory 'mutations.json') $mutationResults.ToArray()
+    . (Join-Path $PSScriptRoot 'Test-MigrationAndProgression.ps1')
     $state.State=if($state.Failed){'Failed'}else{'Success'}
 } catch {$state.State='Crash';$state.Error=$_.Exception.ToString();$state.Failed++}
 finally {
@@ -207,6 +208,8 @@ finally {
     $groups=@($cases | Group-Object Category | ForEach-Object {[pscustomobject]@{Category=$_.Name;Executed=$_.Count;Passed=@($_.Group | Where-Object Passed).Count;Failed=@($_.Group | Where-Object {!$_.Passed}).Count}})
     $sourceFiles=@($modulePath,$PSCommandPath,(Join-Path $WorkspaceRoot 'scripts/Invoke-RoadmapTests.ps1'),(Join-Path $WorkspaceRoot 'scripts/Invoke-RoadmapContract.ps1'))
     $sourceFiles+=@(Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot 'docs/requirements') -File | ForEach-Object FullName)
+    $sourceFiles+=@('scripts/lib/Migration.Dependencies.psm1','scripts/lib/Migration.Exports.psm1','scripts/lib/Roadmap.Progression.psm1','scripts/Test-MigrationDependencies.ps1','scripts/Test-MigrationGate.ps1','scripts/Test-PowerShellModuleExports.ps1','scripts/workers/Invoke-ModuleExportProbe.ps1','scripts/Get-RoadmapExecutionPlan.ps1','FrenchExDev2.QuietCli.Core.Tests.PoSh/roadmap-tests/Test-MigrationAndProgression.ps1' | ForEach-Object { Join-Path $WorkspaceRoot $_ })
+    $sourceFiles+=@('scripts/lib/LocalGallery.Probe.psm1','scripts/Test-LocalGalleryContainer.ps1','scripts/workers/Invoke-LocalGalleryProbe.ps1','scripts/workers/Invoke-LocalGalleryClient.ps1' | ForEach-Object { Join-Path $WorkspaceRoot $_ })
     $sourceFiles+=@(Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot 'docs') -Filter 'ROADMAP-*.md' -File | ForEach-Object FullName)
     $identities=@(foreach($file in $sourceFiles){[pscustomobject]@{Path=$file;Sha256=(Get-FileHash -LiteralPath $file).Hash}})
     $summary=[pscustomobject]@{State=$state;Seed=$seed;Categories=$groups;Cases=$cases.ToArray();Sources=$identities;PowerShell=$PSVersionTable.PSVersion.ToString();Scope='Planning tooling only; no product acceptance or release qualification.'}

@@ -166,6 +166,18 @@ Sortie : G0 qualifié séparément ; G1/G2 ne passent leur gate qu'avec leurs vr
 
 Risque : Générer les tests et leur oracle depuis le même template peut masquer une régression.
 
+### Moyens de progression et dépendants
+
+Contrats générés depuis [les recettes](requirements/software-ecosystem-factory.execution.json). Les commandes Proposed sont à produire et qualifier ; cette vue ne les exécute pas. Chaque lot résout son logiciel et sa fermeture, prépare son répertoire de développement dans le workspace selon kind, implémente/qualifie, publie un paquet preview local puis le fait restaurer par un consommateur isolé. Les lots de preuve livrent des reçus plutôt qu'un paquet.
+
+| Lot | Moyen de produire → vérifier | Canal | Débloque | Ressources exclusives | État |
+| --- | --- | --- | --- | --- | --- |
+| G0 | New-EcosystemPlan → Test-EcosystemPlan | BootstrapArchive | DOG0, HOST0, GP0, G1 | source-GEN | Proposed |
+| G1 | New-OperationFacadePackage → Test-OperationFacade | BootstrapArchive | G2 | source-GEN | Proposed |
+| G2 | New-GeneratorCompositionPackage → Test-GeneratorComposition | LocalPSResource | SM1, ADP, MSG, DOG1 | source-GEN | Proposed |
+
+Parallélisme : `scripts/Get-RoadmapExecutionPlan.ps1` calcule les vagues du graphe et sépare les ressources exclusives. Une vague est une possibilité structurelle, sans estimation de capacité ni preuve de livraison. Passage au consommateur : identité/version/hash, restauration isolée, AC et reçu de reprise valides ; jamais une simple fin de script. Toute mutation respecte SoftwareContract/ShouldProcess et -WhatIf.
+
 Responsable : Unassigned. État des livrables produit : Planned. PlanConsistent contrôle la structure proposée ; ImplementationReady exige les décisions/versions/responsables ; I3Accepted et ReleaseReady exigent leurs preuves propres. Les quatre kinds restent orthogonaux, avec design, tests et observabilité travaillés ensemble.
 <!-- roadmap-contract:end -->
 

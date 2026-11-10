@@ -4,7 +4,7 @@ Date : 10 novembre 2026. Statut : sous-plan de haut niveau proposé, non implém
 
 ## Objectif, frontières et dépendances
 
-Traduire des événements entre domaines sans recréer leur routage, moteur ou scheduler.
+Livrer **l'écosystème Conduit**, objectif final FrenchExDev2 : rendre IEC61499 utilisable depuis PowerShell et C#, en encapsulant QuietCli (prononcé Quietly) et en consommant les composants bas niveau indépendants, sans recréer leur moteur ou scheduler. La qualification IEC reste limitée aux fonctions/clauses effectivement documentées et vérifiées.
 
 Dépendances : IEC et QuietCli existant pour une fixture ; nouvel ordonnanceur CORE pour la concurrence promise. M facultatif pour qualifier un transport externe.
 
@@ -62,14 +62,20 @@ Livrer par incréments de capacité couvrant ensemble design, impl, test et obs.
 
 Avant implementation-ready : arrêter les identités publiques, versions de contrats/profils, erreurs et politiques de compatibilité ; détailler les scénarios d’échec/annulation ; affecter le propriétaire ; remplacer les IDs de tests prévus par leurs vrais symboles/chemins. Ces décisions restent ouvertes et ne sont pas masquées par les noms d’API illustratifs.
 
+## Recette finale et livraison locale
+
+CON0 livre une fixture depuis IEC et QuietCli existant figé. CON livre la composition concurrente après CORE et i3 accepté. Les contrats neutres Result/FSM/IEC ne dépendent ni du Manager ni de Conduit ; Conduit porte l'adaptation QuietCli. Builder et Requirements sont qualifiés dans la fermeture de livraison lorsque retenus, sans être imposés comme imports runtime universels.
+
+Le workspace personnel i3 crée le conteneur source Conduit via son placement par kind, puis ses moyens packagent/publient vers feeds locaux NuGet/PSResource. La recette froide installe les artefacts exacts sans sources i2 ni workflows distants et exerce le même scénario événement/données depuis PS puis C#. Elle vérifie ordre données→événement, erreurs/refus, annulation/disposal, corrélation, boucles bornées et libération d'abonnements. Les preuves sont séparées par langage et mode dynamique/généré. ConduitAccepted requiert ces résultats réels ; ni i3 installé ni une fixture isolée ne suffisent.
+
 <!-- roadmap-contract:begin -->
 ## Contrat de livraison et revue d'ingénierie
 
 Vue générée depuis [le modèle des roadmaps](requirements/software-ecosystem-factory.roadmaps.json). Modifier le modèle, puis exécuter `scripts/Invoke-RoadmapContract.ps1 -Apply` ; les AC restent dans [le registre RaC](requirements/software-ecosystem-factory.requirements.json).
 
-**CON** — product — Adaptateur après contrats IEC/Core disponibles.
+**CON** — product — Objectif final FrenchExDev2.
 
-Traduire des événements entre IEC et QuietCli sans créer un autre moteur ou scheduler.
+Livrer l'écosystème Conduit : implémentation IEC61499 PowerShell/C# composée de briques bas niveau et encapsulant QuietCli.
 
 | Kind | Livrable planifié et vérifiable |
 | --- | --- |
@@ -78,10 +84,11 @@ Traduire des événements entre IEC et QuietCli sans créer un autre moteur ou s
 | test | Producteurs interchangeables, mapping, annulation, propriétés corrélation et mutants de désabonnement |
 | obs | Corrélation source/réseau/bloc et compte borné d'abonnements possédés |
 
-Traçabilité : CON-001, CON-002. Lots : CON. Une relation de lot est un prérequis de livraison, pas un import runtime.
+Traçabilité : CON-003, CON-001, CON-002. Lots : CON0, CON. Une relation de lot est un prérequis de livraison, pas un import runtime.
 
 | ID | Exigence | Vérification prévue |
 | --- | --- | --- |
+| CON-003 | La recette finale FrenchExDev2 livre Conduit IEC61499 PowerShell/C# encapsulant QuietCli depuis des paquets locaux indépendants. | CON-003-AC1 → CON-003-T1 (integration, NotRun) |
 | CON-001 | Conduit traduit sans rendre IEC et QuietCli interdépendants. | CON-001-AC1 → CON-001-T1 (contract, NotRun) |
 | CON-002 | Chaque connexion libère ses abonnements sur toutes les issues. | CON-002-AC1 → CON-002-T1 (fault, NotRun) |
 
@@ -105,11 +112,22 @@ Oracle indépendant : Déconnexion, échec et annulation ne laissent aucun abonn
 
 **SOLID / DRY / MODULAR :** SRP de traduction ; DIP vers ports domaines ; DRY du scheduling chez Core ; scope modulaire de connexion.
 
-Entrée : IEC et CORE pour la cible concurrente ; fixture possible plus tôt avec contrats existants identifiés.
+Entrée : CON0 consomme IEC et QuietCli figé ; CON exige aussi CORE, i3, Builder et Requirements qualifiés.
 
-Sortie : Fixture puis démonstration réelle distinctes, sans prétendre à une concurrence absente.
+Sortie : ConduitAccepted démontre les ports PS/C#, IEC et QuietCli encapsulé depuis les paquets locaux ; aucune certification IEC implicite.
 
 Risque : Une boucle de traduction peut réinjecter indéfiniment un événement.
+
+### Moyens de progression et dépendants
+
+Contrats générés depuis [les recettes](requirements/software-ecosystem-factory.execution.json). Les commandes Proposed sont à produire et qualifier ; cette vue ne les exécute pas. Chaque lot résout son logiciel et sa fermeture, prépare son répertoire de développement dans le workspace selon kind, implémente/qualifie, publie un paquet preview local puis le fait restaurer par un consommateur isolé. Les lots de preuve livrent des reçus plutôt qu'un paquet.
+
+| Lot | Moyen de produire → vérifier | Canal | Débloque | Ressources exclusives | État |
+| --- | --- | --- | --- | --- | --- |
+| CON0 | New-ConduitPreviewPackage → Test-ConduitFixture | LocalBoth | CON | source-Conduit | Proposed |
+| CON | Invoke-ConduitAcceptance → Test-ConduitAcceptance | Evidence |  | source-Conduit, conduit-acceptance | Proposed |
+
+Parallélisme : `scripts/Get-RoadmapExecutionPlan.ps1` calcule les vagues du graphe et sépare les ressources exclusives. Une vague est une possibilité structurelle, sans estimation de capacité ni preuve de livraison. Passage au consommateur : identité/version/hash, restauration isolée, AC et reçu de reprise valides ; jamais une simple fin de script. Toute mutation respecte SoftwareContract/ShouldProcess et -WhatIf.
 
 Responsable : Unassigned. État des livrables produit : Planned. PlanConsistent contrôle la structure proposée ; ImplementationReady exige les décisions/versions/responsables ; I3Accepted et ReleaseReady exigent leurs preuves propres. Les quatre kinds restent orthogonaux, avec design, tests et observabilité travaillés ensemble.
 <!-- roadmap-contract:end -->

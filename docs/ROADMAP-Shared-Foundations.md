@@ -67,7 +67,7 @@ Avant implementation-ready : arrêter les identités publiques, versions de cont
 
 Vue générée depuis [le modèle des roadmaps](requirements/software-ecosystem-factory.roadmaps.json). Modifier le modèle, puis exécuter `scripts/Invoke-RoadmapContract.ps1 -Apply` ; les AC restent dans [le registre RaC](requirements/software-ecosystem-factory.requirements.json).
 
-**FND** — product — Fondations des domaines .NET sélectionnés.
+**FND** — product — Fondations livrées séparément pour avancer en parallèle.
 
 Livrer une seule reprise packagée de chaque fondation réellement nécessaire.
 
@@ -78,7 +78,7 @@ Livrer une seule reprise packagée de chaque fondation réellement nécessaire.
 | test | Consommation depuis paquets seuls, code généré et tests existants, propriétés/fuzz/mutations ciblés |
 | obs | Disponibilité ID/version/TFM/source et diagnostics des dépendances manquantes |
 
-Traçabilité : FND-001, FND-002. Lots : FND. Une relation de lot est un prérequis de livraison, pas un import runtime.
+Traçabilité : FND-001, FND-002. Lots : RESULT, BUILDER, RACPKG, FND. Une relation de lot est un prérequis de livraison, pas un import runtime.
 
 | ID | Exigence | Vérification prévue |
 | --- | --- | --- |
@@ -105,11 +105,24 @@ Oracle indépendant : Génération et chargement des analyzers réussissent sans
 
 **SOLID / DRY / MODULAR :** DIP vers modèle neutre ; DRY des émetteurs ; SRP extraction/émission ; un paquet par responsabilité/versionnement justifié.
 
-Entrée : REG/G2 et inventaire de dépendances réelles.
+Entrée : REG/STD et inventaire whitelisted ; RESULT et RACPKG démarrent indépendamment, BUILDER et FSM consomment RESULT.
 
 Sortie : Paquets requis disponibles avant bascule du consommateur ; graphes build/runtime vérifiés séparément.
 
 Risque : Un .nupkg présent peut omettre les dépendances nécessaires à un analyzer.
+
+### Moyens de progression et dépendants
+
+Contrats générés depuis [les recettes](requirements/software-ecosystem-factory.execution.json). Les commandes Proposed sont à produire et qualifier ; cette vue ne les exécute pas. Chaque lot résout son logiciel et sa fermeture, prépare son répertoire de développement dans le workspace selon kind, implémente/qualifie, publie un paquet preview local puis le fait restaurer par un consommateur isolé. Les lots de preuve livrent des reçus plutôt qu'un paquet.
+
+| Lot | Moyen de produire → vérifier | Canal | Débloque | Ressources exclusives | État |
+| --- | --- | --- | --- | --- | --- |
+| RESULT | New-ResultPreviewPackage → Test-ResultPackageConsumer | LocalNuGet | BUILDER, FND, FSM, CON0 | source-Result | Proposed |
+| BUILDER | New-BuilderPreviewPackage → Test-BuilderPackageConsumer | LocalNuGet | FND, CON | source-Builder | Proposed |
+| RACPKG | New-RequirementsPreviewPackage → Test-RequirementsPackageConsumer | LocalBoth | FND, CON | source-Requirements | Proposed |
+| FND | Get-FoundationClosureEvidence → Test-FoundationClosure | Evidence | MSG, EXT | foundation-evidence | Proposed |
+
+Parallélisme : `scripts/Get-RoadmapExecutionPlan.ps1` calcule les vagues du graphe et sépare les ressources exclusives. Une vague est une possibilité structurelle, sans estimation de capacité ni preuve de livraison. Passage au consommateur : identité/version/hash, restauration isolée, AC et reçu de reprise valides ; jamais une simple fin de script. Toute mutation respecte SoftwareContract/ShouldProcess et -WhatIf.
 
 Responsable : Unassigned. État des livrables produit : Planned. PlanConsistent contrôle la structure proposée ; ImplementationReady exige les décisions/versions/responsables ; I3Accepted et ReleaseReady exigent leurs preuves propres. Les quatre kinds restent orthogonaux, avec design, tests et observabilité travaillés ensemble.
 <!-- roadmap-contract:end -->

@@ -107,11 +107,21 @@ Oracle indépendant : EI(A=2,B=3), Gain=2 donne Sum=10 avant EO dans les deux mo
 
 **SOLID / DRY / MODULAR :** SRP parsing/validation/exécution/émission ; DIP vers modèle neutre ; DRY des règles ; providers à interfaces ciblées.
 
-Entrée : FSM/G2 et versions de schémas/providers déclarées.
+Entrée : FSM/REG/STD et versions de schémas/providers déclarées ; G2 n'est pas un prérequis sans contrat démontré.
 
 Sortie : Équivalence et bornes démontrées sur le scope déclaré ; aucune certification IEC implicite.
 
 Risque : Une boucle d'événements valide syntaxiquement peut saturer le host.
+
+### Moyens de progression et dépendants
+
+Contrats générés depuis [les recettes](requirements/software-ecosystem-factory.execution.json). Les commandes Proposed sont à produire et qualifier ; cette vue ne les exécute pas. Chaque lot résout son logiciel et sa fermeture, prépare son répertoire de développement dans le workspace selon kind, implémente/qualifie, publie un paquet preview local puis le fait restaurer par un consommateur isolé. Les lots de preuve livrent des reçus plutôt qu'un paquet.
+
+| Lot | Moyen de produire → vérifier | Canal | Débloque | Ressources exclusives | État |
+| --- | --- | --- | --- | --- | --- |
+| IEC | New-IecPreviewPackage → Test-IecPackageConsumer | LocalBoth | CON0 | source-IEC | Proposed |
+
+Parallélisme : `scripts/Get-RoadmapExecutionPlan.ps1` calcule les vagues du graphe et sépare les ressources exclusives. Une vague est une possibilité structurelle, sans estimation de capacité ni preuve de livraison. Passage au consommateur : identité/version/hash, restauration isolée, AC et reçu de reprise valides ; jamais une simple fin de script. Toute mutation respecte SoftwareContract/ShouldProcess et -WhatIf.
 
 Responsable : Unassigned. État des livrables produit : Planned. PlanConsistent contrôle la structure proposée ; ImplementationReady exige les décisions/versions/responsables ; I3Accepted et ReleaseReady exigent leurs preuves propres. Les quatre kinds restent orthogonaux, avec design, tests et observabilité travaillés ensemble.
 <!-- roadmap-contract:end -->

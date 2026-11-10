@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-10",
+  "scope": "Planning and qualification tooling; no product cutover or i3 provisioning",
+  "nameDecision": {"name":"FrenchExDev2.SoftwareContract","status":"UserAccepted"},
+  "planning": {"gate":"PlanConsistent","passed":true,"roadmaps":21,"requirements":93,"workItems":76,"recipes":32,"waves":13,"deliveryTarget":"CON","implementationReady":false,"productEvidence":"NotRun"},
+  "tooling": {
+    "runDirectory":"C:/Users/serard/AppData/Local/Temp/QuietCli2/874a99c9b658/tests/roadmaps-20261110-074700-9c1c84",
+    "summarySha256":"294C3EC98575CC56935AE01ECAA7A089E8DE4D82F03285853470C70B5681A8A9",
+    "state":"Success","passed":338,"failed":0,"examples":61,"properties":235,"fuzzControls":34,"targetedMutantsKilled":8,"targetedMutantsSurvived":0,"seed":20261110,
+    "sourceHashes":{"migrationDependencies":"ADC51E186CB53E3067D9E1E2D936CD0B6AAAD186A4B27383AC866D61E1F60EBB","migrationExports":"3FF87CE4E0C94811C6D11E91D4EA5AE357F82B9F1C627D68EF6DE0D4F939F632","progression":"AAFE54C2B0B953984D8B3A4CA2BC2EE5141FDBC1655FC6ADBEC11D666AABCF2A","roadmaps":"317C807EC73C32630621F682F99E8D93D9EADC2486F76B44652747365E23069D"}
+  },
+  "migration":{"whitelistItems":13,"approvedItems":0,"qualification":"Blocked","evaluatedMSBuildGraph":"Missing","kubernetesActualExports":{"functions":0,"cmdlets":0,"aliases":0,"version":"0.0.1","staged":true,"qualification":"NotAssessed"}},
+  "localGallery":{"provider":"BaGet","serverLocalImageId":"sha256:c66780acc1278f7727671e6523a5fc9236b883d430058c6b9a348a2011be8f09","automaticPreviewDependencies":"Failed","pinnedClosure":{"state":"Success","platforms":["win-x64","linux-x64"],"windowsPowerShell":"7.6.9","linuxPowerShell":"7.6.7","clientVersion":"1.2.0","value":42,"draft":"draft1","run":"local-c738e9cf42324fee83e43088ca9f9e84"},"fullPSREG1Qualification":"NotRun"},
+  "notPerformed":["i3 provisioning","GitHub repository creation","product migration/cutover","public publication","full release qualification"],
+  "limits":["Proposed recipe names are not dispatched","Static source analysis is not MSBuild evaluation or runtime dependency completeness","Actual exports do not prove behavior","Pinned closure is not automatic preview resolution","Targeted mutation/fuzz controls are not exhaustive","Detailed local evidence is temporary"]
+}

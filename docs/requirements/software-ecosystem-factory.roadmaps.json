@@ -3,30 +3,42 @@
   "revision": "2026-11-10",
   "scope": "Proposed delivery contracts; no product implementation or executed product evidence.",
   "target": "C:/code/FrenchExDev/FrenchExDev_i3",
+  "objective": "FrenchExDev2 culminating in Conduit: IEC61499 for PowerShell/C#, encapsulating QuietCli (pronounced Quietly) through independently packaged low-level components.",
+  "softwareContract": {"name":"FrenchExDev2.SoftwareContract", "decision":"UserAccepted", "node":"STD", "scope":"PowerShell functions/modules and C# libraries/cmdlets/tools"},
+  "workspaceRepository": {"owner":"stephaneerard", "logicalName":"moninstanceàmoi", "remoteSlug":null, "status":"Planned", "tracks":"Portable preferences, desired configuration, scripts, docs and locks", "excludes":"Secrets, local overrides, caches, installed packages, registry data and hosted repository contents", "nestedRepositories":"Independent hosted repositories excluded from the host index; no submodules by default"},
   "kinds": ["design", "impl", "test", "obs"],
-  "gates": ["PlanConsistent", "ImplementationReady", "I3Accepted", "ReleaseReady"],
+  "gates": ["PlanConsistent", "ImplementationReady", "I3Accepted", "ConduitAccepted", "ReleaseReady"],
   "dependencyConvention": "A dependsOn B means consumer A requires producer B. Delivery edges are prerequisites, not runtime imports.",
   "feedback": [{"from": "DOG1", "to": "G0", "type": "next-revision-learning", "blocking": false, "control": "Pinned N produces an isolated candidate N+1; no recursive generation or implicit activation."}],
   "deliveryNodes": [
     {"id":"B0", "dependsOn":[], "artifact":"Preflight receipt and identified bootstrap tool/module archives", "status":"Planned"},
     {"id":"FAC", "dependsOn":[], "artifact":"Requirements, roadmap contracts and independent planning checks", "status":"Planned"},
-    {"id":"G0", "dependsOn":["B0","FAC"], "artifact":"Minimal generator and owned bootstrap kit", "status":"Planned"},
+    {"id":"STD", "dependsOn":["FAC","B0"], "artifact":"SoftwareContract schema, parameter policy and independent conformance checks", "status":"Planned"},
+    {"id":"G0", "dependsOn":["B0","FAC","STD"], "artifact":"Minimal generator and owned bootstrap kit", "status":"Planned"},
     {"id":"DOG0", "dependsOn":["G0"], "artifact":"Independent generation witness and failure controls", "status":"Planned"},
     {"id":"HOST0", "dependsOn":["G0","DOG0"], "artifact":"Packaged local workspace/instance/placement commands", "status":"Planned"},
     {"id":"GP0", "dependsOn":["G0","DOG0"], "artifact":"Packaged local repository operations and preservation tests", "status":"Planned"},
     {"id":"MIG0", "dependsOn":["FAC","B0"], "artifact":"Read-only assessed inventory of selected i2 inputs", "status":"Planned"},
-    {"id":"SM0", "dependsOn":["HOST0","GP0"], "artifact":"Offline local Manager package, commands and host facades", "status":"Planned"},
-    {"id":"I3", "dependsOn":["SM0","MIG0","DOG0"], "artifact":"Accepted Manager work environment at the requested i3 path", "status":"Planned"},
+    {"id":"SM0", "dependsOn":["HOST0","GP0"], "artifact":"Offline local InstanceManager seed package, commands and host facades", "status":"Planned"},
+    {"id":"I3SEED", "dependsOn":["SM0","MIG0","DOG0"], "artifact":"Personal i3 Git workspace with active seed Manager and owned development containers", "status":"Planned"},
+    {"id":"PSREG0", "dependsOn":["I3SEED"], "artifact":"Directory PSResource feed and draft1/dev1 cold-cache publish/restore witness", "status":"Planned"},
+    {"id":"PSREG1", "dependsOn":["PSREG0"], "artifact":"CLI-managed localhost container feed qualified with real Windows and Linux clients", "status":"Planned"},
+    {"id":"SMREG", "dependsOn":["REG","PSREG1"], "artifact":"InstanceManager local registry lifecycle adapters and owned directories/containers", "status":"Planned"},
+    {"id":"I3", "dependsOn":["I3SEED","SMREG"], "artifact":"Accepted personal Git workspace with NuGet/PSResource delivery and active/candidate Manager", "status":"Planned"},
     {"id":"G1", "dependsOn":["G0"], "artifact":"Complete operation/facade/documentation generators", "status":"Planned"},
-    {"id":"G2", "dependsOn":["G1","HOST0","GP0"], "artifact":"Optional packaged orchestration profiles", "status":"Planned"},
-    {"id":"REG", "dependsOn":["G1","GP0","B0"], "artifact":"Local NuGet publication/restore and isolated configuration", "status":"Planned"},
+    {"id":"G2", "dependsOn":["G1","HOST0","GP0","PSREG0"], "artifact":"Optional packaged orchestration profiles", "status":"Planned"},
+    {"id":"REG", "dependsOn":["I3SEED"], "artifact":"Local NuGet directory feed, isolated configuration and optional HTTP container adapter", "status":"Planned"},
     {"id":"SM1", "dependsOn":["SM0","G2"], "artifact":"Optional remote discovery and synchronization adapters", "status":"Planned"},
     {"id":"ADP", "dependsOn":["G2","REG"], "artifact":"Qualified adoption witnesses QuietCli and GitHubEcosystem", "status":"Planned"},
-    {"id":"FND", "dependsOn":["REG","G2"], "artifact":"Only the required Result/Builder/Requirements packages", "status":"Planned"},
-    {"id":"FSM", "dependsOn":["FND"], "artifact":"Autonomous FSM runtime and generators", "status":"Planned"},
-    {"id":"IEC", "dependsOn":["FSM","G2"], "artifact":"Neutral IEC model, dynamic runtime and generated implementation", "status":"Planned"},
-    {"id":"CORE", "dependsOn":["FAC"], "artifact":"Qualified Core composition revision, independent of Manager delivery", "status":"Planned"},
-    {"id":"CON", "dependsOn":["IEC","CORE"], "artifact":"Conduit fixture and composition integration", "status":"Planned"},
+    {"id":"RESULT", "dependsOn":["REG","STD","MIG0"], "artifact":"Result preview restored without sibling sources", "status":"Planned"},
+    {"id":"BUILDER", "dependsOn":["RESULT"], "artifact":"Builder runtime/generators with explicit Result closure", "status":"Planned"},
+    {"id":"RACPKG", "dependsOn":["REG","PSREG0","STD","MIG0"], "artifact":"Selected Requirements packages including DSL/analyzer closure", "status":"Planned"},
+    {"id":"FND", "dependsOn":["RESULT","BUILDER","RACPKG"], "artifact":"Aggregate foundation qualification; not a runtime dependency of every domain", "status":"Planned"},
+    {"id":"FSM", "dependsOn":["RESULT"], "artifact":"Autonomous FSM runtime/generators; no Builder prerequisite without evidence", "status":"Planned"},
+    {"id":"IEC", "dependsOn":["FSM","REG","PSREG0","STD"], "artifact":"Neutral IEC model, dynamic runtime and generated implementation", "status":"Planned"},
+    {"id":"CORE", "dependsOn":["FAC","STD","REG","PSREG0"], "artifact":"Qualified Core composition preview; design may progress before feed delivery", "status":"Planned"},
+    {"id":"CON0", "dependsOn":["IEC","RESULT","PSREG0"], "artifact":"Conduit fixture with pinned existing QuietCli and PowerShell/C# ports", "status":"Planned"},
+    {"id":"CON", "dependsOn":["CON0","CORE","I3","BUILDER","RACPKG"], "artifact":"ConduitAccepted: real PowerShell/C# IEC behavior and cold-cache local delivery", "status":"Planned"},
     {"id":"MSG", "dependsOn":["FND","G2"], "artifact":"Typed Compose bundle and optional local messaging profile", "status":"Planned"},
     {"id":"EXT", "dependsOn":["FND","CORE"], "artifact":"Separate Packer and Vagrant delivery plans/packages", "status":"Planned"},
     {"id":"MIG1", "dependsOn":["MIG0","I3","ADP"], "artifact":"Selected migration waves with per-item cutover evidence", "status":"Planned"},
@@ -38,15 +50,21 @@
     {"id":"GitProject", "dependsOn":[]},
     {"id":"ManagerLocal", "dependsOn":["WorkspaceHost","GitProject"]},
     {"id":"GeneratorComposition", "dependsOn":["GeneratorMinimal","WorkspaceHost","GitProject"]},
-    {"id":"Registry", "dependsOn":[]}
+    {"id":"Registry", "dependsOn":[]},
+    {"id":"Result", "dependsOn":[]},
+    {"id":"Builder", "dependsOn":["Result"]},
+    {"id":"Fsm", "dependsOn":["Result"]},
+    {"id":"Iec", "dependsOn":["Fsm"]},
+    {"id":"QuietCli", "dependsOn":[]},
+    {"id":"Conduit", "dependsOn":["Iec","QuietCli","Result"]}
   ],
   "roadmaps": [
     {
-      "id":"MASTER", "file":"ROADMAP-Ecosystem-Generator.md", "type":"portfolio", "family":"FAC", "nodes":["I3","DOG1"], "tier":"Pilotage de la livraison i3 et des extensions",
-      "outcome":"Ordonner des résultats utilisateurs, décisions et gates ; la cible de recette est i3 équipé du Manager local.",
+      "id":"MASTER", "file":"ROADMAP-Ecosystem-Generator.md", "type":"portfolio", "family":"FAC", "nodes":["I3","CON","DOG1"], "tier":"FrenchExDev2 vers Conduit ; i3 est un jalon",
+      "outcome":"Livrer FrenchExDev2 jusqu'à Conduit PowerShell/C# encapsulant QuietCli ; i3 personnel et registres locaux fournissent les moyens de cette progression.",
       "deliverables":{"design":"Carte des capacités, frontières et dépendances typées du portefeuille","impl":"Manifeste de lots et liens vers les livrables possédés par chaque roadmap","test":"Contrôle des références, de la couverture des roadmaps et du graphe proposé","obs":"Vue des gates, décisions ouvertes, preuves manquantes et blocages par lot"},
       "pattern":{"name":"Dependency-oriented portfolio / rolling-wave planning", "context":"Plusieurs produits autonomes doivent contribuer à un poste utilisable.", "problem":"Une liste linéaire de technologies masque le chemin critique.", "forces":"Valeur utilisateur, dépendances partielles et capacité de réalisation inconnue.", "participants":"Plan directeur priorise ; sous-plans possèdent contrats et implémentations.", "collaboration":"Les producteurs livrent des artefacts avant le passage de gate des consommateurs.", "consequences":"Les extensions ne bloquent pas le minimum i3 ; les estimations restent révisables.", "alternative":"Big-bang de tous les domaines rejeté : il retarde le premier usage local.", "oracle":"I3 n'a aucun ancêtre FSM, IEC, MSG, EXT ou CORE dans le graphe de livraison."},
-      "engineering":"SRP par capacité ; DRY des exigences dans le registre ; modules versionnés entre écosystèmes, sans dépôt parent commun.",
+      "engineering":"SRP par capacité ; DRY des exigences ; dépôt personnel i3 distinct des dépôts hébergés, exclus de son index.",
       "entry":"Demande de livraison et périmètre explicités.", "exit":"Chaque lot a un propriétaire avant exécution, des prérequis identifiés et une gate fondée sur ses preuves.", "risk":"Un graphe proposé n'est pas l'inventaire vérifié des dépendances futures."
     },
     {
@@ -82,7 +100,7 @@
       "entry":"G0/DOG0 pour sa structure ; Git présent et version supportée explicitée.", "exit":"Clone local et préservation démontrés avant SM0 ; push distant qualifié séparément.", "risk":"Les hooks et un push interrompu peuvent avoir des effets impossibles à annuler automatiquement."
     },
     {
-      "id":"SM", "file":"ROADMAP-SoftwareEcosystem-Manager.md", "type":"product", "family":"SM", "nodes":["SM0","SM1"], "tier":"SM0 local requis ; SM1 distant optionnel",
+      "id":"SM", "file":"ROADMAP-SoftwareEcosystem-Manager.md", "type":"product", "family":"SM", "nodes":["SM0","SMREG","SM1"], "tier":"InstanceManager : seed local puis lifecycle des registres ; distant optionnel",
       "outcome":"Permettre depuis i3 de gérer plusieurs instances locales sans dépendre d'un service distant.",
       "deliverables":{"design":"Cas d'usage offline, identité dépôt/instance/déploiement, isolation et concurrence par instance","impl":"Paquet Manager local composant HOST/GP ; discovery distante en adaptateur optionnel ; façades/docs","test":"Deux instances, absence réseau, clone local interrompu, dirty/collision/concurrence et propriétés d'isolation","obs":"Catalogue consultable, diagnostic par instance et reçu d'opération ; distant inaccessible = Unknown"},
       "pattern":{"name":"Application service + Ports/Adapters + Strategy", "context":"Un poste gère des dépôts et plusieurs clones de chacun.", "problem":"Confondre catalogue distant, registre local et emplacement conduit à des mutations inattendues.", "forces":"Mode hors réseau, préservation du travail et évolution du Manager lui-même.", "participants":"Manager orchestre ; HOST résout/enregistre ; GP manipule le dépôt ; provider distant découvre.", "collaboration":"SM0 compose les contrats HOST/GP ; SM1 ajoute un port distant sans modifier le catalogue local silencieusement.", "consequences":"SM0 ne dépend pas du générateur runtime ; auto-mise à jour en candidate séparée.", "alternative":"Un orchestrateur global possédant placement, Git, publication et moteur natif rejeté.", "oracle":"Deux instances gardent leurs chemins/états indépendants, y compris sans réseau et pendant une opération concurrente."},
@@ -98,12 +116,12 @@
       "entry":"G0/DOG0 pour la structure ; contrat de persistance et d'ownership arrêté.", "exit":"Catalogue et placements fiables sur deux instances ; fonctions consommables sans scripts.", "risk":"Une simple comparaison de préfixes de chemin n'assure pas le containment réel."
     },
     {
-      "id":"REG", "file":"ROADMAP-Local-NuGet-Registry.md", "type":"product", "family":"REG", "nodes":["REG"], "tier":"Extension .NET ; hors chemin minimal i3",
+      "id":"REG", "file":"ROADMAP-Local-NuGet-Registry.md", "type":"product", "family":"REG", "nodes":["REG"], "tier":"Feed NuGet local requis après i3 seed et avant i3 accepté",
       "outcome":"Publier/restaurer des paquets .NET immuables avec configuration explicite par instance.",
       "deliverables":{"design":"Contrats fournisseur, atomicité, ID/version/hash et sources/mappings NuGet","impl":"Paquet Registry avec provider filesystem, publication et restauration explicites ; PS/npm distincts","test":"Cache vierge, publication interrompue/concurrente, hash conflict et fuzz packages/config","obs":"Reçus Produced/Accepted/Restored avec ID/version/hash/source et lacunes"},
       "pattern":{"name":"Ports/Adapters + immutable artifact repository", "context":"Les écosystèmes .NET se consomment sans sources voisines.", "problem":"Le registre ne doit ni s'auto-exiger au bootstrap ni altérer la config globale.", "forces":"Immutabilité, concurrence et sources strictement choisies.", "participants":"Publisher valide ; store possède promotion atomique ; config resolver choisit le feed ; client restaure.", "collaboration":"Un paquet déjà construit est accepté puis restauré par un consommateur isolé.", "consequences":"Un feed sur disque suffit au premier parcours .NET ; il n'est pas le mécanisme B0 des modules PS.", "alternative":"Registre HTTP/conteneur obligatoire dès G0 rejeté pour son coût d'amorçage.", "oracle":"Un paquet incomplet n'est jamais restaurable ; config utilisateur inchangée et conflit de hash refusé."},
       "engineering":"ISP par fournisseur réel ; DIP vers store/config ; DRY de l'identité d'artefact ; séparation NuGet/PSResource/npm.",
-      "entry":"G1/GP0 et artefacts d'amorçage ; protocole filesystem choisi.", "exit":"Publication et restore isolés qualifiés ; aucun support PSResource déduit du seul test NuGet.", "risk":"Un cache chaud masque un paquet manquant ou un mauvais mapping."
+      "entry":"I3SEED fournit le répertoire de développement et les moyens d'amorçage ; aucune dépendance retour SMREG.", "exit":"Publication draft1/dev1 et restore isolés qualifiés ; aucun support PSResource déduit du seul test NuGet.", "risk":"Un cache chaud masque un paquet manquant ou un mauvais mapping."
     },
     {
       "id":"MIG", "file":"ROADMAP-Migration-FrenchExDev2.md", "type":"product", "family":"MIG", "nodes":["MIG0","MIG1"], "tier":"Inventaire sélectionné avant i3 ; bascules ultérieures",
@@ -122,12 +140,12 @@
       "entry":"G2 et REG disponibles ; identités publiques conservées.", "exit":"Deux témoins qualifiés sans checkout frère ; leurs matrices propres restent applicables.", "risk":"Un témoin unique ne démontre pas une abstraction réutilisable."
     },
     {
-      "id":"FND", "file":"ROADMAP-Shared-Foundations.md", "type":"product", "family":"FND", "nodes":["FND"], "tier":"Fondations des domaines .NET sélectionnés",
+      "id":"FND", "file":"ROADMAP-Shared-Foundations.md", "type":"product", "family":"FND", "nodes":["RESULT","BUILDER","RACPKG","FND"], "tier":"Fondations livrées séparément pour avancer en parallèle",
       "outcome":"Livrer une seule reprise packagée de chaque fondation réellement nécessaire.",
       "deliverables":{"design":"Fermeture de Package/ProjectReference, cibles et séparation extracteur/émetteur","impl":"Paquets Result/Builder/Requirements nécessaires, y compris dépendances de générateurs/analyzers","test":"Consommation depuis paquets seuls, code généré et tests existants, propriétés/fuzz/mutations ciblés","obs":"Disponibilité ID/version/TFM/source et diagnostics des dépendances manquantes"},
       "pattern":{"name":"Layers + dependency inversion + two-stage generator", "context":"Les domaines réutilisent des fondations existantes et des générateurs.", "problem":"Des copies locales ou dépendances supposées créent des cycles et doubles émetteurs.", "forces":"Compatibilité binaire, packaging des analyzers et fermeture réelle.", "participants":"Extracteur lit les symboles ; modèle neutre décrit ; émetteur partagé génère ; consommateur fixe ses versions.", "collaboration":"L'inventaire décide quels producteurs précèdent chaque consommateur.", "consequences":"Builder n'est requis par FSM que si un lien réel le démontre.", "alternative":"Réécrire Builder pour chaque Bundle ou migrer toute la DSL avant G0 rejeté.", "oracle":"Génération et chargement des analyzers réussissent sans bin/source sœur dans un cache vierge."},
       "engineering":"DIP vers modèle neutre ; DRY des émetteurs ; SRP extraction/émission ; un paquet par responsabilité/versionnement justifié.",
-      "entry":"REG/G2 et inventaire de dépendances réelles.", "exit":"Paquets requis disponibles avant bascule du consommateur ; graphes build/runtime vérifiés séparément.", "risk":"Un .nupkg présent peut omettre les dépendances nécessaires à un analyzer."
+      "entry":"REG/STD et inventaire whitelisted ; RESULT et RACPKG démarrent indépendamment, BUILDER et FSM consomment RESULT.", "exit":"Paquets requis disponibles avant bascule du consommateur ; graphes build/runtime vérifiés séparément.", "risk":"Un .nupkg présent peut omettre les dépendances nécessaires à un analyzer."
     },
     {
       "id":"FSM", "file":"ROADMAP-FiniteStateMachine.md", "type":"product", "family":"FSM", "nodes":["FSM"], "tier":"Domaine indépendant du Manager local",
@@ -143,7 +161,7 @@
       "deliverables":{"design":"Modèle neutre, ECC, association données/événements, limites de cycles et contrats providers","impl":"Import YAML/TOML, validation, runtime async et générateur AdditionalFiles partageant le modèle","test":"Équivalence dynamique/généré, fixture Sum=10 puis EO, graphes malformés et mutants ports/ECC","obs":"Corrélations réseau/bloc/événement, ordre observé et diagnostics bornés"},
       "pattern":{"name":"State/ECC + Ports/Adapters + shared neutral model", "context":"Runtime dynamique et C# généré lisent des définitions communes.", "problem":"Deux interprétations séparées peuvent diverger sur l'ordre et les données.", "forces":"Extensibilité des algorithmes, async et cycles bornés.", "participants":"Importeur parse ; validateur construit le modèle ; runtime/générateur le consomment ; provider exécute l'algorithme.", "collaboration":"Les adaptateurs PS/Roslyn restent aux frontières, hors modèle.", "consequences":"IEC n'importe pas QuietCli ; son éventuelle conformité à la norme exige une qualification distincte.", "alternative":"Scripts PS dans le modèle ou émetteurs de règles dupliqués rejetés.", "oracle":"EI(A=2,B=3), Gain=2 donne Sum=10 avant EO dans les deux modes ; cycles invalides terminent par diagnostic."},
       "engineering":"SRP parsing/validation/exécution/émission ; DIP vers modèle neutre ; DRY des règles ; providers à interfaces ciblées.",
-      "entry":"FSM/G2 et versions de schémas/providers déclarées.", "exit":"Équivalence et bornes démontrées sur le scope déclaré ; aucune certification IEC implicite.", "risk":"Une boucle d'événements valide syntaxiquement peut saturer le host."
+      "entry":"FSM/REG/STD et versions de schémas/providers déclarées ; G2 n'est pas un prérequis sans contrat démontré.", "exit":"Équivalence et bornes démontrées sur le scope déclaré ; aucune certification IEC implicite.", "risk":"Une boucle d'événements valide syntaxiquement peut saturer le host."
     },
     {
       "id":"CORE", "file":"ROADMAP-Core-Pipelines.md", "type":"product", "family":"CORE", "nodes":["CORE"], "tier":"Évolution QuietCli indépendante du chemin minimal i3",
@@ -154,12 +172,12 @@
       "entry":"FAC et décision de compatibilité des consommateurs actuels Events.", "exit":"Six jalons qualifiés dans leur ordre interne ; matrices actuelles et consommateurs affectés préservés.", "risk":"Un nom async ne démontre ni concurrence effective ni sécurité du runspace."
     },
     {
-      "id":"CON", "file":"ROADMAP-Conduit.md", "type":"product", "family":"CON", "nodes":["CON"], "tier":"Adaptateur après contrats IEC/Core disponibles",
-      "outcome":"Traduire des événements entre IEC et QuietCli sans créer un autre moteur ou scheduler.",
+      "id":"CON", "file":"ROADMAP-Conduit.md", "type":"product", "family":"CON", "nodes":["CON0","CON"], "tier":"Objectif final FrenchExDev2",
+      "outcome":"Livrer l'écosystème Conduit : implémentation IEC61499 PowerShell/C# composée de briques bas niveau et encapsulant QuietCli.",
       "deliverables":{"design":"Contrats de bindings, mapping des payloads, ownership des abonnements et limites de boucle","impl":"Commandes Connect/Disconnect et scope de connexion ; fixture puis intégration concurrente","test":"Producteurs interchangeables, mapping, annulation, propriétés corrélation et mutants de désabonnement","obs":"Corrélation source/réseau/bloc et compte borné d'abonnements possédés"},
       "pattern":{"name":"Adapter + Observer + scoped subscription", "context":"Deux domaines indépendants doivent échanger des événements.", "problem":"Un bridge peut rendre les domaines interdépendants ou conserver des abonnements après arrêt.", "forces":"Mapping explicite, erreurs et ownership du cycle de vie.", "participants":"Binding mappe ; connexion possède abonnements ; domaines possèdent leurs moteurs.", "collaboration":"Conduit appelle les ports publics et se désabonne sur toutes les issues.", "consequences":"Aucun runtime IEC→QuietCli ou retour ; fichiers .conduit.ps1 sélectionnés restent du code.", "alternative":"Faux binaire IEC ou ordonnanceur supplémentaire rejetés.", "oracle":"Déconnexion, échec et annulation ne laissent aucun abonnement ; corrélation conservée."},
       "engineering":"SRP de traduction ; DIP vers ports domaines ; DRY du scheduling chez Core ; scope modulaire de connexion.",
-      "entry":"IEC et CORE pour la cible concurrente ; fixture possible plus tôt avec contrats existants identifiés.", "exit":"Fixture puis démonstration réelle distinctes, sans prétendre à une concurrence absente.", "risk":"Une boucle de traduction peut réinjecter indéfiniment un événement."
+      "entry":"CON0 consomme IEC et QuietCli figé ; CON exige aussi CORE, i3, Builder et Requirements qualifiés.", "exit":"ConduitAccepted démontre les ports PS/C#, IEC et QuietCli encapsulé depuis les paquets locaux ; aucune certification IEC implicite.", "risk":"Une boucle de traduction peut réinjecter indéfiniment un événement."
     },
     {
       "id":"MSG", "file":"ROADMAP-Messaging-DockerCompose.md", "type":"product", "family":"MSG", "nodes":["MSG"], "tier":"Infrastructure optionnelle de développement",
@@ -186,12 +204,28 @@
       "entry":"G0 pour DOG0 ; i3/G2/REG/ADP pour DOG1.", "exit":"Preuves par consommateur et kind ; succès d'un build unique insuffisant.", "risk":"L'oracle peut dépendre involontairement des mêmes données générées."
     },
     {
-      "id":"I3", "file":"ROADMAP-Delivery-FrenchExDev-i3.md", "type":"delivery", "family":"I3", "nodes":["I3"], "tier":"Livrable utilisateur prioritaire",
+      "id":"STD", "file":"ROADMAP-SoftwareContract.md", "type":"contract", "family":"STD", "nodes":["STD"], "tier":"Nom FrenchExDev2.SoftwareContract validé par l'utilisateur",
+      "outcome":"Définir le standard logiciel PowerShell/C# vérifiable qui guide création, migration et consommation locale.",
+      "deliverables":{"design":"Schéma SoftwareContract, profils par kind, contrats de paramètres et dérogations explicites","impl":"Validateur réutilisable et générateurs de structure avec WhatIf ; paquets preview installables","test":"Compagnons indépendants : propriétés de contrats, fuzz paramètres/config/paths, mutations des refus et de ShouldProcess","obs":"Rapport par règle et langage : Passed/Failed/Unknown, preuves, portée, version et dérogations datées"},
+      "pattern":{"name":"Specification + Ports/Adapters + policy profiles", "context":"Les logiciels PowerShell/C# ont des structures différentes mais des garanties communes.", "problem":"Copier une structure ou imposer ValidateSet partout ne prouve pas le contrat observable.", "forces":"Bootstrap minimal, extension par configuration, compatibilité et sécurité des mutations.", "participants":"Schéma exprime ; profils spécialisent ; validateurs indépendants vérifient ; générateurs proposent.", "collaboration":"Une règle est reliée à une exigence/AC et jugée par un oracle distinct du template.", "consequences":"Le nom accepté ne signifie pas que le standard ou son implémentation est déjà accepté.", "alternative":"Une classe utilitaire universelle ou un dossier unique obligatoire pour tous rejetés.", "oracle":"Un argument inconnu, un WhatIf modifiant ou un paquet sans fermeture rend la règle concernée Failed."},
+      "engineering":"SRP schéma/politique/validation/génération ; DIP sur contrats ; DRY des règles ; profils ciblés sans framework spéculatif.",
+      "entry":"FAC et nom validé ; conventions existantes examinées.", "exit":"Règles et tests indépendants acceptés, versions figées et première consommation packagée.", "risk":"Une inspection AST ne démontre pas l'absence de tous les effets runtime."
+    },
+    {
+      "id":"PSREG", "file":"ROADMAP-Local-PSResource-Registry.md", "type":"product", "family":"PSREG", "nodes":["PSREG0","PSREG1"], "tier":"Répertoire d'abord, localhost conteneur qualifié avant i3 accepté",
+      "outcome":"Fournir un dépôt PSResource local et valider son hébergement en conteneur par de vrais clients PowerShell Windows/Linux.",
+      "deliverables":{"design":"Protocoles compatibles PSResourceGet, séparation NuGet/PS, profils filesystem/HTTP et lifecycle","impl":"Fonctions pack/publish/find/save/import et start/health/stop/backup/restore avec façades et WhatIf","test":"Ronde réelle draft1/dev1 à cache froid, dépendance preview, redémarrage persistant, clients Windows/Linux et injection de conflits","obs":"Digest image, versions client/serveur, endpoints, empreintes de paquets et résultats par plateforme sans secret"},
+      "pattern":{"name":"Ports/Adapters + immutable repository + staged bootstrap", "context":"Le Manager doit gérer les registres qui livrent sa prochaine version.", "problem":"Un serveur démarré n'atteste pas un protocole compatible ni une installation reproductible.", "forces":"Crossplatform, volume persistant, isolement client et dépendances prerelease.", "participants":"Seed installe ; provider héberge ; client publie/restaure ; Manager N gère candidate N+1.", "collaboration":"PSREG0 précède PSREG1 ; SMREG consomme leurs interfaces sans dépendance retour.", "consequences":"Un serveur NuGet compatible reste à qualifier pour PSResource ; le service public PSGallery n'est pas cloné.", "alternative":"Déduire compatibilité PowerShell d'un simple curl HTTP 200 rejeté.", "oracle":"Module avec dépendance preview publié, retrouvé, sauvé et importé depuis clients isolés ; résultat fonctionnel vérifié."},
+      "engineering":"ISP par protocole ; SRP hébergement/publication/installation ; DRY identité ID/version/hash ; orchestration Manager distincte.",
+      "entry":"I3SEED et toolchain observée ; provider/digest/ports et budgets décidés.", "exit":"Ronde et lifecycle qualifiés sur plateformes promises ; absence d'une plateforme reste un écart.", "risk":"Un client peut changer son registre utilisateur ou masquer un manque via un cache chaud."
+    },
+    {
+      "id":"I3", "file":"ROADMAP-Delivery-FrenchExDev-i3.md", "type":"delivery", "family":"I3", "nodes":["I3SEED","I3"], "tier":"Workspace personnel Git et moyen de livraison vers Conduit",
       "outcome":"Un environnement i3 équipé du Manager local, reproductible, permettant de gérer plusieurs instances et son propre développement.",
-      "deliverables":{"design":"Blueprint i3, contrats déploiement/catalogue, fermeture d'amorçage et recette I3-001..008","impl":"Déploiement Manager versionné, config/catalogue/lock réels, scripts/docs/AGENTS et deux instances locales","test":"Recette huit scénarios en session fraîche, reproduction isolée et propriétés/fuzz/mutations des composants sélectionnés","obs":"Rapport I3Accepted, versions actives/candidates, dépendances, diagnostics et procédure de retour vérifiée"},
-      "pattern":{"name":"Composition root + immutable deployment + staged self-hosting", "context":"Le Manager est développé et consommé sur le même poste.", "problem":"Développer directement la version active peut supprimer le moyen de récupérer l'environnement.", "forces":"Usage quotidien, plusieurs instances et rollback local.", "participants":"Workspace héberge ; déploiement installe ; checkout développe ; catalogue identifie ; gate décide.", "collaboration":"N reste actif pendant le développement de N+1 ; activation explicite après recette.", "consequences":"Pas de Git racine i3 ; sources et modules installés séparés ; chemin cible fixé pour cette recette.", "alternative":"Dossier vide, simple clone i2 ou import direct de ses sources considéré comme livraison rejeté.", "oracle":"Session fraîche sans source i2, deux instances isolées, preview sans mutation et retour vers N démontrés."},
+      "deliverables":{"design":"Blueprint i3 Git personnel, état désiré/local, seed/registres et recette I3-001..010","impl":"Manager N/candidate N+1, feeds NuGet/PSResource, préférences Git, façades et instances indépendantes","test":"Dix scénarios, clients feeds Windows/Linux, reproduction isolée et campagnes par langage","obs":"I3Accepted, index contrôlé, versions/hashes, diagnostics et reprise indépendante des registres"},
+      "pattern":{"name":"Composition root + immutable deployment + staged self-hosting", "context":"Le Manager est développé et consommé sur le même poste.", "problem":"Développer directement la version active peut supprimer le moyen de récupération.", "forces":"Préférences Gitables, isolation, plusieurs instances et retour local.", "participants":"Dépôt hôte possède état désiré ; déploiement installe ; checkout développe ; catalogue identifie.", "collaboration":"N reste actif pendant le développement de N+1 ; seed puis feeds puis adaptateurs de lifecycle.", "consequences":"Git racine i3 suit les préférences ; dépôts hébergés et état machine sont ignorés ; modules installés séparés.", "alternative":"Dossier vide, copie i2 ou suivi du code des dépôts hébergés dans l'index hôte rejetés.", "oracle":"Index hôte borné, session fraîche, deux instances, feeds PS/.NET, WhatIf sans effet et retour N démontrés."},
       "engineering":"SRP hôte/déploiement/source ; DIP vers paquets figés ; DRY des commandes HOST/GP ; frontières de versions propres à chaque écosystème.",
-      "entry":"SM0/MIG0/DOG0 réellement disponibles et décisions ImplementationReady levées.", "exit":"Huit AC I3 réussis sur les artefacts exacts et recette explicitement décidée ; release publique séparée.", "risk":"Présence de fichiers ou contrôle documentaire Passed ne prouve pas un environnement utilisable."
+      "entry":"I3SEED consomme SM0/MIG0/DOG0 ; I3 consomme ensuite SMREG et les deux canaux de paquets qualifiés.", "exit":"Dix AC I3 réussis ; ConduitAccepted et la qualification de release restent distincts.", "risk":"Présence de fichiers ou contrôle documentaire Passed ne prouve pas un environnement utilisable."
     }
   ]
 }

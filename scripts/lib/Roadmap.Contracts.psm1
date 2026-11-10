@@ -159,8 +159,12 @@ function Get-RoadmapContractView {
     Canonical roadmap record.
     .PARAMETER Registry
     Canonical requirements used only for their stable identifiers.
+    .PARAMETER Execution
+    Canonical production recipes; proposed command names are never executed by rendering.
+    .PARAMETER Model
+    Delivery graph used to identify downstream consumers.
     #>
-    param($Roadmap, $Registry)
+    param($Roadmap, $Registry, $Execution, $Model)
     $lines = [Collections.Generic.List[string]]::new()
     $lines.Add('<!-- roadmap-contract:begin -->')
     $lines.Add("## Contrat de livraison et revue d'ingénierie")
@@ -189,6 +193,17 @@ function Get-RoadmapContractView {
     $lines.Add(''); $lines.Add("Entrée : $($Roadmap.entry)")
     $lines.Add(''); $lines.Add("Sortie : $($Roadmap.exit)")
     $lines.Add(''); $lines.Add("Risque : $($Roadmap.risk)")
+    if($Execution){
+        $lines.Add('');$lines.Add('### Moyens de progression et dépendants');$lines.Add('')
+        $lines.Add('Contrats générés depuis [les recettes](requirements/software-ecosystem-factory.execution.json). Les commandes Proposed sont à produire et qualifier ; cette vue ne les exécute pas. Chaque lot résout son logiciel et sa fermeture, prépare son répertoire de développement dans le workspace selon kind, implémente/qualifie, publie un paquet preview local puis le fait restaurer par un consommateur isolé. Les lots de preuve livrent des reçus plutôt qu''un paquet.');$lines.Add('')
+        $lines.Add('| Lot | Moyen de produire → vérifier | Canal | Débloque | Ressources exclusives | État |');$lines.Add('| --- | --- | --- | --- | --- | --- |')
+        foreach($id in $Roadmap.nodes){
+            $recipe=$Execution.recipes | Where-Object node -CEQ $id
+            $consumers=@($Model.deliveryNodes | Where-Object {$id -cin $_.dependsOn} | ForEach-Object { $_.id })
+            $lines.Add("| $id | $($recipe.produce) → $($recipe.verify) | $($recipe.channel) | $($consumers -join ', ') | $($recipe.resources -join ', ') | $($recipe.status) |")
+        }
+        $lines.Add('');$lines.Add('Parallélisme : `scripts/Get-RoadmapExecutionPlan.ps1` calcule les vagues du graphe et sépare les ressources exclusives. Une vague est une possibilité structurelle, sans estimation de capacité ni preuve de livraison. Passage au consommateur : identité/version/hash, restauration isolée, AC et reçu de reprise valides ; jamais une simple fin de script. Toute mutation respecte SoftwareContract/ShouldProcess et -WhatIf.')
+    }
     $lines.Add(''); $lines.Add('Responsable : Unassigned. État des livrables produit : Planned. PlanConsistent contrôle la structure proposée ; ImplementationReady exige les décisions/versions/responsables ; I3Accepted et ReleaseReady exigent leurs preuves propres. Les quatre kinds restent orthogonaux, avec design, tests et observabilité travaillés ensemble.')
     $lines.Add('<!-- roadmap-contract:end -->')
     return ($lines -join "`n")
@@ -220,6 +235,9 @@ function Get-RoadmapAssessment {
         $docs = Join-Path $WorkspaceRoot 'docs'
         $model = Read-RoadmapJson (Join-Path $docs 'requirements/software-ecosystem-factory.roadmaps.json')
         $registry = Read-RoadmapJson (Join-Path $docs 'requirements/software-ecosystem-factory.requirements.json')
+        $execution = Read-RoadmapJson (Join-Path $docs 'requirements/software-ecosystem-factory.execution.json')
+        Import-Module (Join-Path $PSScriptRoot 'Roadmap.Progression.psm1') -ErrorAction Stop
+        $progression=Get-RoadmapExecutionPlan -Model $model -Execution $execution
         $files = @(Get-ChildItem -LiteralPath $docs -Filter 'ROADMAP-*.md' -File | ForEach-Object { $_.Name })
         $report = Test-RoadmapModel $model $registry $files
         $errors = [Collections.Generic.List[string]]::new(); foreach ($code in $report.Errors) { $errors.Add($code) }
@@ -228,7 +246,7 @@ function Get-RoadmapAssessment {
             if (!(Test-Path -LiteralPath $path -PathType Leaf)) { continue }
             $content = [IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
             $blocks = [regex]::Matches($content, '(?s)<!-- roadmap-contract:begin -->.*?<!-- roadmap-contract:end -->')
-            if ($blocks.Count -ne 1 -or $blocks[0].Value -cne (Get-RoadmapContractView $map $registry)) { $errors.Add("StaleRoadmapView:$($map.id)") }
+            if ($blocks.Count -ne 1 -or $blocks[0].Value -cne (Get-RoadmapContractView $map $registry $execution $model)) { $errors.Add("StaleRoadmapView:$($map.id)") }
             $human=[regex]::Replace($content,'(?s)<!-- roadmap-contract:begin -->.*?<!-- roadmap-contract:end -->','')
             if ($human -match '(?m)^\| ID \| (?:Exigence|Contrat à satisfaire) \|') { $errors.Add("UnmanagedRequirementTable:$($map.id)") }
             if ($content.Contains("`r") -or $content.Contains([char]0xfffd)) { $errors.Add("RoadmapEncoding:$($map.id)") }
@@ -237,6 +255,7 @@ function Get-RoadmapAssessment {
         if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -cne $registry.sourcePlan.sha256) { $errors.Add('SourceArchiveHashMismatch') }
         $report.Errors = $errors.ToArray(); $report.Passed = ($errors.Count -eq 0)
         $report | Add-Member NoteProperty Counts ([pscustomobject]@{Roadmaps=$model.roadmaps.Count;Requirements=$registry.requirements.Count;WorkItems=$registry.workItems.Count})
+        $report | Add-Member NoteProperty Progression ([pscustomobject]@{Waves=$progression.Waves.Count;Recipes=$execution.recipes.Count;ProductExecution='NotRun';FinalTarget='CON'})
         return $report
     } catch {
         return [pscustomobject]@{Gate='PlanConsistent';Passed=$false;Errors=@("InvalidPlanningFiles:$($_.Exception.Message)");ImplementationReady=$false;ReadinessGaps=@('PlanningFilesUnreadable');ProductQualification='NotAssessed'}
@@ -258,6 +277,9 @@ function Sync-RoadmapContractView {
     $model = Read-RoadmapJson (Join-Path $docs 'requirements/software-ecosystem-factory.roadmaps.json')
     $registryPath = Join-Path $docs 'requirements/software-ecosystem-factory.requirements.json'
     $registry = Read-RoadmapJson $registryPath
+    $execution = Read-RoadmapJson (Join-Path $docs 'requirements/software-ecosystem-factory.execution.json')
+    Import-Module (Join-Path $PSScriptRoot 'Roadmap.Progression.psm1') -ErrorAction Stop
+    $null=Get-RoadmapExecutionPlan -Model $model -Execution $execution
     foreach ($item in $registry.workItems) {
         $family = $item.id -creplace '-(design|impl|test|obs)$',''
         $item.deliverableRef = "roadmap:$family/$($item.kind)"
@@ -270,7 +292,7 @@ function Sync-RoadmapContractView {
     foreach ($map in $model.roadmaps) {
         $path = Join-Path $docs $map.file
         $content = [IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult().Replace("`r`n","`n")
-        $view = Get-RoadmapContractView $map $registry
+        $view = Get-RoadmapContractView $map $registry $execution $model
         $pattern = '(?s)<!-- roadmap-contract:begin -->.*?<!-- roadmap-contract:end -->'
         if ([regex]::Matches($content,$pattern).Count -gt 1) { throw "DuplicateRoadmapView:$($map.id)" }
         $placeholder='<!-- roadmap-contract:placeholder -->'

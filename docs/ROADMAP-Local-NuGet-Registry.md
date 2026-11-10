@@ -67,7 +67,7 @@ Avant implementation-ready : arrêter les identités publiques, versions de cont
 
 Vue générée depuis [le modèle des roadmaps](requirements/software-ecosystem-factory.roadmaps.json). Modifier le modèle, puis exécuter `scripts/Invoke-RoadmapContract.ps1 -Apply` ; les AC restent dans [le registre RaC](requirements/software-ecosystem-factory.requirements.json).
 
-**REG** — product — Extension .NET ; hors chemin minimal i3.
+**REG** — product — Feed NuGet local requis après i3 seed et avant i3 accepté.
 
 Publier/restaurer des paquets .NET immuables avec configuration explicite par instance.
 
@@ -106,11 +106,21 @@ Oracle indépendant : Un paquet incomplet n'est jamais restaurable ; config util
 
 **SOLID / DRY / MODULAR :** ISP par fournisseur réel ; DIP vers store/config ; DRY de l'identité d'artefact ; séparation NuGet/PSResource/npm.
 
-Entrée : G1/GP0 et artefacts d'amorçage ; protocole filesystem choisi.
+Entrée : I3SEED fournit le répertoire de développement et les moyens d'amorçage ; aucune dépendance retour SMREG.
 
-Sortie : Publication et restore isolés qualifiés ; aucun support PSResource déduit du seul test NuGet.
+Sortie : Publication draft1/dev1 et restore isolés qualifiés ; aucun support PSResource déduit du seul test NuGet.
 
 Risque : Un cache chaud masque un paquet manquant ou un mauvais mapping.
+
+### Moyens de progression et dépendants
+
+Contrats générés depuis [les recettes](requirements/software-ecosystem-factory.execution.json). Les commandes Proposed sont à produire et qualifier ; cette vue ne les exécute pas. Chaque lot résout son logiciel et sa fermeture, prépare son répertoire de développement dans le workspace selon kind, implémente/qualifie, publie un paquet preview local puis le fait restaurer par un consommateur isolé. Les lots de preuve livrent des reçus plutôt qu'un paquet.
+
+| Lot | Moyen de produire → vérifier | Canal | Débloque | Ressources exclusives | État |
+| --- | --- | --- | --- | --- | --- |
+| REG | Publish-LocalNuGetPackage → Test-LocalNuGetRoundtrip | LocalNuGet | SMREG, ADP, RESULT, RACPKG, IEC, CORE, DOG1 | nuget-feed-publication | Proposed |
+
+Parallélisme : `scripts/Get-RoadmapExecutionPlan.ps1` calcule les vagues du graphe et sépare les ressources exclusives. Une vague est une possibilité structurelle, sans estimation de capacité ni preuve de livraison. Passage au consommateur : identité/version/hash, restauration isolée, AC et reçu de reprise valides ; jamais une simple fin de script. Toute mutation respecte SoftwareContract/ShouldProcess et -WhatIf.
 
 Responsable : Unassigned. État des livrables produit : Planned. PlanConsistent contrôle la structure proposée ; ImplementationReady exige les décisions/versions/responsables ; I3Accepted et ReleaseReady exigent leurs preuves propres. Les quatre kinds restent orthogonaux, avec design, tests et observabilité travaillés ensemble.
 <!-- roadmap-contract:end -->

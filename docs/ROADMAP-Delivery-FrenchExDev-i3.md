@@ -1,4 +1,4 @@
-# Livraison — FrenchExDev_i3 comme environnement du Manager local
+# Livraison — FrenchExDev_i3, dépôt personnel et environnement InstanceManager
 
 Date : 10 novembre 2026. Statut : cible de livraison demandée, produit non implémenté. Cette passe porte sur le planning ; elle ne provisionne pas i3.
 
@@ -27,7 +27,11 @@ C:/code/FrenchExDev/FrenchExDev_i3/
   AGENTS.md                    # Host scope, commands, ownership and validation policy.
 ```
 
-Ce schéma n'est pas un manifeste déjà installé. Chaque dépôt sous ecosystems possède son propre Git, ses versions, ses paquets et sa politique CI. **Aucun dépôt Git englobant i3**, aucun .git enfant à l'intérieur d'un écosystème. Les caches et rapports locaux éphémères restent dans le répertoire temporaire système, séparés des reçus durables de gestion. Les credentials restent des références.
+Ce schéma n'est pas un manifeste déjà installé. **i3 possède son propre `.git`**, checkout du dépôt personnel GitHub de `stephaneerard`, identité logique « moninstanceàmoi ». Le slug distant et la visibilité restent à décider ; aucune création GitHub n'est effectuée ici. Ce dépôt versionne préférences portables, état désiré, profils de placement, sources de paquets, locks, façades, docs et règles de l'hôte. Les overrides machine, secrets, binaires installés, catalogues locaux d'état observé, données de feeds et rapports sont exclus via une politique `.gitignore` générée et vérifiée.
+
+Chaque dépôt hébergé sous ecosystems (ou dans un autre placement autorisé) possède son propre Git, ses versions et ses paquets. **Le dépôt de l'hôte ignore intégralement ces checkouts** : ils ne sont ni sous-modules par défaut ni projets internes de son dépôt. À l'intérieur d'un écosystème monorepo, aucun `.git` enfant. Un `.git` de workspace qui gère ses préférences et plusieurs dépôts hébergés ignorés est donc une décision explicite de composition, compatible avec l'autonomie des écosystèmes.
+
+Séparer `workspace.json`/profils désirés Gitables de `*.local.json`, `instances.json` observé et `operations/` privés. Les credentials restent des références, les rapports éphémères vivent sous le répertoire temporaire système. Le bootstrap doit prouver par l'index que seuls les fichiers voulus sont suivis.
 
 ## Parcours minimal, puis extensions
 
@@ -39,16 +43,18 @@ Ce schéma n'est pas un manifeste déjà installé. Chaque dépôt sous ecosyste
 | HOST0 + GP0 | Modèle d'hôte et opérations Git locales | Catalogue local/placements ; init/clone local/fetch séparés ; refus des collisions et données dirty protégées |
 | MIG0 | Inventaire des éléments réellement sélectionnés de i2 | Registre évalué avec provenance et décision par item ; inventaire global extensible sans migration globale préalable |
 | SM0 | Manager local consommant HOST0 et GP0 packagés | Enregistrer, lister, inspecter, préparer et appliquer une opération d'instance ; aucun réseau requis |
-| I3 | Installer les artefacts sélectionnés et exercer les scénarios ci-dessous | Session fraîche, deux instances isolées et auto-gestion N→candidate N+1 ; reprise contrôlée et preuves |
-| Après I3 | GEN avancé, REG NuGet, ADP, FND, FSM, IEC, CORE, CON, MSG, EXT, MIG par vagues, DOG complet | Qualification séparée de chaque capacité ; aucune ne devient prérequis implicite de SM0 |
+| I3SEED | Installer les archives seed, initialiser le dépôt personnel et les conteneurs de développement résolus par kind | Manager N disponible et configuration portable distincte de l'état machine |
+| REG et PSREG0, puis PSREG1 | Produire le feed NuGet local et le feed PSResource filesystem ; qualifier le provider localhost en conteneur | Previews draft1/dev1 consommées depuis paquets isolés, vrais clients PS Windows/Linux |
+| SMREG puis I3 | Livrer les adaptateurs de lifecycle de registres et exercer la recette complète | Session fraîche, deux instances, registres locaux et auto-gestion N→candidate N+1 avec reprise |
+| Vers Conduit | RESULT puis BUILDER et FSM en parallèle ; RACPKG en branche indépendante ; IEC puis CON0/CON | ConduitAccepted est l'objectif final FrenchExDev2 ; MSG/EXT et discovery distante restent optionnels |
 
 La découverte GitHub et la synchronisation distante sont une extension SM, pas une condition de lecture du catalogue local. Le déploiement B0 utilise des archives de modules vérifiées et un répertoire privé versionné ; il ne dépend pas d'un nouveau serveur de paquets. NuGet, PSResource et npm restent des canaux distincts. Leur support n'est pas déduit de celui d'un autre fournisseur.
 
-Le Manager minimal est PowerShell-first ; un SDK .NET n'est requis que pour un composant sélectionné qui le déclare. Le bootstrap des outils actuels QuietCli utilise leurs binaires compatibles existants et leur runtime déclaré. Le build du futur Manager ne doit pas appeler ce même Manager non encore construit pour se rendre disponible. Les versions précises de futurs paquets restent à résoudre avant ImplementationReady ; aucun `latest` ou faux verrou ne les remplace.
+Le Manager seed est PowerShell-first ; un SDK .NET n'est requis que pour un composant sélectionné qui le déclare. I3 accepté fournit les moyens .NET/PS sélectionnés. Le bootstrap utilise les artefacts compatibles existants et leur runtime déclaré. Le build d'une candidate n'appelle pas cette même candidate non encore construite. Les versions précises restent à résoudre avant ImplementationReady ; aucun `latest` ou faux verrou ne les remplace. Le [standard SoftwareContract](ROADMAP-SoftwareContract.md), nom validé, guide structure, paramètres et WhatIf ; les [recettes](requirements/software-ecosystem-factory.execution.json) codifient les moyens de chaque lot et leurs consommateurs.
 
 ## Scénarios d'acceptation de l'environnement
 
-Les Given/When/Then canoniques sont I3-001 à I3-008 dans le registre. Chaque scénario doit produire son résultat, sa révision/configuration/toolchain et des empreintes des artefacts testés.
+Les Given/When/Then canoniques sont I3-001 à I3-010 dans le registre. Aux huit scénarios initiaux s'ajoutent l'index du dépôt personnel et la chaîne seed→registres→candidate. Chaque scénario doit produire son résultat, sa révision/configuration/toolchain et des empreintes des artefacts testés.
 
 1. Partir d'une session PowerShell fraîche avec profil normal et config explicitement choisie : charger le Manager depuis tools/modules, afficher sa version et sa fermeture de dépendances sans source sœur ni chargement implicite depuis i2.
 2. Enregistrer deux instances locales jetables d'un même repositoryId avec des instanceId et chemins différents, plus le checkout Manager. Une deuxième inscription identique ne crée aucun doublon ; une collision échoue sans mutation.
@@ -75,7 +81,7 @@ La flèche du graphe signifie **consommateur dépend du producteur**. Distinguer
 
 **PlanConsistent** est vérifiable maintenant : tous les fichiers ROADMAP-* sont classés, exigences/AC/kinds résolus, livrables explicites, graphes proposés sans cycles, blocs générés à jour. Ce résultat n'est ni une validation du besoin par l'utilisateur, ni une certification d'architecture.
 
-**ImplementationReady**, par lot, ajoute responsable nommé, contrats d'API et de configuration figés, artefacts/versions résolus, budget chiffré des campagnes et procédure de retour. Les propriétaires restent Unassigned ; aucune de ces décisions n'est fabriquée par cette passe. **I3Accepted** exige les huit scénarios réussis sur les artefacts exacts, les propriétés/fuzz/mutations pertinentes par langage et une décision de recette explicite du responsable. **ReleaseReady** reste une gate séparée de qualification de toutes les plateformes effectivement promises.
+**ImplementationReady**, par lot, ajoute responsable nommé, contrats d'API/configuration figés, versions résolues, budget des campagnes et retour vérifié. Les propriétaires restent Unassigned. **I3Accepted** exige les dix scénarios, les registres locaux qualifiés, les campagnes pertinentes par langage et une décision de recette explicite. **ConduitAccepted** est la recette finale FrenchExDev2. **ReleaseReady** qualifie séparément toutes les plateformes promises.
 
 Pas de date de fin inventée : ordonner par dépendances et risques. Les estimations arrivent après les contrats et l'inventaire, avec capacité réelle du responsable. La migration globale de i2 et la publication publique restent des livraisons séparées.
 
@@ -84,21 +90,23 @@ Pas de date de fin inventée : ordonner par dépendances et risques. Les estimat
 
 Vue générée depuis [le modèle des roadmaps](requirements/software-ecosystem-factory.roadmaps.json). Modifier le modèle, puis exécuter `scripts/Invoke-RoadmapContract.ps1 -Apply` ; les AC restent dans [le registre RaC](requirements/software-ecosystem-factory.requirements.json).
 
-**I3** — delivery — Livrable utilisateur prioritaire.
+**I3** — delivery — Workspace personnel Git et moyen de livraison vers Conduit.
 
 Un environnement i3 équipé du Manager local, reproductible, permettant de gérer plusieurs instances et son propre développement.
 
 | Kind | Livrable planifié et vérifiable |
 | --- | --- |
-| design | Blueprint i3, contrats déploiement/catalogue, fermeture d'amorçage et recette I3-001..008 |
-| impl | Déploiement Manager versionné, config/catalogue/lock réels, scripts/docs/AGENTS et deux instances locales |
-| test | Recette huit scénarios en session fraîche, reproduction isolée et propriétés/fuzz/mutations des composants sélectionnés |
-| obs | Rapport I3Accepted, versions actives/candidates, dépendances, diagnostics et procédure de retour vérifiée |
+| design | Blueprint i3 Git personnel, état désiré/local, seed/registres et recette I3-001..010 |
+| impl | Manager N/candidate N+1, feeds NuGet/PSResource, préférences Git, façades et instances indépendantes |
+| test | Dix scénarios, clients feeds Windows/Linux, reproduction isolée et campagnes par langage |
+| obs | I3Accepted, index contrôlé, versions/hashes, diagnostics et reprise indépendante des registres |
 
-Traçabilité : I3-001, I3-002, I3-003, I3-004, I3-005, I3-006, I3-007, I3-008. Lots : I3. Une relation de lot est un prérequis de livraison, pas un import runtime.
+Traçabilité : I3-009, I3-010, I3-001, I3-002, I3-003, I3-004, I3-005, I3-006, I3-007, I3-008. Lots : I3SEED, I3. Une relation de lot est un prérequis de livraison, pas un import runtime.
 
 | ID | Exigence | Vérification prévue |
 | --- | --- | --- |
+| I3-009 | La racine i3 possède son dépôt Git personnel de préférences et état désiré avec dépôts hébergés indépendants exclus de son index. | I3-009-AC1 → I3-009-T1 (integration, NotRun) |
+| I3-010 | i3 seed précède les feeds ; i3 accepté fournit livraison NuGet et PSResource locale sans dépendance circulaire ni workflow distant obligatoire. | I3-010-AC1 → I3-010-T1 (fault, NotRun) |
 | I3-001 | i3 contient une installation Manager versionnée utilisable en session fraîche sans sources i2. | I3-001-AC1 → I3-001-T1 (integration, NotRun) |
 | I3-002 | Le catalogue gère au moins deux instances locales distinctes d'un même dépôt et le checkout Manager. | I3-002-AC1 → I3-002-T1 (property, NotRun) |
 | I3-003 | La consultation et l'inspection locales de i3 fonctionnent hors réseau. | I3-003-AC1 → I3-003-T1 (integration, NotRun) |
@@ -112,27 +120,38 @@ Traçabilité : I3-001, I3-002, I3-003, I3-004, I3-005, I3-006, I3-007, I3-008. 
 
 Contexte : Le Manager est développé et consommé sur le même poste.
 
-Problème : Développer directement la version active peut supprimer le moyen de récupérer l'environnement.
+Problème : Développer directement la version active peut supprimer le moyen de récupération.
 
-Forces : Usage quotidien, plusieurs instances et rollback local.
+Forces : Préférences Gitables, isolation, plusieurs instances et retour local.
 
-Participants : Workspace héberge ; déploiement installe ; checkout développe ; catalogue identifie ; gate décide.
+Participants : Dépôt hôte possède état désiré ; déploiement installe ; checkout développe ; catalogue identifie.
 
-Collaboration : N reste actif pendant le développement de N+1 ; activation explicite après recette.
+Collaboration : N reste actif pendant le développement de N+1 ; seed puis feeds puis adaptateurs de lifecycle.
 
-Conséquences : Pas de Git racine i3 ; sources et modules installés séparés ; chemin cible fixé pour cette recette.
+Conséquences : Git racine i3 suit les préférences ; dépôts hébergés et état machine sont ignorés ; modules installés séparés.
 
-Alternative : Dossier vide, simple clone i2 ou import direct de ses sources considéré comme livraison rejeté.
+Alternative : Dossier vide, copie i2 ou suivi du code des dépôts hébergés dans l'index hôte rejetés.
 
-Oracle indépendant : Session fraîche sans source i2, deux instances isolées, preview sans mutation et retour vers N démontrés.
+Oracle indépendant : Index hôte borné, session fraîche, deux instances, feeds PS/.NET, WhatIf sans effet et retour N démontrés.
 
 **SOLID / DRY / MODULAR :** SRP hôte/déploiement/source ; DIP vers paquets figés ; DRY des commandes HOST/GP ; frontières de versions propres à chaque écosystème.
 
-Entrée : SM0/MIG0/DOG0 réellement disponibles et décisions ImplementationReady levées.
+Entrée : I3SEED consomme SM0/MIG0/DOG0 ; I3 consomme ensuite SMREG et les deux canaux de paquets qualifiés.
 
-Sortie : Huit AC I3 réussis sur les artefacts exacts et recette explicitement décidée ; release publique séparée.
+Sortie : Dix AC I3 réussis ; ConduitAccepted et la qualification de release restent distincts.
 
 Risque : Présence de fichiers ou contrôle documentaire Passed ne prouve pas un environnement utilisable.
+
+### Moyens de progression et dépendants
+
+Contrats générés depuis [les recettes](requirements/software-ecosystem-factory.execution.json). Les commandes Proposed sont à produire et qualifier ; cette vue ne les exécute pas. Chaque lot résout son logiciel et sa fermeture, prépare son répertoire de développement dans le workspace selon kind, implémente/qualifie, publie un paquet preview local puis le fait restaurer par un consommateur isolé. Les lots de preuve livrent des reçus plutôt qu'un paquet.
+
+| Lot | Moyen de produire → vérifier | Canal | Débloque | Ressources exclusives | État |
+| --- | --- | --- | --- | --- | --- |
+| I3SEED | Initialize-SoftwareWorkspace → Test-SoftwareWorkspaceSeed | WorkspaceRepository | PSREG0, I3, REG | i3-host-index, i3-active-deployment | Proposed |
+| I3 | Invoke-SoftwareWorkspaceAcceptance → Test-I3Acceptance | Evidence | CON, MIG1, DOG1 | i3-active-deployment, i3-host-index | Proposed |
+
+Parallélisme : `scripts/Get-RoadmapExecutionPlan.ps1` calcule les vagues du graphe et sépare les ressources exclusives. Une vague est une possibilité structurelle, sans estimation de capacité ni preuve de livraison. Passage au consommateur : identité/version/hash, restauration isolée, AC et reçu de reprise valides ; jamais une simple fin de script. Toute mutation respecte SoftwareContract/ShouldProcess et -WhatIf.
 
 Responsable : Unassigned. État des livrables produit : Planned. PlanConsistent contrôle la structure proposée ; ImplementationReady exige les décisions/versions/responsables ; I3Accepted et ReleaseReady exigent leurs preuves propres. Les quatre kinds restent orthogonaux, avec design, tests et observabilité travaillés ensemble.
 <!-- roadmap-contract:end -->

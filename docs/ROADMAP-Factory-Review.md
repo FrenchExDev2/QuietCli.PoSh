@@ -97,10 +97,11 @@ Conserver les constats attribués à leur instantané et suivre leur traitement 
 | test | Contrôle de l'archive et vérification indépendante des liens de correction |
 | obs | État ouvert/résolu/non vérifié par constat, daté et relié aux preuves |
 
-Traçabilité : FAC-011, FAC-001, FAC-002, FAC-003, FAC-004, FAC-005, FAC-006, FAC-007, FAC-008, FAC-009, FAC-010. Lots : FAC. Une relation de lot est un prérequis de livraison, pas un import runtime.
+Traçabilité : FAC-012, FAC-011, FAC-001, FAC-002, FAC-003, FAC-004, FAC-005, FAC-006, FAC-007, FAC-008, FAC-009, FAC-010. Lots : FAC. Une relation de lot est un prérequis de livraison, pas un import runtime.
 
 | ID | Exigence | Vérification prévue |
 | --- | --- | --- |
+| FAC-012 | Chaque lot fournit ses moyens codifiés de production, vérification, livraison locale et activation de ses consommateurs ; Conduit est l'objectif final. | FAC-012-AC1 → FAC-012-T1 (property, NotRun) |
 | FAC-011 | Chaque roadmap définit résultat utilisateur, livrables par kind, dépendances typées, décision de patterns et gates distinctes. | FAC-011-AC1 → FAC-011-T1 (contract, NotRun) |
 | FAC-001 | Tout écosystème possède ses propres versions, configuration et release, sans dépendance source externe. | FAC-001-AC1 → FAC-001-T1 (integration, NotRun) |
 | FAC-002 | Toute capacité est liée à un besoin, un AC, un plan par kind, un test et une preuve. | FAC-002-AC1 → FAC-002-T1 (contract, NotRun) |
@@ -138,6 +139,16 @@ Entrée : Archive source disponible et identifiée.
 Sortie : Chaque correction dispose d'un propriétaire de contrat ; aucune conclusion produit n'est déduite du seul texte.
 
 Risque : Le plan courant et l'instantané de 941 lignes ont des identités différentes.
+
+### Moyens de progression et dépendants
+
+Contrats générés depuis [les recettes](requirements/software-ecosystem-factory.execution.json). Les commandes Proposed sont à produire et qualifier ; cette vue ne les exécute pas. Chaque lot résout son logiciel et sa fermeture, prépare son répertoire de développement dans le workspace selon kind, implémente/qualifie, publie un paquet preview local puis le fait restaurer par un consommateur isolé. Les lots de preuve livrent des reçus plutôt qu'un paquet.
+
+| Lot | Moyen de produire → vérifier | Canal | Débloque | Ressources exclusives | État |
+| --- | --- | --- | --- | --- | --- |
+| FAC | Sync-RoadmapContractView → Get-RoadmapAssessment | Evidence | STD, G0, MIG0, CORE | planning-model | Available |
+
+Parallélisme : `scripts/Get-RoadmapExecutionPlan.ps1` calcule les vagues du graphe et sépare les ressources exclusives. Une vague est une possibilité structurelle, sans estimation de capacité ni preuve de livraison. Passage au consommateur : identité/version/hash, restauration isolée, AC et reçu de reprise valides ; jamais une simple fin de script. Toute mutation respecte SoftwareContract/ShouldProcess et -WhatIf.
 
 Responsable : Unassigned. État des livrables produit : Planned. PlanConsistent contrôle la structure proposée ; ImplementationReady exige les décisions/versions/responsables ; I3Accepted et ReleaseReady exigent leurs preuves propres. Les quatre kinds restent orthogonaux, avec design, tests et observabilité travaillés ensemble.
 <!-- roadmap-contract:end -->

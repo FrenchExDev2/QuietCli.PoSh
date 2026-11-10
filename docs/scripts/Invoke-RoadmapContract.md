@@ -1,5 +1,7 @@
 # Invoke-RoadmapContract.ps1
 
+The current baseline includes the execution-recipes model as well as roadmap/requirement JSON. Apply generates per-roadmap production/verification means and downstream dependencies. [Get-RoadmapExecutionPlan](Get-RoadmapExecutionPlan.md) computes the matching parallel waves; no Proposed command is invoked by either planner.
+
 Checks the proposed planning baseline. `-Apply` regenerates only the managed delivery-contract blocks and work-item delivery references. It never provisions i3, executes a product acceptance scenario, installs a module, or publishes a package.
 
 ```powershell

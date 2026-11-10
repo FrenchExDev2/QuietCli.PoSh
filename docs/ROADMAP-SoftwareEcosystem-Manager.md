@@ -70,7 +70,7 @@ Avant implementation-ready : arrêter les identités publiques, versions de cont
 
 Vue générée depuis [le modèle des roadmaps](requirements/software-ecosystem-factory.roadmaps.json). Modifier le modèle, puis exécuter `scripts/Invoke-RoadmapContract.ps1 -Apply` ; les AC restent dans [le registre RaC](requirements/software-ecosystem-factory.requirements.json).
 
-**SM** — product — SM0 local requis ; SM1 distant optionnel.
+**SM** — product — InstanceManager : seed local puis lifecycle des registres ; distant optionnel.
 
 Permettre depuis i3 de gérer plusieurs instances locales sans dépendre d'un service distant.
 
@@ -81,7 +81,7 @@ Permettre depuis i3 de gérer plusieurs instances locales sans dépendre d'un se
 | test | Deux instances, absence réseau, clone local interrompu, dirty/collision/concurrence et propriétés d'isolation |
 | obs | Catalogue consultable, diagnostic par instance et reçu d'opération ; distant inaccessible = Unknown |
 
-Traçabilité : SM-004, SM-001, SM-002, SM-003. Lots : SM0, SM1. Une relation de lot est un prérequis de livraison, pas un import runtime.
+Traçabilité : SM-004, SM-001, SM-002, SM-003. Lots : SM0, SMREG, SM1. Une relation de lot est un prérequis de livraison, pas un import runtime.
 
 | ID | Exigence | Vérification prévue |
 | --- | --- | --- |
@@ -115,6 +115,18 @@ Entrée : HOST0 et GP0 disponibles en artefacts compatibles, sans source sœur.
 Sortie : SM0 utilisable depuis une session fraîche ; discovery GitHub n'est pas une gate de SM0.
 
 Risque : Une auto-mise à jour en place peut casser l'outil nécessaire à sa propre récupération.
+
+### Moyens de progression et dépendants
+
+Contrats générés depuis [les recettes](requirements/software-ecosystem-factory.execution.json). Les commandes Proposed sont à produire et qualifier ; cette vue ne les exécute pas. Chaque lot résout son logiciel et sa fermeture, prépare son répertoire de développement dans le workspace selon kind, implémente/qualifie, publie un paquet preview local puis le fait restaurer par un consommateur isolé. Les lots de preuve livrent des reçus plutôt qu'un paquet.
+
+| Lot | Moyen de produire → vérifier | Canal | Débloque | Ressources exclusives | État |
+| --- | --- | --- | --- | --- | --- |
+| SM0 | New-InstanceManagerSeedPackage → Test-InstanceManagerSeed | BootstrapArchive | I3SEED, SM1 | source-SM | Proposed |
+| SMREG | Set-InstanceManagerRegistry → Test-RegistryLifecycle | LocalPSResource | I3 | source-SM, i3-registry-config | Proposed |
+| SM1 | New-RemoteDiscoveryPackage → Test-RemoteDiscovery | LocalPSResource |  | source-SM | Proposed |
+
+Parallélisme : `scripts/Get-RoadmapExecutionPlan.ps1` calcule les vagues du graphe et sépare les ressources exclusives. Une vague est une possibilité structurelle, sans estimation de capacité ni preuve de livraison. Passage au consommateur : identité/version/hash, restauration isolée, AC et reçu de reprise valides ; jamais une simple fin de script. Toute mutation respecte SoftwareContract/ShouldProcess et -WhatIf.
 
 Responsable : Unassigned. État des livrables produit : Planned. PlanConsistent contrôle la structure proposée ; ImplementationReady exige les décisions/versions/responsables ; I3Accepted et ReleaseReady exigent leurs preuves propres. Les quatre kinds restent orthogonaux, avec design, tests et observabilité travaillés ensemble.
 <!-- roadmap-contract:end -->

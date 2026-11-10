@@ -8,7 +8,7 @@ Une **roadmap** est un contrat de progression versionné vers un résultat utili
 
 Chaque fichier ROADMAP-* a un contrat dans [le modèle canonique des roadmaps](requirements/software-ecosystem-factory.roadmaps.json) : identité/type, résultat, rôle pour i3, lots, quatre livrables par kind, entrée/sortie, risque et décision de patterns. Le bloc `roadmap-contract` est une projection générée, jamais une deuxième source éditable. Le registre d'exigences conserve les AC ; `roadmap:<ID>/<kind>` relie un workItem à son livrable planifié dans ce modèle, sans prétendre que l'artefact existe.
 
-La cible demandée est [i3 équipé du Manager local](ROADMAP-Delivery-FrenchExDev-i3.md). Les dépendances de lots sont des prérequis de disponibilité/qualification ; les dépendances runtime sont un autre graphe. Les PackageReference/RequiredModules et outils de build réels devront ensuite être extraits des manifestes et paquets : le graphe de planning ne les prouve pas. Chaque arête future indique consommateur/producteur, nature, version/contrat, caractère requis/optionnel, source du constat et gate. Un cycle bloquant dans une même révision est refusé ; le feedback entre révisions reste contrôlé et séparé.
+La cible finale est [Conduit IEC61499 PowerShell/C#](ROADMAP-Conduit.md). [i3 personnel Git équipé du Manager local](ROADMAP-Delivery-FrenchExDev-i3.md) est un moyen livré en deux incréments seed/accepté. Les dépendances de lots sont des prérequis de disponibilité/qualification ; les imports runtime constituent un autre graphe. Le validateur de [migration whitelisted](ROADMAP-Migration-FrenchExDev2.md) extrait maintenant les déclarations PowerShell/solutions/csproj ; le graphe MSBuild évalué et la fermeture réellement restaurée restent des preuves supplémentaires requises. Chaque arête indique consommateur/producteur, nature, version/contrat et source ; un cycle bloquant de même révision est refusé.
 
 ```powershell
 # Read-only planning assessment. This does not execute product acceptance tests.
@@ -23,7 +23,9 @@ $report.ReadinessGaps
 
 Le contrôle est une fonction PowerShell réutilisable, avec façade documentée. Il vérifie inventaire des fichiers, IDs/liens, quatre kinds, livrables, champs de décision POSA, cohérence déclarée des états de preuve, graphes proposés et fraîcheur des vues. Son compagnon éprouve des erreurs injectées, propriétés de graphes, entrées malformées et mutations ciblées. Cela valide des invariants documentaires ; la pertinence des forces/alternatives, les responsabilités SOLID et l'acceptation du besoin restent une revue d'ingénierie puis des preuves produit.
 
-Gates : **PlanConsistent** (structure cohérente), **ImplementationReady** par lot (responsable nommé, contrats/versions/fermeture résolus, budgets de campagnes et retour), **I3Accepted** (recette locale sur artefacts exacts) et **ReleaseReady** (matrice promise complète). Le contrôleur courant ne délivre que PlanConsistent et expose les manques des gates suivantes. Un plan cohérent peut rester Proposed ; Passed documentaire ne devient jamais Passed d'un AC produit.
+Gates : **PlanConsistent** (structure et recettes cohérentes), **ImplementationReady** par lot (responsable, contrats/versions/fermeture, budgets et retour), **I3Accepted** (workspace Git personnel et feeds qualifiés), **ConduitAccepted** (recette finale PS/C#/IEC/QuietCli depuis paquets) et **ReleaseReady** (matrice promise complète). La migration ajoute MigrationDependencies puis MigrationQualification, qui exige aussi la qualification du validateur. Le contrôleur de planning ne délivre que PlanConsistent. Un plan cohérent peut rester Proposed ; Passed documentaire ne devient jamais Passed d'un AC produit.
+
+Les [recettes versionnées](requirements/software-ecosystem-factory.execution.json) donnent à chaque lot ses moyens produire/vérifier/canal/ressources et ce qu'il débloque. Le code les valide et génère chaque fiche ; le [planificateur](scripts/Get-RoadmapExecutionPlan.md) calcule des vagues respectant dépendances et exclusivité des ressources. Les commandes Proposed restent à implémenter. Le [standard SoftwareContract](ROADMAP-SoftwareContract.md) précise le lifecycle logiciel→workspace→conteneur source par kind→code/tests→preview locale→restauration isolée→consommateur ; il impose la revue de chaque paramètre et WhatIf pour tout effet.
 
 ## Références d'ingénierie et application locale
 
@@ -133,10 +135,11 @@ Rendre les exigences, AC, quatre kinds, dépendances et preuves contrôlables sa
 | test | Compagnon indépendant du contrôleur : exemples, propriétés, corpus malformé et mutants ciblés |
 | obs | Rapport PlanConsistent distinct des écarts ImplementationReady et de toute qualification produit |
 
-Traçabilité : FAC-011, FAC-001, FAC-002, FAC-003, FAC-004, FAC-005, FAC-006, FAC-007, FAC-008, FAC-009, FAC-010. Lots : FAC. Une relation de lot est un prérequis de livraison, pas un import runtime.
+Traçabilité : FAC-012, FAC-011, FAC-001, FAC-002, FAC-003, FAC-004, FAC-005, FAC-006, FAC-007, FAC-008, FAC-009, FAC-010. Lots : FAC. Une relation de lot est un prérequis de livraison, pas un import runtime.
 
 | ID | Exigence | Vérification prévue |
 | --- | --- | --- |
+| FAC-012 | Chaque lot fournit ses moyens codifiés de production, vérification, livraison locale et activation de ses consommateurs ; Conduit est l'objectif final. | FAC-012-AC1 → FAC-012-T1 (property, NotRun) |
 | FAC-011 | Chaque roadmap définit résultat utilisateur, livrables par kind, dépendances typées, décision de patterns et gates distinctes. | FAC-011-AC1 → FAC-011-T1 (contract, NotRun) |
 | FAC-001 | Tout écosystème possède ses propres versions, configuration et release, sans dépendance source externe. | FAC-001-AC1 → FAC-001-T1 (integration, NotRun) |
 | FAC-002 | Toute capacité est liée à un besoin, un AC, un plan par kind, un test et une preuve. | FAC-002-AC1 → FAC-002-T1 (contract, NotRun) |
@@ -174,6 +177,16 @@ Entrée : Besoin, identité et source des contrats connus.
 Sortie : Structure et graphes contrôlés ; propriétaires, contrats et preuves demeurent des gates distinctes.
 
 Risque : Cent pour cent de liens n'implique ni tests exécutés ni besoin métier valide.
+
+### Moyens de progression et dépendants
+
+Contrats générés depuis [les recettes](requirements/software-ecosystem-factory.execution.json). Les commandes Proposed sont à produire et qualifier ; cette vue ne les exécute pas. Chaque lot résout son logiciel et sa fermeture, prépare son répertoire de développement dans le workspace selon kind, implémente/qualifie, publie un paquet preview local puis le fait restaurer par un consommateur isolé. Les lots de preuve livrent des reçus plutôt qu'un paquet.
+
+| Lot | Moyen de produire → vérifier | Canal | Débloque | Ressources exclusives | État |
+| --- | --- | --- | --- | --- | --- |
+| FAC | Sync-RoadmapContractView → Get-RoadmapAssessment | Evidence | STD, G0, MIG0, CORE | planning-model | Available |
+
+Parallélisme : `scripts/Get-RoadmapExecutionPlan.ps1` calcule les vagues du graphe et sépare les ressources exclusives. Une vague est une possibilité structurelle, sans estimation de capacité ni preuve de livraison. Passage au consommateur : identité/version/hash, restauration isolée, AC et reçu de reprise valides ; jamais une simple fin de script. Toute mutation respecte SoftwareContract/ShouldProcess et -WhatIf.
 
 Responsable : Unassigned. État des livrables produit : Planned. PlanConsistent contrôle la structure proposée ; ImplementationReady exige les décisions/versions/responsables ; I3Accepted et ReleaseReady exigent leurs preuves propres. Les quatre kinds restent orthogonaux, avec design, tests et observabilité travaillés ensemble.
 <!-- roadmap-contract:end -->

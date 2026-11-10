@@ -62,6 +62,34 @@ Invoke-EcosystemPlan -Plan $plan -WhatIf
 
 Propriétaire et décisions de contrat à affecter ; fixtures indépendantes, matrice de qualification et conservation des diagnostics à détailler avant implémentation. Le présent plan n’autorise aucun déplacement, clone distant, commit, publication ou suppression de données existantes.
 
+## Whitelist et gate de dépendances
+
+La [whitelist versionnée](requirements/migration-whitelist.json) est **deny-by-default**. Ses 13 entrées sont des candidats à évaluer, pas une sélection de tout i2 ni une autorisation de migrer. Chaque item porte Assess/Migrate/Create/Exclude et une approbation distincte. Les candidats actuels incluent Result, Builder, FSM, IEC, Requirements PS/.NET, QuietCli, GitHub, DevPoSh et moyens Docker/Compose/Nexus ; Kubernetes PowerShell est explicitement candidat. Aucun autre dossier n'est repris par simple découverte.
+
+`scripts/Test-MigrationDependencies.ps1` est la façade de `Get-MigrationDependencyReport` dans `scripts/lib/Migration.Dependencies.psm1`. Le code s'exécute maintenant pour produire un constat ; il n'exécute jamais les scripts inspectés ni MSBuild. Pour chaque fichier sélectionné, il conserve chemin/kind/SHA-256 et les dépendances déclarées : AST `.ps1/.psm1/.psd1`, `#requires`, imports/using/dot-sourcing, manifestes, solutions `.sln/.slnx`, `.csproj`, `.props/.targets`, projets/packages/imports.
+
+Les calculs dynamiques, conditions MSBuild, dépendances manquantes ou hors whitelist restent explicites et bloquent. Le graphe MSBuild **évalué**, les imports implicites/SDK et les dépendances réellement restaurées nécessitent une preuve complémentaire : le parseur XML statique ne prétend pas les résoudre. Dépendances natives, réflexion, code généré et noms de commandes construits exigent une revue/qualification indépendante. L'analyse n'est pas un remplacement de Roslyn ou de restore/build isolés.
+
+La gate de bascule MIG1 exige **le rapport du validateur lui-même qualifié**, ses versions/empreintes, la whitelist approuvée, la fraîcheur des identités source/politique, la fermeture résolue, les consommations packagées à cache froid, les tests métier et le retour vérifié. `MigrationDependencies=Passed` est une sous-gate nécessaire ; `MigrationQualification=NotAssessed` ne satisfait jamais la gate complète. `-RequireGate` retourne une erreur si la sous-gate est bloquée. `-OutputPath` honore `-WhatIf` et n'écrase pas une preuve existante.
+
+### Kubernetes et structures vides
+
+L'inspection du 10 novembre trouve dans `PoSh/FrenchExDev/FrenchExDev.Kubernetes.PoSh` un manifeste `Kubernetes.PoSh.psd1`, un module `Kubernetes.PoSh.psm1` et `src/Variables/KubernetesSymbols.ps1`. README et `.gitignore` sont vides ; **le module n'est pas vide**. Il reste Assess, avec ses dépendances et comportements à qualifier avant migration en écosystème. Un répertoire `.gitkeep` seul est ScaffoldCandidate : une décision Create peut y préparer la structure SoftwareContract, sans inventer un logiciel historique ou un succès de migration. Les sous-répertoires vides n'effacent jamais le code du parent.
+
+### Exports réels après chargement
+
+À la demande utilisateur, compléter l'AST par `scripts/Test-PowerShellModuleExports.ps1` : charger explicitement le `.psd1` ou `.psm1` sélectionné, puis appeler **Get-Module** dans un processus PowerShell frais. Relever identité/chemins/hash, **ExportedFunctions**, **ExportedCmdlets**, alias et origine des commandes, ainsi que RequiredModules réellement chargés. Comparer au contrat attendu ; les noms définis dans le source ou `FunctionsToExport='*'` ne suffisent pas. Un import impossible est Failed, pas une liste vide qualifiée.
+
+Le paramètre `-StageCopy` permet une copie vérifiée dans les rapports temporaires pour préserver l'état source et séparer les caches du loader ; le rapport attribue le résultat à cette copie, pas à l'installation d'origine. Le processus séparé protège l'état du contrôleur mais n'est pas une sandbox OS. WhatIf ne crée ni copie, ni processus, ni rapport. Sélection explicite, deadline et moniteur visible sont requis.
+
+Le 10 novembre, la sonde sur une copie Kubernetes vérifiée charge réellement le module `0.0.1` et observe **0 fonction, 0 cmdlet et 0 alias**. Ce constat caractérise la surface actuelle ; sans contrat d'exports attendu, Qualification reste NotAssessed. Il ne prouve ni une fonctionnalité Kubernetes ni une migration réussie.
+
+`scripts/Test-MigrationGate.ps1` appelle `Test-MigrationQualification` : la gate revalide sources/politique/contrôleur, exige que les bibliothèques du contrôleur figurent dans la qualification complète réussie avec campagnes property/fuzz/mutation, puis exige les preuves d'exports réels et tests/restauration/retour du produit. Elle bloque en leur absence. Le validateur est ainsi un moyen **lui-même qualifié** de la migration, et pas seulement un document joint au plan.
+
+### Moyens et stratégie de qualification
+
+Le validateur est du code PowerShell utilisant les AST PowerShell et les API XML .NET ; il ne nécessite pas de compiler une nouvelle bibliothèque C# pour démarrer. Ses contrats permettraient un extracteur Roslyn/MSBuild ultérieur séparé. Son compagnon de tests doit vérifier whitelist/containment/liens, scripts non exécutés, imports et chemins, XML hostile, packages/versions et cycles, avec propriétés, corpus malformé et mutations des refus. Le rapport garde les écarts par langage et reste distinct de la qualification du logiciel inspecté.
+
 <!-- roadmap-contract:begin -->
 ## Contrat de livraison et revue d'ingénierie
 
@@ -78,10 +106,14 @@ Choisir et qualifier la reprise des éléments existants sans déplacement globa
 | test | Stabilité d'inventaire, fixtures dirty/ignorées, paquets isolés, fuzz chemins et mutants d'ownership |
 | obs | États Discovered→Assessed→Planned→Qualified→Cutover par item et preuves de retour |
 
-Traçabilité : MIG-001, MIG-002, MIG-003, MIG-004, MIG-005, MIG-006. Lots : MIG0, MIG1. Une relation de lot est un prérequis de livraison, pas un import runtime.
+Traçabilité : MIG-010, MIG-007, MIG-008, MIG-009, MIG-001, MIG-002, MIG-003, MIG-004, MIG-005, MIG-006. Lots : MIG0, MIG1. Une relation de lot est un prérequis de livraison, pas un import runtime.
 
 | ID | Exigence | Vérification prévue |
 | --- | --- | --- |
+| MIG-010 | La qualification PowerShell observe Get-Module après import réel isolé et compare les fonctions/cmdlets réellement exportées au contrat attendu. | MIG-010-AC1 → MIG-010-T1 (integration, NotRun) |
+| MIG-007 | La migration est deny-by-default et ne sélectionne que des items de whitelist avec décision explicite Assess/Migrate/Create/Exclude. | MIG-007-AC1 → MIG-007-T1 (property, NotRun) |
+| MIG-008 | Chaque ps1/psm1/psd1 et solution/projet C# sélectionné est analysé par une bibliothèque réutilisable comptée dans la gate de migration. | MIG-008-AC1 → MIG-008-T1 (fault, NotRun) |
+| MIG-009 | Une structure vide ou .gitkeep est un candidat à créer ; un module partiellement rempli conserve son code et ses écarts sans succès de migration inventé. | MIG-009-AC1 → MIG-009-T1 (property, NotRun) |
 | MIG-001 | L’inventaire couvre les catégories réelles sans les confondre avec des langages. | MIG-001-AC1 → MIG-001-T1 (integration, NotRun) |
 | MIG-002 | Chaque item possède une décision de migration et un mapping d’identité explicites. | MIG-002-AC1 → MIG-002-T1 (review, NotRun) |
 | MIG-003 | Les vagues respectent la fermeture réelle des dépendances et le contrat des consommateurs. | MIG-003-AC1 → MIG-003-T1 (integration, NotRun) |
@@ -114,6 +146,17 @@ Entrée : FAC/B0 pour MIG0 ; contrats des producteurs avant les vagues MIG1.
 Sortie : Décision et preuve par item ; aucune suppression de source autorisée par un succès de clone.
 
 Risque : Les fichiers ignorés et usages non inventoriés peuvent invalider une bascule apparemment réussie.
+
+### Moyens de progression et dépendants
+
+Contrats générés depuis [les recettes](requirements/software-ecosystem-factory.execution.json). Les commandes Proposed sont à produire et qualifier ; cette vue ne les exécute pas. Chaque lot résout son logiciel et sa fermeture, prépare son répertoire de développement dans le workspace selon kind, implémente/qualifie, publie un paquet preview local puis le fait restaurer par un consommateur isolé. Les lots de preuve livrent des reçus plutôt qu'un paquet.
+
+| Lot | Moyen de produire → vérifier | Canal | Débloque | Ressources exclusives | État |
+| --- | --- | --- | --- | --- | --- |
+| MIG0 | Get-MigrationDependencyReport → Test-MigrationQualification | Evidence | I3SEED, RESULT, RACPKG, MIG1 | migration-decisions | Proposed |
+| MIG1 | Invoke-QualifiedMigrationPlan → Test-MigrationQualification | Evidence |  | migration-decisions, i3-host-index | Proposed |
+
+Parallélisme : `scripts/Get-RoadmapExecutionPlan.ps1` calcule les vagues du graphe et sépare les ressources exclusives. Une vague est une possibilité structurelle, sans estimation de capacité ni preuve de livraison. Passage au consommateur : identité/version/hash, restauration isolée, AC et reçu de reprise valides ; jamais une simple fin de script. Toute mutation respecte SoftwareContract/ShouldProcess et -WhatIf.
 
 Responsable : Unassigned. État des livrables produit : Planned. PlanConsistent contrôle la structure proposée ; ImplementationReady exige les décisions/versions/responsables ; I3Accepted et ReleaseReady exigent leurs preuves propres. Les quatre kinds restent orthogonaux, avec design, tests et observabilité travaillés ensemble.
 <!-- roadmap-contract:end -->

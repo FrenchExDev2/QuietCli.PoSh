@@ -1,5 +1,7 @@
 # Roadmap.Contracts.psm1
 
+The on-disk baseline additionally reads the canonical execution-recipes JSON and uses [Roadmap.Progression](Roadmap.Progression.md) to validate complete recipe coverage and compute conservative parallel waves. Every generated roadmap contract includes its producer/verifier/channel/resources and downstream consumers. Available planning commands remain distinct from Proposed product commands. PlanConsistent also checks this production-means coverage; it never dispatches those recipes.
+
 The reusable planning module separates prerequisite-graph analysis, model checks, file/provenance assessment and generated Markdown views. It exports `Test-RoadmapModel`, `Get-RoadmapAssessment` and `Sync-RoadmapContractView`. Graph traversal and rendering remain private cohesive functions, without executable-specific branches or product dependencies.
 
 ```powershell
