@@ -47,6 +47,7 @@ file by hand, run:
 - [`Invoke-GitQualification.ps1`](../../scripts/Invoke-GitQualification.ps1) -> [documentation](Invoke-GitQualification.md)
 - [`Invoke-LocalWorkflow.ps1`](../../scripts/Invoke-LocalWorkflow.ps1) -> [documentation](Invoke-LocalWorkflow.md)
 - [`Invoke-PublishedGallery.ps1`](../../scripts/Invoke-PublishedGallery.ps1) -> [documentation](Invoke-PublishedGallery.md)
+- [`Invoke-Quiet.ps1`](../../scripts/Invoke-Quiet.ps1) -> [documentation](Invoke-Quiet.md)
 - [`Invoke-RemoteWorkflow.ps1`](../../scripts/Invoke-RemoteWorkflow.ps1) -> [documentation](Invoke-RemoteWorkflow.md)
 - [`Invoke-RunProfile.ps1`](../../scripts/Invoke-RunProfile.ps1) -> [documentation](Invoke-RunProfile.md)
 - [`Invoke-TestWorker.ps1`](../../scripts/Invoke-TestWorker.ps1) -> [documentation](Invoke-TestWorker.md)

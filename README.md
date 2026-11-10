@@ -172,6 +172,23 @@ YAML excerpt; invocation IDs and other envelope metadata are omitted. The versio
 
 The source manifest above loads the local Core project. The public Gallery module is named `QuietCli`; its installation uses `Install-PSResource -Name QuietCli` and `Import-Module QuietCli`.
 
+For source automation, [`scripts/Invoke-Quiet.ps1`](docs/scripts/Invoke-Quiet.md)
+loads that exact local Core module before invoking your block in the same process:
+
+```powershell
+$result = ./scripts/Invoke-Quiet.ps1 -Code {
+    param($runtime)
+    $runtime.Data.Result = quiet -AsObject -Complete { param($native) $native.Data } dotnet --version
+    $runtime.Data.Result
+}
+```
+
+Supply `-Output`/`-Complete` callbacks for your business analysis or explicitly import
+a compatible companion. The block receives fresh `Data` and `State` hashtables, or
+your own `-Runtime` object; this is separate from native callback runtimes.
+`-WhatIf` skips both import and block execution. See the
+[launcher contract and complete projection example](docs/scripts/Invoke-Quiet.md).
+
 ## How to use
 
 For a Gallery installation, import `QuietCli` and run this SDK-version contract. For a local build, the checkout recipe above already imports the source manifest and executes the same example.

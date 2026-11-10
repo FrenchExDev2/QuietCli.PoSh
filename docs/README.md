@@ -40,6 +40,7 @@ The [agent documentation index](agents/README.md) identifies distributed instruc
 Repository development follows the root [AGENTS.md](../AGENTS.md). Consumer-project agent instructions are documented separately in the [agent index](agents/README.md).
 
 - [Development](../README-development.md): source checkout, prerequisites and builds.
+- [Local scriptblock launcher](scripts/Invoke-Quiet.md): load checkout Core and run `-Code { param($runtime) ... }` in the current process.
 - [Resources](../README-resources.md): pinned payload preparation, optional archive caches and the [generated inventory and code dependencies](resources/README.md).
 - [Automation requirements as code](README-automation-contracts.md): workflow receipts, shared commit checks, script logging policy and the [complete preview review](scripts/preview-support.md).
 - [Projects, suites and package eligibility](README-workspace-projects.md): reusable manifest discovery, dynamic suite parameters and explicit public-package policy.
