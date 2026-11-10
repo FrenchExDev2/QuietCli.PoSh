@@ -32,7 +32,7 @@ PlanConsistent is a structural and provenance assessment of this baseline. Imple
 
 No Manager was installed, no source was migrated, and no remote, secret, public package, container or VM was created for this plan. Existing unrelated work must remain excluded from its checkpoint.
 
-The generated replacement for the external Claude plan is prepared as `master-plan.candidate.md` in the final run directory. Automatic approval review rejected overwriting the original external file because a generated mirror could remove unique content and replacement authorization was judged insufficient. The original remains intact; replacement awaits explicit approval. This does not block use of the updated canonical roadmaps.
+The generated replacement for the external Claude plan was prepared as `master-plan.candidate.md` in the final run directory. Automatic approval review initially rejected the overwrite because a generated mirror could remove unique content and replacement authorization was judged insufficient. The user then explicitly approved preserving the original and replacing the file. The operation completed: `C:/Users/serard/.claude/plans/challenge-ce-plan-au-calm-canyon.before-i3-20261110.md` preserves the original hash, and `challenge-ce-plan-au-calm-canyon.md` matches the approved candidate hash exactly. Both hashes are recorded in the validation receipt. No unique original content was discarded.
 
 <!-- credits:begin -->
 ## Credits

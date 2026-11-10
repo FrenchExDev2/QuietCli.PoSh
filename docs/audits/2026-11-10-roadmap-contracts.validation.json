@@ -19,7 +19,10 @@
     "originalSha256": "D3DD19EE9044C0146C1F31DFBC21CFBA9C09009A8E51B2848441DE34AB02BEDC",
     "candidate": "master-plan.candidate.md in runDirectory",
     "candidateSha256": "D707587907990231DDA2A93B5E4E02F2299228C3186C64F2097078271F8CF320",
-    "replacementState": "BlockedByApprovalReview; explicit approval pending"
+    "backupPath": "C:/Users/serard/.claude/plans/challenge-ce-plan-au-calm-canyon.before-i3-20261110.md",
+    "backupSha256": "D3DD19EE9044C0146C1F31DFBC21CFBA9C09009A8E51B2848441DE34AB02BEDC",
+    "appliedSha256": "D707587907990231DDA2A93B5E4E02F2299228C3186C64F2097078271F8CF320",
+    "replacementState": "ExplicitlyApprovedAndCompleted; original preserved and hashes verified"
   },
   "limits": ["Actual future package/build dependency graphs remain unverified.","No Manager installation, product acceptance, coverage instrumentation or release matrix execution.","Targeted mutation catalogue and bounded deterministic corpus are not exhaustive.","Owners, versions, API contracts, campaign budgets and recovery decisions remain open."]
 }
