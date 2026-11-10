@@ -1,3 +1,69 @@
+function Test-QuietGitHubCiJsonReceipts {
+    <#
+    .SYNOPSIS
+    Reproduces clean-checkout matrix output and checks atomic JSON publication on owned files.
+    .PARAMETER WorkspaceRoot
+    Source checkout providing the real writer, selector and matrix policy.
+    .PARAMETER RunDirectory
+    Owned fixture directory; no registry access or real container execution is performed.
+    #>
+    param([string]$WorkspaceRoot,[string]$RunDirectory)
+    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    $fixture=Join-Path $RunDirectory 'github-json-receipts'
+    $receipt=Join-Path $fixture 'clean/artifacts/github-matrix/selection.json'
+    if(Test-Path -LiteralPath (Split-Path $receipt -Parent)){throw 'GitHubJsonRegressionRequiresAbsentParent'}
+    Write-WorkspaceJson $receipt @{Message="é漢`nsecond line";Index=0}
+    $saved=Get-Content -LiteralPath $receipt -Raw -Encoding utf8|ConvertFrom-Json
+    if($saved.Message -cne "é漢`nsecond line" -or $saved.Index -ne 0){throw 'GitHubJsonCleanCheckoutReceiptChanged'}
+    $seed=20261110;$random=[Random]::new($seed)
+    foreach($index in 1..32){
+        $path=Join-Path $fixture (('paths/{0}/nested-é漢/state.json' -f $random.Next()))
+        foreach($revision in 1..2){
+            $output=@(Write-WorkspaceJson $path @{Index=$index;Revision=$revision;Message='é漢'})
+            $bytes=[IO.File]::ReadAllBytes($path)
+            $value=[Text.UTF8Encoding]::new($false,$true).GetString($bytes)|ConvertFrom-Json
+            if($output.Count -or $value.Index -ne $index -or $value.Revision -ne $revision -or $value.Message -cne 'é漢' -or $bytes[0] -ne 123 -or $bytes -contains 13){throw 'WorkspaceJsonRoundTripPropertyFailed'}
+        }
+    }
+    Push-Location $fixture
+    try{Write-WorkspaceJson 'relative.json' @{Relative=$true}}finally{Pop-Location}
+    if(!(Test-Path -LiteralPath (Join-Path $fixture relative.json))){throw 'WorkspaceJsonRelativePathChanged'}
+    $blocked=Join-Path $fixture blocked
+    [void][IO.File]::WriteAllTextAsync($blocked,'preserve',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $rejected=$false
+    try{Write-WorkspaceJson (Join-Path $blocked 'nested/state.json') @{Invalid=$true}}catch{$rejected=$true}
+    if(!$rejected -or [IO.File]::ReadAllText($blocked) -cne 'preserve'){throw 'WorkspaceJsonBlockedParentAccepted'}
+    $writerSource=(Get-Command Write-WorkspaceJson).ScriptBlock.ToString()
+    $anchor='[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($Path))'
+    if(!$writerSource.Contains($anchor)){throw 'WorkspaceJsonParentCreationMutationAnchorMissing'}
+    $mutant=[scriptblock]::Create($writerSource.Replace($anchor,''))
+    $killed=$false
+    try{& $mutant (Join-Path $fixture 'mutant/absent/selection.json') @{Mutant=$true}}catch{$killed=$_.Exception.GetBaseException() -is [IO.DirectoryNotFoundException]}
+    if(!$killed){throw 'WorkspaceJsonMissingParentMutantSurvived'}
+    $scripts=Join-Path $fixture 'selector/scripts'
+    [void][IO.Directory]::CreateDirectory($scripts)
+    foreach($name in @('Select-GitHubCiMatrix.ps1','Common.ps1','Ci.Process.ps1','SourceIdentity.ps1','RuntimeTargets.ps1','ReportPaths.ps1','WorkspaceProjects.ps1','GitHubCi.ps1')){
+        Copy-Item -LiteralPath (Join-Path $WorkspaceRoot "scripts/$name") -Destination $scripts
+    }
+    $adapter='function Get-QuietCiRegistryDigest { param($Plan,$Token,$Actor,[switch]$IncludeConfiguration); return $null }'
+    [void][IO.File]::WriteAllTextAsync((Join-Path $scripts CiImages.ps1),$adapter,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $plan='param($WorkspaceRoot,$RuntimeIdentifier,$Module,[switch]$PlanOnly); [pscustomobject]@{Platform=$(if($RuntimeIdentifier.Contains("-musl-")){"alpine"}else{"debian"})}'
+    foreach($name in @('New-CiImage.ps1','New-CiModuleImage.ps1')){[void][IO.File]::WriteAllTextAsync((Join-Path $scripts $name),$plan,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}
+    foreach($suite in @('Core','Git','All')){
+        $checkout=Join-Path $fixture ('selector/'+$suite)
+        $outputPath=Join-Path $fixture ($suite+'-output.txt')
+        [void][IO.File]::WriteAllTextAsync($outputPath,"existing=value`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+        $before=(Get-FileHash -LiteralPath $outputPath).Hash
+        $null=& (Join-Path $scripts Select-GitHubCiMatrix.ps1) -WorkspaceRoot $checkout -Suite $suite -OutputPath $outputPath -WhatIf
+        if((Test-Path -LiteralPath $checkout) -or (Get-FileHash -LiteralPath $outputPath).Hash -cne $before){throw 'GitHubMatrixPreviewCreatedOutput'}
+        $null=& (Join-Path $scripts Select-GitHubCiMatrix.ps1) -WorkspaceRoot $checkout -Suite $suite -OutputPath $outputPath -Confirm:$false
+        $selection=Get-Content -LiteralPath (Join-Path $checkout 'artifacts/github-matrix/selection.json') -Raw -Encoding utf8|ConvertFrom-Json
+        $outputs=Get-Content -LiteralPath $outputPath -Encoding utf8
+        if($selection.HasContainer -or !$selection.HasFallback -or @($selection.Fallback.include).Count -ne 4 -or $outputs[0] -cne 'existing=value' -or $outputs -cnotcontains 'has_fallback=true' -or $outputs -cnotcontains 'has_container=false'){throw 'GitHubMatrixCleanCheckoutOutputsChanged'}
+    }
+    if(@(Get-ChildItem -LiteralPath $fixture -Filter '*.tmp' -File -Recurse).Count){throw 'WorkspaceJsonTemporaryFilesLeaked'}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'github-json-receipts.json') @{Seed=$seed;RoundTrips=64;SelectorSuites=@('Core','Git','All');PreviewCases=3;BlockedParentRejected=$true;MutantsKilled=1;RealRegistry=$false;RealHostedRunner=$false}
+}
 function Test-QuietGitHubCi {
     <#
     .SYNOPSIS

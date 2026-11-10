@@ -10,6 +10,13 @@ Core mixes pure logic with real filesystem, Git, process and package integration
 
 ## GitHub execution policy and Docker smoke
 
+The focused case `GitHub CI JSON receipts create missing parents and preserve preview boundaries`
+reproduces receipt publication on a clean checkout. It covers seeded Unicode writes and overwrites,
+relative paths, blocked parent paths, temporary-file cleanup and a directory-creation mutant. The real
+matrix selector runs offline for Core/Git/All with image adapters, checking output append and WhatIf
+without a preceding directory-preparation step. This case is filesystem integration, not live GHCR
+or hosted-runner qualification.
+
 The Core case `GitHub CI separates native containers, Docker fallback and workstation launchers`
 checks cache-availability combinations, shuffled targets, malformed references, native runner
 identities, terminal-state gates and targeted policy mutants. Its direct-entry fixture requires the

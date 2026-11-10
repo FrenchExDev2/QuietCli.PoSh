@@ -15,7 +15,14 @@ selection.json creation or GITHUB_OUTPUT append; the no-effect regression uses a
 Outputs: `container_matrix`, `fallback_matrix`, `has_container`, `has_fallback`. The matrices are
 disjoint and cover every target exactly once. An immutable GHCR reference is required for each native
 job container. The full decision is saved in `artifacts/github-matrix/selection.json`.
+The shared JSON writer creates the receipt's parent directories on a clean checkout; no preceding
+workflow preparation step is required. Publication uses a sibling temporary file and atomic rename.
 An optional ephemeral registry credential is held only in memory and is never written to the receipt.
+
+The focused companion case `GitHub CI JSON receipts create missing parents and preserve preview
+boundaries` runs the real selector for Core/Git/All with offline image adapters. It checks receipt
+creation from absent directories, GitHub output append and WhatIf no-write behavior, without GHCR
+access. This is filesystem integration evidence, not a hosted-runner or registry qualification.
 
 `-WorkspaceRoot` defaults to the repository. `-Suite` accepts `Core`, `Git` or `All`, defaulting to
 `All`. `-OutputPath` defaults to `GITHUB_OUTPUT`; a missing output path is an error.

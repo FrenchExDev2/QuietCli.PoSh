@@ -91,7 +91,7 @@ Parses a human-readable size into a byte count.
 function Write-WorkspaceJson {
     <#
 .SYNOPSIS
-Publishes UTF-8 state atomically for the read-only monitor.
+Publishes UTF-8 JSON atomically, creating missing destination directories for reports and monitors.
     .PARAMETER Path
     Destination JSON path.
     .PARAMETER Value
@@ -101,8 +101,9 @@ Publishes UTF-8 state atomically for the read-only monitor.
     $Path=[IO.Path]::GetFullPath($Path,$PWD.Path)
     $temporary=$Path+'.'+[guid]::NewGuid().ToString('N')+'.tmp'
     $json=(ConvertTo-Json -InputObject $Value -Depth 32).Replace("`r`n","`n").Replace("`r","`n")
-    [void][IO.File]::WriteAllTextAsync($temporary,$json,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($Path))
     try{
+        [void][IO.File]::WriteAllTextAsync($temporary,$json,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         for($attempt=0;$attempt -le 5;$attempt++){
             try{[IO.File]::Move($temporary,$Path,$true);break}catch{
                 $code=$_.Exception.GetBaseException().HResult -band 65535
