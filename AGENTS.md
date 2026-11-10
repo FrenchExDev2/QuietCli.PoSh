@@ -2,6 +2,9 @@
 
 ## Script-first automation
 
+- Design new or changed automation as reusable exported PowerShell functions or C# cmdlets, with repository `.ps1` entry points acting as thin facades. Other code composes commands directly instead of launching repository scripts or parsing console text. Adopt existing scripts progressively while preserving their observable contracts.
+- Keep business validation, resource ownership and `ShouldProcess` in the reusable command. Declare the consumed module/version and parameter mapping; forward output, errors and common parameters without duplicate confirmation or incidental pipeline output. Do not install dependencies implicitly from a facade.
+- Document both entry points: mirrored `docs/scripts/` documentation explains the facade and links to the reusable command reference; consumer instructions explain public package installation, direct command usage and any optional facade differences. Keep repository development instructions separate from explicitly generated consumer rules; never require a sibling checkout for installed consumers.
 - Any automatable operation on this repository is done through a script under `scripts/` (discover what already exists with `Get-ChildItem scripts -Recurse`, or browse the [scripts documentation index](docs/scripts/README.md)), never an ad hoc inline command improvised for one occasion. Extend an existing script before writing a new one that overlaps it.
 - At the start of every discussion that touches this repository, actively look for the opportunity to turn a manual or ad hoc sequence into a new or extended script under `scripts/`. A one-off command typed into a shell is a missed script, not a shortcut. A new or changed script must ship with its own doc under `docs/scripts/`, mirroring its subdirectory - see [Every script has a doc](docs/README-scripts-have-docs.md); the gate is `scripts/Sync-ScriptsReadme.ps1`.
 

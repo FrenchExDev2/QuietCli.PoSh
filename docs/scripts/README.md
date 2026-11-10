@@ -25,6 +25,7 @@ file by hand, run:
 - [`Common.ps1`](../../scripts/Common.ps1) -> [documentation](Common.md)
 - [`Gallery.ps1`](../../scripts/Gallery.ps1) -> [documentation](Gallery.md)
 - [`Get-CiImageForDevelopment.ps1`](../../scripts/Get-CiImageForDevelopment.ps1) -> [documentation](Get-CiImageForDevelopment.md)
+- [`Get-RoadmapExecutionPlan.ps1`](../../scripts/Get-RoadmapExecutionPlan.ps1) -> [documentation](Get-RoadmapExecutionPlan.md)
 - [`Initialize-PowerShellHost.ps1`](../../scripts/Initialize-PowerShellHost.ps1) -> [documentation](Initialize-PowerShellHost.md)
 - [`Initialize-Profilers.ps1`](../../scripts/Initialize-Profilers.ps1) -> [documentation](Initialize-Profilers.md)
 - [`Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.ps1) -> [documentation](Initialize-Workspace.md)
@@ -43,6 +44,8 @@ file by hand, run:
 - [`Invoke-GitQualification.ps1`](../../scripts/Invoke-GitQualification.ps1) -> [documentation](Invoke-GitQualification.md)
 - [`Invoke-PublishedGallery.ps1`](../../scripts/Invoke-PublishedGallery.ps1) -> [documentation](Invoke-PublishedGallery.md)
 - [`Invoke-RemoteWorkflow.ps1`](../../scripts/Invoke-RemoteWorkflow.ps1) -> [documentation](Invoke-RemoteWorkflow.md)
+- [`Invoke-RoadmapContract.ps1`](../../scripts/Invoke-RoadmapContract.ps1) -> [documentation](Invoke-RoadmapContract.md)
+- [`Invoke-RoadmapTests.ps1`](../../scripts/Invoke-RoadmapTests.ps1) -> [documentation](Invoke-RoadmapTests.md)
 - [`Invoke-RunProfile.ps1`](../../scripts/Invoke-RunProfile.ps1) -> [documentation](Invoke-RunProfile.md)
 - [`Invoke-TestWorker.ps1`](../../scripts/Invoke-TestWorker.ps1) -> [documentation](Invoke-TestWorker.md)
 - [`Invoke-WorkspaceCi.ps1`](../../scripts/Invoke-WorkspaceCi.ps1) -> [documentation](Invoke-WorkspaceCi.md)
@@ -73,6 +76,11 @@ file by hand, run:
 - [`Sync-DocsCredits.ps1`](../../scripts/Sync-DocsCredits.ps1) -> [documentation](Sync-DocsCredits.md)
 - [`Sync-ScriptsReadme.ps1`](../../scripts/Sync-ScriptsReadme.ps1) -> [documentation](Sync-ScriptsReadme.md)
 - [`Sync-SkillDocument.ps1`](../../scripts/Sync-SkillDocument.ps1) -> [documentation](Sync-SkillDocument.md)
+- [`Test-DotNetMigrationBuild.ps1`](../../scripts/Test-DotNetMigrationBuild.ps1) -> [documentation](Test-DotNetMigrationBuild.md)
+- [`Test-LocalGalleryContainer.ps1`](../../scripts/Test-LocalGalleryContainer.ps1) -> [documentation](Test-LocalGalleryContainer.md)
+- [`Test-MigrationDependencies.ps1`](../../scripts/Test-MigrationDependencies.ps1) -> [documentation](Test-MigrationDependencies.md)
+- [`Test-MigrationGate.ps1`](../../scripts/Test-MigrationGate.ps1) -> [documentation](Test-MigrationGate.md)
+- [`Test-PowerShellModuleExports.ps1`](../../scripts/Test-PowerShellModuleExports.ps1) -> [documentation](Test-PowerShellModuleExports.md)
 - [`Test-SdkReadiness.ps1`](../../scripts/Test-SdkReadiness.ps1) -> [documentation](Test-SdkReadiness.md)
 - [`Test-WorkspacePackage.ps1`](../../scripts/Test-WorkspacePackage.ps1) -> [documentation](Test-WorkspacePackage.md)
 - [`TestConfiguration.ps1`](../../scripts/TestConfiguration.ps1) -> [documentation](TestConfiguration.md)
@@ -87,8 +95,14 @@ file by hand, run:
 
 - [`lib/DevelopmentWorkstation.psm1`](../../scripts/lib/DevelopmentWorkstation.psm1) -> [documentation](lib/DevelopmentWorkstation.md)
 - [`lib/EditorExtensions.psm1`](../../scripts/lib/EditorExtensions.psm1) -> [documentation](lib/EditorExtensions.md)
+- [`lib/LocalGallery.Probe.psm1`](../../scripts/lib/LocalGallery.Probe.psm1) -> [documentation](lib/LocalGallery.Probe.md)
+- [`lib/Migration.Dependencies.psm1`](../../scripts/lib/Migration.Dependencies.psm1) -> [documentation](lib/Migration.Dependencies.md)
+- [`lib/Migration.DotNet.psm1`](../../scripts/lib/Migration.DotNet.psm1) -> [documentation](lib/Migration.DotNet.md)
+- [`lib/Migration.Exports.psm1`](../../scripts/lib/Migration.Exports.psm1) -> [documentation](lib/Migration.Exports.md)
 - [`lib/ModuleWorkstation.psm1`](../../scripts/lib/ModuleWorkstation.psm1) -> [documentation](lib/ModuleWorkstation.md)
 - [`lib/PreviewTag.psm1`](../../scripts/lib/PreviewTag.psm1) -> [documentation](lib/PreviewTag.md)
+- [`lib/Roadmap.Contracts.psm1`](../../scripts/lib/Roadmap.Contracts.psm1) -> [documentation](lib/Roadmap.Contracts.md)
+- [`lib/Roadmap.Progression.psm1`](../../scripts/lib/Roadmap.Progression.psm1) -> [documentation](lib/Roadmap.Progression.md)
 - [`lib/RunColdStart.psm1`](../../scripts/lib/RunColdStart.psm1) -> [documentation](lib/RunColdStart.md)
 - [`lib/RunEncoding.psm1`](../../scripts/lib/RunEncoding.psm1) -> [documentation](lib/RunEncoding.md)
 - [`lib/RunFormat.psm1`](../../scripts/lib/RunFormat.psm1) -> [documentation](lib/RunFormat.md)
@@ -104,6 +118,13 @@ file by hand, run:
 
 - [`RunProfiles/coldstart-100.profile.ps1`](../../scripts/RunProfiles/coldstart-100.profile.ps1) -> [documentation](RunProfiles/coldstart-100.profile.md)
 - [`RunProfiles/coldstart-1000.profile.ps1`](../../scripts/RunProfiles/coldstart-1000.profile.ps1) -> [documentation](RunProfiles/coldstart-1000.profile.md)
+
+## `scripts/workers/`
+
+- [`workers/Invoke-DotNetMigrationBuild.ps1`](../../scripts/workers/Invoke-DotNetMigrationBuild.ps1) -> [documentation](workers/Invoke-DotNetMigrationBuild.md)
+- [`workers/Invoke-LocalGalleryClient.ps1`](../../scripts/workers/Invoke-LocalGalleryClient.ps1) -> [documentation](workers/Invoke-LocalGalleryClient.md)
+- [`workers/Invoke-LocalGalleryProbe.ps1`](../../scripts/workers/Invoke-LocalGalleryProbe.ps1) -> [documentation](workers/Invoke-LocalGalleryProbe.md)
+- [`workers/Invoke-ModuleExportProbe.ps1`](../../scripts/workers/Invoke-ModuleExportProbe.ps1) -> [documentation](workers/Invoke-ModuleExportProbe.md)
 
 <!-- credits:begin -->
 ## Credits

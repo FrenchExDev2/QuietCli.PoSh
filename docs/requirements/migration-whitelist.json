@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "revision": "2026-11-10",
+  "default": "Exclude",
+  "scope": "Candidates explicitly selected for assessment, not approved migration or publication. Nothing outside this list is selected implicitly.",
+  "externalDependencies": [],
+  "items": [
+    {"id":"Result","path":"Net/FrenchExDev/Result","intent":"Assess","approved":false},
+    {"id":"Builder","path":"Net/FrenchExDev/Builder","intent":"Assess","approved":false},
+    {"id":"FSM","path":"Net/FrenchExDev/FiniteStateMachine","intent":"Assess","approved":false},
+    {"id":"IEC","path":"Net/FrenchExDev/IEC61499","intent":"Assess","approved":false},
+    {"id":"Requirements-Net","path":"Net/FrenchExDev/Requirements","intent":"Assess","approved":false},
+    {"id":"Requirements-PoSh","path":"PoSh/FrenchExDev/FrenchExDev.Requirements.PoSh","intent":"Assess","approved":false},
+    {"id":"QuietCli","path":"PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh","intent":"Assess","approved":false},
+    {"id":"GitHub","path":"PoSh/FrenchExDev/GitHubEcosystem","intent":"Assess","approved":false},
+    {"id":"DevPoSh","path":"PoSh/FrenchExDev/DevPoshEcosystem","intent":"Assess","approved":false},
+    {"id":"Docker-PoSh","path":"PoSh/FrenchExDev/FrenchExDev.Docker.PoSh","intent":"Assess","approved":false},
+    {"id":"DockerCompose-PoSh","path":"PoSh/FrenchExDev/FrenchExDev.DockerCompose.PoSh","intent":"Assess","approved":false},
+    {"id":"Nexus-PoSh","path":"PoSh/FrenchExDev/FrenchExDev.Sonatype.Nexus.DockerCompose.PoSh","intent":"Assess","approved":false},
+    {"id":"Kubernetes-PoSh","path":"PoSh/FrenchExDev/FrenchExDev.Kubernetes.PoSh","intent":"Assess","approved":false}
+  ]
+}

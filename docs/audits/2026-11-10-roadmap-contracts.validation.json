@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-10",
+  "scope": "Complete planning-tooling campaign; product acceptance and release qualification excluded.",
+  "gate": "PlanConsistent",
+  "passed": true,
+  "planning": {"roadmaps":19,"requirements":77,"workItems":68,"implementationReady":false,"readinessGaps":226,"productEvidence":"NotRun"},
+  "runDirectory": "C:/Users/serard/AppData/Local/Temp/QuietCli2/874a99c9b658/tests/roadmaps-20261110-060743-db73fe",
+  "state": "Success",
+  "checks": {"passed":212,"failed":0,"examplesAndFaults":26,"properties":161,"fuzzCorpusAndBoundaries":21,"targetedMutantsKilled":4,"targetedMutantsSurvived":0},
+  "seed": 20261110,
+  "sourceHashes": {
+    "scripts/lib/Roadmap.Contracts.psm1": "697A0449C2F170A3A270DB4D406069DB4C9AF21E7C7B982740F91C835AD475AF",
+    "docs/requirements/software-ecosystem-factory.requirements.json": "F7EFBF3D6DE40B158C19A909B5FA1CB26C8AE151B9FB1E840BB042CE8CAAA9C4",
+    "docs/requirements/software-ecosystem-factory.roadmaps.json": "A9B59A236D191306894B32BA90D6E08DCD567CCAA84DDD2E5BE4D5F383F0483F"
+  },
+  "externalPlan": {
+    "path": "C:/Users/serard/.claude/plans/challenge-ce-plan-au-calm-canyon.md",
+    "originalSha256": "D3DD19EE9044C0146C1F31DFBC21CFBA9C09009A8E51B2848441DE34AB02BEDC",
+    "candidate": "master-plan.candidate.md in runDirectory",
+    "candidateSha256": "D707587907990231DDA2A93B5E4E02F2299228C3186C64F2097078271F8CF320",
+    "backupPath": "C:/Users/serard/.claude/plans/challenge-ce-plan-au-calm-canyon.before-i3-20261110.md",
+    "backupSha256": "D3DD19EE9044C0146C1F31DFBC21CFBA9C09009A8E51B2848441DE34AB02BEDC",
+    "appliedSha256": "D707587907990231DDA2A93B5E4E02F2299228C3186C64F2097078271F8CF320",
+    "replacementState": "ExplicitlyApprovedAndCompleted; original preserved and hashes verified"
+  },
+  "limits": ["Actual future package/build dependency graphs remain unverified.","No Manager installation, product acceptance, coverage instrumentation or release matrix execution.","Targeted mutation catalogue and bounded deterministic corpus are not exhaustive.","Owners, versions, API contracts, campaign budgets and recovery decisions remain open."]
+}

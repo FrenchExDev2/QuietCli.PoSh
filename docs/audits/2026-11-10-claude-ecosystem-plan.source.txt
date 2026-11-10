@@ -1,0 +1,941 @@
+# Générateur d’écosystèmes autonomes, registres locaux et reprises FrenchExDev2
+
+Date : 9 novembre 2026. Statut : plan de haut niveau révisé à challenger.
+
+Ce document remplace le séquencement du plan `challenge-ce-plan-au-calm-canyon.md` : **le générateur vient en premier**, avant les reprises FSM, IEC61499, Conduit et les évolutions Core de QuietCli. Il conserve les objectifs métier du plan initial, corrige ses contradictions et ajoute la gestion réutilisable des scripts, de leur documentation et des cycles de vie.
+
+Les commandes, interfaces, versions de démonstration et manifestes proposés ne sont pas des fonctionnalités déjà implémentées. Les exemples servent à discuter les usages et les frontières. Cette passe produit uniquement des Markdown ; elle ne crée ni dépôt, ni module, ni registre, ni secret, ni workflow exécutable, et ne publie aucun paquet.
+
+## 1. Décisions structurantes
+
+### 1.1 Un écosystème est une unité autonome de versionnement et de livraison
+
+Chaque écosystème possède son dépôt Git, son dépôt GitHub, ses branches/tags, ses workflows, ses versions de paquets, ses politiques de publication, ses configurations de développement et ses règles. Un écosystème peut contenir plusieurs projets et plusieurs paquets : **un seul `.git` à sa racine, aucun `.git` dans ses projets internes**.
+
+Son autonomie couvre notamment :
+
+- `AGENTS.md`, catalogue des projets, scripts, documentation et règles de validation ;
+- `.gitignore`, `.gitattributes`, `.editorconfig`, configuration d’éditeur et outillage épinglé ;
+- `.env.example` documenté, `.env` ignoré si ce mode est activé, références aux secrets sans copie de leurs valeurs ;
+- workflows de développement, qualification, préparation des artefacts et publication propres ;
+- identités des paquets et droits de publication, environnements GitHub et noms des clés nécessaires ;
+- pour .NET : CPM, SDK, build, restore, tests et configuration NuGet propres ;
+- pour npm ou des outils Node de développement : `package.json`, lockfile et configuration de registre propres.
+
+Les secrets restent dans les magasins/environnements prévus. Un `.env` n’est pas une obligation universelle et son chargement n’est jamais implicite. Une dépendance de développement npm peut exister dans un écosystème .NET sans transformer celui-ci en produit npm.
+
+On part désormais d'une nouvelle racine physique, **`C:/code/FrenchExDev/FrenchExDev_i3`**, distincte de `FrenchExDev_i2` (le monorepo actuel, sans `.git` à sa racine, lu en lecture seule pour l'extraction des capacités réutilisables) : chaque écosystème produit par ce plan est un checkout indépendant sous `FrenchExDev_i3/Net/` ou `FrenchExDev_i3/PoSh/`. Ces deux dossiers restent des conteneurs de checkouts, pas un super-écosystème avec un CPM ou un cycle de release partagé. L'implémentation devra traiter explicitement l'exclusion des checkouts autonomes par un éventuel outillage englobant de `_i3` ; aucune conversion Git n'est effectuée dans cette passe documentaire, et `_i2` n'est ni déplacé ni modifié par cette migration. Tous les chemins `FrenchExDev_i3/Net/…` et `FrenchExDev_i3/PoSh/…` utilisés plus loin dans ce document désignent déjà cette nouvelle racine ; aucun ne pointe plus vers un sous-dossier de `FrenchExDev_i2`.
+
+### 1.2 Les frontières entre écosystèmes passent par des artefacts
+
+- .NET : `.nupkg` versionnés, `PackageReference` et versions dans le CPM du consommateur. Les paquets en développement transitent par un **Local NuGet Registry**.
+- `ProjectReference` est réservé aux projets du même écosystème ; jamais de référence à un checkout voisin, d’import du CPM parent ou de DLL trouvée dans le `bin` d’un autre dépôt.
+- Aucun `dev-links.local.psd1`, import de manifeste source voisin ou reconstruction cachée d’un autre écosystème pour satisfaire une dépendance.
+- PowerShell : modules packagés, versions déclarées et installation/restauration explicite depuis un dépôt PSResource compatible. Les infrastructures peuvent transporter des `.nupkg`, mais les contrats module PowerShell et bibliothèque CLR restent distincts.
+- npm : dépendances de paquets, lockfile et registre gérés par le profil npm ; la logique NuGet ne s’y applique pas. Aucun lien de checkout ne remplace la qualification des artefacts.
+
+« Local » désigne ici un **registre d’artefacts**, pas un raccourci vers le code source. Le premier fournisseur NuGet sera un feed hiérarchique sur disque ; un fournisseur HTTP pourra être configuré via le même contrat sans rendre un serveur obligatoire.
+
+L’herméticité concerne l’indépendance des versions, sources déclarées et configurations. Elle ne signifie pas que tout build est hors ligne : l’accès réseau, les caches et les services requis sont explicites. Une qualification de paquet doit réussir avec les checkouts frères indisponibles.
+
+### 1.3 Réutiliser des capacités versionnées, préserver les responsabilités
+
+Le générateur compose des profils et un kit d’outillage réutilisable. Il ne recopie pas tout `scripts/` de QuietCli dans chaque dépôt. Les capacités communes sont versionnées, leur sélection et leur mise à jour appartiennent à chaque écosystème.
+
+IEC61499 reste indépendant de QuietCli, et réciproquement. Conduit est le seul adaptateur qui référence les deux. Le générateur et son modèle d’écosystème restent indépendants du modèle de réseau IEC61499 : partager des bibliothèques de parsing n’impose pas de partager les modèles métier.
+
+## 2. Comparaison des écosystèmes existants
+
+Comparaison en lecture seule de QuietCli et de `PoSh/FrenchExDev/GitHubEcosystem`, réalisée avec l’agent demandé. Les constats décrivent les fichiers inspectés, sans qualification d’exécution.
+
+| Capacité | QuietCli | GitHubEcosystem | Conséquence pour le générateur |
+| --- | --- | --- | --- |
+| Dépôt et configuration autonomes | `.git`, `.github`, fichiers éditeur/Git propres | Même frontière de dépôt | Conserver cette unité et plusieurs projets internes |
+| Projets métier et tests | Core, Git, Vagrant et compagnons | Module GitHub et compagnon | Catalogue neutre, adaptateurs de profil |
+| Moniteur de tests | Worker, états terminaux, rapports, fenêtre visible | Moniteur adapté de QuietCli, attribution dans le README | Extraire la capacité avec provenance et tests |
+| Scripts et docs | `Sync-ScriptsReadme.ps1`, docs miroir et index | Sept scripts inspectés sans leurs docs miroir | Rendre cette capacité commune et vérifiable |
+| Documentation et crédits | Index, agrégation et blocs gérés | Notices propres, sans mêmes gates | Partager les mécanismes ; conserver les licences propres |
+| CI | Workflows filtrés et workflow réutilisable | Workflows filtrés et qualification réutilisable | Produire la CI depuis le catalogue et les dépendances |
+| Publication | Éligibilité, artefacts, qualification puis publication | Publication indiquée non implémentée | État `NotConfigured` explicite, jamais succès supposé |
+| Dépendance externe | Core distribué sous le nom public `QuietCli` | Import source voisin et checkout/build de QuietCli en CI | Cas de migration vers les paquets, pas gabarit conforme à copier |
+
+Points d’ancrage :
+
+- QuietCli : `scripts/WorkspaceProjects.ps1`, `SourceIdentity.ps1`, `Sync-ScriptsReadme.ps1`, `Sync-DocsCredits.ps1`, `Sync-Credits.ps1`, `Ci.Process.ps1`, `Watch-Tests.ps1` et les workflows de qualification/publication.
+- GitHub : `scripts/Import-Workspace.ps1:9`, `.github/workflows/qualification.yml:43`, son manifeste métier et `README.md:57` pour l’attribution du moniteur.
+- La découverte QuietCli utilise des noms et métadonnées spécifiques (`FrenchExDev2.QuietCli.*`, `PrivateData.QuietCli`, noms de suites). Ces conventions ne deviennent pas le vocabulaire générique.
+- Aucun gestionnaire dédié de registre NuGet local n’a été identifié dans les deux écosystèmes et les scripts voisins inspectés. Ce constat n’est pas une preuve d’absence sur tout le workspace.
+
+## 3. Plan G — SoftwareEcosystem.Generator, le générateur d’écosystèmes, en premier
+
+### G.1 Capacités communes et profils composables
+
+Racine proposée (chemin disque selon le patron canonique §4, GP.3 règle 2) : `FrenchExDev_i3/PoSh/FrenchExDev2/SoftwareEcosystem.Generator.PoSh/i0/`, identité de paquet publié `FrenchExDev2.SoftwareEcosystem.Generator.PoSh` (GP.3 règle 1) ; dépôt autonome contenant le générateur PowerShell, ses compagnons de tests, ses profils et sa propre documentation. Le suffixe `.PoSh` suit la convention déjà en place pour `FrenchExDev2.QuietCli.PoSh` et `FrenchExDev2.LocalNuGetRegistry.PoSh`. Nom retenu après l'introduction de `SoftwareEcosystem.Manager` (§5) : la famille `SoftwareEcosystem.<Rôle>` distingue clairement « créer un nouvel écosystème » (`Generator`) de « cloner/gérer les écosystèmes déjà publiés » (`Manager`), deux responsabilités distinctes plutôt qu'un nom `Ecosystem.Generator` ambigu avec le vocabulaire générique `Ecosystem*` déjà utilisé partout dans ce plan (catalogue, `New-EcosystemPlan`, etc.).
+
+Les capacités communes couvrent l’identité du dépôt, les catalogues, scripts/docs, règles d’agent, cycles de tests, provenance et mises à jour. Les profils ajoutent les outils et formats spécifiques :
+
+| Profil | Responsabilités |
+| --- | --- |
+| `PowerShell` | Manifestes, modules publics, dépendances packagées, tests compagnons, PSResource, aide |
+| `DotNet` | SDK, CPM, solutions/projets, packages, restore/pack, Local NuGet Registry |
+| `NodeTools` / `Npm` | Outils de développement ou produit npm, manifeste, lockfile et registre propres |
+| `GitHubHosting` | Identité du dépôt, workflows, permissions, environnements, contrats des secrets et publication de confiance OIDC (NuGet/PowerShell Gallery) par défaut, sans clé API stockée en secret long-lived (cf. §11, M.7) |
+| `ScriptsAndDocs` | Génération conjointe scripts/aide/docs/tests, index et contrôle de dérive |
+| `RequirementsTraceability` (optionnel, .NET) | Relie les critères d'acceptation à `FrenchExDev.Net.Requirements` (`Epic`/`Feature`/`[Verifies]`) quand la traçabilité a une valeur métier réelle ; sinon la checklist `REQUIREMENTS.md` suffit |
+
+Les identifiants de profils sont illustratifs. Un profil contribue des capacités et des adaptateurs ; deux profils incompatibles produisent un diagnostic avant toute écriture. Les exécutables, versions et environnements supportés sont déclarés, pas déduits du nom d’un dossier.
+
+### G.2 Un catalogue, plusieurs vues dérivées
+
+Un manifeste d’écosystème déclare les projets, dépendances, compagnons, scripts, documents, paquets publiables, profils et règles locales. Les manifestes natifs restent les contrats faisant autorité pour leurs outils : le contrôle vérifie leur accord avec le catalogue au lieu d’inventer un deuxième gestionnaire de dépendances.
+
+À partir de cette description, dériver les index, la carte destinée à `AGENTS.md`, les périmètres CI et la sélection des paquets. Les descriptions métier et les preuves de qualification restent rédigées/vérifiées ; un fichier présent ne prouve jamais un support ou un test réussi.
+
+```yaml
+schemaVersion: 1
+name: FiniteStateMachine.Net
+profiles: [DotNet, GitHubHosting, ScriptsAndDocs, NodeTools]
+projects:
+  runtime:
+    path: src/FrenchExDev2.FiniteStateMachine.Net
+    tests: runtime-tests
+    publish: true
+  runtime-tests:
+    path: test/FrenchExDev2.FiniteStateMachine.Net.Tests
+    publish: false
+scripts:
+  Pack-Workspace:
+    path: scripts/Pack-Workspace.ps1
+    documentation: docs/scripts/Pack-Workspace.md
+    purpose: Build qualified local NuGet packages.
+```
+
+Le manifeste reste une entrée de conception minimale, pas un schéma complet figé par ce plan. Le catalogue ne copie ni secrets, ni chemins machine privés.
+
+### G.3 Générer et adopter sans écraser
+
+Trois modes distincts : créer un écosystème, adopter un dépôt existant, mettre à jour un dépôt déjà géré. Suivre les versions du générateur, des profils et du kit, ainsi que les empreintes des fichiers/régions gérés.
+
+- Fichiers entièrement générés : index et certains wrappers déclarés comme tels.
+- Régions gérées : blocs clairement délimités dans `AGENTS.md` ou des documents mixtes.
+- Contenu appartenant au projet : code métier, prose, exemples et scripts spécifiques.
+- Mise à jour : calcul du diff, conflits visibles, conservation des modifications humaines ; aucune réécriture intégrale silencieuse.
+- Génération déterministe et idempotente. Une deuxième application identique ne produit aucun changement.
+
+```powershell
+# Proposed commands; the preview does not create repositories or install tools.
+$plan = New-EcosystemPlan -Name 'FiniteStateMachine.Net' `
+    -Path $targetPath `
+    -Profiles @('DotNet', 'GitHubHosting', 'ScriptsAndDocs')
+
+Show-EcosystemPlan -Plan $plan
+Invoke-EcosystemPlan -Plan $plan -WhatIf
+
+# Explicit application creates only the operations recorded in this plan.
+Invoke-EcosystemPlan -Plan $plan
+```
+
+La création de contenu, l’initialisation Git, la création GitHub, l’enregistrement de secrets et la publication sont des opérations distinctes. Générer un workflow ou `.env.example` n’autorise aucune de ces opérations externes. Les checkouts existants ne sont jamais transformés en sous-modules ou fusionnés par effet de bord.
+
+### G.4 Générer des fonctions réutilisables et leurs façades `.ps1`
+
+Le script doit exister pour fournir un point d’entrée stable aux développeurs, agents et workflows. La véritable capacité est une fonction PowerShell exportée ou une cmdlet C# d’un module : les autres fonctions, applications et scripts peuvent l’appeler directement, sans lancer un autre `.ps1`, un processus PowerShell ou analyser du texte console. Le générateur aide à concevoir et produire les deux éléments, pas uniquement une collection de scripts autonomes.
+
+Une **opération** possède un contrat réutilisable : paramètres, résultats structurés, erreurs, effets de bord, annulation et ressources possédées. Sa façade `.ps1` expose le sous-ensemble volontairement choisi pour le dépôt et délègue à cette opération. Le module porte les validations et politiques métier ; la façade ne recopie ni algorithme, ni gestion de registre, ni règles de qualification. L’orchestration réutilisable est elle-même une fonction. Le rendu console et la traduction éventuelle en code de sortie appartiennent à une frontière d’entrée explicitement documentée.
+
+Trois parcours de génération partagent cette règle : **lier une commande existante**, **créer le squelette d’une fonction puis sa façade**, ou **ajouter une autre façade à la même fonction**. Le squelette reste `Draft` tant que son comportement n’est pas développé et validé ; son corps non implémenté échoue explicitement. Une implémentation C# reste dans son projet .NET avec documentation XML et compagnon de tests, sans moteur C# improvisé dans le script.
+
+```powershell
+# Proposed command: bind an existing exported function to a repository entry point.
+$scriptPlan = New-EcosystemScriptPlan `
+    -EcosystemPath $root `
+    -Name 'Publish-LocalPackages' `
+    -Template 'PowerShell.CommandFacade' `
+    -CommandName 'Publish-LocalNuGetPackage' `
+    -CommandModule 'FrenchExDev2.LocalNuGetRegistry.PoSh' `
+    -Purpose 'Publish already qualified packages to the selected local feed.' `
+    -SupportsShouldProcess
+
+Show-EcosystemPlan -Plan $scriptPlan
+Invoke-EcosystemPlan -Plan $scriptPlan
+```
+
+Le contrat de façade précise aussi la version du module consommé, les paramètres exposés et leur mapping. Pas de découverte « dernière version », d’installation ou de téléchargement à l’exécution. Une commande absente ou une signature incompatible est une erreur de dépendance explicite. L’inspection de métadonnées se fait dans un contexte choisi ; générer une façade ne doit pas importer/exécuter automatiquement du code tiers non approuvé.
+
+Livraison conjointe : `scripts/Publish-LocalPackages.ps1`, aide intégrée, `docs/scripts/Publish-LocalPackages.md`, validations de délégation dans le compagnon de tests et entrée de catalogue reliant **façade → commande → module/version → documentation de référence**. Si la fonction est nouvelle, ajouter son fichier source documenté, son export de manifeste, ses docs de commande et ses tests métier dans les projets appropriés. Pour un script imbriqué, conserver la même arborescence sous `docs/scripts/`.
+
+#### G.4.1 Catalogue initial de générateurs de façades
+
+Ces noms sont proposés ; chaque `.ps1` est lui-même une façade sur la fonction indiquée du module du générateur. Les fonctions de génération retournent un plan de fichiers : seul `Invoke-EcosystemPlan` applique les écritures choisies.
+
+| Façade du générateur | Fonction consommée | Production attendue |
+| --- | --- | --- |
+| `scripts/New-Ecosystem.ps1` | `New-EcosystemPlan` | Structure du dépôt, profils, catalogue et points d’entrée |
+| `scripts/New-Operation.ps1` | `New-EcosystemOperationPlan` | Fonction documentée, export, docs et tests métier ; façade optionnelle |
+| `scripts/New-CommandFacade.ps1` | `New-EcosystemScriptPlan` | `.ps1` lié à une commande existante, aide et doc miroir |
+| `scripts/New-CheckFacade.ps1` | `New-EcosystemCheckFacadePlan` | Façade de check et binding au pipeline, sans recopier le contrôle |
+| `scripts/New-TaskFacade.ps1` | `New-EcosystemTaskFacadePlan` | Façade build/pack/admin, politiques d’effets de bord déclarées |
+| `scripts/New-WorkerFacade.ps1` | `New-EcosystemWorkerFacadePlan` | Entrée de worker et contrat d’état/annulation, sans scheduler dupliqué |
+| `scripts/New-MonitorFacade.ps1` | `New-EcosystemMonitorFacadePlan` | Entrée de moniteur en lecture seule et contrat d’affichage/lifecycle |
+| `scripts/New-ConsumerInstructions.ps1` | `New-EcosystemConsumerInstructionsPlan` | Instructions d’installation et d’usage, règles consommateurs et liens |
+| `scripts/Update-Facades.ps1` | `Update-EcosystemFacadePlan` | Diff de signatures, mappings, aides et références ; conflits conservés |
+| `scripts/Test-Facades.ps1` | `Test-EcosystemFacadeContract` | Rapport de conformité sans écriture ni invocation métier |
+
+Les spécialisations check/task/worker/monitor réutilisent la même fabrique de façades et les capacités versionnées appropriées ; elles apportent un profil de contrat, pas quatre implémentations du templating. Chacune possède sa propre doc miroir sous `docs/scripts/` et son aide. Les façades produites dans les écosystèmes suivent exactement cette convention.
+
+Exemple de développement d’une nouvelle opération puis de son entrée dépôt :
+
+```powershell
+# Proposed authoring APIs; they do not execute the generated business operation.
+$operationPlan = New-EcosystemOperationPlan -EcosystemPath $root `
+    -ModuleName 'Acme.Build.PowerShell' -CommandName 'New-AcmePackage' `
+    -Implementation PowerShellFunction -Template 'Operation.ShouldProcess'
+Invoke-EcosystemPlan -Plan $operationPlan -WhatIf
+
+# After implementing the command and declaring its parameter contract:
+$facadePlan = New-EcosystemScriptPlan -EcosystemPath $root `
+    -Name 'Pack-Workspace' -Template 'PowerShell.CommandFacade' `
+    -CommandModule 'Acme.Build.PowerShell' -CommandName 'New-AcmePackage'
+Invoke-EcosystemPlan -Plan $facadePlan -WhatIf
+```
+
+#### G.4.2 Démo d’une façade et de la réutilisation directe
+
+Exemple de contenu généré pour `scripts/Publish-LocalPackages.ps1`. L’identité/version ci-dessous est illustrative, pas un paquet annoncé disponible. Le module installé est déclaré par version exacte ; les dépendances de développement au sein du même écosystème utilisent un chargeur explicite distinct.
+
+```powershell
+#Requires -Version 7.6
+#Requires -Modules @{ ModuleName = 'FrenchExDev2.LocalNuGetRegistry.PoSh'; RequiredVersion = '0.1.0' }
+<#
+.SYNOPSIS
+Publishes an existing package to the selected local registry.
+.PARAMETER PackagePath
+Path to the already qualified NuGet package.
+.PARAMETER Registry
+Name of the explicitly configured destination registry.
+.OUTPUTS
+A structured publication receipt from Publish-LocalNuGetPackage.
+.EXAMPLE
+./scripts/Publish-LocalPackages.ps1 -PackagePath ./artifacts/Acme.1.0.0.nupkg -Registry Dev -WhatIf
+#>
+[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
+param(
+    [Parameter(Mandatory)] [string] $PackagePath,
+    [Parameter(Mandatory)] [string] $Registry
+)
+
+# The command owns validation, ShouldProcess and publication exactly once.
+FrenchExDev2.LocalNuGetRegistry.PoSh\Publish-LocalNuGetPackage @PSBoundParameters
+```
+
+La fonction cible supporte `ShouldProcess` ; `WhatIf` et `Confirm` explicitement liés sont transmis avec les autres paramètres, et les préférences héritées sont respectées. La façade n’appelle pas elle-même `ShouldProcess` : pas de double confirmation. Pour un mapping, une valeur par défaut ou un paramètre masqué, générer un forwarding explicite cohérent avec la signature cible ; ne pas supposer que tout splatting est universellement correct. Le résultat et les erreurs sont conservés, sans `Write-Host`, sérialisation ou `exit` au milieu de la capacité réutilisable.
+
+```powershell
+# Direct composition by another module or a developer: no script subprocess.
+$receipt = FrenchExDev2.LocalNuGetRegistry.PoSh\Publish-LocalNuGetPackage `
+    -PackagePath $packagePath -Registry 'Dev'
+
+# Repository entry point for a workflow or an interactive user.
+$sameContract = & ./scripts/Publish-LocalPackages.ps1 `
+    -PackagePath $packagePath -Registry 'Dev' -WhatIf
+```
+
+Les deux appels illustrent deux usages indépendants, pas une séquence de publication à exécuter automatiquement. Un aperçu peut ne pas retourner de reçu de publication : son contrat doit le préciser. Les tests de façade vérifient la délégation, les paramètres, `WhatIf`, les erreurs et l’absence de pollution de sortie ; les tests de fonction établissent indépendamment le résultat métier. Un même test recopié dans chaque façade ne constitue pas une preuve supplémentaire.
+
+La documentation indique usage, paramètres, dépendances, entrées/sorties, effets de bord, erreurs, limites et stratégie de validation. L’aide initiale facilite la rédaction ; un squelette non rempli reste `Draft`, jamais « documenté et qualifié » par simple présence. La modification de la signature ou du contrat signale une dérive à revoir sans prétendre mettre à jour automatiquement toute la prose.
+
+La doc miroir explique le point d’entrée dépôt et lie la référence de la commande réutilisable ; elle ne recopie pas toute sa documentation métier. Elle précise le mapping et les différences éventuelles de valeurs par défaut, sortie, erreurs et codes de sortie. Les instructions consommateurs présentent installation depuis les paquets publiés, import, appel direct et façade optionnelle ; elles ne prescrivent jamais un checkout frère ou l’appel des scripts internes du générateur.
+
+L’usage de `quiet` pour les commandes natives d’agent et l’orchestration indépendante du moteur pour bootstrap/build restent deux frontières explicites. Cette architecture est une cible d’adoption progressive : inventorier les scripts existants, extraire leurs capacités réutilisables sans changer leur contrat public, puis réduire leurs façades, sans réécriture massive implicite.
+
+### G.5 `AGENTS.md` : sanité et cycles de vie
+
+Le fichier généré est un index opérationnel court : identité de l’écosystème, carte des projets, dépendances, commandes usuelles et liens vers les règles détaillées. Les règles communes proviennent des profils épinglés ; les exceptions locales sont visibles et justifiées, sans effacement au prochain passage du générateur.
+
+Les règles de sanité couvrent notamment :
+
+- un dépôt par écosystème, aucun lien source vers un autre, aucune version ou configuration héritée accidentellement ;
+- UTF-8/LF, code et commentaires anglais, profils PowerShell normaux, limites des actions implicites ;
+- cohérence catalogue/manifestes, documentation des scripts, liens, provenance et licences réellement applicables ;
+- dépendances explicites, absence de secrets dans les fichiers versionnés et absence de téléchargement à l’import ;
+- sorties structurées, absence de pollution de pipeline, ressources bornées et nettoyage des seules ressources possédées ;
+- propriétés, fuzzing et mutations selon le comportement modifié ; les campagnes non exécutées restent des lacunes explicites.
+
+Les cycles de vie sont décrits et vérifiés comme des contrats :
+
+| Cycle | Contrat essentiel |
+| --- | --- |
+| Générer / adopter / mettre à jour | Aperçu, application explicite, idempotence, conflits et conservation du contenu humain |
+| Importer un module | Import inerte, sans réseau, installation, build ou lancement métier |
+| Exécuter un script | Validation avant effet de bord, paramètres explicites, sortie/erreurs cohérentes |
+| Tester / campagne | Worker et moniteur visibles, identités, progression observable, état terminal et rapports sauvegardés |
+| Annuler / expirer / échouer | Annulation propagée, drainage/nettoyage bornés, aucun processus ou moniteur abandonné |
+| Construire / packager | Identité des sources et des dépendances, aucun commit/push/publication implicite |
+| Publier | Révision et artefacts exactement qualifiés, cible et droits explicites |
+| Déprécier / migrer | Mapping des versions, compatibilité et retrait annoncés, pas de pointeur vers une cible inexistante |
+
+Extrait de règles générées, en anglais :
+
+```markdown
+## Repository and dependency boundaries
+- This ecosystem owns one Git repository and its release configuration.
+- Internal projects may use project references; external ecosystems use pinned packages.
+- Import is offline and inert. Build and test never publish implicitly.
+
+## Scripts and lifecycle
+- Every script has matching help, documentation and companion validation.
+- Implement reusable behavior in exported PowerShell functions or C# cmdlets.
+- Keep repository scripts as thin facades; compose commands directly from other code.
+- Declare the target module version, parameter mapping, output and error contracts.
+- Keep business validation and ShouldProcess in the reusable command; forward without duplicate prompts.
+- Link each facade doc under docs/scripts to its reusable command reference.
+- Save every terminal outcome before closing the owned monitor.
+- Cancel and dispose only resources owned by this operation.
+
+## Consumer instructions
+- Document installation and direct command usage with public package identities.
+- Explain when to use the repository facade and how it differs from the command.
+- Never require sibling checkouts or internal generator scripts for installed consumers.
+- Keep repository development rules separate from opt-in consumer instruction files.
+```
+
+Le générateur maintient ces règles dans son propre `AGENTS.md` et dans les blocs gérés des écosystèmes générés/adoptés. Les instructions consommateurs sont une sortie distincte, adaptée au produit et explicitement installée ou générée dans le projet consommateur ; elles ne remplacent pas son `AGENTS.md` et ne modifient pas automatiquement un profil global. La conception d’une opération inclut ainsi ses deux usages, développement et consommation, avant génération des façades.
+
+### G.6 Pipeline de checks : politique distincte du mécanisme
+
+Réutiliser les contrôles existants via des adaptateurs. Ne pas imposer QuietCli au moteur des checks, au bootstrap ou au générateur. Séparer `Blocking` (interdit la progression finale) de `FailurePolicy` (continuer les contrôles indépendants ou arrêter rapidement).
+
+```powershell
+# Proposed API. Step output is captured as Details, not mixed with the report.
+$checks = @(
+    New-WorkspaceCheck -Name 'SourceIdentity' -Blocking:$true -Run $checkSources
+    New-WorkspaceCheck -Name 'ScriptsDocs' -Blocking:$true -Run $checkScriptDocs
+    New-WorkspaceCheck -Name 'LargeFiles' -Blocking:$false -Run $inspectLargeFiles
+)
+
+$report = Invoke-WorkspaceCheckPipeline -Checks $checks `
+    -Context $context -FailurePolicy Aggregate
+
+# Failed blocking checks forbid the commit even if later diagnostics ran.
+$report.CanProceed
+$report.Checks
+```
+
+Le rapport distingue `Passed`, `Failed`, `Skipped` et `NotRun`, les détails et l’exécution partielle. Une désactivation est visible et ne vaut jamais conformité. Une dépendance de check échouée rend son consommateur `NotRun` ; elle ne l’exécute pas sur un état invalide.
+
+Le futur adaptateur de `Commit-Workspace.ps1` doit préserver le snapshot d’index de `-NoAll`, les checks sur les sources réellement stagées, `-WhatIf`, les avertissements non bloquants et la séparation contrôles/staging/commit. Ne pas remplacer ces garanties par un `foreach` générique.
+
+### G.7 Bootstrap et partage du kit
+
+Le générateur minimal se construit et se valide sans QuietCli, IEC61499, Conduit ou gestionnaire NuGet encore à créer. Il inclut seulement les primitives nécessaires à sa première livraison et en garde une seule implémentation, réutilisée par sa propre génération.
+
+Après cette première livraison, profils et kit sont des artefacts versionnés installés explicitement et épinglés par chaque écosystème. Une génération n’introduit jamais une dépendance dynamique à la dernière version du générateur. Le générateur produit sa propre structure ; les tests démontrent le renouvellement sans dépendance circulaire.
+
+Le profil .NET connaît le contrat du gestionnaire de registries. Le générateur n’a pas besoin de démarrer ce gestionnaire pour générer son premier dépôt : il émet une définition et des wrappers inertes ; les opérations registre deviennent disponibles après installation du paquet correspondant.
+
+**Acceptation G** : générer un dépôt témoin PowerShell et un témoin .NET ; créer une fonction puis deux façades qui la consomment sans copier sa logique ; démontrer l’appel direct depuis un autre module ; produire aide, docs de commande, docs miroir et instructions consommateurs ; détecter une signature incompatible et une dérive documentaire ; préserver `WhatIf`, sorties et erreurs ; mettre à jour sans écraser une modification humaine et qualifier chaque témoin hors du workspace d’origine. Le profil `NodeTools` ajoute des dépendances de dev sans modifier le CPM ni la version du produit .NET.
+
+## 4. Plan GP — GitProject.Ecosystem, premier projet livré par le générateur
+
+### GP.1 Pourquoi en premier
+
+Avant un registre de paquets (R), une reprise métier (A/B/M) ou un adaptateur (C), chaque écosystème a d'abord besoin d'un dépôt Git créé selon une convention commune — branche principale, nommage, discipline de commit/push. `GitProject.Ecosystem` porte cette convention comme code plutôt que comme prose répétée dans chaque `AGENTS.md`, et c'est le premier projet que le générateur G produit, pour lui-même puis pour tout écosystème suivant. R (§6) devient ainsi le premier écosystème *créé via* GitProject.Ecosystem, pas le premier consommateur du générateur lui-même — correction du texte précédent. `SoftwareEcosystem.Manager` (§5, Plan SM) est lui aussi un dépôt créé via GitProject.Ecosystem, mais sa fonction est symétrique à R : il ne crée pas un nouvel écosystème, il clone et suit les écosystèmes déjà publiés sous l'org GitHub `FrenchExDev2`.
+
+### GP.2 Convention de branche : `develop` est la branche principale
+
+Chaque dépôt produit par `New-GitProject` démarre avec `develop` comme HEAD initial et comme branche principale déclarée (pas une branche secondaire à côté de `main`) ; une fois un remote GitHub créé (profil `GitHubHosting`, opération séparée par 1.1/G.3), sa branche par défaut suit la même valeur. Ceci est une convention pour les **nouveaux** dépôts : elle ne renomme rétroactivement aucun dépôt existant, y compris celui où `Push-Workspace.ps1` de QuietCli code aujourd'hui en dur `-Branch 'main'` (cf. GP.5) — une bascule d'un dépôt déjà créé reste une décision explicite séparée.
+
+```powershell
+# Proposed: the only entry point that decides a new repository's initial branch.
+New-GitProject -Path $root -Name 'FrenchExDev2.LocalNuGetRegistry.PoSh' -InitialBranch 'develop'
+Assert-GitProjectDefaultBranch -Path $root -Expected 'develop'
+```
+
+### GP.3 Convention de nommage canonique
+
+Règle retenue, qui corrige l'usage jusqu'ici flottant entre `XEcosystem`, `X.Ecosystem` et `X.PoSh`/`X.Net` plus haut dans ce même plan :
+
+1. Nom qualifié (identité de paquet publié, NuGet/PowerShell Gallery) = `FrenchExDev2.<NomÉcosystème>.<Suffixe>`. `<Suffixe>` = `.Net` pour un dépôt publiant exactement une famille d'artefacts .NET, `.PoSh` pour exactement un module PowerShell, `.Ecosystem` réservé aux dépôts à **plusieurs** projets internes (mixte PoSh+C#, ou plusieurs paquets versionnés séparément) — jamais un synonyme générique de « dépôt ». Cette identité est globale (namespace plat des galeries publiques) et ne dépend d'aucun chemin disque.
+2. Chemin disque, distinct de l'identité de paquet et résolu par **configuration** plutôt que câblé en dur — même résolveur pour un dépôt créé par GitProject.Ecosystem (§4) que pour un dépôt cloné par SoftwareEcosystem.Manager (§5, SM.2) :
+   ```
+   <Racine>/<Langage>/<Org>/<NomCourt>/<instance#>/        (.git à cette racine d'instance)
+   ```
+   - `<Racine>` : `FrenchExDev_i3` pour ce plan, jamais supposée unique par le code (une racine CI ou de contributeur est une autre valeur de configuration).
+   - `<Langage>` : `PoSh`/`Net`/`Ts`, reprend la convention déjà en place (`Net/FrenchExDev/`, `PoSh/FrenchExDev/`).
+   - `<Org>` : organisation GitHub source, **configurable** (`.env` ou fichier de configuration personnel local) — `FrenchExDev2` est la valeur par défaut retenue dans ce plan, jamais un littéral câblé dans le code de GP ou SM.
+   - `<NomCourt>` : le nom du dépôt GitHub tel qu'il apparaît réellement sous cet org (ex. `QuietCli.PoSh`, pas le nom qualifié `FrenchExDev2.QuietCli.PoSh` de la règle 1) — le dossier disque reflète directement la paire `org/repo` GitHub ; l'identité de paquet publié reste une préoccupation séparée, déclarée dans le manifeste du projet, pas déduite du chemin.
+   - `<instance#>` : segment de clone pour ce même écosystème, nommé selon un **patron configurable**, jamais un chiffre nu — un nom de dossier composé uniquement de chiffres est à proscrire (ambiguïté avec un identifiant numérique, tri lexical incohérent, confusion possible avec un numéro de port/PID dans un script). Patron par défaut : `i<N>` (ex. `i0`, `i1`), `N` un entier à partir de `0` — `i0` par défaut, y compris pour un dépôt neuf créé par GitProject.Ecosystem. Permet plusieurs clones simultanés du même dépôt (ex. `i0` sur `develop`, `i1` sur une branche de feature ou un clone CI isolé) sans collision ; la plupart des écosystèmes n'ont qu'une seule instance, jamais imposée à exactement une.
+   - Résolution normalisée par une fonction PowerShell partagée, pas par une concatenation de chaîne recopiée dans GP et SM : `Resolve-SoftwareEcosystemInstancePath -Root <Racine> -Language <Langage> -Org <Org> -ShortName <NomCourt> -Instance <N>` (module partagé GP.4/SM.4, cf. plus bas) — construit `<Racine>/<Langage>/<Org>/<NomCourt>/<InstancePattern>/` en appliquant le patron résolu par `Get-SoftwareEcosystemInstancePattern` (défaut `i{0}` ; configurable via `.env`/configuration locale comme `<Org>`, jamais câblé en dur) et refuse tout patron résolu en segment entièrement numérique avant toute écriture disque.
+   - Ce patron résout la gestion d'une racine multi-écosystèmes (plusieurs org, plusieurs écosystèmes par org, plusieurs instances par écosystème) sans dossier englobant inerte supplémentaire au-delà de ce qu'il décrit déjà lui-même.
+3. Les sous-projets internes d'un dépôt `.Ecosystem` suivent `FrenchExDev2.<NomÉcosystème>.<SousCapacité>.<Suffixe>` — généralisation du motif déjà réel de QuietCli (`FrenchExDev2.QuietCli.Core.PoSh`, `.Git.PoSh`, `.Vagrant.PoSh`). Les compagnons de tests gardent `.Tests.<Suffixe>`. Cette règle concerne l'identité de paquet des sous-projets, pas le chemin disque du dépôt englobant (règle 2).
+4. Les paquets `.Net` legacy sous `Net/FrenchExDev/` gardent leur identité réelle `FrenchExDev.Net.<Package>` (sans « 2 ») jusqu'à reprise effective ; toute cible reprise gagne le « 2 ».
+
+Correction des noms déjà proposés plus haut dans ce plan — chemin disque recalculé selon la règle 2, `<Org>` = `FrenchExDev2` par défaut, `<instance#>` = `i0` (patron par défaut `i<N>`) :
+
+| Mention antérieure | Chemin disque canonique | Identité de paquet publié (règle 1) |
+| --- | --- | --- |
+| `FrenchExDev_i3/PoSh/LocalNuGetRegistryEcosystem/` (§6, R) | `FrenchExDev_i3/PoSh/FrenchExDev2/LocalNuGetRegistry.PoSh/i0/` | `FrenchExDev2.LocalNuGetRegistry.PoSh` |
+| `FrenchExDev_i3/PoSh/ConduitEcosystem/` (§10, C) | `FrenchExDev_i3/PoSh/FrenchExDev2/Conduit.PoSh/i0/` | `FrenchExDev2.Conduit.PoSh` |
+| `FrenchExDev_i3/PoSh/DockerCompose.Bundle.Ecosystem/` (§11, M) | `FrenchExDev_i3/PoSh/FrenchExDev2/DockerCompose.Bundle.Ecosystem/i0/` | `FrenchExDev2.DockerCompose.Bundle.Ecosystem` |
+| `FrenchExDev_i3/PoSh/Packer.Bundle.Ecosystem/` (§11, M.6) | `FrenchExDev_i3/PoSh/FrenchExDev2/Packer.Bundle.Ecosystem/i0/` | `FrenchExDev2.Packer.Bundle.Ecosystem` |
+| `FrenchExDev_i3/Net/Vagrant.Net/` (§11, M.6) | `FrenchExDev_i3/Net/FrenchExDev2/Vagrant.Net/i0/` | `FrenchExDev2.Vagrant.Net` |
+| `FrenchExDev_i3/Net/FiniteStateMachine.Net/` (§8, A) | `FrenchExDev_i3/Net/FrenchExDev2/FiniteStateMachine.Net/i0/` | `FrenchExDev2.FiniteStateMachine.Net` |
+| `FrenchExDev_i3/Net/IEC61499.Net/` (§9, B) | `FrenchExDev_i3/Net/FrenchExDev2/IEC61499.Net/i0/` | `FrenchExDev2.IEC61499.Net` |
+| `FrenchExDev_i3/PoSh/EcoSystem.Generator.PoSh/` (§3, G.1) | `FrenchExDev_i3/PoSh/FrenchExDev2/SoftwareEcosystem.Generator.PoSh/i0/` | `FrenchExDev2.SoftwareEcosystem.Generator.PoSh` |
+| — (§5, SM) | `FrenchExDev_i3/PoSh/FrenchExDev2/SoftwareEcosystem.Manager.PoSh/i0/` | `FrenchExDev2.SoftwareEcosystem.Manager.PoSh` |
+
+`GitProject.Ecosystem` lui-même suit la règle : `FrenchExDev_i3/PoSh/FrenchExDev2/GitProject.Ecosystem/i0/`, paquet publié `FrenchExDev2.GitProject.Ecosystem` (mixte PoSh façades + C# le cas échéant pour l'identité de source, cf. GP.5). `Test-GitProjectName` applique la règle 1 (identité de paquet) à tout nom soumis par `New-EcosystemPlan` (§3, G.3) ; la résolution du chemin disque (règle 2) est une opération séparée, partagée avec SM.2, avant toute écriture disque.
+
+### GP.4 Opérations réutilisables et façades
+
+Même discipline que G.4 : chaque capacité est une fonction/cmdlet réutilisable, la façade `.ps1` délègue sans dupliquer.
+
+| Opération | Rôle |
+| --- | --- |
+| `New-GitProject` | `git init` sur `develop`, scaffolding minimal (.gitignore/.gitattributes/.editorconfig, squelette `AGENTS.md` via G) |
+| `Test-GitProjectName` / `Assert-GitProjectDefaultBranch` | Validation du nom (GP.3) et de la branche (GP.2), rejet explicite plutôt que correction silencieuse |
+| `Get-SoftwareEcosystemInstancePattern` / `Resolve-SoftwareEcosystemInstancePath` | Résolution du chemin disque GP.3 règle 2, patron d'instance configurable (`.env`/config locale, défaut `i{0}`), rejet explicite d'un segment résolu entièrement numérique ; partagée avec SM (SM.4), appelée par `New-GitProject` pour l'instance `i0` d'un dépôt neuf |
+| `Invoke-GitProjectCommit` | Commit discipliné : gates composables, avertissement de dérive doc, sniffer fichier binaire/volumineux, trailers opt-in |
+| `Push-GitProject` | `git push --set-upstream`, sans force ni retry, branche par défaut alignée sur GP.2 |
+
+La création du remote GitHub reste une opération séparée du profil `GitHubHosting` (1.1/G.3) : `GitProject.Ecosystem` possède le Git local, pas l'appel à l'API GitHub. `Resolve-SoftwareEcosystemInstancePath`/`Get-SoftwareEcosystemInstancePattern` vivent dans ce même dépôt (capacité de nommage/chemin, cohérente avec GP.3) plutôt que dans `SoftwareEcosystem.Manager`, qui les consomme en paquet (SM.6, DRY) — GP reste la seule source de vérité du chemin disque, que l'appelant crée (GP) ou clone (SM).
+
+### GP.5 Extraction depuis `FrenchExDev2.QuietCli.PoSh/scripts`
+
+Inspection directe des scripts réels de QuietCli, pour distinguer ce qui se généralise de ce qui reste spécifique :
+
+- **`Commit-Workspace.ps1`** → la plus riche opportunité : sa forme (gates composables `Sync-ScriptsReadme`/`Sync-DocsCredits`/`Sync-Credits`, avertissement de dérive script/doc, sniffer binaire/volumineux, trailers `Co-Authored-By` opt-in via `$knownCoAuthors`, `-NoAll` avec validation de lock isolée, `WhatIf`/`ShouldProcess` complets) devient `Invoke-GitProjectCommit`, en remplaçant les trois appels `& ...ps1` séquentiels par le pipeline composable déjà prévu en G.6 (`Invoke-WorkspaceCheckPipeline`). L'avertissement de dérive et le sniffer sont déjà génériques ; les trailers opt-in confirment déjà la règle actée (pas de trailer par défaut).
+- **`Push-Workspace.ps1`** → `Push-GitProject` : déjà un wrapper fin de `git push --set-upstream` ; seul son défaut `-Branch 'main'` change pour suivre GP.2, en restant overridable pour une branche de feature.
+- **`SourceIdentity.ps1`** (`Get-QuietSourceFiles`, `Get-QuietManifestDigest`, `Get-QuietWorkspaceIdentity`) → logique d'élagage (`.git`/`bin`/`obj`/`artifacts`/`.vs`) et de hachage SHA256 ordonné déjà générique dans sa forme, mais câblée en dur sur le nom et les chemins binaires de QuietCli. Intensif en I/O/hachage : bon candidat à un composant compilé plutôt qu'un script PowerShell, cohérent avec la frontière PowerShell/C# déjà documentée par QuietCli (`README-powershell-csharp-boundaries.md`).
+- **`WorkspaceProjects.ps1`** (`Get-QuietWorkspaceProjects`) → découverte par motif de nom (`FrenchExDev2.QuietCli.*.PoSh`) + tri topologique : bon algorithme, mauvais emplacement. Le catalogue déclaratif de G.2 (projets et dépendances décrits, pas découverts par glob) est déjà son remplacement prévu, pas une seconde extraction à dupliquer.
+- **`Get-QuietWorkspacePackages`** (même fichier) → éligibilité de publication (`PrivateData.<Clé>.Publishable`, `PackageName`, regex de nom) déjà générique dans sa forme ; à lever quasiment telle quelle dans le profil `PowerShell` (G.1), en rendant paramétrable la seule clé `QuietCli` de `PrivateData`.
+
+### GP.6 Requirements, Features, ACs, Tests, Evidences, Rapport
+
+Convention par défaut du §12 : checklist `REQUIREMENTS.md` générée par `ScriptsAndDocs`, pas la DSL `FrenchExDev.Net.Requirements` — la création de dépôt n'a pas une traçabilité métier plus critique que les autres capacités du socle.
+
+**Features** : F1 Création (`New-GitProject`) ; F2 Politique de branche (GP.2) ; F3 Identité de source déterministe (généralisation de `SourceIdentity.ps1`) ; F4 Commit discipliné (généralisation de `Commit-Workspace.ps1`) ; F5 Push explicite (généralisation de `Push-Workspace.ps1`) ; F6 Éligibilité de publication (généralisation de `Get-QuietWorkspacePackages`) ; F7 Rapport d'opération ; F8 Résolution de chemin d'instance (GP.3 règle 2, partagée avec SM).
+
+**ACs (extrait, forme checklist)** :
+- [ ] `develop` est HEAD et branche par défaut d'un dépôt créé par `New-GitProject` ; aucun dépôt existant n'est renommé en important ce module.
+- [ ] `Assert-GitProjectDefaultBranch` rejette explicitement une branche différente, sans la corriger silencieusement.
+- [ ] `Test-GitProjectName` rejette un nom non conforme à GP.3 avant toute écriture disque.
+- [ ] `Resolve-SoftwareEcosystemInstancePath` rejette tout patron d'instance résolu en segment entièrement numérique (ex. `0` nu) avant toute écriture disque ; le patron par défaut `i{0}` passe, un patron personnalisé mal formé est rejeté avec la même règle.
+- [ ] `Invoke-GitProjectCommit` bloque sur une gate bloquante échouée ; une gate non bloquante ne fait qu'avertir.
+- [ ] `-WhatIf` sur `New-GitProject`/`Invoke-GitProjectCommit`/`Push-GitProject` ne modifie ni disque, ni index, ni remote.
+- [ ] Aucun trailer `Co-Authored-By` sans demande explicite de l'appelant.
+- [ ] Le rapport F7 distingue identité du dépôt, conformité de branche/nommage, gates exécutées/ignorées/échouées et éligibilité de publication, sans annoncer un succès non vérifié.
+
+**Tests** : compagnon dédié, scénarios succès/refus/panne par opération (création réussie, nom invalide, branche non conforme, gate bloquante en échec, `WhatIf` sans effet, push sans remote, commit sans rien à committer) ; mutation testing sur les validateurs de nom et de branche (AGENTS.md racine, section tests de mutation) ; qualification dans des dépôts jetables, jamais sur un dépôt réel du workspace.
+
+**Evidences** : le rapport F7 lui-même, couverture des tests ci-dessus, preuve de délégation façade→fonction (motif de test déjà de G.4), conformité des scripts/fonctions/configs au gabarit `AGENTS.md`/aide/doc miroir (G.5, `Test-EcosystemFacadeContract`).
+
+**Rapport** : pas de moteur de reporting propre à `GitProject.Ecosystem` — réutilise le même résultat structuré + preuve sauvegardée que toute opération du générateur (G.4/G.5), pas un format bespoke.
+
+**Acceptation GP** : dépôt témoin créé avec `develop` comme branche principale et nom conforme à GP.3 ; rejet démontré d'un nom et d'une branche non conformes ; `Invoke-GitProjectCommit` bloque une gate en échec et respecte `WhatIf` ; `Push-GitProject` pousse sans force/retry ; rapport F7 produit et vérifiable ; aucune extraction de GP.5 ne change le contrat public déjà consommé par les scripts QuietCli existants tant que leur propre migration n'a pas eu lieu.
+
+## 5. Plan SM — SoftwareEcosystem.Manager, cloner et gérer les écosystèmes déjà publiés
+
+### SM.1 Pourquoi, et pourquoi distinct de SoftwareEcosystem.Generator
+
+Constat réel, vérifié par inspection directe (pas supposé) : `QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh/` et `GitHubEcosystem/` (§7, Adoption) sont déjà chacun leur propre dépôt Git, avec un remote GitHub sous l'org **`FrenchExDev2`** (`FrenchExDev2/QuietCli.PoSh` et `FrenchExDev2/GitHub.PoSh`), et déjà sur la branche `develop` — confirmation rétroactive concrète de GP.2, pas une simple convention sur papier. `gh repo list FrenchExDev2` recense 16 dépôts réels sous cet org, dont deux forks (`rtk`, `llvm-project`, à exclure par défaut de tout catalogue d'écosystèmes propres), un dépôt privé (`AIWebsiteDetector`), et plusieurs dépôts PowerShell/TypeScript non encore traités par ce plan (`PoSh.WatchDog.VsCode`, `Requirements-As-Code.PoSh`, `Lab.PoSh`, `Standards-As-Code.PoSh`, `RTK.Lab.rs.PoSh`, `DevPoSh.PoSh`, `CodeGeneratorPipeline.ts`, `Builder.ts`, `Requirements.ts`, `Result.ts`, `Mutator.PoSh`) — leur existence est actée ici comme fait, pas comme périmètre déjà couvert par §12 (Requirements-as-code) ou les Plans A/M (`Result`/`Builder` .NET restent distincts de `Result.ts`/`Builder.ts`).
+
+Aucun de ces dépôts ne vit aujourd'hui sous `FrenchExDev_i3` : ils vivent dans les checkouts actuels de `FrenchExDev_i2`, ou nulle part en local. Avant que §7 (Adoption), ou tout autre plan consommant un paquet déjà publié par un de ces écosystèmes, puisse s'appuyer sur leur présence locale dans la nouvelle racine, il faut un outil qui les y clone explicitement — c'est l'objet de `SoftwareEcosystem.Manager`, symétrique de `SoftwareEcosystem.Generator` (§3) : le premier crée du neuf (`git init` via GitProject.Ecosystem), le second clone et suit l'existant (`git clone`/`fetch` via GitProject.Ecosystem). Même famille de noms, deux responsabilités disjointes — ni l'un ni l'autre ne réimplémente les opérations Git mono-dépôt déjà portées par GitProject.Ecosystem (§4, GP.4).
+
+### SM.2 Un espace de travail résout racine et org par configuration ; une instance est le clone numéroté d'un écosystème
+
+`SoftwareEcosystem.Manager` ne suppose ni racine disque ni org GitHub câblées en dur. Il lit sa configuration — racine locale et `-Org` (défaut `FrenchExDev2`) — depuis `.env` ou un fichier de configuration personnel local, jamais depuis un littéral du code, cohérent avec « `-Org FrenchExDev2` est configurable ». Cet ensemble résolu (racine + org) nommé est un **espace de travail** (un poste de développement, un checkout éphémère de CI, la racine d'un autre contributeur) ; plusieurs espaces de travail distincts peuvent coexister.
+
+Dans un espace de travail, chaque écosystème géré possède une ou plusieurs **instances** — les clones de GP.3 règle 2, nommés selon le patron configurable (`i0` par défaut), pas un synonyme de l'espace de travail. `SoftwareEcosystem.Manager` suit, par espace de travail, quels écosystèmes sont clonés, à quelle(s) instance(s), leur chemin et leur état. `SoftwareEcosystem.Manager` et `SoftwareEcosystem.Generator` peuvent gérer leurs propres écosystèmes de la même façon que tout autre écosystème publié sous l'org configurée (réflexivité : rien ne les exclut d'un catalogue qui les couvrirait).
+
+```powershell
+# Proposed. Root and org are resolved from .env/local config, never literals in code.
+$workspace = Get-SoftwareEcosystemWorkspace -Name 'dev-i3'
+# $workspace.Root -> e.g. 'C:/code/FrenchExDev/FrenchExDev_i3'
+# $workspace.Org  -> e.g. 'FrenchExDev2'
+
+Get-SoftwareEcosystemInstance -Workspace $workspace -Name 'QuietCli.PoSh'
+# -> resolves via Resolve-SoftwareEcosystemInstancePath to
+#    <Root>/PoSh/<Org>/QuietCli.PoSh/i0/, per GP.3 rule 2 (default instance pattern 'i{0}')
+```
+
+### SM.3 Profils de sélection, nommage et chemin réutilisant GP.3
+
+Cloner « tous les projets » de l'org configurée (défaut `FrenchExDev2`, cf. SM.2) se fait via profil plutôt qu'une liste figée ou un clone aveugle de l'org entière : un profil `All` (hors forks/privés par défaut), un profil par suffixe (`PoSh`, `Net`, `Ts`), ou une liste nommée explicite. Un fork ou un dépôt privé n'entre dans un catalogue que si un profil l'autorise explicitement — jamais par défaut, cohérent avec 1.3 (« ne pas imposer ») et avec le constat SM.1. Pour chaque dépôt catalogué, deux mappings distincts suivent GP.3 : le chemin disque (règle 2, `<Org>/<NomCourt>/<instance#>/` avec `<instance#>` résolu par `Resolve-SoftwareEcosystemInstancePath`, ex. org `FrenchExDev2` + dépôt `QuietCli.PoSh` → `FrenchExDev2/QuietCli.PoSh/i0/`) et l'identité de paquet publié si elle existe (règle 1, ex. `FrenchExDev2.QuietCli.PoSh`) — déjà vérifiés réels pour les deux dépôts inspectés en SM.1. Le clonage ne requiert pas qu'un paquet soit publié ; il requiert seulement le dépôt GitHub.
+
+### SM.4 Opérations réutilisables (même discipline que G.4/GP.4)
+
+| Opération | Rôle |
+| --- | --- |
+| `Get-SoftwareEcosystemWorkspace` | Résout racine et `-Org` depuis `.env`/configuration personnelle locale pour l'espace de travail nommé ; jamais de littéral en dur (SM.2) |
+| `Get-SoftwareEcosystemCatalog` | Interroge l'org GitHub en lecture seule, filtre forks/privés par profil, produit un catalogue déclaratif (même forme que G.2) sans cloner |
+| `New-SoftwareEcosystemClonePlan` / `Invoke-EcosystemPlan` | Plan de `git clone` explicite dans l'instance ciblée d'un espace de travail, mapping GP.3 (chemin + identité), `WhatIf` complet, réutilise le même moteur de plan que G.3 |
+| `Sync-SoftwareEcosystemClone` | `git fetch`/`pull` sur une instance déjà présente, jamais de force, conflit visible plutôt que résolu silencieusement |
+| `Test-SoftwareEcosystemCloneDrift` | Compare branche locale et branche par défaut distante (GP.2) et empreinte locale (GP.5), rapporte sans corriger automatiquement |
+| `Report-SoftwareEcosystemWorkspace` | État consolidé d'un espace de travail : par écosystème et par instance, cloné/absent/divergent, branche, dernier sync |
+
+Chaque opération mono-dépôt (vérifier `develop`, valider un nom, résoudre le chemin d'une instance) délègue à GP (GP.4, dont `Resolve-SoftwareEcosystemInstancePath`) ; SM n'ajoute que l'orchestration multi-dépôts qui manque réellement à GP — aucune duplication de `Assert-GitProjectDefaultBranch`/`Test-GitProjectName`/`Resolve-SoftwareEcosystemInstancePath`.
+
+### SM.5 Démonstration
+
+```powershell
+# Proposed. Workspace resolves root/org from config; read-only catalog first,
+# explicit clone plan second, no implicit force.
+$workspace = Get-SoftwareEcosystemWorkspace -Name 'dev-i3'
+$catalog = Get-SoftwareEcosystemCatalog -Workspace $workspace -Profile 'PoSh' -ExcludeForks -ExcludePrivate
+$plan = New-SoftwareEcosystemClonePlan -Workspace $workspace -Catalog $catalog
+Show-EcosystemPlan -Plan $plan
+Invoke-EcosystemPlan -Plan $plan
+
+Report-SoftwareEcosystemWorkspace -Workspace $workspace
+```
+
+Le clone ne modifie jamais la branche/l'historique du dépôt cloné : il clone ce qui existe déjà (`QuietCli.PoSh`/`GitHub.PoSh` sont déjà sur `develop`, rien à « corriger » au clonage). Un dépôt trouvé sur une autre branche par défaut (aucun cas observé parmi les deux inspectés) serait signalé par `Test-SoftwareEcosystemCloneDrift`, jamais basculé silencieusement.
+
+### SM.6 SOLID/DRY/Modular — répartition des responsabilités
+
+- **SRP** : SM orchestre plusieurs dépôts (discovery, clone, sync, rapport) ; GP opère un seul dépôt (init/commit/push/validation) ; G génère du contenu neuf. Trois responsabilités, trois dépôts, aucune fusion.
+- **DRY** : SM ne réécrit ni validateur de nom/branche (réutilise GP.3/GP.4), ni moteur de plan `Show-EcosystemPlan`/`Invoke-EcosystemPlan` (réutilise G.3).
+- **OCP** : le filtrage par profil (SM.3) est un point d'extension — un nouveau profil ajoute un prédicat composable, sans modifier `Get-SoftwareEcosystemCatalog`.
+- **Modulaire** : dépôt propre `FrenchExDev_i3/PoSh/FrenchExDev2.SoftwareEcosystem.Manager.PoSh/`, créé via GitProject.Ecosystem comme tout autre écosystème, consommant GP et le profil `GitHubHosting` (§3, G.1) en paquets, jamais en `ProjectReference` ou import de checkout voisin.
+
+### SM.7 Requirements, Features, ACs, Tests, Evidences
+
+Même gabarit que GP.6, désormais généralisé à tous les plans (§12) : checklist `REQUIREMENTS.md` générée par `ScriptsAndDocs`.
+
+**Features** : F1 Catalogue en lecture seule (discovery org, filtrage profil) ; F2 Plan de clone explicite ; F3 Clone effectif avec mapping GP.3 (chemin + identité) ; F4 Synchronisation sans force ; F5 Détection de dérive branche/empreinte ; F6 Rapport d'espace de travail ; F7 Résolution de configuration (racine, org) sans littéral en dur ; F8 Plusieurs instances par écosystème au sein d'un même espace de travail.
+
+**ACs (extrait, forme checklist)** :
+- [ ] `-Org` (et la racine) est lu depuis `.env` ou une configuration personnelle locale ; aucun littéral `FrenchExDev2` ou chemin n'est câblé dans le code de SM ou GP.
+- [ ] Un fork (`rtk`, `llvm-project` dans le constat SM.1) n'apparaît dans aucun catalogue par défaut ; son inclusion exige un profil l'autorisant explicitement.
+- [ ] Un dépôt privé (`AIWebsiteDetector`) n'apparaît dans le catalogue que si l'appelant y a accès et que le profil l'autorise explicitement.
+- [ ] Le mapping nom GitHub → chemin disque (GP.3 règle 2) et → identité de paquet (GP.3 règle 1) sont corrects pour chaque entrée clonée.
+- [ ] `Invoke-EcosystemPlan` sur un plan de clone ne modifie aucune instance déjà présente et à jour (idempotence, cohérent avec G.3).
+- [ ] `Sync-SoftwareEcosystemClone` ne force jamais ; un conflit est rapporté, pas résolu.
+- [ ] `Test-SoftwareEcosystemCloneDrift` signale une branche locale différente de `develop` sans la corriger (cohérent avec GP.2/`Assert-GitProjectDefaultBranch`).
+- [ ] Deux espaces de travail distincts peuvent cloner le même catalogue vers deux racines différentes sans interférence.
+- [ ] Un même écosystème peut avoir deux instances (`i0` et `i1`, patron par défaut) dans un même espace de travail sans collision de chemin.
+
+**Tests** : compagnon dédié, scénarios catalogue vide/filtré/fork exclu, clone réussi/déjà présent/conflit, dérive détectée, instance absente ; qualification contre une org GitHub jetable ou un double de test, jamais en écriture contre l'org réelle `FrenchExDev2`.
+
+**Evidences** : rapport F6 par instance, couverture des tests ci-dessus, preuve de délégation vers GP pour les opérations mono-dépôt (même motif de test que G.4/GP.6).
+
+**Acceptation SM** : espace de travail de test dont racine et org sont résolus depuis une configuration (`.env`/fichier local), jamais un littéral ; catalogue réel de l'org configurée filtré sans forks/sans privés par défaut ; clone des deux dépôts déjà réels (`QuietCli.PoSh`, `GitHub.PoSh`) vers l'instance `i0` de cet espace de travail, chemin et nommage GP.3 vérifiés, branche `develop` confirmée sans correction nécessaire ; synchronisation sans force démontrée ; dérive simulée détectée et rapportée ; une seconde instance (`i1`) du même écosystème clonée sans collision avec la première.
+
+## 6. Plan R — Gestionnaire PowerShell de Local NuGet Registries
+
+Racine proposée (chemin disque selon la règle canonique du §4, GP.3 règle 2) : `FrenchExDev_i3/PoSh/FrenchExDev2/LocalNuGetRegistry.PoSh/i0/`, identité de paquet publié `FrenchExDev2.LocalNuGetRegistry.PoSh` (GP.3 règle 1), module métier, tests compagnons, scripts/docs et publication indépendants. Ce dépôt est créé via `GitProject.Ecosystem` (§4) — qui reste le premier projet livré par le générateur — et constitue la capacité registre du profil `DotNet`.
+
+### R.1 Responsabilités
+
+- Créer et enregistrer plusieurs registries nommés ; séparer instance de registre et instance d’écosystème consommatrice.
+- Fournisseur initial `FileSystem`, feed NuGet hiérarchique ; extension `Http` pour une source existante, sans installation ou démarrage automatique d’un serveur.
+- Publier un `.nupkg` déjà produit, examiner ID/version/empreinte et tester la restauration depuis la source sélectionnée.
+- Gérer les fichiers `NuGet.Config` des instances explicitement sélectionnées, les sources, le mapping des IDs et les références d’authentification.
+- Fournir scripts spécifiques et docs via le générateur, sans dupliquer l’algorithme de publication/configuration dans chaque dépôt.
+
+Le gestionnaire ne devient pas un serveur NuGet réécrit en PowerShell. Il orchestre des sources compatibles et leurs configurations avec les outils documentés. Les configurations utilisateurs/globales ne sont modifiées que par une opération de portée explicitement choisie ; la portée projet est le défaut.
+
+### R.2 Démonstration du parcours .NET
+
+```powershell
+# Proposed commands. Paths are supplied by the caller, never embedded in templates.
+$registry = New-LocalNuGetRegistry -Name 'frenchexdev-dev' `
+    -Provider FileSystem -Path $feedPath
+
+# The package already exists; this operation does not build its producer.
+Publish-LocalNuGetPackage -Registry $registry -Path $fsmPackage
+
+# Generate a complete, explicit local restore configuration for this instance.
+$binding = Set-EcosystemNuGetSource -InstancePath $iecPath `
+    -Registry $registry `
+    -PackagePattern 'FrenchExDev2.*' `
+    -ConfigFile 'NuGet.local.config'
+
+Test-EcosystemNuGetSource -InstancePath $iecPath -ConfigFile $binding.Path
+```
+
+`Get-LocalNuGetRegistry`, `Register-LocalNuGetRegistry` et les contrôles de configuration complètent ce parcours. La configuration locale résolue est ignorée et autonome, sélectionnée explicitement par les wrappers de restore ; aucune pseudo-fusion de fichiers NuGet n’est supposée.
+
+Le fichier versionné décrit les sources portables de CI/release et leur mapping. Le fichier local généré comporte toutes les sources nécessaires, avec suppression explicite de l’héritage non souhaité. Les chemins machine et secrets n’entrent pas dans les manifestes versionnés ; les credentials passent par des références à des fournisseurs compatibles.
+
+### R.3 Versions et isolation
+
+```xml
+<!-- Each consumer owns its Directory.Packages.props. Versions are illustrative. -->
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="FrenchExDev2.FiniteStateMachine.Net"
+                    Version="0.1.0-local.1" />
+  </ItemGroup>
+</Project>
+```
+
+```xml
+<!-- Inside an IEC61499 project: never reference the FSM checkout. -->
+<PackageReference Include="FrenchExDev2.FiniteStateMachine.Net" />
+```
+
+Un ID/version publié n’est pas écrasé par un contenu différent. Une seconde publication identique peut être reconnue comme sans changement ; une modification nécessite une nouvelle version. Le rapport distingue paquet produit, accepté par le registre et restauration vérifiée.
+
+La qualification utilise un cache isolé et les sources explicites afin qu’un paquet déjà présent ailleurs ne masque pas une source absente. La CI distante doit recevoir les mêmes artefacts depuis un feed accessible ou un transfert d’artefacts identifié ; elle ne peut pas accéder au disque du développeur et ne doit pas reconstruire silencieusement un checkout frère.
+
+Le contrat PowerShell/PSResource est traité par son profil propre. Un `.nupkg` contenant une bibliothèque .NET n’est pas automatiquement un module PowerShell importable. Le profil npm aura son fournisseur, ses fichiers et son lockfile ; aucun détournement de CPM/NuGet pour npm.
+
+**Acceptation R** : deux registries et deux instances distinctes ; publication/restauration des versions épinglées ; conflit d’empreinte rejeté ; configuration locale sans modification globale ; restauration avec cache vierge et sources voisines absentes ; aucune divulgation de secret dans les rapports.
+
+## 7. Adoption du socle sur QuietCli et GitHubEcosystem
+
+Utiliser les deux dépôts existants comme cas d’adoption, sans déplacer leur `.git`, réécrire leurs identités de paquets ou annoncer leur conformité avant validation.
+
+- QuietCli : conserver ses contrats spécifiques d’exécution et qualification ; extraire seulement les capacités communes par adaptateurs, avec provenance/licences et tests.
+- GitHub : ajouter les docs miroir manquantes, déclarer son catalogue, remplacer l’import de sources QuietCli et leur checkout/build en CI par une consommation de modules packagés avec la bonne identité publique `QuietCli`.
+- Ne pas forcer la publication de GitHubEcosystem : sa politique de release peut rester `NotConfigured` jusqu’à un plan de livraison explicite.
+- Chaque adoption épingle les versions du kit et des profils, conserve ses propres secrets/workflows et documente ses écarts. Une migration de tooling n’autorise aucune release du produit.
+
+Ce jalon valide la réutilisation avec deux domaines réels avant d’étendre le générateur à tous les projets. Les évolutions métier du Core QuietCli restent en dernier ; l’adoption du socle commun n’est pas leur implémentation anticipée.
+
+## 8. Plan A — Reprise de FiniteStateMachine
+
+Racine cible (GP.3 règle 2) : `FrenchExDev_i3/Net/FrenchExDev2/FiniteStateMachine.Net/i0/`, dépôt autonome généré par G, avec son CPM, ses workflows, ses docs et ses paquets `FrenchExDev2.FiniteStateMachine.Net.*` (GP.3 règle 1).
+
+Préserver Dynamic/Typed/Rich, le moteur partagé et les deux source generators. Préserver les cibles existantes tant qu’aucun besoin justifié n’impose un changement : runtime/attributs en `netstandard2.0;net10.0;net11.0`, générateurs en `netstandard2.0`.
+
+La dépendance réelle à `FrenchExDev.Net.Result` doit être inventoriée et empaquetée/épinglée avant restauration autonome. Ne pas inventer un paquet déjà publié ou renommer implicitement tout Result : si une reprise Result est nécessaire, produire son plan séparé avec le générateur. Sa consommation reste un `.nupkg`, jamais l’ancien `ProjectReference` vers le workspace.
+
+```csharp
+// Existing FSM API shape, retained after the namespace migration.
+var machine = definition.CreateMachine(ConcurrencyMode.Semaphore);
+var transition = await machine.FireAsync(inputEvent, cancellationToken);
+```
+
+La concurrence est choisie explicitement dans la démo. L’API inspectée utilise `ConcurrencyMode.None` comme valeur par défaut ; ne pas reprendre l’affirmation documentaire erronée d’un défaut Semaphore. Un refus de transition est un `Result`, sans prétendre que toute autre erreur d’exécution est impossible.
+
+**Acceptation A** : comportement préservé par les tests existants et les campagnes nécessaires, génération Typed/Rich qualifiée depuis les paquets, restauration autonome, mapping des namespaces/IDs et preuve d’absence de dépendances source externes. Aucun ancien projet n’est supprimé pendant la planification.
+
+## 9. Plan B — IEC61499.Net indépendant de QuietCli
+
+Racine cible (GP.3 règle 2) : `FrenchExDev_i3/Net/FrenchExDev2/IEC61499.Net/i0/`, dépôt autonome, CPM propre, dépendance au paquet FSM via R. Le runtime, les attributs, le modèle/parsing, le générateur et le module PowerShell sont des projets internes du même écosystème.
+
+### B.1 Deux parcours, un modèle neutre
+
+- Dynamique : YAML/TOML → modèle validé → réseau en mémoire.
+- Généré : les mêmes documents via `AdditionalFiles` → le même modèle validé → code C#.
+- Le modèle/parsing n’utilise ni Roslyn, ni PowerShell, ni QuietCli. Le host de scripts PowerShell est un adaptateur ; `System.Management.Automation` n’entre pas dans la bibliothèque de parsing du générateur.
+- La cible `netstandard2.0` des générateurs est préservée. Le runtime peut conserver le besoin proposé `netstandard2.1;net10.0;net11.0`, à justifier et qualifier par profil.
+
+Les versions inspectées Tomlyn 2.10.1 et YamlDotNet 18.1.0 annoncent `netstandard2.0`. Cela lève cette incertitude de compatibilité de cible, pas les vérifications de packaging/chargement des dépendances du générateur.
+
+### B.2 ECC et algorithmes asynchrones
+
+Réutiliser FSM pour l’ECC, conserver son résultat et son annulation, et privilégier `await` dans le C#. Une attente synchrone éventuelle appartient à une frontière d’appel qui en a besoin, pas au cœur ECC. Définir l’ordre d’évaluation des transitions, des algorithmes et des émissions sans assimiler toute la sémantique IEC à un simple `FireAsync`.
+
+Les bindings d’algorithme sont extensibles : script externe, ScriptBlock ou autre provider enregistré. Le noyau dépend d’une façade IEC minimale, pas de `QuietRuntime`. L’exécution PowerShell respecte son runspace et son cycle de vie.
+
+```powershell
+# Proposed IEC algorithm facade. Data output and event emission are distinct.
+param(
+    [Parameter(Mandatory)] $runtime,
+    [double] $Gain = 1.0
+)
+
+$sum = ($runtime.In('A') + $runtime.In('B')) * $Gain
+$runtime.Out('Sum', $sum)
+$runtime.Emit('EO')
+```
+
+### B.3 Démonstration déclarative et équivalence
+
+```yaml
+schemaVersion: 1
+functionBlocks:
+  - id: add1
+    type: BinaryOperator
+    algorithms:
+      - onEvent: EI
+        name: Add
+        script: Algorithms/Add.ps1
+        parameters:
+          Gain: 2.0
+```
+
+Les paramètres d’algorithme et les ports de données sont distincts. Les bindings de données et d’événements définissent la traduction d’un événement d’entrée en valeurs de ports avant l’algorithme. YAML et TOML doivent exprimer le même modèle, sans tolérance implicite envers des versions de schéma inconnues.
+
+```powershell
+# Proposed IEC-only usage.
+$definition = Import-IecNetworkDefinition -Path ./Network.yaml
+$network = Build-IecNetwork -Definition $definition
+
+Invoke-IecEvent -Network $network -FunctionBlock 'add1' `
+    -Event 'EI' -Payload @{ A = 2; B = 3 }
+```
+
+Comportement à démontrer : `EI(A=2, B=3)` et `Gain=2` donnent `Sum=10`, puis `EO` associé à cette sortie. Le mode dynamique et le code généré doivent être équivalents sur les propriétés retenues. Les boucles, l’ordonnancement et les limites de ressources doivent apparaître dans le futur plan d’exécution ; aucun niveau de conformité à la norme IEC n’est présumé.
+
+### B.4 Génération et partage
+
+`New-IecAlgorithmScript` réutilise la fabrique de scripts G pour produire script, aide, docs et tests. Le générateur Roslyn produit les classes, pas les scripts. Les profils de packaging `PowerShellModule` et `NuGetPackage` partagent les mécanismes de livraison du socle tout en gardant leurs artefacts propres.
+
+```powershell
+# Proposed packaging usage; no publication is implied.
+Export-IecNetworkModule -Definition $definition -Profile PowerShellModule `
+    -Name 'Acme.ConveyorControl' -Version '1.2.0' -OutputPath $outputPath
+```
+
+Un module exporté s’installe depuis des artefacts déclarés et fonctionne sans son projet source. Il déclare ses versions de runtime, scripts et ressources. Le registre des profils reste extensible ; le générateur d’écosystèmes ne devient pas le moteur des réseaux IEC.
+
+**Acceptation B** : équivalence dynamique/généré et YAML/TOML, association événement/données, résultat de l’algorithme, erreurs/annulation bornées, distribution autonome et aucune dépendance QuietCli.
+
+## 10. Plan C — Conduit, adaptateur entre écosystèmes
+
+Racine cible (GP.3 règle 2) : `FrenchExDev_i3/PoSh/FrenchExDev2/Conduit.PoSh/i0/`, identité de paquet `FrenchExDev2.Conduit.PoSh` (GP.3 règle 1), dépôt PowerShell autonome. Il consomme les paquets des modules IEC et QuietCli, pas leurs checkouts. Il possède des bindings de traduction ; il ne réimplémente ni FSM, ni l’ordonnanceur QuietCli, ni un registre parallèle de handlers natifs.
+
+Le pont prend une source réellement supportée, traduit un événement et appelle un réseau IEC. Il ne fabrique pas un exécutable `iec61499` pour faire entrer une opération en mémoire dans `quiet`.
+
+```powershell
+# Proposed usage. vm.ready is an extension to implement and qualify first.
+$binding = @{
+    SourceEvent = 'vm.ready'
+    TargetBlock = 'health'
+    TargetEvent = 'READY'
+    Map = {
+        param($event)
+        @{ MachineId = $event.Payload.MachineId }
+    }
+}
+
+conduit -Network $network -Bindings @($binding) -Run {
+    param($listener)
+    quiet -AsObject -Listeners $listener vagrant up
+}
+```
+
+Des fichiers `.conduit.ps1` locaux et explicitement sélectionnés peuvent retourner ces bindings, sans modifier le module hôte. Leur chargement exécute du code PowerShell : ne pas les présenter comme des données inertes ni les découvrir/exécuter automatiquement dans un dossier non approuvé. Les dépendances/captures du réseau sont liées explicitement à la durée de la connexion, pas à une variable `$Network` hors de portée.
+
+L’API `-Run` et les bindings ci-dessus sont proposés. Une démonstration immédiate utilise un événement fixture avant de disposer de `vm.ready`. Avec les listeners actuels, une réaction bloquante reste synchrone ; le plan d’intégration ne promet pas de l’asynchronisme avant livraison du contrat Core approprié.
+
+Si un adaptateur de handler natif est nécessaire pour une vraie CLI, il fournit le contrat complet `Binary`, `Execute`, `VersionRange`, `TestVersion` et un probe/résolveur compatible, avec traitement effectif des arguments. Les bindings Conduit ne se substituent pas à ce contrat.
+
+**Acceptation C** : deux producteurs interchangeables, mapping vérifiable, réseau lié explicitement, annulation/désabonnement propres, aucune connaissance de Conduit dans IEC/QuietCli, et aucune dépendance source entre les dépôts.
+
+## 11. Plan M — Infrastructure de messagerie (RabbitMQ, NATS) via DockerCompose.Bundle
+
+### M.1 Constat sur le code `DockerCompose` existant
+
+`Net/FrenchExDev/DockerCompose` contient déjà deux pipelines distincts (confirmé par son `CLAUDE.md`) : un wrapper typé du binaire `docker-compose` et, séparément, `DockerCompose.Bundle` — un modèle compose typé généré depuis 32 schémas `compose-spec` committés, avec `IComposeFileContributor.Contribute(ComposeFile bundle)` comme point d'extension OCP. `GitLab.DockerCompose` est le seul contributeur réel existant (service GitLab Omnibus + compagnons Postgres/Redis/Runner/MinIO en contributeurs indépendants).
+
+`FrenchExDev.Net.DockerCompose.Bundle.csproj` référence en `ProjectReference` : `FrenchExDev.Net.Result`, `FrenchExDev.Net.Builder` et, en analyzer, `FrenchExDev.Net.Builder.SourceGenerator.Lib` — exactement les mêmes fondations que celles déjà signalées comme prérequis de la reprise FSM (§7, Plan A). `Builder.SourceGenerator.Lib` est le seul émetteur de builders autorisé dans tout le monorepo (anti-requirement explicite de `Skills/Net/Programming/COMPOSE-BUNDLE/HOW-TO.md` : « never roll a new builder emitter »).
+
+Côté PowerShell, deux chemins existent déjà et **ne communiquent pas** :
+
+1. `FrenchExDev.DockerCompose.PoSh\New-DockerCompose` / `Write-DockerCompose` : un DSL hashtable/scriptblock pur PowerShell, sérialisé via `ConvertTo-Yaml`, qui ne passe jamais par `ComposeFile` ni par `IComposeFileContributor`.
+2. Les wrappers par service (`FrenchExDev.GitLab.DockerCompose.PoSh`, `FrenchExDev.Keycloak.DockerCompose.PoSh`, `FrenchExDev.PiHole.DockerCompose.PoSh`, `FrenchExDev.Sonatype.Nexus.DockerCompose.PoSh`, `FrenchExDev.Traefik.DockerCompose.PoSh`) construits sur ce même DSL non typé — `New-KeycloakDockerComposeService` est un corps `[CmdletBinding()]` vide, signe que cette famille reste au stade squelette.
+
+Aujourd'hui, le modèle typé/validé par schéma et ce que PowerShell produit réellement sont deux systèmes parallèles qui ne se recoupent jamais. C'est la duplication que le SOLID/DRY/MODULAR de l'`AGENTS.md` racine demande de résorber — pas une raison d'ajouter un troisième DSL pour RabbitMQ/NATS.
+
+### M.2 Un seul écosystème mixte PoSh/C#, pas deux
+
+Cible révisée (GP.3 règle 2) : `FrenchExDev_i3/PoSh/FrenchExDev2/DockerCompose.Bundle.Ecosystem/i0/`, identité de paquet `FrenchExDev2.DockerCompose.Bundle.Ecosystem` (GP.3 règle 1), sur le même gabarit que `QuietCliEcosystem` (qui mélange déjà un moteur C# et des modules PowerShell dans un seul dépôt — ce n'est pas un cas inédit). Cet écosystème porte, dans un seul dépôt avec son propre CPM pour la partie .NET :
+
+- le modèle `Bundle` C# migré depuis `FrenchExDev.Net.DockerCompose.Bundle` (+ `.Attributes`/`.SourceGenerator`/`.Design`), contributeur pattern et 32 schémas déjà committés préservés ;
+- la migration de `PoSh/FrenchExDev/FrenchExDev.DockerCompose.PoSh` à l'intérieur du même dépôt, comme module PowerShell interne plutôt qu'un paquet séparé ;
+- les contributeurs RabbitMQ et NATS (M.3 ci-dessous) comme projets C# internes supplémentaires — un seul dépôt leur suffit, 1.1 n'imposant pas un dépôt par capacité.
+
+`Result` et `Builder` (+ `Builder.SourceGenerator.Lib`) restent des paquets externes consommés via R : `ProjectReference` n'est permis qu'entre projets internes de ce même dépôt, jamais vers eux.
+
+### M.3 Contributeurs RabbitMQ et NATS
+
+Projets C# internes de ce même écosystème (pas un paquet externe, cf. M.2), sur le modèle réel de `GitLab.DockerCompose` :
+
+```csharp
+public sealed class RabbitMqContributor : IComposeFileContributor
+{
+    public void Contribute(ComposeFile bundle)
+    {
+        bundle.Services ??= new Dictionary<string, ComposeService>();
+        bundle.Services["rabbitmq"] = new ComposeService
+        {
+            Image = "rabbitmq:3-management-alpine",
+            Ports = ["5672:5672", "15672:15672"],
+            Environment = new Dictionary<string, string?>
+            {
+                ["RABBITMQ_DEFAULT_USER"] = "dev",
+                ["RABBITMQ_DEFAULT_PASS"] = "dev",
+            },
+            Volumes = new List<ComposeServiceVolumesConfig>
+            {
+                new() { Type = "volume", Source = "rabbitmq-data", Target = "/var/lib/rabbitmq" }
+            }
+        };
+        bundle.Volumes ??= new Dictionary<string, ComposeVolume?>();
+        bundle.Volumes["rabbitmq-data"] = null;
+    }
+}
+```
+
+Un `NatsContributor` analogue expose JetStream (`-js`). Image, tags et ports ci-dessus sont des valeurs de démonstration à valider à l'implémentation, pas des versions épinglées par ce plan. Les deux contributeurs restent mono-nœud, sans authentification ni TLS réels : un mode dev-localhost explicite, cohérent avec l'exigence déjà posée que chaque écosystème puisse tourner ainsi. Le durcissement (auth, TLS, cluster) reste un plan séparé.
+
+### M.4 Migrer `DockerCompose.PoSh` au lieu de le laisser dupliquer
+
+`New-DockerCompose`/`Write-DockerCompose`/`New-DockerComposeService` et les autres fonctions publiques de `DockerCompose.PoSh` sont réécrites pour déléguer au modèle `Bundle` typé (même dépôt, cf. M.2) au lieu de construire un `pscustomobject` ad hoc sérialisé par `ConvertTo-Yaml` :
+
+```powershell
+# Migrated New-DockerCompose: delegates to the typed Bundle model instead of
+# building its own pscustomobject + ConvertTo-Yaml.
+function New-DockerCompose {
+    [CmdletBinding()]
+    param(
+        [string[]] $Contributors,   # e.g. 'GitLab', 'RabbitMq', 'Nats'
+        [string] $File
+    )
+    # Reusable function of this same ecosystem; this script stays a thin facade (G.4).
+    Build-ComposeFile -Contributors $Contributors -File $File
+}
+```
+
+Le contrat public actuel (paramètres `Services`/`Volumes`/`Networks`/`File`) reste disponible pour les appelants existants (`New-KeycloakDockerCompose`, `New-GitLabDockerCompose`, etc., dans leurs propres modules) : la migration change l'implémentation interne, pas la signature consommée ailleurs, pour ne pas casser ces appelants du jour au lendemain. Un futur plan d'implémentation précise comment ces wrappers basculent eux aussi, service par service, vers des contributeurs typés plutôt que vers le DSL hashtable.
+
+### M.5 Ce que Conduit et le futur Core QuietCli en retirent
+
+Donne à Conduit (§10) un bus réel en dev-localhost pour tester ses bindings sans service externe non versionné, et donne au futur bus externe de QuietCli (Plan E, NATS cité comme « exemple d'adaptateur ») une instance concrète et reproductible — sans coupler QuietCli ou Conduit eux-mêmes à Docker Compose : M reste une infrastructure de développement, jamais une dépendance du runtime.
+
+### M.6 Généraliser : Packer.Bundle, et les consommateurs natifs de QuietCli (Vagrant, Git)
+
+`Net/FrenchExDev/Packer` a exactement la même forme à deux pipelines que DockerCompose : wrapper CLI typé + `FrenchExDev.Net.Packer.Bundle`/`.Attributes`/`.Design`/`.SourceGenerator`/`.SourceGenerator.Lib`, avec les mêmes `ProjectReference` vers `Result` et `Builder` (vérifié dans son `.csproj`). Le même gabarit M.2–M.4 s'applique tel quel : cible (GP.3 règle 2) `FrenchExDev_i3/PoSh/FrenchExDev2/Packer.Bundle.Ecosystem/i0/`, identité de paquet `FrenchExDev2.Packer.Bundle.Ecosystem` (GP.3 règle 1), Bundle migré + façade PowerShell migrée dans un seul dépôt.
+
+Vagrant est un cas différent, pas une variante du même gabarit : son format de configuration (Vagrantfile, Ruby) n'est pas schématisable comme `compose-spec` ou les templates Packer, donc il n'a pas de Bundle — seulement un wrapper CLI typé (`FrenchExDev.Net.Vagrant`, avec `VagrantOutputParser`/`VagrantUpCollector` déjà écrits). Il n'est pas réutilisé par de nombreux contributeurs : son seul consommateur réel aujourd'hui est QuietCli, qui a déjà son propre companion (`FrenchExDev2.QuietCli.Vagrant.PoSh`), lequel lance `vagrant` en sous-processus et reconstruit sa propre analyse d'événements machine-readable (plus pauvre que les collecteurs déjà écrits). Pour ce cas, ne pas créer de `Vagrant.Bundle.Ecosystem` par analogie mécanique : reprendre `Net/FrenchExDev/Vagrant` dans son propre petit écosystème (GP.3 règle 2) `FrenchExDev_i3/Net/FrenchExDev2/Vagrant.Net/i0/` (identité de paquet `FrenchExDev2.Vagrant.Net`, GP.3 règle 1 ; paquet NuGet seul, sans module PowerShell interne puisque personne d'autre que QuietCli ne le consomme), publié via R, puis migrer le companion existant de QuietCli pour qu'il consomme ce paquet au lieu de ses propres parseurs ad hoc. Le même raisonnement s'appliquerait à un futur wrapper Git si sa reprise est un jour justifiée par le même besoin.
+
+Règle générale à retenir : un Bundle réutilisé par plusieurs consommateurs (DockerCompose, Packer) devient son propre écosystème mixte PoSh/C# ; un wrapper CLI consommé par un seul écosystème réel (Vagrant/Git pour QuietCli) reste un petit paquet .NET autonome consommé en paquet par ce seul consommateur, sans PowerShell dupliqué côté générateur.
+
+### M.7 Livraison CI « trusted », pas de secret long-lived
+
+Chaque écosystème concerné (DockerCompose.Bundle.Ecosystem, Packer.Bundle.Ecosystem, Vagrant.Net, et QuietCli lui-même pour ses companions) publie son paquet NuGet et son module PowerShell depuis sa propre CI GitHub Actions par publication de confiance (`permissions: id-token: write`, jeton OIDC à courte durée de vie côté NuGet.org/PowerShell Gallery) plutôt que par une clé API stockée en secret long-lived. C'est une responsabilité par défaut du profil `GitHubHosting` (§3, G.1), pas une décision à refaire écosystème par écosystème. Les registres locaux (R) restent le chemin de développement avant publication réelle ; la bascule vers la publication de confiance ne change pas les frontières d'artefacts déjà posées en 1.2.
+
+**Acceptation M** : contributeurs RabbitMQ et NATS produisant un compose valide contre le schéma `compose-spec` courant ; `docker compose config`/`up` réussit en local ; `DockerCompose.PoSh` migré délègue réellement au modèle Bundle sans casser le contrat public consommé par les wrappers de service existants ; `Result`/`Builder` consommés en paquets, jamais en `ProjectReference` inter-écosystème ; le même gabarit documenté pour Packer.Bundle ; la distinction Bundle-partagé / wrapper-mono-consommateur appliquée explicitement à Vagrant ; publication de confiance OIDC démontrée sur au moins un écosystème avant de la déclarer acquise partout.
+
+## 12. Requirements-as-code : deux conventions existantes, et où les faire intervenir
+
+Deux conventions de traçabilité des exigences existent déjà dans le monorepo ; ce plan réutilise l'une ou l'autre plutôt que d'en inventer une troisième.
+
+1. **Checklists Markdown testables par skill** (`Skills/Net/Programming/<Pattern>/REQUIREMENTS.md`, une trentaine de fichiers recensés, dont `COMPOSE-BUNDLE/REQUIREMENTS.md` cité en §11) : cases à cocher groupées par thème (structure, comportement, anti-requirements), vérifiées par revue ou par les tests existants, sans outil dédié.
+2. **`Net/FrenchExDev/Requirements` (`FrenchExDev.Net.Requirements`)** : une DSL de traçabilité compile-time construite sur le « framework M3 ». Les exigences sont des classes abstraites (`Epic`/`Feature<TParent>`/`Story<TParent>`/`RequirementTask<TParent>`/`Bug`), les critères d'acceptation des méthodes abstraites, et `[ForRequirement]`/`[Verifies]`/`[TestsFor]` relient Requirements → Specifications → Implementation → Tests par `typeof()`/`nameof()`. Un analyseur Roslyn dédié (`RequirementCoverageAnalyzer`, codes REQ100–REQ302) détecte les trous de traçabilité à la compilation ; `AcceptanceCriterionResult` suit le même style « jamais d'exception » que `Result<T>`. Des configurations Stryker (mutation testing) existent déjà pour ce paquet.
+
+Conséquences pour ce plan :
+
+- Les sections « Acceptation G/GP/SM/R/A/B/M/C/E » restent de la prose à ce stade. Leur devenir naturel est une checklist `REQUIREMENTS.md` par écosystème, générée par le profil `ScriptsAndDocs` — cohérent avec la convention 1, déjà appliquée partout, sans coût supplémentaire.
+- Pour les écosystèmes .NET où un critère d'acceptation a une vraie valeur métier à tracer dans le temps (FSM, IEC61499.Net, les contributeurs de messagerie), `FrenchExDev.Net.Requirements` devient une **capacité optionnelle** du profil `DotNet` — jamais une obligation systématique, cohérent avec 1.3 (« ne pas imposer ») et la discipline de G.1 sur les profils incompatibles.
+- `FrenchExDev.Net.Requirements` est lui-même candidat à la même reprise que `Result`/`Builder` : un paquet consommé via R, jamais un checkout croisé. Ne pas le traiter comme déjà disponible tant que sa reprise n'a pas eu lieu.
+- Risque à nommer explicitement : la DSL est un investissement non négligeable (source generator, analyzer, hiérarchie de types). Ne l'activer que sur un écosystème où la traçabilité sera effectivement lue et maintenue ; sinon la checklist Markdown suffit et coûte moins cher qu'une traçabilité jamais consultée.
+
+Cette checklist n'est plus un « devenir naturel » optionnel mais une livraison explicite dès ce plan : chaque plan (G, GP, SM, R, Adoption, A, B, C, M, E) produit, comme GitProject.Ecosystem le fait déjà en GP.6 et SoftwareEcosystem.Manager en SM.7, son propre `REQUIREMENTS.md` — Features, critères d'acceptation sous forme de cases à cocher, Tests prévus et Evidences attendues (couverture, conformité des scripts/fonctions/configs/profils au gabarit du générateur) — avant d'être considéré livrable par un agent. Aucun des dix ne reste à l'état de prose d'acceptation seule ; la section « Acceptation X » de chaque plan est la source à partir de laquelle ce `REQUIREMENTS.md` est écrit, pas une alternative à lui.
+
+## 13. Plan E — Core & Pipelines QuietCli, après le socle
+
+Conserver la roadmap Core détaillée, mais la replacer après G/R et les plans d’adoption/intégration. Son objet reste le routage, les pipelines, l’exécuteur injectable, les listeners et la composition ; les règles génériques de scripts/docs/CI appartiennent au socle.
+
+### E.1 Corriger les faits et le contrat d’ordonnancement
+
+Dans le code inspecté, les méthodes de façade de `QuietRuntime` sont synchrones, mais cela ne décrit pas tout le moteur C#, qui comporte de l’I/O asynchrone. `Emit()` invoque ses listeners synchroniquement ; lorsqu’il est appelé dans le traitement d’un flux, un listener lent peut bloquer le drainage.
+
+Le `Execute` d’un handler est appelé par l’orchestrateur d’invocation, pas intrinsèquement depuis `Emit()` ou la boucle de lecture. Ajouter un nom `InvokeAsync` et retourner une `Task` ne prouve ni progression concurrente, ni exécution correcte d’un ScriptBlock sur un autre thread.
+
+Le futur plan Core doit démontrer : drainage simultané, callbacks PowerShell sur leur runspace, parenté/corrélation explicites, file et concurrence bornées, erreurs suivies, annulation et fermeture de la composition. Préférer la programmation d’une définition d’appel à l’exécution opaque d’un délégué arbitraire.
+
+### E.2 Santé et UI configurables
+
+`state=running` n’établit pas à lui seul la disponibilité attendue. Le compagnon Vagrant doit définir/qualifier le signal Ready ; la sonde seule établit Healthy. `OnEvent`, `Schedule`, `InvokeAsync` et `Ui.SetStatus` restent des API proposées, pas des fonctionnalités actuelles.
+
+```powershell
+# Proposed API. The same probe has configurable timing and business importance.
+$health = New-QuietListener -EventName 'vm.ready' `
+    -Role Required -Timing Immediate -Action $scheduleHealthProbe
+
+$observation = New-QuietListener -EventName 'vm.ready' `
+    -Role Observer -Timing AfterSourceSuccess -Action $scheduleHealthProbe
+```
+
+Les politiques d’erreur restent modifiables par listener. La source continue de s’afficher ; une zone de statut santé indépendante conserve `Checking`, `Healthy`, `Unhealthy` ou `Unknown` malgré les lignes suivantes. La surveillance périodique dure pendant la composition et s’arrête sans empêcher sa propre terminaison.
+
+### E.3 Bus local et externe
+
+Même contrat d’abonnement, bus `InProcess` par défaut et fournisseurs externes enregistrables. NATS JetStream reste un exemple d’adaptateur, pas une obligation de déploiement. Le choix du broker ne doit pas changer les bindings métier.
+
+Les événements restent hors de `-AsObject`, `-AsJson` et `-AsYaml`, sans collecte automatique. Un collecteur explicite est possible. Le transport externe sérialise seulement les payloads déclarés exportables ; jamais un ScriptBlock ou un runtime. Redélivraison, acquittements et effets inconnus sont explicites, sans promesse d’exécution métier exactement une fois.
+
+**Acceptation E** : le contrôle démarre avant la fin de la source tout en maintenant son drainage ; timing et rôle changent le comportement prévu ; état UI conservé ; arrêt propre ; aucun événement ajouté au résultat final ; adapter le contrat aux contraintes révélées par Conduit sans coupler les bibliothèques.
+
+## 14. Ordre de livraison et validation des futurs plans
+
+1. **G0** : générateur minimal autonome, manifeste, profils PowerShell/ScriptsAndDocs et gestion des fichiers/régions.
+2. **G1** : génération de `.ps1` spécifiques, docs/tests/index, `AGENTS.md` et contrats de cycles de vie ; profils DotNet/NodeTools/GitHubHosting.
+3. **GP** : `GitProject.Ecosystem`, premier projet livré par le générateur — convention de branche `develop`, nommage canonique (§4, GP.3), création/commit/push de dépôt, extraction des capacités de `Commit-Workspace.ps1`/`Push-Workspace.ps1`/`SourceIdentity.ps1`.
+4. **SM** : `SoftwareEcosystem.Manager`, créé via GP — catalogue filtré de l'org GitHub `FrenchExDev2`, clone des écosystèmes déjà publiés (dont QuietCli.PoSh et GitHub.PoSh, déjà réels) dans la racine `FrenchExDev_i3`, avant que l'étape Adoption ne les touche.
+5. **R** : gestionnaire PowerShell de registries, créé via GP, intégration au profil DotNet, parcours `.nupkg` et configurations par instance.
+6. **Adoption** : QuietCli et GitHubEcosystem, une fois clonés dans `FrenchExDev_i3` par SM — extraction versionnée des capacités réellement communes et migration des dépendances source.
+7. **A** : FSM autonome, avec le prérequis Result explicitement satisfait par un paquet.
+8. **M** : reprise de DockerCompose.Bundle et contributeurs RabbitMQ/NATS, réutilisant les paquets Result/Builder déjà publiés pour A plutôt que de les empaqueter une seconde fois.
+9. **B** : IEC indépendant, démonstration dynamique/générée et packaging.
+10. **C** : Conduit et événements fixtures ; les scénarios exigeant le nouvel ordonnanceur restent conditionnés à E, le bus local de démonstration peut s'appuyer sur M.
+11. **E** : évolutions Core QuietCli, puis qualification de la démonstration VM complète.
+
+Chaque plan de haut niveau expose : objectif, frontières, dépendances, démo d’usage, résultat observable, critères d’acceptation et décisions réservées au futur plan d’implémentation. Les types/schémas exhaustifs, serveurs et paramètres internes ne sont pas figés sans besoin concret.
+
+Les futurs tests réutilisent les compagnons existants et séparent exemples, propriétés générées, fuzzing et mutations par langage/composant. Les tests de cycle de vie couvrent succès, refus, panne, timeout, annulation, conflit de génération, saturation et reprise éventuelle. Ils conservent seeds, identités, rapports et règles du moniteur visible ; une revue documentaire ne les remplace pas.
+
+Les preuves de distribution comprennent des checkouts isolés, l’installation des artefacts packagés, des caches de qualification isolés et l’absence de source frère. Les versions de dev, acceptations de registre et qualifications de release restent distinctes.
+
+## 15. Découpage en sous-plans exécutables (docs/ROADMAP-*)
+
+Ce document est devenu trop volumineux pour être confié tel quel à un agent par étape. Il se découpe en fichiers `ROADMAP-*.md` réels sous `PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh/docs/`, chacun suffisamment autonome pour être lancé par un agent sans relire tout le reste. L'écriture de ces fichiers réels se fait hors mode plan, dès l'approbation de ce plan ; ce qui suit est leur découpage cible, décidé maintenant.
+
+| Fichier | Contenu repris |
+| --- | --- |
+| `ROADMAP-SoftwareEcosystem-Generator.md` (renommé depuis `ROADMAP-Ecosystem-Generator.md`/`PLAN-Ecosystem-Generator.md`, à réécrire intégralement) | §1 Décisions structurantes (racine `FrenchExDev_i3`, frontières d'artefacts, réutilisation), §2 Comparaison, §3 Plan G, §4 Plan GP |
+| `ROADMAP-SoftwareEcosystem-Manager.md` (nouveau) | §5 Plan SM |
+| `ROADMAP-Local-NuGet-Registry.md` (nouveau) | §6 Plan R |
+| `ROADMAP-Socle-Adoption.md` (nouveau) | §7 Adoption QuietCli/GitHubEcosystem |
+| `ROADMAP-FiniteStateMachine.md` (nouveau) | §8 Plan A |
+| `ROADMAP-IEC61499.md` (nouveau) | §9 Plan B |
+| `ROADMAP-Conduit.md` (nouveau) | §10 Plan C |
+| `ROADMAP-Messaging-DockerCompose.md` (nouveau) | §11 Plan M |
+| `ROADMAP-Requirements-As-Code.md` (nouveau) | §12 Requirements-as-code — référencé par les neuf autres plutôt que dupliqué dans chacun |
+| `ROADMAP-Core-Pipelines.md` (existant, déjà réel) | §13 Plan E, périmètre inchangé |
+
+Chaque fichier garde : son objectif, les décisions du socle dont il dépend (lien vers `ROADMAP-SoftwareEcosystem-Generator.md`, jamais recopiées), son contenu détaillé propre, ses critères d'acceptation **et** sa propre production de `REQUIREMENTS.md` (§12) — assez pour qu'un agent l'exécute sans ouvrir les neuf autres fichiers. `docs/README.md` (déjà réel, section « Roadmaps and proposals ») étend sa liste à ces dix fichiers plutôt qu'un index séparé à inventer.
+
+L'ordre de livraison du §14 ne change pas de contenu, seulement de support : chaque étape de la liste pointera vers son propre fichier au lieu d'une section de ce document unique.
+
+## 16. Livrables et décisions restant à affiner
+
+Dans cette passe : le présent plan corrigé, la mise en cohérence documentaire de la roadmap Core et la copie dans le fichier de plan demandé. Les structures `.git`, manifests, workflows, fichiers `.env`, CPM, `.ps1` et `.cs` mentionnés sont des contenus projetés, pas des fichiers à créer maintenant.
+
+Dix documents réels sous `PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh/docs/` restent à écrire/synchroniser avec ce plan, selon le découpage du §15 : `ROADMAP-SoftwareEcosystem-Generator.md` (renommé depuis `PLAN-Ecosystem-Generator.md`, à réécrire intégralement — sa copie actuelle date d'avant la racine `FrenchExDev_i3`, GP, la table de correction de noms et la restructuration de M), sept fichiers nouveaux (`ROADMAP-SoftwareEcosystem-Manager.md`, `ROADMAP-Local-NuGet-Registry.md`, `ROADMAP-Socle-Adoption.md`, `ROADMAP-FiniteStateMachine.md`, `ROADMAP-IEC61499.md`, `ROADMAP-Conduit.md`, `ROADMAP-Messaging-DockerCompose.md`), `ROADMAP-Requirements-As-Code.md` (nouveau) et `ROADMAP-Core-Pipelines.md` (existant, mis en cohérence avec le séquencement G/GP/SM/R/Adoption/A/M/B/C/E du §14 et les corrections de faits du §13, sans dupliquer tout le contenu détaillé du présent plan). Le renommage réel du premier fichier et la mise à jour de la section « Roadmaps and proposals » de `docs/README.md` (qui ne référence aujourd'hui que deux de ces dix fichiers) restent à faire hors mode plan.
+
+Chaque fichier doit rester le reflet fidèle de la dernière version de ce plan, pas une copie figée de sa première rédaction.
+
+`Result` et `Builder` (+ `Builder.SourceGenerator.Lib`) sont désormais des prérequis partagés par A (FSM) et M (DockerCompose.Bundle) ; `FrenchExDev.Net.Requirements` (§12) est un troisième candidat à la reprise socle si un écosystème active la capacité `RequirementsTraceability`. Les empaqueter une seule fois chacun, jamais par écosystème consommateur. Les images/tags RabbitMQ et NATS proposés en §11 restent illustratifs, à valider et épingler lors du plan d'implémentation de M.
+
+Les futurs plans d’implémentation préciseront les versions initiales des packages de profils/kit, les conventions exactes de catalogue, les adaptateurs de discovery par écosystème et les cibles de publication. Aucun paquet inexistant n’est présenté comme installable.
+
+Les pointeurs legacy FSM/IEC seront corrigés lors de la reprise effective vers une cible réellement créée et validée ; ne pas annoncer dès maintenant qu’un nouveau dossier encore vide constitue une source de vérité opérationnelle.
+
+La portée npm est un profil distinct : un besoin de registre npm local produira un plan dédié. Le premier parcours DotNet reste un registre de `.nupkg` sur disque, configurable ensuite avec un fournisseur HTTP sans lien de source localhost ou checkout.
+
+## 17. Références et limites de preuve
+
+- [Local NuGet feeds](https://learn.microsoft.com/en-us/nuget/hosting-packages/local-feeds) : structure hiérarchique des paquets et sources locales.
+- [Central Package Management](https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management) : CPM propre au consommateur et portée des fichiers.
+- [Package source mapping](https://learn.microsoft.com/en-us/nuget/consume-packages/package-source-mapping) et [NuGet configuration](https://learn.microsoft.com/en-us/nuget/consume-packages/configuring-nuget-behavior) : sources explicites, héritage et limites des caches.
+- [Register-PSResourceRepository](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.psresourceget/register-psresourcerepository?view=powershellget-3.x) : dépôt de ressources PowerShell distinct du contrat CLR.
+- [Tomlyn 2.10.1](https://www.nuget.org/packages/Tomlyn/2.10.1) et [YamlDotNet 18.1.0](https://www.nuget.org/packages/YamlDotNet/18.1.0) : cibles publiées, sans présumer le chargement qualifié dans Roslyn.
+
+Les constats reposent sur les sources locales inspectées et la documentation citée. Aucune migration, campagne de tests produit, création de registre ou publication n’a été exécutée pour établir ce plan. Les validations de Markdown et de syntaxe de ses exemples restent des contrôles documentaires.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](C:/code/FrenchExDev/FrenchExDev_i2/PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh/CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

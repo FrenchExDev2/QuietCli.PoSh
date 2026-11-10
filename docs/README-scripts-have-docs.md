@@ -7,6 +7,15 @@ workflows keep that index correct.
 
 ## Why
 
+Repository scripts are entry points for reusable commands. New or changed automation keeps
+reusable behavior in exported PowerShell functions or C# cmdlets and uses thin `.ps1` facades;
+adopt existing scripts progressively while preserving their contracts. Other code calls the
+commands directly. Each mirrored script doc identifies the consumed module/version, parameter
+mapping, output, errors and side effects, and links to the command reference. Consumer instructions
+document public package installation and direct command usage without requiring sibling checkouts.
+Validation and `ShouldProcess` belong to the reusable command; facades forward them without
+duplicating business policy or confirmation prompts.
+
 `scripts/` has grown into dozens of orchestration scripts and `lib/` modules (CI image builds,
 cold-start profiling, workstation provisioning, release packaging, test monitors, ...). A script with
 no documentation is a script nobody can safely change or retire: its parameters, side effects,
