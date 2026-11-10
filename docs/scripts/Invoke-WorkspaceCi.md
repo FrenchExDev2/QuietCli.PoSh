@@ -66,6 +66,10 @@ This is the load-bearing CI entry point and is functionally sound for the common
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
 
+## .NET tooling review
+
+The DotNet host suite accepts DotNetSuite Readiness|Provisioning|Layout|All and always skips product compilation. It still uses the shared worker, visible monitor, owned timeout and external report root. This focused automation scope is not Core/All release qualification; scripts/Invoke-WorkspaceCi.ps1 passes the selected DotNetSuite to its worker explicitly.
+
 <!-- script-contract:begin -->
 ## Execution contract
 

@@ -17,3 +17,6 @@
 /FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/
 /FrenchExDev2.QuietCli.Core.PoSh/resources/tokenizers/*.dll
 /FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/*.dll
+# Portable .NET toolchains and original-byte SDK-pin backups
+.dotnet/
+global.json.bak-*

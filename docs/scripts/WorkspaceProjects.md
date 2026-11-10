@@ -117,6 +117,10 @@ into one constant so the convention only needs updating in one place if it ever 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
 
+## .NET tooling review
+
+Get-QuietWorkspaceSuiteNames exposes DotNet as a host-only focused automation suite. It is not a new business module or Gallery package and is not silently added to Core/All release qualification. Source suite-name validation continues to reject a companion manifest colliding with a reserved focused suite name.
+
 <!-- script-contract:begin -->
 ## Execution contract
 

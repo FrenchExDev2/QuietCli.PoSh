@@ -14,6 +14,10 @@ Source: [ScriptReview.ps1:14](../../scripts/ScriptReview.ps1:14). Static guard p
 
 Verdict: suitable within the documented boundary; qualification evidence belongs in the companion test reports.
 
+## .NET tooling review
+
+The read-only observer list in scripts/ScriptReview.ps1 includes Watch-DotNetTests; its implementation only delegates to the existing monitor. DotNet library initializers are classified by ScriptShouldProcess rather than waived as legacy. The generated preview review must be refreshed after a library export or guard changes; this remains static evidence, not proof of runtime reversibility.
+
 <!-- script-contract:begin -->
 ## Execution contract
 

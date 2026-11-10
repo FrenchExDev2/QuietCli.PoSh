@@ -54,7 +54,7 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 
 Purpose: Presentation helpers shared by the run-profile tooling: compact durations, Unicode tables, counter tables and PowerShell literals.
 
-Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 0.
+Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->

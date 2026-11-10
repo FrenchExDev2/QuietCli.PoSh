@@ -12,6 +12,23 @@ function Get-QuietScriptShouldProcess {
     if($errors.Count){throw ('ScriptSafetyParseFailed: '+$Path)}
     $statements=@(foreach($block in @($ast.BeginBlock,$ast.ProcessBlock,$ast.EndBlock)){if($block){$block.Statements}})
     if(!$ast.ParamBlock -and @($statements|Where-Object {$_ -isnot [Management.Automation.Language.FunctionDefinitionAst]}).Count -eq 0){return 'Library'}
+    # A script library may declare strict mode, exports and a sibling library import.
+    # Arbitrary initializer code is executable and still requires its own effect boundary.
+    if([IO.Path]::GetExtension($Path) -eq '.psm1' -and !$ast.ParamBlock){
+        $declarative=$true
+        foreach($statement in $statements){
+            if($statement -is [Management.Automation.Language.FunctionDefinitionAst]){continue}
+            if($statement -isnot [Management.Automation.Language.PipelineAst] -or $statement.PipelineElements.Count -ne 1){$declarative=$false;break}
+            $command=$statement.PipelineElements[0]
+            if($command -isnot [Management.Automation.Language.CommandAst]){$declarative=$false;break}
+            $name=$command.GetCommandName()
+            $nested=@($statement.FindAll({param($node)$node -is [Management.Automation.Language.CommandAst]},$true))
+            if($name -in @('Set-StrictMode','Export-ModuleMember') -and $nested.Count -eq 1){continue}
+            if($name -eq 'Import-Module' -and $statement.Extent.Text -match '^Import-Module \(Join-Path \$PSScriptRoot ''[A-Za-z0-9_.-]+\.psm1''\) -ErrorAction Stop$'){continue}
+            $declarative=$false;break
+        }
+        if($declarative){return 'Library'}
+    }
     $supported=$false
     if($ast.ParamBlock){foreach($attribute in $ast.ParamBlock.Attributes){
         if($attribute.TypeName.Name -ine 'CmdletBinding'){continue}
@@ -60,6 +77,9 @@ function Test-QuietScriptShouldProcessPolicy {
             if($item.PSIsContainer){$pending.Push($item.FullName);continue}
             if($item.Extension -notin @('.ps1','.psm1')){continue}
             $relative=[IO.Path]::GetRelativePath($WorkspaceRoot,$item.FullName).Replace('\','/')
+            if($item.Extension -eq '.psm1' -and $relative -like 'scripts/*' -and $relative -notlike 'scripts/lib/*'){
+                throw ('ScriptLibraryLocationRequired: '+$relative+'; place dependent script modules under scripts/lib/.')
+            }
             if($legacy.Contains($relative)){$grandfathered++;continue}
             $kind=Get-QuietScriptShouldProcess $item.FullName
             if($kind -eq 'ShouldProcess'){$checked++;continue}

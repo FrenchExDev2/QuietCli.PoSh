@@ -30,6 +30,11 @@
       "Path": "scripts/Test-ScriptContracts.ps1",
       "Reason": "Read-only script contract comparison; parses sources without executing them and never applies headers, guards or generated documentation.",
       "SHA256": "F754310D5D3149013F980FD502F6F24D99BFB47A95EB33A5EF26E0079BED92B3"
+    },
+    {
+      "Path": "scripts/Watch-DotNetTests.ps1",
+      "SHA256": "B3293C0D13D480FDC523271F37A960DB8871D356253E3D0D59554242B2C43B7D",
+      "Reason": "Reviewed read-only observer: delegates solely to the shared Watch-Tests monitor, reading saved run reports and drawing terminal output; no source/report writes or test execution."
     }
   ],
   "LegacyPaths": [

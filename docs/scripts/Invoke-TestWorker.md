@@ -65,6 +65,10 @@ The script is dense but internally coherent and clearly battle-tested as the bac
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
 
+## .NET tooling review
+
+The DotNet branch in scripts/Invoke-TestWorker.ps1 dispatches Invoke-DotNetQualification before importing the product module. Its initial/final source identities omit binaries, and terminal handling does not query the engine. Offline fixtures retain independent property/fuzz/mutation counts and source hashes in dotnet-summary.json. The existing shared terminal report and crash handling remain authoritative.
+
 <!-- script-contract:begin -->
 ## Execution contract
 

@@ -25,6 +25,10 @@ Enforces the standard preview API for new executable scripts, with explicit lega
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
 
+## .NET tooling review
+
+The RAC-PS-003 placement guard at scripts/ScriptShouldProcess.ps1:80 rejects every scripts/**/*.psm1 outside scripts/lib before consulting the frozen legacy inventory. Declarative module initialization is limited to function definitions, strict mode, exports and an exact sibling-module import; executable initializer statements remain unclassified. The .NET Layout suite independently generates accepted/rejected initializer corpora and removes the placement guard in a targeted mutant. AST classification is not execution qualification.
+
 <!-- script-contract:begin -->
 ## Execution contract
 

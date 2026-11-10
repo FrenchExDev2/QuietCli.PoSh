@@ -8,7 +8,7 @@
 
 A C# engine starts the native process and streams its output once, through bounded buffers. Your own PowerShell callbacks, which stay in your process, turn that stream into business data. You then inspect the data directly or deliver a bounded JSON/YAML view of it.
 
-Start here: [Gallery installation](#from-powershell-gallery) · [Local checkout, build and first command](#from-a-source-checkout) · [Git companion](FrenchExDev2.QuietCli.Git.PoSh/README.md#quick-start).
+Start here: [Gallery installation](#from-powershell-gallery) · [.NET SDK and global.json](README-dotnet-and-global-dot-json.md) · [Local checkout, build and first command](#from-a-source-checkout) · [Git companion](FrenchExDev2.QuietCli.Git.PoSh/README.md#quick-start).
 
 Browse the [documentation index](docs/README.md) for usage guides, technical contracts, agent instructions, CI, profiling and dated audit evidence.
 
@@ -94,6 +94,19 @@ Each step up this path can opt into a stricter dev pipeline style — Minimal, S
 
 Configured platforms are not the same as qualified platforms. See [Tests and qualification](README-qualification.md) for what has actually been executed.
 
+## .NET SDK and global.json
+
+The [.NET SDK and global.json guide](README-dotnet-and-global-dot-json.md) explains release and image availability checks, verified portable SDK installation with its runtimes, optional Docker/Podman image downloads, and SDK pin updates with backups. All operations support standard `-WhatIf`/`-Confirm`.
+
+From this checkout:
+
+```powershell
+$report = ./scripts/Test-DotNetReadiness.ps1
+./scripts/Install-DotNet.ps1 -Channel 11.0 -UpdateGlobalJson -ActivateSession -WhatIf
+```
+
+Use `scripts/Update-DotNetGlobalJson.ps1` for a separate SDK pin update. See the guide for exact versions, preview/RC selection, container configuration and complete installation commands.
+
 ## How to install
 
 ### From PowerShell Gallery
@@ -114,6 +127,8 @@ checkout's ignored runtime preset. Explicit `-ContainerRuntime` overrides `.env`
 is the fallback. See [local/GitHub environment initialization](docs/ci/environment.md).
 
 Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100-rc.3.26522.148`). Build before importing the local modules. Close sessions that already loaded this checkout's assemblies before rebuilding.
+
+For SDK/runtimes installation, container image downloads and SDK pin updates, see [the .NET and global.json guide](README-dotnet-and-global-dot-json.md).
 
 **1. Check out and build.**
 

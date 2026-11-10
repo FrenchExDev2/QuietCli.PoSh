@@ -110,7 +110,7 @@ function Get-QuietWorkspaceSuiteNames {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Host','Container')][string]$Scope='Host')
-    $special=if($Scope -eq 'Container'){@('All','Import','Integration','Mutation')}else{@('All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview')}
+    $special=if($Scope -eq 'Container'){@('All','Import','Integration','Mutation')}else{@('All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview','DotNet')}
     $suites=@(Get-QuietWorkspaceTestSuites $WorkspaceRoot)
     foreach($suite in $suites){if($special -contains $suite.Name){throw ('WorkspaceSuiteNameConflict: '+$suite.Name)}}
     @($suites.Name)+$special

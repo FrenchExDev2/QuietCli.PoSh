@@ -4,6 +4,8 @@ Start with the [product README](../README.md) for installation, requirements and
 
 ## Usage guides
 
+- [.NET SDK installation and global.json updates](../README-dotnet-and-global-dot-json.md): release checks, verified portable SDKs, optional images and backed-up SDK pins.
+
 - [Streaming, callbacks and results](../README-streaming.md): build business projections and interpret outcome, execution and completeness.
 - [Recall](../README-recall.md): capture native evidence explicitly and analyze it again without rerunning the command.
 - [Hosting and native transports](../README-hosting.md): choose engine hosting and understand pipes and PTY.
