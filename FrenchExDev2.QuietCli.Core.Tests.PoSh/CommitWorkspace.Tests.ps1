@@ -1,7 +1,7 @@
 function New-QuietCommitWorkspaceFixture {
     <#
     .SYNOPSIS
-    Creates an independent disposable monorepo already satisfying Commit-Workspace.ps1's own
+    Creates a real Git integration fixture already satisfying Commit-Workspace.ps1's own
     documentation-sync gates, with one baseline commit in place.
     .DESCRIPTION
     Ships exactly one business module (so Update-WorkspaceLock.ps1/Sync-Credits.ps1 have something
@@ -42,6 +42,11 @@ function New-QuietCommitWorkspaceFixture {
     # Include the real gate and its doc: snapshots must not change the generator's own membership.
     Copy-Item -LiteralPath (Join-Path $RealScriptsPath 'Sync-ScriptsReadme.ps1') -Destination $scriptsDirectory
     Copy-Item -LiteralPath (Join-Path (Split-Path $RealScriptsPath -Parent) 'docs/scripts/Sync-ScriptsReadme.md') -Destination $docsScriptsDirectory
+    [void][IO.Directory]::CreateDirectory((Join-Path $path build))
+    Write-WorkspaceJson (Join-Path $path build/script-shouldprocess.json) @{SchemaVersion=1;LegacyPaths=@();ReadOnlyExceptions=@()}
+    $null=& (Join-Path $RealScriptsPath 'Sync-GitHubWorkflowsReadme.ps1') -WorkspaceRoot $path -Apply
+    $null=& (Join-Path $RealScriptsPath 'Sync-ResourcesReadme.ps1') -WorkspaceRoot $path -Apply
+    $null=& (Join-Path $RealScriptsPath 'Sync-ScriptContracts.ps1') -WorkspaceRoot $path -Apply
     # Order matters: Sync-Credits writes CREDITS.md (required by Sync-DocsCredits), Sync-ScriptsReadme
     # writes docs/scripts/README.md (already carrying its own compliant credits block), and only then
     # does Sync-DocsCredits need to add the block to the hand-written Tracked.md.
@@ -206,7 +211,8 @@ function Test-QuietCommitWorkspace {
         $fixture=New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
         $docPath=Join-Path $fixture 'docs/scripts/Tracked.md'
         $goodDoc=Get-Content -LiteralPath $docPath -Raw -Encoding utf8
-        [void][IO.File]::WriteAllTextAsync($docPath,"# Missing staged credits`n",$utf8).GetAwaiter().GetResult()
+        $missingCredits=[regex]::Replace($goodDoc,'(?s)<!-- credits:begin -->.*?<!-- credits:end -->','')
+        [void][IO.File]::WriteAllTextAsync($docPath,$missingCredits,$utf8).GetAwaiter().GetResult()
         $null=& (Join-Path $realScripts 'Update-WorkspaceLock.ps1') -WorkspaceRoot $fixture
         & git -C $fixture add -- docs/scripts/Tracked.md repositories.lock.json
         [void][IO.File]::WriteAllTextAsync($docPath,$goodDoc,$utf8).GetAwaiter().GetResult()
@@ -224,7 +230,7 @@ function Test-QuietCommitWorkspace {
         try { $null = & $candidate -Message 'Should be rejected' -WorkspaceRoot $fixture } catch { $rejected = $true; $message = $_.Exception.Message }
         if (!$rejected -or $message -notmatch '^ScriptsDocsMissing') { throw 'MissingScriptDocGateDidNotBlock' }
         if ((Get-QuietCommitWorkspaceHeadRevision $fixture) -cne $before) { throw 'RejectedGateMustNotCommit' }
-        $null = & $candidate -Message 'Skip the readme gate' -WorkspaceRoot $fixture -NoScriptsReadmeCheck
+        $null = & $candidate -Message 'Skip both script documentation gates' -WorkspaceRoot $fixture -NoScriptsReadmeCheck -NoScriptContractsCheck
         if ((Get-QuietCommitWorkspaceHeadRevision $fixture) -ceq $before) { throw 'NoScriptsReadmeCheckDidNotAllowTheCommit' }
 
         $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
@@ -236,12 +242,12 @@ function Test-QuietCommitWorkspace {
         # D: a script changed without its mirrored doc warns, but never blocks; the warning is
         # overridable on its own.
         $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
-        [void][IO.File]::WriteAllTextAsync((Join-Path $fixture 'scripts/Tracked.ps1'), "# Fixture script, changed`n", $utf8).GetAwaiter().GetResult()
+        [void][IO.File]::AppendAllTextAsync((Join-Path $fixture 'scripts/Tracked.ps1'), "# Fixture script, changed`n", $utf8).GetAwaiter().GetResult()
         $warnings = @(& $candidate -Message 'Drift check' -WorkspaceRoot $fixture 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
         if (@($warnings | Where-Object { $_.Message -match '^ScriptDocDrift: scripts/Tracked\.ps1' }).Count -ne 1) { throw 'ScriptDocDriftWarningMissing' }
 
         $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
-        [void][IO.File]::WriteAllTextAsync((Join-Path $fixture 'scripts/Tracked.ps1'), "# Fixture script, changed`n", $utf8).GetAwaiter().GetResult()
+        [void][IO.File]::AppendAllTextAsync((Join-Path $fixture 'scripts/Tracked.ps1'), "# Fixture script, changed`n", $utf8).GetAwaiter().GetResult()
         $warnings = @(& $candidate -Message 'Drift check overridden' -WorkspaceRoot $fixture -NoScriptDocDriftWarning 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
         if ($warnings.Count) { throw 'NoScriptDocDriftWarningDidNotSilenceIt' }
 
@@ -252,7 +258,7 @@ function Test-QuietCommitWorkspace {
             $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
             $driftedName = 'Drift' + $random.Next(10000, 99999) + '.ps1'
             [void][IO.File]::WriteAllTextAsync((Join-Path $fixture ('scripts/' + $driftedName)), '# undocumented and about to be committed', $utf8).GetAwaiter().GetResult()
-            $warnings = @(& $candidate -Message 'Property round' -WorkspaceRoot $fixture -NoScriptsReadmeCheck 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+            $warnings = @(& $candidate -Message 'Property round' -WorkspaceRoot $fixture -NoScriptsReadmeCheck -NoScriptContractsCheck 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
             $matching = @($warnings | Where-Object { $_.Message -match [regex]::Escape('scripts/' + $driftedName) })
             if ($matching.Count -ne 1) { throw ("ScriptDocDriftPropertyFailed: seed=97120 round=$round name=$driftedName") }
             if (@($warnings | Where-Object { $_.Message -match 'scripts/Tracked\.ps1' }).Count) { throw "ScriptDocDriftFalsePositiveOnUnchangedDocumentedScript: round=$round" }
@@ -315,7 +321,7 @@ function Test-QuietCommitWorkspace {
     $mutants = @(
         @{Id = 'whatif-guard-removed-from-commit'; Find = 'if ($PSCmdlet.ShouldProcess($WorkspaceRoot, "git commit -m <message>")) {'; Replace = 'if ($true) {' },
         @{Id = 'whatif-guard-removed-from-add'; Find = 'if (!$NoAll -and $PSCmdlet.ShouldProcess($WorkspaceRoot, "git add --all --")) {'; Replace = 'if ($true) {' },
-        @{Id = 'sync-gate-skipped-unconditionally'; Find = 'if (!$NoAll -and !$NoSyncChecks -and !$NoScriptsReadmeCheck) {'; Replace = 'if ($false) {' },
+        @{Id = 'sync-gate-skipped-unconditionally'; Find = 'if (!$NoAll) { Invoke-QuietCommitChecks -Root $WorkspaceRoot }'; Replace = 'if ($false) { Invoke-QuietCommitChecks -Root $WorkspaceRoot }' },
         @{Id = 'drift-detection-disabled'; Find = 'if ($ChangedPaths -notcontains $docRelative) {'; Replace = 'if ($false) {' },
         @{Id = 'drift-override-ignored'; Find = 'if (!$NoScriptDocDriftWarning) {'; Replace = 'if ($true) {' },
         @{Id = 'noall-adds-working-tree'; Find = 'if (!$NoAll -and $PSCmdlet.ShouldProcess($WorkspaceRoot, "git add --all --")) {'; Replace = 'if ($PSCmdlet.ShouldProcess($WorkspaceRoot, "git add --all --")) {' },
@@ -345,6 +351,9 @@ function Test-QuietCommitWorkspace {
         if (!$detected) { throw ('CommitWorkspaceMutantSurvived: ' + $mutant.Id) }
     }
     $report = @{
+        TestKind          = 'Integration'
+        Dependencies      = @('FileSystem','GitProcess')
+        FixtureStorage    = 'PhysicalTemporaryDirectory'
         Seed              = 97120
         PropertyExecutions = 25
         FuzzInputs        = 10

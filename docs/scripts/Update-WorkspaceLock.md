@@ -17,7 +17,7 @@ it never "tries to pin a repository to its own future commit."
 ## Usage
 
 ```
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
 ```
 
 - `WorkspaceRoot` (string, optional) — the QuietCli2 monorepo root. Defaults to the script's parent
@@ -62,11 +62,9 @@ Example:
   incorrect SDK/Runtime value — there is no cross-check between this hardcoded string and the actual
   `global.json` content. This is exactly the kind of "hardcoded value that should be a parameter (or
   at least read from its source of truth)" the review brief asks to flag.
-- DESIGN: there is no `-WhatIf`/report-only mode at all (unlike `Sync-Credits.ps1`/
-  `Sync-DocsCredits.ps1`), even though this script is invoked automatically before every commit
-  (`Commit-Workspace.ps1:28`). A caller cannot preview what the lock file would become without actually
-  writing it — a smaller inconsistency in the "report vs apply" pattern used elsewhere in this same
-  scripts folder for similarly consequential writes.
+- PREVIEW: the entry-point ShouldProcess guard now supports `-WhatIf`/`-Confirm` before lock
+  generation. WhatIf previews the operation without writing or computing a prospective lock;
+  it is not a content diff. Commit-Workspace also retains its own guarded lock-refresh boundary.
 - CONVENTION: no async-I/O violation specific to this file — it delegates all actual I/O to
   `Write-WorkspaceJson` and `Get-QuietWorkspaceIdentity`, which this review covers separately; this
   script's own body (lines 11-16) is just four lines of orchestration with no direct file I/O of its
@@ -95,3 +93,13 @@ ideally paired with a test asserting the two stay in sync.
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Updates project hashes without committing, pushing or trying to pin a repository to its own future commit.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

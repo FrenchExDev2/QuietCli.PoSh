@@ -1,4 +1,3 @@
-# Objectif : Restaurer les binaires tiers non suivis par Git depuis leur source NuGet pinned, vérifiés par hash.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -11,16 +10,21 @@ they come from scripts/Build-PtyBridge.ps1, not a downloaded package.
 QuietCli2 workspace (the module's parent directory).
 .PARAMETER Force
 Redownloads and re-extracts every package even when the local file already matches its pinned hash.
+.PARAMETER IncludePackage
+Optional package IDs from the pinned manifest; omitted restores all resource packages.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Force)
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Force,[string[]]$IncludePackage=@())
 $ErrorActionPreference='Stop'
 $moduleRoot=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh'
 $lockPath=Join-Path $moduleRoot 'resources/dependencies.lock.json'
 if(!(Test-Path -LiteralPath $lockPath)){throw 'DependencyManifestMissing'}
 $lock=Get-Content -LiteralPath $lockPath -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable
-$packagesById=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+$packagesById=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
 foreach($package in $lock.Packages){if($package.Id){$packagesById[$package.Id]=$package}}
 $downloadable=@($lock.Files|Where-Object{$_.Package -ne 'quietcli-pty'})
+foreach($selection in $IncludePackage){if(!$packagesById.ContainsKey($selection)){throw ('ResourcePackageUnknown: '+$selection)}}
+if($IncludePackage.Count){$downloadable=@($downloadable|Where-Object {$_.Package -in $IncludePackage})}
+if(!$PSCmdlet.ShouldProcess($moduleRoot,('Restore pinned resources: '+$(if($IncludePackage.Count){$IncludePackage -join ', '}else{'all'})))){return}
 $cacheRoot=Join-Path $WorkspaceRoot '.cache/nuget-resources'
 [void][IO.Directory]::CreateDirectory($cacheRoot)
 $restored=0;$reused=0

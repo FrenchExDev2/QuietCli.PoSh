@@ -1,4 +1,3 @@
-# Objectif : Suivre un run GitHub existant avec une fenêtre visible et un rapport terminal sauvegardé.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -10,7 +9,8 @@ QuietCli2 monorepo root.
 .PARAMETER Repository
 GitHub owner/repository to observe.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][long]$RunId,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidatePattern('^[\w.-]+/[\w.-]+$')][string]$Repository='FrenchExDev2/QuietCli.PoSh')
+[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][long]$RunId,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidatePattern('^[\w.-]+/[\w.-]+$')][string]$Repository='FrenchExDev2/QuietCli.PoSh')
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Watch-GitHubRun')){return}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot Common.ps1)
 if(!$IsWindows){throw 'Use the Windows visible-monitor host launcher'}
 $run=Join-Path $WorkspaceRoot ('artifacts/github/'+$RunId+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))

@@ -1,6 +1,17 @@
 # Common.ps1
 
+`Write-WorkspaceFailureDiagnostics -Summary $summary -RunDirectory $run` prints the saved terminal
+state and at most eight failed companion cases, each capped at 2048 characters. It emits no pipeline
+objects and starts no process. Full evidence remains in the selected run directory.
+
 ## Purpose
+
+`Resolve-QuietVirtEngine [-ContainerRuntime docker|podman] [-Available]` discovers Docker then
+Podman with Get-Command when the selection is empty. Explicit selection is preserved; Available
+also verifies an explicit engine exists as an application. It starts no daemon, performs no network
+operation and makes no health claim. Container launchers resolve once and forward the engine;
+image PlanOnly remains offline and does not require discovery. AutomationContracts.Tests.ps1
+covers every availability/explicit-selection combination and a preference-order mutant.
 
 The shared, load-bearing operational layer most other scripts in this folder depend on. It supplies the one approved way to shell out to a native tool with bounded failure diagnostics (`Invoke-WorkspaceNative`), the one approved way to publish JSON state atomically for a read-only monitor to observe (`Write-WorkspaceJson`), the supervisor loop that owns a background worker process together with its dedicated visible monitor window, restarting that monitor (bounded to 3 attempts) if it dies before the run reaches a terminal state (`Wait-WorkspaceWorker`), and a single reusable parser for human-readable size thresholds (`ConvertTo-QuietByteCount`, added for `Commit-Workspace.ps1`'s binary/oversized-file sniffer, but not special-cased to it — any script needing a size threshold, such as `Test-WorkspacePackage.ps1`'s hardcoded archive limits, can reuse it instead of duplicating the parsing). It is dot-sourced by at least 28 other scripts in this folder (confirmed by search), making it the single most depended-upon file in the set. It is itself a hub: it dot-sources `ReportPaths.ps1`, `Ci.Process.ps1`, `SourceIdentity.ps1`, and `RuntimeTargets.ps1` (lines 1, 3, 4, 5), so every caller gets that whole chain for free with one dot-source.
 
@@ -52,3 +63,21 @@ Solid, carefully-written infrastructure that the whole folder depends on, but `W
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+## Live administrative reporting
+
+Invoke-WorkspaceNative prints operation progress and a terminal outcome/line summary. Wait-WorkspaceWorker streams bounded tails of the owned stdout/stderr logs through ReportStreaming.ps1, with an elapsed/observed-line heartbeat and the saved terminal state. No objective announcement is printed when this library is loaded. Diagnostic activity is distinct from test counters and never enables product event collection.
+
+## Explicit local cancellation
+
+Stop-WorkspaceWorker -WorkspaceRoot <root> -RunDirectory <printed-run-directory> verifies the recorded workspace, pwsh PID, worker script, run path and process creation time before stopping that owned Windows process tree. ShouldProcess protects cancellation; WhatIf leaves the worker and reports unchanged. It saves Cancelled evidence before termination so the read-only monitor closes normally. Status timestamps are read as ISO strings to avoid culture-dependent PID ownership checks. A cancelled run never qualifies a delivery; existing logs and fixtures remain available.
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Selects an explicit container engine or discovers Docker then Podman on PATH without starting either.
+
+Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 1.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

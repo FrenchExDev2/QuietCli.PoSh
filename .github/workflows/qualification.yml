@@ -11,6 +11,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - uses: ./.github/actions/cache-resources
       - name: Verify monorepo source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore

@@ -1,4 +1,3 @@
-# Objectif : Afficher le projet et l’état des tests dans une fenêtre dédiée sans modifier l’exécution.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -8,6 +7,7 @@ Directory containing status.json and summary.json.
 #>
 [CmdletBinding()]param([Parameter(Mandatory)][string]$RunDirectory)
 . (Join-Path $PSScriptRoot 'Monitor.Time.ps1')
+. (Join-Path $PSScriptRoot 'ReportStreaming.ps1')
 function Read-RunState {
     <#
     .SYNOPSIS
@@ -57,9 +57,11 @@ Clips and pads a cell without splitting a Unicode text element.
 }
 $interactive=![Console]::IsOutputRedirected
 $previousCursor=$true
+$streams=@(New-QuietReportStream (Join-Path $RunDirectory worker.stdout.log);New-QuietReportStream (Join-Path $RunDirectory worker.stderr.log))
 try{
     if($interactive){$previousCursor=[Console]::CursorVisible;[Console]::CursorVisible=$false}
     do{
+        foreach($stream in $streams){$null=Read-QuietReportStream $stream}
         $path=Join-Path $RunDirectory 'status.json'
         $state=if(Test-Path -LiteralPath $path){try{Read-RunState $path}catch{$null}}else{$null}
         $width=if($interactive){[Math]::Max(20,[Console]::WindowWidth-1)}else{110}
@@ -88,7 +90,15 @@ try{
             }else{$lines.Add((Fit-Cell "$($state.Platform) | $($state.State) | $duration | PID $($state.ProcessId)" $width));$lines.Add((Fit-Cell "Passed $($state.Passed) | Failed $($state.Failed)" $width))}
             $lines.Add((Fit-Cell $state.Case $width));$lines.Add((Fit-Cell "Rapport : $RunDirectory" $width))
             if($state.Error){$lines.Add((Fit-Cell $state.Error $width))}
-            if($interactive){[Console]::SetCursorPosition(0,0);foreach($line in $lines|Select-Object -First $height){[Console]::WriteLine($line)}}else{$lines|ForEach-Object{[Console]::WriteLine($_)}}
+            $lines.Add((Fit-Cell ('Report activity | bytes='+(($streams|ForEach-Object TotalBytes|Measure-Object -Sum).Sum)+' | lines='+(($streams|ForEach-Object TotalLines|Measure-Object -Sum).Sum)+' (not test counts)') $width))
+            $room=[Math]::Max(0,$height-$lines.Count-1)
+            foreach($stream in $streams){
+                foreach($line in @($stream.Lines)|Select-Object -Last ([Math]::Max(1,[int]($room/2)))){
+                    if($lines.Count -lt $height){$lines.Add((Fit-Cell $line $width))}
+                }
+                if($stream.Pending -and $lines.Count -lt $height){$lines.Add((Fit-Cell $stream.Pending $width))}
+            }
+            if($interactive){[Console]::SetCursorPosition(0,0);for($row=0;$row -lt $height;$row++){[Console]::WriteLine($(if($row -lt $lines.Count){$lines[$row]}else{' '*$width}))}}else{$lines|ForEach-Object{[Console]::WriteLine($_)}}
             $terminal=$state.State -in @('Success','Failed','Crash','Timeout','Cancelled')
             if($terminal -and (Test-Path -LiteralPath (Join-Path $RunDirectory 'summary.json'))){break}
         }

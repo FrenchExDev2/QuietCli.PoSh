@@ -1,4 +1,3 @@
-# Objectif : Vérifier le SDK .NET épinglé et la disponibilité des paquets Crossgen2 par RID sans rien publier.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -32,13 +31,14 @@ Crossgen2 not published for a RID) so the user can run it themselves.
 One [pscustomobject] (SchemaVersion 1): Sdk, ReadyToRun (one row per framework/RID pair) and Gaps (string list).
 Callers branch on this object instead of re-parsing text; it is also written to the pipeline in every mode.
 #>
-[CmdletBinding()]param(
+[CmdletBinding(SupportsShouldProcess)]param(
     [string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),
     [ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$RuntimeIdentifier=@('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64'),
     [string]$LocalRuntimeIdentifier=('win-'+([Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())),
     [switch]$Offline,
     [switch]$Update
 )
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Test-SdkReadiness')){return}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 

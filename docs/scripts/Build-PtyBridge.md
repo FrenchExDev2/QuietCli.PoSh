@@ -49,3 +49,13 @@ Functionally careful (pinned/verified toolchain download, post-compile source-ta
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Builds static musl bridges for both Linux libc families without installing software on the host.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

@@ -9,7 +9,7 @@ The top-level CI/local-test launcher: it (optionally) builds the workspace, then
 Parameters (plus the same dynamic `-Suite` parameter mechanism as `Invoke-TestWorker.ps1`, via `New-QuietWorkspaceSuiteParameter`):
 - `WorkspaceRoot` (`string`, optional, default: parent of `$PSScriptRoot`).
 - `RunDirectory` (`string`, optional) — new output directory; generated (timestamp+GUID) under `Get-QuietReportRoot ... 'tests'` when omitted; throws `TestRunDirectoryExists` if it already exists (line 54).
-- `Headless` (`switch`, optional) — CI-only mode without a desktop window; **on non-Windows, omitting `-Headless` kills the worker and throws** ("Use the Windows host launcher for a visible local monitor", line 72).
+- `Headless` (`switch`, optional) — CI-only mode without a desktop monitor process or a monitor reopen instruction. GitHub Actions uses this mode. The test worker still runs in the selected `$PSHOME` process for assembly isolation and bounded timeout supervision. **On non-Windows, omitting `-Headless` kills the worker and throws** ("Use the Windows host launcher for a visible local monitor").
 - `SkipBuild` (`switch`, optional) — uses an already-built engine/test fixture, skipping `Build-Workspace.ps1`.
 - `TimeoutSeconds` (`int`, `ValidateRange(1,7200)`, default `1800`) — maximum worker wall-clock time.
 - `ExpectedRuntimeIdentifier` (`string`, `ValidatePattern('^[a-z0-9-]+$')`, optional) — forwarded to the worker for runtime-identity verification.
@@ -35,9 +35,16 @@ Local developer example (visible monitor):
 
 ## Side effects
 
+On failure, the job log includes the terminal state and up to eight failed companion cases (2048
+characters each) before the launcher throws. Full reports stay in the run directory and CI artifacts.
+The script-generation regression retains `scripts/live-diagnostics.json` with named direct/generated
+results, fixture byte counts/hex and child encodings. The CI stream regression retains
+`ci-process-encoding-diagnostics.json` on a Unicode mismatch; decoded-text hex is explicitly separate
+from the raw fixture bytes. These records contain synthetic test data, not environment dumps.
+
 - Creates a new run directory (throws if a caller-specified one already exists — line 54).
-- Starts two real OS processes (worker + monitor), the monitor using `-WindowStyle Normal` i.e. actually visible, which is the repository-mandated behavior for test runs.
-- Prints the exact monitor reopen command to stdout (line 75), matching the "Give the user the command or script path to reopen it" requirement in AGENTS.md.
+- Starts a test worker, plus a visible monitor only for local runs without `-Headless`.
+- Prints the exact monitor reopen command only when starting a local monitor. Headless CI does not ask the operator to launch another PowerShell process; its reports remain in the run directory.
 - Propagates failure as a thrown exception referencing the run directory (line 78) rather than a plain nonzero exit, so CI logs retain a human-readable pointer to the evidence.
 - Indirectly, through `Build-Workspace.ps1` (unless skipped) and `Invoke-TestWorker.ps1`, triggers compilation and potentially broader filesystem/process activity outside this script's own direct control.
 
@@ -58,3 +65,13 @@ This is the load-bearing CI entry point and is functionally sound for the common
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Runs companion suites with a dedicated local monitor; CI uses the same saved state.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

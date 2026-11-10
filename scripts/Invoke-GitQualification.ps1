@@ -1,4 +1,3 @@
-# Objectif : Vérifier la complétude réelle de la qualification Git et refuser un succès fondé sur le seul inventaire.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -8,7 +7,8 @@ Prepared Podman/Dockur qualification configuration with capability evidence.
 .PARAMETER WorkspaceRoot
 QuietCli2 workspace.
 #>
-[CmdletBinding()]param([string]$ConfigurationPath,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+[CmdletBinding(SupportsShouldProcess)]param([string]$ConfigurationPath,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-GitQualification')){return}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 $directory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'qualification') ([DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss'))
 [void][IO.Directory]::CreateDirectory($directory)

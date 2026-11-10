@@ -1,4 +1,3 @@
-# Objective: Publish only the validated public Core package on an explicitly authorized request.
 #requires -Version 7.6
 <#
 .SYNOPSIS

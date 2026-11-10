@@ -1,4 +1,3 @@
-# Objectif : Calculer les durées du moniteur indépendamment de la culture du terminal.
 function ConvertTo-QuietMonitorTimestamp {
     <#
     .SYNOPSIS

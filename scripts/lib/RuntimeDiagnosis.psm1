@@ -1,3 +1,4 @@
+#Objective: Reads optional diagnostic data without treating malformed input as established evidence.
 #requires -Version 7.6
 function Get-QuietDiagnosisValue {
     <# .SYNOPSIS

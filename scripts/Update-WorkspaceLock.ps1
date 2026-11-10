@@ -1,4 +1,3 @@
-# Objectif : Verrouiller les sources et dépendances des quatre projets d’un seul monorepo.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -6,7 +5,8 @@ Updates project hashes without committing, pushing or trying to pin a repository
 .PARAMETER WorkspaceRoot
 QuietCli2 monorepo root.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Update-WorkspaceLock')){return}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 $identity=Get-QuietWorkspaceIdentity $WorkspaceRoot
 $dependencies=@{}

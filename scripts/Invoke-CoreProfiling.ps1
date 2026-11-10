@@ -10,8 +10,9 @@ Pinned Profiler 4.3.0 manifest.
 .PARAMETER ClrProfilerPath
 Pinned dotnet-trace 10.0.750501 DLL.
 #>
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param([string]$WorkspaceRoot,[string]$RunDirectory,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-CoreProfiling')){return}
 $ErrorActionPreference='Stop'
 $env:DOTNET_ROLL_FORWARD_TO_PRERELEASE='1'
 . (Join-Path $PSScriptRoot 'Common.ps1')

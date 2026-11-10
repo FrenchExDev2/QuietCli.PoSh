@@ -60,6 +60,7 @@ jobs:
           dotnet-version: 11.0.100-rc.3.26522.148
           cache: true
           cache-dependency-path: '**/*.csproj'
+      - uses: ./.github/actions/cache-resources
       - name: Verify the qualified source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
@@ -70,10 +71,12 @@ jobs:
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_PATH,($selected.Directory+"`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
       - name: Build all embedded engine distributions
         shell: pwsh
-        run: ./scripts/Build-Workspace.ps1
+        run: |
+          . ./scripts/RuntimeTargets.ps1
+          ./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier @((Get-QuietRuntimeTargets $PWD.Path).Rid)
       - name: Verify the exact build being packaged
         shell: pwsh
-        run: ./scripts/Invoke-WorkspaceCi.ps1 -Suite All -SkipBuild -Headless -SkipTty -ExpectedRuntimeIdentifier win-x64
+        run: ./scripts/Invoke-GitHubCi.ps1 -Suite All -SkipBuild -SkipTty -ExpectedRuntimeIdentifier win-x64
       - name: Prepare and validate the unchanged publication artifacts
         id: plan
         shell: pwsh
@@ -83,10 +86,10 @@ jobs:
           QUALIFIED_REVISION: ${{ needs.qualification.outputs.qualified_sha }}
         run: |
           if($env:PREVIEW_BUILD -eq 'true'){
-            ./scripts/New-QuietPreviewPackage.ps1 -OutputDirectory ./artifacts/gallery -BuildNumber $env:GITHUB_RUN_NUMBER -Attempt $env:GITHUB_RUN_ATTEMPT -QualifiedRevision $env:QUALIFIED_REVISION
+            ./scripts/New-QuietPreviewPackage.ps1 -OutputDirectory ./artifacts/gallery -BuildNumber $env:GITHUB_RUN_NUMBER -Attempt $env:GITHUB_RUN_ATTEMPT -QualifiedRevision $env:QUALIFIED_REVISION -RequireReadyToRun
           }else{
             if([string]::IsNullOrWhiteSpace($env:RELEASE_VERSION)){throw 'ExactReleaseVersionRequired'}
-            ./scripts/New-QuietGalleryPackage.ps1 -OutputDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION
+            ./scripts/New-QuietGalleryPackage.ps1 -OutputDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -RequireReadyToRun
             ./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -ValidateOnly
           }
           $plan=Get-Content ./artifacts/gallery/package-set.json -Raw -Encoding utf8|ConvertFrom-Json
@@ -105,15 +108,20 @@ jobs:
       - name: Require preview properties, offline installation and targeted mutations
         if: inputs.preview_build == true
         shell: pwsh
-        run: ./scripts/Invoke-WorkspaceCi.ps1 -Suite GalleryPreview -SkipBuild -Headless -RunDirectory ./artifacts/preview-qualification -TimeoutSeconds 600
+        run: ./scripts/Invoke-GitHubCi.ps1 -Suite GalleryPreview -SkipBuild -RunDirectory ./artifacts/preview-qualification -TimeoutSeconds 600
+      - name: Prepare bounded redacted package failure diagnostics
+        if: failure()
+        shell: pwsh
+        env:
+          QUIETCLI_DIAGNOSTIC_TOKEN: ${{ github.token }}
+        run: ./scripts/Export-CiFailureDiagnostics.ps1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
           name: quietcli2-package-diagnostics-${{ github.run_attempt }}
-          path: |
-            artifacts/tests
-            artifacts/preview-qualification
-          if-no-files-found: ignore
+          path: artifacts/failure-diagnostics
+          if-no-files-found: warn
+          retention-days: 14
   publish:
     needs: [qualification, package]
     if: ${{ inputs.publish == true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }}
@@ -139,27 +147,16 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
         run: ./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -ValidateOnly
-      - name: Do not publish a superseded automatic preview
-        id: current
+      - name: Validate the prepared preview against its qualified checkpoint
+        if: inputs.preview_build == true
         shell: pwsh
         env:
-          PREVIEW_BUILD: ${{ inputs.preview_build }}
-          GH_TOKEN: ${{ github.token }}
+          QUALIFIED_REVISION: ${{ needs.qualification.outputs.qualified_sha }}
+          RELEASE_VERSION: ${{ needs.package.outputs.version }}
         run: |
-          $allowed=$true
-          if($env:PREVIEW_BUILD -eq 'true'){
-            if($env:GITHUB_REF -cne 'refs/heads/develop'){throw 'PreviewPublicationRequiresDevelop'}
-            $headers=@{Authorization=('Bearer '+$env:GH_TOKEN);Accept='application/vnd.github+json';'User-Agent'='QuietCli-preview-publication'}
-            $ref=Invoke-RestMethod -Uri ($env:GITHUB_API_URL+'/repos/'+$env:GITHUB_REPOSITORY+'/git/ref/heads/develop') -Headers $headers
-            $allowed=$ref.object.sha -ceq $env:GITHUB_SHA
-            if(!$allowed){
-              $message="Preview not published: develop has advanced beyond this qualified revision.`n"
-              [void][IO.File]::AppendAllTextAsync($env:GITHUB_STEP_SUMMARY,$message,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-            }
-          }
-          [void][IO.File]::AppendAllTextAsync($env:GITHUB_OUTPUT,('allowed='+$allowed.ToString().ToLowerInvariant()+"`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+          if($env:GITHUB_REF -cne 'refs/heads/develop'){throw 'PreviewPublicationRequiresDevelop'}
+          ./scripts/Assert-GalleryCheckpoint.ps1 -PackageDirectory ./artifacts/gallery -QualifiedRevision $env:QUALIFIED_REVISION -Version $env:RELEASE_VERSION
       - name: Publish the verified packages, Core only
-        if: steps.current.outputs.allowed == 'true'
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}

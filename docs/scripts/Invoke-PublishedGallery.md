@@ -1,5 +1,9 @@
 # Invoke-PublishedGallery.ps1
 
+With `-Headless`, CI starts no desktop monitor and prints no `Watch-Tests.ps1` reopen command.
+The package-validation worker remains isolated and supervised with its saved reports and timeout.
+Local runs keep their visible monitor and its reopen instruction.
+
 ## Purpose
 
 Validates that an already-published version of the Core PowerShell module actually installs and works from a public gallery feed (PSGallery), without touching the user's own locally-installed modules. It solves the "it builds locally but is the published package actually usable" problem — the gap between "the repo's source works" and "what a real consumer who runs `Install-Module` gets" is otherwise unverified. It launches a worker script (`FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/Probe-PublishedGallery.ps1`) in an isolated background process and a visible monitor window per the repository's mandatory test-monitoring convention, then waits for and reports the result. This is a release-verification step, likely run after a `publish-psgallery` workflow (an actual workflow of that name exists at `.github/workflows/publish-psgallery.yml`), though no `.ps1`/`.yml` caller of this exact script was found in the scripts folder itself — it appears to be a manually or externally triggered post-publish check rather than something the main workspace CI pipeline invokes automatically.
@@ -48,3 +52,13 @@ Fit for purpose as an orchestration wrapper around a real worker/monitor pair, f
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Validates the published public Core package without changing the user's installed modules.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

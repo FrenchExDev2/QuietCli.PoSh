@@ -3,7 +3,7 @@ name: QuietCli2 ReadyToRun profiling
 # Manual and informational only: measures whether a ReadyToRun build of the Core module's engine reduces
 # cold-start time on this runner, per docs/README-readytorun_profiling.md. Runs once on Windows directly, and once per
 # Linux distribution/architecture (debian/alpine x x64/arm64, mirroring ci.yml's linux matrix) inside that
-# platform's prepared Podman image, each producing its own full report (nupkg cost, first-call timing, footprint,
+# platform's prepared Docker image, each producing its own full report (nupkg cost, first-call timing, footprint,
 # hosted-path cost). A shared GitHub runner is not a controlled machine, so this never gates qualification or
 # publication (see ci.yml's qualification-gate) and its A/A control can legitimately fail the noise-floor check on
 # a noisy runner; that is a report, not a build failure to chase.
@@ -29,12 +29,12 @@ jobs:
           cache-dependency-path: '**/*.csproj'
       - name: Build the baseline module
         shell: pwsh
-        run: ./scripts/Build-Workspace.ps1
+        run: ./scripts/Build-Workspace.ps1 -Configuration Release
       - name: Build the ReadyToRun candidate
         shell: pwsh
         run: |
-          $candidate = ./scripts/New-ReadyToRunCandidate.ps1
-          "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV
+          $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -CandidateRoot (Join-Path $env:RUNNER_TEMP ('quietcli-r2r-'+[guid]::NewGuid().ToString('N')))
+          "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV -Encoding utf8
       - name: Run the A/A-gated A/B cold-start comparison
         shell: pwsh
         env:
@@ -54,6 +54,17 @@ jobs:
           if (Get-ChildItem ./artifacts/coldstart/ab-*.json -ErrorAction SilentlyContinue) {
             ./scripts/Show-ColdStartReport.ps1
           }
+      - name: Export redacted failure diagnostics
+        if: failure()
+        shell: pwsh
+        run: ./scripts/Export-CiFailureDiagnostics.ps1 -OutputDirectory ./artifacts/ci-failure-readytorun
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: readytorun-windows-failure-${{ github.sha }}
+          path: artifacts/ci-failure-readytorun
+          if-no-files-found: warn
+          retention-days: 14
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -94,19 +105,20 @@ jobs:
           dotnet-version: 11.0.100-rc.3.26522.148
           cache: true
           cache-dependency-path: '**/*.csproj'
+      - uses: ./.github/actions/cache-resources
       - name: Verify monorepo source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Build the baseline module for every distribution
         shell: pwsh
-        run: ./scripts/Build-Workspace.ps1
+        run: ./scripts/Build-Workspace.ps1 -Configuration Release
       - name: Build the ReadyToRun candidate for this platform's RID
         shell: pwsh
         env:
           EXPECTED_RID: ${{ matrix.rid }}
         run: |
-          $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -RuntimeIdentifier $env:EXPECTED_RID
-          "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV
+          $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -RuntimeIdentifier $env:EXPECTED_RID -CandidateRoot (Join-Path $env:RUNNER_TEMP ('quietcli-r2r-'+[guid]::NewGuid().ToString('N')))
+          "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV -Encoding utf8
       - name: Run the A/A-gated A/B cold-start comparison inside the prepared platform image
         shell: pwsh
         env:
@@ -118,8 +130,12 @@ jobs:
           # cost) without failing the job on an unstable noise floor or an inconclusive/slower verdict — informational
           # evidence, not a gate, same policy as the Windows job above.
           try {
-            $image = ./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache
-            ./scripts/Invoke-ContainerColdStart.ps1 -Image $image.Image -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -Headless
+            $image = ./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -ContainerRuntime docker
+            $run = Join-Path $PWD.Path ('artifacts/coldstart-containers/'+$env:EXPECTED_RID)
+            [void][IO.Directory]::CreateDirectory($run)
+            ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot $PWD.Path -RunDirectory $run -Image $image.Image -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -ContainerRuntime docker
+            $summary=Get-Content (Join-Path $run summary.json) -Raw -Encoding utf8|ConvertFrom-Json
+            if($summary.State.State -ne 'Success'){Write-Warning ('Cold-start outcome: '+$summary.State.State+'; '+$summary.State.Error)}
           } catch {
             Write-Warning "ReadyToRun cold-start report did not complete cleanly: $_"
           }
@@ -131,6 +147,17 @@ jobs:
           if ($guest -and (Get-ChildItem (Join-Path $guest.FullName 'ab-*.json') -ErrorAction SilentlyContinue)) {
             ./scripts/Show-ColdStartReport.ps1 -ArtifactsDirectory $guest.FullName
           }
+      - name: Export redacted failure diagnostics
+        if: failure()
+        shell: pwsh
+        run: ./scripts/Export-CiFailureDiagnostics.ps1 -OutputDirectory ./artifacts/ci-failure-readytorun
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: readytorun-${{ matrix.rid }}-failure-${{ github.sha }}
+          path: artifacts/ci-failure-readytorun
+          if-no-files-found: warn
+          retention-days: 14
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

@@ -1,4 +1,3 @@
-# Objectif : Centraliser les architectures livrées et vérifier leurs véritables en-têtes binaires.
 function Get-QuietRuntimeTargets {
     <#
     .SYNOPSIS
@@ -29,6 +28,22 @@ function Get-QuietElfHeader {
         return [pscustomobject]@{Machine=[BitConverter]::ToUInt16($header,18);HasInterpreter=$interpreter}
     }finally{$reader.Dispose();$stream.Dispose()}
 }
+function Test-QuietReadyToRunImage {
+    <#
+    .SYNOPSIS
+    Checks the CLR native-header directory and ReadyToRun signature without loading the assembly.
+    .PARAMETER Path
+    Managed PE file to inspect.
+    #>
+    param([string]$Path)
+    $stream=[IO.File]::OpenRead($Path);$pe=[Reflection.PortableExecutable.PEReader]::new($stream)
+    try{
+        $header=$pe.PEHeaders.CorHeader
+        if(!$header -or $header.ManagedNativeHeaderDirectory.Size -lt 16){return $false}
+        $reader=$pe.GetSectionData($header.ManagedNativeHeaderDirectory.RelativeVirtualAddress).GetReader()
+        return $reader.ReadUInt32() -eq 0x00525452
+    }finally{$pe.Dispose();$stream.Dispose()}
+}
 function Assert-QuietRuntimePublication {
     <#
     .SYNOPSIS
@@ -39,7 +54,11 @@ function Assert-QuietRuntimePublication {
     Explicit catalogue entry.
     #>
     param([string]$Directory,$Target)
-    if((Get-QuietPeMachine (Join-Path $Directory 'QuietCli.Engine.dll')) -ne $Target.ManagedMachine){throw ('ManagedArchitectureMismatch: '+$Target.Rid)}
+    $assembly=Join-Path $Directory 'QuietCli.Engine.dll'
+    $machine=Get-QuietPeMachine $assembly
+    # ReadyToRun encodes Linux in the PE machine using the runtime's native OS override.
+    $expected=if($Target.NativeFormat -eq 'ELF' -and (Test-QuietReadyToRunImage $assembly)){$Target.ManagedMachine -bxor 0x7B79}else{$Target.ManagedMachine}
+    if($machine -ne $expected){throw ('ManagedArchitectureMismatch: '+$Target.Rid)}
     $apphost=Join-Path $Directory $Target.Apphost
     $machine=if($Target.NativeFormat -eq 'PE'){Get-QuietPeMachine $apphost}else{(Get-QuietElfHeader $apphost).Machine}
     if($machine -ne $Target.NativeMachine){throw ('ApphostArchitectureMismatch: '+$Target.Rid)}

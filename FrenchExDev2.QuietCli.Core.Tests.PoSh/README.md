@@ -4,6 +4,26 @@
 
 # FrenchExDev2.QuietCli.Core.Tests.PoSh
 
+## Test boundaries and local work branches
+
+Core mixes pure logic with real filesystem, Git, process and package integration. Local feature/fix commits and pushes do not require automatically running these companions. Known cases report TestKind/Dependencies and show their classification in progress; the remaining cases are Unclassified. The existing pure byte-count checks are independently selectable as `-Case 'unit byte-count*'`. Runner bootstrap/report I/O is separate from a pure case body. See [the commit-suite and PSDrive review](../docs/testing/commit-workspace.md) for the actual temporary repository effects, why TestDrive is not an in-memory filesystem, and the remaining separation work.
+
+## GitHub execution policy and Docker smoke
+
+The Core case `GitHub CI separates native containers, Docker fallback and workstation launchers`
+checks cache-availability combinations, shuffled targets, malformed references, native runner
+identities, terminal-state gates and targeted policy mutants. Its direct-entry fixture requires the
+worker to run in the caller's process and rejects a non-GitHub context before side effects. Adapter
+fixtures check Docker/Podman vectors for all four RIDs and the Core-to-consumer credential handoff.
+
+```powershell
+./FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-GitHubCiSmoke.ps1 -Image '<existing-linux-x64-toolchain-image-ID>'
+```
+
+This smoke opens the shared local monitor and runs the GitHub entry in a real Docker container,
+without pulling/building/publishing an image. It saves guest RID/runtime/PID and cleanup evidence.
+It exercises the focused import suite; it does not qualify hosted Windows/ARM or registry permissions.
+
 Module de tests indépendant du moteur. Dépend du module Core, jamais l’inverse.
 
 ## Production instruction and skill examples
@@ -193,3 +213,11 @@ On glibc x64 with Clang 14, the standalone fuzz executable is explicitly linked 
 ## Mandatory portable integration
 
 Core/All now requires the same fresh-import measurements, ten import diagnostic controls, and eight owned Git states provided by the focused `-Suite Integration`. Each fixture checks plain human status against the independent CI runner, then byte and NUL-text callbacks against literal porcelain expectations at two block sizes. The child imports Core only and rejects a loaded Git companion or nonempty registry. `scripts/Assert-CoreIntegrationEvidence.ps1` blocks missing/incomplete receipts. Fixtures and partial/final reports are kept below the actual run directory and uploaded by the existing Windows/Linux matrices. No local LLVM or VS Code checkout is required in CI. See [PERFORMANCES.md](../FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md) for comparisons, scenarios, seeds and bounds.
+## ReadyToRun qualification
+
+The Core case `ReadyToRun builds and loads the matching RID and CLR with portable fallbacks` checks all 64 build-target subsets, 1,152 CLR/RID routing properties, malformed manifests and PE input, and two routing mutants. When all six net10.0 targets were precompiled, it also prepares and validates one actual nupkg with all twelve R2R publications. These assertions do not imply that every platform executed locally.
+
+GitHub matrix rows build Release ReadyToRun for their tested RID. The Windows x64 packaging runner builds all six RIDs for CLR 10 and 11 and requires them before compression. Probe-GalleryInstall.ps1 independently checks the installed module's actual runtime/build RID against its selected slots. GalleryPreview retains bounded installation diagnostics on failure. The separate manual A/B benchmark remains informational.
+## Automation requirements as code
+
+The automation-contract cases cover Docker/Podman discovery, standard ShouldProcess classification, 128 generated script contracts, malformed contracts, 14 real no-effect previews, five workflow documentation drift forms, missing/tampered parser resources, 40 malformed YAML variants and two targeted mutants. Workflow diagrams are generated from actual job needs and checked for exact correspondence. The dedicated commit bridge fixtures reject bad staged workflow receipts or unsafe staged scripts even when the working copy is repaired, and verify explicit skip reporting plus unchanged HEAD/index under WhatIf. The broader existing commit campaign retains its eleven targeted mutations and disposable repositories. These targeted development campaigns do not substitute for full release qualification.

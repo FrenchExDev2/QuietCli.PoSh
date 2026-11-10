@@ -18,11 +18,33 @@ function Resolve-QuietManagedTarget {
     Selects a compatible build from the actual host CLR, independent of the PowerShell release channel.
     .PARAMETER RuntimeMajor
     Actual CLR major version; explicit values allow independent compatibility assertions.
+    .PARAMETER ModuleRoot
+    Module directory containing portable manifests and optional ReadyToRun slots.
+    .PARAMETER RuntimeIdentifier
+    Actual host RID. Explicit values support platform-selection regression tests.
     #>
-    param([int]$RuntimeMajor=[Environment]::Version.Major)
-    if($RuntimeMajor -ge 11){return @{Framework='net11.0';Directory='lib/engine'}}
-    if($RuntimeMajor -eq 10){return @{Framework='net10.0';Directory='lib/inprocess'}}
-    throw 'ManagedEngineRequiresNet10OrLater'
+    param([int]$RuntimeMajor=[Environment]::Version.Major,[string]$ModuleRoot=$script:QuietRoot,[string]$RuntimeIdentifier=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)
+    $target=if($RuntimeMajor -ge 11){@{Framework='net11.0';Directory='lib/engine'}}elseif($RuntimeMajor -eq 10){@{Framework='net10.0';Directory='lib/inprocess'}}else{throw 'ManagedEngineRequiresNet10OrLater'}
+    $portable=[IO.Path]::Combine($ModuleRoot,$target.Directory,'build-manifest.json')
+    if(![IO.File]::Exists($portable)){return $target}
+    $utf8=[Text.UTF8Encoding]::new($false,$true)
+    $manifest=[Text.Json.JsonDocument]::Parse([IO.File]::ReadAllTextAsync($portable,$utf8).GetAwaiter().GetResult())
+    $selected=$false
+    try{
+        $slots=[Text.Json.JsonElement]::new()
+        if($manifest.RootElement.TryGetProperty('ReadyToRunTargets',[ref]$slots)){
+            foreach($slot in $slots.EnumerateArray()){if($slot.GetString() -ceq $RuntimeIdentifier){$selected=$true}}
+        }
+    }finally{$manifest.Dispose()}
+    if(!$selected){return $target}
+    if($RuntimeIdentifier -cnotmatch '^(win|linux|linux-musl)-(x64|arm64)\z'){throw 'ManagedEngineRuntimeIdentifierInvalid'}
+    $directory=$target.Directory+'/'+$RuntimeIdentifier
+    $manifest=[Text.Json.JsonDocument]::Parse([IO.File]::ReadAllTextAsync([IO.Path]::Combine($ModuleRoot,$directory,'build-manifest.json'),$utf8).GetAwaiter().GetResult())
+    try{
+        if(!$manifest.RootElement.GetProperty('ReadyToRun').GetBoolean() -or $manifest.RootElement.GetProperty('RuntimeIdentifier').GetString() -cne $RuntimeIdentifier){throw 'ManagedEngineReadyToRunTargetMismatch'}
+    }finally{$manifest.Dispose()}
+    $target.Directory=$directory
+    return $target
 }
 function Import-QuietManagedEngine {
     <#

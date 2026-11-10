@@ -12,7 +12,7 @@
 
 - **Native execution:** process startup, streamed stdout/stderr, stdin, cancellation, timeouts and terminal transports.
 - **Business callbacks:** `-Output` accumulates caller-local data; `-Complete` returns the business result.
-- **Business events:** `$runtime.Emit(...)` collects ordered `Events` and notifies per-call `-Listeners`; `-UI` exposes explicit live presentation lanes.
+- **Business events:** `$runtime.Emit(...)` notifies per-call `-Listeners`; explicit `-CollectEvents` retains ordered events and adds an `Events` snapshot to the result. Default invocations retain none. `-UI` exposes explicit live presentation lanes.
 - **Explicit results:** `Outcome`, `Execution`, `Completeness` and errors distinguish success from incomplete or failed work.
 - **Controlled delivery:** local objects with `-AsObject`, or bounded JSON/YAML views with measured delivery sizes.
 - **Reusable analysis:** script generation, handler registration, companion-module scaffolding and opt-in Recall evidence.
@@ -164,11 +164,11 @@ Native streams are consumed once through bounded buffers. Without explicit Recal
 
 ## Hosting, runtime and transports
 
-`Auto` selects the integrated `lib/inprocess` net10.0 build on CLR 10 and the compatible net11.0 build on CLR 11+. Never load the .NET 11 assembly into CLR 10. YAML `engine.hosting` selects `Auto`, `InProcess` or isolated `Process`; close the owned session with `Stop-QuietEngine` before changing modes. `Get-QuietEngine` reports the actual mode, runtime, process identity and transport counters.
+`Auto` selects the integrated net10.0 build under `lib/inprocess` on CLR 10 and net11.0 under `lib/engine` on CLR 11+. When the current build manifest selects a ReadyToRun slot for the actual RID, the loader verifies and loads that RID child directory; otherwise it uses portable IL. Never load the .NET 11 assembly into CLR 10. YAML `engine.hosting` selects `Auto`, `InProcess` or isolated `Process`; close the owned session with `Stop-QuietEngine` before changing modes. `Get-QuietEngine` reports the actual mode, runtime, process identity and transport counters.
 
 Integrated hosting keeps native reads, lifecycle controls, callbacks and business data in the caller, without pipe IPC. It shares PowerShell's failure boundary: disposal cancels owned native processes but cannot forcibly unload or terminate code inside the host. `Process` provides engine-process isolation. `New-QuietByteRecordFramer` supplies bounded compiled byte framing locally in either mode; `TextStreamState` handles strict incremental text decoding and framing.
 
-The six architecture-specific publications under `lib/engine/<RID>` serve isolated execution. Their PE/ELF apphosts and assemblies match the selected architecture. Packages include SQLite and static Linux PTY bridges; the engine verifies and copies its Linux bridge into a private executable directory, leaving the installed module unchanged. These are framework-dependent builds, not NativeAOT.
+The six architecture-specific publications under `lib/engine/<RID>` serve isolated execution and CLR 11 integrated ReadyToRun hosting when selected. Their PE/ELF apphosts and assemblies match the selected architecture. GitHub packages also contain six net10.0 ReadyToRun slots under `lib/inprocess/<RID>`. Packages include SQLite and static Linux PTY bridges; the engine verifies and copies its Linux bridge into a private executable directory, leaving the installed module unchanged. These are framework-dependent builds; ReadyToRun retains IL and can still use JIT.
 
 The callback runtime exposes `Request`, `Data`, `State`, `Execution`, `Children`, identifiers and `WriteBytes`, `WriteText`, `CompleteInput`, `ReadEvent`, `Resize`, `Cancel`. Pipes distinguish stdout/stderr; PTY merges output into `TerminalBytesRead`, with separate stream counts unknown. Windows uses ConPTY; Linux uses the verified bridge. Ending terminal input is not a pipe half-close.
 
@@ -183,7 +183,7 @@ Nested calls inherit the measurement context and return an object by default; th
 The live viewport remeasures its width and height on each draw, even when lane data has not changed.
 It clips paths and messages at Unicode text-element boundaries, strips terminal controls, compacts
 the project/task heading in narrow windows and reduces visible lane history to the available height.
-These presentation limits do not truncate the invocation's collected business events.
+These presentation limits do not truncate business events explicitly retained with `-CollectEvents`. Collection is local to each invocation and does not propagate to nested calls. JSON/YAML delivery includes `Events` only when requested and applies the normal delivery budgets.
 
 ## Configuration
 

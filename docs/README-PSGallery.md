@@ -1,5 +1,20 @@
 # Installing QuietCli from PSGallery
 
+## GitHub publication
+
+An applicable `develop` push prepares an automatic prerelease after `All` qualification for that exact
+source revision. Windows x64 rebuilds all six embedded RIDs in Release ReadyToRun for CLR 10 and 11,
+verifies the Windows build, and prepares one public `QuietCli` nupkg with `-RequireReadyToRun`.
+There is no separate Gallery package per RID. Native Linux matrix tests and Docker fallback qualify
+the source revision; the final package is rebuilt on Windows, not assembled from matrix artifacts.
+
+The publish job downloads the prepared nupkg, verifies its recorded hash, version and qualified
+checkpoint, then uses `Publish-PSResource -NupkgPath` with the `psgallery` environment secret.
+Every qualified checkpoint may publish its unique prerelease even if develop has advanced.
+Stable publication remains manual with an exact version. The manual ReadyToRun A/B benchmark
+is informational and never blocks develop publication. See the diagrams and platform details in
+[the CI execution model](ci/execution-model.md).
+
 The public PowerShell module and Gallery package are named `QuietCli`; they provide Core. `FrenchExDev2.QuietCli.Core.PoSh` is the internal source project name, not a public package. The Git example and test companion modules are not published.
 
 ## Installation

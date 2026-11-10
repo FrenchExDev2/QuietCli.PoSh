@@ -1,3 +1,4 @@
+#Objective: PSProfiler integration: runs a script block under the pinned Profiler module and exports the hottest lines and functions.
 #requires -Version 7.6
 <#
 .SYNOPSIS

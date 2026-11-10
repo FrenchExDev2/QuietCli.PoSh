@@ -12,7 +12,7 @@ repository has already been created by that run.
 
 ## Usage
 
-Parameters (no `[CmdletBinding()]`, no mandatory attributes on any parameter despite all four being
+Parameters (standard ShouldProcess binding, no mandatory attributes on any parameter despite all four being
 functionally required):
 - `-WorkspaceRoot` (string) — local monorepo.
 - `-RunDirectory` (string) — completed integration run containing its owned bulk fixture.
@@ -59,3 +59,13 @@ Fit for purpose, with genuinely careful cross-checks between the profiled target
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Runs separate PowerShell line profiling and real CLR EventPipe collectors for every owned target PID.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

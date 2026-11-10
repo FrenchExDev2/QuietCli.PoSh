@@ -1,5 +1,5 @@
+#Objective: Detect, plan and provision an independently bootstrappable development workstation.
 #requires -Version 7.6
-# Objective: Detect, plan and provision an independently bootstrappable development workstation.
 . (Join-Path $PSScriptRoot '../Ci.Process.ps1')
 
 function Get-DevelopmentHost {

@@ -68,6 +68,42 @@ function Invoke-QuietGalleryPreviewTests {
     $cases['preview identities have deterministic ordering, uniqueness and strict generated boundaries']={
         Test-QuietPreviewVersionProperties -Create (Get-Command New-QuietGalleryPreviewVersion)
     }
+    $cases['qualified preview checkpoints remain publishable when develop advances']={
+        $directory=Join-Path $previewRoot 'checkpoint';[void][IO.Directory]::CreateDirectory($directory)
+        $script=Join-Path $WorkspaceRoot 'scripts/Assert-GalleryCheckpoint.ps1'
+        $revision='a'*40;$version='0.2.0-preview00000042a0001'
+        $preview=@{SourceRevision=$revision;QualifiedRevision=$revision;Version=$version}
+        Write-WorkspaceJson (Join-Path $directory preview.json) $preview
+        Write-WorkspaceJson (Join-Path $directory package-set.json) @{Version=$version}
+        $previous=$env:GITHUB_SHA
+        try{
+            foreach($index in 1..64){
+                $env:GITHUB_SHA=('{0:x40}' -f $index)
+                $result=& $script -PackageDirectory $directory -QualifiedRevision $revision -Version $version
+                if($result.State -cne 'CheckpointValidated' -or $result.BranchHeadQueried -or $result.QualifiedRevision -cne $revision){throw 'QualifiedCheckpointDependsOnCurrentBranchHead'}
+            }
+        }finally{$env:GITHUB_SHA=$previous}
+        foreach($field in @('SourceRevision','QualifiedRevision','Version')){
+            $damaged=$preview.Clone();$damaged[$field]='mismatch'
+            Write-WorkspaceJson (Join-Path $directory preview.json) $damaged
+            $rejected=$false;try{$null=& $script -PackageDirectory $directory -QualifiedRevision $revision -Version $version}catch{$rejected=$true}
+            if(!$rejected){throw 'WrongGalleryCheckpointAccepted'}
+        }
+        foreach($bad in @('[]','[{},{}]','null','{"broken":')){
+            [void][IO.File]::WriteAllTextAsync((Join-Path $directory preview.json),$bad,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+            $rejected=$false;try{$null=& $script -PackageDirectory $directory -QualifiedRevision $revision -Version $version}catch{$rejected=$true}
+            if(!$rejected){throw 'MalformedGalleryCheckpointAccepted'}
+        }
+        Write-WorkspaceJson (Join-Path $directory preview.json) $preview
+        $source=[IO.File]::ReadAllText($script,[Text.Encoding]::UTF8)
+        $mutant=[scriptblock]::Create($source.Replace("if(`$preview.SourceRevision -cne `$QualifiedRevision -or `$preview.QualifiedRevision -cne `$QualifiedRevision)",'if($false)'))
+        $damaged=$preview.Clone();$damaged.SourceRevision='b'*40;Write-WorkspaceJson (Join-Path $directory preview.json) $damaged
+        $accepted=$false;try{$null=& $mutant -PackageDirectory $directory -QualifiedRevision $revision -Version $version;$accepted=$true}catch{}
+        if(!$accepted){throw 'GalleryCheckpointInvalidMutant'}
+        $workflow=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/publish-psgallery.yml'),[Text.Encoding]::UTF8)
+        if($workflow.Contains('/git/ref/heads/develop') -or $workflow.Contains('steps.current.outputs.allowed') -or !$workflow.Contains('Assert-GalleryCheckpoint.ps1')){throw 'GalleryPublicationStillDependsOnCurrentHead'}
+        Write-WorkspaceJson (Join-Path $directory campaign.json) @{BranchAdvanceProperties=64;DamagedFields=3;MalformedMetadata=4;MutantsKilled=1;ExternalPublication=$false}
+    }
     $cases['staged labels preserve numeric version, GUID, Unicode metadata and source bytes']={
         $directory=Join-Path $previewRoot 'manifest';[void][IO.Directory]::CreateDirectory($directory)
         $path=Join-Path $directory 'Sample.psd1';$module=Join-Path $directory 'Sample.psm1'
@@ -122,13 +158,16 @@ function Invoke-QuietGalleryPreviewTests {
     }
     $cases['prepared previews import and execute from an isolated installation']={
         $probe=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/Probe-GalleryInstall.ps1'
-        $capture=@{Report=$null}
+        $capture=@{Report=$null;Lines=[Collections.Generic.Queue[object]]::new()}
         $execution=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -WorkingDirectory $WorkspaceRoot -ArgumentList @('-NoProfile','-File',$probe,'-PackageDirectory',(Join-Path $previewRoot 'packages'),'-InstallationDirectory',(Join-Path $previewRoot 'installed')) -State $capture -OnOutput {
             param($line,$data)
+            if($data.Lines.Count -ge 16){$null=$data.Lines.Dequeue()}
+            $data.Lines.Enqueue(@{Stream=$line.Stream;Text=$line.Text.Substring(0,[Math]::Min(2048,$line.Text.Length))})
             if($line.Stream -eq 'stdout' -and $line.Text.StartsWith('{')){$data.Report=$line.Text|ConvertFrom-Json}
         }
         $expected=Get-Content -LiteralPath (Join-Path $previewRoot 'packages/package-set.json') -Raw -Encoding utf8|ConvertFrom-Json
-        if($execution.Outcome -cne 'Success' -or $capture.Report.ModuleName -cne 'QuietCli' -or !$capture.Report.GeneratedScript -or $capture.Report.ScaffoldDependency -cne 'QuietCli' -or $capture.Report.GitModuleLoaded -or $capture.Report.NativeExecution -cne 'Success' -or !$capture.Report.Installed -or $capture.Report.PackageVersion -cne $expected.Version){throw 'PreviewInstallationFailed'}
+        Write-WorkspaceJson (Join-Path $RunDirectory 'gallery-install-diagnostics.json') @{Outcome=$execution.Outcome;ExitCode=$execution.ExitCode;Lines=@($capture.Lines);Report=$capture.Report}
+        if($execution.Outcome -cne 'Success' -or $capture.Report.ModuleName -cne 'QuietCli' -or !$capture.Report.GeneratedScript -or $capture.Report.ScaffoldDependency -cne 'QuietCli' -or $capture.Report.GitModuleLoaded -or $capture.Report.NativeExecution -cne 'Success' -or !$capture.Report.Installed -or $capture.Report.PackageVersion -cne $expected.Version){throw ('PreviewInstallationFailed: '+((@($capture.Lines)|ConvertTo-Json -Compress -Depth 3)))}
     }
     $cases['publication uses the validated artifacts in Core-only scope without real credentials or network']={
         $previewPublicationCalls=[Collections.Generic.List[string]]::new()

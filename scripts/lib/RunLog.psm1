@@ -1,3 +1,4 @@
+#Objective: Leveled logging with named counters for the run-profile tooling.
 #requires -Version 7.6
 <#
 .SYNOPSIS

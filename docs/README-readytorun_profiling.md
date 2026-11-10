@@ -7,6 +7,11 @@ walkthrough on top of it.
 
 ## Why ReadyToRun is being profiled here
 
+The main GitHub qualification and Gallery package builds now explicitly enable ReadyToRun.
+This manual benchmark remains a separate IL-versus-R2R experiment, runs only on demand,
+and never gates develop delivery. Linux transport explicitly uses Docker on GitHub; local
+callers can select Docker or Podman. See [the CI execution model](ci/execution-model.md).
+
 A plain IL build pays a JIT-compilation cost the first time each method runs in a process. `PublishReadyToRun=true`
 precompiles the engine's native code ahead of time, so that cost should shrink or disappear — but only for the
 **first** call in a process; once the JIT has warmed up, R2R and IL converge. The gate measures exactly that shape
@@ -17,7 +22,7 @@ of effect, instead of assuming it.
 `-CandidateModule` must point at an already-built module manifest; the gate only orchestrates measurement, it does
 not build anything. `scripts/New-ReadyToRunCandidate.ps1` builds that candidate as a **separate copy**, never
 overwriting the baseline module you want to compare against — the gate needs both to exist side by side. It copies
-`global.json` and the Core module into a throwaway directory, then republishes only that copy's engine project
+`global.json`, `Directory.Packages.props` and the Core module into a new owned directory, then republishes only that copy's net10.0 engine project into `lib/inprocess/<rid>`
 with `-p:PublishReadyToRun=true` (the only difference from a normal publish, which is why the A/B comparison
 isolates exactly the effect ReadyToRun has), recording the build's input hashes and configuration next to the
 output the same way `./scripts/Build-Workspace.ps1` does. From
@@ -25,7 +30,7 @@ output the same way `./scripts/Build-Workspace.ps1` does. From
 (`./scripts/Build-Workspace.ps1`, left in place and untouched):
 
 ```powershell
-$candidate = ./scripts/New-ReadyToRunCandidate.ps1
+$candidate = ./scripts/New-ReadyToRunCandidate.ps1 -CandidateRoot (Join-Path $env:TEMP ('quietcli-r2r-'+[guid]::NewGuid().ToString('N')))
 ```
 
 Pass `-RuntimeIdentifier linux-x64` (or the matching Linux RID) on a Linux machine; it otherwise defaults to this
@@ -84,7 +89,7 @@ Each `ab-*.json` file has four top-level sections:
   candidate is expected to be **larger** on disk even when it is faster to start. A timing win that ignores a
   large footprint increase is an incomplete comparison — check both. `BaselineHostedBytes`/`CandidateHostedBytes`/
   `HostedDifferenceBytes` narrow that to only the engine files on the hosting path this process actually loads —
-  `lib/inprocess` on CLR10, or `lib/engine/<RuntimeIdentifier>` on CLR11+ (Auto hosting) — so the bundled-but-unused
+  the actual CLR/RID slot selected by the build manifest (or its portable IL fallback) — so the bundled-but-unused
   RIDs that inflate `*Bytes` do not also inflate the number you'd use to judge the candidate's real deployed cost.
   With `-MeasurePackageSize` (see above), `BaselinePackageBytes`/`CandidatePackageBytes`/`PackageDifferenceBytes`
   add the actual `.nupkg` size `Compress-PSResource` would publish — the number a PSGallery install actually

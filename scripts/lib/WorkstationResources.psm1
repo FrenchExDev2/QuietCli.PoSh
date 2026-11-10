@@ -1,5 +1,5 @@
+#Objective: Track owned temporary workstations and release only their inactive resources.
 #requires -Version 7.6
-# Objective: Track owned temporary workstations and release only their inactive resources.
 . (Join-Path $PSScriptRoot '../Ci.Process.ps1')
 
 function Write-WorkstationOwnership {

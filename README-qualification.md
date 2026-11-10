@@ -8,6 +8,10 @@ Qualification combines independent examples, generated properties, malformed-inp
 
 Run from the monorepo root in PowerShell Core 7.6+, with the pinned SDK and existing native prerequisites. Builds and tests do not publish packages.
 
+Local feature/fix-branch commits and pushes do not require running the companion suites. Commit-Workspace checks source/documentation contracts and the source lock; it never launches companions. Ask before starting a full local campaign unless explicitly requested. GitHub workflows perform the qualification for their PR/develop/release scope. A cancelled or filtered local run does not prevent creating a work-branch checkpoint and never counts as qualification.
+
+Core mixes pure logic, filesystem integration, native processes and qualification campaigns. The special Integration suite selects the import/performance workload; it is not a filter for every integration test. Known case reports expose TestKind/Dependencies; unreviewed cases remain Unclassified. [Commit-suite boundaries and PSDrive feasibility](docs/testing/commit-workspace.md) explain the physical temporary repositories and the separation available for fast unit logic.
+
 ```powershell
 ./scripts/Initialize-Workspace.ps1 -Restore
 ./scripts/Build-Workspace.ps1
@@ -29,7 +33,7 @@ Run from the monorepo root in PowerShell Core 7.6+, with the pinned SDK and exis
 | `RunProfiles`, `RunProfilesMutation` | Complete profiling-tooling suite or its entire targeted mutation catalogue. |
 | `GalleryPreview` | Preview-version properties, malformed inputs, staged manifests, offline package installation and targeted mutations. |
 
-For example, `./scripts/Invoke-WorkspaceCi.ps1 -Suite RecallMutation -SkipBuild` selects one campaign. Use `-TimeoutSeconds 1800` for `RecallLarge`, `600` for `RunProfiles`, and `3300` for `RunProfilesMutation`. Focused campaigns supplement the full run. `-Case <wildcard>` and `-StopOnFirstFailure` are Core development controls: their partial/incomplete results never satisfy the pre-commit or qualification gate.
+For example, `./scripts/Invoke-WorkspaceCi.ps1 -Suite RecallMutation -SkipBuild` selects one campaign. Use `-TimeoutSeconds 1800` for `RecallLarge`, `600` for `RunProfiles`, and `3300` for `RunProfilesMutation`. Focused campaigns supplement the full run. `-Case <wildcard>` and `-StopOnFirstFailure` are Core development controls: their partial/incomplete results never satisfy a CI or publication qualification gate. They are not mandatory before a local work-branch commit.
 
 Recall also provides `Compare-QuietRecallAnalysis` (independent analysis states and projected differences), `Export-QuietRecallFixture` (capture plus a skeleton requiring independent expectations), and `Reduce-QuietRecall` (bounded failure-preserving reduction, without a global-minimality claim). See the [Recall contract](docs/README-recall.md).
 

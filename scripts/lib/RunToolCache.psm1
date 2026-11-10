@@ -1,3 +1,4 @@
+#Objective: Returns the two checksum-pinned diagnostic packages and their required entrypoints.
 #requires -Version 7.6
 Import-Module (Join-Path $PSScriptRoot 'RunEncoding.psm1')
 

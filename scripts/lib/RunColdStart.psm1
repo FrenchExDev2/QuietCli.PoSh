@@ -1,3 +1,4 @@
+#Objective: Validates the three invariant-culture, finite, nonnegative durations returned by a measurement child.
 #requires -Version 7.6
 function ConvertFrom-RunColdSample {
     <#
@@ -41,23 +42,27 @@ function Get-RunModuleHostedPathBytes {
     On-disk size, in bytes, of only the engine files on the hosting path this process actually loads.
     .DESCRIPTION
     Get-RunModuleFootprintBytes sums the whole module directory, including every bundled RID whether or not it
-    is used; this isolates just the lib/inprocess (CLR10, Auto hosting) or lib/engine/<RuntimeIdentifier>
-    (CLR11+) directory, so a ReadyToRun build's active cost can be compared without the other RIDs' dead weight.
+    is used; this isolates the actual CLR/RID slot selected by Protocol.ps1, excluding unused RID directories.
     .PARAMETER ManifestPath
     Path to the module's .psd1 manifest.
     .PARAMETER RuntimeIdentifier
-    RID folder to check under lib/engine on CLR11+; ignored on CLR10, which always hosts from lib/inprocess.
+    RID used to select a matching ReadyToRun slot or the portable fallback for the actual CLR.
     Defaults to this process's own RID.
     #>
     param([Parameter(Mandatory)][string]$ManifestPath, [string]$RuntimeIdentifier = [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)
     $root = Split-Path -Parent ([IO.Path]::GetFullPath($ManifestPath))
-    $hosted = if ($PSVersionTable.PSVersion.Major -ge 11) {
-        Join-Path $root "lib/engine/$RuntimeIdentifier"
-    }
-    else { Join-Path $root 'lib/inprocess' }
+    $protocol=Join-Path $root 'src/Protocol.ps1'
+    if(Test-Path -LiteralPath $protocol){
+        . $protocol
+        $target=Resolve-QuietManagedTarget -ModuleRoot $root -RuntimeIdentifier $RuntimeIdentifier
+        $hosted=Join-Path $root $target.Directory
+    }else{$hosted=Join-Path $root $(if([Environment]::Version.Major -ge 11){'lib/engine'}else{'lib/inprocess'})}
     if (-not (Test-Path -LiteralPath $hosted -PathType Container)) { throw "RunModuleHostedPathMissing: $hosted" }
     $total = 0L
-    foreach ($file in [IO.Directory]::EnumerateFiles($hosted, '*', [IO.SearchOption]::AllDirectories)) { $total += [IO.FileInfo]::new($file).Length }
+    foreach ($file in [IO.Directory]::EnumerateFiles($hosted, '*', [IO.SearchOption]::AllDirectories)) {
+        if([IO.Path]::GetRelativePath($hosted,$file) -cmatch '^(win|linux|linux-musl)-(x64|arm64)[\\/]'){continue}
+        $total += [IO.FileInfo]::new($file).Length
+    }
     return $total
 }
 

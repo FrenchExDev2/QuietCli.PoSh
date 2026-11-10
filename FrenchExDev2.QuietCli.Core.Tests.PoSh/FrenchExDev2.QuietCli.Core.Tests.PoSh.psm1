@@ -5,6 +5,10 @@
 . (Join-Path $PSScriptRoot 'Recall.Tools.ps1')
 . (Join-Path $PSScriptRoot 'Recall.Tests.ps1')
 . (Join-Path $PSScriptRoot 'ReportPaths.Tests.ps1')
+. (Join-Path $PSScriptRoot 'CiDiagnostics.Tests.ps1')
+. (Join-Path $PSScriptRoot 'GitHubCi.Tests.ps1')
+. (Join-Path $PSScriptRoot 'ReadyToRun.Tests.ps1')
+. (Join-Path $PSScriptRoot 'AutomationContracts.Tests.ps1')
 . (Join-Path $PSScriptRoot 'DevelopmentWorkstation.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Emit.Tests.ps1')
 . (Join-Path $PSScriptRoot 'WorkspaceProjects.Tests.ps1')
@@ -80,7 +84,8 @@ Executes independent native byte and object invariants in a companion module.
     $galleryEvidence=[Collections.Generic.List[object]]::new()
     $testScope=@{TtyExcluded=0}
     $cases=[ordered]@{}
-    $cases['native Emit listeners preserve Unicode order and bounded JSON/YAML deliveries']={Test-QuietEmitListeners -WorkspaceRoot $WorkspaceRoot}
+    $cases['unit byte-count parsing validates sizes without filesystem or process effects']={Test-QuietByteCountParsing}
+    $cases['native Emit listeners preserve Unicode order and bounded JSON/YAML deliveries']={Test-QuietEmitListeners -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['workspace project discovery keeps suite modes and package publication policy separate']={Test-QuietWorkspaceProjects -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['commit workspace documentation gates, script/doc drift and the -WhatIf/commit-once/no-remote contract']={Test-QuietCommitWorkspace -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['container runtime diagnosis separates image bootstrap from ABI and RID selection']={Test-QuietRuntimeDiagnosis -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
@@ -199,10 +204,31 @@ Executes independent native byte and object invariants in a companion module.
     $cases['compiled framing and direct engine measure local overhead independently']={
         foreach($sample in Measure-QuietLocalOverhead -Fixture $fixture -Dotnet $dotnet){$performance.Add($sample)}
     }
+    $cases['CI failure diagnostics preserve redaction bounds and explicit local workflow selection']={Test-QuietCiDiagnostics -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['GitHub CI separates native containers, Docker fallback and workstation launchers']={Test-QuietGitHubCi -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['ReadyToRun builds and loads the matching RID and CLR with portable fallbacks']={Test-QuietReadyToRun -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['automation contracts require available runtimes accurate workflow graphs and safe previews']={Test-QuietAutomationContracts -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['automation report streaming preserves Unicode fragments and bounded diagnostic tails']={Test-QuietReportStreaming -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['automation objective comments are inert and library loading stays silent']={Test-QuietObjectiveOutput -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['automation resource and script review gates inspect the prepared index']={Test-QuietResourceCommitChecks -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['explicit event collection compiled properties and targeted mutations']={
+        . (Join-Path $PSScriptRoot ConfigurationDelivery.Mutation.ps1)
+        $result=Invoke-QuietConfigurationDeliveryEngine -WorkspaceRoot $WorkspaceRoot -RunDirectory (Join-Path $RunDirectory event-collection) -Mutation -MutationName @('emit-events-not-recorded','emit-unrequested-recording') -OnProgress {param($name,$state,$passed,$failed)Write-Host ('Mutation: '+$name+'; state='+$state+'; assertions='+$passed+'; failures='+$failed)}
+        Write-WorkspaceJson (Join-Path $RunDirectory event-collection/campaign.json) $result
+        if($result.Failed){throw 'ExplicitEventCollectionMutationFailed'}
+    }
+    $cases['automation commit pipeline checks staged workflow and preview contracts']={Test-QuietAutomationCommitChecks -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['CI process execution is independent and preserves streams failures stdin and deadlines']={
         . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
         $state=@{stdout='';stderr=''}
         $r=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-Command','[Console]::Out.Write("sortie-é"); [Console]::Error.Write("diagnostic-λ"); exit 7') -State $state -OnOutput {param($e,$s)$s[$e.Stream]+=$e.Text}
+        if($state.stdout -cne 'sortie-é' -or $state.stderr -cne 'diagnostic-λ'){
+            $probe=@{Json=[Text.StringBuilder]::new()}
+            $probeResult=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-Command','ConvertTo-Json -Compress -InputObject @{PowerShell=$PSVersionTable.PSVersion.ToString();Runtime=[Environment]::Version.ToString();OutputCodePage=[Console]::OutputEncoding.CodePage;InputCodePage=[Console]::InputEncoding.CodePage;OutputPreambleHex=[Convert]::ToHexString([Console]::OutputEncoding.GetPreamble());FixtureHex=[Convert]::ToHexString([Console]::OutputEncoding.GetBytes("sortie-é"))}') -State $probe -OnOutput {param($e,$s)if($e.Stream -eq 'stdout' -and $s.Json.Length -lt 2048){[void]$s.Json.Append($e.Text)}}
+            $diagnostic=@{Runner=(Get-Command pwsh -CommandType Application).Source;ParentPowerShell=$PSVersionTable.PSVersion.ToString();ParentOutputCodePage=[Console]::OutputEncoding.CodePage;ReaderCodePage=65001;ProbeOutcome=$probeResult.Outcome;Child=$probe.Json.ToString();Stdout=$state.stdout;Stderr=$state.stderr;DecodedStdoutUtf8Hex=[Convert]::ToHexString([Text.Encoding]::UTF8.GetBytes($state.stdout));DecodedStderrUtf8Hex=[Convert]::ToHexString([Text.Encoding]::UTF8.GetBytes($state.stderr));ExpectedStdout='sortie-é';ExpectedStderr='diagnostic-λ';NativeExitCode=$r.ExitCode}
+            Write-WorkspaceJson (Join-Path $RunDirectory 'ci-process-encoding-diagnostics.json') $diagnostic
+            Write-Host ('CI encoding diagnostic: '+($diagnostic|ConvertTo-Json -Depth 4 -Compress))
+        }
         Assert-QuietEqual $r.Outcome Failed
         Assert-QuietEqual $r.ExitCode 7
         Assert-QuietEqual $state.stdout 'sortie-é'
@@ -212,6 +238,10 @@ Executes independent native byte and object invariants in a companion module.
         Assert-QuietEqual $r.Outcome Success
         Assert-QuietEqual $state.Text 'ci-stdin-sentinel'
         if(($r|ConvertTo-Json -Compress) -like '*ci-stdin-sentinel*'){throw 'CI process metadata exposed stdin'}
+        $raw=@{Hex=''}
+        $r=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-Command','$memory=[IO.MemoryStream]::new(); [void][Console]::OpenStandardInput().CopyToAsync($memory).GetAwaiter().GetResult(); [Console]::Out.Write([Convert]::ToHexString($memory.ToArray())); $memory.Dispose()') -InputText 'é' -State $raw -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){$s.Hex+=$e.Text}}
+        Assert-QuietEqual $r.Outcome Success
+        Assert-QuietEqual $raw.Hex 'C3A9' 'CI stdin must preserve UTF-8 bytes without a BOM prefix'
         $r=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-Command','[Threading.Tasks.Task]::Delay(30000).GetAwaiter().GetResult()') -TimeoutSeconds 1 -OnOutput {param($e,$s)}
         Assert-QuietEqual $r.Outcome Timeout
     }
@@ -700,6 +730,17 @@ Executes independent native byte and object invariants in a companion module.
         Assert-QuietEqual $r.Data.PackageVersion '0.2.0-preview'
         $galleryEvidence.Add(@{Packages=$prepared.Packages;Targets=$prepared.Targets;Installation=$r.Data;ExternalPublication=$false})
     }
+    $caseMetadata=@{
+        'unit byte-count parsing validates sizes without filesystem or process effects'=@{TestKind='Unit';Dependencies=@()}
+        'commit workspace documentation gates, script/doc drift and the -WhatIf/commit-once/no-remote contract'=@{TestKind='Integration';Dependencies=@('FileSystem','GitProcess')}
+        'automation commit pipeline checks staged workflow and preview contracts'=@{TestKind='Integration';Dependencies=@('FileSystem','GitProcess')}
+        'automation resource and script review gates inspect the prepared index'=@{TestKind='Integration';Dependencies=@('FileSystem','GitProcess')}
+        'automation contracts require available runtimes accurate workflow graphs and safe previews'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'automation report streaming preserves Unicode fragments and bounded diagnostic tails'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'automation objective comments are inert and library loading stays silent'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'native Emit listeners preserve Unicode order and bounded JSON/YAML deliveries'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'explicit event collection compiled properties and targeted mutations'=@{TestKind='Integration';Dependencies=@('FileSystem','DotNetBuild','NativeProcess')}
+    }
     $passed=0;$failed=0;$results=[Collections.Generic.List[object]]::new()
     # Development-only selection (QUIETCLI_TEST_CASE wildcard, QUIETCLI_TEST_STOP_ON_FIRST_FAILURE=1); the default run executes every case.
     $casePattern=$env:QUIETCLI_TEST_CASE;$stopOnFirst=$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE -ceq '1'
@@ -707,10 +748,13 @@ Executes independent native byte and object invariants in a companion module.
     foreach($entry in $cases.GetEnumerator()){
         if($env:QUIETCLI_TEST_SKIP_TTY -ceq '1' -and $entry.Key -clike 'PTY *'){$ttyExcluded++;continue}
         if($stoppedAt -or ($casePattern -and $entry.Key -notlike $casePattern)){$skipped++;continue}
+        $metadata=if($caseMetadata.ContainsKey($entry.Key)){$caseMetadata[$entry.Key]}else{@{TestKind='Unclassified';Dependencies=@()}}
+        $progressName='['+$metadata.TestKind+'] '+$entry.Key
+        if($OnProgress){& $OnProgress $progressName 'Running' $passed $failed}
         $failure=$null
         try{$null=& $entry.Value;$passed++;$state='Passed'}catch{$failed++;$state='Failed';$failure=$_.Exception.Message}
-        $results.Add([pscustomobject]@{Name=$entry.Key;State=$state;Error=$failure})
-        if($OnProgress){& $OnProgress $entry.Key $state $passed $failed}
+        $results.Add([pscustomobject]@{Name=$entry.Key;State=$state;Error=$failure;TestKind=$metadata.TestKind;Dependencies=@($metadata.Dependencies)})
+        if($OnProgress){& $OnProgress $progressName $state $passed $failed}
         if($state -eq 'Failed' -and $stopOnFirst){$stoppedAt="stopped at case $($passed+$failed) of $($cases.Count)"}
     }
     [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Partial=[bool]$casePattern;Incomplete=[bool]$stoppedAt;StoppedAt=$stoppedAt;Skipped=$skipped;TtyExcluded=($ttyExcluded+$testScope.TtyExcluded);Cases=$results.ToArray();Performance=$performance.ToArray();Gallery=$galleryEvidence.ToArray();Integration=$integration.ToArray()}

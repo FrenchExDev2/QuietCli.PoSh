@@ -1,15 +1,12 @@
-# Objectif : Créer explicitement un commit cohérent du monorepo, sans pousser.
 #requires -Version 7.6
 <#
 .SYNOPSIS
 Commits the monorepo once, either staging all changes or preserving a prepared index; never pushes.
 .DESCRIPTION
-Before staging, runs this ecosystem's own documentation-sync gates - scripts/README coverage
-(Sync-ScriptsReadme.ps1), docs credits blocks (Sync-DocsCredits.ps1) and the aggregated
-CREDITS.md (Sync-Credits.ps1) - each of which throws on non-compliance exactly as it does when run
-standalone. Each gate can be skipped with its own -No* switch, or all three at once with
--NoSyncChecks; skipping a gate here does not change the repository's actual compliance state, it
-only removes this script's own check of it.
+Before staging, runs Invoke-WorkspaceChecks.ps1: script docs, workflow receipts/graphs/index,
+new-script WhatIf/Confirm support, documentation credits and aggregate credits. The same registry
+validates exported staged snapshots with NoAll. Explicit skip switches or SkipCheck report omissions;
+NoSyncChecks skips documentation checks but retains the independent script safety check.
 Separately, warns (does not block) when a script file about to be committed (working tree, staged
 or untracked, relative to $WorkspaceRoot) has no matching change to its mirrored doc under
 docs/scripts/ - the doc Sync-ScriptsReadme.ps1 requires to exist, but whose content it never
@@ -46,8 +43,18 @@ Skips the docs credits-block gate (Sync-DocsCredits.ps1).
 .PARAMETER NoCreditsCheck
 Skips the aggregated CREDITS.md gate (Sync-Credits.ps1).
 .PARAMETER NoSyncChecks
-Skips all three documentation-sync gates above in one switch; equivalent to passing
--NoScriptsReadmeCheck -NoDocsCreditsCheck -NoCreditsCheck together.
+Skips documentation checks, including GitHub workflow, resource and script review documentation.
+The ScriptShouldProcess check remains active unless explicitly skipped.
+.PARAMETER NoResourcesCheck
+Skips generated resource inventory and dependency documentation validation.
+.PARAMETER NoScriptContractsCheck
+Skips obsolete objective-boilerplate detection and full script preview review validation.
+.PARAMETER NoGitHubWorkflowDocsCheck
+Skips workflow documentation receipts, generated job graphs and index validation.
+.PARAMETER NoScriptShouldProcessCheck
+Skips the new-script WhatIf/Confirm policy check.
+.PARAMETER SkipCheck
+Names in the shared Invoke-WorkspaceChecks registry to skip explicitly; each skip is reported.
 .PARAMETER NoScriptDocDriftWarning
 Overrides (silences) the script/doc drift warning described above. The warning is informational
 only; it never blocks the commit whether this switch is passed or not.
@@ -87,6 +94,11 @@ param(
     [switch]$NoDocsCreditsCheck,
     [switch]$NoCreditsCheck,
     [switch]$NoSyncChecks,
+    [switch]$NoGitHubWorkflowDocsCheck,
+    [switch]$NoScriptShouldProcessCheck,
+    [switch]$NoResourcesCheck,
+    [switch]$NoScriptContractsCheck,
+    [string[]]$SkipCheck=@(),
     [switch]$NoScriptDocDriftWarning,
     [string]$MaxChangedFileSize = '500KB',
     [switch]$NoCommitFileSnifferWarning
@@ -94,6 +106,37 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot Common.ps1)
 $maxChangedFileBytes = ConvertTo-QuietByteCount $MaxChangedFileSize
+
+function Invoke-QuietCommitChecks {
+    <#
+    .SYNOPSIS
+    Maps compatibility switches to the shared registry, for either working-tree or index validation.
+    .PARAMETER Root
+    Exact tree or staged snapshot being checked.
+    #>
+    param([string]$Root)
+    $skipped=@($SkipCheck)
+    if($NoSyncChecks -or $NoScriptsReadmeCheck){$skipped+='ScriptsReadme'}
+    if($NoSyncChecks -or $NoDocsCreditsCheck){$skipped+='DocsCredits'}
+    if($NoSyncChecks -or $NoCreditsCheck){$skipped+='Credits'}
+    if($NoSyncChecks -or $NoGitHubWorkflowDocsCheck){$skipped+='GitHubWorkflowDocs'}
+    if($NoScriptShouldProcessCheck){$skipped+='ScriptShouldProcess'}
+    if($NoSyncChecks -or $NoResourcesCheck){$skipped+='Resources'}
+    if($NoSyncChecks -or $NoScriptContractsCheck){$skipped+='ScriptContracts'}
+    Invoke-WorkspaceChecksForCommit -Root $Root -Skipped $skipped
+}
+function Invoke-WorkspaceChecksForCommit {
+    <#
+    .SYNOPSIS
+    Runs the registry from the trusted script location against the selected tree.
+    .PARAMETER Root
+    Tree whose content is checked.
+    .PARAMETER Skipped
+    Explicitly omitted registry names.
+    #>
+    param([string]$Root,[string[]]$Skipped)
+    & (Join-Path $PSScriptRoot 'Invoke-WorkspaceChecks.ps1') -WorkspaceRoot $Root -SkipCheck @($Skipped|Sort-Object -Unique)
+}
 
 function Assert-QuietStagedWorkspaceLock {
     <#
@@ -129,15 +172,7 @@ function Assert-QuietStagedWorkspaceLock {
                 throw 'CommitWorkspaceStagedLockMismatch'
             }
         }
-        if(!$NoSyncChecks -and !$NoScriptsReadmeCheck){
-            & (Join-Path $PSScriptRoot 'Sync-ScriptsReadme.ps1') -ScriptsPath (Join-Path $snapshot 'scripts') -DocsPath (Join-Path $snapshot 'docs/scripts')
-        }
-        if(!$NoSyncChecks -and !$NoDocsCreditsCheck){
-            & (Join-Path $PSScriptRoot 'Sync-DocsCredits.ps1') -DocsPath (Join-Path $snapshot 'docs') -RootPath $snapshot -CreditsPath (Join-Path $snapshot 'CREDITS.md')
-        }
-        if(!$NoSyncChecks -and !$NoCreditsCheck){
-            & (Join-Path $PSScriptRoot 'Sync-Credits.ps1') -WorkspaceRoot $snapshot -CreditsPath (Join-Path $snapshot 'CREDITS.md')
-        }
+        Invoke-QuietCommitChecks -Root $snapshot
     }finally{
         # The absolute, generated snapshot was checked against its dedicated temporary root above.
         if(Test-Path -LiteralPath $snapshot){Remove-Item -LiteralPath $snapshot -Recurse -Force -WhatIf:$false -Confirm:$false}
@@ -231,15 +266,7 @@ foreach ($entry in $CoAuthoredBy) {
 }
 $finalMessage = if ($trailers.Count) { $Message.TrimEnd() + "`n`n" + ($trailers -join "`n") } else { $Message }
 
-if (!$NoAll -and !$NoSyncChecks -and !$NoScriptsReadmeCheck) {
-    & (Join-Path $PSScriptRoot 'Sync-ScriptsReadme.ps1') -ScriptsPath (Join-Path $WorkspaceRoot 'scripts') -DocsPath (Join-Path $WorkspaceRoot 'docs/scripts')
-}
-if (!$NoAll -and !$NoSyncChecks -and !$NoDocsCreditsCheck) {
-    & (Join-Path $PSScriptRoot 'Sync-DocsCredits.ps1') -DocsPath (Join-Path $WorkspaceRoot 'docs') -RootPath $WorkspaceRoot -CreditsPath (Join-Path $WorkspaceRoot 'CREDITS.md')
-}
-if (!$NoAll -and !$NoSyncChecks -and !$NoCreditsCheck) {
-    & (Join-Path $PSScriptRoot 'Sync-Credits.ps1') -WorkspaceRoot $WorkspaceRoot -CreditsPath (Join-Path $WorkspaceRoot 'CREDITS.md')
-}
+if (!$NoAll) { Invoke-QuietCommitChecks -Root $WorkspaceRoot }
 
 if (!$NoScriptDocDriftWarning) {
     $tracked = @(if($NoAll){& git -C $WorkspaceRoot diff --cached --name-only}else{try { & git -C $WorkspaceRoot diff --name-only HEAD } catch { @() }})

@@ -1,4 +1,3 @@
-# Objectif : Pousser explicitement la branche du monorepo sans force ni nouvelle tentative.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -12,6 +11,7 @@ Explicit branch name, main by default.
 .PARAMETER Repository
 Only Workspace exists in the monorepo.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidatePattern('^[A-Za-z0-9._-]+$')][string]$Remote='origin',[ValidatePattern('^[A-Za-z0-9._/-]+$')][string]$Branch='main',[ValidateSet('Workspace')][string]$Repository='Workspace')
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidatePattern('^[A-Za-z0-9._-]+$')][string]$Remote='origin',[ValidatePattern('^[A-Za-z0-9._/-]+$')][string]$Branch='main',[ValidateSet('Workspace')][string]$Repository='Workspace')
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Push-Workspace')){return}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot Common.ps1)
 Invoke-WorkspaceNative git @('-C',$WorkspaceRoot,'push','--set-upstream',$Remote,$Branch) $WorkspaceRoot

@@ -81,7 +81,9 @@ public sealed class QuietRuntime
     public HashSet<long> IgnoredSequences { get; } = [];
     /// <summary>Observers invoked synchronously by <see cref="Emit"/>, in order; empty unless the caller passed -Listeners.</summary>
     public ScriptBlock[] Listeners { get; internal set; } = [];
-    /// <summary>Every value passed to <see cref="Emit"/>, collected in order regardless of whether any listener is attached.</summary>
+    /// <summary>True only when this invocation explicitly requests in-memory business-event collection.</summary>
+    public bool CollectEvents { get; internal set; }
+    /// <summary>Values explicitly collected by -CollectEvents; otherwise remains empty.</summary>
     public List<object?> Events { get; } = [];
     /// <summary>Indexes into <see cref="Listeners"/> that failed and are skipped for the remainder of this call.</summary>
     private HashSet<int>? disabledListeners;
@@ -331,12 +333,12 @@ public sealed class QuietRuntime
         finally { CallbackMs += watch.Elapsed.TotalMilliseconds; }
     }
 
-    /// <summary>Records one event and pushes it to every attached listener, in order; never affects <see cref="AnalysisComplete"/> or the invocation's <c>Outcome</c>.</summary>
+    /// <summary>Pushes one transient event to listeners and retains it only with -CollectEvents; never changes analysis completeness.</summary>
     /// <param name="evt">Caller-owned event value; normalized the same way as a callback return value.</param>
     public void Emit(object? evt)
     {
         object? value = Normalize(evt);
-        Events.Add(value);
+        if (CollectEvents) Events.Add(value);
         if (Listeners.Length == 0) return;
         for (int i = 0; i < Listeners.Length; i++)
         {
@@ -403,6 +405,7 @@ public abstract class RuntimeCmdlet : EngineCmdlet
             State = request.ContainsKey("State") ? request["State"] : new Hashtable(),
         };
         if (request.ContainsKey("Data")) runtime.Data = request["Data"];
+        runtime.CollectEvents = request.ContainsKey("CollectEvents") && LanguagePrimitives.IsTrue(request["CollectEvents"]);
         runtime.Listeners = request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : [];
         if (request.ContainsKey("UI") && LanguagePrimitives.IsTrue(request["UI"]))
         {

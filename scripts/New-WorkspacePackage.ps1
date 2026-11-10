@@ -1,4 +1,3 @@
-# Objectif : Construire des archives de modules avec manifestes SHA-256, sans inclure les tests dans les modules métier.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -7,8 +6,11 @@ Packages every locked, independently versioned source/test module; never publish
 QuietCli2 root.
 .PARAMETER OutputDirectory
 New artifact directory.
+.PARAMETER RequireReadyToRun
+Rejects packages unless both CLR builds are verified ReadyToRun for all six release RIDs.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputDirectory)
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputDirectory,[switch]$RequireReadyToRun)
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-WorkspacePackage')){return}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 . (Join-Path $PSScriptRoot 'AgentDocuments.ps1')
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
@@ -20,6 +22,13 @@ $null=Test-QuietBuildManifest $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/li
 foreach($rid in (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){
     $build=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid)
     if($build.RuntimeIdentifier -cne $rid){throw ('EngineDistributionMissing: '+$rid)}
+    if($RequireReadyToRun){
+        foreach($slot in @('engine','inprocess')){
+            $portable=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/'+$slot)
+            $compiled=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/'+$slot+'/'+$rid)
+            if($rid -cnotin @($portable.ReadyToRunTargets) -or !$compiled.ReadyToRun -or $compiled.RuntimeIdentifier -cne $rid -or $compiled.Configuration -cne 'Release'){throw ('ReadyToRunDistributionMissing: '+$slot+'/'+$rid)}
+        }
+    }
 }
 if(Test-Path -LiteralPath $OutputDirectory){throw 'PackageOutputAlreadyExists'}
 [void][IO.Directory]::CreateDirectory($OutputDirectory)

@@ -106,7 +106,7 @@ internal static class ScriptDefinitionBuilder
     private static readonly Regex Unsupported = new("Recall|^(SaveRecall|Zip|Compress|AllowPartial|CancellationToken)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     /// <summary>Options emitted as switches.</summary>
-    private static readonly string[] Switches = ["AsObject", "AsJson", "AsYaml"];
+    private static readonly string[] Switches = ["AsObject", "AsJson", "AsYaml", "CollectEvents"];
 
     /// <summary>Options holding callbacks whose source is copied verbatim.</summary>
     private static readonly string[] Callbacks = ["Output", "Complete", "DataFactory", "StateFactory", "Interaction"];

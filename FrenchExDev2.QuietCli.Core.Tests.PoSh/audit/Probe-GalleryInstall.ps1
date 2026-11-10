@@ -55,7 +55,13 @@ try{
     Remove-Module Package.Sample -ErrorAction Stop
     $identity=Get-QuietEngine
     $actual=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
-    $expectedBuild=if($identity.Mode -eq 'InProcess'){'portable'}else{$actual}
+    $expectedBuild=$actual
+    if($identity.Mode -eq 'InProcess'){
+        $base=if([Environment]::Version.Major -ge 11){'lib/engine'}else{'lib/inprocess'}
+        $receipt=Get-Content -LiteralPath (Join-Path $core.ModuleBase ($base+'/build-manifest.json')) -Encoding utf8 -Raw|ConvertFrom-Json
+        $slots=if($receipt.PSObject.Properties['ReadyToRunTargets']){@($receipt.ReadyToRunTargets)}else{@()}
+        $expectedBuild=if($actual -cin $slots){$actual}else{'portable'}
+    }
     if($identity.Engine.RuntimeIdentifier -cne $actual -or $identity.Engine.BuildRuntimeIdentifier -cne $expectedBuild){throw 'InstalledGalleryRuntimeMismatch'}
     $packageVersion=$core.Version.ToString()
     if($core.PrivateData.PSData.ContainsKey('Prerelease') -and $core.PrivateData.PSData.Prerelease){$packageVersion+='-'+$core.PrivateData.PSData.Prerelease}

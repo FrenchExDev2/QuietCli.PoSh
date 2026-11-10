@@ -1,4 +1,3 @@
-# Objectif : Exécuter les modules de tests compagnons dans un processus isolé et publier chaque résultat.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -22,13 +21,14 @@ UTF-8 JSON array of existing repository roots; required by RealStatus.
 .PARAMETER ExpectedRuntimeIdentifier
 Required native architecture for both the PowerShell host and the separate engine.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure)
+[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure)
 dynamicparam {
     . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
     New-QuietWorkspaceSuiteParameter -WorkspaceRoot $selectedRoot -Scope Host
 }
 end {
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-TestWorker')){return}
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
@@ -129,7 +129,12 @@ try{
             $state.Project=$project;$state.ProjectDirectory=Join-Path $WorkspaceRoot $project
             Import-Module $selection.TestsManifest -Force
             $basePassed=$state.Passed;$baseFailed=$state.Failed
-            $progress={param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$basePassed+$passed;$state.Failed=$baseFailed+$failed;Write-WorkspaceJson $statusPath $state}
+            $progress={
+                param($name,$caseState,$passed,$failed)
+                $state.Case=$name;$state.Passed=$basePassed+$passed;$state.Failed=$baseFailed+$failed
+                Write-WorkspaceJson $statusPath $state
+                if($env:GITHUB_ACTIONS -ceq 'true'){Write-Host ("CI case [$caseState] $name | passed=$($state.Passed) failed=$($state.Failed)")}
+            }
             $command=Get-Command ($selection.TestsModule+'\'+$selection.Command) -ErrorAction Stop
             $parameters=@{WorkspaceRoot=$WorkspaceRoot;OnProgress=$progress}
             if($command.Parameters.ContainsKey('RunDirectory')){$parameters.RunDirectory=$RunDirectory}

@@ -72,16 +72,27 @@ function Invoke-QuietScriptTests {
     }
     $cases['generated script matches direct execution, supports overrides and recreates state'] = {
         $runner = Join-Path $PSHOME $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' })
-        $nativeArguments = @('-NoLogo','-NonInteractive','-Command', '[Console]::Out.Write("é漢")')
-        $factory = { @{ Bytes = 0L; StateCount = 0; Completions = 0 } }
+        $nativeArguments = @('-NoLogo','-NonInteractive','-Command', '[Console]::Error.WriteLine((ConvertTo-Json -Compress -InputObject @{PowerShell=$PSVersionTable.PSVersion.ToString();Runtime=[Environment]::Version.ToString();OutputCodePage=[Console]::OutputEncoding.CodePage;InputCodePage=[Console]::InputEncoding.CodePage;FixtureHex=[Convert]::ToHexString([Console]::OutputEncoding.GetBytes("é漢"))})); [Console]::Out.Write("é漢")')
+        $factory = { @{ Bytes = 0L; StateCount = 0; Completions = 0; Hex = ''; Diagnostic = '' } }
         $stateFactory = { @{ Events = 0 } }
-        $output = { param($event, $runtime) if ($event.Stream -eq 'stdout') { $runtime.Data.Bytes += $event.ByteCount; $runtime.State.Events++ } }
+        $output = { param($event, $runtime)
+            if ($event.Stream -eq 'stdout') {
+                $runtime.Data.Bytes += $event.ByteCount; $runtime.State.Events++
+                if ($runtime.Data.Hex.Length -lt 64) { $runtime.Data.Hex += [Convert]::ToHexString($event.Bytes) }
+            } elseif ($runtime.Data.Diagnostic.Length -lt 1024) { $runtime.Data.Diagnostic += $event.Text }
+        }
         $complete = { param($runtime) $runtime.Data.StateCount = $runtime.State.Events; $runtime.Data.Completions++; $runtime.Data }
         $file = quiet -Script (Join-Path $root 'live.ps1') -AsObject -StdoutMode Bytes -DataFactory $factory -StateFactory $stateFactory -Output $output -Complete $complete -FilePath $runner -ArgumentList $nativeArguments
         $direct = quiet -AsObject -StdoutMode Bytes -DataFactory $factory -StateFactory $stateFactory -Output $output -Complete $complete -FilePath $runner -ArgumentList $nativeArguments
         $first = & $file.FullName; $second = & $file.FullName
-        foreach ($result in @($direct, $first, $second)) {
-            if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis -or $result.Data.Bytes -ne 5 -or $result.Data.StateCount -lt 1 -or $result.Data.Completions -ne 1) { throw ('ScriptLiveResultMismatch: ' + ($result.Error | ConvertTo-Json -Compress)) }
+        $diagnostics=@(foreach ($entry in @(@{Name='Direct';Result=$direct},@{Name='GeneratedFirst';Result=$first},@{Name='GeneratedSecond';Result=$second})) {
+            $result=$entry.Result
+            [pscustomobject]@{Name=$entry.Name;Outcome=$result.Outcome;Completeness=$result.Completeness;Data=$result.Data;Errors=@($result.Error)}
+        })
+        Write-WorkspaceJson (Join-Path $root 'live-diagnostics.json') @{Runner=$runner;ParentPowerShell=$PSVersionTable.PSVersion.ToString();ParentOutputCodePage=[Console]::OutputEncoding.CodePage;ExpectedBytes=5;ExpectedHex='C3A9E6BCA2';Results=$diagnostics}
+        foreach ($entry in $diagnostics) {
+            $result=$entry
+            if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis -or $result.Data.Bytes -ne 5 -or $result.Data.StateCount -lt 1 -or $result.Data.Completions -ne 1) { throw ('ScriptLiveResultMismatch: ' + ($entry | ConvertTo-Json -Depth 6 -Compress)) }
         }
         if ([object]::ReferenceEquals($first.Data, $second.Data)) { throw 'ScriptLiveDataShared' }
         $overridden = & $file.FullName -ArgumentList @('-NoLogo','-NonInteractive','-Command','[Console]::Out.Write("a")') -WorkingDirectory $root

@@ -1,4 +1,3 @@
-# Objectif : Déclencher ou consulter explicitement un workflow GitHub du dépôt demandé.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -14,7 +13,8 @@ Lists recent runs instead of dispatching.
 .PARAMETER WorkspaceRoot
 QuietCli2 root.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][ValidatePattern('^[\w.-]+/[\w.-]+$')][string]$Repository,[string]$Workflow='ci.yml',[string]$Ref,[switch]$Status,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][ValidatePattern('^[\w.-]+/[\w.-]+$')][string]$Repository,[string]$Workflow='ci.yml',[string]$Ref,[switch]$Status,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-RemoteWorkflow')){return}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 if($Status){Invoke-WorkspaceNative gh @('run','list','--repo',$Repository,'--workflow',$Workflow,'--limit','10') $WorkspaceRoot}
 else{if(!$Ref){throw 'ExplicitRefRequired'};Invoke-WorkspaceNative gh @('workflow','run',$Workflow,'--repo',$Repository,'--ref',$Ref) $WorkspaceRoot}

@@ -1,5 +1,10 @@
 # Gallery.ps1
 
+
+## ReadyToRun package verification
+
+When package-set.json declares ReadyToRun, Test-QuietGalleryPackageSet in scripts/Gallery.ps1 checks both CLR slots for all six RIDs: Release manifests, exact RID and real native-header signatures inside the compressed nupkg. Older/local IL plans remain supported. The CI release preparation requires ReadyToRun before compression. ReadyToRun.Tests.ps1 exercises a real all-RID package; ordinary Gallery identity/preview properties and mutation fixtures retain their existing scope.
+
 ## Purpose
 
 Validates every artifact of a public PowerShell-Gallery-bound QuietCli package — version format, manifest identity/GUID stability, nupkg zip integrity and safety, nuspec identity, and the full set of required runtime/engine/PTY payloads per RID — before it is ever allowed to reach the actual publish step. The business problem it solves is "never publish a package whose public manifest, version, or payload set doesn't match exactly what was promised," since a PowerShell Gallery publish cannot be unpublished. It is invoked (dot-sourced) by `scripts/New-QuietGalleryPackage.ps1`, `scripts/New-QuietPreviewPackage.ps1`, and `scripts/Publish-QuietGallery.ps1`, and tested by `FrenchExDev2.QuietCli.Core.Tests.PoSh/GalleryIdentity.Tests.ps1` and `GalleryPreview.Tests.ps1`.
@@ -55,3 +60,13 @@ Careful, security-conscious validation code (XXE hardening, zip-slip/zip-bomb bo
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Copies the internal Core project into a public QuietCli staging directory without editing its sources.
+
+Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

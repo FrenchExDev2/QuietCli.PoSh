@@ -1,5 +1,10 @@
 # Invoke-TestWorker.ps1
 
+The worker is shared by two entry points: a background process with a visible monitor for local
+workstation tests, and direct execution in the current GitHub PowerShell process/container through
+`Invoke-GitHubCi.ps1`. With `GITHUB_ACTIONS=true`, each ordinary companion case logs its name, state
+and actual passed/failed counters while continuing to save the same progress and terminal reports.
+
 ## Purpose
 
 This is the actual background worker that runs the companion test suites (Core, Git, Vagrant, Integration, RealStatus, Import, RunProfiles, GalleryPreview, Script, AgentInstructions, ConfigurationDelivery, Recall, etc.) in an isolated process, verifying environment/engine identity invariants before and after the run, and always persisting a terminal JSON report (`status.json`, `summary.json`) so a concurrent monitor and the launching process can observe progress and the final state. It solves the need for test execution that is simultaneously isolated (own process, own module imports, own engine), self-verifying (detects source drift during the run, mismatched runtime/engine identifiers), and observable (every state transition written atomically to disk for a separate monitor window to read). It is spawned by `Invoke-WorkspaceCi.ps1` via `Start-Process` (confirmed: `Invoke-WorkspaceCi.ps1` line 57/67–69 builds `$workerPath = Join-Path $PSScriptRoot 'Invoke-TestWorker.ps1'` and launches it hidden), which is itself called directly from `.github/workflows/ci.yml` and `.github/workflows/publish-psgallery.yml`. This script is never meant to be run by a human directly — it is the hidden half of the launcher/worker/monitor triad.
@@ -59,3 +64,13 @@ The script is dense but internally coherent and clearly battle-tested as the bac
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Background worker for the companion suites; always persists a terminal report.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

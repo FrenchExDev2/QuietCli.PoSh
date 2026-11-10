@@ -277,10 +277,11 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
             {
                 ("SchemaVersion", 1), ("Summary", handlerUsed is not null ? handlerUsed["Summary"] : "Native command processed."), ("Outcome", outcome), ("Data", runtime.Data),
                 ("InvocationId", runtime.InvocationId), ("ParentId", runtime.ParentId), ("RootId", runtime.RootId), ("SessionId", runtime.SessionId), ("Context", runtime.Context),
-                ("Error", runtime.Errors.ToArray()), ("Events", runtime.Events.ToArray()), ("Truncation", truncation), ("Measurement", measurement), ("Deliveries", new List<object>()),
+                ("Error", runtime.Errors.ToArray()), ("Truncation", truncation), ("Measurement", measurement), ("Deliveries", new List<object>()),
                 ("Internal", new Hashtable(StringComparer.OrdinalIgnoreCase) { ["Sources"] = runtime.Sources, ["Request"] = request, ["Handler"] = runtime.Handler, ["Administrative"] = false }),
             })
                 result.Properties.Add(new PSNoteProperty(name, value));
+            if (runtime.CollectEvents) result.Properties.Add(new PSNoteProperty("Events", runtime.Events.ToArray()));
             result.TypeNames.Insert(0, "QuietCli2.Result");
             FinalProperties.Set(result, "Execution", execution);
             FinalProperties.Set(result, "Completeness", completeness);

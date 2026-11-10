@@ -1,4 +1,3 @@
-# Objective: Execute CI tools directly without loading the product being built or tested.
 $ciAllHostsProfile=if($PROFILE){$PROFILE.CurrentUserAllHosts}
 $ciCurrentHostProfile=if($PROFILE){$PROFILE.CurrentUserCurrentHost}
 if((!$ciAllHostsProfile -or !(Test-Path -LiteralPath $ciAllHostsProfile)) -and (!$ciCurrentHostProfile -or !(Test-Path -LiteralPath $ciCurrentHostProfile))){
@@ -67,7 +66,7 @@ function Invoke-CiProcess {
     $start.WorkingDirectory=$WorkingDirectory;$start.UseShellExecute=$false;$start.CreateNoWindow=$true
     $start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
     $start.RedirectStandardInput=$PSBoundParameters.ContainsKey('InputText')
-    if($start.RedirectStandardInput){$start.StandardInputEncoding=[Text.Encoding]::UTF8}
+    if($start.RedirectStandardInput){$start.StandardInputEncoding=[Text.UTF8Encoding]::new($false)}
     if($start.RedirectStandardInput -and [Text.Encoding]::UTF8.GetByteCount($InputText) -gt 16384){throw 'CiInputTooLarge'}
     $start.StandardOutputEncoding=[Text.Encoding]::UTF8;$start.StandardErrorEncoding=[Text.Encoding]::UTF8
     foreach($argument in $ArgumentList){$start.ArgumentList.Add($argument)}

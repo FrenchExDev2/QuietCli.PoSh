@@ -1,4 +1,3 @@
-# Objective: Prepare the public Core nupkg with its six verified embedded engine distributions.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -11,8 +10,11 @@ New owned directory for package files and a hashed publication plan.
 Optional expected package version; source manifests must match unless a staged Prerelease override is selected.
 .PARAMETER Prerelease
 Optional alphanumeric label applied only to staged manifests. Source versions, GUIDs and files stay unchanged.
+.PARAMETER RequireReadyToRun
+Requires verified Release ReadyToRun engines for every packaged RID and CLR before compression.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputDirectory,[string]$Version,[string]$Prerelease)
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputDirectory,[string]$Version,[string]$Prerelease,[switch]$RequireReadyToRun)
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-QuietGalleryPackage')){return}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1');. (Join-Path $PSScriptRoot 'Gallery.ps1')
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path);$OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 if(Test-Path -LiteralPath $OutputDirectory){throw 'GalleryOutputAlreadyExists'}
@@ -29,7 +31,7 @@ if($PSBoundParameters.ContainsKey('Prerelease')){
 }
 if($Version -and $Version -cne $release){throw 'GalleryReleaseVersionMismatch'}
 $stage=Join-Path $OutputDirectory workspace-packages
-$null=& (Join-Path $PSScriptRoot 'New-WorkspacePackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $stage
+$null=& (Join-Path $PSScriptRoot 'New-WorkspacePackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $stage -RequireReadyToRun:$RequireReadyToRun
 $publicStage=Join-Path $OutputDirectory 'public-modules'
 [void][IO.Directory]::CreateDirectory($publicStage)
 Copy-QuietGalleryCoreModule -SourceDirectory (Join-Path $stage $sourceName) -ModuleDirectory (Join-Path $publicStage $publicName)
@@ -45,7 +47,7 @@ try{
         $packages.Add(@{Module=$name;File=[IO.Path]::GetFileName($path);SHA256=(Get-FileHash $path -Algorithm SHA256).Hash;Bytes=(Get-Item $path).Length})
     }
 }finally{$env:PSModulePath=$modulePath}
-$plan=@{SchemaVersion=1;Version=$release;SourceVersion=$sourceVersion;BaseVersion=$releaseInfo.BaseVersion;Repository='https://www.powershellgallery.com/api/v2';Targets=@(Get-QuietRuntimeTargets $WorkspaceRoot);Packages=$packages.ToArray();SourceLockSHA256=(Get-FileHash (Join-Path $WorkspaceRoot repositories.lock.json) -Algorithm SHA256).Hash;Published=$false}
+$plan=@{SchemaVersion=1;Version=$release;SourceVersion=$sourceVersion;BaseVersion=$releaseInfo.BaseVersion;ReadyToRun=[bool]$RequireReadyToRun;Repository='https://www.powershellgallery.com/api/v2';Targets=@(Get-QuietRuntimeTargets $WorkspaceRoot);Packages=$packages.ToArray();SourceLockSHA256=(Get-FileHash (Join-Path $WorkspaceRoot repositories.lock.json) -Algorithm SHA256).Hash;Published=$false}
 Write-WorkspaceJson (Join-Path $OutputDirectory package-set.json) $plan
 $verified=Test-QuietGalleryPackageSet $OutputDirectory -Version $release
 [pscustomobject]@{State='Prepared';Version=$verified.Version;Packages=$verified.Packages;Targets=$verified.Targets.Rid;Published=$false}

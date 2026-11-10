@@ -13,7 +13,7 @@ engine process), as part of the CLR+PowerShell dual-profiling pass triggered by 
 
 ## Usage
 
-Parameters (no mandatory flags, no `[CmdletBinding()]`):
+Parameters (standard ShouldProcess binding; no mandatory flags):
 - `-ClrProfilerPath` (string) — pinned `dotnet-trace` DLL path.
 - `-TargetProcessId` (int) — owned PowerShell or engine process ID to sample.
 - `-OutputPath` (string) — destination `.nettrace` artifact path.
@@ -40,7 +40,7 @@ Example:
 
 ## Findings
 
-- DESIGN: No `[CmdletBinding()]` and no mandatory parameter attributes on any of the four parameters (line 13) — all four are functionally required for the script to do anything useful, yet none use `[Parameter(Mandatory)]`. A caller omitting `-TargetProcessId` would pass `0` silently and the `dotnet-trace collect --process-id 0` call would fail far from the actual misconfiguration, producing a confusing downstream error instead of an immediate, clear parameter-binding error.
+- DESIGN: ShouldProcess now guards the whole collector operation. The four parameters still lack mandatory attributes — all four are functionally required, yet none use `[Parameter(Mandatory)]`. Omitting `-TargetProcessId` passes `0`, so native failure remains less precise than parameter validation.
 - Missing input validation: no check that `-TargetProcessId` refers to a live process, and no check that `-ClrProfilerPath` exists before invocation (line 18) — a nonexistent profiler DLL path would only surface as a generic `dotnet` failure inside `Invoke-CiProcess`.
 - The trace `--duration` is hardcoded to `00:00:00:30` (30 seconds, line 18) with no parameter to override it — every profiling run is locked to exactly 30 seconds regardless of workload size; this should arguably be a parameter with a sensible default, per the "hardcoded values that should be parameters" guidance.
 - `-TimeoutSeconds 90` (line 18) is also hardcoded; combined with the 30s fixed trace duration this leaves only 60s of margin for process startup/collector attach/shutdown, which could be tight on a loaded CI host — no evidence of this being configurable.
@@ -57,3 +57,13 @@ Functionally sound and consistent with its one caller's expectations, but fragil
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Collects one pinned EventPipe trace, signals actual recording readiness and retains terminal diagnostics.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

@@ -14,6 +14,7 @@ function Invoke-QuietConfigurationDeliveryEngine {
     Optional exact mutant names for a targeted development campaign; the report records partial catalogue coverage.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory,[switch]$Mutation,[scriptblock]$OnProgress,[string[]]$MutationName=@())
+    [void][IO.Directory]::CreateDirectory($RunDirectory)
     $native=Join-Path $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/'+[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier+'/native')
     $yaml=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'
     $runCases={
@@ -100,6 +101,7 @@ function Invoke-QuietConfigurationDeliveryEngine {
             @{Name='script-module-identity';File='Cmdlets/ScriptCommands.cs';From='Prologue.Replace("__QUIET_MODULE__", QuietSession.ModuleName, StringComparison.Ordinal)';To='Prologue.Replace("__QUIET_MODULE__", "QuietCli", StringComparison.Ordinal)'},
             @{Name='scaffold-module-identity';File='Scaffolding/ModuleScaffold.cs';From='[(QuietSession.ModuleName, "0.2.0")]';To='[("FrenchExDev2.QuietCli.Core.PoSh", "0.2.0")]'},
             @{Name='emit-events-not-recorded';File='Cmdlets/RuntimeCommands.cs';From='Events.Add(value);';To='_ = value;'},
+            @{Name='emit-unrequested-recording';File='Cmdlets/RuntimeCommands.cs';From='if (CollectEvents) Events.Add(value);';To='Events.Add(value);'},
             @{Name='emit-listener-not-disabled-after-failure';File='Cmdlets/RuntimeCommands.cs';From='(disabledListeners ??= []).Add(i);';To=';'},
             @{Name='emit-listener-skip-check-removed';File='Cmdlets/RuntimeCommands.cs';From='if (disabledListeners?.Contains(i) == true) continue;';To='if (false) continue;'},
             @{Name='emit-nested-inherits-listeners';File='Cmdlets/RuntimeCommands.cs';From='runtime.Listeners = request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : [];';To='runtime.Listeners = parent?.Listeners ?? (request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : []);'},

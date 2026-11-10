@@ -12,8 +12,9 @@ Required matrix receipt count; zero disables only this cardinality check.
 .PARAMETER Suite
 Core/All requires integration and profiling; Git-only reports those as outside its scope.
 #>
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param([string]$EvidenceRoot,[string]$OutputDirectory,[string]$Revision,[int]$ExpectedReports=0,[ValidateSet('Core','All','Git','Integration')][string]$Suite='All')
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-CorePerformanceReport')){return}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 function ConvertTo-ReportCell {

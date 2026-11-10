@@ -1,4 +1,3 @@
-# Objective: Validate public QuietCli packages before any Gallery publication.
 function Copy-QuietGalleryCoreModule {
     <#
     .SYNOPSIS
@@ -202,6 +201,27 @@ function Test-QuietGalleryPackageSet {
                     $sqlite=if($target.Rid -like 'win-*'){'e_sqlite3.dll'}else{'libe_sqlite3.so'}
                     if(!$names.Contains('resources/runtime/runtimes/'+$target.Rid+'/native/'+$sqlite)){throw 'GallerySqliteMissing'}
                     if($target.Pty -and !$names.Contains('resources/transport/'+$target.Rid+'/quietcli-pty')){throw 'GalleryPtyMissing'}
+                    if($plan.PSObject.Properties['ReadyToRun'] -and $plan.ReadyToRun){
+                        foreach($slot in @('inprocess','engine')){
+                            $prefix='lib/'+$slot+'/'+$target.Rid+'/'
+                            $entry=$zip.GetEntry($prefix+'build-manifest.json')
+                            if(!$entry -or $entry.Length -gt 1MB){throw 'GalleryReadyToRunManifestMissing'}
+                            $reader=[IO.StreamReader]::new($entry.Open(),[Text.UTF8Encoding]::new($false,$true))
+                            try{$build=$reader.ReadToEndAsync().GetAwaiter().GetResult()|ConvertFrom-Json}finally{$reader.Dispose()}
+                            if(!$build.ReadyToRun -or $build.RuntimeIdentifier -cne $target.Rid -or $build.Configuration -cne 'Release'){throw 'GalleryReadyToRunTargetMismatch'}
+                            $entry=$zip.GetEntry($prefix+'QuietCli.Engine.dll')
+                            if(!$entry -or $entry.Length -gt 32MB){throw 'GalleryReadyToRunImageMissing'}
+                            $memory=[IO.MemoryStream]::new();$stream=$entry.Open();$pe=$null
+                            try{
+                                [void]$stream.CopyToAsync($memory).GetAwaiter().GetResult();$memory.Position=0
+                                $pe=[Reflection.PortableExecutable.PEReader]::new($memory)
+                                $header=$pe.PEHeaders.CorHeader
+                                if(!$header -or $header.ManagedNativeHeaderDirectory.Size -lt 16){throw 'GalleryReadyToRunHeaderMissing'}
+                                $native=$pe.GetSectionData($header.ManagedNativeHeaderDirectory.RelativeVirtualAddress).GetReader()
+                                if($native.ReadUInt32() -ne 0x00525452){throw 'GalleryReadyToRunSignatureInvalid'}
+                            }finally{if($pe){$pe.Dispose()};$stream.Dispose();$memory.Dispose()}
+                        }
+                    }
                 }
             }
         }finally{$zip.Dispose()}

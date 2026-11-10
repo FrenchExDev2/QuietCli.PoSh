@@ -1,4 +1,3 @@
-# Objectif : Partager une identité déterministe des sources et des binaires entre verrouillage, build et tests.
 . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
 function Get-QuietSourceFiles {
     <#
@@ -96,13 +95,18 @@ function Write-QuietBuildManifest {
     Published target RID or portable for the test/reference build.
     .PARAMETER PlatformTarget
     Actual compiler architecture, independently checked from PE headers for Windows publications.
+    .PARAMETER ReadyToRun
+    Requires a verified ReadyToRun native header before recording the publication.
+    .PARAMETER ReadyToRunTargets
+    RID slots selected by this build; portable manifests use this to exclude stale slots.
     #>
-    param([string]$WorkspaceRoot,[string]$Project,[string]$Output,[Parameter(Mandatory)][object[]]$Inputs,[string]$Configuration='Release',[string]$RuntimeIdentifier='portable',[string]$PlatformTarget='AnyCPU')
+    param([string]$WorkspaceRoot,[string]$Project,[string]$Output,[Parameter(Mandatory)][object[]]$Inputs,[string]$Configuration='Release',[string]$RuntimeIdentifier='portable',[string]$PlatformTarget='AnyCPU',[switch]$ReadyToRun,[string[]]$ReadyToRunTargets=@())
     $after=@(Get-QuietBinaryInputs $WorkspaceRoot $Project)
     if((Get-QuietManifestDigest $Inputs) -cne (Get-QuietManifestDigest $after)){throw ('SourcesChangedDuringBuild: '+$Project)}
     $directory=Join-Path $WorkspaceRoot $Output
+    if($ReadyToRun -and !(Test-QuietReadyToRunImage (Join-Path $directory 'QuietCli.Engine.dll'))){throw ('ReadyToRunImageMissing: '+$Output)}
     $binaries=@(Get-ChildItem -LiteralPath $directory -File|Where-Object Name -NE 'build-manifest.json'|Sort-Object Name|ForEach-Object{@{Path=$_.Name;Bytes=$_.Length;SHA256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})
-    Write-WorkspaceJson (Join-Path $directory 'build-manifest.json') @{SchemaVersion=1;Project=$Project;Configuration=$Configuration;RuntimeIdentifier=$RuntimeIdentifier;PlatformTarget=$PlatformTarget;SourceSHA256=(Get-QuietManifestDigest $Inputs);Inputs=$Inputs;Binaries=$binaries}
+    Write-WorkspaceJson (Join-Path $directory 'build-manifest.json') @{SchemaVersion=1;Project=$Project;Configuration=$Configuration;RuntimeIdentifier=$RuntimeIdentifier;PlatformTarget=$PlatformTarget;ReadyToRun=[bool]$ReadyToRun;ReadyToRunTargets=$ReadyToRunTargets;SourceSHA256=(Get-QuietManifestDigest $Inputs);Inputs=$Inputs;Binaries=$binaries}
 }
 function Test-QuietBuildManifest {
     <#
@@ -125,6 +129,7 @@ function Test-QuietBuildManifest {
         $binary=Join-Path $directory $file.Path
         if(!(Test-Path -LiteralPath $binary) -or (Get-FileHash -LiteralPath $binary -Algorithm SHA256).Hash -cne $file.SHA256){throw ('BuildBinaryMismatch: '+$binary)}
     }
+    if($manifest.PSObject.Properties['ReadyToRun'] -and $manifest.ReadyToRun -and !(Test-QuietReadyToRunImage (Join-Path $directory 'QuietCli.Engine.dll'))){throw ('ReadyToRunImageMissing: '+$Output)}
     if($manifest.PSObject.Properties['RuntimeIdentifier'] -and $manifest.RuntimeIdentifier -ne 'portable'){
         $target=Get-QuietRuntimeTargets $WorkspaceRoot|Where-Object Rid -CEQ $manifest.RuntimeIdentifier
         if(!$target -or $manifest.PlatformTarget -cne $target.PlatformTarget){throw 'EnginePublicationTargetInvalid'}
@@ -177,6 +182,13 @@ function Get-QuietWorkspaceIdentity {
         $output='FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid
         if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot $output)){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $output}
     }}
+    if($IncludeBinaries){
+        $portable=Test-QuietBuildManifest $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess'
+        foreach($rid in @($(if($portable.PSObject.Properties['ReadyToRunTargets']){$portable.ReadyToRunTargets}))) {
+            if($rid -notin (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){throw 'ReadyToRunTargetInvalid'}
+            $binaries+=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/'+$rid)
+        }
+    }
     $originPath=Join-Path $WorkspaceRoot 'transport-origin.json'
     $origin=if(Test-Path -LiteralPath $originPath){Get-Content -LiteralPath $originPath -Encoding utf8 -Raw|ConvertFrom-Json}else{$null}
     return @{SchemaVersion=3;Repository=$repository;Projects=$projects;Builds=$binaries;TransportOrigin=$origin}

@@ -6,7 +6,7 @@
 
 > **Status: under development (`0.1.0-preview`).** Covers `vagrant up` and `vagrant provision` only. **Qualification is partial** -- read [Coverage and limits](#coverage-and-limits) before relying on this module.
 
-Vagrant business handlers for the [QuietCli](../README.md) engine. `quiet vagrant up`/`quiet vagrant provision` run the native command with `--machine-readable` appended internally (you never see that flag or its raw lines) and turn each line into a structured event, pushed live to `-Listeners` and collected in `$result.Events`. `-UI` renders a small live dashboard, one lane per machine.
+Vagrant business handlers for the [QuietCli](../README.md) engine. `quiet vagrant up`/`quiet vagrant provision` run the native command with `--machine-readable` appended internally (you never see that flag or its raw lines) and turn each line into a structured event pushed live to `-Listeners`. Explicit `-CollectEvents` also retains an ordered snapshot in `$result.Events`; default calls retain no event history. `-UI` renders a small live dashboard, one lane per machine, without requiring collection.
 
 ## Quick start
 
@@ -22,7 +22,7 @@ $r = quiet -AsObject -WorkingDirectory $vagrantfileDirectory -Listeners { param(
 quiet -UI -WorkingDirectory $vagrantfileDirectory vagrant up
 ```
 
-`$r.Events` always carries every parsed `--machine-readable` line for the run (`Timestamp`/`Machine`/`Type`/`Fields`), plus a synthetic `ProvisionerStarted` event (`Machine`/`Provisioner`/`Timestamp`) whenever Vagrant itself emits a `Running provisioner: ...` line -- which it never does under `--no-provision`, so that flag needs no special handling here: forward it in your own `ArgumentList` as you would to plain `vagrant up` and the absence of `ProvisionerStarted` follows automatically.
+With `-CollectEvents`, `$r.Events` carries every parsed `--machine-readable` line for the run (`Timestamp`/`Machine`/`Type`/`Fields`), plus a synthetic `ProvisionerStarted` event (`Machine`/`Provisioner`/`Timestamp`) whenever Vagrant itself emits a `Running provisioner: ...` line -- which it never does under `--no-provision`, so that flag needs no special handling here: forward it in your own `ArgumentList` as you would to plain `vagrant up` and the absence of `ProvisionerStarted` follows automatically. The listener example above explicitly retains its own list; it does not request the result's optional snapshot.
 
 ## Coverage and limits
 

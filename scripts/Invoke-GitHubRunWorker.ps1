@@ -1,4 +1,3 @@
-# Objectif : Lire les états GitHub de chaque job sans exposer de jeton ni relancer les tests.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -12,7 +11,8 @@ Project workspace to identify in the monitor.
 .PARAMETER RunDirectory
 Private status and report directory.
 #>
-[CmdletBinding()]param([long]$RunId,[string]$Repository,[string]$WorkspaceRoot,[string]$RunDirectory)
+[CmdletBinding(SupportsShouldProcess)]param([long]$RunId,[string]$Repository,[string]$WorkspaceRoot,[string]$RunDirectory)
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-GitHubRunWorker')){return}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot Common.ps1)
 function Read-QuietGitHubJson {
     <#

@@ -11,6 +11,15 @@ re-checks the same hashes before loading. The `quietcli-pty` native binaries are
 they are source-built by `Build-PtyBridge.ps1` from `native/quietcli-pty.c`, not downloaded packages, and
 stay Git-tracked since they are small and cannot be "restored" from a URL.
 
+
+## Selective, guarded restoration
+
+IncludePackage accepts one or more IDs from the pinned manifest; omitted restores all packages. Unknown IDs fail before creating the cache or starting network access. The GitHub automation check workflow explicitly uses -IncludePackage YamlDotNet before invoking its read-only pipeline, so a clean checkout does not assume an ignored DLL is present. Standard WhatIf/Confirm guards restoration before cache creation, extraction or HTTP requests. File-byte hashes remain verified against resources/dependencies.lock.json.
+
+```powershell
+./scripts/Restore-CoreResources.ps1 -IncludePackage YamlDotNet -WhatIf
+./scripts/Restore-CoreResources.ps1 -IncludePackage YamlDotNet -Confirm
+```
 ## Usage
 
 ```powershell
@@ -104,3 +113,13 @@ first-time, multi-package restore.
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Restores Core's pinned managed and native third-party resources (SQLite, tokenizers, YamlDotNet) from their recorded NuGet package sources in resources/dependencies.lock.json, verifying every restored file's SHA256 ag...
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

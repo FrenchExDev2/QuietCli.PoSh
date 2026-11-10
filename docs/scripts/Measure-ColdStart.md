@@ -1,5 +1,10 @@
 # Measure-ColdStart.ps1
 
+
+## Current hosted-path measurement
+
+The hosted-path field follows scripts/lib/RunColdStart.psm1 and the module Protocol.ps1: actual CLR/RID slot when selected, otherwise portable IL, with unused RID children excluded. Whole-module bytes and compressed-package bytes remain separate measurements. The RunProfiles benchmark properties and real A/A smoke validate these fields; a format or size change does not establish a speedup.
+
 ## Purpose
 
 Runs the actual A/B performance comparison between two QuietCli Core module builds (typically a baseline vs. a ReadyToRun-compiled candidate), answering "is the candidate's cold start (module import, first native call, second native call) measurably faster or slower, and at what on-disk/package-size cost?" Each sample is a brand-new `pwsh -NoProfile` child process (so OS/CLR-level cold-start effects are real, not simulated), baseline/candidate order is randomized per pair with a fixed seed so machine drift affects both variants equally, and the verdict comes from `RunStatistics.psm1`'s seeded bootstrap. This is the human-facing report generator referenced throughout `docs/README-ab_testing.md` and is the direct consumer of `RunProfiler.psm1`, `RunStatistics.psm1`, and the `RunColdStart`/`RunFormat`/`RunEncoding`/`RunLog` modules (imported line 112). It is run manually or from a profile (see `scripts/RunProfiles/coldstart-100.profile.ps1`, `coldstart-1000.profile.ps1`) via `scripts/Invoke-RunProfile.ps1`.
@@ -68,3 +73,13 @@ Functionally solid and methodologically careful (randomized pairing, whole-pair 
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Compares the cold-start cost of two QuietCli Core module builds with interleaved, fresh-process, paired runs.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

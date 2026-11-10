@@ -12,6 +12,10 @@ Start here: [Gallery installation](#from-powershell-gallery) · [Local checkout,
 
 Browse the [documentation index](docs/README.md) for usage guides, technical contracts, agent instructions, CI, profiling and dated audit evidence.
 
+## Resources
+
+[Resource preparation and integrity](README-resources.md) explains pinned payloads, on-demand automation preparation and optional GitHub caching. The [generated resource inventory](docs/resources/README.md) maps declared files to source consumers. Resource documentation and the [complete script preview review](docs/scripts/preview-support.md) are checked by the shared workspace/commit pipeline.
+
 > **Status: preview (`0.2.0-preview`).** The engine is under active development and its API may change. The Git companion module is a work in progress and is presented here as an example only. Nothing in this repository is a release qualification unless a report says so; see [Tests and qualification](README-qualification.md).
 
 ## How projection works
@@ -23,15 +27,16 @@ QuietCli's engine streams native output once. Your own code decides what that st
 
 In short: `-Output` folds raw events into accumulated state, `-Complete` projects that state into the business output you asked for. A companion module (see the Git example below) just supplies a ready-made `-Output`/`-Complete` pair — a handler — for one executable, so you don't write the fold or the projection yourself.
 
-Callbacks can also call `$runtime.Emit($event)` to collect business events and notify `-Listeners`
-without producing pipeline output. Every emitted event is also kept on `$runtime.Events`, in order,
-whether or not a listener is attached — so `-Complete` can read it directly, and the finished result
-reports the same list under its own top-level `Events` field, alongside `Data`. `-UI` exposes a separate live presentation surface. The
+Callbacks can also call `$runtime.Emit($event)` to notify `-Listeners` without producing pipeline output.
+Events are transient by default. Explicit `-CollectEvents` retains them in order on `$runtime.Events`,
+lets `-Complete` read them, and adds a snapshot under the finished result's top-level `Events` field,
+alongside `Data`. Without this switch, the runtime list stays empty and the result omits `Events`.
+`-UI` exposes a separate live presentation surface. The
 [streaming guide](README-streaming.md) explains these contracts, and the
 [Vagrant companion](FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) uses both for per-machine progress.
 
 ```powershell
-$r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
+$r = quiet -AsObject -CollectEvents -C sdk-version -WorkingDirectory (Get-Location).Path `
     -RecordDelimiter "`n" -Data @{ Version = $null } `
     -Listeners {
         param($event, $runtime)
@@ -52,8 +57,8 @@ $r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
 ```
 
 `-Listeners` accepts one scriptblock or an array of scriptblocks and runs each one synchronously as
-`$runtime.Emit(...)` is called. `-Complete` needs no listener to see the same values: it reads
-`$runtime.Events` directly, which is why `Emitted` above duplicates what the listener already printed.
+`$runtime.Emit(...)` is called, including without collection. This example explicitly collects the
+values for `-Complete`; omit `-CollectEvents` when only live notification or UI progress is needed.
 
 ## Roadmap: from a script to an ecosystem
 

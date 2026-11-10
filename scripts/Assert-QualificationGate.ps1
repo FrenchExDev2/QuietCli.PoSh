@@ -1,4 +1,3 @@
-# Objectif : Refuser une livraison sans qualification complète de la révision courante.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -20,7 +19,7 @@ Saved qualification decision, including unsuccessful decisions.
 .PARAMETER OutputPath
 GitHub step output file. The qualified_sha output is appended only on success.
 #>
-[CmdletBinding()]param(
+[CmdletBinding(SupportsShouldProcess)]param(
     [ValidateSet('All','Core','Git')][string]$Suite='All',
     [switch]$SkipTty,
     [Parameter(Mandatory)][ValidatePattern('^[a-fA-F0-9]{40}$')][string]$Revision,
@@ -30,6 +29,7 @@ GitHub step output file. The qualified_sha output is appended only on success.
     [Parameter(Mandatory)][string]$ReceiptPath,
     [Parameter(Mandatory)][string]$OutputPath
 )
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Assert-QualificationGate')){return}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 $mutationExpected=if($SkipTty -or $Suite -eq 'Git'){'skipped'}else{'success'}

@@ -1,4 +1,3 @@
-# Objective: Download a pinned, checksum-verified side-by-side PowerShell host for integrated CI.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -12,12 +11,13 @@ New private extraction directory; existing destinations are rejected.
 .PARAMETER WorkspaceRoot
 Workspace containing the reviewed host lock.
 #>
-[CmdletBinding()]param(
+[CmdletBinding(SupportsShouldProcess)]param(
     [Parameter(Mandatory)][ValidateSet('stable','preview')][string]$Channel,
     [Parameter(Mandatory)][ValidateSet('win-x64','win-arm64')][string]$RuntimeIdentifier,
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent)
 )
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Initialize-PowerShellHost')){return}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 $lock=Get-Content (Join-Path $WorkspaceRoot 'build/powershell-hosts.lock.json') -Raw -Encoding utf8|ConvertFrom-Json

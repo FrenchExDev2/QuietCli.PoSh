@@ -1,5 +1,11 @@
 # Ci.Process.ps1
 
+`Invoke-CiProcess -InputText` uses UTF-8 **without a BOM** for redirected stdin. The caller's exact
+credential/fixture bytes are preserved; no `EF BB BF` prefix is added. Output readers decode UTF-8,
+so a child that emits another encoding must declare or initialize its own output encoding. The
+helper does not silently rewrite a child's business output. Core tests include a raw stdin hex
+regression with independently expected `C3A9` for the synthetic input `é`.
+
 ## Purpose
 
 The engine-independent, QuietCli-module-independent native process runner that every "CI tool" call in this folder is ultimately built on top of. It is the file `AGENTS.md`'s own carve-out ("CI/build orchestration retains the monorepo's engine-independent `scripts/Ci.Process.ps1` helper") refers to, which exempts `dotnet`/`git`/`podman`/etc. CI-orchestration calls from going through the `quiet` facade. It is dot-sourced transitively by at least 28 other scripts in this folder via `Common.ps1` (confirmed by search), and directly by `Bootstrap.ps1` (its entire content). Its `ConvertTo-CiArgument` quoting helper is directly unit-tested in `FrenchExDev2.QuietCli.Core.Tests.PoSh/Script.Tests.ps1` (lines 29-36), which round-trips 11 hostile argument values through a real child `pwsh` process.
@@ -54,3 +60,13 @@ One of the best-designed files in this set — correct async idioms throughout, 
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Quotes one value for a Start-Process argument string following the CommandLineToArgvW rules.
+
+Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

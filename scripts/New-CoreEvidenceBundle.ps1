@@ -10,8 +10,9 @@ Exact workflow revision.
 .PARAMETER RequireProfiling
 Records missing successful profiling as an explicit evidence gap.
 #>
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param([string]$ReportRoot,[string]$OutputDirectory,[string]$Revision,[switch]$RequireProfiling)
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-CoreEvidenceBundle')){return}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 $source=[IO.Path]::GetFullPath($ReportRoot,$PWD.Path)

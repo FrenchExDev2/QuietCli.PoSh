@@ -1,3 +1,4 @@
+#Objective: Returns the per-user module tool/cache directory without creating it.
 #requires -Version 7.6
 Import-Module (Join-Path $PSScriptRoot 'DevelopmentWorkstation.psm1') -ErrorAction Stop
 $script:ModuleWorkspaceRoot=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
