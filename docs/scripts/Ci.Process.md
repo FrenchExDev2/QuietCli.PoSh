@@ -5,6 +5,9 @@ credential/fixture bytes are preserved; no `EF BB BF` prefix is added. Output re
 so a child that emits another encoding must declare or initialize its own output encoding. The
 helper does not silently rewrite a child's business output. Core tests include a raw stdin hex
 regression with independently expected `C3A9` for the synthetic input `é`.
+The stdout/stderr fixture explicitly initializes its child's console to UTF-8 without a BOM before
+writing Unicode directly to those streams. Its expected bytes therefore do not depend on a developer
+profile or the GitHub runner's default console code page.
 
 ## Purpose
 

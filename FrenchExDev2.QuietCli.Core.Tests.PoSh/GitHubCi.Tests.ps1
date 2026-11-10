@@ -1,3 +1,53 @@
+function Test-QuietCompanionHelperScope {
+    <#
+    .SYNOPSIS
+    Imports the companion in a clean process without caller helpers and verifies its private dependencies.
+    .PARAMETER WorkspaceRoot
+    Selected checkout containing the source module and orchestration libraries.
+    .PARAMETER RunDirectory
+    Owned report directory for the isolated module probe.
+    #>
+    param([string]$WorkspaceRoot,[string]$RunDirectory)
+    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    $script={
+            param($root,$run)
+            $ErrorActionPreference='Stop'
+            $utf8=[Text.UTF8Encoding]::new($false)
+            [Console]::InputEncoding=$utf8;[Console]::OutputEncoding=$utf8;$OutputEncoding=$utf8
+            $helpers=@('Invoke-CiProcess','Write-WorkspaceJson','ConvertTo-QuietByteCount','Get-QuietWorkspaceProjects')
+            foreach($name in $helpers){if(Test-Path ('Function:'+ $name)){throw ('CallerHelperAlreadyPresent: '+$name)}}
+            Import-Module (Join-Path $root 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
+            $module=Import-Module (Join-Path $root 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -PassThru
+            $result=& $module {
+                param($root,$run,$helpers)
+                foreach($name in $helpers){
+                    $command=Get-Command $name -ListImported -ErrorAction Stop
+                    $expected=Join-Path $root ('scripts/'+$(if($name -eq 'Invoke-CiProcess'){'Ci.Process.ps1'}elseif($name -eq 'Get-QuietWorkspaceProjects'){'WorkspaceProjects.ps1'}else{'Common.ps1'}))
+                    if([IO.Path]::GetFullPath($command.ScriptBlock.File) -cne [IO.Path]::GetFullPath($expected)){throw ('UnexpectedCompanionHelperSource: '+$name)}
+                }
+                if((ConvertTo-QuietByteCount '1 KiB') -ne 1024){throw 'CompanionByteCountHelperChanged'}
+                $report=Join-Path $run 'isolated-companion/receipt.json'
+                Write-WorkspaceJson $report @{Message='é漢';Helpers=$helpers}
+                if((Get-Content $report -Raw -Encoding utf8|ConvertFrom-Json).Message -cne 'é漢'){throw 'CompanionJsonHelperChanged'}
+                [pscustomobject]@{Helpers=$helpers.Count;Private=$true;ProfileRequired=$false}
+            } $root $run $helpers
+            foreach($name in $helpers){if(Test-Path ('Function:'+ $name)){throw ('CompanionHelperLeakedToCaller: '+$name)}}
+            'QUIETCLI_HELPER_PROBE='+($result|ConvertTo-Json -Compress)
+    }.ToString()
+    $path=Join-Path $RunDirectory 'companion-helper-probe.ps1'
+    [void][IO.File]::WriteAllTextAsync($path,$script,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $state=@{Receipt=$null;Diagnostics=[Collections.Generic.List[string]]::new()}
+    $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
+    # Deliberate profile isolation detects caller/session dependencies hidden by workstation startup.
+    $execution=Invoke-CiProcess -FilePath $runner -ArgumentList @('-NoProfile','-File',$path,$WorkspaceRoot,$RunDirectory) -TimeoutSeconds 45 -State $state -OnOutput {
+        param($event,$state)
+        $prefix='QUIETCLI_HELPER_PROBE='
+        if($event.Text.StartsWith($prefix)){$state.Receipt=$event.Text.Substring($prefix.Length)|ConvertFrom-Json}
+        elseif($state.Diagnostics.Count -lt 8){$state.Diagnostics.Add($event.Text)}
+    }
+    if($execution.Outcome -ne 'Success'){throw ('CompanionHelperScopeProbeFailed: '+($state.Diagnostics -join '; '))}
+    if(!$state.Receipt -or $state.Receipt.Helpers -ne 4 -or !$state.Receipt.Private){throw 'CompanionHelperScopeReceiptChanged'}
+}
 function Test-QuietGitHubCiJsonReceipts {
     <#
     .SYNOPSIS

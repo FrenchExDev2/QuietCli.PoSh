@@ -1,3 +1,4 @@
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts/Common.ps1')
 . (Join-Path $PSScriptRoot 'Script.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Configuration.TestSupport.ps1')
 . (Join-Path $PSScriptRoot 'Recall.Large.Tests.ps1')
@@ -207,6 +208,7 @@ Executes independent native byte and object invariants in a companion module.
     $cases['CI failure diagnostics preserve redaction bounds and explicit local workflow selection']={Test-QuietCiDiagnostics -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['GitHub CI separates native containers, Docker fallback and workstation launchers']={Test-QuietGitHubCi -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['GitHub CI JSON receipts create missing parents and preserve preview boundaries']={Test-QuietGitHubCiJsonReceipts -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['GitHub CI companion helpers load privately without caller profile dependencies']={Test-QuietCompanionHelperScope -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['ReadyToRun builds and loads the matching RID and CLR with portable fallbacks']={Test-QuietReadyToRun -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['automation contracts require available runtimes accurate workflow graphs and safe previews']={Test-QuietAutomationContracts -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['automation report streaming preserves Unicode fragments and bounded diagnostic tails']={Test-QuietReportStreaming -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
@@ -222,7 +224,7 @@ Executes independent native byte and object invariants in a companion module.
     $cases['CI process execution is independent and preserves streams failures stdin and deadlines']={
         . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
         $state=@{stdout='';stderr=''}
-        $r=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-Command','[Console]::Out.Write("sortie-é"); [Console]::Error.Write("diagnostic-λ"); exit 7') -State $state -OnOutput {param($e,$s)$s[$e.Stream]+=$e.Text}
+        $r=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-Command','[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); [Console]::Out.Write("sortie-é"); [Console]::Error.Write("diagnostic-λ"); exit 7') -State $state -OnOutput {param($e,$s)$s[$e.Stream]+=$e.Text}
         if($state.stdout -cne 'sortie-é' -or $state.stderr -cne 'diagnostic-λ'){
             $probe=@{Json=[Text.StringBuilder]::new()}
             $probeResult=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-Command','ConvertTo-Json -Compress -InputObject @{PowerShell=$PSVersionTable.PSVersion.ToString();Runtime=[Environment]::Version.ToString();OutputCodePage=[Console]::OutputEncoding.CodePage;InputCodePage=[Console]::InputEncoding.CodePage;OutputPreambleHex=[Convert]::ToHexString([Console]::OutputEncoding.GetPreamble());FixtureHex=[Convert]::ToHexString([Console]::OutputEncoding.GetBytes("sortie-é"))}') -State $probe -OnOutput {param($e,$s)if($e.Stream -eq 'stdout' -and $s.Json.Length -lt 2048){[void]$s.Json.Append($e.Text)}}
@@ -441,7 +443,14 @@ Executes independent native byte and object invariants in a companion module.
             }
         } $WorkspaceRoot
         $identity=Get-QuietEngine
-        $expected=if($identity.Mode -eq 'InProcess'){'portable'}else{[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier}
+        $hostRid=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+        $expected=$hostRid
+        if($identity.Mode -eq 'InProcess'){
+            $directory=if([Environment]::Version.Major -ge 11){'lib/engine'}else{'lib/inprocess'}
+            $build=Get-Content -LiteralPath (Join-Path $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/'+$directory+'/build-manifest.json')) -Raw -Encoding utf8|ConvertFrom-Json
+            $slots=if($build.PSObject.Properties['ReadyToRunTargets']){@($build.ReadyToRunTargets)}else{@()}
+            $expected=if($hostRid -cin $slots){$hostRid}else{'portable'}
+        }
         Assert-QuietEqual $identity.Engine.BuildRuntimeIdentifier $expected
     }
     $cases['C# protocol and concurrent SQLite assertions']={
@@ -732,6 +741,7 @@ Executes independent native byte and object invariants in a companion module.
         $galleryEvidence.Add(@{Packages=$prepared.Packages;Targets=$prepared.Targets;Installation=$r.Data;ExternalPublication=$false})
     }
     $caseMetadata=@{
+        'GitHub CI companion helpers load privately without caller profile dependencies'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
         'GitHub CI JSON receipts create missing parents and preserve preview boundaries'=@{TestKind='Integration';Dependencies=@('FileSystem')}
         'unit byte-count parsing validates sizes without filesystem or process effects'=@{TestKind='Unit';Dependencies=@()}
         'commit workspace documentation gates, script/doc drift and the -WhatIf/commit-once/no-remote contract'=@{TestKind='Integration';Dependencies=@('FileSystem','GitProcess')}

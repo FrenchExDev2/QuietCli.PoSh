@@ -14,6 +14,16 @@ function Test-QuietAutomationContracts {
     $resolverSource=(Get-Command Resolve-QuietVirtEngine).ScriptBlock.ToString()
     $engineAvailability=@{}
     function Get-Command {
+        <#
+        .SYNOPSIS
+        Simulates application discovery for the scoped container-runtime availability matrix.
+        .PARAMETER Name
+        Application name whose fixture availability is queried.
+        .PARAMETER CommandType
+        Requested command kind, retained to match the production resolver call.
+        .PARAMETER ErrorAction
+        Requested missing-command policy, retained without invoking real discovery.
+        #>
         param($Name,$CommandType,$ErrorAction)
         if($engineAvailability.ContainsKey($Name) -and $engineAvailability[$Name]){[pscustomobject]@{Name=$Name;CommandType='Application'}}
     }

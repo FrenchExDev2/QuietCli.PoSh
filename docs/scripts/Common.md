@@ -35,6 +35,11 @@ ConvertTo-QuietByteCount '1 MiB'   # 1048576
 
 ## Dependencies
 
+The Core test companion dot-sources this library in its private module scope. Loading it only in a
+worker's script scope does not make the helpers available to functions defined in that module.
+The companion's clean-process import regression checks helper source paths and prevents accidental
+helper exports; CI test execution remains independent of workstation profile initialization.
+
 - Dot-sources `ReportPaths.ps1`, `Ci.Process.ps1`, `SourceIdentity.ps1`, `RuntimeTargets.ps1` (lines 1, 3-5).
 - Shells out indirectly through `Invoke-CiProcess` (from `Ci.Process.ps1`).
 - `Wait-WorkspaceWorker` directly references a fixed sibling script path, `Join-Path $PSScriptRoot 'Watch-Tests.ps1'` (line 89), and reuses `ConvertTo-CiArgument` (also from `Ci.Process.ps1`) to rebuild a monitor-restart command line (line 98).

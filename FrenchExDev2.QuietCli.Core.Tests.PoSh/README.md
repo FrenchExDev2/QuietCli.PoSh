@@ -10,6 +10,14 @@ Core mixes pure logic with real filesystem, Git, process and package integration
 
 ## GitHub execution policy and Docker smoke
 
+The companion loads `scripts/Common.ps1` into its own private module scope, including the CI process,
+JSON, source-identity and project-discovery helpers. Test functions do not depend on a caller script
+or workstation profile having loaded those functions. The focused case `GitHub CI companion helpers
+load privately without caller profile dependencies` verifies exact helper source paths and no export
+leaks in a bounded child PowerShell process; `-NoProfile` is intentional isolation for that regression.
+Architecture assertions distinguish portable integrated hosting from a selected ReadyToRun RID slot,
+using the actual host CLR and its build manifest. Isolated hosting still requires the native RID.
+
 The focused case `GitHub CI JSON receipts create missing parents and preserve preview boundaries`
 reproduces receipt publication on a clean checkout. It covers seeded Unicode writes and overwrites,
 relative paths, blocked parent paths, temporary-file cleanup and a directory-creation mutant. The real
