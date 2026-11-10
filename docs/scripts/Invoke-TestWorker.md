@@ -11,6 +11,13 @@ This is the actual background worker that runs the companion test suites (Core, 
 
 ## Usage
 
+For `.NET` automation, use the public `Invoke-DotNetTests.ps1` facade. Its shared worker
+selection is `-Suite DotNet -DotNetSuite Readiness|Provisioning|Layout|Locks|All`.
+The Locks campaign covers CI archive/base-image locks and source runtime pins. This branch
+loads the tooling test scripts without importing the product or checking its engine identity;
+it still records source identities, detects source drift and saves the shared terminal reports.
+It qualifies the selected automation only, independently of native engine/image qualification.
+
 This is an `end`-block script with a `dynamicparam` block (so `-Suite` validated values depend on `New-QuietWorkspaceSuiteParameter`, resolved at parse time from `WorkspaceProjects.ps1`).
 
 Parameters:
