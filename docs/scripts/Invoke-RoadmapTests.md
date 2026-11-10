@@ -1,5 +1,7 @@
 # Invoke-RoadmapTests.ps1
 
+The complete tooling campaign also covers .NET discovery, whitelist/exact target boundaries, no-effect WhatIf with pure JSON, Unicode tables, native outcome invariants and targeted Release/selection/outcome mutants. Owned C# fixtures are actually built in Release: one deliberately fails and one succeeds, retaining individual diagnostics. These expected fixture build failures do not qualify any product or mean the tooling assertions failed.
+
 The full suite now includes migration dependency/whitelist gates, actual isolated Get-Module export observations and the resource-aware progression planner. Existing graph properties/malformed corpora/mutations remain; additional independent controls cover missing imports, cyclic scripts, hostile XML, unapproved selection, .gitkeep scaffolds, report WhatIf, actual public/private exports and failed imports. These tooling checks do not qualify migration candidates or registry products.
 
 Starts the complete planning-tooling campaign in a background PowerShell Core process with its normal profile and a dedicated visible [Watch-Tests](Watch-Tests.md) window. The window closes normally after a saved terminal summary. Tests do not modify repository sources or provision i3.

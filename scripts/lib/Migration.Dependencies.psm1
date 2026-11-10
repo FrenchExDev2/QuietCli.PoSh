@@ -260,10 +260,12 @@ function Test-MigrationQualification {
     Optional product receipt binding tests, isolated package restore and recovery artifacts to this dependency report.
     .PARAMETER ExportSummaryPath
     Optional actual-import summaries covering selected PowerShell module entries.
+    .PARAMETER DotNetBuildReportPath
+    Real Release build report required when selected .NET solution/project entries are present.
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$DependencyReportPath,
-        [Parameter(Mandatory)][string]$ToolingSummaryPath,[string]$AcceptanceReceiptPath,[string[]]$ExportSummaryPath)
+        [Parameter(Mandatory)][string]$ToolingSummaryPath,[string]$AcceptanceReceiptPath,[string[]]$ExportSummaryPath,[string]$DotNetBuildReportPath)
     $ErrorActionPreference='Stop'
     $errors=[Collections.Generic.List[string]]::new()
     try{
@@ -282,10 +284,25 @@ function Test-MigrationQualification {
             $result=@($summary.Categories | Where-Object Category -CEQ $category)
             if($result.Count -ne 1 -or $result[0].Executed -lt 1 -or $result[0].Failed -ne 0){$errors.Add("MissingCheckerCampaign:$category")}
         }
-        foreach($name in @('Migration.Dependencies.psm1','Migration.Exports.psm1')){
+        $dotNetEntries=@($report.Files | Where-Object {$_.Kind -in @('.slnx','.sln','.csproj')})
+        $checkerNames=@('Migration.Dependencies.psm1','Migration.Exports.psm1')
+        if($dotNetEntries.Count){$checkerNames+=@('Migration.DotNet.psm1')}
+        foreach($name in $checkerNames){
             $path=Join-Path $PSScriptRoot $name
             $identity=@($summary.Sources | Where-Object Path -EQ $path)
             if($identity.Count -ne 1 -or $identity[0].Sha256 -cne (Get-FileHash -LiteralPath $path).Hash){$errors.Add("CheckerNotQualified:$name")}
+        }
+        if($dotNetEntries.Count){
+            if(!$DotNetBuildReportPath){$errors.Add('MissingDotNetReleaseBuildEvidence')}
+            else{
+                $buildReport=Get-Content -LiteralPath $DotNetBuildReportPath -Raw -Encoding utf8 | ConvertFrom-Json -Depth 32
+                if($buildReport.Mode -cne 'Build' -or $buildReport.Configuration -cne 'Release' -or !$buildReport.Complete -or !$buildReport.Passed -or $buildReport.State -cne 'Success' -or $buildReport.PolicySha256 -cne $report.PolicySha256){$errors.Add('DotNetReleaseBuildNotQualified')}
+                foreach($entry in $dotNetEntries){
+                    $source=[IO.Path]::GetFullPath((Join-Path $report.SourceRoot $entry.Path))
+                    $build=@($buildReport.Results | Where-Object {$_.Path -eq $source -and $_.Selected -and $_.State -ceq 'Success' -and $_.ExitCode -eq 0 -and $_.Sha256 -ceq $entry.Sha256})
+                    if($build.Count -ne 1){$errors.Add("MissingSuccessfulDotNetEntry:$($entry.Path)")}
+                }
+            }
         }
         $exportReports=@(foreach($path in $ExportSummaryPath){Get-Content -LiteralPath $path -Raw -Encoding utf8 | ConvertFrom-Json -Depth 32})
         foreach($module in @($report.Files | Where-Object Kind -CEQ '.psm1')){

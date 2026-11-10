@@ -1,5 +1,7 @@
 # Test-MigrationGate.ps1
 
+When the dependency scope contains .slnx/.sln/.csproj, `DotNetBuildReportPath` is additionally required. The report must be a complete successful real Release batch under the same policy, covering every selected entry with successful exit code and matching target hash. The tooling qualification must also identify the current Migration.DotNet library. This build sub-gate does not remove evaluated-graph, test, restore or recovery requirements. WhatIf/Plan reports never satisfy it.
+
 Read-only facade of `Test-MigrationQualification` in [Migration.Dependencies](lib/Migration.Dependencies.md). It returns a MigrationQualification assessment and throws on any missing/failed prerequisite. It never migrates files or creates remote resources.
 
 Inputs are explicit saved DependencyReportPath, complete ToolingSummaryPath, optional ExportSummaryPath array and product AcceptanceReceiptPath. The checker itself must appear with its current dependency/export library source hashes in the successful tooling summary, with nonempty successful property/fuzz/mutation categories. Dependency evidence must pass and match current source/policy/checker hashes. Each selected psm1 needs a real-import export-contract summary for that module's source/hash; a manifest wildcard or static function list is insufficient.

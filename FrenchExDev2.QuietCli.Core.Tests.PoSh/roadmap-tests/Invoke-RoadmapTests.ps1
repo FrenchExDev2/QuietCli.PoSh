@@ -201,6 +201,7 @@ try {
     }
     Write-WorkspaceJson (Join-Path $RunDirectory 'mutations.json') $mutationResults.ToArray()
     . (Join-Path $PSScriptRoot 'Test-MigrationAndProgression.ps1')
+    . (Join-Path $PSScriptRoot 'Test-DotNetMigration.ps1')
     $state.State=if($state.Failed){'Failed'}else{'Success'}
 } catch {$state.State='Crash';$state.Error=$_.Exception.ToString();$state.Failed++}
 finally {
@@ -210,6 +211,7 @@ finally {
     $sourceFiles+=@(Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot 'docs/requirements') -File | ForEach-Object FullName)
     $sourceFiles+=@('scripts/lib/Migration.Dependencies.psm1','scripts/lib/Migration.Exports.psm1','scripts/lib/Roadmap.Progression.psm1','scripts/Test-MigrationDependencies.ps1','scripts/Test-MigrationGate.ps1','scripts/Test-PowerShellModuleExports.ps1','scripts/workers/Invoke-ModuleExportProbe.ps1','scripts/Get-RoadmapExecutionPlan.ps1','FrenchExDev2.QuietCli.Core.Tests.PoSh/roadmap-tests/Test-MigrationAndProgression.ps1' | ForEach-Object { Join-Path $WorkspaceRoot $_ })
     $sourceFiles+=@('scripts/lib/LocalGallery.Probe.psm1','scripts/Test-LocalGalleryContainer.ps1','scripts/workers/Invoke-LocalGalleryProbe.ps1','scripts/workers/Invoke-LocalGalleryClient.ps1' | ForEach-Object { Join-Path $WorkspaceRoot $_ })
+    $sourceFiles+=@('scripts/lib/Migration.DotNet.psm1','scripts/Test-DotNetMigrationBuild.ps1','scripts/workers/Invoke-DotNetMigrationBuild.ps1','FrenchExDev2.QuietCli.Core.Tests.PoSh/roadmap-tests/Test-DotNetMigration.ps1' | ForEach-Object { Join-Path $WorkspaceRoot $_ })
     $sourceFiles+=@(Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot 'docs') -Filter 'ROADMAP-*.md' -File | ForEach-Object FullName)
     $identities=@(foreach($file in $sourceFiles){[pscustomobject]@{Path=$file;Sha256=(Get-FileHash -LiteralPath $file).Hash}})
     $summary=[pscustomobject]@{State=$state;Seed=$seed;Categories=$groups;Cases=$cases.ToArray();Sources=$identities;PowerShell=$PSVersionTable.PSVersion.ToString();Scope='Planning tooling only; no product acceptance or release qualification.'}

@@ -88,6 +88,14 @@ Le 10 novembre, la sonde sur une copie Kubernetes vérifiée charge réellement 
 
 ### Moyens et stratégie de qualification
 
+### Compilation .NET Release
+
+`scripts/Test-DotNetMigrationBuild.ps1` découvre `.slnx`, `.sln` et `.csproj` sous `Net/FrenchExDev`. La bibliothèque réutilisable sépare découverte en lecture seule, exécution et tableau. Par défaut les builds portent sur les entrées de whitelist ; `-ItemId`/`-Target` bornent précisément la sélection, `-AllDiscovered` étend explicitement le diagnostic sans approuver de migration. Les dossiers de build/cache/mutation sont exclus. Chaque solution et chaque projet sélectionné ont leur propre reçu, même lorsqu'un projet figure déjà dans une solution.
+
+Commande réelle : **`dotnet build <fichier> --configuration Release`** (`-c`, en minuscule). Le script résout le SDK depuis le dossier cible, impose UTF-8 dans le processus enfant, borne chaque build et la campagne, poursuit après un échec et conserve état/code retour/durée/hash/arguments/logs par entrée. `-WhatIf` ne lance ni SDK, ni restore/build, ni processus ou écriture. Tableau Unicode et `build-results.json` accompagnent l'exécution ; `-OutputFormat Json` fournit du JSON seul dans le pipeline, `Object` permet la composition.
+
+Le validateur existant expose aussi `-BuildDotNet` avec `-BuildTarget`, `-NoRestore` et les chemins/bornes de rapport. La gate complète exige désormais `-DotNetBuildReportPath` pour les entrées .NET et la qualification actuelle de la bibliothèque de build. Elle refuse un plan, un résultat incomplet/échoué, un hash différent ou une entrée manquante. **Build Release réussi reste une preuve de compilation** ; le graphe MSBuild évalué exhaustif, les tests métier, la restauration depuis paquets et le retour restent des exigences distinctes. [Référence CLI officielle](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-build).
+
 Le validateur est du code PowerShell utilisant les AST PowerShell et les API XML .NET ; il ne nécessite pas de compiler une nouvelle bibliothèque C# pour démarrer. Ses contrats permettraient un extracteur Roslyn/MSBuild ultérieur séparé. Son compagnon de tests doit vérifier whitelist/containment/liens, scripts non exécutés, imports et chemins, XML hostile, packages/versions et cycles, avec propriétés, corpus malformé et mutations des refus. Le rapport garde les écarts par langage et reste distinct de la qualification du logiciel inspecté.
 
 <!-- roadmap-contract:begin -->
@@ -106,10 +114,11 @@ Choisir et qualifier la reprise des éléments existants sans déplacement globa
 | test | Stabilité d'inventaire, fixtures dirty/ignorées, paquets isolés, fuzz chemins et mutants d'ownership |
 | obs | États Discovered→Assessed→Planned→Qualified→Cutover par item et preuves de retour |
 
-Traçabilité : MIG-010, MIG-007, MIG-008, MIG-009, MIG-001, MIG-002, MIG-003, MIG-004, MIG-005, MIG-006. Lots : MIG0, MIG1. Une relation de lot est un prérequis de livraison, pas un import runtime.
+Traçabilité : MIG-011, MIG-010, MIG-007, MIG-008, MIG-009, MIG-001, MIG-002, MIG-003, MIG-004, MIG-005, MIG-006. Lots : MIG0, MIG1. Une relation de lot est un prérequis de livraison, pas un import runtime.
 
 | ID | Exigence | Vérification prévue |
 | --- | --- | --- |
+| MIG-011 | La migration .NET découvre solutions/projets et exige des builds Release réels, avec WhatIf sans effet, tableau et résultats JSON par entrée. | MIG-011-AC1 → MIG-011-T1 (integration, NotRun) |
 | MIG-010 | La qualification PowerShell observe Get-Module après import réel isolé et compare les fonctions/cmdlets réellement exportées au contrat attendu. | MIG-010-AC1 → MIG-010-T1 (integration, NotRun) |
 | MIG-007 | La migration est deny-by-default et ne sélectionne que des items de whitelist avec décision explicite Assess/Migrate/Create/Exclude. | MIG-007-AC1 → MIG-007-T1 (property, NotRun) |
 | MIG-008 | Chaque ps1/psm1/psd1 et solution/projet C# sélectionné est analysé par une bibliothèque réutilisable comptée dans la gate de migration. | MIG-008-AC1 → MIG-008-T1 (fault, NotRun) |

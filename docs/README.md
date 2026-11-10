@@ -1,5 +1,7 @@
 # QuietCli documentation
 
+Migration .NET: [Release builds with WhatIf, table and JSON](scripts/Test-DotNetMigrationBuild.md), integrated with the dependency validator and migration gate.
+
 Planning progression: [FrenchExDev2.SoftwareContract](ROADMAP-SoftwareContract.md), [local PSResource registry](ROADMAP-Local-PSResource-Registry.md), [personal i3 delivery](ROADMAP-Delivery-FrenchExDev-i3.md), [final Conduit ecosystem](ROADMAP-Conduit.md). Implemented planning/migration tools: [execution waves](scripts/Get-RoadmapExecutionPlan.md), [whitelisted dependencies](scripts/Test-MigrationDependencies.md), [actual module exports](scripts/Test-PowerShellModuleExports.md), [migration gate](scripts/Test-MigrationGate.md), [exploratory localhost gallery probe](scripts/Test-LocalGalleryContainer.md).
 
 Start with the [product README](../README.md) for installation, requirements and a first command. This index links the usage guides, technical contracts, CI instructions and dated evidence available in this repository.

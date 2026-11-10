@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-10",
+  "scope": "Release build assessment, not product tests or migration acceptance",
+  "discovery": {"slnx":49,"sln":1,"csproj":602,"total":652,"selectedResultEntries":3},
+  "realBuild": {
+    "state":"Success","configuration":"Release","passed":true,"complete":true,
+    "sdk":"11.0.100-rc.3.26522.148",
+    "report":"C:/Users/serard/AppData/Local/Temp/QuietCli2/874a99c9b658/migration-builds/5c6305068af14067a9030ae6fb8f2a1d/build-results.json",
+    "results":[
+      {"target":"Result/FrenchExDev.Net.Result.slnx","state":"Success","exitCode":0,"durationMs":14221.3},
+      {"target":"Result/src/FrenchExDev.Net.Result/FrenchExDev.Net.Result.csproj","state":"Success","exitCode":0,"durationMs":2709.9},
+      {"target":"Result/test/FrenchExDev.Net.Result.Tests/FrenchExDev.Net.Result.Tests.csproj","state":"Success","exitCode":0,"durationMs":2514.8}
+    ]
+  },
+  "tooling": {
+    "passed":412,"failed":0,"examples":75,"properties":283,"fuzzControls":43,"targetedMutantsKilled":11,"targetedMutantsSurvived":0,
+    "summary":"C:/Users/serard/AppData/Local/Temp/QuietCli2/874a99c9b658/tests/roadmaps-20261110-105425-598b1e/summary.json",
+    "summarySha256":"820B9E219EAF7F3AAD8B8D52F56F95A649284C7E35D92FA33E2FC96489841A1C",
+    "dotNetLibrarySha256":"1AA0D2545FEAFD506B7AEFF70F44E9698D9C286784586856DC729091D82CFB91"
+  },
+  "planning":{"roadmaps":21,"requirements":94,"workItems":76},
+  "notPerformed":["Result unit test execution","build of every discovered entry","migration/cutover","publication","complete evaluated MSBuild graph qualification","cold-cache package acceptance"]
+}

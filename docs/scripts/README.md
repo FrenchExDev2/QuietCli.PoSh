@@ -76,6 +76,7 @@ file by hand, run:
 - [`Sync-DocsCredits.ps1`](../../scripts/Sync-DocsCredits.ps1) -> [documentation](Sync-DocsCredits.md)
 - [`Sync-ScriptsReadme.ps1`](../../scripts/Sync-ScriptsReadme.ps1) -> [documentation](Sync-ScriptsReadme.md)
 - [`Sync-SkillDocument.ps1`](../../scripts/Sync-SkillDocument.ps1) -> [documentation](Sync-SkillDocument.md)
+- [`Test-DotNetMigrationBuild.ps1`](../../scripts/Test-DotNetMigrationBuild.ps1) -> [documentation](Test-DotNetMigrationBuild.md)
 - [`Test-LocalGalleryContainer.ps1`](../../scripts/Test-LocalGalleryContainer.ps1) -> [documentation](Test-LocalGalleryContainer.md)
 - [`Test-MigrationDependencies.ps1`](../../scripts/Test-MigrationDependencies.ps1) -> [documentation](Test-MigrationDependencies.md)
 - [`Test-MigrationGate.ps1`](../../scripts/Test-MigrationGate.ps1) -> [documentation](Test-MigrationGate.md)
@@ -96,6 +97,7 @@ file by hand, run:
 - [`lib/EditorExtensions.psm1`](../../scripts/lib/EditorExtensions.psm1) -> [documentation](lib/EditorExtensions.md)
 - [`lib/LocalGallery.Probe.psm1`](../../scripts/lib/LocalGallery.Probe.psm1) -> [documentation](lib/LocalGallery.Probe.md)
 - [`lib/Migration.Dependencies.psm1`](../../scripts/lib/Migration.Dependencies.psm1) -> [documentation](lib/Migration.Dependencies.md)
+- [`lib/Migration.DotNet.psm1`](../../scripts/lib/Migration.DotNet.psm1) -> [documentation](lib/Migration.DotNet.md)
 - [`lib/Migration.Exports.psm1`](../../scripts/lib/Migration.Exports.psm1) -> [documentation](lib/Migration.Exports.md)
 - [`lib/ModuleWorkstation.psm1`](../../scripts/lib/ModuleWorkstation.psm1) -> [documentation](lib/ModuleWorkstation.md)
 - [`lib/PreviewTag.psm1`](../../scripts/lib/PreviewTag.psm1) -> [documentation](lib/PreviewTag.md)
@@ -119,6 +121,7 @@ file by hand, run:
 
 ## `scripts/workers/`
 
+- [`workers/Invoke-DotNetMigrationBuild.ps1`](../../scripts/workers/Invoke-DotNetMigrationBuild.ps1) -> [documentation](workers/Invoke-DotNetMigrationBuild.md)
 - [`workers/Invoke-LocalGalleryClient.ps1`](../../scripts/workers/Invoke-LocalGalleryClient.ps1) -> [documentation](workers/Invoke-LocalGalleryClient.md)
 - [`workers/Invoke-LocalGalleryProbe.ps1`](../../scripts/workers/Invoke-LocalGalleryProbe.ps1) -> [documentation](workers/Invoke-LocalGalleryProbe.md)
 - [`workers/Invoke-ModuleExportProbe.ps1`](../../scripts/workers/Invoke-ModuleExportProbe.ps1) -> [documentation](workers/Invoke-ModuleExportProbe.md)

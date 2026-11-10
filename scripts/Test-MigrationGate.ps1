@@ -10,10 +10,12 @@ Complete monitored tooling qualification summary.
 Receipt binding product tests, isolated restore and recovery artifacts to the dependency report.
 .PARAMETER ExportSummaryPath
 Actual import/Get-Module export summaries for the selected module entries.
+.PARAMETER DotNetBuildReportPath
+Real complete Release build report for selected .NET solutions/projects.
 #>
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$DependencyReportPath,
-    [Parameter(Mandatory)][string]$ToolingSummaryPath,[string]$AcceptanceReceiptPath,[string[]]$ExportSummaryPath)
+    [Parameter(Mandatory)][string]$ToolingSummaryPath,[string]$AcceptanceReceiptPath,[string[]]$ExportSummaryPath,[string]$DotNetBuildReportPath)
 Import-Module (Join-Path $PSScriptRoot 'lib/Migration.Dependencies.psm1') -ErrorAction Stop
 $report=Test-MigrationQualification @PSBoundParameters
 $report

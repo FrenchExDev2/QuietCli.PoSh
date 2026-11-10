@@ -1,5 +1,7 @@
 # Migration.Dependencies.psm1
 
+For selected .NET project/solution entries the full gate now additionally requires DotNetBuildReportPath: real Mode=Build, Release, complete success, current policy and matching per-entry success/hash. The current Migration.DotNet checker must itself be present in the tooling qualification. A build report is a necessary compilation witness, not a substitute for evaluated graph/package/behavior/recovery evidence.
+
 Dynamic call operators are recorded from the command expression itself, never from a literal argument that happens to name an approved module. RequiredVersion (including inline named syntax) is compared to the declared pin; minimum/maximum constraints and #requires ModuleVersion ranges require evaluated resolution. These conservative cases have retained regression witnesses. This remains static declaration analysis, not a claim to resolve arbitrary PowerShell/MSBuild execution semantics.
 
 Also exports `Test-MigrationQualification`; [Test-MigrationGate](../Test-MigrationGate.md) documents the full gate. It requires fresh dependency/policy/source hashes, qualification of this checker and Migration.Exports with property/fuzz/mutation evidence, actual module export-contract summaries and product tests/isolated-restore/recovery artifacts. This read-only gate checks required evidence coherence; it never performs cutover.

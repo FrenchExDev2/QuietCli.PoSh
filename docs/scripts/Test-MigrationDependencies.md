@@ -1,5 +1,11 @@
 # Test-MigrationDependencies.ps1
 
+Optional `-BuildDotNet` composes [the .NET build library](lib/Migration.DotNet.md) after static analysis. Use `-BuildTarget <Net/FrenchExDev-relative paths>`, `-NoRestore`, `-BuildRunDirectory`, `-BuildJsonPath` and `-BuildTimeoutSeconds` to bound the assessment. `-OutputFormat Object` preserves the original typed report, adding DotNetBuild; Json emits the combined report, Table renders build results and prints the saved JSON path. Build-specific options require BuildDotNet. WhatIf performs static/read-only discovery only and creates no build process or output file. Default calls still never execute source or MSBuild.
+
+```powershell
+./scripts/Test-MigrationDependencies.ps1 -SourceRoot C:/code/FrenchExDev/FrenchExDev_i2 -ItemId Result -BuildDotNet -WhatIf -OutputFormat Json
+```
+
 Inspects only whitelisted migration candidates. It delegates to [Migration.Dependencies](lib/Migration.Dependencies.md). It never migrates or imports inspected code.
 
 ```powershell

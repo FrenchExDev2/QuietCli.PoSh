@@ -628,6 +628,50 @@
   ],
   "requirements": [
     {
+      "id": "MIG-011",
+      "feature": "MIG",
+      "statement": "La migration .NET découvre solutions/projets et exige des builds Release réels, avec WhatIf sans effet, tableau et résultats JSON par entrée.",
+      "status": "Proposed",
+      "priority": "P0",
+      "owner": "Unassigned",
+      "sources": [
+        {
+          "document": "ROADMAP-Migration-FrenchExDev2.md",
+          "section": "Compilation .NET Release"
+        }
+      ],
+      "dependsOn": [
+        "MIG-007",
+        "MIG-008"
+      ],
+      "kindLinks": [
+        "MIG-design",
+        "MIG-impl",
+        "MIG-test",
+        "MIG-obs"
+      ],
+      "acceptance": [
+        {
+          "id": "MIG-011-AC1",
+          "given": "Net/FrenchExDev, whitelist et fichiers slnx/sln/csproj sélectionnés",
+          "when": "prévisualiser puis exécuter la compilation Release",
+          "then": "WhatIf ne lance aucun SDK/build/restore et n'écrit rien ; l'exécution observe SDK, hash, arguments, code retour, durée et état de chaque entrée, continue après échec, affiche un tableau et conserve le JSON ; un plan ou build incomplet/échoué ne satisfait pas la gate, et la compilation ne remplace pas les preuves de graphe évalué/restauration/tests/retour",
+          "verification": {
+            "id": "MIG-011-T1",
+            "method": "integration",
+            "status": "Planned",
+            "implementationRef": null
+          },
+          "evidence": {
+            "status": "NotRun",
+            "artifacts": [],
+            "sourceIdentity": null,
+            "environmentIdentity": null
+          }
+        }
+      ]
+    },
+    {
       "id": "MIG-010",
       "feature": "MIG",
       "statement": "La qualification PowerShell observe Get-Module après import réel isolé et compare les fonctions/cmdlets réellement exportées au contrat attendu.",
