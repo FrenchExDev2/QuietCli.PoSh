@@ -317,13 +317,14 @@ Executes independent native byte and object invariants in a companion module.
         $revision='1234567890abcdef1234567890abcdef12345678'
         foreach($skipTty in @($false,$true)){
         foreach($suite in @('All','Core','Git')){
-            foreach($job in @('WindowsResult','LinuxResult','MutationResult')){
+            foreach($job in @('WindowsResult','LinuxResult','MutationResult','PerformanceResult')){
                 foreach($result in @('success','failure','cancelled','skipped','')){
                     $expectedMutation=if($skipTty -or $suite -eq 'Git'){'skipped'}else{'success'}
-                    $ready=if($job -eq 'MutationResult'){$result -ceq $expectedMutation}else{$result -ceq 'success'}
+                    $expectedPerformance=if($suite -eq 'Git'){'skipped'}else{'success'}
+                    $ready=if($job -eq 'MutationResult'){$result -ceq $expectedMutation}elseif($job -eq 'PerformanceResult'){$result -ceq $expectedPerformance}else{$result -ceq 'success'}
                     $id=[guid]::NewGuid().ToString('N')
                     $output=Join-Path $directory ($id+'.output');$receipt=Join-Path $directory ($id+'.json')
-                    $arguments=@{Suite=$suite;SkipTty=$skipTty;Revision=$revision;WindowsResult='success';LinuxResult='success';MutationResult=$expectedMutation;ReceiptPath=$receipt;OutputPath=$output}
+                    $arguments=@{Suite=$suite;SkipTty=$skipTty;Revision=$revision;WindowsResult='success';LinuxResult='success';MutationResult=$expectedMutation;PerformanceResult=$expectedPerformance;ReceiptPath=$receipt;OutputPath=$output}
                     $arguments[$job]=$result
                     $accepted=$false
                     try{& $script @arguments;$accepted=$true}catch{if($ready){throw}}
@@ -331,6 +332,7 @@ Executes independent native byte and object invariants in a companion module.
                     if(Test-Path -LiteralPath $receipt){
                         $decision=Get-Content -LiteralPath $receipt -Encoding utf8 -Raw|ConvertFrom-Json
                         Assert-QuietEqual $decision.MutationRequired (!$skipTty -and $suite -ne 'Git')
+                        Assert-QuietEqual $decision.PerformanceRequired ($suite -ne 'Git')
                         if($skipTty){Assert-QuietEqual $decision.TtyQualification 'Excluded'}
                     }else{
                         # Mandatory empty arguments are rejected by PowerShell binding before any receipt is written.
@@ -369,10 +371,10 @@ Executes independent native byte and object invariants in a companion module.
                 }
                 $gate=@($jobs['qualification-gate']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
                 if(!$gate.Contains('-MutationResult skipped -SkipTty')){throw 'TtyGateExclusionNotExplicit'}
-                if(@($jobs['qualification-gate']['needs']) -contains 'performance-results' -or $gate -match 'PERFORMANCE_RESULT|PerformanceEvidenceReportRequired'){throw 'OptionalPerformanceBlocksQualification'}
+                if(@($jobs['qualification-gate']['needs']) -cnotcontains 'performance-results' -or $gate -notmatch '-PerformanceResult \$env:PERFORMANCE_RESULT'){throw 'PerformanceEvidenceMustGateQualification'}
                 foreach($trigger in @('workflow_call','workflow_dispatch')){
                     $option=$workflow['on'][$trigger]['inputs']['collect_performance']
-                    if(!$option -or $option['type'] -cne 'boolean' -or [string]$option['default'] -cne 'false'){throw 'PerformanceMustBeExplicitlyRequested'}
+                    if(!$option -or $option['type'] -cne 'boolean' -or [string]$option['default'] -cne 'true'){throw 'PerformanceMustBeEnabledByDefault'}
                 }
                 if([string]$jobs['performance-results']['if'] -cne '${{ always() && inputs.collect_performance && needs.linux-matrix.outputs.has_core == ''true'' }}'){throw 'PerformanceAggregationNotOptIn'}
                 $prepare=@($jobs['windows']['steps']|Where-Object {$_['name'] -ceq 'Prepare checksum-pinned PowerShell and CLR profilers'})
@@ -778,7 +780,7 @@ Executes independent native byte and object invariants in a companion module.
     }
     $caseMetadata=@{
         'test execution declarations preserve barriers and bounded isolated workers'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
-        'test case classifications are complete explicit and fail closed before filtering'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'test case classifications are complete explicit and fail closed before filtering'=@{TestKind='Integration';Dependencies=@('FileSystem','ProcessEnvironment')}
         'workspace project discovery keeps suite modes and package publication policy separate'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
         'container runtime diagnosis separates image bootstrap from ABI and RID selection'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
         'Alpine image recipe installs locked PowerShell and separates its runtime from the SDK'=@{TestKind='Integration';Dependencies=@('FileSystem')}

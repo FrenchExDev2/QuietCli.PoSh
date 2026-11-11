@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 03F3F65D9BF6C55C12A3E6B61F2CBB9EE14ACD16E641188FB5035FDF12C7A20F -->
+<!-- workflow-source-sha256: 3710688B7C5A22D25EC7EC6A900C2806AE41C4D45C3DC369343D64BE92761E59 -->
 
 ## Purpose
 
@@ -9,7 +9,7 @@ Shared qualification for the selected Core, Git or All source scope across six W
 ## Triggers
 
 Reusable workflow_call and workflow_dispatch accept a declared suite (default All) and
-collect_performance (boolean, default false). companions-ci.yml provides generic path-filtered
+collect_performance (boolean, default true; required to qualify Core evidence). companions-ci.yml provides generic path-filtered
 PR/develop events without requesting performance collection. Image publication remains restricted
 to upstream develop pushes/manual dispatch; PR images are never published.
 
@@ -48,8 +48,10 @@ flowchart TD
     job_windows --> job_performance_results
     job_linux --> job_performance_results
     job_linux_test_driver --> job_performance_results
+    job_linux_matrix --> job_qualification_gate
     job_windows --> job_qualification_gate
     job_linux_result --> job_qualification_gate
+    job_performance_results --> job_qualification_gate
     job_linux_matrix --> job_windows
 ~~~
 
@@ -62,7 +64,7 @@ flowchart TD
 | linux-selection | runner ubuntu-latest | linux-matrix, linux-images | ${{ always() && !cancelled() && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' &#124;&#124; needs.linux-images.result == 'skipped') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Select-GitHubCiMatrix.ps1 |
 | linux-test-driver | runner ${{ matrix.runner }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_docker_container_runtime == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CiSuiteImage.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 | performance-results | runner ubuntu-latest | linux-matrix, windows, linux, linux-test-driver | ${{ always() && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CorePerformanceReport.ps1 |
-| qualification-gate | runner ubuntu-latest | windows, linux-result | ${{ always() }} | ./scripts/Assert-QualificationGate.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
+| qualification-gate | runner ubuntu-latest | linux-matrix, windows, linux-result, performance-results | ${{ always() }} | ./scripts/Assert-QualificationGate.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
 | windows | runner ${{ matrix.image }} | linux-matrix | default success condition | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 
 <!-- workflow-generated:end -->
@@ -92,7 +94,7 @@ engine. Explicit Docker arguments remain authoritative. See [environment resolut
 
 Selected native Windows and Docker test-driver preparation jobs also use the shared optional resource-archive cache. The key includes runner OS and dependencies.lock.json hash; Restore-CoreResources still verifies extracted bytes. GitHub job-container preparation remains self-contained and does not depend on cache availability.
 
-Windows runs natively. Linux selection partitions verified GHCR digests into supported GitHub job containers (`linux`) and the Docker test driver (`linux-test-driver`), including Alpine ARM64. Each row builds Release ReadyToRun for its tested RID and uses Invoke-GitHubCi with shared workers, SkipBuild and SkipTty. Functional evidence bundles are always collected. Only an explicit collect_performance=true request enables pinned profiling for Core/All, per-row performance reports and the combined performance-results job. Ordinary PR, develop and publication callers leave this disabled; missing performance evidence cannot fail those runs. Image builders explicitly select Docker. Failure bundles are bounded and redacted before 14-day upload.
+Windows runs natively. Linux selection partitions verified GHCR digests into job containers and Docker test-driver fallback, including Alpine ARM64. Each row builds Release ReadyToRun for its tested RID and uses Invoke-GitHubCi with shared workers, SkipBuild and SkipTty. Every Core/All row requests pinned PowerShell/CLR profiling by default; automatic PR/develop/publication callers explicitly set collect_performance=true. Functional bundles and per-row reports are always collected; the combined job emits standalone HTML/Markdown/JSON for all ten environments. Disabling collection cannot pass Core qualification. Image builders explicitly select Docker. Failure bundles remain bounded/redacted; raw diagnostic traces remain in their per-environment artifacts.
 
 Both selected Linux execution jobs explicitly use `!cancelled()`, require a successful selection
 job and check their own selection flag. The status function overrides GitHub's implicit `success()`
@@ -105,7 +107,7 @@ and [status functions](https://docs.github.com/en/actions/reference/workflows-an
 
 The shared final image explicitly includes GNU tar and zstd for actions/cache, including Alpine where BusyBox tar does not implement the archive flags used by the action. Recipe assertions cover all four RID declarations. This source check does not substitute for actual hosted archive restore/save.
 
-linux-result validates the selected paths and qualification-gate requires only Windows and Linux success before returning the exact qualified revision. Optional performance-results is not a gate dependency. When performance collection is explicitly requested, incomplete evidence still fails its requested report; the report validator is not weakened. The workflow contract regression checks default-off inputs, guarded reports and the absence of a performance gate dependency. Native TTY campaigns are excluded. wrkflw 0.8.0 cannot qualify the expression-valued matrices locally. Source qualification precedes a separate Windows package rebuild; it does not attest byte-identical matrix/package outputs.
+linux-result validates every selected Linux path. qualification-gate additionally waits for performance-results and passes its outcome to Assert-QualificationGate; Core-evidence scopes require success. Current-run All receipt reuse also requires Performance=success and PerformanceRequired=true. Missing/failed/skipped profiling or incomplete matrix reports cannot emit qualified_sha. Native TTY campaigns remain explicitly excluded. Local workflow/source/property checks do not qualify unexecuted remote platforms, trace attachments or byte-identical matrix/package outputs.
 
 
 ## Mandatory tooling dependencies
@@ -122,7 +124,7 @@ Windows selections declaring Core evidence prepare both tools on stable x64 InPr
 -Module profiler,dottrace even when collect_performance is false, because RunProfiles requires both
 official cached archives. Other Windows rows prepare them only for requested Core performance
 collection. Tool dependencies alone do not enable Core evidence. Preparing tools does not activate
-profiling or reports. The source regression checks this separately from the opt-in contract.
+profiling or reports. The source regression checks this separately from the matrix collection/qualification contract.
 
 <!-- credits:begin -->
 ## Credits

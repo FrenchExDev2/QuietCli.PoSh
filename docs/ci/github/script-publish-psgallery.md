@@ -1,6 +1,6 @@
 # publish-psgallery.yml
 
-<!-- workflow-source-sha256: 1EB6069ACFCD5C56704E16030C633938849CC578D32BB1F34359AE21878F61B7 -->
+<!-- workflow-source-sha256: 46D70F1C9772024BCBDB39AA667AC51F108A6AD7E8127CF6CD084FC84799795B -->
 
 ## Purpose
 
@@ -48,6 +48,8 @@ flowchart TD
 <!-- workflow-generated:end -->
 
 ## Scripts and effects
+
+Fresh All qualification explicitly requests collect_performance=true. Reused current-run receipts must include successful required matrix performance evidence; an older/unprofiled receipt cannot bypass the report gate.
 
 The optional workflow-call qualified_sha input is accepted only with a downloaded All receipt from this exact run, attempt and revision. Assert-QualificationReceipt rejects mismatches before emitting an output. Without it, qualification still calls ci.yml(All). The checkpoint job normalizes the successful path; package/publish explicitly override skipped-ancestor propagation while requiring that successful exact-SHA checkpoint. The caller's SHA alone never authorizes packaging. Resource/host archives and NuGet are cached with their full lock inputs, and all existing exact-package and psgallery environment checks remain required.
 

@@ -79,16 +79,16 @@ function Test-QuietCiOptimization {
     $fixture=Join-Path $RunDirectory 'ci-optimization'
     [void][IO.Directory]::CreateDirectory($fixture)
     $revision='a'*40
-    $receipt=[ordered]@{Ready=$true;Revision=$revision;Suite='All';Windows='success';Linux='success';Mutation='skipped';MutationRequired=$false;TtyQualification='Excluded';RunId='42';RunAttempt='2'}
+    $receipt=[ordered]@{Ready=$true;Revision=$revision;Suite='All';Windows='success';Linux='success';Performance='success';PerformanceRequired=$true;Mutation='skipped';MutationRequired=$false;TtyQualification='Excluded';RunId='42';RunAttempt='2'}
     $path=Join-Path $fixture receipt.json;$output=Join-Path $fixture outputs.txt
     $validator=Join-Path $WorkspaceRoot scripts/Assert-QualificationReceipt.ps1
     Write-WorkspaceJson $path $receipt
     & $validator -ReceiptPath $path -Revision $revision -RunId 42 -RunAttempt 2 -OutputPath $output
     if((Get-Content $output -Raw -Encoding utf8) -cne "qualified_sha=$revision`n"){throw 'QualificationReceiptOutputChanged'}
     $rejections=0
-    foreach($damage in @('Ready','Revision','Suite','Windows','Linux','Mutation','MutationRequired','TtyQualification','RunId','RunAttempt')){
+    foreach($damage in @('Ready','Revision','Suite','Windows','Linux','Performance','PerformanceRequired','Mutation','MutationRequired','TtyQualification','RunId','RunAttempt')){
         $bad=[ordered]@{};foreach($key in $receipt.Keys){$bad[$key]=$receipt[$key]}
-        $bad[$damage]=switch($damage){Ready{$false} MutationRequired{$true} default{'wrong'}}
+        $bad[$damage]=switch($damage){Ready{$false} MutationRequired{$true} PerformanceRequired{$false} default{'wrong'}}
         Write-WorkspaceJson $path $bad
         $before=(Get-FileHash $output).Hash;$rejected=$false
         try{& $validator -ReceiptPath $path -Revision $revision -RunId 42 -RunAttempt 2 -OutputPath $output}catch{$rejected=$true}
@@ -125,6 +125,8 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
     $runs=Join-Path $fixture parallel
     $children=@(Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory $runs -CoreSummary $core -Selections $selections -WorkerPath $worker -MaxConcurrency 2 -SkipTty -ExpectedRuntimeIdentifier fixture-rid)
     if($children.Count -ne 2 -or @($children.Suites.PID|Select-Object -Unique).Count -ne 2 -or @($children.Suites|Where-Object {$_.PID -eq $PID -or $_.MaxConcurrency -ne 1 -or !$_.SkipTty -or $_.Rid -cne 'fixture-rid'}).Count){throw 'CompanionProcessIsolationChanged'}
+    $budgeted=@(Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory (Join-Path $fixture budgeted) -CoreSummary $core -Selections $selections -WorkerPath $worker -MaxConcurrency 2 -WorkerBudget 4)
+    if($budgeted.Count -ne 2 -or @($budgeted.Suites|Where-Object MaxConcurrency -NE 2).Count -or ($budgeted.Suites.MaxConcurrency|Measure-Object -Sum).Sum -gt 4){throw 'CompanionSharedBudgetNotDistributed'}
     foreach($field in @('Failed','Partial','Incomplete')){
         $bad=[pscustomobject]@{Failed=0;Partial=$false;Incomplete=$false};$bad.$field=1
         $target=Join-Path $fixture ('blocked-'+$field);$rejected=$false

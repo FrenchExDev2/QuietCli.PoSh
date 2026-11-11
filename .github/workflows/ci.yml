@@ -11,10 +11,10 @@ on:
         required: false
         default: All
       collect_performance:
-        description: Collect optional PowerShell/CLR profiling and performance reports
+        description: Collect matrix PowerShell/CLR profiling and readable reports (required for Core qualification)
         type: boolean
         required: false
-        default: false
+        default: true
   workflow_dispatch:
     inputs:
       suite:
@@ -23,16 +23,16 @@ on:
         required: false
         default: All
       collect_performance:
-        description: Collect optional PowerShell/CLR profiling and performance reports
+        description: Collect matrix PowerShell/CLR profiling and readable reports (required for Core qualification)
         type: boolean
         required: false
-        default: false
+        default: true
 permissions:
   contents: read
 jobs:
   qualification-gate:
     name: QuietCli2 qualification gate
-    needs: [windows, linux-result]
+    needs: [linux-matrix, windows, linux-result, performance-results]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -53,9 +53,10 @@ jobs:
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
           WINDOWS_RESULT: ${{ needs.windows.result }}
           LINUX_RESULT: ${{ needs.linux-result.result }}
+          PERFORMANCE_RESULT: ${{ needs.performance-results.result }}
         run: |
           # Objective: Fail closed and emit a commit-bound receipt only after every required check succeeds.
-          ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -MutationResult skipped -SkipTty -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
+          ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -PerformanceResult $env:PERFORMANCE_RESULT -MutationResult skipped -SkipTty -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

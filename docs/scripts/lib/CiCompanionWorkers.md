@@ -1,12 +1,14 @@
 # CiCompanionWorkers.psm1
 
+`WorkerBudget` is the shared budget for concurrent suite workers. The caller still limits simultaneous suites with MaxConcurrency. Internal slots are the integer quotient of the budget by the admitted suite-slot count, with a minimum of one; no extra slot is invented. For All with a budget of four and two suites, Git and Vagrant each receive two, then apply their own case policy/cap. Omitting WorkerBudget preserves one internal slot per admitted suite. Budgets one/two therefore keep inner concurrency at one. Core qualification still precedes all companion admissions, and individual case children remain single-slot. The owned optimization regression verifies both legacy one-slot isolation and the four-slot/two-suite distribution.
+
 ## Purpose
 
 Runs selected companion test suites concurrently only after a successful complete Core result. Git and Vagrant use separate PowerShell processes inside the same already prepared runner or Linux container, sharing its immutable toolchain image and compiled checkout.
 
 ## Usage
 
-`Invoke-TestWorker.ps1 -Suite All` invokes `Invoke-QuietCiCompanionWorkers` after accepting Core's integration evidence. At most two companions execute simultaneously, bounded further by `MaxConcurrency`. Every child uses one internal worker and its own report directory, measurement database and test configuration. Single-suite runs retain their existing execution path.
+`Invoke-TestWorker.ps1 -Suite All` invokes `Invoke-QuietCiCompanionWorkers` after accepting Core's integration evidence. At most two companions execute simultaneously, bounded further by `MaxConcurrency`. Each child receives its share of the explicit WorkerBudget (one internal slot by default) and its own report directory, measurement database and test configuration. Single-suite runs retain their existing execution path.
 
 ## Dependencies
 

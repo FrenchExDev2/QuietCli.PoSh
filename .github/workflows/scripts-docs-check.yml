@@ -9,7 +9,7 @@ on:
   pull_request:
     paths: &scripts_docs_paths
       - 'scripts/**'
-      - 'FrenchExDev2.QuietCli.Core.Tests.PoSh/**'
+      - 'FrenchExDev2.QuietCli.*.Tests.PoSh/**'
       - 'docs/scripts/**'
       - 'docs/ci/github/**'
       - 'docs/resources/**'

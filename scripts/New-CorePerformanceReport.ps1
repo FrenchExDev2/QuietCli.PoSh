@@ -56,6 +56,8 @@ function Get-ReportMedian {
 $manifests=@(if(Test-Path $EvidenceRoot){Get-ChildItem -LiteralPath $EvidenceRoot -Recurse -File -Filter evidence-manifest.json|Where-Object {[IO.Path]::GetRelativePath([IO.Path]::GetFullPath($EvidenceRoot),$_.FullName).Replace('\','/') -match '^(?:[^/]+/)?evidence-manifest\.json$'}})
 $rows=[Collections.Generic.List[object]]::new();$gaps=[Collections.Generic.List[string]]::new()
 $scenarioLines=[Collections.Generic.List[string]]::new();$profileLines=[Collections.Generic.List[string]]::new()
+$hotspots=[Collections.Generic.List[object]]::new();$collectors=[Collections.Generic.List[object]]::new()
+$identities=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 foreach($manifestFile in $manifests){
     $bundle=Split-Path $manifestFile.FullName -Parent
     try{$manifest=Get-Content $manifestFile.FullName -Raw -Encoding utf8|ConvertFrom-Json}catch{$gaps.Add('Unreadable evidence manifest: '+$manifestFile.FullName);continue}
@@ -82,6 +84,7 @@ foreach($manifestFile in $manifests){
         $profileData=if($summary.PSObject.Properties['Profiling']){$summary.Profiling}else{$null}
         $mode=if($profileData -and $profileData.PSObject.Properties['TargetIdentity']){$profileData.TargetIdentity.EngineMode}elseif($summary.EngineIdentity){$summary.EngineIdentity.Mode}else{'-'}
         $label=$summary.State.Platform+' / '+$summary.PowerShellVersion+' / '+$mode
+        if(!$identities.Add($label)){$gaps.Add('Duplicate matrix environment: '+$label)}
         $row=[ordered]@{Label=$label;RID=$summary.State.Platform;PowerShell=$summary.PowerShellVersion;CLR=$summary.HostRuntime;Mode=$mode;State=$summary.State.State;Passed=$summary.State.Passed;Failed=$summary.State.Failed;ImportMedianMs=$null;ImportP95Ms=$null;AllocatedMiB=$null;ControlledStates=0;Profiling='Not requested';ClrCollectors=0;Source=$entry.Path}
         if($import){$row.ImportMedianMs=$import.Statistics.ElapsedMs.Import.Median;$row.ImportP95Ms=$import.Statistics.ElapsedMs.Import.P95;$row.AllocatedMiB=$import.Statistics.AllocatedBytes.PairedDelta.Median/1MB}
         if($controlled){
@@ -97,11 +100,19 @@ foreach($manifestFile in $manifests){
             if($profileData.PSObject.Properties['Collectors']){$row.ClrCollectors=$profileData.Collectors.Count}
             $linePath=Join-Path (Split-Path $summaryPath -Parent) 'profiling/powershell-lines.json'
             if(Test-Path $linePath){
-                $lineData=Get-Content $linePath -Raw -Encoding utf8|ConvertFrom-Json
-                foreach($group in $lineData.Lines|Group-Object Category){
-                    $self=($group.Group|Measure-Object SelfMs -Sum).Sum
-                    $profileLines.Add('| '+(ConvertTo-ReportCell $label)+' | PS lines | '+(ConvertTo-ReportCell $group.Name)+' | '+(Format-ReportNumber $self)+' ms self wall time |')
-                }
+                try{
+                    $lineData=Get-Content $linePath -Raw -Encoding utf8|ConvertFrom-Json
+                    foreach($group in $lineData.Lines|Group-Object Category){
+                        $self=($group.Group|Measure-Object SelfMs -Sum).Sum
+                        $profileLines.Add('| '+(ConvertTo-ReportCell $label)+' | PS lines | '+(ConvertTo-ReportCell $group.Name)+' | '+(Format-ReportNumber $self)+' ms self wall time |')
+                    }
+                    foreach($line in @($lineData.Lines|Sort-Object SelfMs -Descending|Select-Object -First 50)){
+                        $hotspots.Add([pscustomobject]@{Host=$label;Category=$line.Category;Path=$line.Path;Line=$line.Line;Hits=$line.Hits;SelfMs=$line.SelfMs;InclusiveMs=$line.InclusiveMs})
+                    }
+                }catch{$gaps.Add('Unreadable PowerShell line evidence: '+$label)}
+            }elseif($Suite -ne 'Git'){$gaps.Add('Missing PowerShell line evidence: '+$label)}
+            foreach($collector in $profileData.Collectors){
+                $collectors.Add([pscustomobject]@{Host=$label;PID=$collector.TargetProcessId;Trace=$collector.Trace;Speedscope=$collector.Speedscope;Bytes=$collector.TraceBytes;SHA256=$collector.SHA256})
             }
             foreach($collector in $profileData.Collectors){
                 foreach($property in $collector.ObservedFrameNames.PSObject.Properties){
@@ -151,6 +162,32 @@ foreach($line in $scenarioLines){[void]$text.AppendLine($line)}
 [void]$text.AppendLine('|---|---|---|---:|')
 foreach($line in $profileLines){[void]$text.AppendLine($line)}
 [void]$text.AppendLine()
+[void]$text.AppendLine('## PowerShell line hotspots by environment')
+[void]$text.AppendLine()
+[void]$text.AppendLine('Up to 50 observed lines per environment, ordered by self wall time. Inclusive and self times overlap and are not an additive CPU breakdown. Paths and line numbers identify source locations; hits are instrumented observations.')
+[void]$text.AppendLine()
+foreach($group in $hotspots|Group-Object Host){
+    [void]$text.AppendLine('### '+(ConvertTo-ReportCell $group.Name))
+    [void]$text.AppendLine()
+    [void]$text.AppendLine('| Category | Source | Line | Hits | Self ms | Inclusive ms |')
+    [void]$text.AppendLine('|---|---|---:|---:|---:|---:|')
+    foreach($line in $group.Group){
+        $cells=@($line.Category,$line.Path,$line.Line,$line.Hits,(Format-ReportNumber $line.SelfMs),(Format-ReportNumber $line.InclusiveMs))
+        [void]$text.AppendLine('| '+(($cells|ForEach-Object {ConvertTo-ReportCell $_}) -join ' | ')+' |')
+    }
+    [void]$text.AppendLine()
+}
+[void]$text.AppendLine('## CLR trace provenance')
+[void]$text.AppendLine()
+[void]$text.AppendLine('Trace and speedscope names refer to their original per-environment evidence artifacts; the combined HTML is self-contained and does not need those files to display the tables.')
+[void]$text.AppendLine()
+[void]$text.AppendLine('| Host | PID | Trace | Speedscope | Trace bytes | SHA-256 |')
+[void]$text.AppendLine('|---|---:|---|---|---:|---|')
+foreach($collector in $collectors){
+    $cells=@($collector.Host,$collector.PID,$collector.Trace,$collector.Speedscope,$collector.Bytes,$collector.SHA256)
+    [void]$text.AppendLine('| '+(($cells|ForEach-Object {ConvertTo-ReportCell $_}) -join ' | ')+' |')
+}
+[void]$text.AppendLine()
 [void]$text.AppendLine('## Evidence gaps and interpretation')
 [void]$text.AppendLine()
 if($gaps.Count){foreach($gap in $gaps){[void]$text.AppendLine('- '+(ConvertTo-ReportCell $gap))}}else{[void]$text.AppendLine('- No missing or modified evidence was detected in the supplied bundles.')}
@@ -160,19 +197,30 @@ if($gaps.Count){foreach($gap in $gaps){[void]$text.AppendLine('- '+(ConvertTo-Re
 [void]$text.AppendLine('- Detailed JSON, partial failure logs, source identities, fixture manifests, PS speedscope/line data and raw/converted CLR traces remain beside this Markdown report in the job artifacts.')
 $markdown=Join-Path $OutputDirectory 'PERFORMANCES_RESULTS.md'
 $jsonPath=Join-Path $OutputDirectory 'PERFORMANCES_RESULTS.json'
+$htmlPath=Join-Path $OutputDirectory 'PERFORMANCES_RESULTS.html'
 [void][IO.File]::WriteAllTextAsync($markdown,$text.ToString().Replace("`r`n","`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-Write-WorkspaceJson $jsonPath @{Revision=$Revision;Rows=$rows.ToArray();EvidenceGaps=$gaps.ToArray();ExpectedReports=$ExpectedReports;ManifestCount=$manifests.Count}
+$body=(Microsoft.PowerShell.Utility\ConvertFrom-Markdown -InputObject $text.ToString()).Html
+$html=@'
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer"><title>QuietCli performance evidence</title>
+<style>body{font:16px/1.5 system-ui,sans-serif;margin:2rem;color:#17283b;background:#f5f7fa}main{max-width:100rem;margin:auto}table{display:block;overflow-x:auto;border-collapse:collapse;background:white;margin:1rem 0}th,td{padding:.5rem .7rem;border:1px solid #c9d3df;text-align:left}th{background:#e5edf7}h1,h2,h3{color:#123e69}code{overflow-wrap:anywhere}td{overflow-wrap:anywhere}a{color:#005fa9}</style></head><body><main>
+'@
+$html+=$body+"`n</main></body></html>`n"
+[IO.File]::WriteAllText($htmlPath,$html.Replace("`r`n","`n"),[Text.UTF8Encoding]::new($false))
+Write-WorkspaceJson $jsonPath @{Revision=$Revision;Rows=$rows.ToArray();ProfilingLines=$hotspots.ToArray();Collectors=$collectors.ToArray();EvidenceGaps=$gaps.ToArray();ExpectedReports=$ExpectedReports;ManifestCount=$manifests.Count}
 $localManifest=Join-Path $OutputDirectory 'evidence-manifest.json'
 if(Test-Path $localManifest){
     $manifest=Get-Content $localManifest -Raw -Encoding utf8|ConvertFrom-Json
-    $manifest.Files=@($manifest.Files|Where-Object Path -NotIn @('PERFORMANCES_RESULTS.md','PERFORMANCES_RESULTS.json'))+@(foreach($path in @($markdown,$jsonPath)){@{Path=[IO.Path]::GetFileName($path);Bytes=(Get-Item $path).Length;SHA256=(Get-FileHash $path -Algorithm SHA256).Hash}})
+    $manifest.Files=@($manifest.Files|Where-Object Path -NotIn @('PERFORMANCES_RESULTS.md','PERFORMANCES_RESULTS.json','PERFORMANCES_RESULTS.html'))+@(foreach($path in @($markdown,$jsonPath,$htmlPath)){@{Path=[IO.Path]::GetFileName($path);Bytes=(Get-Item $path).Length;SHA256=(Get-FileHash $path -Algorithm SHA256).Hash}})
     Write-WorkspaceJson $localManifest $manifest
 }else{
     Write-WorkspaceJson $localManifest @{
         Revision=$Revision;Repository=$env:GITHUB_REPOSITORY;RunId=$env:GITHUB_RUN_ID;RunAttempt=$env:GITHUB_RUN_ATTEMPT
         EvidenceGaps=$gaps.ToArray();SourceManifests=@(foreach($file in $manifests){@{Path=[IO.Path]::GetRelativePath([IO.Path]::GetFullPath($EvidenceRoot),$file.FullName).Replace('\','/');SHA256=(Get-FileHash $file.FullName -Algorithm SHA256).Hash}})
-        Files=@(foreach($path in @($markdown,$jsonPath)){@{Path=[IO.Path]::GetFileName($path);Bytes=(Get-Item $path).Length;SHA256=(Get-FileHash $path -Algorithm SHA256).Hash}})
+        Files=@(foreach($path in @($markdown,$jsonPath,$htmlPath)){@{Path=[IO.Path]::GetFileName($path);Bytes=(Get-Item $path).Length;SHA256=(Get-FileHash $path -Algorithm SHA256).Hash}})
     }
 }
-[pscustomobject]@{Markdown=$markdown;Json=$jsonPath;Rows=$rows.Count;Gaps=$gaps.Count}
+[pscustomobject]@{Markdown=$markdown;Html=$htmlPath;Json=$jsonPath;Rows=$rows.Count;Gaps=$gaps.Count}
 if($gaps.Count){throw 'PerformanceReportEvidenceIncomplete'}

@@ -32,7 +32,7 @@ function New-QuietCommitWorkspaceFixture {
     # The real shared registry also validates an inert Core catalogue in exported indexes.
     $testDirectory=Join-Path $path 'FrenchExDev2.QuietCli.Core.Tests.PoSh'
     [void][IO.Directory]::CreateDirectory($testDirectory)
-    [IO.File]::WriteAllText((Join-Path $testDirectory 'FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1'),"@{ ModuleVersion='1.0.0' }`n",$utf8)
+    [IO.File]::WriteAllText((Join-Path $testDirectory 'FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1'),"@{ ModuleVersion='1.0.0';RootModule='FrenchExDev2.QuietCli.Core.Tests.PoSh.psm1';PrivateData=@{QuietCli=@{TestCatalogue=@{Runner='Invoke-QuietCoreTests';Sources=@()}}} }`n",$utf8)
     [IO.File]::WriteAllText((Join-Path $testDirectory 'LICENSE_CREDITS.md'),"## Fixture`n`nInert classification fixture ships no dependency.`n",$utf8)
     $catalogue=@'
 function Invoke-QuietCoreTests {

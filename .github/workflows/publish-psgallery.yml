@@ -47,6 +47,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
     with:
       suite: All
+      collect_performance: true
   reuse-qualification:
     if: inputs.qualified_sha != '' && inputs.qualified_sha == github.sha
     runs-on: ubuntu-latest

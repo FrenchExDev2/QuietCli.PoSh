@@ -1,5 +1,14 @@
 # Test-TestCaseMetadata.ps1
 
+## All companion catalogues
+
+The default Suite is All: discover every test project manifest through WorkspaceProjects, then read that companion's own TestCatalogue/RootModule and local `.psm1` metadata. No Core-owned Git/Vagrant case registry is introduced. `-Suite Core|Git|Vagrant` narrows validation; `-Plan` resolves currently active cases and the selected worker budget without running them. Output includes declared/active counts, optional campaigns not requested, kinds, isolation opt-ins and the manifest cap. Every discovered test companion must declare its catalogue; missing or orphan metadata, unsafe sources and mismatched optional registration conditions fail.
+
+```powershell
+./scripts/Test-TestCaseMetadata.ps1
+./scripts/Test-TestCaseMetadata.ps1 -Suite Vagrant -Plan -MaxConcurrency 2
+```
+
 ## Purpose and usage
 
 Check every Core case registration against its explicit metadata without importing Core, running test bodies, building or downloading anything.
@@ -22,7 +31,7 @@ Checks still execute with inherited `WhatIfPreference`, as in a commit preview. 
 
 ## Critical review
 
-- `scripts/Test-TestCaseMetadata.ps1`: the check reads the selected Core runner, not an installed release. The parser never evaluates case bodies.
+- `scripts/Test-TestCaseMetadata.ps1`: the check reads the selected owning test runner and explicitly declared helper sources, not an installed release. The parser never evaluates case bodies.
 - `scripts/lib/TestCaseMetadata.psm1`: missing/orphan entries, duplicate registrations, invalid kinds/dependencies and nonliteral metadata fail closed. Syntax and classification checks cannot prove isolation or complete dependency declarations.
 - `FrenchExDev2.QuietCli.Core.Tests.PoSh/TestCaseMetadata.Tests.ps1`: generated valid inputs, malformed entries and source mutants exercise rejection and inert parsing; the check preserves the source hash.
 - The scope is Core's top-level case runner. Nested campaigns and other companion runners retain their existing reports; this is not a claim that every assertion in the repository has acquired metadata.
@@ -34,7 +43,7 @@ Blocks incomplete Core classification before costly test execution. See [classif
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Checks the complete Core test classification without loading the engine or executing a case.
+Purpose: Checks each owning test companion's classifications and execution policy without loading its engine.
 
 Boundary: **ReadOnly**. Preview API: **Unclassified**. Guarded functions: 0.
 

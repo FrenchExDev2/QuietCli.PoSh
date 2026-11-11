@@ -1,6 +1,6 @@
 # Invoke-WorkspaceCi.ps1
 
-Core/All invocations validate the complete case catalogue and manifest scheduling declarations before profiler preparation, builds, worker/report creation or case execution. Invalid classifications/policies therefore fail early even for a filtered run. WhatIf still returns before orchestration effects. The Core runner saves its plan and enforces declared Ordered/Exclusive barriers and bounded isolated batches; `MaxConcurrency` combines with the manifest cap, with one internal slot per case child. See [classification and concurrency](../README-test-classification-and-concurrency.md).
+Ordinary companion and All invocations validate the complete case catalogue and manifest scheduling declarations before profiler preparation, builds, worker/report creation or case execution. Invalid classifications/policies therefore fail early even for a filtered run. WhatIf still returns before orchestration effects. Each owning runner saves its plan and enforces declared Ordered/Exclusive barriers and bounded isolated batches; `MaxConcurrency` combines with the manifest cap, with one internal slot per case child. See [classification and concurrency](../README-test-classification-and-concurrency.md).
 
 ## Purpose
 

@@ -1,5 +1,9 @@
 # Invoke-TestWorker.ps1
 
+## Independent companion catalogues
+
+Core, Git and Vagrant retain their own `.psm1` case metadata and manifest TestCatalogue/TestExecution declarations. The worker forwards run directories and applies Partial/Incomplete handling to every ordinary companion, not only Core. CaseWorker accepts a declared ordinary suite with an exact parent-selected filter, one internal slot and no profiler. It cannot launch All/focused tooling as a case worker. All divides the parent budget among Git/Vagrant suite slots; individual isolated cases still receive one. Each owner writes its own execution plan and classification/progress, with no central Core case list for siblings.
+
 ## Declarative Core case scheduling
 
 Core consumes its test manifest's `PrivateData.QuietCli.TestExecution` policy and saves `core-execution-plan.json` before cases run. Only adjacent explicitly eligible cases enter a bounded process batch; Ordered/Exclusive stages preserve barriers. The same built checkout and image are reused. The CaseWorker switch is internal: it requires Core, a case filter, no profiler and MaxConcurrency one, prevents recursive case fan-out and clears inherited stop-on-first behavior so the parent can validate the exact single-case outcome. Child status reports remain available, while only the parent prints cumulative GitHub case counters.

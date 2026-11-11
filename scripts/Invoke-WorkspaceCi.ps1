@@ -27,9 +27,9 @@ UTF-8 JSON array of existing repository roots; required by RealStatus.
 .PARAMETER ExpectedRuntimeIdentifier
 Required actual PowerShell and engine runtime identifier; detects accidental architecture emulation.
 .PARAMETER Case
-Development only: wildcard selecting Core cases by name; the run is partial and never counts as the pre-commit gate.
+Development only: wildcard selecting owning companion cases by name; the run is partial and never qualifies a delivery.
 .PARAMETER StopOnFirstFailure
-Development only: stops the Core run at the first failing case; the run is incomplete.
+Development only: stops the owning companion at the first observed failing case; the run is incomplete.
 .PARAMETER DotNetSuite
 Focused .NET tooling campaign, used only with Suite DotNet.
 .PARAMETER MaxConcurrency
@@ -46,7 +46,7 @@ if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-Workspace
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
-if($Suite -in @('Core','All')){$null=& (Join-Path $PSScriptRoot 'Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot}
+if($Suite -ceq 'All' -or $Suite -cin @(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object {!$_.IsTest}|ForEach-Object Suite)){$null=& (Join-Path $PSScriptRoot 'Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot}
 if($Profiler){
     if($Suite -notin @('Core','All','Integration')){throw 'ProfilerRequiresCoreIntegration'}
     if(!$ProfilerModulePath -or !$ClrProfilerPath){

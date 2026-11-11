@@ -39,7 +39,7 @@
     {
       "Path": "scripts/Test-TestCaseMetadata.ps1",
       "Reason": "Reviewed read-only gate: parses UTF-8 case sources and inert manifest scheduling declarations without importing the product engine, executing tests, downloading, building or writing files.",
-      "SHA256": "BE76A65D424D74C376CF7427C5F016593447743291E2FEC419DF6E9A3DAAF6F1"
+      "SHA256": "BFB130D4FCE578A30A8853F6C62F94F34038B7119588EB76A59B76081001F01B"
     }
   ],
   "LegacyPaths": [

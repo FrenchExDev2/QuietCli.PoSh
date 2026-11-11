@@ -14,7 +14,7 @@ WorkspaceRoot selects the exact working tree or exported index snapshot. Check l
 
 ## Dependencies and side effects
 
-Registry order: TestCaseMetadata, ScriptsReadme, GitHubWorkflowDocs, ScriptShouldProcess, Resources, ScriptContracts, DocsCredits, Credits. TestCaseMetadata statically validates the complete Core catalogue without running cases or loading Core. Every entry checks its contract without applying documentation. Guarded parser preparation may write prerequisite resource/cache files. No lock refresh, build, stage, commit, push or publication occurs; the hash-bound policy exception documents the delegated preparation boundary. NoSyncChecks in the commit entry point retains classification and script safety; generic SkipCheck can explicitly omit either.
+Registry order: TestCaseMetadata, ScriptsReadme, GitHubWorkflowDocs, ScriptShouldProcess, Resources, ScriptContracts, DocsCredits, Credits. TestCaseMetadata statically validates the complete discovered companion catalogues and their optional guards/policies without running cases or loading a product engine. Every entry checks its contract without applying documentation. Guarded parser preparation may write prerequisite resource/cache files. No lock refresh, build, stage, commit, push or publication occurs; the hash-bound policy exception documents the delegated preparation boundary. NoSyncChecks in the commit entry point retains classification and script safety; generic SkipCheck can explicitly omit either.
 
 ## Critical review
 

@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: B6C17ED39E0A302CDE6D7A154F548BC68B6A3F5771175C1BD1C1C62AA3E6514D -->
+<!-- workflow-source-sha256: 6E7FE7C713C5FF263E83B706C5BAA827D3791B0E49E2F2A4644A67B1ECD03C9A -->
 
 ## Purpose
 
@@ -34,6 +34,8 @@ flowchart TD
 <!-- workflow-generated:end -->
 
 ## Scripts and effects
+
+The All call explicitly sets collect_performance=true. Core profiling and standalone HTML/Markdown/JSON reporting cover all ten selected matrix environments; the returned qualified_sha depends on the combined performance report. Preview publication remains develop-push-only, so a PR preview skip is intentional.
 
 The companions job reuses ci.yml with suite=All and packages:write. All comes from
 build/companions.yml; the generic resolver selects test runners, image layers and qualification

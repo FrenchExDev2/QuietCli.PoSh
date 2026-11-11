@@ -87,12 +87,14 @@ function Invoke-QuietTestCaseWorkers {
     Cancels admission and terminates all owned process trees through finally.
     .PARAMETER WorkerPath
     Default shared test worker or an owned protocol fixture for scheduler assertions.
+    .PARAMETER SuiteName
+    Owning declared companion suite; defaults to Core for existing callers.
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][object[]]$Cases,
         [ValidateRange(1,32)][int]$MaxConcurrency=2,[switch]$StopOnFirstFailure,[switch]$SkipTty,[string]$ExpectedRuntimeIdentifier,
         [scriptblock]$OnCase,[Threading.CancellationToken]$CancellationToken=[Threading.CancellationToken]::None,
-        [string]$WorkerPath=(Join-Path $PSScriptRoot '../Invoke-TestWorker.ps1'))
+        [string]$WorkerPath=(Join-Path $PSScriptRoot '../Invoke-TestWorker.ps1'),[ValidatePattern('\A[A-Z][A-Za-z0-9]*\z')][string]$SuiteName='Core')
     if(!$PSCmdlet.ShouldProcess($RunDirectory,'Run explicitly isolated test cases with bounded child workers')){return}
     . (Join-Path $PSScriptRoot '../Ci.Process.ps1')
     $pending=[Collections.Generic.Queue[object]]::new();$names=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -141,7 +143,7 @@ function Invoke-QuietTestCaseWorkers {
                 $directory=Join-Path $RunDirectory ('core-cases/{0:D4}-{1}' -f $case.Index,$digest)
                 if(Test-Path -LiteralPath $directory){throw 'TestCaseWorkerDirectoryExists'}
                 [void][IO.Directory]::CreateDirectory($directory)
-                $arguments=@('-File',$WorkerPath,'-WorkspaceRoot',$WorkspaceRoot,'-RunDirectory',$directory,'-Suite','Core','-Case',([Management.Automation.WildcardPattern]::Escape($case.Name)),'-CaseWorker','-MaxConcurrency','1')
+                $arguments=@('-File',$WorkerPath,'-WorkspaceRoot',$WorkspaceRoot,'-RunDirectory',$directory,'-Suite',$SuiteName,'-Case',([Management.Automation.WildcardPattern]::Escape($case.Name)),'-CaseWorker','-MaxConcurrency','1')
                 if($SkipTty){$arguments+='-SkipTty'}
                 if($ExpectedRuntimeIdentifier){$arguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
                 $process=Start-CiProcess -FilePath $runner -ArgumentList $arguments -WorkingDirectory $WorkspaceRoot -Confirm:$false

@@ -28,6 +28,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
     with:
       suite: All
+      collect_performance: true
   preview:
     needs: companions
     if: github.event_name == 'push' && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && needs.companions.outputs.qualified_sha == github.sha

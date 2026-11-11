@@ -1,5 +1,7 @@
 # TestCaseScheduling.psm1
 
+Case workers accept the owning declared SuiteName, defaulting to Core for existing callers. Git and Vagrant consume their own policies and write their own plans. Git currently has no isolated case opt-in because of shared fixtures/history; Vagrant explicitly opts in six pure parser cases. Both manifest caps are two. Ordered/Exclusive barriers apply within the owning suite. The All suite coordinator separately divides its shared budget among concurrent companion suites; an isolated individual case always receives one internal worker.
+
 ## Purpose and usage
 
 Resolve a test companion's inert `PrivateData.QuietCli.TestExecution` declaration, prepare an ordered execution plan and run explicitly eligible batches in isolated PowerShell processes.
@@ -17,7 +19,7 @@ $plan = Get-QuietTestExecutionPlan -CaseNames $names -Policy $policy -MaxConcurr
 
 Import is silent and function-only. Planning reads a PowerShell data file without importing its module or executing tests. `Invoke-QuietTestCaseWorkers` supports standard WhatIf/Confirm; the guard precedes directory creation, helper loading and process starts. It uses `Ci.Process.ps1` and the exact current PSHOME executable with inherited native streams, with no automatic output capture or spool.
 
-Every child gets an owned report directory, Core case filter, CaseWorker flag and MaxConcurrency one. The shared worker initializes its private configuration/SQLite and prevents recursive fan-out. RID, host/runtime expectations and TTY scope are preserved. A parent validates terminal case name, selection, PID/RID, counters, suite/state/exit consistency and bounded report size. A deliberately partial single-case child is accepted only as one case inside its parent; it never becomes an independent full qualification.
+Every child gets an owned report directory, owning companion’s exact case filter, CaseWorker flag and MaxConcurrency one. The shared worker initializes its private configuration/SQLite and prevents recursive fan-out. RID, host/runtime expectations and TTY scope are preserved. A parent validates terminal case name, selection, PID/RID, counters, suite/state/exit consistency and bounded report size. A deliberately partial single-case child is accepted only as one case inside its parent; it never becomes an independent full qualification.
 
 Failure closes admission when requested and drains already running cases. Timeouts kill owned process trees and become failed case receipts. Cancellation and exceptional exits clean up every still-owned process in finally. Results retain declaration order; parent callbacks aggregate counters once. Existing child directories are rejected rather than reused. Native fixture processes inside a case are not separate scheduled test slots; parallel-eligible cases must not launch their own competing test-worker pool.
 
@@ -25,7 +27,7 @@ Failure closes admission when requested and drains already running cases. Timeou
 
 - `scripts/lib/TestCaseScheduling.psm1`: declarative permission is explicit, default execution remains ordered, and barriers prevent overlap with measurement or source-lock cases. Declarations require code review; a field is not proof of isolation.
 - `FrenchExDev2.QuietCli.Core.Tests.PoSh/TestCaseScheduling.Tests.ps1`: generated plans, malformed declarations, real process overlap, exact wildcard escaping, private directories, bounded admission, serial equivalence, failure/timeout/report rejection, cancellation cleanup, WhatIf and actual library mutations exercise the contract.
-- Core is the current case-level consumer. Git/Vagrant keep their existing suite-level fan-out after accepted Core. A future runner must consume/validate its own catalogue explicitly.
+- Core, Git and Vagrant consume their own manifest/catalogue policies. Suite-level Git/Vagrant fan-out still follows accepted Core; the case-worker protocol carries the owning declared suite.
 - Reports establish observed worker behavior, not hosted speedup or control over unrelated workstation/runner processes. Internal native fixtures can still use CPU; measure hosted duration/memory before widening the eligible set or concurrency cap.
 
 ## Verdict

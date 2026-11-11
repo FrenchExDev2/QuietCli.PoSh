@@ -31,6 +31,7 @@ try{
 $receipt=$text|ConvertFrom-Json
 if($receipt.Ready -isnot [bool] -or !$receipt.Ready -or $receipt.Revision -cne $Revision -or $receipt.Suite -cne 'All' -or
     $receipt.Windows -cne 'success' -or $receipt.Linux -cne 'success' -or $receipt.Mutation -cne 'skipped' -or
+    !$receipt.PSObject.Properties['Performance'] -or $receipt.Performance -cne 'success' -or !$receipt.PSObject.Properties['PerformanceRequired'] -or $receipt.PerformanceRequired -isnot [bool] -or !$receipt.PerformanceRequired -or
     $receipt.MutationRequired -isnot [bool] -or $receipt.MutationRequired -or $receipt.TtyQualification -cne 'Excluded' -or
     [string]$receipt.RunId -cne $RunId -or [string]$receipt.RunAttempt -cne $RunAttempt){throw 'QualificationReceiptRejected'}
 [IO.File]::AppendAllText($OutputPath,"qualified_sha=$Revision`n",[Text.UTF8Encoding]::new($false))

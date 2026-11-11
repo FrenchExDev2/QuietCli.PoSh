@@ -45,6 +45,7 @@ function Test-QuietCaseMetadata {
     $fixtureProject=Join-Path $directory 'FrenchExDev2.QuietCli.Core.Tests.PoSh'
     [void][IO.Directory]::CreateDirectory($fixtureProject)
     $path=Join-Path $fixtureProject 'FrenchExDev2.QuietCli.Core.Tests.PoSh.psm1'
+    [IO.File]::WriteAllText((Join-Path $fixtureProject 'FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1'),"@{RootModule='FrenchExDev2.QuietCli.Core.Tests.PoSh.psm1';ModuleVersion='1.0.0';PrivateData=@{QuietCli=@{TestCatalogue=@{Runner='Invoke-QuietCoreTests';Sources=@()}}}}",[Text.UTF8Encoding]::new($false))
     $source=@'
 throw 'The checker must never execute this module'
 function Invoke-QuietCoreTests {
@@ -76,9 +77,9 @@ function Invoke-QuietCoreTests {
     }
     # Check-only invocation must not rewrite its inputs or load the product as a side effect.
     $before=(Get-FileHash -LiteralPath $runner -Algorithm SHA256).Hash
-    $check=& (Join-Path $WorkspaceRoot 'scripts/Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot
+    $check=& (Join-Path $WorkspaceRoot 'scripts/Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot -Suite Core
     Assert-QuietEqual $check.Cases $inventory.Count
-    $preview=& { $WhatIfPreference=$true; & (Join-Path $WorkspaceRoot 'scripts/Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot }
+    $preview=& { $WhatIfPreference=$true; & (Join-Path $WorkspaceRoot 'scripts/Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot -Suite Core }
     Assert-QuietEqual $preview.Cases $inventory.Count 'Read-only checks still run under inherited WhatIf'
     . (Join-Path $WorkspaceRoot 'scripts/ScriptReview.ps1')
     $review=@(Get-QuietScriptReview -WorkspaceRoot $WorkspaceRoot|Where-Object Path -CEQ 'scripts/Test-TestCaseMetadata.ps1')
@@ -89,6 +90,50 @@ function Invoke-QuietCoreTests {
     $body=[IO.File]::ReadAllText($runner,[Text.Encoding]::UTF8)
     if($body.IndexOf('Assert-QuietTestCaseMetadata -CaseNames @($cases.Keys)',[StringComparison]::Ordinal) -gt $body.IndexOf('$casePattern=$env:QUIETCLI_TEST_CASE',[StringComparison]::Ordinal) -or !$body.Contains('Assert-QuietTestCaseMetadata -CaseNames @($cases.Keys)')){throw 'TestCaseMetadataGuardMustPrecedeFiltering'}
     $workflow=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/scripts-docs-check.yml'),[Text.Encoding]::UTF8)
-    if(!$workflow.Contains("'FrenchExDev2.QuietCli.Core.Tests.PoSh/**'") -or !$workflow.Contains('run: ./scripts/Invoke-WorkspaceChecks.ps1')){throw 'TestCaseMetadataCiPathOrRegistryMissing'}
+    if(!$workflow.Contains("'FrenchExDev2.QuietCli.*.Tests.PoSh/**'") -or !$workflow.Contains('run: ./scripts/Invoke-WorkspaceChecks.ps1')){throw 'TestCaseMetadataCiPathOrRegistryMissing'}
+    $companions=@(& (Join-Path $WorkspaceRoot 'scripts/Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot)
+    Assert-QuietEqual (($companions.Suite|Sort-Object) -join '|') 'Core|Git|Vagrant'
+    Assert-QuietEqual ($companions|Where-Object Suite -CEQ Git).Cases 77
+    Assert-QuietEqual ($companions|Where-Object Suite -CEQ Vagrant).Unit 6
+    $owned=Join-Path $directory owned-catalogue;[void][IO.Directory]::CreateDirectory($owned)
+    $ownedModule=Join-Path $owned owned.psm1;$ownedManifest=Join-Path $owned owned.psd1;$helper=Join-Path $owned cases.ps1
+    $ownedSource=@'
+throw 'Static catalogue checks must not import this module'
+function Invoke-QuietOwnedTests {
+ $cases=[ordered]@{}
+ $cases['own']={}
+ foreach($entry in $helperCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
+ if($env:QUIETCLI_METADATA_FIXTURE_MUTATION -eq '1'){$cases['optional']={}}
+ $caseMetadata=@{
+  'own'=@{TestKind='Unit';Dependencies=@()}
+  'helper'=@{TestKind='Unit';Dependencies=@()}
+  'optional'=@{TestKind='Integration';Dependencies=@('FileSystem');EnabledWhen='QUIETCLI_METADATA_FIXTURE_MUTATION=1'}
+ }
+}
+'@
+    [IO.File]::WriteAllText($ownedModule,$ownedSource,[Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($helper,"function Get-QuietOwnedCases { `$cases=@{};`$cases['helper']={};`$cases }",[Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($ownedManifest,"@{RootModule='owned.psm1';PrivateData=@{QuietCli=@{TestCatalogue=@{Runner='Invoke-QuietOwnedTests';Sources=@('cases.ps1')}}}}",[Text.UTF8Encoding]::new($false))
+    $ownInventory=Get-QuietCompanionTestInventory -ManifestPath $ownedManifest
+    Assert-QuietEqual $ownInventory.Count 3
+    $saved=[Environment]::GetEnvironmentVariable('QUIETCLI_METADATA_FIXTURE_MUTATION')
+    try{
+        foreach($value in @($null,'0','1','unexpected')){
+            [Environment]::SetEnvironmentVariable('QUIETCLI_METADATA_FIXTURE_MUTATION',$value)
+            $active=Get-QuietActiveCaseMetadata -Metadata $ownInventory.Metadata
+            Assert-QuietEqual $active.Count $(if($value -ceq '1'){3}else{2})
+        }
+    }finally{[Environment]::SetEnvironmentVariable('QUIETCLI_METADATA_FIXTURE_MUTATION',$saved)}
+    $sourceRejections=0
+    foreach($mutant in @($ownedSource.Replace("EnabledWhen='QUIETCLI_METADATA_FIXTURE_MUTATION=1'","EnabledWhen='QUIETCLI_WRONG_MUTATION=1'"),$ownedSource.Replace("'helper'=@{TestKind='Unit';Dependencies=@()}",''))){
+        [IO.File]::WriteAllText($ownedModule,$mutant,[Text.UTF8Encoding]::new($false))
+        $rejected=$false;try{$null=Get-QuietCompanionTestInventory -ManifestPath $ownedManifest}catch{$rejected=$_.Exception.Message.StartsWith('TestCaseMetadata',[StringComparison]::Ordinal)}
+        Assert-QuietEqual $rejected $true 'Helper omissions and wrong optional conditions must fail without executing a companion'
+        $sourceRejections++
+    }
+    [IO.File]::WriteAllText($ownedModule,$ownedSource,[Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($ownedManifest,"@{RootModule='owned.psm1';PrivateData=@{QuietCli=@{TestCatalogue=@{Runner='Invoke-QuietOwnedTests';Sources=@('../outside.ps1')}}}}",[Text.UTF8Encoding]::new($false))
+    $rejected=$false;try{$null=Get-QuietCompanionTestInventory -ManifestPath $ownedManifest}catch{$rejected=$_.Exception.Message -ceq 'TestCaseMetadataSourceInvalid'}
+    Assert-QuietEqual $rejected $true 'Companion sources cannot escape their owner directory'
     Write-WorkspaceJson (Join-Path $directory 'summary.json') @{Cases=$inventory.Count;PropertyRuns=64;Malformed=$bad.Count;SourceMutantsKilled=$mutants.Count;ReadOnlyPreviewChecks=($mutants.Count+1);Seed=111187;SourceExecuted=$false}
 }

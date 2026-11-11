@@ -108,7 +108,7 @@ For Core/All, Windows x64 Stable `InProcess` also runs the complete `RunProfiles
 ## What a green qualification does not include
 
 - GitHub execution passes `-SkipTty`: native TTY/PTY execution and the standalone C property/fuzz/mutation campaigns are **excluded**, not successful by implication.
-- PowerShell/CLR profiling and performance aggregation default to disabled. Manual `collect_performance=true` requests them. Functional integration assertions and revision-bound evidence bundles remain required without that option.
+- PowerShell/CLR profiling and HTML/Markdown/JSON matrix aggregation default to enabled for Core/All. Automatic companion/publication calls explicitly request them; qualification requires the successful combined report. A manual collection opt-out cannot qualify Core evidence. RunProfiles/RunProfilesMutation remain separate Windows tooling campaigns.
 - Actual Vagrant-provider and interactive-console checks are not ordinary PR matrix tests.
 - A filtered `-Case` run or a stopped/incomplete campaign establishes only its reported development scope.
 - Ten configured environments per selected suite describe the intended matrix, not ten completed successes. Setup/build failures can prevent tests from starting. When both Core and Git callers apply, there are two independent ten-environment matrices, plus their tooling/control jobs.

@@ -2,6 +2,10 @@
 
 ## Classification contract
 
+Each companion owns its catalogue: Core.Tests, Git.Tests and Vagrant.Tests declare their own literal metadata inside their own .psm1. Their manifests declare TestCatalogue (runner and explicitly scoped helper sources) and TestExecution independently. Shared readers validate these declarations without importing product modules or moving Git/Vagrant cases into a Core-owned registry. The default gate discovers all test projects; use -Suite to inspect one.
+
+Git declares 77 cases, including nine optional mutation cases, and preserves its shared-repository prerequisites. Vagrant declares 14 cases, with six pure Unit parsers eligible for isolated processes; its environment/handler/native-fixture cases remain ordered. Both companion caps are two. EnabledWhen declarations are statically matched to actual literal optional registration guards; active runtime catalogues must match exactly before filtering. ProcessEnvironment is an explicit dependency. Filtered/stopped Git/Vagrant runs now preserve Partial/Incomplete scope too.
+
 Core progress includes the case kind: `CI case [Running] [Integration] ...`. Reports preserve `TestKind` and `Dependencies` for each executed top-level case. Every registration in `Invoke-QuietCoreTests` has an explicit matching `$caseMetadata` entry; the old partial table and `Unclassified` fallback are removed. Missing, orphan, duplicate, dynamic or malformed entries fail before filtering or execution. A focused run cannot hide an unclassified case elsewhere in the catalogue.
 
 `Unit` means in-memory assertions without filesystem, native process or shared engine dependencies. The byte-count parser and generated status-record digest assertions meet that boundary. `Integration` covers filesystem/source validation, engine state, native fixtures, Git, process boundaries, builds and package installation. A source parser/help check is Integration because it reads repository files and writes a writer fixture; security audit cases are Integration because they launch an audit worker, native fixtures and an isolated SQLite database. Property generation and mutation are test techniques, independent of this dependency classification.
@@ -19,6 +23,8 @@ Dependencies use `FileSystem`, `NativeProcess`, `GitProcess`, `DotNetBuild` and 
 The check also executes under inherited WhatIf in commit previews. Its ReadOnly review and hash-bound exception prevent the contract generator from inserting a guard that would skip validation. `Unclassified` in the separate script preview inventory describes the absence of a preview API; it is unrelated to test kinds and is not globally renamed by this change.
 
 ## Manifest policy and prepared plan
+
+All divides its shared worker budget across concurrent Git/Vagrant suite slots. With four slots and two admitted suites, each receives two; individual isolated case workers still receive one. A smaller caller budget wins over every manifest cap. Exclusive/Ordered stages constrain the owning companion; suite-level scheduling remains a separate boundary. Core's measurements and profiling complete outside sibling-suite fan-out.
 
 The Core test companion declares its policy in [its PSD1 manifest](../FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1), which is also exposed as the module's PrivateData. The declaration is inert data:
 

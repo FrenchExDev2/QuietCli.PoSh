@@ -1,5 +1,7 @@
 # Assert-QualificationReceipt.ps1
 
+Reused All receipts must additionally contain Performance=success and boolean PerformanceRequired=true. Legacy receipts without these fields and reports skipped/failed for the same revision are rejected. Same-run/attempt identity, complete All scope, platform results and explicit TTY exclusion remain mandatory. The optimization regression covers damaged performance fields alongside revision/attempt mismatches; accepting an old unprofiled receipt cannot bypass the restored matrix report gate.
+
 ## Purpose
 
 Reuses an existing All qualification only within the same GitHub run, attempt and exact SHA. An input SHA alone never bypasses qualification.

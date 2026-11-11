@@ -25,7 +25,7 @@ Focused .NET tooling campaign, used only with Suite DotNet.
 .PARAMETER MaxConcurrency
 Maximum number of internal test workers used by parallel-safe campaigns.
 .PARAMETER CaseWorker
-Internal single-case child: requires Core and a case filter, forces one internal worker and prevents recursive case fan-out.
+Internal single-case child: requires an ordinary declared companion and a case filter, forces one internal worker and prevents recursive case fan-out.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure,[ValidateSet('Readiness','Provisioning','Layout','Locks','All')][string]$DotNetSuite='All',[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)),[switch]$CaseWorker)
 dynamicparam {
@@ -37,12 +37,12 @@ end {
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-TestWorker')){return}
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 $ErrorActionPreference='Stop'
-if($CaseWorker -and ($Suite -cne 'Core' -or !$Case -or $MaxConcurrency -ne 1 -or $Profiler)){throw 'TestCaseWorkerArgumentsInvalid'}
+if($CaseWorker -and ($Suite -cnotin @(Get-QuietWorkspaceTestSuites $WorkspaceRoot).Name -or !$Case -or $MaxConcurrency -ne 1 -or $Profiler)){throw 'TestCaseWorkerArgumentsInvalid'}
 $env:QUIETCLI_TEST_CASE_WORKER=if($CaseWorker){'1'}else{'0'}
 $env:QUIETCLI_TEST_EXPECT_RID=$ExpectedRuntimeIdentifier
 if($CaseWorker){$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE='0'}
 . (Join-Path $PSScriptRoot 'Common.ps1')
-# Development-only selection, read by the Core case loop; never set by CI or the pre-commit gate.
+# Development selection is resolved by each owning companion; case workers receive an exact parent-selected filter.
 $env:QUIETCLI_TEST_SKIP_TTY=if($SkipTty){'1'}else{'0'}
 $env:QUIETCLI_TEST_MAX_CONCURRENCY=[string]$MaxConcurrency
 if($Case){$env:QUIETCLI_TEST_CASE=$Case}
@@ -168,7 +168,7 @@ try{
             $summary=$outputs[0]
             $summaries.Add($summary)
             Write-WorkspaceJson (Join-Path $RunDirectory ($selected.ToLowerInvariant()+'-suite.json')) $summary
-            if($selected -eq 'Core' -and ($summary.Partial -or $summary.Incomplete)){
+            if($summary.PSObject.Properties['Partial'] -and ($summary.Partial -or $summary.Incomplete)){
                 # Filtered or stopped development run: not qualification evidence, so the full-run evidence assertion is skipped.
                 $state.Task+=if($summary.Incomplete){" [INCOMPLETE: $($summary.StoppedAt)]"}else{' [PARTIAL: case filter]'}
                 Write-WorkspaceJson $statusPath $state
@@ -178,7 +178,7 @@ try{
         if($parallelCompanions){
             Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanionWorkers.psm1')
             $corePassed=$state.Passed;$coreFailed=$state.Failed
-            $children=@(Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -CoreSummary $summary -Selections @($selections|Where-Object Name -CNE Core) -SkipTty:$SkipTty -ExpectedRuntimeIdentifier $ExpectedRuntimeIdentifier -MaxConcurrency ([Math]::Min(2,$MaxConcurrency)) -OnProgress {
+            $children=@(Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -CoreSummary $summary -Selections @($selections|Where-Object Name -CNE Core) -SkipTty:$SkipTty -ExpectedRuntimeIdentifier $ExpectedRuntimeIdentifier -MaxConcurrency ([Math]::Min(2,$MaxConcurrency)) -WorkerBudget $MaxConcurrency -OnProgress {
                 param($passed,$failed)
                 $state.Case='Core accepted; independent companion suites running';$state.Passed=$corePassed+$passed;$state.Failed=$coreFailed+$failed
                 Write-WorkspaceJson $statusPath $state

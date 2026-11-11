@@ -4,11 +4,17 @@
 
 # FrenchExDev2.QuietCli.Git.Tests.PoSh
 
+## Owned metadata and scheduling
+
+This companion owns its runner and complete literal `$caseMetadata` table in its own `.psm1`. Its manifest declares the RootModule, TestCatalogue runner/helper sources and TestExecution policy; shared infrastructure discovers/validates the declarations without a central Core-owned Git case list. The catalogue contains 77 cases, with 68 active by default and nine optional mutation cases. Each optional entry declares its exact EnabledWhen environment flag, statically checked against the registration guard; inactive campaigns are explicit and cannot hide an omitted active test.
+
+MaxParallelCases is two, while the default remains Ordered: cases share mutable synthetic repositories, handler/probe state and earlier observations. Parser timing is explicitly Exclusive within this companion. No Git case opts into isolated parallel execution until its prerequisites and fixtures are independently isolated. Git and Vagrant can still run as separate suites after accepted Core; the parent divides its worker budget among suite slots. `-Case` and stop-on-first now apply to this runner as well and produce Partial/Incomplete reports. Inspect `scripts/Test-TestCaseMetadata.ps1 -Suite Git -Plan` before execution.
+
 Module de tests compagnon séparé. Dépend de Git et des assertions de conformité du compagnon Core.
 
 Consulter [Qualification: when, where and how](../README-qualification-when-where-how.md) pour les déclencheurs de PR, les runners Windows, les conteneurs Linux, les commandes locales et la distinction entre compilation et exécution des tests.
 
-Les fixtures utilisent une identité Git dédiée, une configuration globale neutralisée et des dépôts sous `artifacts/git-fixtures`. Aucun dépôt de l’utilisateur n’est committé ou poussé. Le seul push de test vise un dépôt bare jetable local.
+Les fixtures utilisent une identité Git dédiée, une configuration globale neutralisée et des dépôts sous le `git-fixtures` du RunDirectory privé (racine temporaire commune en local). Aucun dépôt de l’utilisateur n’est committé ou poussé. Le seul push de test vise un dépôt bare jetable local.
 
 Les assertions vérifient l’état initial, les noms Unicode, une mutation commit exécutée une seule fois via un compteur de hook indépendant, HEAD observé, les références porcelain d’un push, le cache des sondes et la distinction entre `quiet -C contexte` et `git -C répertoire`.
 
@@ -22,7 +28,7 @@ Exécution : `./scripts/Invoke-WorkspaceCi.ps1 -Suite Git` depuis le workspace. 
 
 RepositoryCommands.Tests.ps1 owns nine additional workflows: switch/restore/reset/rm/mv/clean; conflicting merge and explicit abort; cherry-pick/revert/rebase; tag list/create/delete; remote config; lossless config queries; init/clone; non-repository/native-failure boundaries; and generated PowerShell interaction guards. Never place a destructive non-repository test beneath the actual checkout: use an external temporary directory, block parent discovery with GIT_CEILING_DIRECTORIES and use a non-destructive missing-path operation.
 
-The compiled runner now contains 22 cases. RepositoryCommandCases adds 2,000 generated config/remote cases, outcome invariants and 20,000 bounded malformed remote records with retained seeds; push retains its earlier generated/fuzz cases. The PowerShell guard has 240 generated vectors and two isolated in-memory mutants. These deterministic campaigns do not claim coverage-guided fuzzing.
+The compiled runner is checked against 57 independent cases. RepositoryCommandCases adds 2,000 generated config/remote cases, outcome invariants and 20,000 bounded malformed remote records with retained seeds; push retains its earlier generated/fuzz cases. The PowerShell guard has 240 generated vectors and two isolated in-memory mutants. These deterministic campaigns do not claim coverage-guided fuzzing.
 
 Set QUIETCLI_GIT_COMMAND_MUTATION=1 to request eight source-checked C# repository-format/outcome mutants with the shared monitored launcher. QUIETCLI_GIT_PUSH_MUTATION=1 requests the separate eight push mutants. Ordinary development runs omit compiler-based campaigns unless needed. The reusable CI enables both in the Windows Preview x64 qualification job and retains artifacts/git-repository-mutation and artifacts/git-push-mutation. A baseline must pass, then every selected mutant must be detected; report survivors, invalid builds, timeouts and infrastructure failures separately. Mutation compilation uses the short owned staging directory documented by each receipt.
 

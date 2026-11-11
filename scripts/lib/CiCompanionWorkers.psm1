@@ -23,12 +23,14 @@ function Invoke-QuietCiCompanionWorkers {
     Receives cumulative child pass/failure counters from saved reports.
     .PARAMETER WorkerPath
     Explicit worker for owned process fixtures; defaults to Invoke-TestWorker.ps1.
+    .PARAMETER WorkerBudget
+    Shared test-worker budget divided among admitted companion slots; omitted preserves one internal slot each.
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param([string]$WorkspaceRoot,[string]$RunDirectory,[object[]]$Selections,[Parameter(Mandatory)]$CoreSummary,
         [string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,
         [ValidateRange(1,32)][int]$MaxConcurrency=2,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,
-        [scriptblock]$OnProgress,[string]$WorkerPath=(Join-Path $PSScriptRoot '../Invoke-TestWorker.ps1'))
+        [scriptblock]$OnProgress,[string]$WorkerPath=(Join-Path $PSScriptRoot '../Invoke-TestWorker.ps1'),[ValidateRange(0,32)][int]$WorkerBudget=0)
     if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Run isolated companion suites after Core')){return}
     if($null -eq $CoreSummary -or !$CoreSummary.PSObject.Properties['Failed'] -or $CoreSummary.Failed -ne 0 -or $CoreSummary.Partial -or $CoreSummary.Incomplete){throw 'CompanionFanoutRequiresSuccessfulCompleteCore'}
     . (Join-Path $PSScriptRoot '../Ci.Process.ps1')
@@ -36,6 +38,10 @@ function Invoke-QuietCiCompanionWorkers {
     foreach($selection in $Selections){
         if($selection.Name -cnotmatch '\A[A-Z][A-Za-z0-9]*\z' -or $selection.Name -ieq 'Core' -or !$names.Add($selection.Name)){throw 'CompanionWorkerSelectionInvalid'}
     }
+    if(!$WorkerBudget){$WorkerBudget=[Math]::Max(1,[Math]::Min($MaxConcurrency,$Selections.Count))}
+    $MaxConcurrency=[Math]::Min($MaxConcurrency,$WorkerBudget)
+    $slots=[Math]::Max(1,[Math]::Min($MaxConcurrency,$Selections.Count))
+    $internalConcurrency=[Math]::Max(1,[int][Math]::Floor($WorkerBudget/$slots))
     $pending=[Collections.Generic.Queue[object]]::new()
     foreach($selection in $Selections){$pending.Enqueue($selection)}
     $active=[Collections.Generic.List[object]]::new()
@@ -49,7 +55,7 @@ function Invoke-QuietCiCompanionWorkers {
                 if(Test-Path -LiteralPath $directory){throw 'CompanionWorkerDirectoryExists'}
                 [void][IO.Directory]::CreateDirectory($directory)
                 # Streams remain inherited: no automatic capture, spool or business-output history.
-                $arguments=@('-File',$WorkerPath,'-WorkspaceRoot',$WorkspaceRoot,'-RunDirectory',$directory,'-Suite',$selection.Name,'-MaxConcurrency','1')
+                $arguments=@('-File',$WorkerPath,'-WorkspaceRoot',$WorkspaceRoot,'-RunDirectory',$directory,'-Suite',$selection.Name,'-MaxConcurrency',[string]$internalConcurrency)
                 if($SkipTty){$arguments+='-SkipTty'}
                 if($ExpectedRuntimeIdentifier){$arguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
                 $process=Start-CiProcess -FilePath $runner -ArgumentList $arguments -WorkingDirectory $WorkspaceRoot -Confirm:$false
