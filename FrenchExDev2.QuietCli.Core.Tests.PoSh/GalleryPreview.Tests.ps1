@@ -51,7 +51,7 @@ function Invoke-QuietGalleryPreviewTests {
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory,[switch]$Mutation,[scriptblock]$OnProgress)
     . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
-    . (Join-Path $WorkspaceRoot 'scripts/Gallery.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Gallery.psm1')
     $previewRoot=Join-Path $RunDirectory 'gallery-preview';[void][IO.Directory]::CreateDirectory($previewRoot)
     $cases=[ordered]@{};$results=[Collections.Generic.List[object]]::new();$mutants=[Collections.Generic.List[object]]::new()
     $identityEvidence=[Collections.Generic.List[object]]::new()
@@ -67,6 +67,42 @@ function Invoke-QuietGalleryPreviewTests {
     }
     $cases['preview identities have deterministic ordering, uniqueness and strict generated boundaries']={
         Test-QuietPreviewVersionProperties -Create (Get-Command New-QuietGalleryPreviewVersion)
+    }
+    $cases['qualified preview checkpoints remain publishable when develop advances']={
+        $directory=Join-Path $previewRoot 'checkpoint';[void][IO.Directory]::CreateDirectory($directory)
+        $script=Join-Path $WorkspaceRoot 'scripts/Assert-GalleryCheckpoint.ps1'
+        $revision='a'*40;$version='0.2.0-preview00000042a0001'
+        $preview=@{SourceRevision=$revision;QualifiedRevision=$revision;Version=$version}
+        Write-WorkspaceJson (Join-Path $directory preview.json) $preview
+        Write-WorkspaceJson (Join-Path $directory package-set.json) @{Version=$version}
+        $previous=$env:GITHUB_SHA
+        try{
+            foreach($index in 1..64){
+                $env:GITHUB_SHA=('{0:x40}' -f $index)
+                $result=& $script -PackageDirectory $directory -QualifiedRevision $revision -Version $version
+                if($result.State -cne 'CheckpointValidated' -or $result.BranchHeadQueried -or $result.QualifiedRevision -cne $revision){throw 'QualifiedCheckpointDependsOnCurrentBranchHead'}
+            }
+        }finally{$env:GITHUB_SHA=$previous}
+        foreach($field in @('SourceRevision','QualifiedRevision','Version')){
+            $damaged=$preview.Clone();$damaged[$field]='mismatch'
+            Write-WorkspaceJson (Join-Path $directory preview.json) $damaged
+            $rejected=$false;try{$null=& $script -PackageDirectory $directory -QualifiedRevision $revision -Version $version}catch{$rejected=$true}
+            if(!$rejected){throw 'WrongGalleryCheckpointAccepted'}
+        }
+        foreach($bad in @('[]','[{},{}]','null','{"broken":')){
+            [void][IO.File]::WriteAllTextAsync((Join-Path $directory preview.json),$bad,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+            $rejected=$false;try{$null=& $script -PackageDirectory $directory -QualifiedRevision $revision -Version $version}catch{$rejected=$true}
+            if(!$rejected){throw 'MalformedGalleryCheckpointAccepted'}
+        }
+        Write-WorkspaceJson (Join-Path $directory preview.json) $preview
+        $source=[IO.File]::ReadAllText($script,[Text.Encoding]::UTF8)
+        $mutant=[scriptblock]::Create($source.Replace("if(`$preview.SourceRevision -cne `$QualifiedRevision -or `$preview.QualifiedRevision -cne `$QualifiedRevision)",'if($false)'))
+        $damaged=$preview.Clone();$damaged.SourceRevision='b'*40;Write-WorkspaceJson (Join-Path $directory preview.json) $damaged
+        $accepted=$false;try{$null=& $mutant -PackageDirectory $directory -QualifiedRevision $revision -Version $version;$accepted=$true}catch{}
+        if(!$accepted){throw 'GalleryCheckpointInvalidMutant'}
+        $workflow=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/publish-psgallery.yml'),[Text.Encoding]::UTF8)
+        if($workflow.Contains('/git/ref/heads/develop') -or $workflow.Contains('steps.current.outputs.allowed') -or !$workflow.Contains('Get-QuietReleasePlan.ps1')){throw 'GalleryPublicationStillDependsOnCurrentHead'}
+        Write-WorkspaceJson (Join-Path $directory campaign.json) @{BranchAdvanceProperties=64;DamagedFields=3;MalformedMetadata=4;MutantsKilled=1;ExternalPublication=$false}
     }
     $cases['staged labels preserve numeric version, GUID, Unicode metadata and source bytes']={
         $directory=Join-Path $previewRoot 'manifest';[void][IO.Directory]::CreateDirectory($directory)
@@ -108,7 +144,8 @@ function Invoke-QuietGalleryPreviewTests {
         $plan=Test-QuietGalleryPackageSet (Join-Path $previewRoot 'packages') -Version $prepared.Version
         if($plan.SourceVersion -cne $expectedSourceVersion){throw 'PreviewSourceVersionLost'}
         $preview=Get-Content -LiteralPath (Join-Path $previewRoot 'packages/preview.json') -Raw -Encoding utf8|ConvertFrom-Json
-        if($preview.SourceRevision -cnotmatch '^[a-f0-9]{40}\z' -or $preview.Published){throw 'PreviewProvenanceMissing'}
+        $hasRepository=Test-Path -LiteralPath (Join-Path $WorkspaceRoot '.git')
+        if($preview.Published -or ($hasRepository -and $preview.SourceRevision -cnotmatch '^[a-f0-9]{40}\z') -or (!$hasRepository -and $null -ne $preview.SourceRevision)){throw 'PreviewProvenanceMissing'}
         foreach($package in $plan.Packages){
             $zip=[IO.Compression.ZipFile]::OpenRead((Join-Path $previewRoot ('packages/'+$package.File)))
             try{
@@ -122,13 +159,77 @@ function Invoke-QuietGalleryPreviewTests {
     }
     $cases['prepared previews import and execute from an isolated installation']={
         $probe=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/Probe-GalleryInstall.ps1'
-        $capture=@{Report=$null}
+        $capture=@{Report=$null;Lines=[Collections.Generic.Queue[object]]::new()}
         $execution=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -WorkingDirectory $WorkspaceRoot -ArgumentList @('-NoProfile','-File',$probe,'-PackageDirectory',(Join-Path $previewRoot 'packages'),'-InstallationDirectory',(Join-Path $previewRoot 'installed')) -State $capture -OnOutput {
             param($line,$data)
+            if($data.Lines.Count -ge 16){$null=$data.Lines.Dequeue()}
+            $data.Lines.Enqueue(@{Stream=$line.Stream;Text=$line.Text.Substring(0,[Math]::Min(2048,$line.Text.Length))})
             if($line.Stream -eq 'stdout' -and $line.Text.StartsWith('{')){$data.Report=$line.Text|ConvertFrom-Json}
         }
         $expected=Get-Content -LiteralPath (Join-Path $previewRoot 'packages/package-set.json') -Raw -Encoding utf8|ConvertFrom-Json
-        if($execution.Outcome -cne 'Success' -or $capture.Report.ModuleName -cne 'QuietCli' -or !$capture.Report.GeneratedScript -or $capture.Report.ScaffoldDependency -cne 'QuietCli' -or $capture.Report.GitModuleLoaded -or $capture.Report.NativeExecution -cne 'Success' -or !$capture.Report.Installed -or $capture.Report.PackageVersion -cne $expected.Version){throw 'PreviewInstallationFailed'}
+        Write-WorkspaceJson (Join-Path $RunDirectory 'gallery-install-diagnostics.json') @{Outcome=$execution.Outcome;ExitCode=$execution.ExitCode;Lines=@($capture.Lines);Report=$capture.Report}
+        if($execution.Outcome -cne 'Success' -or $capture.Report.ModuleName -cne $expected.Packages[0].Module -or !$capture.Report.GeneratedScript -or $capture.Report.ScaffoldDependency -cne $expected.Packages[0].Module -or $capture.Report.GitModuleLoaded -or $capture.Report.NativeExecution -cne 'Success' -or !$capture.Report.Installed -or $capture.Report.PackageVersion -cne $expected.Version){throw ('PreviewInstallationFailed: '+((@($capture.Lines)|ConvertTo-Json -Compress -Depth 3)))}
+    }
+    $cases['Git package keeps the Core dependency and imports compiled handlers from an isolated installation']={
+        $gitDirectory=Join-Path $previewRoot 'git-packages'
+        $prepared=& (Join-Path $WorkspaceRoot scripts/New-QuietGalleryPackage.ps1) -WorkspaceRoot $WorkspaceRoot -Module Git -OutputDirectory $gitDirectory
+        if($prepared.Packages.Count -ne 1 -or $prepared.Packages[0].Module -cne 'FrenchExDev2.QuietCli.Git.PoSh'){throw 'IndependentGitPackageIdentityChanged'}
+        $probe=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/Probe-GalleryInstall.ps1'
+        $capture=@{Report=$null;Lines=[Collections.Generic.Queue[object]]::new()}
+        $execution=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -WorkingDirectory $WorkspaceRoot -ArgumentList @('-NoProfile','-File',$probe,'-PackageDirectory',(Join-Path $previewRoot packages),'-CompanionPackageDirectory',$gitDirectory,'-InstallationDirectory',(Join-Path $previewRoot git-installed)) -State $capture -OnOutput {
+            param($line,$data)
+            if($data.Lines.Count -ge 16){$null=$data.Lines.Dequeue()}
+            $data.Lines.Enqueue(@{Stream=$line.Stream;Text=$line.Text.Substring(0,[Math]::Min(2048,$line.Text.Length))})
+            if($line.Stream -eq 'stdout' -and $line.Text.StartsWith('{')){$data.Report=$line.Text|ConvertFrom-Json}
+        }
+        Write-WorkspaceJson (Join-Path $RunDirectory git-gallery-install-diagnostics.json) @{Outcome=$execution.Outcome;ExitCode=$execution.ExitCode;Lines=@($capture.Lines);Report=$capture.Report}
+        if($execution.Outcome -cne 'Success' -or !$capture.Report.GitModuleLoaded -or $capture.Report.GitNativeExecution -cne 'Success'){throw 'IndependentGitPackageInstallationFailed'}
+        Import-Module (Join-Path $WorkspaceRoot scripts/lib/GalleryRelease.psm1)
+        $targets=@(Select-QuietGalleryReleaseTargets $WorkspaceRoot -Module Core,Git)
+        $tags=@($targets|ForEach-Object {$_.Module+'/v'+$_.Version})
+        $options=@{WorkspaceRoot=$WorkspaceRoot;ReleaseTagsJson=($tags|ConvertTo-Json -Compress -AsArray);TriggerTag=$tags[0];Revision=('a'*40);PackageDirectory=(Join-Path $previewRoot release-batch)}
+        $operator=Join-Path $WorkspaceRoot scripts/Invoke-QuietGalleryRelease.ps1
+        $null=& $operator @options -Operation Prepare -WhatIf
+        if(Test-Path -LiteralPath $options.PackageDirectory){throw 'GalleryBatchPreviewWroteOutput'}
+        $null=& $operator @options -Operation Prepare -Confirm:$false
+        $null=& $operator @options -Operation Validate -Confirm:$false
+        $batchCalls=[Collections.Generic.List[string]]::new()
+        function Get-BatchFixtureRepository {
+            <# .SYNOPSIS
+            Returns the standard destination without a remote call.
+            #>
+            param([string]$Name,[object]$ErrorAction)
+            [pscustomobject]@{Uri=[uri]'https://www.powershellgallery.com/api/v2'}
+        }
+        function Get-BatchFixtureIdentity {
+            <# .SYNOPSIS
+            Reports absent fixture versions without network access.
+            #>
+            param([string]$Module,[string]$Version)
+            $false
+        }
+        function Send-BatchFixturePublication {
+            <# .SYNOPSIS
+            Records dependency-ordered publication without sending credentials or network requests.
+            #>
+            param([string]$NupkgPath,[string]$Repository,[string]$ApiKey,[switch]$SkipDependenciesCheck,[object]$ErrorAction)
+            if($Repository -cne 'PSGallery' -or $SkipDependenciesCheck){throw 'BatchPublicationBoundaryChanged'}
+            $batchCalls.Add([IO.Path]::GetFileName([IO.Path]::GetDirectoryName($NupkgPath)))
+        }
+        Set-Alias Get-PSResourceRepository Get-BatchFixtureRepository -Scope Local
+        Set-Alias Get-QuietGalleryRemoteIdentity Get-BatchFixtureIdentity -Scope Local
+        Set-Alias Publish-PSResource Send-BatchFixturePublication -Scope Local
+        $archive=Get-ChildItem -LiteralPath (Join-Path $options.PackageDirectory $targets[-1].Module) -Filter '*.nupkg'|Select-Object -First 1
+        $original=[IO.File]::ReadAllBytes($archive.FullName);$savedKey=$env:PSGALLERY_API_KEY
+        try{
+            $env:PSGALLERY_API_KEY='non-secret-fixture'
+            [IO.File]::WriteAllBytes($archive.FullName,[byte[]]@(1,2,3))
+            $rejected=$false;try{$null=& $operator @options -Operation Publish -Confirm:$false}catch{$rejected=$true}
+            if(!$rejected -or $batchCalls.Count){throw 'BatchPublishedBeforeValidatingAllPackages'}
+            [IO.File]::WriteAllBytes($archive.FullName,$original)
+            $null=& $operator @options -Operation Publish -Confirm:$false
+            if(($batchCalls -join ',') -cne ($targets.Module -join ',')){throw 'BatchDependencyPublicationOrderChanged'}
+        }finally{[IO.File]::WriteAllBytes($archive.FullName,$original);$env:PSGALLERY_API_KEY=$savedKey}
     }
     $cases['publication uses the validated artifacts in Core-only scope without real credentials or network']={
         $previewPublicationCalls=[Collections.Generic.List[string]]::new()
@@ -152,7 +253,7 @@ function Invoke-QuietGalleryPreviewTests {
             #>
             param([string]$NupkgPath,[string]$Repository,[string]$ApiKey,[switch]$SkipDependenciesCheck,[object]$ErrorAction)
             if(!$NupkgPath.EndsWith('.nupkg') -or $Repository -cne 'PSGallery'){throw 'PreviewPublicationDestination'}
-            if(![IO.Path]::GetFileName($NupkgPath).StartsWith('QuietCli.',[StringComparison]::Ordinal) -or $SkipDependenciesCheck -or $previewPublicationCalls.Count){throw 'OnlyCorePublicationAllowed'}
+            if(![IO.Path]::GetFileName($NupkgPath).StartsWith('FrenchExDev2.QuietCli.Core.PoSh.',[StringComparison]::Ordinal) -or $SkipDependenciesCheck -or $previewPublicationCalls.Count){throw 'OnlyCorePublicationAllowed'}
             $previewPublicationCalls.Add([IO.Path]::GetFileName($NupkgPath))
         }
         Set-Alias Get-PSResourceRepository Invoke-PreviewFixtureRepository -Scope Local
@@ -176,7 +277,7 @@ function Invoke-QuietGalleryPreviewTests {
                 $plan=$original|ConvertFrom-Json
                 if($variant -eq 'extra-archive'){[void][IO.File]::WriteAllBytesAsync($extra,[byte[]]@(1)).GetAwaiter().GetResult()}
                 elseif($variant -eq 'git-identity'){$plan.Packages[0].Module='FrenchExDev2.QuietCli.Git.PoSh'}
-                elseif($variant -eq 'source-identity'){$plan.Packages[0].Module='FrenchExDev2.QuietCli.Core.PoSh'}
+                elseif($variant -eq 'source-identity'){$plan.Packages[0].Module='QuietCli'}
                 else{$plan.Packages+=@{Module='FrenchExDev2.QuietCli.Git.PoSh';File='forbidden.nupkg'}}
                 Write-WorkspaceJson $path $plan
                 $rejected=$false
@@ -198,7 +299,8 @@ function Invoke-QuietGalleryPreviewTests {
             if($compiled.Failed -or $compiled.Mutations.Count -ne 4 -or @($compiled.Mutations|Where-Object State -CNE Killed).Count){throw 'CompiledModuleIdentityMutationFailed'}
         }
         $cases['version mutations are all detected by independent examples, properties and malformed inputs']={
-            $path=Join-Path $WorkspaceRoot 'scripts/Gallery.ps1';$source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
+            $path=Join-Path $WorkspaceRoot 'scripts/lib/Gallery.psm1';$source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
+            $source=[regex]::Replace($source,'(?m)^Export-ModuleMember[^\r\n]*$','')
             $catalogue=@(
                 @{Name='build-minimum';From='$build -lt 1';To='$build -lt 0'},
                 @{Name='build-maximum';From='$build -gt 99999999';To='$build -gt 100000000'},

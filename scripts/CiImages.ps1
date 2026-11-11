@@ -1,4 +1,3 @@
-# Objectif : Définir les entrées vérifiées et l’identité du cache des images de tests Linux.
 function Get-QuietCiFingerprint {
     <#
     .SYNOPSIS
@@ -79,8 +78,10 @@ function Get-QuietModuleContainerfile {
     rendered as one "ENV k=v k2=v2 ..." line); PathPrefix (directory prepended to PATH, for a stage that
     only needs to extend ${PATH} rather than declare a full Env map); WorkDir ("WORKDIR <dir>");
     Entrypoint (string array, rendered as JSON-array-form "ENTRYPOINT [...]").
+    .PARAMETER DefaultCoreImage
+    Content-addressed local parent reference, required when a stage inherits CORE_IMAGE.
     #>
-    param([Parameter(Mandatory)][ValidateSet('debian','alpine')][string]$Platform,[Parameter(Mandatory)][string]$Objective,[Parameter(Mandatory)][object[]]$Stages)
+    param([Parameter(Mandatory)][ValidateSet('debian','alpine')][string]$Platform,[Parameter(Mandatory)][string]$Objective,[Parameter(Mandatory)][object[]]$Stages,[string]$DefaultCoreImage)
     $manager=if($Platform -ceq 'debian'){'apt'}else{'apk'}
     $cacheMount=if($Platform -ceq 'debian'){'--mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,target=/var/lib/apt,sharing=locked'}else{'--mount=type=cache,target=/var/cache/apk,sharing=locked'}
     $stageNames=@($Stages|ForEach-Object Name)
@@ -121,7 +122,10 @@ function Get-QuietModuleContainerfile {
         if($stage.WorkDir){[void]$lines.Add("WORKDIR $($stage.WorkDir)")}
         if($stage.Entrypoint){[void]$lines.Add('ENTRYPOINT ['+(($stage.Entrypoint|ForEach-Object {'"'+$_+'"'}) -join ',')+']')}
     }
-    if($usesCoreImage){$lines.Insert(1,'ARG CORE_IMAGE')}
+    if($usesCoreImage){
+        if($DefaultCoreImage -cnotmatch '\Alocalhost/quietcli2-ci-core-(?:debian|alpine)-(?:x64|arm64):[a-f0-9]{64}\z'){throw 'CiImageDefaultParentReferenceRequired'}
+        $lines.Insert(1,'ARG CORE_IMAGE='+$DefaultCoreImage)
+    }
     ($lines -join "`n")+"`n"
 }
 function Get-QuietCiModuleImagePlan {
@@ -147,12 +151,43 @@ function Get-QuietCiModuleImagePlan {
     Ordered build-arg map contributed by the module's own ci script.
     .PARAMETER ModuleInputPaths
     Workspace-relative paths (the module's own fetch script, locks) hashed into the fingerprint.
+    .PARAMETER ParentPlan
+    Preceding layer plan; its fingerprint invalidates every dependent overlay when changed.
     #>
-    param([string]$WorkspaceRoot,[ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[Parameter(Mandatory)][string]$Module,[Parameter(Mandatory)]$ContainerfileFragment,[Parameter(Mandatory)]$ModuleArguments,[Parameter(Mandatory)][string[]]$ModuleInputPaths)
-    $core=Get-QuietCiImagePlan $WorkspaceRoot $RuntimeIdentifier
-    $containerfileText=Get-QuietModuleContainerfile -Platform $ContainerfileFragment.Platform -Objective $ContainerfileFragment.Objective -Stages $ContainerfileFragment.Stages
+    param([string]$WorkspaceRoot,[ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[Parameter(Mandatory)][string]$Module,[Parameter(Mandatory)]$ContainerfileFragment,[Parameter(Mandatory)]$ModuleArguments,[Parameter(Mandatory)][string[]]$ModuleInputPaths,$ParentPlan)
+    $core=if($ParentPlan){$ParentPlan}else{Get-QuietCiImagePlan $WorkspaceRoot $RuntimeIdentifier}
+    $parentReference="localhost/quietcli2-ci-core-$($core.Platform)-$($core.Architecture):$($core.Fingerprint)"
+    $containerfileText=Get-QuietModuleContainerfile -Platform $ContainerfileFragment.Platform -Objective $ContainerfileFragment.Objective -Stages $ContainerfileFragment.Stages -DefaultCoreImage $parentReference
     $fingerprint=Get-QuietCiFingerprint -WorkspaceRoot $WorkspaceRoot -InputPaths $ModuleInputPaths -ContainerfileText $containerfileText -ParentFingerprint $core.Fingerprint
-    [pscustomobject]@{Rid=$RuntimeIdentifier;Architecture=$core.Architecture;Platform=$core.Platform;Core=$core;ContainerfileText=$containerfileText;Arguments=$ModuleArguments;Fingerprint=$fingerprint;RegistryPath="frenchexdev2/quietcli2-ci-$($core.Platform)-$($core.Architecture)-$($Module.ToLowerInvariant())";Source='https://github.com/FrenchExDev2/QuietCli.PoSh'}
+    [pscustomobject]@{Rid=$RuntimeIdentifier;Architecture=$core.Architecture;Platform=$core.Platform;Core=$core;ParentReference=$parentReference;ContainerfileText=$containerfileText;Arguments=$ModuleArguments;Fingerprint=$fingerprint;RegistryPath="frenchexdev2/quietcli2-ci-$($core.Platform)-$($core.Architecture)-$($Module.ToLowerInvariant())";Source='https://github.com/FrenchExDev2/QuietCli.PoSh'}
+}
+function Get-QuietCiVerifiedImage {
+    <# .SYNOPSIS
+    Verifies local image identity, architecture and labels before using an image or parent layer.
+    .PARAMETER Plan
+    Expected immutable input identity and native architecture.
+    .PARAMETER Reference
+    Already prepared local image; never pulled here.
+    .PARAMETER ContainerRuntime
+    Selected native adapter.
+    #>
+    param($Plan,[string]$Reference,[string]$ContainerRuntime)
+    $observed=@{Json=[Text.StringBuilder]::new()}
+    $inspection=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('image','inspect',$Reference) -TimeoutSeconds 30 -State $observed -OnOutput {
+        param($event,$state)
+        if($event.Stream -eq 'stdout'){
+            if($state.Json.Length+$event.Text.Length -gt 65536){throw 'CiImageMetadataTooLarge'}
+            [void]$state.Json.Append($event.Text)
+        }
+    }
+    if($inspection.Outcome -ne 'Success'){throw 'CiImageInspectionFailed'}
+    $items=@($observed.Json.ToString()|ConvertFrom-Json)
+    if($items.Count -ne 1){throw 'CiImageIdentityMismatch'}
+    $info=$items[0]
+    $expected=if($Plan.Architecture -eq 'x64'){'amd64'}else{'arm64'}
+    $labels=if($info.PSObject.Properties['Labels']){$info.Labels}else{$info.Config.Labels}
+    if($info.Id -cnotmatch '\A(?:sha256:)?[a-f0-9]{64}\z' -or $info.Architecture -cne $expected -or $info.Os -cne 'linux' -or $labels.'org.frenchexdev.quietcli2.inputs' -cne $Plan.Fingerprint -or $labels.'org.opencontainers.image.source' -cne $Plan.Source){throw 'CiImageIdentityMismatch'}
+    $info
 }
 function Get-QuietCiLocalImageArchitecture {
     <#
@@ -166,10 +201,13 @@ function Get-QuietCiLocalImageArchitecture {
     a build step.
     .PARAMETER Reference
     Image reference as stored locally (name@digest or name:tag).
+    .PARAMETER ContainerRuntime
+    Local Podman or GitHub Docker adapter; recipe and identity validation are shared.
     #>
-    param([Parameter(Mandatory)][string]$Reference)
+    param([Parameter(Mandatory)][string]$Reference,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime)
+    $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime
     $observed=@{Json=[Text.StringBuilder]::new()}
-    $inspection=Invoke-CiProcess -FilePath podman -ArgumentList @('image','inspect',$Reference) -TimeoutSeconds 30 -State $observed -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Json.Append($e.Text)}}
+    $inspection=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('image','inspect',$Reference) -TimeoutSeconds 30 -State $observed -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Json.Append($e.Text)}}
     if($inspection.Outcome -ne 'Success'){throw 'CiImageInspectionFailed'}
     @($observed.Json.ToString()|ConvertFrom-Json)[0].Architecture
 }
@@ -183,8 +221,10 @@ function Get-QuietCiRegistryDigest {
     Optional ephemeral workflow credential, held only in memory.
     .PARAMETER Actor
     Workflow actor used for registry authentication.
+    .PARAMETER IncludeConfiguration
+    Returns a digest and verified image configuration for GitHub job-container selection.
     #>
-    param($Plan,[AllowEmptyString()][string]$Token,[string]$Actor)
+    param($Plan,[AllowEmptyString()][string]$Token,[string]$Actor,[switch]$IncludeConfiguration)
     $client=[Net.Http.HttpClient]::new();$client.Timeout=[TimeSpan]::FromSeconds(45)
     try{
         if($Token){$basic=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Actor+':'+$Token));$client.DefaultRequestHeaders.Authorization=[Net.Http.Headers.AuthenticationHeaderValue]::new('Basic',$basic)}
@@ -202,9 +242,46 @@ function Get-QuietCiRegistryDigest {
             if(!$response.IsSuccessStatusCode){throw ('CiRegistryManifestHttpStatus: '+[int]$response.StatusCode)}
             $digest=($response.Headers.GetValues('Docker-Content-Digest') -join '')
             if($digest -cnotmatch '^sha256:[a-f0-9]{64}$'){throw 'CiRegistryDigestInvalid'}
+            if($IncludeConfiguration){
+                $manifest=$response.Content.ReadAsStringAsync().GetAwaiter().GetResult()|ConvertFrom-Json
+                $configDigest=$manifest.config.digest
+                if($configDigest -cnotmatch '^sha256:[a-f0-9]{64}$'){throw 'CiRegistryConfigurationDigestInvalid'}
+                $configuration=$client.GetAsync('https://ghcr.io/v2/'+$Plan.RegistryPath+'/blobs/'+$configDigest).GetAwaiter().GetResult()
+                try{
+                    if(!$configuration.IsSuccessStatusCode){throw 'CiRegistryConfigurationUnavailable'}
+                    $bytes=$configuration.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
+                    if($bytes.Length -gt 1048576 -or ('sha256:'+([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()) -cne $configDigest){throw 'CiRegistryConfigurationIdentityInvalid'}
+                    $config=[Text.Encoding]::UTF8.GetString($bytes)|ConvertFrom-Json
+                    $arch=if($Plan.Architecture -eq 'x64'){'amd64'}else{'arm64'}
+                    if($config.architecture -cne $arch -or $config.os -cne 'linux' -or $config.config.Labels.'org.frenchexdev.quietcli2.inputs' -cne $Plan.Fingerprint -or $config.config.Labels.'org.opencontainers.image.source' -cne $Plan.Source){throw 'CiRegistryImageIdentityMismatch'}
+                    return [pscustomobject]@{Digest=$digest;Reference=('ghcr.io/'+$Plan.RegistryPath+'@'+$digest);Architecture=$config.architecture;OS=$config.os;Fingerprint=$Plan.Fingerprint}
+                }finally{$configuration.Dispose()}
+            }
             return $digest
         }finally{$response.Dispose()}
     }finally{$client.Dispose()}
+}
+function ConvertTo-QuietCiRegistryDiagnostic {
+    <#
+    .SYNOPSIS
+    Redacts registry credentials before retaining a bounded, single-line login diagnostic.
+    .PARAMETER Text
+    One transient native output record.
+    .PARAMETER Token
+    Current ephemeral credential; never returned or written as metadata.
+    .PARAMETER Actor
+    Registry user used to mask a possible encoded Basic credential.
+    #>
+    param([AllowEmptyString()][string]$Text,[AllowEmptyString()][string]$Token,[string]$Actor)
+    if($Token){
+        foreach($secret in @($Token,[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Token)),[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Actor+':'+$Token)))){
+            $Text=$Text.Replace($secret,'[REDACTED]')
+        }
+    }
+    $Text=[regex]::Replace($Text,'(?:gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+)','[REDACTED]')
+    $Text=[regex]::Replace($Text,'\x1B\[[0-?]*[ -/]*[@-~]','') -replace '[\x00-\x1F\x7F]',' '
+    if($Text.Length -gt 2048){$Text=$Text.Substring(0,2048)}
+    return $Text
 }
 function Invoke-QuietCiImageBuild {
     <#
@@ -231,16 +308,22 @@ function Invoke-QuietCiImageBuild {
     .PARAMETER RegistryCache
     Read the GHCR cache with the optional ephemeral QUIETCLI_REGISTRY_TOKEN credential.
     .PARAMETER PublishCache
-    Publish a missing cache entry. Restricted to the upstream main push/manual workflow, never pull requests.
+    Publish a missing cache entry. Restricted to the upstream develop push/manual workflow, never pull requests.
+    .PARAMETER ContainerRuntime
+    Podman for workstation runs; Docker for GitHub image preparation and PR fallback.
+    .PARAMETER CacheOnly
+    Pulls and verifies an existing final image, returning no value on a registry miss without building.
     #>
-    param($Plan,[Parameter(Mandatory)][string]$ContextDirectory,[Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$ArtifactPrefix,[switch]$RegistryCache,[switch]$PublishCache)
+    param($Plan,[Parameter(Mandatory)][string]$ContextDirectory,[Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$ArtifactPrefix,[switch]$RegistryCache,[switch]$PublishCache,[switch]$CacheOnly,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime)
+    $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
     # The build must land in a native Linux environment matching the plan's architecture, but that environment is
     # Podman's own backend (its machine VM on Windows/macOS, or the host kernel on Linux), never the pwsh process's
     # own OS: Podman already executes every build inside a real Linux kernel regardless of where its CLI is invoked.
     $podmanHostState=@{Json=[Text.StringBuilder]::new()}
-    $podmanHostInfo=Invoke-CiProcess -FilePath podman -ArgumentList @('info','--format','json') -TimeoutSeconds 20 -State $podmanHostState -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Json.Append($e.Text)}}
+    $podmanHostInfo=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('info','--format','json') -TimeoutSeconds 20 -State $podmanHostState -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Json.Append($e.Text)}}
     if($podmanHostInfo.Outcome -ne 'Success'){throw 'PodmanHostInfoUnavailable'}
-    $podmanHost=($podmanHostState.Json.ToString()|ConvertFrom-Json).Host
+    $hostInfo=$podmanHostState.Json.ToString()|ConvertFrom-Json
+    $podmanHost=if($ContainerRuntime -eq 'podman'){$hostInfo.Host}else{[pscustomobject]@{Os=$hostInfo.OSType;Arch=$(switch($hostInfo.Architecture){x86_64{'amd64'} aarch64{'arm64'} default{$hostInfo.Architecture}})}}
     $podmanExpectedArch=if($Plan.Architecture -eq 'x64'){'amd64'}else{'arm64'}
     $podmanNativeArch=($podmanHost.Arch -ceq $podmanExpectedArch)
     if($podmanHost.Os -cne 'linux'){throw 'NativeLinuxImageBuildRequired'}
@@ -257,20 +340,35 @@ function Invoke-QuietCiImageBuild {
     # Keep credentials out of all child environments, build arguments, reports and image layers.
     Remove-Item Env:QUIETCLI_REGISTRY_TOKEN -ErrorAction SilentlyContinue
     $authDirectory=$null;$auth=@();$digest=$null;$cacheHit=$false;$dockerfilePath=$null
+    $previousDockerConfig=$env:DOCKER_CONFIG
     $registry='ghcr.io/'+$Plan.RegistryPath;$tag=$registry+':'+$Plan.Fingerprint
     try{
         if($RegistryCache){$digest=Get-QuietCiRegistryDigest $Plan $token $env:GITHUB_ACTOR}
+        if($CacheOnly -and !$digest){return}
         if($token -and ($digest -or $PublishCache)){
             $authDirectory=Join-Path ([IO.Path]::GetTempPath()) ('quietcli2-registry-'+[guid]::NewGuid().ToString('N'))
-            [void][IO.Directory]::CreateDirectory($authDirectory,[IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute)
-            $auth=@('--authfile',(Join-Path $authDirectory auth.json))
-            $login=Invoke-CiProcess -FilePath podman -ArgumentList (@('login')+$auth+@('--username',$env:GITHUB_ACTOR,'--password-stdin','ghcr.io')) -InputText $token -TimeoutSeconds 45 -OnOutput {param($e,$s)}
-            if($login.Outcome -ne 'Success'){throw 'CiRegistryLoginFailed'}
+            if($IsWindows){[void][IO.Directory]::CreateDirectory($authDirectory)}else{[void][IO.Directory]::CreateDirectory($authDirectory,[IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute)}
+            if($ContainerRuntime -eq 'podman'){$auth=@('--authfile',(Join-Path $authDirectory auth.json))}else{$env:DOCKER_CONFIG=$authDirectory}
+            $loginState=@{Token=$token;Actor=$env:GITHUB_ACTOR;Lines=[Collections.Generic.Queue[object]]::new()}
+            $login=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList (@('login')+$auth+@('--username',$env:GITHUB_ACTOR,'--password-stdin','ghcr.io')) -InputText $token -TimeoutSeconds 45 -State $loginState -OnOutput {
+                param($e,$s)
+                $text=ConvertTo-QuietCiRegistryDiagnostic -Text $e.Text -Token $s.Token -Actor $s.Actor
+                if($s.Lines.Count -ge 12){$null=$s.Lines.Dequeue()}
+                $s.Lines.Enqueue(@{Stream=$e.Stream;Text=$text})
+            }
+            $loginState.Token=$null
+            $loginReceipt=@{Registry='ghcr.io';RuntimeIdentifier=$Plan.Rid;Outcome=$login.Outcome;ExitCode=$login.ExitCode;ElapsedMs=$login.ElapsedMs;InputEncoding='UTF-8 without BOM';InputPreambleHex='';Diagnostics=@($loginState.Lines)}
+            Write-WorkspaceJson (Join-Path $directory 'registry-login.json') $loginReceipt
+            if($login.Outcome -ne 'Success'){
+                Write-Host ('CI registry login diagnostic: '+($loginReceipt|ConvertTo-Json -Depth 5 -Compress))
+                throw 'CiRegistryLoginFailed'
+            }
         }
         if($digest){
-            $null=Invoke-WorkspaceNative podman (@('pull')+$auth+@($registry+'@'+$digest)) $WorkspaceRoot -TimeoutSeconds 600 -LogPath $logPath
+            $null=Invoke-WorkspaceNative $ContainerRuntime (@('pull')+$auth+@($registry+'@'+$digest)) $WorkspaceRoot -TimeoutSeconds 600 -LogPath $logPath
             $image=$registry+'@'+$digest;$cacheHit=$true
         }else{
+            if($ContainerRuntime -eq 'docker'){$env:DOCKER_CONFIG=$previousDockerConfig}
             $platform=@();if(!$podmanNativeArch){$platform=@('--platform',('linux/'+$podmanExpectedArch))}
             if($Plan.PSObject.Properties.Match('Base').Count -and $Plan.Base){
                 # podman's local containers-storage keys a pulled image by reference (name@digest) alone, never by
@@ -279,12 +377,12 @@ function Invoke-QuietCiImageBuild {
                 # which built an image for the wrong architecture under 'exec format error' rather than any clear
                 # diagnostic. Pulling by digest is otherwise correct and is kept; this only guards against that
                 # specific local-storage collision by re-pulling once, forcing the stale entry out first.
-                $null=Invoke-WorkspaceNative podman (@('pull')+$platform+@($Plan.Base)) $WorkspaceRoot -TimeoutSeconds 300 -LogPath $logPath
-                $baseArch=Get-QuietCiLocalImageArchitecture $Plan.Base
+                $null=Invoke-WorkspaceNative $ContainerRuntime (@('pull')+$platform+@($Plan.Base)) $WorkspaceRoot -TimeoutSeconds 300 -LogPath $logPath
+                $baseArch=Get-QuietCiLocalImageArchitecture $Plan.Base -ContainerRuntime $ContainerRuntime
                 if($baseArch -cne $podmanExpectedArch){
-                    $null=Invoke-WorkspaceNative podman @('rmi','--force',$Plan.Base) $WorkspaceRoot -TimeoutSeconds 60 -LogPath $logPath
-                    $null=Invoke-WorkspaceNative podman (@('pull')+$platform+@($Plan.Base)) $WorkspaceRoot -TimeoutSeconds 300 -LogPath $logPath
-                    $baseArch=Get-QuietCiLocalImageArchitecture $Plan.Base
+                    $null=Invoke-WorkspaceNative $ContainerRuntime @('rmi','--force',$Plan.Base) $WorkspaceRoot -TimeoutSeconds 60 -LogPath $logPath
+                    $null=Invoke-WorkspaceNative $ContainerRuntime (@('pull')+$platform+@($Plan.Base)) $WorkspaceRoot -TimeoutSeconds 300 -LogPath $logPath
+                    $baseArch=Get-QuietCiLocalImageArchitecture $Plan.Base -ContainerRuntime $ContainerRuntime
                     if($baseArch -cne $podmanExpectedArch){throw "CiImageBaseArchitectureCacheCollision: expected $podmanExpectedArch, got $baseArch for $($Plan.Base) - see $logPath"}
                 }
             }
@@ -295,31 +393,35 @@ function Invoke-QuietCiImageBuild {
             }else{
                 Join-Path $WorkspaceRoot $Plan.Dockerfile
             }
-            $arguments=@('build','--pull=never','--jobs','1')+$platform+@('--label',('org.opencontainers.image.source='+$Plan.Source),'--label',('org.frenchexdev.quietcli2.inputs='+$Plan.Fingerprint),'-f',$dockerfilePath,'-t',$tag)
+            $buildOptions=if($ContainerRuntime -eq 'podman'){@('--pull=never','--jobs','1')}else{@('--pull=false')}
+            $arguments=@('build')+$buildOptions+$platform+@('--label',('org.opencontainers.image.source='+$Plan.Source),'--label',('org.frenchexdev.quietcli2.inputs='+$Plan.Fingerprint),'-f',$dockerfilePath,'-t',$tag)
             foreach($entry in $Plan.Arguments.GetEnumerator()){$arguments+=@('--build-arg',($entry.Key+'='+$entry.Value))}
             $arguments+=$ContextDirectory
-            $null=Invoke-WorkspaceNative podman $arguments $WorkspaceRoot -TimeoutSeconds 1800 -LogPath $logPath
+            $null=Invoke-WorkspaceNative $ContainerRuntime $arguments $WorkspaceRoot -TimeoutSeconds 1800 -LogPath $logPath
             $image=$tag
         }
-        $observed=@{Json=[Text.StringBuilder]::new()}
-        $inspection=Invoke-CiProcess -FilePath podman -ArgumentList @('image','inspect',$image) -TimeoutSeconds 30 -State $observed -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Json.Append($e.Text)}}
-        if($inspection.Outcome -ne 'Success'){throw 'CiImageInspectionFailed'}
-        $info=@($observed.Json.ToString()|ConvertFrom-Json)[0]
-        $expected=if($Plan.Architecture -eq 'x64'){'amd64'}else{'arm64'}
-        if($info.Architecture -cne $expected -or $info.Os -cne 'linux' -or $info.Labels.'org.frenchexdev.quietcli2.inputs' -cne $Plan.Fingerprint -or $info.Labels.'org.opencontainers.image.source' -cne $Plan.Source){throw 'CiImageIdentityMismatch'}
+        $info=Get-QuietCiVerifiedImage -Plan $Plan -Reference $image -ContainerRuntime $ContainerRuntime
         if($PublishCache -and !$cacheHit){
             if(!$token){throw 'CiRegistryCredentialMissing'}
             $digestFile=Join-Path $directory registry.digest
-            $null=Invoke-WorkspaceNative podman (@('push')+$auth+@('--digestfile',$digestFile,$tag,'docker://'+$tag)) $WorkspaceRoot -TimeoutSeconds 600 -LogPath $logPath
-            $digest=(Get-Content $digestFile -Encoding utf8 -Raw).Trim()
+            if($ContainerRuntime -eq 'podman'){
+                $null=Invoke-WorkspaceNative podman (@('push')+$auth+@('--digestfile',$digestFile,$tag,'docker://'+$tag)) $WorkspaceRoot -TimeoutSeconds 600 -LogPath $logPath
+                $digest=(Get-Content $digestFile -Encoding utf8 -Raw).Trim()
+            }else{
+                $env:DOCKER_CONFIG=$authDirectory
+                $null=Invoke-WorkspaceNative docker @('push',$tag) $WorkspaceRoot -TimeoutSeconds 600 -LogPath $logPath
+                $digest=Get-QuietCiRegistryDigest $Plan $token $env:GITHUB_ACTOR
+            }
             if($digest -cnotmatch '^sha256:[a-f0-9]{64}$'){throw 'CiImagePushReceiptInvalid'}
         }
         if(!$dockerfilePath){$dockerfilePath=if($Plan.PSObject.Properties.Match('Dockerfile').Count){$Plan.Dockerfile}else{$null}}
         $receipt=[pscustomobject]@{Image=$info.Id;RuntimeIdentifier=$Plan.Rid;Fingerprint=$Plan.Fingerprint;Base=$Plan.Base;Registry=$tag;RegistryDigest=$digest;CacheHit=$cacheHit;Published=([bool]$PublishCache -and !$cacheHit);RunnerArchitecture=[Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString();Dockerfile=$dockerfilePath;LogPath=$logPath}
         Write-WorkspaceJson (Join-Path $directory image.json) $receipt
+        Write-Host ('CI image selection: '+($receipt|Select-Object Image,RuntimeIdentifier,Fingerprint,RegistryDigest,CacheHit,Published|ConvertTo-Json -Compress))
         return $receipt
     }finally{
-        if($authDirectory){$authFile=Join-Path $authDirectory auth.json;if([IO.File]::Exists($authFile)){[IO.File]::Delete($authFile)};[IO.Directory]::Delete($authDirectory)}
+        $env:DOCKER_CONFIG=$previousDockerConfig
         $token=$null
+        if($authDirectory){foreach($name in @('auth.json','config.json')){$authFile=Join-Path $authDirectory $name;if([IO.File]::Exists($authFile)){[IO.File]::Delete($authFile)}};[IO.Directory]::Delete($authDirectory)}
     }
 }

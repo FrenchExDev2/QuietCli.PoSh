@@ -1,9 +1,13 @@
 # Module-specific CI containers
 
+This is the technical reference for native-tool image declarations and their build/identity contract.
+For the complete product/test onboarding path, YAML suite registration and integration suites, use
+[Add a QuietCli companion](../README-add-companion.md).
+
 Core's own Linux CI images (see [Linux CI images](ci/linux-images.md)) stay independent of every
-Core-consumer module: Core never reads a module's locks, scripts or Containerfiles. A module that needs
+Core-consumer module: Core's base image declaration never reads consumer locks or scripts. A module that needs
 native CI tooling beyond Core's base image (for example, a compiled `git`) builds its own derived image,
-layered on top of Core's already-verified one, through a small, generic, reusable contract. `Git` is the
+layered over a verified parent starting with Core, through a small, generic, reusable contract. `Git` is the
 first module to use it; the same shape is intended for any future Core-consumer module.
 
 Core declares its own image the exact same way: `FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1`
@@ -60,21 +64,22 @@ actual Containerfile text.
 
 `scripts/CiImages.ps1` provides the reusable, module-agnostic side of the contract:
 
-- `Get-QuietModuleContainerfile($Fragment)` renders Containerfile text from a module's own ordered
-  `Stages`, on top of Core's only shared boilerplate (`ARG CORE_IMAGE`), using the right `apt`/`apk`
+- `Get-QuietModuleContainerfile -Platform -Objective -Stages` renders Containerfile text from a module's own ordered
+   `Stages`, on top of Core's only shared boilerplate (`ARG CORE_IMAGE=<verified-parent-reference>`), using the right `apt`/`apk`
   cache-mount and install syntax for `Fragment.Platform`. A module declares as many stages as it needs,
   each `FROM ${CORE_IMAGE}` or `FROM` an earlier stage's own `Name` — not a fixed `tools`/`ci` pair — so a
   module can install packages or copy build output into any stage it declares, including its own final
   stage (for example, runtime shared libraries a self-compiled binary links against).
-- `Get-QuietCiModuleImagePlan($WorkspaceRoot,$RuntimeIdentifier,$Module,$ContainerfileFragment,$ModuleArguments,$ModuleInputPaths)`
-  resolves Core's own plan first, renders the Containerfile text, and composes the module's fingerprint
+- `Get-QuietCiModuleImagePlan -WorkspaceRoot -RuntimeIdentifier -Module -ContainerfileFragment -ModuleArguments -ModuleInputPaths [-ParentPlan]`
+  uses the supplied preceding layer or resolves Core's own plan, renders the Containerfile, and composes the fingerprint
   from three parts:
   1. the hashes of the module's own `InputPaths` (locks, fetch script, the `ci/Get-CiImageArguments.ps1`
      contract script itself);
   2. `'CONTAINERFILE '` + the SHA-256 of the *rendered* Containerfile text — so a change to the declared
      fragment alone (no file touched) still invalidates the module's cache;
-  3. `'CORE_FINGERPRINT '` + Core's own already-verified fingerprint — so a Core change also invalidates
-     every module built on top of it.
+  3. `'CORE_FINGERPRINT '` + the parent's verified fingerprint. The label retains its existing name,
+     but the parent can be the preceding overlay. A changed intermediate layer invalidates every
+     descendant, as does a change to Core's base.
   The registry path carries the module suffix: `frenchexdev2/quietcli2-ci-{platform}-{architecture}-{module}`.
 - `Invoke-QuietCiImageBuild` is the shared Podman build/pull/push/verify/receipt orchestration, reused by
   both Core's own `New-CiImage.ps1` and every module's build — not duplicated per module.
@@ -83,18 +88,22 @@ actual Containerfile text.
 
 The single, generic entrypoint for every module, parameterized by `-Module`:
 
-1. Resolves (or builds) Core's own image via `New-CiImage.ps1`.
-2. Tags it locally as `localhost/quietcli2-ci-core-<platform>-<arch>:<core-fingerprint>` — a bare image ID
-   cannot be a Containerfile `FROM` target, so this tag, keyed by Core's own verified fingerprint, is the
-   stable reference whether Core's image just arrived by a GHCR pull or a fresh local build.
-3. Resolves the module's `ci/Get-CiImageArguments.ps1` by the fixed path convention above and invokes it
-   as a script. If it is missing, the build fails fast with `CiModuleContractMissing: <path>` rather than
-   a confusing downstream error.
-4. Builds the module's plan with `Get-QuietCiModuleImagePlan`, injects the local Core tag as the
+ 1. Resolves the preceding `-ParentPlan`, or Core's plan when no parent is supplied. Its content-addressed
+    local `ParentReference` becomes the recipe's valid CORE_IMAGE default and the prepared parent's tag,
+    so Docker can validate FROM without an empty ARG. No unrelated fallback image is introduced.
+2. Invokes the module's `ci/Get-CiImageArguments.ps1` by its fixed path, then resolves the fragment
+   and fingerprint. A missing declaration fails with `CiModuleContractMissing: <path>`.
+   `-PlanOnly` returns here, without native execution or registry access.
+3. For preparation, uses `-ParentImage` when a parent plan is supplied; otherwise it prepares Core via
+   `New-CiImage.ps1`. A supplied parent image is checked for ID, native architecture, input fingerprint
+   and source label before use. Metadata reads are bounded.
+4. Tags the prepared parent locally as
+   `localhost/quietcli2-ci-core-<platform>-<arch>:<parent-fingerprint>`. The prefix is retained for
+   compatibility; the identity belongs to the actual preceding layer. A bare image ID cannot be a
+   Containerfile `FROM` target.
+5. Injects the local parent tag into the plan as the
    `CORE_IMAGE` build ARG.
-5. With `-PlanOnly`, returns the plan without touching Podman further (useful to inspect the fingerprint
-   and rendered Containerfile offline).
-6. Otherwise, builds the module's image with `Invoke-QuietCiImageBuild`, using the module's own
+6. Builds the image with `Invoke-QuietCiImageBuild`, using the module's own
    `.github/containers/` as the build context — never Core's.
 
 ```powershell
@@ -112,12 +121,10 @@ caught before any function lookup would have silently failed.
 
 ## Workflow wiring
 
-`.github/workflows/ci.yml` adds one job per module, after the `linux-images` job that publishes Core's own
-cache: for example, `linux-git-images` calls `New-CiModuleImage.ps1 -Module Git` and is gated the same way
-Core's job is, plus the module's own suite selection (`suite ∈ {Git, All}`). The `linux` job that actually
-runs the suites resolves the image through `New-CiImage.ps1` for `suite=Core`, or `New-CiModuleImage.ps1
--Module Git` otherwise. Core's own cache publication stays the exclusive responsibility of `linux-images`;
-a module job never publishes Core's cache.
+Image selection delegates to `New-CiSuiteImage.ps1` and `scripts/lib/CiCompanions.psm1`; the same final
+plan is used for registry lookup and Docker fallback. Suite registration, generic entry triggers
+and cross-product integration belong to [the onboarding guide's CI section](../README-add-companion.md#5-ci).
+This reference does not define a second registration procedure or a per-module workflow.
 
 <!-- credits:begin -->
 ## Credits

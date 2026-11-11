@@ -1,4 +1,3 @@
-# Objectif : Partager une identité déterministe des sources et des binaires entre verrouillage, build et tests.
 . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
 function Get-QuietSourceFiles {
     <#
@@ -16,7 +15,8 @@ function Get-QuietSourceFiles {
     while($pending.Count){
         $directory=$pending.Pop()
         foreach($item in Get-ChildItem -LiteralPath $directory -Force){
-            if($item.Name -in @('.git','bin','obj','artifacts','.vs')){continue}
+            if($item.Name -in @('.git','.dotnet','bin','obj','artifacts','.vs','.profilers')){continue}
+            if(!$item.PSIsContainer -and $item.Name -match '\.(json|csproj|props)\.bak-'){continue}
             if($item.Name -eq 'lib' -and $item.FullName -ne (Join-Path $rootPath 'scripts/lib')){continue}
             if($directory -eq $rootPath -and $item.Name -in $ExcludeChildren){continue}
             if($directory -eq $rootPath -and $item.Name -eq 'repositories.lock.json'){continue}
@@ -67,16 +67,33 @@ function Get-QuietBinaryInputs {
     Relative project path.
     #>
     param([string]$WorkspaceRoot,[string]$Project)
-    $roots=@((Split-Path (Join-Path $WorkspaceRoot $Project) -Parent))
-    if($Project -match 'engine-tests'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/engine'}
-    if($Project -match 'engine-tests'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/recall-tools'}
-    if($Project -match 'recall-tools'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/engine'}
-    if($Project -like 'FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests/*'){$roots+=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/engine'}
+    $workspace=[IO.Path]::GetFullPath($WorkspaceRoot).TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar
+    $pending=[Collections.Generic.Stack[string]]::new();$pending.Push((Join-Path $WorkspaceRoot $Project))
+    $visited=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $roots=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    while($pending.Count){
+        $path=[IO.Path]::GetFullPath($pending.Pop())
+        if(!$path.StartsWith($workspace,[StringComparison]::OrdinalIgnoreCase)){throw 'BinaryInputOutsideWorkspace'}
+        if(!$visited.Add($path)){continue}
+        $directory=Split-Path $path -Parent;[void]$roots.Add($directory)
+        $text=Get-Content -LiteralPath $path -Raw -Encoding utf8
+        if($text -match '<!DOCTYPE'){throw 'BinaryInputDtdRejected'}
+        $document=[xml]::new();$document.XmlResolver=$null;$document.LoadXml($text)
+        foreach($reference in $document.SelectNodes('//ProjectReference[@Include]|//Compile[@Include]')){
+            $include=$reference.GetAttribute('Include')
+            if($include -match '[$*?;]'){throw ('BinaryInputExpressionUnsupported: '+$include)}
+            $dependency=[IO.Path]::GetFullPath((Join-Path $directory $include))
+            if(!$dependency.StartsWith($workspace,[StringComparison]::OrdinalIgnoreCase)){throw 'BinaryInputOutsideWorkspace'}
+            if($reference.Name -ceq 'ProjectReference'){$pending.Push($dependency)}else{[void]$roots.Add((Split-Path $dependency -Parent))}
+        }
+    }
     $files=foreach($root in $roots){foreach($file in Get-QuietSourceFiles $root){$file.Path=[IO.Path]::GetRelativePath($WorkspaceRoot,(Join-Path $root $file.Path)).Replace('\','/');$file}}
     $sdk=Join-Path $WorkspaceRoot 'global.json'
     $spec=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/protocol.json'
     $packages=Join-Path $WorkspaceRoot 'Directory.Packages.props'
     @($files)+@([pscustomobject]@{Path='global.json';Bytes=(Get-Item $sdk).Length;SHA256=(Get-FileHash $sdk -Algorithm SHA256).Hash},[pscustomobject]@{Path='FrenchExDev2.QuietCli.Core.PoSh/protocol.json';Bytes=(Get-Item $spec).Length;SHA256=(Get-FileHash $spec -Algorithm SHA256).Hash},[pscustomobject]@{Path='Directory.Packages.props';Bytes=(Get-Item $packages).Length;SHA256=(Get-FileHash $packages -Algorithm SHA256).Hash})
+    $policy=Join-Path $WorkspaceRoot 'Directory.Build.props'
+    if(Test-Path -LiteralPath $policy){[pscustomobject]@{Path='Directory.Build.props';Bytes=(Get-Item $policy).Length;SHA256=(Get-FileHash $policy -Algorithm SHA256).Hash}}
 }
 function Write-QuietBuildManifest {
     <#
@@ -96,13 +113,18 @@ function Write-QuietBuildManifest {
     Published target RID or portable for the test/reference build.
     .PARAMETER PlatformTarget
     Actual compiler architecture, independently checked from PE headers for Windows publications.
+    .PARAMETER ReadyToRun
+    Requires a verified ReadyToRun native header before recording the publication.
+    .PARAMETER ReadyToRunTargets
+    RID slots selected by this build; portable manifests use this to exclude stale slots.
     #>
-    param([string]$WorkspaceRoot,[string]$Project,[string]$Output,[Parameter(Mandatory)][object[]]$Inputs,[string]$Configuration='Release',[string]$RuntimeIdentifier='portable',[string]$PlatformTarget='AnyCPU')
+    param([string]$WorkspaceRoot,[string]$Project,[string]$Output,[Parameter(Mandatory)][object[]]$Inputs,[string]$Configuration='Release',[string]$RuntimeIdentifier='portable',[string]$PlatformTarget='AnyCPU',[switch]$ReadyToRun,[string[]]$ReadyToRunTargets=@())
     $after=@(Get-QuietBinaryInputs $WorkspaceRoot $Project)
     if((Get-QuietManifestDigest $Inputs) -cne (Get-QuietManifestDigest $after)){throw ('SourcesChangedDuringBuild: '+$Project)}
     $directory=Join-Path $WorkspaceRoot $Output
+    if($ReadyToRun -and !(Test-QuietReadyToRunImage (Join-Path $directory 'QuietCli.Engine.dll'))){throw ('ReadyToRunImageMissing: '+$Output)}
     $binaries=@(Get-ChildItem -LiteralPath $directory -File|Where-Object Name -NE 'build-manifest.json'|Sort-Object Name|ForEach-Object{@{Path=$_.Name;Bytes=$_.Length;SHA256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})
-    Write-WorkspaceJson (Join-Path $directory 'build-manifest.json') @{SchemaVersion=1;Project=$Project;Configuration=$Configuration;RuntimeIdentifier=$RuntimeIdentifier;PlatformTarget=$PlatformTarget;SourceSHA256=(Get-QuietManifestDigest $Inputs);Inputs=$Inputs;Binaries=$binaries}
+    Write-WorkspaceJson (Join-Path $directory 'build-manifest.json') @{SchemaVersion=1;Project=$Project;Configuration=$Configuration;RuntimeIdentifier=$RuntimeIdentifier;PlatformTarget=$PlatformTarget;ReadyToRun=[bool]$ReadyToRun;ReadyToRunTargets=$ReadyToRunTargets;SourceSHA256=(Get-QuietManifestDigest $Inputs);Inputs=$Inputs;Binaries=$binaries}
 }
 function Test-QuietBuildManifest {
     <#
@@ -125,6 +147,7 @@ function Test-QuietBuildManifest {
         $binary=Join-Path $directory $file.Path
         if(!(Test-Path -LiteralPath $binary) -or (Get-FileHash -LiteralPath $binary -Algorithm SHA256).Hash -cne $file.SHA256){throw ('BuildBinaryMismatch: '+$binary)}
     }
+    if($manifest.PSObject.Properties['ReadyToRun'] -and $manifest.ReadyToRun -and !(Test-QuietReadyToRunImage (Join-Path $directory 'QuietCli.Engine.dll'))){throw ('ReadyToRunImageMissing: '+$Output)}
     if($manifest.PSObject.Properties['RuntimeIdentifier'] -and $manifest.RuntimeIdentifier -ne 'portable'){
         $target=Get-QuietRuntimeTargets $WorkspaceRoot|Where-Object Rid -CEQ $manifest.RuntimeIdentifier
         if(!$target -or $manifest.PlatformTarget -cne $target.PlatformTarget){throw 'EnginePublicationTargetInvalid'}
@@ -172,11 +195,18 @@ function Get-QuietWorkspaceIdentity {
     $rootFiles=@(Get-QuietSourceFiles $WorkspaceRoot|Where-Object {$null -eq $allowedFiles -or $allowedFiles.Contains($_.Path)})
     $repository=@{Name='FrenchExDev2.QuietCli.PoSh';Revision=$revision;Remote=$remote;Dirty=$dirty;SourceSHA256=(Get-QuietManifestDigest $rootFiles);Files=$rootFiles}
     $binaries=@()
-    if($IncludeBinaries){foreach($output in @('FrenchExDev2.QuietCli.Core.PoSh/lib/engine','FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess','FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture','FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/engine-tests','FrenchExDev2.QuietCli.Git.PoSh/lib/parser/net10.0','FrenchExDev2.QuietCli.Git.PoSh/lib/parser/net11.0','FrenchExDev2.QuietCli.Git.Tests.PoSh/lib/parser-tests')){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $output}}
+    if($IncludeBinaries){foreach($distribution in Get-QuietWorkspaceBuildProjects $WorkspaceRoot){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $distribution.Output}}
     if($IncludeBinaries){foreach($rid in (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){
         $output='FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid
         if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot $output)){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $output}
     }}
+    if($IncludeBinaries){
+        $portable=Test-QuietBuildManifest $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess'
+        foreach($rid in @($(if($portable.PSObject.Properties['ReadyToRunTargets']){$portable.ReadyToRunTargets}))) {
+            if($rid -notin (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){throw 'ReadyToRunTargetInvalid'}
+            $binaries+=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/'+$rid)
+        }
+    }
     $originPath=Join-Path $WorkspaceRoot 'transport-origin.json'
     $origin=if(Test-Path -LiteralPath $originPath){Get-Content -LiteralPath $originPath -Encoding utf8 -Raw|ConvertFrom-Json}else{$null}
     return @{SchemaVersion=3;Repository=$repository;Projects=$projects;Builds=$binaries;TransportOrigin=$origin}

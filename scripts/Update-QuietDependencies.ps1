@@ -1,4 +1,3 @@
-# Objectif : Établir la provenance et les licences des ressources existantes sans téléchargement ni remplacement implicite.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -8,7 +7,8 @@ Existing source module containing resources/dependencies.json and third_party.
 .PARAMETER WorkspaceRoot
 QuietCli2 workspace.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$ReferenceRoot,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$ReferenceRoot,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Update-QuietDependencies')){return}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 $source=Get-Content (Join-Path $ReferenceRoot 'resources/dependencies.json') -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable
 $moduleRoot=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh'

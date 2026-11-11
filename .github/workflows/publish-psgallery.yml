@@ -2,6 +2,18 @@ name: QuietCli2 qualified PowerShell Gallery release
 on:
   workflow_call:
     inputs:
+      module:
+        description: Publishable component alias or exact package name
+        type: string
+        default: Core
+      release_tags:
+        description: Validated annotated release batch; empty preserves standalone packaging
+        type: string
+        default: ''
+      qualified_sha:
+        description: Reuse the All receipt from this same workflow run and attempt
+        type: string
+        default: ''
       version:
         description: Exact manifest version for a manually selected release
         type: string
@@ -11,7 +23,7 @@ on:
         type: boolean
         default: false
       publish:
-        description: Publish the verified packages publicly after qualification
+        description: Publish only for a matching module release tag push after qualification
         type: boolean
         default: false
     outputs:
@@ -20,31 +32,69 @@ on:
         value: ${{ jobs.package.outputs.version }}
   workflow_dispatch:
     inputs:
+      module:
+        description: Publishable component alias or exact package name
+        type: string
+        default: Core
       version:
-        description: Exact version of both source manifests, for example 0.2.0-preview
+        description: Exact version of the selected module manifest, for example 0.2.0-preview1
         required: true
         type: string
-      publish:
-        description: Publish publicly to PSGallery; false only prepares and validates artifacts
-        required: true
-        default: false
-        type: boolean
 permissions:
   contents: read
 concurrency:
-  group: quietcli2-psgallery
+  group: quietcli2-psgallery-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   qualification:
+    if: inputs.qualified_sha == ''
     permissions:
       contents: read
       packages: write
     uses: ./.github/workflows/ci.yml
     with:
       suite: All
+      collect_performance: true
+  reuse-qualification:
+    if: inputs.qualified_sha != '' && inputs.qualified_sha == github.sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      qualified_sha: ${{ steps.receipt.outputs.qualified_sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: quietcli2-qualification-gate
+          path: artifacts/reused-qualification
+      - name: Require All qualification from this exact run, attempt and revision
+        id: receipt
+        shell: pwsh
+        run: ./scripts/Assert-QualificationReceipt.ps1 -ReceiptPath ./artifacts/reused-qualification/receipt.json -Revision '${{ github.sha }}' -RunId '${{ github.run_id }}' -RunAttempt '${{ github.run_attempt }}' -OutputPath $env:GITHUB_OUTPUT
+  checkpoint:
+    needs: [qualification, reuse-qualification]
+    if: ${{ !cancelled() && (needs.qualification.result == 'success' || needs.reuse-qualification.result == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      qualified_sha: ${{ steps.accept.outputs.qualified_sha }}
+    steps:
+      - name: Accept the successful commit-bound qualification path
+        id: accept
+        shell: pwsh
+        env:
+          QUALIFIED_REVISION: ${{ needs.qualification.outputs.qualified_sha || needs.reuse-qualification.outputs.qualified_sha }}
+        run: |
+          if($env:QUALIFIED_REVISION -cne $env:GITHUB_SHA){throw 'QualificationRevisionMismatch'}
+          [IO.File]::AppendAllText($env:GITHUB_OUTPUT,"qualified_sha=$env:QUALIFIED_REVISION`n",[Text.UTF8Encoding]::new($false))
   package:
-    needs: qualification
-    if: ${{ needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }}
+    needs: checkpoint
+    if: ${{ !cancelled() && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }}
     runs-on: windows-latest
     timeout-minutes: 30
     outputs:
@@ -54,12 +104,17 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-          ref: ${{ needs.qualification.outputs.qualified_sha }}
+          ref: ${{ needs.checkpoint.outputs.qualified_sha }}
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
-          dotnet-version: 11.0.100-rc.3.26522.148
+          global-json-file: global.json
           cache: true
-          cache-dependency-path: '**/*.csproj'
+          cache-dependency-path: |
+            **/*.csproj
+            Directory.Packages.props
+            Directory.Build.props
+            global.json
+      - uses: ./.github/actions/cache-resources
       - name: Verify the qualified source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
@@ -70,27 +125,36 @@ jobs:
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_PATH,($selected.Directory+"`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
       - name: Build all embedded engine distributions
         shell: pwsh
-        run: ./scripts/Build-Workspace.ps1
+        run: |
+          . ./scripts/RuntimeTargets.ps1
+          ./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier @((Get-QuietRuntimeTargets $PWD.Path).Rid)
       - name: Verify the exact build being packaged
         shell: pwsh
-        run: ./scripts/Invoke-WorkspaceCi.ps1 -Suite All -SkipBuild -Headless -SkipTty -ExpectedRuntimeIdentifier win-x64
+        run: ./scripts/Invoke-GitHubCi.ps1 -Suite All -SkipBuild -SkipTty -ExpectedRuntimeIdentifier win-x64
       - name: Prepare and validate the unchanged publication artifacts
         id: plan
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_MODULE: ${{ inputs.module }}
+          RELEASE_TAGS: ${{ inputs.release_tags }}
           PREVIEW_BUILD: ${{ inputs.preview_build }}
-          QUALIFIED_REVISION: ${{ needs.qualification.outputs.qualified_sha }}
+          QUALIFIED_REVISION: ${{ needs.checkpoint.outputs.qualified_sha }}
         run: |
-          if($env:PREVIEW_BUILD -eq 'true'){
-            ./scripts/New-QuietPreviewPackage.ps1 -OutputDirectory ./artifacts/gallery -BuildNumber $env:GITHUB_RUN_NUMBER -Attempt $env:GITHUB_RUN_ATTEMPT -QualifiedRevision $env:QUALIFIED_REVISION
+          if($env:RELEASE_TAGS){
+            if($env:PREVIEW_BUILD -eq 'true'){throw 'ReleaseBatchCannotGeneratePreviewIdentity'}
+            ./scripts/Invoke-QuietGalleryRelease.ps1 -Operation Prepare -PackageDirectory ./artifacts/gallery -ReleaseTagsJson $env:RELEASE_TAGS -TriggerTag $env:GITHUB_REF_NAME -Revision $env:QUALIFIED_REVISION -RequireReadyToRun
+            $plan=[pscustomobject]@{Module='batch';Version=$env:RELEASE_VERSION}
+          }elseif($env:PREVIEW_BUILD -eq 'true'){
+            if($env:RELEASE_MODULE -cnotin @('Core','FrenchExDev2.QuietCli.Core.PoSh')){throw 'GeneratedPreviewArtifactRequiresCore'}
+            ./scripts/New-QuietPreviewPackage.ps1 -OutputDirectory ./artifacts/gallery -BuildNumber $env:GITHUB_RUN_NUMBER -Attempt $env:GITHUB_RUN_ATTEMPT -QualifiedRevision $env:QUALIFIED_REVISION -RequireReadyToRun
           }else{
             if([string]::IsNullOrWhiteSpace($env:RELEASE_VERSION)){throw 'ExactReleaseVersionRequired'}
-            ./scripts/New-QuietGalleryPackage.ps1 -OutputDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION
+            ./scripts/New-QuietGalleryPackage.ps1 -OutputDirectory ./artifacts/gallery -Module $env:RELEASE_MODULE -Version $env:RELEASE_VERSION -RequireReadyToRun
             ./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -ValidateOnly
           }
-          $plan=Get-Content ./artifacts/gallery/package-set.json -Raw -Encoding utf8|ConvertFrom-Json
-          $artifact='quietcli2-gallery-'+$plan.Version+'-'+$env:GITHUB_SHA+'-attempt'+$env:GITHUB_RUN_ATTEMPT
+          if(!$env:RELEASE_TAGS){$plan=Get-Content ./artifacts/gallery/package-set.json -Raw -Encoding utf8|ConvertFrom-Json}
+          $artifact='quietcli2-gallery-'+$plan.Module+'-'+$plan.Version+'-'+$env:GITHUB_SHA+'-attempt'+$env:GITHUB_RUN_ATTEMPT
           $output="version=$($plan.Version)`nartifact_name=$artifact`n"
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_OUTPUT,$output,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -100,23 +164,31 @@ jobs:
             artifacts/gallery/*.nupkg
             artifacts/gallery/package-set.json
             artifacts/gallery/preview.json
+            artifacts/gallery/release-set.json
+            artifacts/gallery/*/*.nupkg
+            artifacts/gallery/*/package-set.json
           if-no-files-found: error
           retention-days: 30
       - name: Require preview properties, offline installation and targeted mutations
         if: inputs.preview_build == true
         shell: pwsh
-        run: ./scripts/Invoke-WorkspaceCi.ps1 -Suite GalleryPreview -SkipBuild -Headless -RunDirectory ./artifacts/preview-qualification -TimeoutSeconds 600
+        run: ./scripts/Invoke-GitHubCi.ps1 -Suite GalleryPreview -SkipBuild -RunDirectory ./artifacts/preview-qualification -TimeoutSeconds 600
+      - name: Prepare bounded redacted package failure diagnostics
+        if: failure()
+        shell: pwsh
+        env:
+          QUIETCLI_DIAGNOSTIC_TOKEN: ${{ github.token }}
+        run: ./scripts/Export-CiFailureDiagnostics.ps1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
           name: quietcli2-package-diagnostics-${{ github.run_attempt }}
-          path: |
-            artifacts/tests
-            artifacts/preview-qualification
-          if-no-files-found: ignore
+          path: artifacts/failure-diagnostics
+          if-no-files-found: warn
+          retention-days: 14
   publish:
-    needs: [qualification, package]
-    if: ${{ inputs.publish == true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }}
+    needs: [checkpoint, package]
+    if: ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }}
     runs-on: windows-latest
     timeout-minutes: 10
     environment: psgallery
@@ -124,11 +196,12 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-          ref: ${{ needs.qualification.outputs.qualified_sha }}
+          ref: ${{ needs.checkpoint.outputs.qualified_sha }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: ${{ needs.package.outputs.artifact_name }}
           path: artifacts/gallery
+      - uses: ./.github/actions/cache-resources
       - name: Select the checksum-pinned stable PowerShell host
         shell: pwsh
         run: |
@@ -138,36 +211,39 @@ jobs:
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
-        run: ./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -ValidateOnly
-      - name: Do not publish a superseded automatic preview
-        id: current
-        shell: pwsh
-        env:
-          PREVIEW_BUILD: ${{ inputs.preview_build }}
-          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAGS: ${{ inputs.release_tags }}
         run: |
-          $allowed=$true
-          if($env:PREVIEW_BUILD -eq 'true'){
-            if($env:GITHUB_REF -cne 'refs/heads/develop'){throw 'PreviewPublicationRequiresDevelop'}
-            $headers=@{Authorization=('Bearer '+$env:GH_TOKEN);Accept='application/vnd.github+json';'User-Agent'='QuietCli-preview-publication'}
-            $ref=Invoke-RestMethod -Uri ($env:GITHUB_API_URL+'/repos/'+$env:GITHUB_REPOSITORY+'/git/ref/heads/develop') -Headers $headers
-            $allowed=$ref.object.sha -ceq $env:GITHUB_SHA
-            if(!$allowed){
-              $message="Preview not published: develop has advanced beyond this qualified revision.`n"
-              [void][IO.File]::AppendAllTextAsync($env:GITHUB_STEP_SUMMARY,$message,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-            }
-          }
-          [void][IO.File]::AppendAllTextAsync($env:GITHUB_OUTPUT,('allowed='+$allowed.ToString().ToLowerInvariant()+"`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-      - name: Publish the verified packages, Core only
-        if: steps.current.outputs.allowed == 'true'
+          if($env:RELEASE_TAGS){
+            ./scripts/Invoke-QuietGalleryRelease.ps1 -Operation Validate -PackageDirectory ./artifacts/gallery -ReleaseTagsJson $env:RELEASE_TAGS -TriggerTag $env:GITHUB_REF_NAME -Revision $env:GITHUB_SHA
+          }else{./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -ValidateOnly}
+      - name: Bind the prepared version to the pushed release tag
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
+          RELEASE_TAGS: ${{ inputs.release_tags }}
+        run: |
+          if($env:RELEASE_TAGS){
+            ./scripts/Invoke-QuietGalleryRelease.ps1 -Operation Validate -PackageDirectory ./artifacts/gallery -ReleaseTagsJson $env:RELEASE_TAGS -TriggerTag $env:GITHUB_REF_NAME -Revision $env:GITHUB_SHA
+            return
+          }
+          $plan=./scripts/Get-QuietReleasePlan.ps1 -Tag $env:GITHUB_REF_NAME
+          $package=Get-Content ./artifacts/gallery/package-set.json -Raw -Encoding utf8|ConvertFrom-Json
+          if($plan.Module -cne $package.Module -or $plan.Version -cne $env:RELEASE_VERSION){throw 'GalleryReleaseTagPackageMismatch'}
+      - name: Publish the selected verified business package
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs.package.outputs.version }}
+          RELEASE_TAGS: ${{ inputs.release_tags }}
           PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
-        run: ./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION
+        run: |
+          if($env:RELEASE_TAGS){
+            ./scripts/Invoke-QuietGalleryRelease.ps1 -Operation Publish -PackageDirectory ./artifacts/gallery -ReleaseTagsJson $env:RELEASE_TAGS -TriggerTag $env:GITHUB_REF_NAME -Revision $env:GITHUB_SHA
+          }else{./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: quietcli2-publication-${{ needs.package.outputs.version }}-attempt${{ github.run_attempt }}
-          path: artifacts/gallery/publication.json
+          path: |
+            artifacts/gallery/publication.json
+            artifacts/gallery/*/publication.json
           if-no-files-found: ignore

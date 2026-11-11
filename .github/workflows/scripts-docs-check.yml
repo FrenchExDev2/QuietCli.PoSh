@@ -1,17 +1,23 @@
 name: QuietCli2 Scripts docs check
 
-# Report-only: verifies that every scripts/*.ps1 and scripts/*.psm1 file (recursively, including
-# lib/ and RunProfiles/) has a matching doc under docs/scripts/, and that docs/scripts/README.md -
-# the table of contents - still reflects that set. Never writes anything; see
+# Shared registry: script documentation, workflow source receipts/graphs/index,
+# test classifications, preview contracts, resource dependencies and credits. Parser preparation is self-contained;
+# the checks never regenerate documentation, build or commit; see
 # docs/README-scripts-have-docs.md for the why/how and scripts-docs-apply.yml for the companion
 # workflow that writes the fix.
 on:
   pull_request:
     paths: &scripts_docs_paths
       - 'scripts/**'
+      - 'FrenchExDev2.QuietCli.*.Tests.PoSh/**'
       - 'docs/scripts/**'
-      - '.github/workflows/scripts-docs-check.yml'
-      - '.github/workflows/scripts-docs-apply.yml'
+      - 'docs/ci/github/**'
+      - 'docs/resources/**'
+      - 'README-resources.md'
+      - 'FrenchExDev2.QuietCli.Core.PoSh/resources/**'
+      - '.github/actions/cache-resources/**'
+      - 'build/script-shouldprocess.json'
+      - '.github/workflows/**'
   push:
     branches: [develop]
     paths: *scripts_docs_paths
@@ -22,13 +28,14 @@ permissions:
 
 jobs:
   check:
-    name: Check every script has a doc and docs/scripts/README.md is current
+    name: Check test classifications, script docs and automation contracts
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - name: Check scripts/ documentation coverage and the generated index
+      - uses: ./.github/actions/cache-resources
+      - name: Check repository automation contracts through the shared registry
         shell: pwsh
-        run: ./scripts/Sync-ScriptsReadme.ps1
+        run: ./scripts/Invoke-WorkspaceChecks.ps1

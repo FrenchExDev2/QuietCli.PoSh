@@ -1,60 +1,43 @@
 # Invoke-ContainerColdStart.ps1
 
-## Purpose
+Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
 
-Launches `Invoke-ContainerColdStartWorker.ps1` in the background with a visible host-side monitor
-(local-only), i.e. it is the Windows-host launcher for the containerized cold-start gateway — the
-Linux-target analogue of `Invoke-ColdStartGate.ps1` running directly on Windows. It solves the same
-problem as `Invoke-ContainerCi.ps1` (give a container-run worker a visible monitor and bounded timeout)
-but specifically for the cold-start A/A-gated A/B pipeline rather than general test suites. It is invoked
-by `Invoke-ColdStartMatrix.ps1` (line 161) for each selected Linux target in the matrix.
+## Purpose and usage
 
-## Usage
+Local monitored launcher for a private cold-start container. GitHub invokes the worker directly.
 
-Parameters:
-- `-WorkspaceRoot` (string, optional, default `(Split-Path $PSScriptRoot -Parent)`).
-- `-Image` (string, **mandatory**) — prepared local image with PowerShell and .NET 11 RC.
-- `-Platform` (string, **mandatory**, `[ValidateSet('alpine','debian')]`) — platform label for monitor/RID check.
-- `-CandidateModule` (string, **mandatory**) — host path to the already-built ReadyToRun candidate `.psd1`.
-- `-CandidateLabel` (string, optional, `[ValidateNotNullOrEmpty()]`, default `'readytorun'`).
-- `-ExpectedRuntimeIdentifier` (string, optional, `[ValidatePattern('^linux-(musl-)?(x64|arm64)$')]`) — required guest RID.
-- `-Headless` (switch, optional) — CI-only, no desktop window.
-- `-TimeoutSeconds` (int, optional, `[ValidateRange(1,7200)]`, default `1200`) — maximum worker duration.
-
-Example (from its own help, line 32):
 ```powershell
-./scripts/Invoke-ContainerColdStart.ps1 -Image $image.Image -Platform debian -CandidateModule $candidate -ExpectedRuntimeIdentifier linux-x64 -Headless
+./scripts/Invoke-ContainerColdStart.ps1 -Image <verified-local-id> -Platform debian -CandidateModule <manifest> -ExpectedRuntimeIdentifier linux-x64 -ContainerRuntime docker
 ```
 
-## Dependencies
+WorkspaceRoot is optional; Image, Platform and CandidateModule are required. Platform accepts debian/alpine. CandidateLabel defaults to readytorun. ContainerRuntime accepts Docker/Podman; empty reads checkout `.env`, then discovers Podman before Docker on Windows and Linux using Get-Command. TimeoutSeconds defaults to 1200. Headless is retained for compatibility; the GitHub profiling workflow no longer uses this launcher.
 
-- Dot-sources `Common.ps1` (line 44) for `Get-QuietReportRoot`, `ConvertTo-CiArgument`, `Wait-WorkspaceWorker`.
-- Starts `Invoke-ContainerColdStartWorker.ps1` as a background `pwsh -File` process (lines 48–52).
-- Starts `Watch-Tests.ps1` as the visible monitor (line 54) unless `-Headless`.
-- Native tool: resolves `pwsh` via `Get-Command` (line 47).
-- Filesystem: creates a per-run directory under `Get-QuietReportRoot $WorkspaceRoot 'coldstart-containers'` (line 45).
+## Dependencies and side effects
 
-## Side effects
+Uses Common.ps1, Invoke-ContainerColdStartWorker.ps1 and Watch-Tests.ps1. Starts a hidden background worker and a visible read-only monitor on Windows; saves reports under the external coldstart-containers report root. Terminal windows close automatically. Requires an already-prepared local image and candidate; no pull, build or publication is implicit.
 
-- Creates the per-run report directory and `worker.stdout.log`/`worker.stderr.log` files.
-- Starts two OS processes (worker + optional monitor).
-- Throws `'A local visible monitor requires the Windows host launcher.'` (line 51) if non-headless on non-Windows.
-- Throws `"Container cold-start report did not complete: $run"` (line 58) only on `'Crash'` or `'Timeout'` state — notably **not** on other non-Success states (see Findings).
+## Critical review
 
-## Findings
-
-- BUG/DESIGN: Line 58's failure check is `if ($summary.State.State -eq 'Crash' -or $summary.State.State -eq 'Timeout')`. Comparing against `Invoke-ContainerColdStartWorker.ps1`'s actual state machine, that worker can also end in `'InconclusiveNoiseFloor'` or `'Failed'` (its generic catch path also sets `'Crash'`, but other paths exist conceptually). If the worker ever returns a state other than `'Success'`/`'Crash'`/`'Timeout'` — for instance if `Wait-WorkspaceWorker` itself defines additional terminal states not visible in this file — this script would return normally without throwing, silently treating a non-success, non-crash, non-timeout outcome as acceptable. This narrow allow-list-style check (rather than `-ne 'Success'`) is a correctness risk: it should arguably be `if ($summary.State.State -ne 'Success')` to fail closed instead of open, matching the pattern used in `Invoke-ContainerCi.ps1` (`if($summary.State.State -ne 'Success')`).
-- Missing input validation: as with `Invoke-ContainerCi.ps1`, no existence check on `-Image`, `-CandidateModule` before forwarding to the worker (lines 48, 49).
-- CONVENTION: consistent, correct use of `ConvertTo-CiArgument` for all path-shaped arguments (lines 48–49) — good security practice, matches sibling scripts.
-- No companion Pester test found for `Invoke-ContainerColdStart.ps1`.
-- Test-run monitor convention: correctly uses `Start-Process -FilePath $runner -WindowStyle Normal` (line 54) for the visible monitor, consistent with `AGENTS.md`.
+- `scripts/Invoke-ContainerColdStart.ps1:39` declares the selected engine and forwards it to the worker; both local Docker and Podman are supported.
+- The launcher treats infrastructure crash/timeout as errors. Informational measurement verdicts remain saved evidence rather than release qualification.
+- A local monitor is required outside headless compatibility mode; GitHub uses its own logs and direct worker instead of launching a desktop supervisor.
 
 ## Verdict
 
-Mostly fit for purpose, but the narrow `'Crash'`/`'Timeout'`-only failure check at line 58 is a real correctness gap — it should fail closed (`-ne 'Success'`) rather than fail open on any other non-success state the worker might report (e.g. `'InconclusiveNoiseFloor'`, `'Failed'`). This is the highest-priority fix.
+Workstation supervision only. Keep GitHub orchestration in its workflow and share the worker.
 
 <!-- credits:begin -->
 ## Credits
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Launches Invoke-ContainerColdStartWorker.ps1 in the background with a visible monitor, local only.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

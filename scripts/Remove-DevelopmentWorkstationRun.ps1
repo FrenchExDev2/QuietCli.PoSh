@@ -34,10 +34,10 @@ for($index=0;$index -lt $directories.Count;$index++){
     if(!(Test-WorkstationDirectoryBoundary $root $directory.FullName)){$result.State='Protected';$result.Reason='Directory boundary or filesystem link';[pscustomobject]$result;continue}
     $lease=$null
     try{
-        # A producer holds this lease for its lifetime. FileShare.Delete lets this owner delete
-        # the directory while preventing a competing producer from obtaining a writable lease.
+        # Producers hold the byte-range lock until disposal. File sharing alone does not
+        # reject a competing writer on Unix. FileShare.Delete permits owned Windows cleanup.
         $leasePath=Join-Path $directory.FullName 'run.lease'
-        if(Test-Path -LiteralPath $leasePath){$lease=[IO.FileStream]::new($leasePath,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Delete)}
+        if(Test-Path -LiteralPath $leasePath){$lease=[IO.FileStream]::new($leasePath,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Delete);$lease.Lock(0,1)}
         elseif($decision.Receipt.Resources.Count){$result.State='Protected';$result.Reason='Resource lease missing';[pscustomobject]$result;continue}
         if($decision.Receipt.Resources.Count -and !(Test-WorkstationPodmanIdentity $decision.Receipt.PodmanIdentity)){$result.State='Protected';$result.Reason='Original Podman engine/store cannot be verified';[pscustomobject]$result;continue}
         $preview=@(foreach($resource in $decision.Receipt.Resources){$state=Remove-WorkstationOwnedResource $resource -Preview;[pscustomobject]@{Kind=$resource.Kind;Name=$resource.Name;State=$state;Consumers=$resource['Consumers']}})

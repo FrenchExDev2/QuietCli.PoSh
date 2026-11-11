@@ -48,6 +48,45 @@ function Get-QuietWorkspaceProjects {
     $ordered.ToArray()
 }
 
+function Get-QuietWorkspaceBuildProjects {
+    <#
+    .SYNOPSIS
+    Resolves declared portable C# distributions without importing modules or executing tools.
+    .PARAMETER WorkspaceRoot
+    Selected workspace whose PrivateData.QuietCli.BuildProjects declarations define the outputs.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorkspaceRoot)
+    $outputs=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $pairs=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach($package in Get-QuietWorkspaceProjects $WorkspaceRoot){
+        $private=$package.Manifest['PrivateData']
+        $metadata=if($private -and $private['QuietCli']){$private['QuietCli']}else{@{}}
+        foreach($entry in $metadata['BuildProjects']){
+            if($entry -isnot [System.Collections.IDictionary] -or $entry.Keys.Count -ne 2 -or !$entry.Contains('Project') -or !$entry.Contains('Outputs') -or $entry['Outputs'] -isnot [System.Collections.IDictionary] -or !$entry['Outputs'].Count){throw ('WorkspaceBuildDeclarationInvalid: '+$package.Name)}
+            $project=[string]$entry['Project']
+            if($project -cnotmatch '\A(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_.-]+\.csproj\z' -or $project.Split('/') -contains '..'){throw ('WorkspaceBuildProjectPathInvalid: '+$package.Name)}
+            $path=Join-Path $package.Directory $project
+            if(!(Test-Path -LiteralPath $path -PathType Leaf)){throw ('WorkspaceBuildProjectMissing: '+$project)}
+            $cursor=Get-Item -LiteralPath $path
+            while($cursor.FullName -ne $package.Directory){if($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'WorkspaceBuildLinkRejected'};$cursor=if($cursor -is [IO.FileInfo]){$cursor.Directory}else{$cursor.Parent};if(!$cursor){throw 'WorkspaceBuildPathEscapedPackage'}}
+            $text=Get-Content -LiteralPath $path -Raw -Encoding utf8
+            if($text -match '<!DOCTYPE'){throw 'WorkspaceBuildDtdRejected'}
+            $document=[xml]::new();$document.XmlResolver=$null;$document.LoadXml($text)
+            $declared=@($document.SelectNodes('//TargetFramework|//TargetFrameworks') | ForEach-Object {$_.InnerText.Split(';')})
+            foreach($framework in @($entry['Outputs'].Keys | Sort-Object)){
+                $output=[string]$entry['Outputs'][$framework]
+                if($framework -cnotmatch '\Anet[0-9]+\.[0-9]+\z'){throw ('WorkspaceBuildFrameworkInvalid: '+$package.Name)}
+                if($framework -cnotin $declared){throw ('WorkspaceBuildFrameworkNotDeclared: '+$package.Name)}
+                if($output -cnotmatch '\Alib/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_.-]+\z' -or $output.Split('/') -contains '..'){throw ('WorkspaceBuildOutputPathInvalid: '+$package.Name)}
+                if(!$pairs.Add($package.Name+'/'+$project+'|'+$framework) -or !$outputs.Add($package.Name+'/'+$output)){throw ('WorkspaceBuildOutputCollision: '+$package.Name)}
+                foreach($other in $outputs){if($other -cne $package.Name+'/'+$output -and ($other.StartsWith($package.Name+'/'+$output+'/',[StringComparison]::OrdinalIgnoreCase) -or ($package.Name+'/'+$output).StartsWith($other+'/',[StringComparison]::OrdinalIgnoreCase))){throw ('WorkspaceBuildOutputCollision: '+$package.Name)}}
+                [pscustomobject]@{Package=$package.Name;Project=$package.Path+'/'+$project;TargetFramework=[string]$framework;Output=$package.Path+'/'+$output}
+            }
+        }
+    }
+}
+
 function Get-QuietWorkspaceTestSuites {
     <#
     .SYNOPSIS
@@ -110,8 +149,11 @@ function Get-QuietWorkspaceSuiteNames {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Host','Container')][string]$Scope='Host')
-    $special=if($Scope -eq 'Container'){@('All','Import','Integration','Mutation')}else{@('All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview')}
-    $suites=@(Get-QuietWorkspaceTestSuites $WorkspaceRoot)
+    $special=if($Scope -eq 'Container'){@('All','Import','Integration','Mutation')}else{@('All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview','DotNet')}
+    $suites=@(if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot 'build/companions.yml')){
+        Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanions.psm1')
+        (Read-QuietCiCompanions $WorkspaceRoot).Suites.Values
+    }else{Get-QuietWorkspaceTestSuites $WorkspaceRoot})
     foreach($suite in $suites){if($special -contains $suite.Name){throw ('WorkspaceSuiteNameConflict: '+$suite.Name)}}
     @($suites.Name)+$special
 }
@@ -147,6 +189,17 @@ function Get-QuietWorkspaceSuiteSelection {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[string]$Suite='All')
+    if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot 'build/companions.yml')){
+        Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanions.psm1')
+        $configuration=Read-QuietCiCompanions $WorkspaceRoot
+        $selection=Resolve-QuietCiCompanions $configuration -Suite $Suite
+        foreach($name in $selection.Selected){
+            $entry=$configuration.Suites[$name]
+            $project=if($configuration.Companions.Contains($name)){'FrenchExDev2.QuietCli.'+$name+'.PoSh'}else{$entry.TestsModule}
+            [pscustomobject]@{Name=$name;Project=$project;ProjectDirectory=(Join-Path $WorkspaceRoot $project);TestsModule=$entry.TestsModule;TestsManifest=$entry.TestsManifest;Command=$entry.Command}
+        }
+        return
+    }
     $suites=@(Get-QuietWorkspaceTestSuites $WorkspaceRoot)
     if($Suite -eq 'All'){return $suites}
     $selected=@($suites | Where-Object Name -IEQ $Suite)

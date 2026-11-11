@@ -1,4 +1,3 @@
-# Objectif : Exécuter la passerelle cold-start A/A-gated A/B dans un conteneur Podman détenu, sans suites.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -32,17 +31,22 @@ Display name of the candidate build forwarded to the gate.
 
 .PARAMETER ExpectedRuntimeIdentifier
 Required architecture and libc family in the guest.
+.PARAMETER ContainerRuntime
+Explicit selection overrides the checkout dotenv key; absent configuration uses Podman-first application discovery on Windows and Linux.
 #>
-[CmdletBinding()]param(
+[CmdletBinding(SupportsShouldProcess)]param(
     [Parameter(Mandatory)][string]$WorkspaceRoot,
     [Parameter(Mandatory)][string]$RunDirectory,
     [Parameter(Mandatory)][string]$Image,
     [Parameter(Mandatory)][ValidateSet('alpine', 'debian')][string]$Platform,
     [Parameter(Mandatory)][string]$CandidateModule,
     [ValidateNotNullOrEmpty()][string]$CandidateLabel = 'readytorun',
-    [ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier
+    [ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,
+    [AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime
 )
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ContainerColdStartWorker')){return}
 $ErrorActionPreference = 'Stop'; . (Join-Path $PSScriptRoot 'Common.ps1')
+$ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 $owner = [guid]::NewGuid().ToString('N'); $name = 'quietcli2-coldstart-' + $owner.Substring(0, 12)
 $state = @{ Project = 'FrenchExDev2.QuietCli.Core.PoSh'; Task = 'ReadyToRun cold-start report'; Workspace = $WorkspaceRoot; ProjectDirectory = (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh'); Platform = $Platform; State = 'Preparing'; StartedUtc = [DateTimeOffset]::UtcNow.ToString('o'); ProcessId = $PID; ContainerId = $name; Passed = $null; Failed = $null; Case = 'Staging baseline and candidate modules'; FinishedUtc = $null; Error = $null; Image = $Image; Owner = $owner }
 $status = Join-Path $RunDirectory 'status.json'
@@ -73,7 +77,7 @@ try {
     $candidateRelative = [IO.Path]::GetRelativePath($candidateRoot, [IO.Path]::GetFullPath($CandidateModule)).Replace('\', '/')
 
     $imageState = @{ Id = $null }
-    $inspect = Invoke-CiProcess -FilePath podman -ArgumentList @('image', 'inspect', '--format', '{{.Id}}', $Image) -TimeoutSeconds 20 -State $imageState -OnOutput { param($e, $s) if ($e.Stream -eq 'stdout') { $s.Id = $e.Text.Trim() } }
+    $inspect = Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('image', 'inspect', '--format', '{{.Id}}', $Image) -TimeoutSeconds 20 -State $imageState -OnOutput { param($e, $s) if ($e.Stream -eq 'stdout') { $s.Id = $e.Text.Trim() } }
     if ($inspect.Outcome -ne 'Success' -or $imageState.Id -notmatch '^(sha256:)?[a-f0-9]{64}$') { throw 'PreparedImageIdentityUnavailable' }
     $state.ImageId = $imageState.Id
 
@@ -85,23 +89,23 @@ try {
         '-ArtifactsDirectory', '/workspace/artifacts/coldstart',
         '-MeasurePackageSize'
     )
-    $null = Invoke-WorkspaceNative podman (@('create', '--pull=never', '--name', $name, '--label', ('org.frenchexdev.quietcli2.owner=' + $owner), '--network', 'none', '--entrypoint', 'pwsh', $imageState.Id) + $guestArguments) $WorkspaceRoot -TimeoutSeconds 30
+    $null = Invoke-WorkspaceNative $ContainerRuntime (@('create', '--pull=never', '--name', $name, '--label', ('org.frenchexdev.quietcli2.owner=' + $owner), '--network', 'none', '--entrypoint', 'pwsh', $imageState.Id) + $guestArguments) $WorkspaceRoot -TimeoutSeconds 30
     $created = $true
-    $null = Invoke-WorkspaceNative podman @('cp', ($stage.Replace('\', '/') + '/.'), ($name + ':/workspace')) $WorkspaceRoot -TimeoutSeconds 90
+    $null = Invoke-WorkspaceNative $ContainerRuntime @('cp', ($stage.Replace('\', '/') + '/.'), ($name + ':/workspace')) $WorkspaceRoot -TimeoutSeconds 90
     $state.State = 'Running'; $state.Case = 'Container running; elapsed time is a heartbeat, no test counters apply'; Write-WorkspaceJson $status $state
-    $null = Invoke-WorkspaceNative podman @('start', $name) $WorkspaceRoot -TimeoutSeconds 30
+    $null = Invoke-WorkspaceNative $ContainerRuntime @('start', $name) $WorkspaceRoot -TimeoutSeconds 30
     $deadline = [DateTimeOffset]::UtcNow.AddSeconds(900)
     do {
         if ([DateTimeOffset]::UtcNow -gt $deadline) { throw [TimeoutException]::new('GuestColdStartDeadlineExceeded') }
         $containerState = @{ Value = '' }
-        $inspection = Invoke-CiProcess -FilePath podman -ArgumentList @('inspect', '--format', '{{.State.Status}}', $name) -TimeoutSeconds 15 -State $containerState -OnOutput { param($e, $s) if ($e.Stream -eq 'stdout') { $s.Value = $e.Text.Trim() } }
+        $inspection = Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('inspect', '--format', '{{.State.Status}}', $name) -TimeoutSeconds 15 -State $containerState -OnOutput { param($e, $s) if ($e.Stream -eq 'stdout') { $s.Value = $e.Text.Trim() } }
         if ($inspection.Outcome -ne 'Success' -or $containerState.Value -in @('exited', 'stopped')) { break }
         Write-WorkspaceJson $status $state
         [void][Threading.Tasks.Task]::Delay(2000).GetAwaiter().GetResult()
     } while ($true)
-    $null = Invoke-WorkspaceNative podman @('cp', ($name + ':/workspace/artifacts/coldstart'), (Join-Path $RunDirectory 'guest')) $WorkspaceRoot -TimeoutSeconds 60
+    $null = Invoke-WorkspaceNative $ContainerRuntime @('cp', ($name + ':/workspace/artifacts/coldstart'), (Join-Path $RunDirectory 'guest')) $WorkspaceRoot -TimeoutSeconds 60
     $exit = @{ Value = '' }
-    $exitInspection = Invoke-CiProcess -FilePath podman -ArgumentList @('inspect', '--format', '{{.State.ExitCode}}', $name) -TimeoutSeconds 15 -State $exit -OnOutput { param($e, $s) if ($e.Stream -eq 'stdout') { $s.Value = $e.Text.Trim() } }
+    $exitInspection = Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('inspect', '--format', '{{.State.ExitCode}}', $name) -TimeoutSeconds 15 -State $exit -OnOutput { param($e, $s) if ($e.Stream -eq 'stdout') { $s.Value = $e.Text.Trim() } }
     if ($exitInspection.Outcome -ne 'Success' -or $exit.Value -notmatch '^-?\d+$') { throw 'GuestExitCodeUnconfirmed' }
     $state.GuestExitCode = [int]$exit.Value
     $guestFiles = @(Get-ChildItem -LiteralPath (Join-Path $RunDirectory 'guest') -Filter 'ab-*.json' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTimeUtc -Descending)
@@ -124,7 +128,7 @@ catch {
     if ($created) {
         $diagnostics = @{ Lines = [Collections.Generic.Queue[object]]::new() }
         try {
-            $logs = Invoke-CiProcess -FilePath podman -ArgumentList @('logs', $name) -TimeoutSeconds 20 -State $diagnostics -OnOutput { param($e, $s) if ($s.Lines.Count -ge 80) { $null = $s.Lines.Dequeue() }; $s.Lines.Enqueue(@{ Stream = $e.Stream; Text = $e.Text }) }
+            $logs = Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('logs', $name) -TimeoutSeconds 20 -State $diagnostics -OnOutput { param($e, $s) if ($s.Lines.Count -ge 80) { $null = $s.Lines.Dequeue() }; $s.Lines.Enqueue(@{ Stream = $e.Stream; Text = $e.Text }) }
             Write-WorkspaceJson (Join-Path $RunDirectory 'guest-diagnostics.json') @{ Outcome = $logs.Outcome; ExitCode = $logs.ExitCode; Lines = @($diagnostics.Lines) }
         }
         catch { Write-WorkspaceJson (Join-Path $RunDirectory 'guest-diagnostics.json') @{ Outcome = 'Unavailable'; Error = $_.ToString() } }
@@ -132,7 +136,7 @@ catch {
 }
 finally {
     $state.Cleanup = 'NotCreated'
-    if ($created) { try { $null = Invoke-WorkspaceNative podman @('rm', '--force', $name) $WorkspaceRoot -TimeoutSeconds 20; $state.Cleanup = 'RemovedOwnedContainer' } catch { $state.Cleanup = 'Unconfirmed: owned container ' + $name } }
+    if ($created) { try { $null = Invoke-WorkspaceNative $ContainerRuntime @('rm', '--force', $name) $WorkspaceRoot -TimeoutSeconds 20; $state.Cleanup = 'RemovedOwnedContainer' } catch { $state.Cleanup = 'Unconfirmed: owned container ' + $name } }
     $state.FinishedUtc = [DateTimeOffset]::UtcNow.ToString('o')
     Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{ State = $state }
     Write-WorkspaceJson $status $state

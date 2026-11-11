@@ -9,9 +9,10 @@ Read-only diagnostic input convention: RID directories and assets.json beside th
 .PARAMETER ExpectedRuntimeIdentifier
 Portable target whose SQLite ABI is checked independently from the reported RID.
 #>
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param([Parameter(Mandatory)][string]$OutputPath,[Parameter(Mandatory)][string]$AssetsRoot,
     [Parameter(Mandatory)][ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier)
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Probe-ContainerRuntime')){return}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Ci.Process.ps1')
 . (Join-Path $PSScriptRoot 'RuntimeTargets.ps1')

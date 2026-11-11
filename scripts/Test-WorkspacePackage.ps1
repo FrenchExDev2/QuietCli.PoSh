@@ -1,4 +1,3 @@
-# Objectif : Contrôler toutes les entrées des quatre archives avant extraction et avant tout import explicitement demandé.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -16,7 +15,7 @@ Maximum uncompressed size of one file.
 .PARAMETER MaxTotalBytes
 Maximum uncompressed distribution size.
 #>
-[CmdletBinding()]param(
+[CmdletBinding(SupportsShouldProcess)]param(
     [Parameter(Mandatory)][string]$PackageDirectory,
     [Parameter(Mandatory)][string]$ExtractionDirectory,
     [switch]$TestImport,
@@ -24,6 +23,7 @@ Maximum uncompressed distribution size.
     [ValidateRange(1,1073741824)][long]$MaxFileBytes=134217728,
     [ValidateRange(1,4294967296)][long]$MaxTotalBytes=536870912
 )
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Test-WorkspacePackage')){return}
 $ErrorActionPreference='Stop'
 $PackageDirectory=[IO.Path]::GetFullPath($PackageDirectory,$PWD.Path)
 $ExtractionDirectory=[IO.Path]::GetFullPath($ExtractionDirectory,$PWD.Path)

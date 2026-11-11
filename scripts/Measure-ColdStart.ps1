@@ -15,8 +15,8 @@ leveled logs and counters to standard error. With -ProfileImport, one extra chil
 under the pinned PSProfiler and a top-50 JSON report is written (profiled runs are never part of the samples).
 
 Also reports each variant's on-disk footprint: the total size, in bytes, of every file under its manifest's
-directory, plus a narrower hosted-path size covering only the lib/inprocess (CLR10) or lib/engine/<rid> (CLR11+)
-directory this process actually loads, since the full footprint includes every bundled RID whether or not it is
+directory, plus a narrower hosted-path size covering only the CLR/RID slot this process actually loads,
+including a matching ReadyToRun child when selected, since the full footprint includes every bundled RID whether or not it is
 used. This is a static build-artifact measurement, not a timed sample — it exists because a ReadyToRun build
 trades a larger on-disk footprint (embedded native code) for a smaller first-call cost, and that tradeoff should be
 visible next to the timing verdict, not just assumed. With -MeasurePackageSize, also packages each variant with
@@ -86,7 +86,7 @@ Optional log file.
 ./scripts/Invoke-RunProfile.ps1 coldstart-100 -Arguments @{ CandidateModule = 'C:\tmp\r2r\FrenchExDev2.QuietCli.Core.PoSh.psd1' }
 #>
 using module ./lib/RunLog.psm1
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param(
     [string]$BaselineModule = (Join-Path (Split-Path $PSScriptRoot -Parent) 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'),
     [Parameter(Mandatory)][string]$CandidateModule,
@@ -108,6 +108,7 @@ param(
     [ValidateSet('Trace', 'Debug', 'Info', 'Warn', 'Error', 'Off')][string]$LogLevel = 'Info',
     [string]$LogPath
 )
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Measure-ColdStart')){return}
 $ErrorActionPreference = 'Stop'
 foreach ($module in 'RunFormat', 'RunStatistics', 'RunProfiler', 'RunEncoding', 'RunColdStart') { Import-Module (Join-Path $PSScriptRoot "lib/$module.psm1") -Force }
 $logger = New-RunLogger -Level $LogLevel -Component 'coldstart' -LogPath $LogPath
@@ -297,7 +298,7 @@ $footprintRows = @(
 "Project: QuietCli.Core.PoSh | Task: cold-start A/B ($($pairs.Count) measured pairs, $Warmup warm-up, seed $Seed)"
 "Workspace: $((Split-Path $PSScriptRoot -Parent))"
 ''
-"Module footprint: 'On disk' is every file under the module root (every bundled RID, used or not); 'Hosted path' is only the lib/inprocess or lib/engine/<rid> directory this process actually loads (Auto hosting); 'Package' is the .nupkg size Compress-PSResource would$(if (-not $MeasurePackageSize) { ' (run with -MeasurePackageSize to fill it, shown as - otherwise)' }) publish. Static, not a timing measurement."
+"Module footprint: 'On disk' is every file under the module root (every bundled RID, used or not); 'Hosted path' is only the CLR/RID slot this process actually loads, including a selected ReadyToRun child (Auto hosting); 'Package' is the .nupkg size Compress-PSResource would$(if (-not $MeasurePackageSize) { ' (run with -MeasurePackageSize to fill it, shown as - otherwise)' }) publish. Static, not a timing measurement."
 Format-RunTable -Headers @('Variant', 'On disk', 'Hosted path', 'Package (.nupkg)') -Rows $footprintRows -RightAligned @(1, 2, 3)
 ''
 Format-RunTable -Headers @('Phase', 'Variant', 'N', 'Duration (median)', 'Duration (Q1)', 'Duration (Q3)', 'Duration (min)') -Rows $distributionRows -RightAligned @(2, 3, 4, 5, 6)

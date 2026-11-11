@@ -1,6 +1,6 @@
 # Development workstation
 
-[Development workflow](README-development.md) · [Tests and qualification](README-qualification.md) · [Documentation index](docs/README.md)
+[Development workflow](README-development.md) · [Tests and qualification](README-qualification.md) · [Qualification: when, where and how](README-qualification-when-where-how.md) · [Documentation index](docs/README.md)
 
 Install **PowerShell Core 7.6 or later first**, obtain this repository, then run
 `scripts/Install-DevelopmentWorkstation.ps1`. The installer prepares a complete workstation by default.

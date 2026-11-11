@@ -8,7 +8,12 @@ executable directory to its generated activation script. `-CheckOnly` and `-What
 read-only controls; `-SkipWorkflows` explicitly excludes this component. No Rust/Cargo installation,
 profile modification or workflow execution is part of workstation setup.
 
-The scripts below are **planned, not implemented**. They are not entries in the generated
+[`Invoke-LocalWorkflow.ps1`](Invoke-LocalWorkflow.md) provides a focused, monitored local
+validation/execution entry point with explicit job/runtime selection and `-WhatIf`. The real
+`companions-ci.yml` reaches the reusable `ci.yml`, where wrkflw 0.8.0 rejects expression-valued matrices
+before executing jobs. This is an explicit local-run qualification gap, not a GitHub YAML error.
+
+The other helpers below remain **planned, not implemented**. They are not entries in the generated
 [implemented scripts index](README.md). Their eventual implementation must include the mirrored
 script documentation, companion tests and documentation-sync gates in the same change.
 
@@ -22,7 +27,7 @@ The official Windows x64 archive's SHA-256, version and installed command help w
 
 - `list --jobs` lists workflows and jobs; `validate [paths...]` checks workflow definitions.
 - `run --runtime podman --job <id> <path>` executes a selected workflow/job. Docker is the upstream
-  default, so a repository wrapper must select Podman explicitly instead of inheriting that default.
+  default; the repository wrapper accepts explicit Docker, Podman or emulation selection.
 - `run --event pull_request --base-branch develop --diff <path>` supplies a trigger context.
   Keep strict filtering enabled. An event requires changed-file context, and pull requests require
   the target/base branch. Activity types must be explicit when a workflow filters `types:`.
@@ -39,7 +44,7 @@ The official Windows x64 archive's SHA-256, version and installed command help w
 | --- | --- | --- | --- |
 | 1 | `Get-LocalWorkflow.ps1` | `-WorkspaceRoot`, `-Jobs`; return the inspected scope, executable version and bounded listing without running workflow steps | `list` or `list --jobs` |
 | 1 | `Test-LocalWorkflow.ps1` | `-WorkspaceRoot`, `-Path`; validate selected definitions; preserve exit code 1 for invalid definitions and 2 for usage errors | `validate [paths...]`; never use `--no-exit-code` |
-| 1 | `Invoke-LocalWorkflow.ps1` | Mandatory `-Path`; optional `-Job`, `-Event`, `-ChangedFiles` or `-Diff`, `-DiffBase`, `-DiffHead`, `-BaseBranch`, `-ActivityType`; explicit runtime default `Podman`; `-WhatIf`/`-Confirm` | `run`; preserve exact argument vectors; use existing CI images where compatible |
+| 1, partial | [`Invoke-LocalWorkflow.ps1`](Invoke-LocalWorkflow.md) | Implemented: `-WrkflwPath`, `-Workflow`, `-Mode Validate\|Run`, explicit `-Job` for execution, `-Runtime docker\|podman\|emulation`, `-TimeoutSeconds`, `-RunDirectory`, `-WhatIf`/`-Confirm`. Trigger/diff options remain backlog. | Exact validation/selected-job vectors, saved exit state and shared visible monitor; no implicit installation or publication |
 | 2 | `Watch-LocalWorkflow.ps1` | `-Path`, runtime and trigger options; debounce and concurrency limits; explicit cancellation and saved terminal outcomes | `watch`; extend shared run/monitor primitives rather than writing another monitor |
 | 2 | `Show-LocalWorkflow.ps1` | Open the selected checkout's interactive UI with an explicit runtime; keep project/task/workspace identity visible | `tui --runtime podman`; requires an interactive terminal, not a line-output parser |
 

@@ -1,3 +1,4 @@
+#Objective: Order statistics and a paired bootstrap used to separate a real difference from measurement noise.
 #requires -Version 7.6
 <#
 .SYNOPSIS

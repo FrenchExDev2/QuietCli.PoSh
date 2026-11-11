@@ -1,5 +1,17 @@
 # New-CorePerformanceReport.ps1
 
+Manifest file existence and SHA-256 checks use literal paths so bracketed Gallery XML names cannot become wildcard matches. Missing hidden evidence remains a real integrity failure. A functional failure before the profiling phase still produces readable partial HTML, while qualification rejects the missing profiles.
+
+Absent Core profiling is displayed as `Missing (phase not reached)`, rather than implying that profiling was disabled. Git-only reports label it outside their selected scope.
+
+## Standalone HTML and detailed profiling
+
+Every rendering produces PERFORMANCES_RESULTS.html alongside Markdown and JSON, including incomplete-evidence failures. The HTML uses PowerShell's installed ConvertFrom-Markdown cmdlet, embedded CSS/UTF-8 and a restrictive content-security policy; it needs no external script/style/network resource. Report manifests checksum all three formats. The combined artifact is `quietcli-performance-results-<revision>`; open the HTML after downloading it. GitHub's step summary continues to use Markdown, not a Pages deployment.
+
+The report includes the matrix/import table, controlled Git scenarios, PS/CLR category observations, up to 50 PowerShell source-line hotspots per environment (path, line, hits, self/inclusive wall time) and collector PID/trace/speedscope/size/hash provenance. Raw traces remain in their per-environment evidence artifacts. JSON exposes the same detailed profiling rows. Duplicate environment identities fail even if the requested row count is met; functional success never replaces missing profiling. Frame-name counts are not CPU percentages and overlapping wall times are not an additive CPU breakdown.
+
+Evidence.Tests covers ten explicitly synthetic subjects including both collectors for isolated hosts, Unicode/HTML escaping, standalone output/hash receipts, duplicate/missing-profile failures, readable failure HTML and no-write WhatIf. Those fixtures validate rendering/integrity only and do not claim hosted profiling occurred.
+
 ## Purpose
 
 Turns one or many `evidence-manifest.json` bundles (produced by `New-CoreEvidenceBundle.ps1`, possibly across a whole GitHub Actions matrix) into a single human-readable Markdown report (`PERFORMANCES_RESULTS.md`) plus a machine-readable JSON twin, without requiring the reader to open a raw CLR trace viewer. It re-verifies every referenced file's SHA-256 against the manifest before trusting it, explicitly marks the evidence status as INCOMPLETE/FAILED whenever any gap is found, and is deliberately conservative about what its numbers mean (documents that CLR frame-name counts are "not CPU percentages," that allocations are "cumulative managed allocations... not retained memory," etc.). It is called three times from `.github/workflows/ci.yml` (lines 171, 333, 366) — per-job and for the final combined matrix report with `-ExpectedReports 10` — and directly tested by `Evidence.Tests.ps1` (line 34).
@@ -51,3 +63,13 @@ A careful, conservative reporting tool with good Markdown-injection hygiene; the
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Produces readable per-job or combined performance evidence without requiring a CLR trace viewer.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

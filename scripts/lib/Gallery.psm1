@@ -1,36 +1,33 @@
-# Objective: Validate public QuietCli packages before any Gallery publication.
+function Get-QuietGalleryModuleIdentity {
+    <#
+    .SYNOPSIS
+    Reads the shared package identity from a script module and its literal sibling manifest.
+    .PARAMETER ModulePath
+    Existing .psm1; package preparation requires its matching manifest.
+    #>
+    param([Parameter(Mandatory)][string]$ModulePath)
+    Import-Module (Join-Path $PSScriptRoot 'ModulePackage.psm1')
+    Get-QuietModulePackageIdentity -Path $ModulePath -RequireManifest
+}
+
 function Copy-QuietGalleryCoreModule {
     <#
     .SYNOPSIS
-    Copies the internal Core project into a public QuietCli staging directory without editing its sources.
+    Copies Core into a package staging directory while preserving its existing Gallery identity and source bytes.
     .PARAMETER SourceDirectory
     Verified internal Core package directory produced by New-WorkspacePackage.ps1.
     .PARAMETER ModuleDirectory
-    New staging directory whose leaf name must be QuietCli.
+    New staging directory whose leaf name must match the source script module's package name.
     #>
     param([Parameter(Mandatory)][string]$SourceDirectory,[Parameter(Mandatory)][string]$ModuleDirectory)
-    if([IO.Path]::GetFileName([IO.Path]::TrimEndingDirectorySeparator($ModuleDirectory)) -cne 'QuietCli'){throw 'GalleryStagingNameInvalid'}
+    $modules=@(Get-ChildItem -LiteralPath $SourceDirectory -File -Filter '*.psm1')
+    if($modules.Count -ne 1){throw 'GallerySourceRootModuleInvalid'}
+    $before=Get-QuietGalleryModuleIdentity $modules[0].FullName
+    if([IO.Path]::GetFileName([IO.Path]::TrimEndingDirectorySeparator($ModuleDirectory)) -cne $before.Name){throw 'GalleryStagingNameInvalid'}
     if(Test-Path -LiteralPath $ModuleDirectory){throw 'GalleryStagingAlreadyExists'}
-    $sourceName='FrenchExDev2.QuietCli.Core.PoSh'
-    $sourceManifest=Join-Path $SourceDirectory ($sourceName+'.psd1')
-    $before=Import-PowerShellDataFile -LiteralPath $sourceManifest
-    if($before.RootModule -cne ($sourceName+'.psm1')){throw 'GallerySourceRootModuleInvalid'}
     Copy-Item -LiteralPath $SourceDirectory -Destination $ModuleDirectory -Recurse
-    Rename-Item -LiteralPath (Join-Path $ModuleDirectory ($sourceName+'.psm1')) -NewName 'QuietCli.psm1'
-    Rename-Item -LiteralPath (Join-Path $ModuleDirectory ($sourceName+'.psd1')) -NewName 'QuietCli.psd1'
-    $manifest=Join-Path $ModuleDirectory 'QuietCli.psd1'
-    $text=[IO.File]::ReadAllTextAsync($manifest,[Text.UTF8Encoding]::new($false,$true)).GetAwaiter().GetResult()
-    $tokens=$null;$errors=$null
-    $ast=[Management.Automation.Language.Parser]::ParseInput($text,[ref]$tokens,[ref]$errors)
-    $root=$ast.EndBlock.Statements[0].PipelineElements[0].Expression
-    $pairs=@($root.KeyValuePairs|Where-Object {$_.Item1.Value -ieq 'RootModule'})
-    if($errors.Count -or $pairs.Count -ne 1){throw 'GallerySourceRootModuleInvalid'}
-    $value=$pairs[0].Item2.Extent
-    $publicRootModule = 'QuietCli.psm1'
-    $text=$text.Substring(0,$value.StartOffset)+"'$publicRootModule'"+$text.Substring($value.EndOffset)
-    [void][IO.File]::WriteAllTextAsync($manifest,$text.Replace("`r`n","`n").Replace("`r","`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-    $after=Import-PowerShellDataFile -LiteralPath $manifest
-    if($after.RootModule -cne 'QuietCli.psm1' -or [string]$after.GUID -cne [string]$before.GUID -or (Get-QuietGalleryModuleVersion $after) -cne (Get-QuietGalleryModuleVersion $before)){throw 'GalleryStagedIdentityChanged'}
+    $after=Get-QuietGalleryModuleIdentity (Join-Path $ModuleDirectory ($before.Name+'.psm1'))
+    if($after.Name -cne $before.Name -or $after.GUID -cne $before.GUID -or $after.Version -cne $before.Version){throw 'GalleryStagedIdentityChanged'}
 }
 
 function Read-QuietGalleryManifest {
@@ -146,16 +143,23 @@ function Test-QuietGalleryPackageSet {
     Optional release version required by the tag or manual workflow.
     #>
     param([string]$PackageDirectory,[string]$Version)
+    . (Join-Path $PSScriptRoot '../RuntimeTargets.ps1')
     $directory=[IO.Path]::GetFullPath($PackageDirectory,$PWD.Path)
     $planPath=Join-Path $directory package-set.json
     if((Get-Item -LiteralPath $planPath).Length -gt 1MB){throw 'GalleryPlanTooLarge'}
     $plan=Get-Content $planPath -Encoding utf8 -Raw|ConvertFrom-Json
     $release=Get-QuietGalleryVersion $plan.Version
     if($plan.SchemaVersion -ne 1 -or ($Version -and $plan.Version -cne $Version) -or $plan.BaseVersion -cne $release.BaseVersion){throw 'GalleryReleaseVersionMismatch'}
-    $required=@(Get-QuietRuntimeTargets (Split-Path $PSScriptRoot -Parent))
+    Import-Module (Join-Path $PSScriptRoot 'GalleryRelease.psm1')
+    $workspace=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
+    $selector=if($plan.PSObject.Properties['Module']){[string]$plan.Module}else{'Core'}
+    $packageTarget=@(Select-QuietGalleryReleaseTargets -WorkspaceRoot $workspace -Module $selector)
+    if($packageTarget.Count -ne 1){throw 'GallerySinglePackageRequired'}
+    $corePackage=$packageTarget[0].Component -ceq 'Core'
+    $required=@(if($corePackage){Get-QuietRuntimeTargets $workspace})
     if($plan.Targets.Count -ne $required.Count){throw 'GalleryTargetSetIncomplete'}
     foreach($target in $required){$actual=@($plan.Targets|Where-Object Rid -CEQ $target.Rid);if($actual.Count -ne 1 -or $actual[0].Apphost -cne $target.Apphost -or $actual[0].Pty -ne $target.Pty){throw 'GalleryTargetSetInvalid'}}
-    $expected=@('QuietCli')
+    $expected=@($packageTarget[0].Module)
     if($plan.Packages.Count -ne 1 -or @(Get-ChildItem $directory -File -Filter '*.nupkg').Count -ne 1){throw 'GalleryPackageSetInvalid'}
     $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach($package in $plan.Packages){
@@ -185,10 +189,45 @@ function Test-QuietGalleryPackageSet {
             $versionNode=$metadata.SelectSingleNode("//*[local-name()='metadata']/*[local-name()='version']").InnerText
             if($id -cne $package.Module -or $versionNode -cne $plan.Version){throw 'GalleryNuspecIdentityMismatch'}
             $dependencies=@($metadata.SelectNodes("//*[local-name()='dependency']"))
-            if($package.Module -ceq $expected[0]){
+            $manifest=Read-QuietGalleryManifest $zip.GetEntry($package.Module+'.psd1')
+            if($manifest.RootModule -cne ($package.Module+'.psm1') -or !$names.Contains($package.Module+'.psm1') -or (Get-QuietGalleryModuleVersion $manifest) -cne $plan.Version -or [string]$manifest.GUID -cne [string]$packageTarget[0].Manifest.GUID -or $names.Contains('QuietCli.psd1') -or $names.Contains('QuietCli.psm1')){throw 'GalleryModuleIdentityMismatch'}
+            $declared=@($packageTarget[0].Dependencies)
+            $embedded=@($manifest.RequiredModules | Where-Object {$null -ne $_})
+            if($declared.Count -ne $dependencies.Count -or $embedded.Count -ne $declared.Count){throw 'GalleryDependencyMismatch'}
+            foreach($dependency in $declared){
+                $dependencyName=if($dependency -is [string]){$dependency}else{[string]$dependency.ModuleName}
+                $minimum=if($dependency -is [Collections.IDictionary]){[string]$dependency.ModuleVersion}else{''}
+                if($dependency -is [Collections.IDictionary] -and ($dependency.RequiredVersion -or $dependency.MaximumVersion)){throw 'GalleryDependencyFormatUnsupported'}
+                $actual=@($dependencies|Where-Object {$_.GetAttribute('id') -ceq $dependencyName})
+                $values=@($embedded|Where-Object {$(if($_ -is [string]){$_}else{$_.ModuleName}) -ceq $dependencyName})
+                if($actual.Count -ne 1 -or $values.Count -ne 1){throw 'GalleryDependencyMismatch'}
+                $embeddedMinimum=if($values[0] -is [Collections.IDictionary]){[string]$values[0].ModuleVersion}else{''}
+                if($embeddedMinimum -cne $minimum){throw 'GalleryDependencyMismatch'}
+                $range=$actual[0].GetAttribute('version').Replace(' ','')
+                if($minimum -and $range -cnotin @($minimum,('['+$minimum+',)'))){throw 'GalleryDependencyMismatch'}
+            }
+            foreach($buildProject in @($packageTarget[0].Manifest.PrivateData.QuietCli.BuildProjects)){
+                foreach($output in $buildProject.Outputs.Values){
+                    $prefix=[string]$output+'/'
+                    $receiptEntry=$zip.GetEntry($prefix+'build-manifest.json')
+                    if(!$receiptEntry -or $receiptEntry.Length -gt 1MB){throw 'GalleryBusinessBuildManifestMissing'}
+                    $reader=[IO.StreamReader]::new($receiptEntry.Open(),[Text.UTF8Encoding]::new($false,$true))
+                    try{$receipt=$reader.ReadToEnd()|ConvertFrom-Json}finally{$reader.Dispose()}
+                    if($receipt.Project -cne ($packageTarget[0].Project+'/'+$buildProject.Project) -or !$receipt.Binaries.Count){throw 'GalleryBusinessBuildManifestInvalid'}
+                    foreach($binary in $receipt.Binaries){
+                        if($binary.Path -match '(^/|\\|:|(^|/)\.\.(/|$))'){throw 'GalleryBusinessBinaryPathInvalid'}
+                        $entry=$zip.GetEntry($prefix+$binary.Path)
+                        if(!$entry -or $entry.Length -ne $binary.Bytes){throw 'GalleryBusinessBinaryMissing'}
+                        $stream=$entry.Open()
+                        try{$hash=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($stream))}finally{$stream.Dispose()}
+                        if($hash -cne $binary.SHA256){throw 'GalleryBusinessBinaryIntegrityFailed'}
+                    }
+                }
+            }
+            if($corePackage){
                 if($dependencies.Count){throw 'GalleryCoreDependencyUnexpected'}
-                $manifest=Read-QuietGalleryManifest $zip.GetEntry('QuietCli.psd1')
-                if($manifest.RootModule -cne 'QuietCli.psm1' -or !$names.Contains('QuietCli.psm1') -or (Get-QuietGalleryModuleVersion $manifest) -cne $plan.Version -or $names.Contains('FrenchExDev2.QuietCli.Core.PoSh.psd1') -or $names.Contains('FrenchExDev2.QuietCli.Core.PoSh.psm1')){throw 'GalleryModuleIdentityMismatch'}
+                $manifest=Read-QuietGalleryManifest $zip.GetEntry($package.Module+'.psd1')
+                if($manifest.RootModule -cne ($package.Module+'.psm1') -or !$names.Contains($package.Module+'.psm1') -or (Get-QuietGalleryModuleVersion $manifest) -cne $plan.Version -or $names.Contains('QuietCli.psd1') -or $names.Contains('QuietCli.psm1')){throw 'GalleryModuleIdentityMismatch'}
                 if($manifest.Contains('RequiredModules') -and $null -ne $manifest.RequiredModules -and @($manifest.RequiredModules).Count){throw 'GalleryCoreDependencyUnexpected'}
                 foreach($frameworkDirectory in @('lib/inprocess/','lib/engine/')){
                     foreach($file in @('QuietCli.Engine.dll','QuietCli.Engine.runtimeconfig.json','protocol.json','build-manifest.json')){
@@ -202,6 +241,27 @@ function Test-QuietGalleryPackageSet {
                     $sqlite=if($target.Rid -like 'win-*'){'e_sqlite3.dll'}else{'libe_sqlite3.so'}
                     if(!$names.Contains('resources/runtime/runtimes/'+$target.Rid+'/native/'+$sqlite)){throw 'GallerySqliteMissing'}
                     if($target.Pty -and !$names.Contains('resources/transport/'+$target.Rid+'/quietcli-pty')){throw 'GalleryPtyMissing'}
+                    if($plan.PSObject.Properties['ReadyToRun'] -and $plan.ReadyToRun){
+                        foreach($slot in @('inprocess','engine')){
+                            $prefix='lib/'+$slot+'/'+$target.Rid+'/'
+                            $entry=$zip.GetEntry($prefix+'build-manifest.json')
+                            if(!$entry -or $entry.Length -gt 1MB){throw 'GalleryReadyToRunManifestMissing'}
+                            $reader=[IO.StreamReader]::new($entry.Open(),[Text.UTF8Encoding]::new($false,$true))
+                            try{$build=$reader.ReadToEndAsync().GetAwaiter().GetResult()|ConvertFrom-Json}finally{$reader.Dispose()}
+                            if(!$build.ReadyToRun -or $build.RuntimeIdentifier -cne $target.Rid -or $build.Configuration -cne 'Release'){throw 'GalleryReadyToRunTargetMismatch'}
+                            $entry=$zip.GetEntry($prefix+'QuietCli.Engine.dll')
+                            if(!$entry -or $entry.Length -gt 32MB){throw 'GalleryReadyToRunImageMissing'}
+                            $memory=[IO.MemoryStream]::new();$stream=$entry.Open();$pe=$null
+                            try{
+                                [void]$stream.CopyToAsync($memory).GetAwaiter().GetResult();$memory.Position=0
+                                $pe=[Reflection.PortableExecutable.PEReader]::new($memory)
+                                $header=$pe.PEHeaders.CorHeader
+                                if(!$header -or $header.ManagedNativeHeaderDirectory.Size -lt 16){throw 'GalleryReadyToRunHeaderMissing'}
+                                $native=$pe.GetSectionData($header.ManagedNativeHeaderDirectory.RelativeVirtualAddress).GetReader()
+                                if($native.ReadUInt32() -ne 0x00525452){throw 'GalleryReadyToRunSignatureInvalid'}
+                            }finally{if($pe){$pe.Dispose()};$stream.Dispose();$memory.Dispose()}
+                        }
+                    }
                 }
             }
         }finally{$zip.Dispose()}
@@ -218,7 +278,9 @@ function Get-QuietGalleryRemoteIdentity {
     Validated release version.
     #>
     param([string]$Module,[string]$Version)
-    if($Module -cne 'QuietCli'){throw 'InvalidGalleryRemoteIdentity'}
+    Import-Module (Join-Path $PSScriptRoot 'GalleryRelease.psm1')
+    $allowed=@(Get-QuietGalleryReleaseTargets ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..')))).Module
+    if($Module -cnotin $allowed){throw 'InvalidGalleryRemoteIdentity'}
     $null=Get-QuietGalleryVersion $Version
     $client=[Net.Http.HttpClient]::new();$client.Timeout=[TimeSpan]::FromSeconds(30)
     try{
@@ -231,3 +293,5 @@ function Get-QuietGalleryRemoteIdentity {
         }finally{$response.Dispose()}
     }finally{$client.Dispose()}
 }
+
+Export-ModuleMember -Function Get-QuietGalleryModuleIdentity,Copy-QuietGalleryCoreModule,Read-QuietGalleryManifest,Get-QuietGalleryVersion,New-QuietGalleryPreviewVersion,Set-QuietGalleryStagedPrerelease,Get-QuietGalleryModuleVersion,Read-QuietGalleryXml,Test-QuietGalleryPackageSet,Get-QuietGalleryRemoteIdentity

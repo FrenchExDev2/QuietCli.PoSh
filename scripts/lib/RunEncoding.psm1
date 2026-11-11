@@ -1,3 +1,4 @@
+#Objective: Single text-encoding policy of the run-profile tooling.
 #requires -Version 7.6
 <#
 .SYNOPSIS

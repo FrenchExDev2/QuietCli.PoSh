@@ -10,7 +10,9 @@ NetTrace artifact path.
 .PARAMETER ReadyPath
 File written only after the collector reports recording.
 #>
+[CmdletBinding(SupportsShouldProcess)]
 param([string]$ClrProfilerPath,[int]$TargetProcessId,[string]$OutputPath,[string]$ReadyPath)
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ClrCollector')){return}
 $ErrorActionPreference='Stop'
 $env:DOTNET_ROLL_FORWARD_TO_PRERELEASE='1'
 . (Join-Path $PSScriptRoot 'Common.ps1')

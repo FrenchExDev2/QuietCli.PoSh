@@ -1,5 +1,10 @@
 # WorkspaceProjects.ps1
 
+When build/companions.yml exists, suite names and runner selection come from its independent
+suite declarations through lib/CiCompanions.psm1. Integration suites can name a dedicated exported
+runner and require multiple products without reverse product dependencies. Manifest discovery
+remains available for package/build inventory and fixtures without the YAML.
+
 ## Purpose
 
 The foundational project-discovery library for the entire `scripts/` orchestration layer: it answers
@@ -27,6 +32,7 @@ This is a pure function library with no top-level `param()` — it is loaded via
 
 Exported functions:
 
+- `Get-QuietWorkspaceBuildProjects -WorkspaceRoot <string>` — returns declared portable `Package`, `Project`, `TargetFramework` and `Output` rows from `PrivateData.QuietCli.BuildProjects`. The shared solution build and binary identity consume this same function. Missing declarations mean a pure PowerShell package with no compiled outputs. Invalid paths, frameworks absent from the project XML, duplicate/overlapping outputs, links and DTDs fail. See [compiled distributions](../README-workspace-projects.md#compiled-distributions) for a new-consumer example and the RAC-BUILD-001 contract.
 - `Get-QuietWorkspaceProjects -WorkspaceRoot <string> (mandatory)` — discovers, order-validates
   (topological sort by `RequiredModules`), and returns every `FrenchExDev2.QuietCli.*.PoSh` project
   directory under `WorkspaceRoot` as a `[pscustomobject]` with `Name`, `IsTest`, `Suite`,
@@ -116,3 +122,17 @@ into one constant so the convention only needs updating in one place if it ever 
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+## .NET tooling review
+
+Get-QuietWorkspaceSuiteNames exposes DotNet as a host-only focused automation suite. It is not a new business module or Gallery package and is not silently added to Core/All release qualification. Source suite-name validation continues to reject a companion manifest colliding with a reserved focused suite name.
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Discovers inert module manifests and orders local projects by their declared dependencies.
+
+Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

@@ -1,12 +1,18 @@
 # Tests and qualification
 
-[Back to the QuietCli overview](README.md) · [Documentation index](docs/README.md)
+[Back to the QuietCli overview](README.md) · [Qualification: when, where and how](README-qualification-when-where-how.md) · [Documentation index](docs/README.md)
 
 Qualification combines independent examples, generated properties, malformed-input fuzzing and targeted mutation campaigns in the Core, Git and Vagrant companion test projects. A successful focused run establishes only its executed scope. Reports must identify the source revision, binaries, host/runtime, RID, scenarios, exclusions and remaining gaps; missing or incomplete required evidence blocks qualification.
 
 ## Local suites
 
+Every Core, Git and Vagrant top-level case declares `TestKind` and `Dependencies`; missing or invalid metadata fails before filtering. The shared `TestCaseMetadata` gate validates each companion’s own .psm1 catalogue and inert manifest declarations without running tests. See [classification and concurrency](docs/README-test-classification-and-concurrency.md) for the Unit/Integration contract, CI enforcement and case-isolation assessment.
+
 Run from the monorepo root in PowerShell Core 7.6+, with the pinned SDK and existing native prerequisites. Builds and tests do not publish packages.
+
+Local feature/fix-branch commits and pushes do not require running the companion suites. Commit-Workspace checks source/documentation contracts and the source lock; it never launches companions. Ask before starting a full local campaign unless explicitly requested. GitHub workflows perform the qualification for their PR/develop/release scope. A cancelled or filtered local run does not prevent creating a work-branch checkpoint and never counts as qualification.
+
+Core mixes pure logic, filesystem integration, native processes and qualification campaigns. The special Integration suite selects the import/performance workload; it is not a filter for every integration test. Known case reports expose TestKind/Dependencies; unreviewed cases remain Unclassified. [Commit-suite boundaries and PSDrive feasibility](docs/testing/commit-workspace.md) explain the physical temporary repositories and the separation available for fast unit logic.
 
 ```powershell
 ./scripts/Initialize-Workspace.ps1 -Restore
@@ -29,7 +35,7 @@ Run from the monorepo root in PowerShell Core 7.6+, with the pinned SDK and exis
 | `RunProfiles`, `RunProfilesMutation` | Complete profiling-tooling suite or its entire targeted mutation catalogue. |
 | `GalleryPreview` | Preview-version properties, malformed inputs, staged manifests, offline package installation and targeted mutations. |
 
-For example, `./scripts/Invoke-WorkspaceCi.ps1 -Suite RecallMutation -SkipBuild` selects one campaign. Use `-TimeoutSeconds 1800` for `RecallLarge`, `600` for `RunProfiles`, and `3300` for `RunProfilesMutation`. Focused campaigns supplement the full run. `-Case <wildcard>` and `-StopOnFirstFailure` are Core development controls: their partial/incomplete results never satisfy the pre-commit or qualification gate.
+For example, `./scripts/Invoke-WorkspaceCi.ps1 -Suite RecallMutation -SkipBuild` selects one campaign. Use `-TimeoutSeconds 1800` for `RecallLarge`, `600` for `RunProfiles`, and `3300` for `RunProfilesMutation`. Focused campaigns supplement the full run. `-Case <wildcard>` and `-StopOnFirstFailure` are Core development controls: their partial/incomplete results never satisfy a CI or publication qualification gate. They are not mandatory before a local work-branch commit.
 
 Recall also provides `Compare-QuietRecallAnalysis` (independent analysis states and projected differences), `Export-QuietRecallFixture` (capture plus a skeleton requiring independent expectations), and `Reduce-QuietRecall` (bounded failure-preserving reduction, without a global-minimality claim). See the [Recall contract](docs/README-recall.md).
 
@@ -70,7 +76,7 @@ Core/All includes fresh-session import samples, ten import diagnostic controls a
 
 ## ReadyToRun and cold-start comparisons
 
-R2R is an opt-in experiment, separate from functional qualification and the mandatory Core profiling pass. Normal CI/release builds do not enable it. [New-ReadyToRunCandidate.ps1](scripts/New-ReadyToRunCandidate.ps1) copies Core and republishes only the candidate's **net10.0 `lib/inprocess`** engine with Crossgen2, leaving the baseline unchanged. Use a disposable `-CandidateRoot`: the script removes and recreates that directory. Pass the intended RID explicitly for Linux/musl/ARM64.
+R2R comparison is an opt-in experiment, separate from functional qualification and the optional Core profiling pass. Normal CI/release builds produce ReadyToRun distributions; the A/B comparison runs only in the manual workflow. [New-ReadyToRunCandidate.ps1](scripts/New-ReadyToRunCandidate.ps1) copies Core and republishes only the candidate's **net10.0 `lib/inprocess`** engine with Crossgen2, leaving the baseline unchanged. Use a disposable `-CandidateRoot`: the script removes and recreates that directory. Pass the intended RID explicitly for Linux/musl/ARM64.
 
 ```powershell
 # Baseline already built; select the RID matching the measured PowerShell host.
@@ -111,17 +117,18 @@ Details: [A/B protocol](docs/README-ab_testing.md), [R2R walkthrough](docs/READM
 
 | Workflow | Trigger and actual responsibility |
 | --- | --- |
-| [core-ci.yml](.github/workflows/core-ci.yml) | Path-filtered PRs and `main` pushes for Core/tests/shared infrastructure; calls reusable CI with `suite: All`, including Git consumers. |
-| [git-ci.yml](.github/workflows/git-ci.yml) | Path-filtered PRs and `main` pushes for Git/tests; calls reusable CI with `suite: Git`. |
+| [core-ci.yml](.github/workflows/core-ci.yml) | Path-filtered PRs and `develop` pushes for Core/tests/shared infrastructure; calls reusable CI with `suite: Core`. |
+| [git-ci.yml](.github/workflows/git-ci.yml) | Path-filtered PRs and `develop` pushes for Git/tests/shared solution/build/package inputs; calls reusable CI with `suite: Git`. |
 | [ci.yml](.github/workflows/ci.yml) | Reusable/manual Windows/Linux matrix, evidence aggregation and revision-bound `qualified_sha` gate. |
 | [quietcli2-readytorun.yml](.github/workflows/quietcli2-readytorun.yml) | Manual informational R2R comparison: one Windows job plus four Debian/Alpine x64/ARM64 container jobs. It does not gate qualification or publication. |
 | [qualification.yml](.github/workflows/qualification.yml) | Manual full-Git entry point on a self-hosted Linux x64 Podman/KVM runner, using `QUIETCLI_QUALIFICATION_CONFIG`. The underlying runner currently refuses exhaustive certification; see below. |
-| [publish-psgallery.yml](.github/workflows/publish-psgallery.yml) | Reusable/manual packaging after `All` qualification of the exact SHA; rebuilds/rechecks packages. Manual `publish=false` prepares and validates artifacts only; publication requires its explicit input and the `psgallery` environment. |
-| [preview-psgallery.yml](.github/workflows/preview-psgallery.yml) | Applicable upstream `develop` pushes request automatic Core preview publication through the same qualified packaging workflow; manual dispatch defaults to preparation only. |
+| [publish-psgallery.yml](.github/workflows/publish-psgallery.yml) | Reusable/manual packaging after `All` qualification of the exact SHA; rebuilds/rechecks packages. Manual dispatch prepares artifacts only; publication requires a matching Core tag push, publication intent and the `psgallery` environment. |
+| [preview-psgallery.yml](.github/workflows/preview-psgallery.yml) | Manual generated-preview artifacts on upstream `develop`, without publication. |
+| [release-tags.yml](.github/workflows/release-tags.yml) | Explicit independent module tag pushes; validate the manifest/capability before full qualification and Core publication. Git/Vagrant namespaces remain blocked until public packaging is available. |
 
 Reusable CI has **ten test/evidence entries**: six Windows entries (x64/ARM64, stable/.NET 10 with `Process` and `InProcess`, preview/.NET 11 with `InProcess`) and four native Linux entries (Debian glibc and Alpine musl, x64/ARM64, `Auto`). Pinned host receipts and actual PowerShell/CLR/engine/RID checks reject architecture substitution. [Linux image jobs](docs/ci/linux-images.md) build/reuse fingerprinted toolchains on matching native runners; developer image pulls do not publish images.
 
-Core/All requests PowerShell/CLR profiling on every entry. The Windows x64 stable `InProcess` entry additionally requires both the complete `RunProfiles` suite and its mutation catalogue; this does not qualify the tooling on other platforms. Git-only CI keeps Core profiling outside its scope. The `performance-results` job verifies all ten revision-bound bundles and publishes the combined Markdown/JSON report. The gate requires Windows, Linux and report aggregation to succeed before emitting `qualified_sha`; Gallery packaging requires that SHA to equal `github.sha`.
+PowerShell/CLR profiling is enabled by default and explicitly requested by automatic PR/develop/publication callers for every Core/All matrix row. `performance-results` requires all ten revision-bound Windows/Linux reports and publishes standalone HTML, Markdown and JSON with PS line hotspots and CLR trace provenance. The qualification gate depends on this successful report as well as Windows/Linux execution. Explicitly disabling collection cannot qualify Core evidence. Windows x64 stable InProcess also runs RunProfiles and its mutation catalogue as separate tooling tests; these do not substitute for profiling each environment. Git/Vagrant-only scopes keep Core profiling outside their scope. Gallery packaging requires the accepted exact revision and a performance-qualified current-run receipt.
 
 GitHub CI explicitly passes **`-SkipTty`**: native TTY/PTY execution and its standalone C property/fuzz/mutation campaigns are excluded, not passed. This is also the publication workflow's configured gate scope. R2R workflow comparison errors/noisy controls are retained as informational warnings; inspect the reports rather than inferring a speedup from a green job. Build/setup failures and missing required upload artifacts can still fail that workflow. It neither publishes the candidate nor covers Windows ARM64 R2R.
 
@@ -135,7 +142,7 @@ Local suites include TTY by default; `-SkipTty` reproduces the reduced GitHub sc
 
 Suite/container reports normally use the system temporary directory under `QuietCli2/<workspace-id>/<category>/<run-id>`; CI uses `artifacts/<category>`. Preserve summaries, source identities, seeds, failures and raw/converted traces. Direct cold-start gates instead default to `artifacts/coldstart` (override with `-ArtifactsDirectory`); matrix summaries use `artifacts/coldstart-matrix`. `Show-ColdStartReport.ps1` and `Show-ColdStartMatrixReport.ps1` read saved JSON without rerunning measurements; point them at the actual report locations.
 
-CI uploads per-entry evidence and combined performance results even on failure, with 30-day retention. Export durable evidence before temporary storage or artifact retention expires. Dated [audits](docs/README.md#dated-audits-and-evidence) establish only their recorded revisions and environments. Release claims must retain every platform, campaign and exclusion boundary above.
+CI uploads per-entry evidence even on failure, with 30-day retention. Combined performance results are uploaded only when collection was explicitly requested. Export durable evidence before temporary storage or artifact retention expires. Dated [audits](docs/README.md#dated-audits-and-evidence) establish only their recorded revisions and environments. Release claims must retain every platform, campaign and exclusion boundary above.
 
 <!-- credits:begin -->
 ## Credits

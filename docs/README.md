@@ -4,6 +4,10 @@ Start with the [product README](../README.md) for installation, requirements and
 
 ## Usage guides
 
+- [Core test classification and concurrency](README-test-classification-and-concurrency.md): explicit case metadata, fail-closed checks and process-isolation candidates.
+
+- [.NET SDK installation and global.json updates](../README-dotnet-and-global-dot-json.md): release checks, verified portable SDKs, optional images and backed-up SDK pins.
+
 - [Streaming, callbacks and results](../README-streaming.md): build business projections and interpret outcome, execution and completeness.
 - [Recall](../README-recall.md): capture native evidence explicitly and analyze it again without rerunning the command.
 - [Hosting and native transports](../README-hosting.md): choose engine hosting and understand pipes and PTY.
@@ -33,17 +37,30 @@ The [agent documentation index](agents/README.md) identifies distributed instruc
 - [Allocation costs and actual delivery gains](README-allocation-and-delivery-metrics.md): allocation intervals, serialization measurements and unknown values.
 - [Privacy and integrity internals](README-privacy-and-integrity-internals.md): what timeouts, closed-DTO projection, the explicit scrub and resource verification concretely do, and how a companion module could plug into them.
 - [Native PTY bridge and LLVM fuzzing findings](README-native-pty-and-llvm-fuzzing.md): resize protocol, qualification layers and recorded sanitizer findings.
+- [Why `quiet` stays a PowerShell module, not a native binary](README-why-not-native.md): ScriptBlock callbacks, native tab-completion glue and the `InProcess` zero-serialization contract.
 
 ## Development, CI and distribution
+
+- [CI companions and independent integration suites](scripts/lib/CiCompanions.md): YAML declarations,
+  dependency expansion, image composition and shared script entry points.
+- [Add a companion](../README-add-companion.md): product/test projects, Vagrant, dedicated integration
+  runners, image tooling, checks and qualification boundaries.
 
 Repository development follows the root [AGENTS.md](../AGENTS.md). Consumer-project agent instructions are documented separately in the [agent index](agents/README.md).
 
 - [Development](../README-development.md): source checkout, prerequisites and builds.
+- [Local scriptblock launcher](scripts/Invoke-Quiet.md): load checkout Core and run `-Code { param($runtime) ... }` in the current process.
+- [Resources](../README-resources.md): pinned payload preparation, optional archive caches and the [generated inventory and code dependencies](resources/README.md).
+- [Automation requirements as code](README-automation-contracts.md): workflow receipts, shared commit checks, script logging policy and the [complete preview review](scripts/preview-support.md).
 - [Projects, suites and package eligibility](README-workspace-projects.md): reusable manifest discovery, dynamic suite parameters and explicit public-package policy.
 - [Development workstation](../README-development-workstation.md): platform-specific installations and the host-aware prerequisite installer, including VS Code Stable/Insiders.
 - [Local workflows with wrkflw](scripts/README-wrkflw-plan.md): pinned workstation integration, released capabilities and the explicit backlog of PowerShell usage helpers.
+- [CI execution model](ci/execution-model.md): direct and indirect Podman dependencies, GitHub/local boundaries, image identity and known adaptation gaps.
+- [Deterministic local/GitHub environment](ci/environment.md): dotenv editing, runtime precedence, generated presets and the RAC-ENV-001 contract.
 - [Editor extensions](README-development-editor-extensions.md): export the installed inventory and install/update the saved set in Stable or Insiders with `-WhatIf` and `-Update`.
 - [Tests and qualification](../README-qualification.md): companion suites, property testing, fuzzing, mutation campaigns and qualification limits.
+- [Qualification: when, where and how](../README-qualification-when-where-how.md): PR path filters, Windows hosts, Linux job containers/Docker fallback, actual test execution, local entry points and excluded scopes.
+- [Commit-suite boundaries and PSDrive feasibility](testing/commit-workspace.md): optional local campaigns, integration labels, physical Git fixtures and pure logic separation.
 - [Repository and distribution](../README-distribution.md): monorepo layout, packaging and publication gates.
 - [Credits and syncing](README-credits-and-syncing.md): why `CREDITS.md` is generated, the two sync scripts, their check/apply workflows and how to run the sync locally.
 - [Every script has a doc](README-scripts-have-docs.md): the `docs/scripts/` documentation gate, the generated [index](scripts/README.md), and its check/apply workflows.
@@ -73,6 +90,11 @@ These reports describe their recorded revisions, environments and executed scope
 - 9 November 2026: [real Vagrant provider, interactive UI and stable/preview qualification](audits/2026-11-09-provider-ui-qualification.md).
 - 9 November 2026: [container runtime/bootstrap and RID resource diagnosis](audits/2026-11-09-container-runtime-diagnosis.md).
 - 9 November 2026: [Alpine recipe correction, rebuilt image and default-host/SDK smoke](audits/2026-11-09-alpine-image-recipe.md).
+
+## Automation contracts
+
+- [Workflow documentation and preview-safety requirements](README-automation-contracts.md)
+- [GitHub workflow index and generated Mermaid graphs](ci/github/README.md)
 
 <!-- credits:begin -->
 ## Credits

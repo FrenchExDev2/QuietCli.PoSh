@@ -1,5 +1,10 @@
 # Show-ColdStartReport.ps1
 
+
+## Current hosted-path measurement
+
+The hosted-path field follows scripts/lib/RunColdStart.psm1 and the module Protocol.ps1: actual CLR/RID slot when selected, otherwise portable IL, with unused RID children excluded. Whole-module bytes and compressed-package bytes remain separate measurements. The RunProfiles benchmark properties and real A/A smoke validate these fields; a format or size change does not establish a speedup.
+
 ## Purpose
 
 Renders one existing `Measure-ColdStart.ps1`/`Invoke-ColdStartGate.ps1` JSON cold-start A/B report (summary verdicts per phase, plus on-disk/hosted/package footprint sizes) as console tables, without rerunning any measurement. By default it picks the most recently written `ab-*.json` under `-ArtifactsDirectory`. It solves the problem of inspecting a single, specific cold-start comparison (e.g. "baseline" vs. "readytorun") in human-readable form after a gate has already run. It is invoked by the GitHub Actions workflow `.github/workflows/quietcli2-readytorun.yml` (lines 55 and 132, the latter pointed at a container's copied-back report directory) and documented as a standalone, rerunnable tool in `README-qualification.md` (line 80) and `docs/README-readytorun_profiling.md`.
@@ -46,3 +51,13 @@ Fit for purpose; the fail-fast "no report found" error and its clear phase/footp
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Renders an existing Measure-ColdStart.ps1 / Invoke-ColdStartGate.ps1 JSON report as console tables.
+
+Boundary: **ReadOnly**. Preview API: **Unclassified**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

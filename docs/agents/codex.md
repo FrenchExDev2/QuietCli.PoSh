@@ -17,7 +17,7 @@ Open PowerShell in the project that Codex will work on:
 
 ```powershell
 # Objective: Install QuietCli's production instructions in the selected project.
-Import-Module QuietCli -ErrorAction Stop
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
 $repository = (Get-Location).Path
 $installation = Add-QuietAgentInstruction -Path $repository -Agents
 $installation.Files | Select-Object Path, ReferencePath, Status
@@ -56,8 +56,8 @@ Run this inside the PowerShell process that Codex will reuse:
 
 ```powershell
 # Objective: Load the installed Core and retain its identity for subsequent work.
-Import-Module QuietCli -ErrorAction Stop
-$core = Get-Module QuietCli
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
+$core = Get-Module FrenchExDev2.QuietCli.Core.PoSh
 $core.Path
 $PID
 $repository = (Get-Location).Path

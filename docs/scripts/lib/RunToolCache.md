@@ -47,8 +47,23 @@ $tools.ProfilerModulePath   # path to Profiler.psd1, hash-verified
 
 Well-designed and thoroughly tested; no rework needed — if anything is worth doing, it is moving the two hardcoded package specs in `Get-RunProfilerPackages` into a small data file so a version bump doesn't require touching this module's code, but that is a low-priority cleanup, not a defect.
 
+
+## Selection contract
+
+Get-RunProfilerPackages accepts -Module as a validated string array (profiler, dottrace; both by default). Results preserve catalogue order and contain each selected package once. Initialize-RunToolCache verifies only its explicit Packages argument. An unrequested tool has a null return path and creates no directory in a fresh cache. The latest receipt records only the requested packages. Tests cover independent single-tool offline caches and rejection of missing requested tools.
+
 <!-- credits:begin -->
 ## Credits
 
 This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Returns the two checksum-pinned diagnostic packages and their required entrypoints.
+
+Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 0.
+
+See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

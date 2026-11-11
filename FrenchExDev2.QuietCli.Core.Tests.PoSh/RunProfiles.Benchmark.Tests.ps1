@@ -52,7 +52,7 @@ Test-Case 'benchmark: module footprint sums every file under the manifest direct
 
 Test-Case 'benchmark: hosted-path footprint sums only the active lib/inprocess or lib/engine/<rid> directory, ignoring other RIDs and files outside it' {
     $rid = [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
-    $hostedRelative = if ($PSVersionTable.PSVersion.Major -ge 11) { "lib/engine/$rid" } else { 'lib/inprocess' }
+    $hostedRelative = if ([Environment]::Version.Major -ge 11) { 'lib/engine' } else { 'lib/inprocess' }
     $otherRid = if ($rid -eq 'win-x64') { 'linux-x64' } else { 'win-x64' }
     $random = [Random]::new($Seed + 15)
     for ($index = 0; $index -lt [Math]::Min($Iterations, 20); $index++) {
@@ -67,7 +67,7 @@ Test-Case 'benchmark: hosted-path footprint sums only the active lib/inprocess o
             [IO.File]::WriteAllBytes($path, [byte[]]::new($size))
             $expected += $size
         }
-        foreach ($outside in @('module.psd1', "lib/engine/$otherRid/engine.dll", 'docs/readme.txt')) {
+        foreach ($outside in @('module.psd1', "lib/engine/$otherRid/engine.dll", "lib/inprocess/$otherRid/engine.dll", 'docs/readme.txt')) {
             $path = Join-Path $root $outside
             [void][IO.Directory]::CreateDirectory((Split-Path -Parent $path))
             [IO.File]::WriteAllBytes($path, [byte[]]::new($random.Next(0, 5000)))
@@ -135,8 +135,10 @@ function Invoke-BenchmarkFixture {
     [void][IO.Directory]::CreateDirectory($baselineRoot); [void][IO.Directory]::CreateDirectory($candidateRoot)
     $baseline = Join-Path $baselineRoot 'baseline.psd1'; $candidate = Join-Path $candidateRoot 'candidate.psd1'
     Write-RunTextFile $baseline '@{}'; Write-RunTextFile $candidate '@{}'
-    [IO.File]::WriteAllBytes((Join-Path $baselineRoot 'engine.dll'), [byte[]]::new(1000))
-    [IO.File]::WriteAllBytes((Join-Path $candidateRoot 'engine.dll'), [byte[]]::new(2500))
+    $active=if([Environment]::Version.Major -ge 11){'lib/engine'}else{'lib/inprocess'}
+    foreach($root in @($baselineRoot,$candidateRoot)){[void][IO.Directory]::CreateDirectory((Join-Path $root $active))}
+    [IO.File]::WriteAllBytes((Join-Path $baselineRoot ($active+'/engine.dll')), [byte[]]::new(1000))
+    [IO.File]::WriteAllBytes((Join-Path $candidateRoot ($active+'/engine.dll')), [byte[]]::new(2500))
     $state = @{ Calls = [Collections.Generic.List[string]]::new(); FailCalls = $FailCalls; Duplicate = [bool]$Duplicate }
     function Invoke-FixtureNative {
         <# .SYNOPSIS

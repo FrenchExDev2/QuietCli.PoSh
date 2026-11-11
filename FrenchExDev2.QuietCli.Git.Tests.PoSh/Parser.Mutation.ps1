@@ -15,7 +15,10 @@ function Invoke-QuietGitParserMutation {
     [void][IO.Directory]::CreateDirectory($run)
     $staging=Join-Path ([IO.Path]::GetTempPath()) ('qgpm-'+[guid]::NewGuid().ToString('N').Substring(0,8))
     [void][IO.Directory]::CreateDirectory($staging)
-    Copy-Item -LiteralPath (Join-Path $WorkspaceRoot 'global.json') -Destination $staging
+    # Preserve SDK selection, centrally pinned packages and the production warning policy.
+    foreach($name in @('global.json','Directory.Build.props','Directory.Packages.props')){
+        Copy-Item -LiteralPath (Join-Path $WorkspaceRoot $name) -Destination $staging
+    }
     $production=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/engine'
     $tests=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests'
 
@@ -44,7 +47,11 @@ function Invoke-QuietGitParserMutation {
             $observer={param($record,$state)$state.Add($record.Text)}
             $build=Invoke-CiProcess dotnet @('build',(Join-Path $testDirectory 'QuietCli.Git.Parser.Tests.csproj'),'-c','Release','-o',(Join-Path $stage 'out'),'--nologo') -WorkingDirectory $WorkspaceRoot -TimeoutSeconds 120 -OnOutput $observer -State $log
             [void][IO.File]::WriteAllLinesAsync((Join-Path $directory 'build.log'),$log,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-            if($build.ExitCode -ne 0){throw ('InvalidMutationBuild: '+$mutation.Name)}
+            if($build.ExitCode -ne 0){
+                $diagnostic=(@($log | Where-Object {$_ -match '(?i)\berror\s+[A-Z]+[0-9]+'} | Select-Object -Unique -First 3) -join ' | ')
+                if($diagnostic.Length -gt 1200){$diagnostic=$diagnostic.Substring(0,1200)+'…'}
+                throw ('InvalidMutationBuild: '+$mutation.Name+'; log='+(Join-Path $directory 'build.log')+'; '+$diagnostic)
+            }
             $log.Clear()
             $execution=Invoke-CiProcess dotnet @((Join-Path $stage 'out/QuietCli.Git.Parser.Tests.dll'),(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/metadata/Git.ArgumentSchema.json')) -WorkingDirectory $WorkspaceRoot -TimeoutSeconds 60 -OnOutput $observer -State $log
             [void][IO.File]::WriteAllLinesAsync((Join-Path $directory 'tests.log'),$log,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()

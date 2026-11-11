@@ -1,4 +1,3 @@
-# Objectif : Démarrer un run Podman avec les mêmes suites et un moniteur visible sur l’hôte Windows.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -25,16 +24,23 @@ Explicit pinned dotnet-trace DLL.
 Excludes native TTY/PTY execution from this run; local runs include it by default.
 .PARAMETER Suite
 Companion scope, focused Import benchmark, or native C mutation campaign.
+.PARAMETER Case
+Development-only wildcard selecting Core cases; the guest report remains partial.
+.PARAMETER ContainerRuntime
+Explicit selection overrides the checkout dotenv key; absent configuration uses Podman-first application discovery on Windows and Linux.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$Image,[ValidateSet('alpine','debian')][string]$Platform,[switch]$Headless,[ValidateRange(1,7200)][int]$TimeoutSeconds=900,[ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath)
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$Image,[ValidateSet('alpine','debian')][string]$Platform,[switch]$Headless,[ValidateRange(1,7200)][int]$TimeoutSeconds=900,[ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime,[string]$Case)
 dynamicparam {
     . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
     New-QuietWorkspaceSuiteParameter -WorkspaceRoot $selectedRoot -Scope Container
 }
 end {
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ContainerCi')){return}
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
+if($Case -and $Suite -ne 'Core'){throw 'ContainerCaseRequiresCoreSuite'}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
+$ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 if($Profiler){
     if($Suite -notin @('Core','All','Integration')){throw 'ProfilerRequiresCoreIntegration'}
     if(!$ProfilerModulePath -or !$ClrProfilerPath){
@@ -50,6 +56,9 @@ if($ExpectedRuntimeIdentifier){$arguments+=@('-ExpectedRuntimeIdentifier',$Expec
 if($Profiler){$arguments+=@('-Profiler','-ProfilerModulePath',(ConvertTo-CiArgument ($ProfilerModulePath)),'-ClrProfilerPath',(ConvertTo-CiArgument ($ClrProfilerPath)))}
 if($SkipTty){if($Suite -eq 'Mutation'){throw 'TtyMutationCannotRunWithSkipTty'};$arguments+='-SkipTty'}
 $arguments+=@('-Suite',$Suite)
+$arguments+=@('-TimeoutSeconds',$TimeoutSeconds)
+if($Case){$arguments+=@('-Case',(ConvertTo-CiArgument $Case))}
+$arguments+=@('-ContainerRuntime',$ContainerRuntime)
 $options=@{FilePath=$runner;ArgumentList=$arguments;PassThru=$true;RedirectStandardOutput=(Join-Path $run 'worker.stdout.log');RedirectStandardError=(Join-Path $run 'worker.stderr.log')};if($IsWindows){$options.WindowStyle='Hidden'}
 if(!$Headless -and !$IsWindows){throw 'A local visible monitor requires the Windows host launcher.'}
 $worker=Start-Process @options

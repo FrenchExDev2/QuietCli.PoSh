@@ -1,0 +1,40 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/FrenchExDev2.QuietCli.Core.PoSh/">
+    <File Path="FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1" />
+    <File Path="FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psm1" />
+    <File Path="FrenchExDev2.QuietCli.Core.PoSh/README.md" />
+    <Project Path="FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj" />
+  </Folder>
+  <Folder Name="/src/FrenchExDev2.QuietCli.Git.PoSh/">
+    <File Path="FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1" />
+    <File Path="FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psm1" />
+    <File Path="FrenchExDev2.QuietCli.Git.PoSh/README.md" />
+    <Project Path="FrenchExDev2.QuietCli.Git.PoSh/engine/QuietCli.Git.Parser.csproj" />
+  </Folder>
+  <Folder Name="/src/FrenchExDev2.QuietCli.Vagrant.PoSh/">
+    <File Path="FrenchExDev2.QuietCli.Vagrant.PoSh/FrenchExDev2.QuietCli.Vagrant.PoSh.psd1" />
+    <File Path="FrenchExDev2.QuietCli.Vagrant.PoSh/FrenchExDev2.QuietCli.Vagrant.PoSh.psm1" />
+    <File Path="FrenchExDev2.QuietCli.Vagrant.PoSh/README.md" />
+  </Folder>
+  <Folder Name="/test/" />
+  <Folder Name="/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/">
+    <File Path="FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1" />
+    <File Path="FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psm1" />
+    <File Path="FrenchExDev2.QuietCli.Core.Tests.PoSh/README.md" />
+    <Project Path="FrenchExDev2.QuietCli.Core.Tests.PoSh/engine-tests/QuietCli.Engine.Tests.csproj" />
+    <Project Path="FrenchExDev2.QuietCli.Core.Tests.PoSh/fixture/QuietCli.Fixture.csproj" />
+    <Project Path="FrenchExDev2.QuietCli.Core.Tests.PoSh/recall-tools/QuietCli.Recall.Tools.csproj" />
+    <Project Path="FrenchExDev2.QuietCli.Core.Tests.PoSh/tools/documentation/Documentation.csproj" />
+  </Folder>
+  <Folder Name="/test/FrenchExDev2.QuietCli.Git.Tests.PoSh/">
+    <File Path="FrenchExDev2.QuietCli.Git.Tests.PoSh/FrenchExDev2.QuietCli.Git.Tests.PoSh.psd1" />
+    <File Path="FrenchExDev2.QuietCli.Git.Tests.PoSh/FrenchExDev2.QuietCli.Git.Tests.PoSh.psm1" />
+    <File Path="FrenchExDev2.QuietCli.Git.Tests.PoSh/README.md" />
+    <Project Path="FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests/QuietCli.Git.Parser.Tests.csproj" />
+  </Folder>
+  <Folder Name="/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/">
+    <File Path="FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh.psd1" />
+    <File Path="FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh.psm1" />
+  </Folder>
+</Solution>

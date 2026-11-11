@@ -180,9 +180,10 @@ public abstract class DeliveryCmdlet : RuntimeCmdlet
         var document = new OrderedDictionary
         {
             ["SchemaVersion"] = 1, ["Outcome"] = Members.Get(result, "Outcome"), ["InvocationId"] = Members.Get(result, "InvocationId"), ["Context"] = Members.Get(result, "Context"),
-            ["Data"] = view, ["Completeness"] = completeness, ["Error"] = safeError, ["Events"] = safeEvents,
+            ["Data"] = view, ["Completeness"] = completeness, ["Error"] = safeError,
             ["Truncation"] = new OrderedDictionary { ["Applied"] = state.Omitted > 0, ["Omitted"] = state.Omitted, ["OmittedExact"] = !state.UnknownOmissions },
         };
+        if (LanguagePrimitives.IsTrue(Members.Get(internals["Request"], "CollectEvents"))) document["Events"] = safeEvents;
         bool truncated = state.Omitted > 0;
         string text;
         if (yaml) { document["Completeness"] = Flags(completeness); text = RenderYaml(document); }

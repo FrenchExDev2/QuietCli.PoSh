@@ -1,3 +1,4 @@
+#Objective: Creates a deterministic preview tag from a numeric module version and a UTC instant.
 #requires -Version 7.6
 function New-QuietPreviewTagName {
     <#

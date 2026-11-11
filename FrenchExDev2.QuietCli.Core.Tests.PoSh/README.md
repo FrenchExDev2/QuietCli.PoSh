@@ -4,6 +4,59 @@
 
 # FrenchExDev2.QuietCli.Core.Tests.PoSh
 
+Host-matrix assertions require Windows, Linux selection/results and performance prerequisites as a set, allowing reordered/additional dependencies while rejecting each removed prerequisite. Evidence properties include bracketed Unicode paths and owned hidden manifests. CI uploads only the prepared evidence tree with hidden files included. Mutation workers write a start receipt and a terminal receipt in finally; parents retain bounded output tails/process metadata and reject absent or unfinished receipts even after exit code zero. An abrupt-exit fixture verifies that boundary; this does not claim a native ARM64 rerun.
+
+Release tests exercise a unique batch leader, remote sibling-tag revision rejection, dependency-ordered Core/Git validation and mock publication, and no-write previews. The leader qualifies/packages once, while PR validation remains independent. Legacy tags without annotations retain standalone releases.
+
+## Test boundaries and local work branches
+
+Core mixes pure logic with real filesystem, Git, process and package integration. Local feature/fix commits and pushes do not require automatically running these companions. Every top-level case reports explicit TestKind/Dependencies and shows its classification in progress. The shared static check and runtime guard reject missing or malformed metadata before selection; there is no Unclassified fallback. Pure byte-count checks are independently selectable as `-Case 'unit byte-count*'`. Runner bootstrap/report I/O is separate from a pure case body. See [classification and concurrency](../docs/README-test-classification-and-concurrency.md) for the complete boundary and reviewed parallelization candidates, and [the commit-suite and PSDrive review](../docs/testing/commit-workspace.md) for actual temporary repository effects.
+
+## GitHub execution policy and Docker smoke
+
+`PrivateData.QuietCli.TestExecution` in this companion's manifest declares Ordered defaults, Exclusive measurement/packaging barriers and five reviewed IsolatedProcess cases. Core saves its resolved execution plan before cases run and batches adjacent eligible cases with a cap of two or the smaller caller budget. Each child owns configuration, SQLite and reports and receives one internal worker. `scripts/Test-TestCaseMetadata.ps1 -Plan` previews the complete plan without importing Core or executing a case. The same policy is consumed locally and in CI; Git/Vagrant fan-out still follows complete Core acceptance.
+
+See [Qualification: when, where and how](../README-qualification-when-where-how.md) for PR triggers, the six Windows and four Linux environments, build versus test execution, local launchers and qualification exclusions.
+
+In a source checkout, the companion loads `scripts/Common.ps1` into its own private module scope, including the CI process,
+JSON, source-identity and project-discovery helpers. Test functions do not depend on a caller script
+or workstation profile having loaded those functions. The focused case `GitHub CI companion helpers
+load privately without caller profile dependencies` verifies exact helper source paths and no export
+leaks in a bounded child PowerShell process; `-NoProfile` is intentional isolation for that regression.
+Architecture assertions distinguish portable integrated hosting from a selected ReadyToRun RID slot,
+using the actual host CLR and its build manifest. Isolated hosting still requires the native RID.
+Source-free test packages retain their offline Recall tools and do not require workspace orchestration
+scripts merely to import. Shared workspace suites still run from a prepared source checkout.
+
+Performance bundles keep a checksummed partial manifest when collection rejects a link or fails to
+read a report, so downstream rendering preserves the original gap. Linked agent-test fixtures remove
+only their link after assertions; their target stays untouched. Unicode child fixtures initialize their
+own UTF-8 output. The resource cleanup test holds its live lease in a separate process, matching Unix
+cross-process file-sharing semantics. Container-input tests cover docs, restored packages and traversal.
+
+The focused case `GitHub CI JSON receipts create missing parents and preserve preview boundaries`
+reproduces receipt publication on a clean checkout. It covers seeded Unicode writes and overwrites,
+relative paths, blocked parent paths, temporary-file cleanup and a directory-creation mutant. The real
+matrix selector runs offline for Core/Git/All with image adapters, checking output append and WhatIf
+without a preceding directory-preparation step. This case is filesystem integration, not live GHCR
+or hosted-runner qualification.
+
+The Core case `GitHub CI separates native containers, Docker fallback and workstation launchers`
+checks cache-availability combinations, shuffled targets, malformed references, native runner
+identities, terminal-state gates and targeted policy mutants. Its direct-entry fixture requires the
+worker to run in the caller's process and rejects a non-GitHub context before side effects. Adapter
+fixtures check Docker/Podman vectors for all four RIDs and the Core-to-consumer credential handoff.
+Workflow assertions also require explicit cancellation and successful-selection conditions on both
+Linux execution paths, so PR-only skipped publication ancestors do not suppress selected matrices.
+
+```powershell
+./FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-GitHubCiSmoke.ps1 -Image '<existing-linux-x64-toolchain-image-ID>'
+```
+
+This smoke opens the shared local monitor and runs the GitHub entry in a real Docker container,
+without pulling/building/publishing an image. It saves guest RID/runtime/PID and cleanup evidence.
+It exercises the focused import suite; it does not qualify hosted Windows/ARM or registry permissions.
+
 Module de tests indépendant du moteur. Dépend du module Core, jamais l’inverse.
 
 ## Production instruction and skill examples
@@ -193,3 +246,14 @@ On glibc x64 with Clang 14, the standalone fuzz executable is explicitly linked 
 ## Mandatory portable integration
 
 Core/All now requires the same fresh-import measurements, ten import diagnostic controls, and eight owned Git states provided by the focused `-Suite Integration`. Each fixture checks plain human status against the independent CI runner, then byte and NUL-text callbacks against literal porcelain expectations at two block sizes. The child imports Core only and rejects a loaded Git companion or nonempty registry. `scripts/Assert-CoreIntegrationEvidence.ps1` blocks missing/incomplete receipts. Fixtures and partial/final reports are kept below the actual run directory and uploaded by the existing Windows/Linux matrices. No local LLVM or VS Code checkout is required in CI. See [PERFORMANCES.md](../FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md) for comparisons, scenarios, seeds and bounds.
+## ReadyToRun qualification
+
+The Core case `ReadyToRun builds and loads the matching RID and CLR with portable fallbacks` checks all 64 build-target subsets, 1,152 CLR/RID routing properties, malformed manifests and PE input, and two routing mutants. When all six net10.0 targets were precompiled, it also prepares and validates one actual nupkg with all twelve R2R publications. These assertions do not imply that every platform executed locally.
+
+GitHub matrix rows build Release ReadyToRun for their tested RID. The Windows x64 packaging runner builds all six RIDs for CLR 10 and 11 and requires them before compression. Probe-GalleryInstall.ps1 independently checks the installed module's actual runtime/build RID against its selected slots. GalleryPreview retains bounded installation diagnostics on failure. The separate manual A/B benchmark remains informational.
+## Automation requirements as code
+
+The automation-contract cases cover Docker/Podman discovery, standard ShouldProcess classification, 128 generated script contracts, malformed contracts, 14 real no-effect previews, five workflow documentation drift forms, missing/tampered parser resources, 40 malformed YAML variants and two targeted mutants. Workflow diagrams are generated from actual job needs and checked for exact correspondence. The dedicated commit bridge fixtures reject bad staged workflow receipts or unsafe staged scripts even when the working copy is repaired, and verify explicit skip reporting plus unchanged HEAD/index under WhatIf. The broader existing commit campaign retains its eleven targeted mutations and disposable repositories. These targeted development campaigns do not substitute for full release qualification.
+# Focused .NET tooling validation
+
+Run `../scripts/Invoke-DotNetTests.ps1` from this directory, or `./scripts/Invoke-DotNetTests.ps1` from the checkout root. The shared `DotNet` worker selects Readiness, Provisioning and Layout fixtures, bounded properties/fuzz inputs and targeted mutations without building or importing the product engine. Reports use the shared external temporary root and visible monitor. This focused Windows evidence is separate from Core/All release qualification. See [the user guide](../README-dotnet-and-global-dot-json.md).

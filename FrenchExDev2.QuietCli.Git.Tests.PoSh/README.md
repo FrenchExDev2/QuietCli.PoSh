@@ -4,27 +4,42 @@
 
 # FrenchExDev2.QuietCli.Git.Tests.PoSh
 
-Module de tests compagnon séparé. Dépend de Git et des assertions de conformité du compagnon Core.
+## Owned metadata and scheduling
 
-Les fixtures utilisent une identité Git dédiée, une configuration globale neutralisée et des dépôts sous `artifacts/git-fixtures`. Aucun dépôt de l’utilisateur n’est committé ou poussé. Le seul push de test vise un dépôt bare jetable local.
+This companion owns its runner and complete literal `$caseMetadata` table in its own `.psm1`. Its manifest declares the RootModule, TestCatalogue runner/helper sources and TestExecution policy; shared infrastructure discovers/validates the declarations without a central Core-owned Git case list. The catalogue contains 77 cases, with 68 active by default and nine optional mutation cases. Each optional entry declares its exact EnabledWhen environment flag, statically checked against the registration guard; inactive campaigns are explicit and cannot hide an omitted active test.
 
-Les assertions vérifient l’état initial, les noms Unicode, une mutation commit exécutée une seule fois via un compteur de hook indépendant, HEAD observé, les références porcelain d’un push, le cache des sondes et la distinction entre `quiet -C contexte` et `git -C répertoire`.
+MaxParallelCases is two, while the default remains Ordered: cases share mutable synthetic repositories, handler/probe state and earlier observations. Parser timing is explicitly Exclusive within this companion. No Git case opts into isolated parallel execution until its prerequisites and fixtures are independently isolated. Git and Vagrant can still run as separate suites after accepted Core; the parent divides its worker budget among suite slots. `-Case` and stop-on-first now apply to this runner as well and produce Partial/Incomplete reports. Inspect `scripts/Test-TestCaseMetadata.ps1 -Suite Git -Plan` before execution.
 
-Les 32 scénarios couvrent aussi les 14 familles spécialisées : patches fragmentés et combinés, bytes non UTF-8, formats demandés, historique, chemins NUL, blobs binaires et durée de vie des artefacts, listes et mutations de branches/stash/worktrees, add/checkout et fetch/pull vers des remotes locaux. Les assertions vérifient les effets indépendamment de l’objet renvoyé par le handler. Le répertoire `provenance/` conserve l’origine et la licence des fixtures adaptées ; aucun moteur tiers n’est exécuté.
+Separate companion test module. Depends on Git and the Core companion's conformance assertions.
 
-L’inventaire reste explicitement non qualifié dans ces tests : ces scénarios ne certifient pas les 183 commandes, toutes leurs options ou les 17 versions.
+See [Qualification: when, where and how](../README-qualification-when-where-how.md) for PR triggers, Windows runners, Linux containers, local commands and the distinction between building and executing tests.
 
-Exécution : `./scripts/Invoke-WorkspaceCi.ps1 -Suite Git` depuis le workspace. Consulter `summary.json` et les fixtures du run pour analyser un échec ; ne pas relancer une mutation uniquement pour en lire la sortie.
+Fixtures use a dedicated Git identity, disabled global configuration and repositories under `git-fixtures` in the private RunDirectory (under the shared temporary root locally). No commits or pushes are made to the user's repositories. The only test push targets a disposable local bare repository.
+
+Assertions check the initial state, Unicode names, a commit mutation executed exactly once using an independent hook counter, the observed HEAD, porcelain push references, probe caching and the distinction between `quiet -C contexte` and `git -C répertoire`.
+
+The 32 scenarios also cover the 14 specialized families: fragmented and combined patches, non-UTF-8 bytes, requested formats, history, NUL-delimited paths, binary blobs and artifact lifetimes, branch/stash/worktree lists and mutations, add/checkout, and fetch/pull against local remotes. Assertions verify effects independently of the object returned by the handler. The `provenance/` directory retains the origin and license of adapted fixtures; no third-party engine is executed.
+
+The inventory remains explicitly unqualified by these tests: these scenarios do not certify all 183 commands, all their options or all 17 versions.
+
+Run `./scripts/Invoke-WorkspaceCi.ps1 -Suite Git` from the workspace root. Inspect `summary.json` and the run's fixtures to investigate a failure; do not repeat a mutation merely to read its output.
 
 ## Principal-command qualification
 
 RepositoryCommands.Tests.ps1 owns nine additional workflows: switch/restore/reset/rm/mv/clean; conflicting merge and explicit abort; cherry-pick/revert/rebase; tag list/create/delete; remote config; lossless config queries; init/clone; non-repository/native-failure boundaries; and generated PowerShell interaction guards. Never place a destructive non-repository test beneath the actual checkout: use an external temporary directory, block parent discovery with GIT_CEILING_DIRECTORIES and use a non-destructive missing-path operation.
 
-The compiled runner now contains 22 cases. RepositoryCommandCases adds 2,000 generated config/remote cases, outcome invariants and 20,000 bounded malformed remote records with retained seeds; push retains its earlier generated/fuzz cases. The PowerShell guard has 240 generated vectors and two isolated in-memory mutants. These deterministic campaigns do not claim coverage-guided fuzzing.
+The compiled runner is checked against 57 independent cases. RepositoryCommandCases adds 2,000 generated config/remote cases, outcome invariants and 20,000 bounded malformed remote records with retained seeds; push retains its earlier generated/fuzz cases. The PowerShell guard has 240 generated vectors and two isolated in-memory mutants. These deterministic campaigns do not claim coverage-guided fuzzing.
 
 Set QUIETCLI_GIT_COMMAND_MUTATION=1 to request eight source-checked C# repository-format/outcome mutants with the shared monitored launcher. QUIETCLI_GIT_PUSH_MUTATION=1 requests the separate eight push mutants. Ordinary development runs omit compiler-based campaigns unless needed. The reusable CI enables both in the Windows Preview x64 qualification job and retains artifacts/git-repository-mutation and artifacts/git-push-mutation. A baseline must pass, then every selected mutant must be detected; report survivors, invalid builds, timeouts and infrastructure failures separately. Mutation compilation uses the short owned staging directory documented by each receipt.
 
 ## Query parser qualification
+
+The shared parser mutation runner stages `global.json`, `Directory.Build.props` and
+`Directory.Packages.props` above every isolated project. Baselines and mutants therefore
+retain the workspace SDK selection, central package versions and warning-as-error policy.
+Missing build inputs fail explicitly. A failed build reports its log path and up to three
+distinct compiler/restore error lines (at most 1,200 characters) in the CI case error;
+the complete diagnostic stays in the campaign's `baseline/build.log` or mutant `build.log`.
 
 Queries.Tests.ps1 adds five independent native workflows for twelve commands. QueryCases.cs adds six compiled cases: generated SHA-1/SHA-256 IDs/parents (seed 73051), generated index modes/stages/path boundaries (seed 73052), symbolic/peeled/raw refs, counters/alternates/rejection, versions, and 20,000 bounded malformed inputs across four parsers (seed 73053). No partial rows may survive rejection.
 

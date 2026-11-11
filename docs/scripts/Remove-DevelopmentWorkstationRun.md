@@ -28,7 +28,7 @@ Supports `-WhatIf`/`-Confirm` (`SupportsShouldProcess`, `ConfirmImpact='High'`);
 - Dot-sources `ReportPaths.ps1` (line 22) — supplies `Get-QuietReportRoot` (used line 24).
 - `Import-Module (Join-Path $PSScriptRoot 'lib/WorkstationResources.psm1')` (line 23) — supplies `Get-WorkstationCleanupDecision`, `Test-WorkstationDirectoryBoundary`, `Test-WorkstationPodmanIdentity`, and `Remove-WorkstationOwnedResource`, all of which carry the real business logic this script orchestrates.
 - Shells out indirectly through `Remove-WorkstationOwnedResource` (presumably to Podman, given `Test-WorkstationPodmanIdentity`), though the native calls themselves live in the `.psm1`, not in this file.
-- Opens an `IO.FileStream` on each run's `run.lease` file with `FileShare.Delete` (line 40) as a cooperative locking mechanism to detect/avoid a concurrently-running producer — a deliberate, documented design (comment, lines 37-38).
+- Opens an `IO.FileStream` on each run's `run.lease` file and acquires its byte-range lock. Producers hold the same lock for their lifetime. This works on Unix, where file-sharing flags alone do not reject a competing writer; `FileShare.Delete` still permits owned cleanup on Windows.
 - Assumes the workstation-run directory layout and `receipt`/`run.lease` conventions produced elsewhere in the ecosystem (not shown in this file) are already in place; this script is purely a consumer/cleaner of that convention, not its producer.
 
 ## Side effects
@@ -41,7 +41,7 @@ Supports `-WhatIf`/`-Confirm` (`SupportsShouldProcess`, `ConfirmImpact='High'`);
 
 - The function re-validates `Test-WorkstationDirectoryBoundary` a second time (line 50) immediately before the actual `Remove-Item -Recurse -Force` (line 51), after having already checked it once earlier (line 34) — an explicit, deliberate TOCTOU (time-of-check-to-time-of-use) mitigation given that resource release (lines 47-49) runs in between and could theoretically change state. This is good defensive design against a narrow race window, not a bug.
 - `Remove-Item -Confirm:$false` at line 51 **suppresses PowerShell's own built-in destructive-action confirmation prompt** on top of the script's own `$PSCmdlet.ShouldProcess` gate at line 46. This is intentional and correct here — the script already obtained its own `ShouldProcess` confirmation one level up, so suppressing the cmdlet's redundant second prompt avoids double-prompting — but it is worth a reviewer's attention since `-Confirm:$false` can look alarming out of context; it is safe only because it is reached exclusively through the already-gated branch.
-- DESIGN: the lease-based mutual exclusion (`FileShare.Delete`, lines 39-40) is a clever but implicit protocol — nothing in this file documents what writes/renews `run.lease`, so a reviewer auditing only this script (without also reading `WorkstationResources.psm1` and the run-registration script) cannot fully verify the protocol's correctness. This is a cross-file coupling that would benefit from a short doc-comment cross-reference (e.g. "see New-WorkstationRun.ps1 for the producer side of this lease").
+- The producer and cleaner both acquire the same byte-range lease. The workstation smoke runner creates and holds it; cleanup protects the run when it cannot acquire it, then releases its own handle in `finally`.
 - No `.PARAMETER` doc is given for the implicit `-WhatIf`/`-Confirm` common parameters, but that's standard and not expected to be documented explicitly.
 - No hardcoded paths needing parameterization were found; `WorkspaceRoot`, `RetentionDays`, `KeepLatest`, and `ActiveGraceMinutes` already cover the tunable surface, and defaults are sensible.
 - Testability: good — `FrenchExDev2.QuietCli.Core.Tests.PoSh\WorkstationResources.Tests.ps1` exists and presumably exercises `WorkstationResources.psm1`'s decision/boundary/identity functions that this script orchestrates. This script's own orchestration loop (lines 28-56) is not itself directly unit-tested as far as could be determined, but the riskier logic (what counts as "inactive," boundary checks, Podman identity verification) is the part covered.
@@ -56,3 +56,13 @@ Fit for purpose; this is one of the more carefully engineered scripts in the bat
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Reports and cleans expired, registered workstation smoke runs and their labelled disposable resources.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

@@ -11,7 +11,7 @@ namespace FrenchExDev2.QuietCli.Cmdlets;
 public sealed class ReadQuietArgumentsCommand : QuietCmdlet
 {
     /// <summary>Boolean facade switches; a trailing colon form carries an explicit value.</summary>
-    private static readonly string[] Switches = ["AsObject", "AsJson", "AsYaml", "Recall", "SaveRecall", "Zip", "AllowPartial", "UI"];
+    private static readonly string[] Switches = ["AsObject", "AsJson", "AsYaml", "Recall", "SaveRecall", "Zip", "AllowPartial", "UI", "CollectEvents"];
 
     /// <summary>Facade options that consume the following argument.</summary>
     private static readonly string[] Values =

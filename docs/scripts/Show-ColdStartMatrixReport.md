@@ -47,3 +47,13 @@ Fit for purpose and resilient to malformed individual reports, but has a small c
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Renders every cold-start A/B report found on disk (Windows and every Linux container run) as one table, without rerunning any measurement. Repeatable: re-run any time after Invoke-ColdStartMatrix.ps1 (or any individua...
+
+Boundary: **ReadOnly**. Preview API: **Unclassified**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

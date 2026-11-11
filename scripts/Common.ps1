@@ -1,8 +1,38 @@
 . (Join-Path $PSScriptRoot 'ReportPaths.ps1')
-# Objectif : Fournir les opérations communes et bornées du workspace QuietCli2.
 . (Join-Path $PSScriptRoot 'Ci.Process.ps1')
 . (Join-Path $PSScriptRoot 'SourceIdentity.ps1')
 . (Join-Path $PSScriptRoot 'RuntimeTargets.ps1')
+. (Join-Path $PSScriptRoot 'EnvFile.ps1')
+function Resolve-QuietVirtEngine {
+    <#
+    .SYNOPSIS
+    Resolves an explicit engine, checkout dotenv configuration, then Podman before Docker on every host.
+    .PARAMETER ContainerRuntime
+    Optional explicit engine. Empty reads the checkout dotenv key before discovering applications.
+    .PARAMETER Available
+    Also requires an explicitly selected engine to exist as an application on PATH.
+    .PARAMETER WorkspaceRoot
+    Checkout owning .env; its runtime key supplies the default before application discovery.
+    #>
+    [CmdletBinding()]
+    param([AllowEmptyString()][ValidateSet('','docker','podman')][string]$ContainerRuntime,[switch]$Available,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+    if(!$ContainerRuntime){
+        $configured=Get-QuietEnvValue -Path (Join-Path $WorkspaceRoot '.env') -Key QUIET_CONTAINER_RUNTIME
+        if($null -ne $configured){
+            if($configured -cnotin @('podman','docker')){throw 'QuietVirtEngineConfigurationInvalid: QUIET_CONTAINER_RUNTIME must be podman or docker.'}
+            $ContainerRuntime=$configured
+        }
+    }
+    if($ContainerRuntime){
+        if($Available -and !(Get-Command $ContainerRuntime -CommandType Application -ErrorAction SilentlyContinue)){throw ('QuietVirtEngineUnavailable: '+$ContainerRuntime)}
+        return $ContainerRuntime.ToLowerInvariant()
+    }
+    $candidates=@('podman','docker')
+    foreach($candidate in $candidates){
+        if(Get-Command $candidate -CommandType Application -ErrorAction SilentlyContinue){return $candidate}
+    }
+    throw 'QuietVirtEngineUnavailable: install Docker or Podman, or select an available engine explicitly.'
+}
 function Invoke-WorkspaceNative {
     <#
 .SYNOPSIS
@@ -21,6 +51,7 @@ Runs a CI tool directly, independently of the product engine, with bounded failu
     file so a concurrent (interleaved-console) run still has a readable, attributable trace.
     #>
     param([string]$FilePath,[string[]]$Arguments,[string]$WorkingDirectory,[ValidateRange(1,3600)][int]$TimeoutSeconds=600,[string]$LogPath)
+    Write-Host ('Progress: Execute '+$FilePath+' for the current workspace operation.')
     $state=@{Lines=0;Diagnostics=[Collections.Generic.Queue[string]]::new();Writer=$null}
     if($LogPath){
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($LogPath))
@@ -35,6 +66,7 @@ Runs a CI tool directly, independently of the product engine, with bounded failu
             if($state.Writer){$state.Writer.WriteLine('['+$record.Stream+'] '+$record.Text)}
             if($record.Text.Trim()){if($state.Diagnostics.Count -ge 10){$null=$state.Diagnostics.Dequeue()};$line=$record.Text;if($line.Length -gt 1024){$line=$line.Substring(0,1024)+'…'};$state.Diagnostics.Enqueue($line)}
         }
+        Write-Host ('Summary: '+$FilePath+' = '+$result.Outcome+'; observed lines='+$state.Lines)
         if($result.Outcome -ne 'Success'){
             foreach($line in $state.Diagnostics){Write-Host $line}
             $suffix=if($LogPath){" - full log: $LogPath"}else{''}
@@ -70,7 +102,7 @@ Parses a human-readable size into a byte count.
 function Write-WorkspaceJson {
     <#
 .SYNOPSIS
-Publishes UTF-8 state atomically for the read-only monitor.
+Publishes UTF-8 JSON atomically, creating missing destination directories for reports and monitors.
     .PARAMETER Path
     Destination JSON path.
     .PARAMETER Value
@@ -80,8 +112,9 @@ Publishes UTF-8 state atomically for the read-only monitor.
     $Path=[IO.Path]::GetFullPath($Path,$PWD.Path)
     $temporary=$Path+'.'+[guid]::NewGuid().ToString('N')+'.tmp'
     $json=(ConvertTo-Json -InputObject $Value -Depth 32).Replace("`r`n","`n").Replace("`r","`n")
-    [void][IO.File]::WriteAllTextAsync($temporary,$json,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($Path))
     try{
+        [void][IO.File]::WriteAllTextAsync($temporary,$json,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         for($attempt=0;$attempt -le 5;$attempt++){
             try{[IO.File]::Move($temporary,$Path,$true);break}catch{
                 $code=$_.Exception.GetBaseException().HResult -band 65535
@@ -90,6 +123,38 @@ Publishes UTF-8 state atomically for the read-only monitor.
             }
         }
     }finally{if([IO.File]::Exists($temporary)){[IO.File]::Delete($temporary)}}
+}
+function Stop-WorkspaceWorker {
+    <#
+    .SYNOPSIS
+    Cancels an explicitly selected local Windows worker after verifying ownership and saving its terminal report.
+    .PARAMETER WorkspaceRoot
+    Exact workspace recorded by the worker.
+    .PARAMETER RunDirectory
+    Owned run directory printed by Invoke-WorkspaceCi.
+    .PARAMETER Reason
+    Explicit cancellation reason retained with the interrupted evidence.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[string]$Reason='Cancelled by user request.')
+    if(!$IsWindows){throw 'WorkspaceWorkerCancellationRequiresWindows'}
+    $statusPath=Join-Path $RunDirectory status.json
+    $state=Get-Content -LiteralPath $statusPath -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable -DateKind String
+    if($state.State -in @('Success','Failed','Crash','Timeout','Cancelled')){return [pscustomobject]@{State=$state.State;Stopped=$false;RunDirectory=$RunDirectory}}
+    if([IO.Path]::GetFullPath($state.Workspace) -ine [IO.Path]::GetFullPath($WorkspaceRoot)){throw 'WorkspaceWorkerOwnershipMismatch'}
+    $worker=Get-Process -Id ([int]$state.ProcessId) -ErrorAction Stop
+    $metadata=Get-CimInstance Win32_Process -Filter ('ProcessId='+$worker.Id)
+    $expectedScript=Join-Path ([IO.Path]::GetFullPath($WorkspaceRoot)) scripts/Invoke-TestWorker.ps1
+    if($worker.ProcessName -ine 'pwsh' -or !$metadata -or
+        !$metadata.CommandLine.Replace('/','\').Contains($expectedScript.Replace('/','\')) -or
+        !$metadata.CommandLine.Replace('/','\').Contains([IO.Path]::GetFullPath($RunDirectory).Replace('/','\')) -or
+        [Math]::Abs(($worker.StartTime.ToUniversalTime()-[DateTimeOffset]::Parse($state.StartedUtc).UtcDateTime).TotalSeconds) -gt 30){throw 'WorkspaceWorkerOwnershipMismatch'}
+    if(!$PSCmdlet.ShouldProcess(('PID '+$worker.Id+'; '+$RunDirectory),'Save cancellation and stop the owned worker tree')){return}
+    $state.State='Cancelled';$state.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o');$state.Case='Cancelled by explicit request';$state.Error=$Reason
+    $null=Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=$state;Suites=@();Cancellation=@{Reason=$Reason;Qualified=$false}}
+    $null=Write-WorkspaceJson $statusPath $state
+    if(!$worker.HasExited){$worker.Kill($true);[void]$worker.WaitForExitAsync().GetAwaiter().GetResult()}
+    [pscustomobject]@{State='Cancelled';Stopped=$true;RunDirectory=$RunDirectory}
 }
 function Wait-WorkspaceWorker {
     <#
@@ -109,9 +174,17 @@ function Wait-WorkspaceWorker {
     Maximum wall-clock duration before terminating the owned worker tree.
     #>
     param([Diagnostics.Process]$Worker,[string]$RunDirectory,[string]$WorkspaceRoot,[string]$Runner,[Diagnostics.Process]$Monitor,[int]$TimeoutSeconds)
+    . (Join-Path $PSScriptRoot ReportStreaming.ps1)
     $started=[DateTimeOffset]::UtcNow;$deadline=$started.AddSeconds($TimeoutSeconds);$timedOut=$false;$monitorRestarts=0;$monitorFailure=$false
     $monitorPath=Join-Path $PSScriptRoot 'Watch-Tests.ps1'
+    $streams=@(New-QuietReportStream (Join-Path $RunDirectory worker.stdout.log);New-QuietReportStream (Join-Path $RunDirectory worker.stderr.log))
+    $nextHeartbeat=$started
     while(!$Worker.HasExited){
+        foreach($stream in $streams){foreach($line in (Read-QuietReportStream $stream -MaxLines 4)){if($line){Write-Host ('[report] '+$line)}}}
+        if([DateTimeOffset]::UtcNow -ge $nextHeartbeat){
+            Write-Host ('Progress: Follow active report | elapsed='+[int]([DateTimeOffset]::UtcNow-$started).TotalSeconds+'s | observed lines='+(($streams|ForEach-Object TotalLines|Measure-Object -Sum).Sum)+' | PID='+$Worker.Id)
+            $nextHeartbeat=[DateTimeOffset]::UtcNow.AddSeconds(10)
+        }
         if($Monitor -and $Monitor.HasExited){
             $terminal=$false
             $currentStatus=Join-Path $RunDirectory 'status.json'
@@ -136,5 +209,28 @@ function Wait-WorkspaceWorker {
         if($state.ContainsKey('ContainerId')){$state.Cleanup='Unconfirmed: worker terminated before cleanup receipt'}
         Write-WorkspaceJson $summaryPath @{State=$state};Write-WorkspaceJson $statusPath $state
     }
-    Get-Content -LiteralPath $summaryPath -Encoding utf8 -Raw|ConvertFrom-Json
+    foreach($stream in $streams){foreach($line in (Read-QuietReportStream $stream -MaxLines 6)){if($line){Write-Host ('[report] '+$line)}}}
+    $saved=Get-Content -LiteralPath $summaryPath -Encoding utf8 -Raw|ConvertFrom-Json
+    Write-Host ('Summary: '+($saved.State|Select-Object Project,Task,State,Passed,Failed,Error|ConvertTo-Json -Compress))
+    return $saved
+}
+function Write-WorkspaceFailureDiagnostics {
+    <#
+    .SYNOPSIS
+    Prints bounded saved failure details without asking a CI operator to open a desktop monitor.
+    .PARAMETER Summary
+    Terminal worker summary containing state and optional companion suite reports.
+    .PARAMETER RunDirectory
+    Directory retaining the full diagnostic files.
+    #>
+    param([Parameter(Mandatory)]$Summary,[Parameter(Mandatory)][string]$RunDirectory)
+    Write-Host ('CI terminal state: '+($Summary.State|Select-Object Project,Platform,State,Passed,Failed,Error|ConvertTo-Json -Compress))
+    $suites=if($Summary.PSObject.Properties['Suites']){@($Summary.Suites)}else{@()}
+    $failures=@($suites|ForEach-Object {$_.Cases}|Where-Object State -NE Passed)
+    foreach($case in $failures|Select-Object -First 8){
+        $message=($case|Select-Object Name,State,Error|ConvertTo-Json -Compress)
+        if($message.Length -gt 2048){$message=$message.Substring(0,2048)+'…'}
+        Write-Host ('CI failed case: '+$message)
+    }
+    Write-Host ("CI reports: $RunDirectory | failed cases shown: $([Math]::Min(8,$failures.Count))/$($failures.Count)")
 }

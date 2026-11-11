@@ -7,17 +7,37 @@ walkthrough on top of it.
 
 ## Why ReadyToRun is being profiled here
 
+The main GitHub qualification and Gallery package builds now explicitly enable ReadyToRun.
+This manual benchmark remains a separate IL-versus-R2R experiment, runs only on demand,
+and never gates develop delivery. Linux transport explicitly uses Docker on GitHub; local
+callers can select Docker or Podman. See [the CI execution model](ci/execution-model.md).
+
 A plain IL build pays a JIT-compilation cost the first time each method runs in a process. `PublishReadyToRun=true`
 precompiles the engine's native code ahead of time, so that cost should shrink or disappear — but only for the
 **first** call in a process; once the JIT has warmed up, R2R and IL converge. The gate measures exactly that shape
 of effect, instead of assuming it.
+
+## Manual GitHub runs and PR evidence
+
+The [ReadyToRun workflow](../.github/workflows/quietcli2-readytorun.yml) runs only through `workflow_dispatch`. It has no `develop` branch filter and no PR/push trigger. Choose the pushed PR branch through **Actions → QuietCli2 ReadyToRun profiling → Run workflow**, or use the existing automation entry point from the workspace root:
+
+```powershell
+./scripts/Invoke-RemoteWorkflow.ps1 -Repository FrenchExDev2/QuietCli.PoSh -Workflow quietcli2-readytorun.yml -Ref fix/develop-pr-gh-wf
+./scripts/Invoke-RemoteWorkflow.ps1 -Repository FrenchExDev2/QuietCli.PoSh -Workflow quietcli2-readytorun.yml -Status
+```
+
+Replace the ref with the branch/tag being evaluated. The workflow must already exist on the default branch for dispatch to be available; `-Ref` selects which revision runs. Local unpushed commits are not tested. See [GitHub's manual-run documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow).
+
+This experiment compares an IL baseline and an R2R candidate built from the same checkout, **not the PR head against `develop`**. It runs on Windows and four Linux distribution/architecture targets. Download `quietcli2-readytorun-<sha>` and `quietcli2-readytorun-<rid>-<sha>` from the run's **Artifacts** section for the cold-start JSON reports. A noisy A/A control can prevent an A/B result; a green informational job alone does not prove a performance improvement.
+
+A matching PR push separately runs Core's ten-target PowerShell/CLR profiling and combined HTML report. `RunProfiles` is the test suite for profiling tooling; it is not the switch for that Core pass. Keep instrumentation separate from A/A and A/B measured samples. For profiling plus this A/B experiment, let automatic PR qualification run, dispatch this workflow on the pushed PR branch, then link its run in the PR after checking both checkout identities. A manual run targets the selected ref, while PR qualification can target GitHub's merge ref. See [the complete PR procedure](../README-qualification-when-where-how.md#profiling-reports-and-manual-pr-runs).
 
 ## Building the R2R candidate
 
 `-CandidateModule` must point at an already-built module manifest; the gate only orchestrates measurement, it does
 not build anything. `scripts/New-ReadyToRunCandidate.ps1` builds that candidate as a **separate copy**, never
 overwriting the baseline module you want to compare against — the gate needs both to exist side by side. It copies
-`global.json` and the Core module into a throwaway directory, then republishes only that copy's engine project
+`global.json`, `Directory.Packages.props` and the Core module into a new owned directory, then republishes only that copy's net10.0 engine project into `lib/inprocess/<rid>`
 with `-p:PublishReadyToRun=true` (the only difference from a normal publish, which is why the A/B comparison
 isolates exactly the effect ReadyToRun has), recording the build's input hashes and configuration next to the
 output the same way `./scripts/Build-Workspace.ps1` does. From
@@ -25,7 +45,7 @@ output the same way `./scripts/Build-Workspace.ps1` does. From
 (`./scripts/Build-Workspace.ps1`, left in place and untouched):
 
 ```powershell
-$candidate = ./scripts/New-ReadyToRunCandidate.ps1
+$candidate = ./scripts/New-ReadyToRunCandidate.ps1 -CandidateRoot (Join-Path $env:TEMP ('quietcli-r2r-'+[guid]::NewGuid().ToString('N')))
 ```
 
 Pass `-RuntimeIdentifier linux-x64` (or the matching Linux RID) on a Linux machine; it otherwise defaults to this
@@ -84,7 +104,7 @@ Each `ab-*.json` file has four top-level sections:
   candidate is expected to be **larger** on disk even when it is faster to start. A timing win that ignores a
   large footprint increase is an incomplete comparison — check both. `BaselineHostedBytes`/`CandidateHostedBytes`/
   `HostedDifferenceBytes` narrow that to only the engine files on the hosting path this process actually loads —
-  `lib/inprocess` on CLR10, or `lib/engine/<RuntimeIdentifier>` on CLR11+ (Auto hosting) — so the bundled-but-unused
+  the actual CLR/RID slot selected by the build manifest (or its portable IL fallback) — so the bundled-but-unused
   RIDs that inflate `*Bytes` do not also inflate the number you'd use to judge the candidate's real deployed cost.
   With `-MeasurePackageSize` (see above), `BaselinePackageBytes`/`CandidatePackageBytes`/`PackageDifferenceBytes`
   add the actual `.nupkg` size `Compress-PSResource` would publish — the number a PSGallery install actually

@@ -11,7 +11,7 @@ delimited reference block. For Claude Code, select `-Claude`:
 
 ```powershell
 # Objective: Preview, then install QuietCli's production instructions for Claude Code.
-Import-Module QuietCli -ErrorAction Stop
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
 $repository = (Get-Location).Path
 $preview = Add-QuietAgentInstruction -Path $repository -Claude -WhatIf
 $preview.Files | Select-Object Path, ReferencePath, Status

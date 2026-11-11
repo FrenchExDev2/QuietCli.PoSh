@@ -1,0 +1,42 @@
+name: QuietCli module release tags
+run-name: Release ${{ github.ref_name }}
+on:
+  push:
+    tags:
+      - 'FrenchExDev2.QuietCli.*.PoSh/v*'
+permissions:
+  contents: read
+concurrency:
+  group: quietcli-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  plan:
+    if: github.repository == 'FrenchExDev2/QuietCli.PoSh'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      module: ${{ steps.release.outputs.module }}
+      component: ${{ steps.release.outputs.component }}
+      version: ${{ steps.release.outputs.version }}
+      is_leader: ${{ steps.release.outputs.is_leader }}
+      release_tags: ${{ steps.release.outputs.release_tags }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate the tag, manifest version and publication capability
+        id: release
+        shell: pwsh
+        run: ./scripts/Get-QuietReleasePlan.ps1 -Tag $env:GITHUB_REF_NAME -Revision $env:GITHUB_SHA -ReadBatch -OutputPath $env:GITHUB_OUTPUT
+  release:
+    needs: plan
+    if: needs.plan.outputs.is_leader == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-psgallery.yml
+    with:
+      module: ${{ needs.plan.outputs.module }}
+      version: ${{ needs.plan.outputs.version }}
+      publish: true
+      release_tags: ${{ needs.plan.outputs.release_tags }}

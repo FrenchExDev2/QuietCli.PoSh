@@ -280,7 +280,7 @@ function Get-QuietVagrantLineCases {
             try{
                 $seen.Clear()
                 $transcript="1700000010,web,ui,info,Running provisioner: shell...`n1700000011,db,ui,detail,été漢🙂"
-                $result=quiet -AsObject -Ui -HandlerId $id -WorkingDirectory $RootDirectory -Listeners @(
+                $result=quiet -AsObject -CollectEvents -Ui -HandlerId $id -WorkingDirectory $RootDirectory -Listeners @(
                     {param($event,$runtime)[void]$seen.Add($event)},
                     {param($event,$runtime)throw 'ObserverFixtureFailure'}
                 ) -FilePath $dotnet -ArgumentList @($fixture,'chunks','20261108',$transcript)

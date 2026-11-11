@@ -7,7 +7,9 @@ change to AGENTS.md. Writes UTF-8 without BOM and LF line endings.
 .PARAMETER WorkspaceRoot
 QuietCli monorepo root; defaults to the parent of this script directory.
 #>
+[CmdletBinding(SupportsShouldProcess)]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Sync-SkillDocument')){return}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'AgentDocuments.ps1')
 $utf8=[Text.UTF8Encoding]::new($false,$true)

@@ -10,13 +10,29 @@ on:
         type: string
         required: false
         default: All
+      collect_performance:
+        description: Collect matrix PowerShell/CLR profiling and readable reports (required for Core qualification)
+        type: boolean
+        required: false
+        default: true
   workflow_dispatch:
+    inputs:
+      suite:
+        description: Declared test suite or All
+        type: string
+        required: false
+        default: All
+      collect_performance:
+        description: Collect matrix PowerShell/CLR profiling and readable reports (required for Core qualification)
+        type: boolean
+        required: false
+        default: true
 permissions:
   contents: read
 jobs:
   qualification-gate:
     name: QuietCli2 qualification gate
-    needs: [windows, linux, performance-results]
+    needs: [linux-matrix, windows, linux-result, performance-results]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -27,18 +43,20 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.sha }}
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
       - name: Require successful qualification of this exact revision
         id: gate
         shell: pwsh
         env:
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
           WINDOWS_RESULT: ${{ needs.windows.result }}
-          LINUX_RESULT: ${{ needs.linux.result }}
+          LINUX_RESULT: ${{ needs.linux-result.result }}
           PERFORMANCE_RESULT: ${{ needs.performance-results.result }}
         run: |
           # Objective: Fail closed and emit a commit-bound receipt only after every required check succeeds.
-          if($env:PERFORMANCE_RESULT -cne 'success'){throw 'PerformanceEvidenceReportRequired'}
-          ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -MutationResult skipped -SkipTty -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
+          ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -PerformanceResult $env:PERFORMANCE_RESULT -MutationResult skipped -SkipTty -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -46,6 +64,9 @@ jobs:
           path: artifacts/qualification-gate
   windows:
     name: Windows (${{ matrix.rid }}, ${{ matrix.channel }}, ${{ matrix.mode }})
+    needs: linux-matrix
+    env:
+      QUIETCLI_SUITE_HAS_CORE: ${{ needs.linux-matrix.outputs.has_core }}
     strategy:
       fail-fast: false
       matrix:
@@ -92,11 +113,21 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, reviewed upstream reference
         with:
           persist-credentials: false
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
-          dotnet-version: 11.0.100-rc.3.26522.148
+          global-json-file: global.json
           cache: true
-          cache-dependency-path: '**/*.csproj'
+          cache-dependency-path: |
+            **/*.csproj
+            Directory.Packages.props
+            Directory.Build.props
+            global.json
+      - uses: ./.github/actions/cache-resources
+        with:
+          host-channel: ${{ matrix.channel }}
       - name: Verify monorepo source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
@@ -109,11 +140,19 @@ jobs:
           # Objective: Select the checksum-verified host for every subsequent PowerShell step and child.
           $hostInfo=./scripts/Initialize-PowerShellHost.ps1 -Channel $env:HOST_CHANNEL -RuntimeIdentifier $env:HOST_RID -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-powershell-host')
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_PATH,($hostInfo.Directory+"`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+      - name: Build all required distributions in Release
+        shell: pwsh
+        run: ./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
+      - name: Resolve declared companion qualification controls
+        shell: pwsh
+        env:
+          QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+        run: ./scripts/Initialize-CiCompanions.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier '${{ matrix.rid }}' -RuntimeMajor ${{ matrix.runtime_major }} -EnvironmentPath $env:GITHUB_ENV
       - name: Prepare checksum-pinned PowerShell and CLR profilers
-        if: inputs.suite != 'Git'
+        if: needs.linux-matrix.outputs.has_core == 'true' && (inputs.collect_performance || (matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'))
         shell: pwsh
         run: |
-          $tools=./scripts/Initialize-Profilers.ps1 -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-profilers')
+          $tools=./scripts/Initialize-Profilers.ps1 -Module profiler,dottrace -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-profilers')
           $values="QUIETCLI_PROFILER_MODULE=$($tools.ProfilerModulePath)`nQUIETCLI_CLR_PROFILER=$($tools.ClrProfilerPath)`n"
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_ENV,$values,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
           [void][IO.Directory]::CreateDirectory('./artifacts/tests')
@@ -124,31 +163,28 @@ jobs:
           EXPECTED_RID: ${{ matrix.rid }}
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
           QUIETCLI_EXPECT_ENGINE_MODE: ${{ matrix.mode }}
-          QUIETCLI_GIT_PUSH_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
-          QUIETCLI_GIT_COMMAND_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
-          QUIETCLI_GIT_QUERY_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
-          QUIETCLI_GIT_ATTRIBUTION_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
-          QUIETCLI_GIT_PATH_QUERY_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
-          QUIETCLI_GIT_REVISION_MUTATION: ${{ matrix.channel == 'preview' && matrix.rid == 'win-x64' && '1' || '0' }}
+          QUIETCLI_COLLECT_PERFORMANCE: ${{ inputs.collect_performance }}
           QUIETCLI_EXPECT_HOST_VERSION: ${{ matrix.host_version }}
           QUIETCLI_EXPECT_RUNTIME_MAJOR: ${{ matrix.runtime_major }}
         # Core/All requires fresh imports, diagnostics and owned complex Git states with no Git companion.
         run: |
-          $parameters=@{Headless=$true;SkipTty=$true;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID}
-          if($env:QUIETCLI_SUITE -ne 'Git'){
+          $parameters=@{SkipTty=$true;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID;SkipBuild=$true}
+          if($env:QUIETCLI_COLLECT_PERFORMANCE -ceq 'true' -and $env:QUIETCLI_SUITE_HAS_CORE -ceq 'true'){
             $parameters.Profiler=$true;$parameters.ProfilerModulePath=$env:QUIETCLI_PROFILER_MODULE;$parameters.ClrProfilerPath=$env:QUIETCLI_CLR_PROFILER
           }
-          ./scripts/Invoke-WorkspaceCi.ps1 @parameters
+          ./scripts/Invoke-GitHubCi.ps1 @parameters
       - name: Require the complete run-profile tooling suite
-        if: inputs.suite != 'Git' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
+        id: run_profiles
+        if: needs.linux-matrix.outputs.has_core == 'true' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
         shell: pwsh
-        run: ./scripts/Invoke-WorkspaceCi.ps1 -Suite RunProfiles -SkipBuild -Headless -RunDirectory ./artifacts/run-profiles/tests -TimeoutSeconds 600
+        run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfiles -SkipBuild -RunDirectory ./artifacts/run-profiles/tests
       - name: Require every run-profile tooling mutant to be detected
-        if: inputs.suite != 'Git' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
+        id: run_profiles_mutation
+        if: needs.linux-matrix.outputs.has_core == 'true' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
         shell: pwsh
-        run: ./scripts/Invoke-WorkspaceCi.ps1 -Suite RunProfilesMutation -SkipBuild -Headless -RunDirectory ./artifacts/run-profiles/mutation -TimeoutSeconds 3300
+        run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfilesMutation -SkipBuild -RunDirectory ./artifacts/run-profiles/mutation
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: always() && inputs.suite != 'Git' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
+        if: always() && needs.linux-matrix.outputs.has_core == 'true' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess' && ((steps.run_profiles.outcome != '' && steps.run_profiles.outcome != 'skipped') || (steps.run_profiles_mutation.outcome != '' && steps.run_profiles_mutation.outcome != 'skipped'))
         with:
           name: quietcli-run-profiles-${{ github.sha }}
           path: artifacts/run-profiles
@@ -159,6 +195,7 @@ jobs:
         shell: pwsh
         env:
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+          QUIETCLI_COLLECT_PERFORMANCE: ${{ inputs.collect_performance }}
         run: |
           $hostReceipt=Join-Path $env:RUNNER_TEMP 'quietcli-powershell-host/host-receipt.json'
           if(Test-Path $hostReceipt){
@@ -166,30 +203,58 @@ jobs:
             Copy-Item -LiteralPath $hostReceipt -Destination ./artifacts/tests/host-receipt.json
           }
           try {
-            ./scripts/New-CoreEvidenceBundle.ps1 -ReportRoot ./artifacts/tests -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -RequireProfiling:($env:QUIETCLI_SUITE -ne 'Git')
+            ./scripts/New-CoreEvidenceBundle.ps1 -ReportRoot ./artifacts/tests -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -RequireProfiling:($env:QUIETCLI_COLLECT_PERFORMANCE -ceq 'true' -and $env:QUIETCLI_SUITE_HAS_CORE -ceq 'true')
           } finally {
-            ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/evidence -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -Suite $env:QUIETCLI_SUITE
+            if($env:QUIETCLI_COLLECT_PERFORMANCE -ceq 'true' -and $env:QUIETCLI_SUITE_HAS_CORE -ceq 'true'){
+              ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/evidence -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -Suite $env:QUIETCLI_SUITE
+            }
           }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: quietcli-core-evidence-${{ matrix.rid }}-${{ matrix.channel }}-${{ matrix.mode }}-${{ github.sha }}
           path: artifacts/evidence
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
           compression-level: 1
+      - name: Prepare bounded redacted failure diagnostics
+        if: failure()
+        shell: pwsh
+        env:
+          QUIETCLI_DIAGNOSTIC_TOKEN: ${{ github.token }}
+        run: ./scripts/Export-CiFailureDiagnostics.ps1
+      - name: Save redacted Windows failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: quietcli-failure-${{ matrix.rid }}-${{ matrix.channel }}-${{ matrix.mode }}-${{ github.sha }}-attempt${{ github.run_attempt }}
+          path: artifacts/failure-diagnostics
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 6
   linux-matrix:
     name: Linux matrix
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
+      has_core: ${{ steps.matrix.outputs.has_core }}
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
       - name: Define the native Linux platform/RID/runner matrix once for every consumer job
         id: matrix
         shell: pwsh
+        env:
+          QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
         run: |
-          # Objective: single source of truth shared by linux-images, linux-git-images and linux,
+          ./scripts/Initialize-CiCompanions.ps1 -Suite $env:QUIETCLI_SUITE -OutputPath $env:GITHUB_OUTPUT
+          # Objective: single source of truth shared by image and execution jobs,
           # instead of three hand-duplicated YAML copies of the same four native targets.
           $rows=@(
             [ordered]@{platform='debian';rid='linux-x64';runner='ubuntu-latest'},
@@ -200,14 +265,14 @@ jobs:
           $json=(@{include=$rows}|ConvertTo-Json -Depth 4 -Compress)
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_OUTPUT,"matrix=$json`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
   linux-images:
-    name: Image (${{ matrix.rid }})
+    name: Suite image (${{ matrix.rid }})
     needs: linux-matrix
     if: github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     permissions:
       contents: read
       packages: write
     concurrency:
-      group: quietcli2-image-${{ matrix.rid }}
+      group: quietcli2-suite-image-${{ matrix.rid }}
       cancel-in-progress: false
     strategy:
       fail-fast: false
@@ -218,51 +283,148 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - name: Publish a missing toolchain image or reuse its verified digest
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+      - name: Prepare the image layers declared by the selected suites
         shell: pwsh
         env:
           EXPECTED_RID: ${{ matrix.rid }}
           QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
-        run: ./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -PublishCache
+          QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+        run: ./scripts/New-CiSuiteImage.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -PublishCache -ResolveOnly -ContainerRuntime docker
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: quietcli2-image-${{ matrix.rid }}
+          name: quietcli2-suite-image-${{ inputs.suite || 'All' }}-${{ matrix.rid }}
           path: artifacts/ci-images
-  linux-git-images:
-    name: Git image (${{ matrix.rid }})
+  linux-selection:
+    name: Select verified Linux images and Docker fallback
     needs: [linux-matrix, linux-images]
-    if: github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (inputs.suite == 'Git' || inputs.suite == 'All')
+    if: ${{ always() && !cancelled() && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
-      packages: write
-    concurrency:
-      group: quietcli2-git-image-${{ matrix.rid }}
-      cancel-in-progress: false
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.linux-matrix.outputs.matrix) }}
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 35
+      packages: read
+    outputs:
+      container_matrix: ${{ steps.select.outputs.container_matrix }}
+      docker_matrix: ${{ steps.select.outputs.docker_matrix }}
+      has_container: ${{ steps.select.outputs.has_container }}
+      has_docker_container_runtime: ${{ steps.select.outputs.has_docker_container_runtime }}
+      has_core: ${{ needs.linux-matrix.outputs.has_core }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - name: Publish a missing Git module image or reuse its verified digest
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+      - name: Verify registry identity and choose every native target exactly once
+        id: select
         shell: pwsh
         env:
-          EXPECTED_RID: ${{ matrix.rid }}
+          QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
           QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
-        run: ./scripts/New-CiModuleImage.ps1 -Module Git -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -PublishCache
+        run: ./scripts/Select-GitHubCiMatrix.ps1 -Suite $env:QUIETCLI_SUITE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: quietcli2-git-image-${{ matrix.rid }}
-          path: artifacts/ci-images
+          name: quietcli-linux-selection-${{ github.sha }}-attempt${{ github.run_attempt }}
+          path: artifacts/github-matrix
+          retention-days: 14
   linux:
-    name: Linux (${{ matrix.rid }})
-    needs: [linux-images, linux-git-images]
-    if: ${{ always() && !cancelled() && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') && (needs.linux-git-images.result == 'success' || needs.linux-git-images.result == 'skipped') }}
+    name: Linux job container (${{ matrix.rid }})
+    needs: linux-selection
+    env:
+      QUIETCLI_SUITE_HAS_CORE: ${{ needs.linux-selection.outputs.has_core }}
+    if: ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_container == 'true' }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.linux-selection.outputs.container_matrix) }}
+    container:
+      image: ${{ matrix.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+      env:
+        DOTNET_ROOT: ${{ matrix.dotnet_root }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+      - uses: ./.github/actions/cache-resources
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-${{ runner.arch }}-quietcli-nuget-${{ hashFiles('**/*.csproj', 'Directory.Packages.props', 'Directory.Build.props', 'global.json') }}
+      - name: Verify source lock and restore pinned resources
+        run: ./scripts/Initialize-Workspace.ps1 -Restore
+      - name: Build distributions in the selected native toolchain image
+        run: ./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
+      - name: Run selected suites directly inside the GitHub job container
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+          QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+          QUIETCLI_COLLECT_PERFORMANCE: ${{ inputs.collect_performance }}
+        run: |
+          $parameters=@{Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID;SkipBuild=$true;SkipTty=$true}
+          if($env:QUIETCLI_COLLECT_PERFORMANCE -ceq 'true' -and $env:QUIETCLI_SUITE_HAS_CORE -ceq 'true'){
+            $tools=./scripts/Initialize-Profilers.ps1 -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-profilers')
+            $parameters.Profiler=$true;$parameters.ProfilerModulePath=$tools.ProfilerModulePath;$parameters.ClrProfilerPath=$tools.ClrProfilerPath
+          }
+          ./scripts/Invoke-GitHubCi.ps1 @parameters
+      - name: Assemble revision-bound job-container reports
+        if: always()
+        env:
+          QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+          QUIETCLI_COLLECT_PERFORMANCE: ${{ inputs.collect_performance }}
+        run: |
+          try {
+            ./scripts/New-CoreEvidenceBundle.ps1 -ReportRoot ./artifacts/tests -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -RequireProfiling:($env:QUIETCLI_COLLECT_PERFORMANCE -ceq 'true' -and $env:QUIETCLI_SUITE_HAS_CORE -ceq 'true')
+          } finally {
+            if($env:QUIETCLI_COLLECT_PERFORMANCE -ceq 'true' -and $env:QUIETCLI_SUITE_HAS_CORE -ceq 'true'){
+              ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/evidence -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -Suite $env:QUIETCLI_SUITE
+            }
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quietcli-core-evidence-${{ matrix.rid }}-Auto-${{ github.sha }}
+          path: artifacts/evidence
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 1
+      - name: Prepare bounded redacted failure diagnostics
+        if: failure()
+        env:
+          QUIETCLI_DIAGNOSTIC_TOKEN: ${{ github.token }}
+        run: ./scripts/Export-CiFailureDiagnostics.ps1
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: quietcli-failure-${{ matrix.rid }}-${{ github.sha }}-attempt${{ github.run_attempt }}
+          path: artifacts/failure-diagnostics
+          if-no-files-found: warn
+          retention-days: 14
+  linux-test-driver:
+    name: Linux test driver (${{ matrix.rid }})
+    needs: linux-selection
+    env:
+      QUIETCLI_SUITE_HAS_CORE: ${{ needs.linux-selection.outputs.has_core }}
+    if: ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_docker_container_runtime == 'true' }}
     permissions:
       contents: read
       packages: read
@@ -270,86 +432,124 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: debian
-            rid: linux-x64
-            runner: ubuntu-latest
-          - platform: alpine
-            rid: linux-musl-x64
-            runner: ubuntu-latest
-          - platform: debian
-            rid: linux-arm64
-            runner: ubuntu-24.04-arm
-          - platform: alpine
-            rid: linux-musl-arm64
-            runner: ubuntu-24.04-arm
+      matrix: ${{ fromJson(needs.linux-selection.outputs.docker_matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
-          dotnet-version: 11.0.100-rc.3.26522.148
+          global-json-file: global.json
           cache: true
-          cache-dependency-path: '**/*.csproj'
+          cache-dependency-path: |
+            **/*.csproj
+            Directory.Packages.props
+            Directory.Build.props
+            global.json
+      - uses: ./.github/actions/cache-resources
       - name: Verify monorepo source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Build engines for the six distributions
         shell: pwsh
-        run: ./scripts/Build-Workspace.ps1
+        run: ./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
       - name: Run selected suites and Core integration in the native image
         shell: pwsh
         env:
           PLATFORM: ${{ matrix.platform }}
           EXPECTED_RID: ${{ matrix.rid }}
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+          QUIETCLI_COLLECT_PERFORMANCE: ${{ inputs.collect_performance }}
           QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
         run: |
           # Objectif : Réutiliser le cache publié ; construire localement si une PR ne peut pas y accéder.
-          $image = if ($env:QUIETCLI_SUITE -eq 'Core') {
-            ./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache
-          } else {
-            ./scripts/New-CiModuleImage.ps1 -Module Git -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache
-          }
+          $image = ./scripts/New-CiSuiteImage.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -ContainerRuntime docker
           # Core/All also requires Core-only controlled Git evidence on every Linux matrix RID.
           # Objectif : Tester sans réseau dans l’image native dont l’identité vient d’être vérifiée.
-          $parameters=@{Image=$image.Image;Platform=$env:PLATFORM;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID;Headless=$true;SkipTty=$true}
-          if($env:QUIETCLI_SUITE -ne 'Git'){
+          $parameters=@{Image=$image.Image;Platform=$env:PLATFORM;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID;SkipBuild=$true;SkipTty=$true;RunDirectory='./artifacts/containers/github-docker'}
+          if($env:QUIETCLI_COLLECT_PERFORMANCE -ceq 'true' -and $env:QUIETCLI_SUITE_HAS_CORE -ceq 'true'){
             $tools=./scripts/Initialize-Profilers.ps1 -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-profilers')
             $parameters.Profiler=$true;$parameters.ProfilerModulePath=$tools.ProfilerModulePath;$parameters.ClrProfilerPath=$tools.ClrProfilerPath
           }
-          ./scripts/Invoke-ContainerCi.ps1 @parameters
+          ./scripts/Invoke-GitHubCi.ps1 @parameters
       - name: Assemble revision-bound guest reports and profiling traces
         if: always()
         shell: pwsh
         env:
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+          QUIETCLI_COLLECT_PERFORMANCE: ${{ inputs.collect_performance }}
         run: |
           try {
-            ./scripts/New-CoreEvidenceBundle.ps1 -ReportRoot ./artifacts/containers -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -RequireProfiling:($env:QUIETCLI_SUITE -ne 'Git')
+            ./scripts/New-CoreEvidenceBundle.ps1 -ReportRoot ./artifacts/containers -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -RequireProfiling:($env:QUIETCLI_COLLECT_PERFORMANCE -ceq 'true' -and $env:QUIETCLI_SUITE_HAS_CORE -ceq 'true')
           } finally {
-            ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/evidence -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -Suite $env:QUIETCLI_SUITE
+            if($env:QUIETCLI_COLLECT_PERFORMANCE -ceq 'true' -and $env:QUIETCLI_SUITE_HAS_CORE -ceq 'true'){
+              ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/evidence -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -Suite $env:QUIETCLI_SUITE
+            }
           }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: quietcli-core-evidence-${{ matrix.rid }}-Auto-${{ github.sha }}
           path: artifacts/evidence
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
           compression-level: 1
+      - name: Prepare bounded redacted failure diagnostics
+        if: failure()
+        shell: pwsh
+        env:
+          QUIETCLI_DIAGNOSTIC_TOKEN: ${{ github.token }}
+        run: ./scripts/Export-CiFailureDiagnostics.ps1
+      - name: Save redacted Linux failure diagnostics and image identity
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: quietcli-failure-${{ matrix.rid }}-${{ github.sha }}-attempt${{ github.run_attempt }}
+          path: artifacts/failure-diagnostics
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 6
+  linux-result:
+    name: Require every selected Linux execution path
+    needs: [linux-selection, linux, linux-test-driver]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+      - name: Reject failed or unexpectedly skipped Linux matrices
+        shell: pwsh
+        env:
+          SELECTION_RESULT: ${{ needs.linux-selection.result }}
+          CONTAINER_RESULT: ${{ needs.linux.result }}
+          FALLBACK_RESULT: ${{ needs.linux-test-driver.result }}
+          HAS_CONTAINER: ${{ needs.linux-selection.outputs.has_container }}
+          HAS_DOCKER_CONTAINER_RUNTIME: ${{ needs.linux-selection.outputs.has_docker_container_runtime }}
+        run: |
+          . ./scripts/GitHubCi.ps1
+          Assert-GitHubCiLinuxResults -SelectionResult $env:SELECTION_RESULT -ContainerResult $env:CONTAINER_RESULT -FallbackResult $env:FALLBACK_RESULT -HasContainer:($env:HAS_CONTAINER -ceq 'true') -HasFallback:($env:HAS_DOCKER_CONTAINER_RUNTIME -ceq 'true')
   performance-results:
     name: Readable performance evidence for the complete matrix
-    needs: [windows, linux]
-    if: always()
+    needs: [linux-matrix, windows, linux, linux-test-driver]
+    if: ${{ always() && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         if: always()
         with:

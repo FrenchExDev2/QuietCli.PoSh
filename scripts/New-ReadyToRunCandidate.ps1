@@ -14,10 +14,10 @@ docs/README-readytorun_profiling.md for the statistical protocol this candidate 
 Source workspace to copy FrenchExDev2.QuietCli.Core.PoSh and global.json from; left untouched.
 
 .PARAMETER CandidateRoot
-Throwaway destination for the copy; removed and recreated.
+New owned destination for the copy; existing paths and workspace overlap are rejected.
 
 .PARAMETER RuntimeIdentifier
-RID to publish ReadyToRun for; defaults to this machine's Windows architecture, or linux-x64 on Linux.
+RID to publish ReadyToRun for; defaults to the actual host RID, including musl and ARM64.
 
 .PARAMETER Configuration
 Build configuration, Release by default.
@@ -29,30 +29,37 @@ The candidate module's .psd1 manifest path, to pass as -CandidateModule to Invok
 $candidate = ./scripts/New-ReadyToRunCandidate.ps1
 ./scripts/Invoke-ColdStartGate.ps1 -CandidateModule $candidate -CandidateLabel readytorun -Arguments @{ MeasurePackageSize = $true }
 #>
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param(
     [string]$WorkspaceRoot = (Split-Path $PSScriptRoot -Parent),
     [string]$CandidateRoot = (Join-Path ([IO.Path]::GetTempPath()) 'quietcli-r2r-candidate'),
-    [string]$RuntimeIdentifier = $(
-        if ($IsWindows) { 'win-' + [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant() }
-        elseif ($IsLinux) { 'linux-x64' }
-        else { throw 'ReadyToRunRuntimeIdentifierRequired: pass -RuntimeIdentifier explicitly on this platform.' }
-    ),
+    [ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier = [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier,
     [ValidateSet('Release', 'Debug')][string]$Configuration = 'Release'
 )
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-ReadyToRunCandidate')){return}
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 
-Remove-Item -LiteralPath $CandidateRoot -Recurse -Force -ErrorAction SilentlyContinue
+$CandidateRoot=[IO.Path]::GetFullPath($CandidateRoot,$PWD.Path)
+$sourceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
+if($CandidateRoot -eq [IO.Path]::GetPathRoot($CandidateRoot) -or $sourceRoot.StartsWith($CandidateRoot.TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or $CandidateRoot.StartsWith($sourceRoot.TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or $CandidateRoot -eq $sourceRoot){throw 'ReadyToRunCandidateUnsafeDestination'}
+if(Test-Path -LiteralPath $CandidateRoot){throw 'ReadyToRunCandidateDestinationExists: choose a new owned directory.'}
 New-Item -ItemType Directory -Path $CandidateRoot | Out-Null
 Copy-Item (Join-Path $WorkspaceRoot 'global.json') $CandidateRoot
+Copy-Item (Join-Path $WorkspaceRoot 'Directory.Packages.props') $CandidateRoot
+Copy-Item (Join-Path $WorkspaceRoot 'Directory.Build.props') $CandidateRoot
 Copy-Item (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh') (Join-Path $CandidateRoot 'FrenchExDev2.QuietCli.Core.PoSh') -Recurse
 
 $project = 'FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj'
-$output = 'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess'
+$output = 'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/'+$RuntimeIdentifier
 $inputs = @(Get-QuietBinaryInputs $CandidateRoot $project)
 $null = Invoke-WorkspaceNative dotnet @('publish', (Join-Path $CandidateRoot $project), '-f', 'net10.0', '-c', $Configuration, '-r', $RuntimeIdentifier, '--self-contained', 'false', '-p:PublishReadyToRun=true', '-o', (Join-Path $CandidateRoot $output), '--nologo') $CandidateRoot
-Write-QuietBuildManifest $CandidateRoot $project $output -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $RuntimeIdentifier
+$target=Get-QuietRuntimeTargets $WorkspaceRoot|Where-Object Rid -CEQ $RuntimeIdentifier
+Write-QuietBuildManifest $CandidateRoot $project $output -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $RuntimeIdentifier -PlatformTarget $target.PlatformTarget -ReadyToRun
+$portable=Join-Path $CandidateRoot 'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/build-manifest.json'
+$manifest=Get-Content -LiteralPath $portable -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable
+$manifest.ReadyToRunTargets=@($RuntimeIdentifier)
+Write-WorkspaceJson $portable $manifest
 
 $manifestPath = Join-Path $CandidateRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "ReadyToRunCandidateManifestMissing: $manifestPath" }

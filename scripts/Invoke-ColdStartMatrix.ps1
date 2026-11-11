@@ -71,7 +71,7 @@ One result object per target (Target, State, ReportFile/Error) — also written 
 .EXAMPLE
 ./scripts/Invoke-ColdStartMatrix.ps1 -All -Platform x64 -LocalBuild -Headless -SkipBuild -MaxConcurrency 4
 #>
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param(
     [ValidateSet('windows', 'debian-x64', 'alpine-x64', 'debian-arm64', 'alpine-arm64')]
     [string[]]$Targets,
@@ -86,6 +86,7 @@ param(
     [AllowEmptyString()][string]$RegistryToken = $env:QUIETCLI_REGISTRY_TOKEN,
     [switch]$LocalBuild
 )
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ColdStartMatrix')){return}
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 foreach ($module in 'RunEncoding', 'RunFormat') { Import-Module (Join-Path $PSScriptRoot "lib/$module.psm1") -Force }

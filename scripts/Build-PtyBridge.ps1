@@ -1,4 +1,3 @@
-# Objectif : Compiler les bridges PTY Linux x64 et ARM64 depuis leur source C avec une toolchain vérifiée.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -10,7 +9,8 @@ Explicit Zig executable from the pinned version.
 .PARAMETER DownloadCompiler
 Explicitly downloads the checksum-pinned Windows Zig archive into workspace artifacts.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$CompilerPath,[switch]$DownloadCompiler)
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$CompilerPath,[switch]$DownloadCompiler)
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Build-PtyBridge')){return}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 $lock=Get-Content (Join-Path $WorkspaceRoot 'build/zig.lock.json') -Encoding utf8 -Raw|ConvertFrom-Json

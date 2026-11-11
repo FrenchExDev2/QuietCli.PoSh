@@ -146,6 +146,7 @@ $catalogue = @(
     @{ Name = 'tool-download-digest-ignored'; File = 'lib/RunToolCache.psm1'; From = '[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)) -cne $package.SHA256'; To = '$false' }
     @{ Name = 'tool-offline-ignored'; File = 'lib/RunToolCache.psm1'; From = 'if ($Offline)'; To = 'if ($false)' }
     @{ Name = 'initializer-offline-not-forwarded'; File = 'Initialize-Profilers.ps1'; From = '-Offline:$Offline'; To = '-Offline:$false' }
+    @{ Name = 'initializer-selection-ignored'; File = 'Initialize-Profilers.ps1'; From = 'Get-RunProfilerPackages -Module $Module'; To = 'Get-RunProfilerPackages' }
     @{ Name = 'initializer-directory-ignored'; File = 'Initialize-Profilers.ps1'; From = '-OutputDirectory $OutputDirectory'; To = '-OutputDirectory "wrong-cache"' }
 )
 if ($MutantName.Count -gt 0) { $catalogue = @($catalogue | Where-Object { $_.Name -in $MutantName }) }

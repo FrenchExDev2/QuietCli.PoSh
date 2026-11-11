@@ -24,11 +24,12 @@ CI-only launch without the local Windows monitoring window.
 .PARAMETER Worker
 Internal background entry point; use the normal launcher locally.
 #>
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param([Parameter(Mandatory)][string]$Image,
     [Parameter(Mandatory)][ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,
     [string[]]$RuntimeRoots=@('/usr/lib/dotnet','/usr/share/dotnet'),[ValidateRange(10,99)][int]$ExpectedRuntimeMajor=10,
     [string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[switch]$Headless,[switch]$Worker)
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ContainerRuntimeDiagnosis')){return}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 Import-Module (Join-Path $PSScriptRoot 'lib/RuntimeDiagnosis.psm1')

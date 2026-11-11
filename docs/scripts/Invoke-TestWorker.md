@@ -1,10 +1,36 @@
 # Invoke-TestWorker.ps1
 
+## Independent companion catalogues
+
+Core, Git and Vagrant retain their own `.psm1` case metadata and manifest TestCatalogue/TestExecution declarations. The worker forwards run directories and applies Partial/Incomplete handling to every ordinary companion, not only Core. CaseWorker accepts a declared ordinary suite with an exact parent-selected filter, one internal slot and no profiler. It cannot launch All/focused tooling as a case worker. All divides the parent budget among Git/Vagrant suite slots; individual isolated cases still receive one. Each owner writes its own execution plan and classification/progress, with no central Core case list for siblings.
+
+## Declarative Core case scheduling
+
+Core consumes its test manifest's `PrivateData.QuietCli.TestExecution` policy and saves `core-execution-plan.json` before cases run. Only adjacent explicitly eligible cases enter a bounded process batch; Ordered/Exclusive stages preserve barriers. The same built checkout and image are reused. The CaseWorker switch is internal: it requires Core, a case filter, no profiler and MaxConcurrency one, prevents recursive case fan-out and clears inherited stop-on-first behavior so the parent can validate the exact single-case outcome. Child status reports remain available, while only the parent prints cumulative GitHub case counters.
+
+Each child initializes its own configuration, SQLite, Recall root and reports. Host/runtime/RID and TTY scope checks remain active. The parent accepts a partial child only for the exact declared case and aggregates it into its own complete or explicitly partial result. Errors, missing/contradictory receipts and timeouts become failures. See [the scheduling library](lib/TestCaseScheduling.md) and [classification/concurrency](../README-test-classification-and-concurrency.md).
+
+`All` executes Core first and requires complete successful integration evidence before fan-out. Other declared companions run in at most two isolated child processes through `lib/CiCompanionWorkers.psm1`, further bounded by MaxConcurrency. The exact current PSHOME, profile, RID/hosting and TTY scope are retained; each child has its own reports, database and configuration. The common build and Linux image are reused. Any failed/partial Core, failed child or missing/nonzero terminal result blocks All. Child reports remain in `companions/<Suite>` and are collected recursively by the evidence bundle.
+
+The worker is shared by two entry points: a background process with a visible monitor for local
+workstation tests, and direct execution in the current GitHub PowerShell process/container through
+`Invoke-GitHubCi.ps1`. With `GITHUB_ACTIONS=true`, each ordinary companion case logs its name, state
+and actual passed/failed counters while continuing to save the same progress and terminal reports.
+
+Companion modules are imported with `-DisableNameChecking` on both ordinary suite and Recall paths. Before ordinary suites, Core.Tests is explicitly imported with the same option: Git.Tests and Vagrant.Tests declare it in `RequiredModules`, whose implicit imports do not inherit the caller's switch. The same worker serves local and GitHub runs, so their reports omit the repeated unapproved-verb warning while retaining other PowerShell warnings. The isolated companion-import regression asserts that its test-module import emits no warning.
+
 ## Purpose
 
 This is the actual background worker that runs the companion test suites (Core, Git, Vagrant, Integration, RealStatus, Import, RunProfiles, GalleryPreview, Script, AgentInstructions, ConfigurationDelivery, Recall, etc.) in an isolated process, verifying environment/engine identity invariants before and after the run, and always persisting a terminal JSON report (`status.json`, `summary.json`) so a concurrent monitor and the launching process can observe progress and the final state. It solves the need for test execution that is simultaneously isolated (own process, own module imports, own engine), self-verifying (detects source drift during the run, mismatched runtime/engine identifiers), and observable (every state transition written atomically to disk for a separate monitor window to read). It is spawned by `Invoke-WorkspaceCi.ps1` via `Start-Process` (confirmed: `Invoke-WorkspaceCi.ps1` line 57/67–69 builds `$workerPath = Join-Path $PSScriptRoot 'Invoke-TestWorker.ps1'` and launches it hidden), which is itself called directly from `.github/workflows/ci.yml` and `.github/workflows/publish-psgallery.yml`. This script is never meant to be run by a human directly — it is the hidden half of the launcher/worker/monitor triad.
 
 ## Usage
+
+For `.NET` automation, use the public `Invoke-DotNetTests.ps1` facade. Its shared worker
+selection is `-Suite DotNet -DotNetSuite Readiness|Provisioning|Layout|Locks|All`.
+The Locks campaign covers CI archive/base-image locks and source runtime pins. This branch
+loads the tooling test scripts without importing the product or checking its engine identity;
+it still records source identities, detects source drift and saves the shared terminal reports.
+It qualifies the selected automation only, independently of native engine/image qualification.
 
 This is an `end`-block script with a `dynamicparam` block (so `-Suite` validated values depend on `New-QuietWorkspaceSuiteParameter`, resolved at parse time from `WorkspaceProjects.ps1`).
 
@@ -18,6 +44,7 @@ Parameters:
 - `ProfilerModulePath`, `ClrProfilerPath` (`string`, optional) — explicit pinned profiler artifacts.
 - `Case` (`string`, optional) — development-only wildcard case filter (sets `$env:QUIETCLI_TEST_CASE`).
 - `StopOnFirstFailure` (`switch`, optional) — development-only; stops the Core run at first failure (sets `$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE`).
+- `MaxConcurrency` (`int`, `ValidateRange(1,32)`, default `min(4, processor count)`) — exported as `QUIETCLI_TEST_MAX_CONCURRENCY` for parallel-safe internal campaigns.
 - `-Suite` (dynamic, default `'All'`) — `Core`, `Git`, `Vagrant`, `All`, `Import`, `Integration`, `RealStatus`, `RunProfiles`/`RunProfilesMutation`, `GalleryPreview`, `Script`, `AgentInstructions`, `ConfigurationDelivery`, `Recall`/`RecallMutation`/`RecallLarge`.
 
 Example (as actually invoked by `Invoke-WorkspaceCi.ps1`):
@@ -37,6 +64,7 @@ pwsh -File ./scripts/Invoke-TestWorker.ps1 -WorkspaceRoot . -RunDirectory ./arti
 ## Side effects
 
 - Writes `status.json` continuously via `Write-WorkspaceJson` as case-by-case progress updates (many call sites, e.g. line 46, 65, 71, 76...), plus `source-identity.json`, `source-identity-final.json`, `summary.json`, and per-selected-suite `<suite>-suite.json` files, all under `$RunDirectory`.
+- Runs the mandatory Core integration-evidence assertion only after the Core suite itself has zero failures. A failed case therefore remains the terminal diagnostic instead of being replaced by `CoreIntegrationEvidenceMissing`.
 - On any uncaught exception, writes `worker-failure.json` with message/stack/position (line 154).
 - Imports modules with `-Force`, which can reload/replace already-loaded module state in the process.
 - Calls `Stop-QuietEngine` unconditionally in the `finally` block (line 166), swallowing any error from it (`catch{}`), which stops whatever engine process the Core module may have started.
@@ -59,3 +87,17 @@ The script is dense but internally coherent and clearly battle-tested as the bac
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+## .NET tooling review
+
+The DotNet branch in scripts/Invoke-TestWorker.ps1 dispatches Invoke-DotNetQualification before importing the product module. Its initial/final source identities omit binaries, and terminal handling does not query the engine. Offline fixtures retain independent property/fuzz/mutation counts and source hashes in dotnet-summary.json. The existing shared terminal report and crash handling remain authoritative.
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Background worker for the companion suites; always persists a terminal report.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

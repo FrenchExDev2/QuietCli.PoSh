@@ -1,5 +1,7 @@
 # Preview versions and GitHub publication
 
+Version-mode operator tags share an annotated batch. One dependency-ordered leader runs release qualification and packaging once, then publishes selected modules in order. Followers validate the plan without another matrix. PR qualification stays independent, with no cross-run receipt reuse. Legacy/manual tags without batch metadata remain standalone; existing immutable tags are not rewritten.
+
 Keep the package name, GUID and numeric target release stable while iterating on a preview. For a target `0.2.0`,
 the packaging workflow produces identities such as:
 
@@ -20,6 +22,33 @@ for the next feature release or patch. The stable release removes the prerelease
 labels do not use `preview1.42` or `+build42`; the numeric `ModuleVersion` stays separate from `PSData.Prerelease`.
 See Microsoft's [module prerelease contract](https://learn.microsoft.com/powershell/gallery/concepts/module-prerelease-support)
 and [NuGet ordering rules](https://learn.microsoft.com/nuget/concepts/package-versioning).
+
+## Module release tags and independent versions
+
+Merge into `develop` runs qualification and profiling without Gallery publication. Public releases use independent module tag namespaces:
+
+| Tag example | Package | Current capability |
+| --- | --- | --- |
+| `FrenchExDev2.QuietCli.Core.PoSh/v0.2.0-preview` | Existing `FrenchExDev2.QuietCli.Core.PoSh` | Available after full tagged-revision qualification |
+| `FrenchExDev2.QuietCli.Git.PoSh/v0.2.0-preview1` | Existing `FrenchExDev2.QuietCli.Git.PoSh` | Enabled; parser payload/dependency validation and isolated installation required |
+| `FrenchExDev2.QuietCli.Vagrant.PoSh/v0.1.0-preview` | `FrenchExDev2.QuietCli.Vagrant.PoSh` | CI release rejected while the manifest is nonpublishable and companion packaging is unavailable |
+
+The tag must exactly match the owning source manifest's numeric version and optional prerelease suffix. Stable publication requires a manifest without `PSData.Prerelease`. No CI version override or automatic numeric bump occurs. Test modules remain internal and are not Gallery releases.
+
+From a committed, clean checkout, preview or create a local release tag:
+
+```powershell
+./scripts/Get-QuietReleasePlan.ps1 -Tag FrenchExDev2.QuietCli.Core.PoSh/v0.2.0-preview
+./scripts/New-QuietPreviewTag.ps1 -Release -WhatIf
+$release = ./scripts/New-QuietPreviewTag.ps1 -Release
+$release.Tag
+```
+
+For commit/tag/push orchestration, use New-QuietPreviewTag.ps1 with Version and one or more Module aliases. NextPreview computes preview1, preview2, etc. independently per module/base from exact local and remote tags; Preview accepts an explicit number or null. Example: `./scripts/New-QuietPreviewTag.ps1 -Module Core,Git -Version 0.3.0 -NextPreview -WhatIf`. Remove WhatIf to execute, or use NoPush for local commits/tags. NoCommit requires versions already committed. Existing local or remote tags are refused without force. See [all operator options and recovery rules](scripts/New-QuietPreviewTag.md).
+
+Namespaced tag pushes request publication through release-tags.yml: validate the selected manifest, qualify All with profiling, prepare one verified selected package and publish those bytes. Legacy local timestamp/exact-manifest tag modes without Version still never push. No GitHub Release is created automatically, and a published identity is never overwritten.
+
+Publish a compatible Core version before a companion that depends on it. Git CI publication now preserves its existing script-module/package name and RequiredModules dependency, validates net10.0/net11.0 parser payloads and exercises isolated installation plus a Git handler. Versions advance independently; a Core release does not imply republishing every companion. Partial command/version and real-provider qualification remains explicit.
 
 ## Create a local timestamped Git tag
 
@@ -56,7 +85,7 @@ $packages = Join-Path ([IO.Path]::GetTempPath()) 'quietcli-preview-42-1'
 The destination must be new. The scripts create the public Core `.nupkg`, `package-set.json` and `preview.json`.
 They need no key and do not contact PSGallery. `-QualifiedRevision <sha>` optionally requires the actual checkout HEAD
 to match a qualification receipt. Source manifests are unchanged: only copied package manifests receive the generated
-label. Their numeric versions and GUIDs are preserved. Git remains a development companion and is never included in public packages.
+label. Their numeric versions and GUIDs are preserved. Git's existing Gallery entry is independent; this Core packager never includes the Git companion in the Core nupkg.
 Package preparation does not mark a release as published.
 
 Use the dedicated offline qualification suite, with the shared visible monitor:
@@ -68,27 +97,30 @@ Use the dedicated offline qualification suite, with the shared visible monitor:
 Microsoft recommends a local/private repository for testing the publication process. Public previews are actual
 releases for consumption and feedback, rather than disposable publication-test objects.
 
-## Automatic previews and manual artifacts
+## Manual preview and exact-version artifacts
 
-`preview-psgallery.yml` runs on applicable source/infrastructure pushes to `develop` in the original repository.
-It calls `publish-psgallery.yml`, which reuses `ci.yml` with `suite=All`. Only the exact `qualified_sha` may be packaged
-and published. GitHub CI excludes native TTY/PTY execution, fuzzing and mutation; receipts record that scope explicitly. Local TTY campaigns remain available. Builds cover all embedded runtime distributions; the packaging job checks its actual build again.
+`preview-psgallery.yml` is manual on `develop` in the original repository and always passes `publish=false`.
+It calls `publish-psgallery.yml`, which uses `ci.yml` with `suite=All` and matrix profiling. Only the exact
+qualified revision may be packaged. GitHub CI excludes native TTY/PTY qualification; receipts record that scope
+explicitly. Local TTY campaigns remain available. Builds cover all embedded runtime distributions; the packaging
+job checks its actual build again.
 
 The packaging job has no Gallery key. It uploads the Core nupkg and its plans as a run/version/attempt-specific
 artifact. The publication job checks out the qualified revision, downloads that exact artifact and verifies its hashes,
-version and the Core-only package set before publishing Core. It never rebuilds between artifact creation and publication.
-Automatic previews whose `develop` head has advanced are skipped before publication.
+version and the Core-only package set before publishing Core for an explicit matching tag push. It never rebuilds
+between artifact creation and publication and does not depend on the current develop head.
 
-For artifact-only CI, dispatch **QuietCli2 automatic develop previews** on `develop` with `publish=false` (the default).
-For a manual release, dispatch **QuietCli2 qualified PowerShell Gallery release** with the exact source-manifest version;
-publication remains an explicit boolean choice. PRs, forks and pushes to other branches do not publish automatically.
+For generated preview artifacts, dispatch **QuietCli2 manual preview artifacts** on `develop`.
+For exact-version artifacts, dispatch **QuietCli2 qualified PowerShell Gallery release** with the source-manifest
+version. Neither manual dispatch publishes. PRs, forks and branch pushes do not publish modules.
 
 ## Repository setup and receipts
 
 - Keep `PSGALLERY_API_KEY` only in the existing `psgallery` GitHub environment. Never add it to source, command arguments,
   artifact contents or logs. GHCR continues to use its separate ephemeral `GITHUB_TOKEN`.
-- That environment must allow deployments from `develop`. If approval protection is configured, previews wait for it;
-  the workflow does not remove or bypass account settings. Stable releases still require manual workflow dispatch.
+- That environment must allow **tags** matching `FrenchExDev2.QuietCli.Core.PoSh/v*`. A branch rule for develop alone does not authorize tag
+  deployments. Existing approval protection still applies; the workflow does not change account settings. See
+  [GitHub's environment rules](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
 - The workflow files must be committed and pushed before GitHub can run them. A local test does not activate remote CI
   or prove that an environment secret, branch policy or public package is available.
 - Publication receipts distinguish Prepared, Publishing, Published and Failed, including unknown effects and the modules

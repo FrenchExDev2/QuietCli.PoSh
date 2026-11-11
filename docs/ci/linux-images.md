@@ -7,16 +7,16 @@ No local ARM machine is required for the GitHub matrix. GitHub runs x64 on `ubun
 1. `New-CiImage.ps1` computes a SHA-256 fingerprint of the recipes, their shared script, the image scripts, `global.json` and the SDK/Git lock files.
 2. It looks for this fingerprint in `ghcr.io/frenchexdev2/quietcli2-ci-{debian|alpine}-{x64|arm64}`.
 3. If it exists and is accessible, it resolves the tag to a digest, pulls that digest, then verifies the architecture, source and fingerprint declared in the labels.
-4. Otherwise, it builds a new image natively. On a push or manual dispatch in the upstream repository on `main`, it publishes the image to GHCR with the fingerprint as its tag. An input change produces a new tag; old images are neither intentionally overwritten nor automatically deleted.
+4. Otherwise, it builds a new image natively. On a push or manual dispatch in the upstream repository on `develop`, it publishes the image to GHCR with the fingerprint as its tag. An input change produces a new tag; old images are neither intentionally overwritten nor automatically deleted. This toolchain cache publication is separate from Gallery module releases, which require explicit module release tags.
 5. The suites run in a private container without network access, using the verified local image ID. Reports retain the actual ID, registry digest and host/guest/engine identities.
 
-A change confined to a handler does not rebuild the image. A pull request reuses an accessible cache or builds locally; it does not publish to the trusted `main` cache. Registry network/server errors remain errors, without automatic retries. A missing or inaccessible cache can be rebuilt.
+A change confined to a handler does not rebuild the image. A pull request reuses an accessible cache or builds locally; it does not publish to the trusted `develop` cache. Registry network/server errors remain errors, without automatic retries. A missing or inaccessible cache can be rebuilt.
 
 ## Tools and stages
 
 The `tools` stage downloads the exact .NET SDK and verifies its SHA-512 hash. The SDK remains in the final image because the suites verify the tools and test assemblies. Core's final stage explicitly installs the distribution Git package for its Core-only fixtures; companion modules declare their own additional requirements independently.
 
-Debian uses the official PowerShell x64/ARM64 archives, verified with the lock's SHA-256. Alpine explicitly installs its signed `powershell=$POWERSHELL_PACKAGE` package using the locked version and its distribution .NET 10 dependency. `DOTNET_ROOT=/usr/lib/dotnet` selects that runtime for stable PowerShell; `/usr/share/dotnet` remains first on `PATH` for the separately pinned .NET 11 SDK/runtime. A recipe never silently replaces ARM64 PowerShell with an x64 executable.
+Debian uses the official PowerShell x64/ARM64 archives, verified with the lock's SHA-256. Alpine explicitly installs its signed `powershell=$POWERSHELL_PACKAGE` package using the locked version. A Microsoft .NET 10.0.14 musl runtime archive is verified with the lock's SHA-512 and copied to `/opt/pwsh-runtime`; `DOTNET_ROOT` selects this separate root for stable PowerShell. Unlike the distro runtime's `alpine.3.24-*` build RID, the Microsoft build reports the required portable `linux-musl-*` RID. `/usr/share/dotnet` remains first on `PATH` for the separately pinned .NET 11 SDK/runtime. Architecture and libc checks remain strict.
 
 See [container runtime diagnosis](../README-container-runtime-diagnosis.md) for building an image from these inputs without a pre-existing cache. `FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-AlpineImageSmoke.ps1` builds the Alpine image and checks unchanged-default PowerShell startup, the pinned package/runtime, native SQLite and SDK execution with visible monitoring. Image bootstrap and module RID/resource selection remain separate conclusions.
 
@@ -41,6 +41,11 @@ Native campaign tools are opt-in when resolving the image plan through `MUTATION
 Native qualification also requires all 43 baseline assertions (including process properties) and 20,000 coverage-guided decoder executions under ASan/UBSan. Compiler-enabled images contain GCC, G++, Clang and compiler-rt (Debian: libclang-rt-dev; Alpine: compiler-rt). The ordinary CI process runner has no product-engine dependency. The native campaign remains a separate local qualification scope; it no longer precedes or blocks the GitHub .NET matrix or Gallery workflow. CI receipts explicitly exclude TTY qualification.
 
 Native mutation containers have a 1 GiB cgroup memory limit. On musl the fuzzer requires that external limit before disabling its defective internal RSS-monitor thread; ASan, UBSan and LeakSanitizer remain enabled. The delivery guard requires at least 20,000 executed fuzz inputs, all process properties and all 31 targeted mutants. Runtime-leak reproducers are retained for the separate future libFuzzer patch.
+
+
+## Alpine Gallery packaging dependency
+
+Alpine keeps its native PowerShell executable and musl runtime. Its image additionally copies only Microsoft.PowerShell.PSResourceGet from the same-architecture Microsoft archive already pinned by the Debian lock entry. The tools stage verifies that archive SHA-256; no glibc PowerShell executable is copied to the final Alpine image. The build requires Compress-PSResource to resolve. The Alpine smoke probe creates a real nupkg with network disabled. This preparation changes the image fingerprint and leaves guest test execution offline. It neither publishes a package nor bypasses Gallery tests. Missing or malformed donor locks fail explicitly.
 
 <!-- credits:begin -->
 ## Credits

@@ -1,53 +1,58 @@
 # Build-Workspace.ps1
 
-## Purpose
+## Purpose and usage
 
-The canonical build-only entry point for the monorepo: builds the Core engine, test fixtures, and the dependent Git parser assemblies across every required target framework and runtime identifier, without running any tests or publishing. It is invoked directly by `.github/workflows/ci.yml` (line 301), `.github/workflows/publish-psgallery.yml` (line 73), and `.github/workflows/quietcli2-readytorun.yml` (lines 32 and 102) — every workflow in the repository that needs a buildable tree calls this script first.
-
-## Usage
-
-| Parameter | Type | Mandatory | Default |
-|---|---|---|---|
-| `WorkspaceRoot` | `string` | No | `Split-Path $PSScriptRoot -Parent` |
-| `Configuration` | `string` (`ValidateSet('Release','Debug')`) | No | `'Release'` |
-| `RuntimeIdentifier` (alias `WindowsRuntimeIdentifier`) | `string[]` (`ValidateSet` of 6 RIDs) | No | all 6 RIDs: `win-x64,win-arm64,linux-x64,linux-arm64,linux-musl-x64,linux-musl-arm64` |
-| `ReadyToRun` | `switch` | No | off — publishes the engine precompiled (Crossgen2) instead of a plain `dotnet build` |
-| `LocalRuntimeIdentifier` | `string` | No | `'win-'+<local architecture>` — only used by `-ReadyToRun` for the `lib/inprocess` publish |
+Compiles `Quietly.slnx` once in Release by default, then prepares the portable distributions declared by the discovered packages, without tests or registry publication. Both local launchers and GitHub workflows use this same entry point.
 
 ```powershell
-./scripts/Build-Workspace.ps1
+# Rebuild every C# project in Quietly.slnx, without preparing distributions.
+./scripts/Build-Workspace.ps1 -SolutionOnly
+# Local portable build; all six net11.0 distributions remain embedded.
+./scripts/Build-Workspace.ps1 -Configuration Release
+# GitHub matrix row: precompile the RID actually tested.
+./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier linux-musl-arm64
+# Windows x64 packaging runner: precompile every release RID.
+. ./scripts/RuntimeTargets.ps1
+./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier @((Get-QuietRuntimeTargets $PWD.Path).Rid)
 ```
 
-```powershell
-# ReadyToRun A/B candidate build, per docs/README-run-profiles.md
-./scripts/Build-Workspace.ps1 -ReadyToRun -LocalRuntimeIdentifier win-x64
-```
+`WorkspaceRoot` defaults to the repository root; `Configuration` accepts Release/Debug. `RuntimeIdentifier` selects embedded net11.0 distributions (all six by default). `ReadyToRun` enables Crossgen2 for `ReadyToRunRuntimeIdentifier`, defaulting to `LocalRuntimeIdentifier`, itself the actual host RID. A precompiled target must also be in `RuntimeIdentifier`. Supplying targets without the switch fails before compilation.
 
-## Dependencies
+`SolutionOnly` rebuilds all seven C# projects and every declared target framework through `Quietly.slnx` with `--no-incremental`. The solution groups the three production packages under `src` and all `*.Tests.PoSh` companions under `test`; pure PowerShell packages appear as solution files. Repository-wide `Directory.Build.props` enables `TreatWarningsAsErrors=true` for direct project builds and solution builds alike. This mode requires no PTY publication receipts, does not update `lib/` distributions or their manifests, and rejects runtime-publication options. Standard `-WhatIf` returns before any build, restore or filesystem effect.
 
-- Dot-sources `Common.ps1` (line 23), which supplies `Invoke-WorkspaceNative`, `Get-QuietBinaryInputs`, `Write-QuietBuildManifest`, `Get-QuietRuntimeTargets`, and `Assert-QuietRuntimePublication`/`Assert-QuietPtyPublications`.
-- Shells out to `dotnet build`/`dotnet publish` for every project (lines 27, 35, 40, 50/52, 65).
-- Assumes `global.json`, four hardcoded `.csproj` paths, and the pinned .NET 10/11 SDKs and runtime packs for all 6 target RIDs are present.
+## Outputs and dependencies
 
-## Side effects
+Requires the pinned SDK/runtime packs, Common.ps1, valid PTY receipts and NuGet restore availability. Commands use Ci.Process.ps1. Portable net10.0 and net11.0 outputs remain at `lib/inprocess` and `lib/engine`. ReadyToRun net10.0 outputs live at `lib/inprocess/<rid>`; corresponding net11.0 outputs at `lib/engine/<rid>`. Other net11.0 distributions stay IL. Portable manifests list only this build's selected slots, so stale directories cannot silently override a later portable build. Existing generated directories are retained; no source, profile or registry is changed.
 
-- Builds/publishes into 8 separate output directories across the Core, Core.Tests, and Git.Tests/Git.PoSh trees (lines 25-42, 46-56, 57-68).
-- Writes a `build-manifest.json` after every single build/publish call — 9+ manifest writes in total.
-- Never deletes anything; purely additive output.
+Every manifest binds source and binary hashes. ReadyToRun receipts require the CLR native header and RTR signature; Linux architecture checks account for the native OS override in the PE machine field. Protocol.ps1 selects a slot for the actual CLR and RID, otherwise portable IL.
 
-## Findings
+`Get-QuietWorkspaceBuildProjects` supplies `Package`, `Project`, `TargetFramework` and `Output` from each manifest's inert `PrivateData.QuietCli.BuildProjects` declaration. Before compilation, the script checks that every declared project belongs to the solution and snapshots its compiler inputs. The solution builds every target framework, including tooling projects that have no packaged output. Each declared portable output is then prepared with `dotnet publish --no-build` (which also disables restore), and its integrity receipt is written only after success. No common solution `-o` directory mixes project outputs. A failed solution build prevents all distribution preparation.
 
-- DESIGN: the per-project loop body at lines 25-29, and the two near-identical "build both frameworks" blocks at lines 31-42, repeat the exact same three-statement shape (`Get-QuietBinaryInputs` → `Invoke-WorkspaceNative dotnet build ...` → `Write-QuietBuildManifest`) roughly 15 times across the file (4 + 4 + 1 + 6 call sites), with only the project/output path strings varying. This is a clear DRY violation: a shared helper taking `(ProjectPath, OutputPath, Framework)` and performing those three steps would substantially shrink this file and remove the risk of one call site silently drifting from the others (e.g. a missing `--nologo`, or a `-c $Configuration` typo).
-- Hardcoded project paths are repeated as literal strings at lines 25 (four entries), 33, 37, 46, and 58 — none are named constants, so renaming any of the four `.csproj` files requires a manual grep-and-replace across this file with no compiler/linter safety net. This mirrors the same smell independently flagged for `New-ReadyToRunCandidate.ps1`'s two hardcoded paths.
-- Good: the comment at lines 54-55 explicitly documents a real gotcha — the `lib/inprocess` manifest intentionally keeps the "portable" shape even under `-ReadyToRun`, so a precompiled build is still validated the same way everywhere else. This is helpful self-documentation, not a flaw.
-- Testability: no Pester test was found exercising `Build-Workspace.ps1` directly. Given it is the single build entry point every workflow depends on, and a full functional run requires the pinned SDKs/toolchains for 6 RIDs, an end-to-end test is expensive — but there is no test at all, not even a narrow one asserting that `-ReadyToRun` actually appends `-p:PublishReadyToRun=true` to the `lib/inprocess` publish arguments (line 50), which is pure argument-composition logic that could be tested cheaply without invoking `dotnet`.
+RID/ReadyToRun engine publications remain separate compilations because their architecture and Crossgen2 settings differ from portable builds. This is the only remaining compilation by project in the shared build. Adding a compiled consumer requires adding its project to the solution and declaring its outputs; neither this script nor the local/GitHub launchers needs another project list. See [the catalogue contract](../README-workspace-projects.md#compiled-distributions).
+
+## Critical review
+
+- The build rejects targets outside the published set. The two target frameworks are deliberately separate outputs; a Windows R2R assembly is never placed in the universal portable slot.
+- Targeted publications record verified ReadyToRun output. Header presence establishes format, not complete AOT execution or a performance improvement.
+- `ReadyToRun.Tests.ps1` covers all 64 target subsets, 1,152 routing properties, malformed manifests/images and two routing mutants, plus one solution build per invocation, declared no-build portable publications, no-effect preview, SolutionOnly and fail-fast behavior. `WorkspaceProjects.Tests.ps1` verifies new consumer declarations, generated outputs, malformed declarations and three targeted catalogue mutants. Actual twelve-publication compilation and a Linux Docker import are separate integration evidence.
+- Crossgen2 host support matters: Linux matrix jobs precompile their Linux RID; the Windows x64 packaging runner builds all six. Arbitrary cross-OS compilation is not assumed. See the official [.NET R2R restrictions](https://learn.microsoft.com/en-us/dotnet/core/deploying/ready-to-run#cross-platformarchitecture-restrictions).
 
 ## Verdict
 
-Correct, and the load-bearing build script for the entire CI/CD pipeline. Its highest-priority fix is the DRY violation across the roughly 15 near-identical build/manifest blocks (lines 25-68) — extracting a shared helper would shrink the file and remove the risk of call sites drifting as RIDs or frameworks are added.
+ReadyToRun is enabled explicitly by GitHub qualification and packaging. The manual A/B workflow keeps its IL baseline and separate candidate; its timings do not gate develop delivery.
 
 <!-- credits:begin -->
 ## Credits
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Builds the solution and prepares declared distributions; does not run tests or publish packages.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

@@ -1,5 +1,5 @@
+#Objective: Export and synchronize an explicit extension inventory through the selected editor CLI.
 #requires -Version 7.6
-# Objective: Export and synchronize an explicit extension inventory through the selected editor CLI.
 . (Join-Path $PSScriptRoot '../Ci.Process.ps1')
 
 function Resolve-DevelopmentEditorCli {

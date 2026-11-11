@@ -1,4 +1,3 @@
-# Objectif : Construire l'image CI d'un module consommateur de Core, par-dessus l'image Core deja verifiee.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -25,22 +24,42 @@ Publish a missing module cache entry. Core's own cache is never published from h
 exclusive responsibility of the linux-images job calling New-CiImage.ps1 directly.
 .PARAMETER PlanOnly
 Resolve inputs offline without executing a binary or reading credentials.
+.PARAMETER ContainerRuntime
+Explicit selection overrides the checkout dotenv key; absent configuration uses Podman-first application discovery on Windows and Linux.
+.PARAMETER ParentPlan
+Verified preceding image plan when composing declared companion layers; omitted for a direct Core overlay.
+.PARAMETER ParentImage
+Already prepared image matching ParentPlan; required with ParentPlan for a real build.
 #>
-[CmdletBinding()]param([Parameter(Mandatory)][string]$Module,[Parameter(Mandatory)][ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$RegistryCache,[switch]$PublishCache,[switch]$PlanOnly)
+[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][ValidatePattern('\A[A-Z][A-Za-z0-9]*\z')][string]$Module,[Parameter(Mandatory)][ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$RegistryCache,[switch]$PublishCache,[switch]$PlanOnly,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime,$ParentPlan,[string]$ParentImage)
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot Common.ps1);. (Join-Path $PSScriptRoot CiImages.ps1)
 $moduleRoot="FrenchExDev2.QuietCli.$Module.PoSh"
 $moduleContractPath="$moduleRoot/ci/Get-CiImageArguments.ps1"
 $moduleScript=Join-Path $WorkspaceRoot $moduleContractPath
 if(!(Test-Path -LiteralPath $moduleScript)){throw "CiModuleContractMissing: $moduleContractPath"}
-$core=Get-QuietCiImagePlan $WorkspaceRoot $RuntimeIdentifier
+$core=if($ParentPlan){$ParentPlan}else{Get-QuietCiImagePlan $WorkspaceRoot $RuntimeIdentifier}
+if($ParentPlan -and ($ParentPlan.Rid -cne $RuntimeIdentifier -or $ParentPlan.Fingerprint -cnotmatch '\A[a-f0-9]{64}\z')){throw 'CiModuleParentPlanInvalid'}
 $moduleInputs=& $moduleScript -WorkspaceRoot $WorkspaceRoot -Platform $core.Platform
 $moduleInputPaths=@($moduleInputs.InputPaths)+@($moduleContractPath)
-$plan=Get-QuietCiModuleImagePlan $WorkspaceRoot $RuntimeIdentifier $Module $moduleInputs.Containerfile $moduleInputs.Arguments $moduleInputPaths
+$plan=Get-QuietCiModuleImagePlan $WorkspaceRoot $RuntimeIdentifier $Module $moduleInputs.Containerfile $moduleInputs.Arguments $moduleInputPaths -ParentPlan $ParentPlan
 if($PlanOnly){return $plan}
-$coreImage=& (Join-Path $PSScriptRoot 'New-CiImage.ps1') -RuntimeIdentifier $RuntimeIdentifier -WorkspaceRoot $WorkspaceRoot -RegistryCache:$RegistryCache
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-CiModuleImage')){return}
+
+$ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
+if($RegistryCache -and !$ParentPlan){
+    $credential=$env:QUIETCLI_REGISTRY_TOKEN
+    try{$cached=Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory (Join-Path $WorkspaceRoot $moduleRoot '.github/containers') -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache -CacheOnly -ContainerRuntime $ContainerRuntime}
+    finally{$env:QUIETCLI_REGISTRY_TOKEN=$credential;$credential=$null}
+    if($cached){return $cached}
+}
+if($ParentPlan -and !$ParentImage){throw 'CiModuleParentImageRequired'}
+if($ParentPlan){$ParentImage=(Get-QuietCiVerifiedImage -Plan $ParentPlan -Reference $ParentImage -ContainerRuntime $ContainerRuntime).Id}
+$registryCredential=$env:QUIETCLI_REGISTRY_TOKEN
+try{$coreImage=if($ParentPlan){[pscustomobject]@{Image=$ParentImage}}else{& (Join-Path $PSScriptRoot 'New-CiImage.ps1') -RuntimeIdentifier $RuntimeIdentifier -WorkspaceRoot $WorkspaceRoot -RegistryCache:$RegistryCache -ContainerRuntime $ContainerRuntime}}
+finally{$env:QUIETCLI_REGISTRY_TOKEN=$registryCredential;$registryCredential=$null}
 # A bare image ID cannot be a Dockerfile FROM target; this local tag, keyed by Core's own verified
 # fingerprint, works whether that image just arrived by a GHCR pull-by-digest or a fresh local build.
-$coreTag="localhost/quietcli2-ci-core-$($core.Platform)-$($core.Architecture):$($core.Fingerprint)"
-$null=Invoke-WorkspaceNative podman @('tag',$coreImage.Image,$coreTag) $WorkspaceRoot -TimeoutSeconds 30
+$coreTag=$plan.ParentReference
+$null=Invoke-WorkspaceNative $ContainerRuntime @('tag',$coreImage.Image,$coreTag) $WorkspaceRoot -TimeoutSeconds 30
 $plan.Arguments.CORE_IMAGE=$coreTag
-Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory (Join-Path $WorkspaceRoot $moduleRoot '.github/containers') -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache:$RegistryCache -PublishCache:$PublishCache
+Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory (Join-Path $WorkspaceRoot $moduleRoot '.github/containers') -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime

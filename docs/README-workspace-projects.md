@@ -23,6 +23,11 @@ are mutually exclusive filters.
 
 ## Projects are actual source modules
 
+CI suite selection additionally reads [build/companions.yml](../build/companions.yml) through
+[CiCompanions](scripts/lib/CiCompanions.md). Its suite declarations can name dedicated integration
+test projects independently of product dependencies. Manifest discovery remains the source/build
+inventory; fixtures without the YAML retain manifest-based suite selection.
+
 Discovery reads immediate `FrenchExDev2.QuietCli.*.PoSh` directories and their matching `.psd1`
 manifests as inert UTF-8 data. Generated directories and archived/extracted modules below them are
 outside this search. Linked project directories/manifests, duplicate names and missing manifests
@@ -33,6 +38,34 @@ A cycle fails explicitly instead of returning a partial graph. No module `.psm1`
 Source identity, workspace locking, initialization, local ZIP verification and container staging use
 this catalogue. Local workspace ZIPs include companion tests for offline verification; those archives
 are separate from publicly installable Gallery packages.
+
+## Compiled distributions
+
+`Get-QuietWorkspaceBuildProjects -WorkspaceRoot $PWD.Path` is the common read-only function for portable build outputs. The build and `Get-QuietWorkspaceIdentity -IncludeBinaries` use the same catalogue; no launcher maintains a second project/output list. Each returned row contains `Package`, `Project`, `TargetFramework` and `Output`, with workspace-relative paths. Pure PowerShell packages omit `BuildProjects` and produce no compiled rows.
+
+For a new compiled consumer such as Packer, add the `.csproj` to `Quietly.slnx` and declare its portable outputs in the consumer's manifest:
+
+```powershell
+PrivateData = @{
+    QuietCli = @{
+        BuildProjects = @(
+            @{
+                Project = 'engine/QuietCli.Packer.Parser.csproj'
+                Outputs = @{
+                    'net10.0' = 'lib/parser/net10.0'
+                    'net11.0' = 'lib/parser/net11.0'
+                }
+            }
+        )
+    }
+}
+```
+
+Project and output paths are relative to that package. Projects must exist, declared frameworks must match the project XML, outputs must be distinct non-overlapping paths under `lib/`, and links, traversal, DTDs, unknown declaration fields and malformed values fail explicitly. Existing suite/dependency/publication declarations remain independent. This example does not create or qualify a Packer module or authorize publication. A dedicated GitHub caller still defines which changes trigger that consumer's suite.
+
+`Build-Workspace.ps1` compiles the solution once, then uses `dotnet publish --no-build` to prepare each declared distribution and its integrity receipt. Source identity follows explicit `ProjectReference` edges and linked `Compile Include` paths, rather than consumer names, and hashes `Directory.Build.props` with the SDK/package/protocol inputs. Dynamic MSBuild expressions and wildcard includes in those explicit edges are not supported by this input resolver and fail rather than silently dropping evidence. Core's architecture-specific ReadyToRun publications retain their separate RID policy.
+
+Local `Invoke-WorkspaceCi.ps1`, GitHub `Invoke-GitHubCi.ps1` and direct workflow build steps already delegate to this shared script. Container staging carries the solution and warning policy as well as the manifests and distributions. Workflow path filters include solution and shared build/package properties.
 
 ## Suites are execution selections
 
@@ -76,10 +109,7 @@ their metadata asks for publication. The reasons are:
 | `PublicationNotDeclared` | Eligibility is absent and defaults to false |
 | `TestProject` | A test companion is excluded |
 
-Currently only the public `QuietCli` Core package is eligible. Git and Vagrant explicitly declare
-`$false`; every test companion is excluded. The existing Gallery preparer/verifier still permits
-exactly the public Core package. Changing metadata does not authorize publication or extend that
-publisher's supported package set; its qualification and explicit publication gates remain required.
+Core and Git explicitly declare publication eligibility; Vagrant remains disabled and every test companion is excluded. Package identity follows the root .psm1/matching manifest through [Get-ModulePackageName](scripts/Get-ModulePackageName.md). GalleryRelease reuses this workspace discovery for release aliases, full names and All; no duplicate publication YAML is introduced. Each prepared artifact contains exactly one selected business module with validated identity, dependencies and declared compiled outputs. The existing build/companions.yml still declares the CI suites/images that must qualify a new companion before publication.
 
 ## Validation
 

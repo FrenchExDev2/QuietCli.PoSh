@@ -45,8 +45,25 @@ Example:
 
 Fit for purpose as a thin wrapper; its correctness is entirely delegated to and dependent on `lib/RunToolCache.psm1`, which should be reviewed and tested directly. Highest-priority fix: add `[ValidateNotNullOrEmpty()]` to `-OutputDirectory` and confirm/create test coverage for the underlying `RunToolCache.psm1` module rather than this file.
 
+
+## Selective dependencies
+
+Use -Module profiler, -Module dottrace or -Module profiler,dottrace. The string-array parameter validates those two names before effects, defaults to both and deduplicates case-insensitively. Only requested packages are downloaded, verified and extracted. Unselected return paths are null, even if an earlier invocation populated that tool. Offline fails on a missing requested archive, never on a missing unrequested one. WhatIf prepares nothing. Example: ./scripts/Initialize-Profilers.ps1 -OutputDirectory ./cache -Module profiler -Offline.
+
+Review: Initialize-Profilers.ps1:12 delegates selection to Get-RunProfilerPackages; RunProfiles.Profiler.Tests.ps1 covers single/both selections, duplicates, invalid/empty inputs, preview and real offline archives. The cache receipt describes this invocation, not an inventory of every prior cache entry. No global installation or module import is performed by preparation.
+
 <!-- credits:begin -->
 ## Credits
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Explicitly downloads checksum-pinned diagnostic tools to an isolated cache, without global installation.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

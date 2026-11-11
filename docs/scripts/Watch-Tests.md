@@ -142,3 +142,17 @@ per-run counters by hardcoding `'-'` (line 83), and (2) adding fuzz coverage for
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+## Live report tail
+
+The read-only monitor incrementally reads the run's existing worker stdout/stderr through ReportStreaming.ps1. It preserves fragmented UTF-8 and displays bounded tails plus byte/line activity separately from test counters. The viewport adapts to terminal dimensions, keeps project identity visible and hides the cursor while active. Complete evidence stays in the existing logs; the monitor closes after the saved terminal report.
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Read-only resizing monitor; closes automatically after a saved terminal result.
+
+Boundary: **ReadOnly**. Preview API: **Unclassified**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

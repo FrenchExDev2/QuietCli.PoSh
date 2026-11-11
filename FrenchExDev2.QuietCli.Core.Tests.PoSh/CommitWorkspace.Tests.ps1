@@ -1,7 +1,7 @@
 function New-QuietCommitWorkspaceFixture {
     <#
     .SYNOPSIS
-    Creates an independent disposable monorepo already satisfying Commit-Workspace.ps1's own
+    Creates a real Git integration fixture already satisfying Commit-Workspace.ps1's own
     documentation-sync gates, with one baseline commit in place.
     .DESCRIPTION
     Ships exactly one business module (so Update-WorkspaceLock.ps1/Sync-Credits.ps1 have something
@@ -29,9 +29,31 @@ function New-QuietCommitWorkspaceFixture {
         if ($LASTEXITCODE -ne 0) { throw ('CommitWorkspaceFixtureGitFailed: ' + ($arguments -join ' ')) }
     }
     $utf8 = [Text.UTF8Encoding]::new($false)
-    $moduleDirectory = Join-Path $path 'FrenchExDev2.QuietCli.Fixture.PoSh'
+    # The real shared registry also validates an inert Core catalogue in exported indexes.
+    $testDirectory=Join-Path $path 'FrenchExDev2.QuietCli.Core.Tests.PoSh'
+    [void][IO.Directory]::CreateDirectory($testDirectory)
+    [IO.File]::WriteAllText((Join-Path $testDirectory 'FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1'),"@{ ModuleVersion='1.0.0';RootModule='FrenchExDev2.QuietCli.Core.Tests.PoSh.psm1';PrivateData=@{QuietCli=@{TestCatalogue=@{Runner='Invoke-QuietCoreTests';Sources=@()}}} }`n",$utf8)
+    [IO.File]::WriteAllText((Join-Path $testDirectory 'LICENSE_CREDITS.md'),"## Fixture`n`nInert classification fixture ships no dependency.`n",$utf8)
+    $catalogue=@'
+function Invoke-QuietCoreTests {
+    <#
+    .SYNOPSIS
+    Declares one inert classification fixture; commit checks never execute it.
+    #>
+    $cases=[ordered]@{}
+    $cases['fixture']={}
+    $caseMetadata=@{'fixture'=@{TestKind='Unit';Dependencies=@()}}
+}
+'@
+    [IO.File]::WriteAllText((Join-Path $testDirectory 'FrenchExDev2.QuietCli.Core.Tests.PoSh.psm1'),($catalogue+"`n"),$utf8)
+    Copy-Item -LiteralPath (Join-Path (Split-Path $RealScriptsPath -Parent) 'global.json') -Destination $path
+    $moduleDirectory = Join-Path $path 'FrenchExDev2.QuietCli.Core.PoSh'
     [void][IO.Directory]::CreateDirectory($moduleDirectory)
-    [void][IO.File]::WriteAllTextAsync((Join-Path $moduleDirectory 'FrenchExDev2.QuietCli.Fixture.PoSh.psd1'), "@{ ModuleVersion = '1.0.0' }`n", $utf8).GetAwaiter().GetResult()
+    [void][IO.File]::WriteAllTextAsync((Join-Path $moduleDirectory 'FrenchExDev2.QuietCli.Core.PoSh.psd1'), "@{ ModuleVersion = '1.0.0' }`n", $utf8).GetAwaiter().GetResult()
+    [void][IO.Directory]::CreateDirectory((Join-Path $moduleDirectory 'engine'))
+    [void][IO.Directory]::CreateDirectory((Join-Path $moduleDirectory 'resources'))
+    Copy-Item -LiteralPath (Join-Path (Split-Path $RealScriptsPath -Parent) 'FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj') -Destination (Join-Path $moduleDirectory 'engine')
+    [void][IO.File]::WriteAllTextAsync((Join-Path $moduleDirectory 'resources/dependencies.lock.json'), "{`"Files`":[],`"Packages`":[]}`n", $utf8).GetAwaiter().GetResult()
     [void][IO.File]::WriteAllTextAsync((Join-Path $moduleDirectory 'LICENSE_CREDITS.md'), "## Fixture`n`nFixture module ships no third-party native dependency.`n", $utf8).GetAwaiter().GetResult()
     $scriptsDirectory = Join-Path $path 'scripts'
     $docsScriptsDirectory = Join-Path $path 'docs/scripts'
@@ -42,6 +64,11 @@ function New-QuietCommitWorkspaceFixture {
     # Include the real gate and its doc: snapshots must not change the generator's own membership.
     Copy-Item -LiteralPath (Join-Path $RealScriptsPath 'Sync-ScriptsReadme.ps1') -Destination $scriptsDirectory
     Copy-Item -LiteralPath (Join-Path (Split-Path $RealScriptsPath -Parent) 'docs/scripts/Sync-ScriptsReadme.md') -Destination $docsScriptsDirectory
+    [void][IO.Directory]::CreateDirectory((Join-Path $path build))
+    Write-WorkspaceJson (Join-Path $path build/script-shouldprocess.json) @{SchemaVersion=1;LegacyPaths=@();ReadOnlyExceptions=@()}
+    $null=& (Join-Path $RealScriptsPath 'Sync-GitHubWorkflowsReadme.ps1') -WorkspaceRoot $path -Apply
+    $null=& (Join-Path $RealScriptsPath 'Sync-ResourcesReadme.ps1') -WorkspaceRoot $path -Apply
+    $null=& (Join-Path $RealScriptsPath 'Sync-ScriptContracts.ps1') -WorkspaceRoot $path -Apply
     # Order matters: Sync-Credits writes CREDITS.md (required by Sync-DocsCredits), Sync-ScriptsReadme
     # writes docs/scripts/README.md (already carrying its own compliant credits block), and only then
     # does Sync-DocsCredits need to add the block to the hand-written Tracked.md.
@@ -113,7 +140,13 @@ function Test-QuietCommitWorkspace {
     .PARAMETER RunDirectory
     Owned temporary fixtures and the mutation report.
     #>
-    param([string]$WorkspaceRoot, [string]$RunDirectory)
+    param([string]$WorkspaceRoot, [string]$RunDirectory, [int]$MaxConcurrency=0, [string]$CandidatePath)
+    if(!$MaxConcurrency){
+        $configured=0
+        if($env:QUIETCLI_TEST_MAX_CONCURRENCY -and ![int]::TryParse($env:QUIETCLI_TEST_MAX_CONCURRENCY,[ref]$configured)){throw 'TestMaxConcurrencyInvalid'}
+        $MaxConcurrency=if($configured){$configured}else{[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount))}
+    }
+    if($MaxConcurrency -lt 1 -or $MaxConcurrency -gt 32){throw 'TestMaxConcurrencyOutOfRange'}
     $realScripts = Join-Path $WorkspaceRoot 'scripts'
     $sourcePath = Join-Path $realScripts 'Commit-Workspace.ps1'
     $source = [IO.File]::ReadAllTextAsync($sourcePath, [Text.Encoding]::UTF8).GetAwaiter().GetResult()
@@ -206,7 +239,8 @@ function Test-QuietCommitWorkspace {
         $fixture=New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
         $docPath=Join-Path $fixture 'docs/scripts/Tracked.md'
         $goodDoc=Get-Content -LiteralPath $docPath -Raw -Encoding utf8
-        [void][IO.File]::WriteAllTextAsync($docPath,"# Missing staged credits`n",$utf8).GetAwaiter().GetResult()
+        $missingCredits=[regex]::Replace($goodDoc,'(?s)<!-- credits:begin -->.*?<!-- credits:end -->','')
+        [void][IO.File]::WriteAllTextAsync($docPath,$missingCredits,$utf8).GetAwaiter().GetResult()
         $null=& (Join-Path $realScripts 'Update-WorkspaceLock.ps1') -WorkspaceRoot $fixture
         & git -C $fixture add -- docs/scripts/Tracked.md repositories.lock.json
         [void][IO.File]::WriteAllTextAsync($docPath,$goodDoc,$utf8).GetAwaiter().GetResult()
@@ -224,7 +258,7 @@ function Test-QuietCommitWorkspace {
         try { $null = & $candidate -Message 'Should be rejected' -WorkspaceRoot $fixture } catch { $rejected = $true; $message = $_.Exception.Message }
         if (!$rejected -or $message -notmatch '^ScriptsDocsMissing') { throw 'MissingScriptDocGateDidNotBlock' }
         if ((Get-QuietCommitWorkspaceHeadRevision $fixture) -cne $before) { throw 'RejectedGateMustNotCommit' }
-        $null = & $candidate -Message 'Skip the readme gate' -WorkspaceRoot $fixture -NoScriptsReadmeCheck
+        $null = & $candidate -Message 'Skip both script documentation gates' -WorkspaceRoot $fixture -NoScriptsReadmeCheck -NoScriptContractsCheck
         if ((Get-QuietCommitWorkspaceHeadRevision $fixture) -ceq $before) { throw 'NoScriptsReadmeCheckDidNotAllowTheCommit' }
 
         $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
@@ -236,14 +270,14 @@ function Test-QuietCommitWorkspace {
         # D: a script changed without its mirrored doc warns, but never blocks; the warning is
         # overridable on its own.
         $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
-        [void][IO.File]::WriteAllTextAsync((Join-Path $fixture 'scripts/Tracked.ps1'), "# Fixture script, changed`n", $utf8).GetAwaiter().GetResult()
+        [void][IO.File]::AppendAllTextAsync((Join-Path $fixture 'scripts/Tracked.ps1'), "# Fixture script, changed`n", $utf8).GetAwaiter().GetResult()
         $warnings = @(& $candidate -Message 'Drift check' -WorkspaceRoot $fixture 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
         if (@($warnings | Where-Object { $_.Message -match '^ScriptDocDrift: scripts/Tracked\.ps1' }).Count -ne 1) { throw 'ScriptDocDriftWarningMissing' }
 
         $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
-        [void][IO.File]::WriteAllTextAsync((Join-Path $fixture 'scripts/Tracked.ps1'), "# Fixture script, changed`n", $utf8).GetAwaiter().GetResult()
+        [void][IO.File]::AppendAllTextAsync((Join-Path $fixture 'scripts/Tracked.ps1'), "# Fixture script, changed`n", $utf8).GetAwaiter().GetResult()
         $warnings = @(& $candidate -Message 'Drift check overridden' -WorkspaceRoot $fixture -NoScriptDocDriftWarning 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
-        if ($warnings.Count) { throw 'NoScriptDocDriftWarningDidNotSilenceIt' }
+        if (@($warnings | Where-Object { $_.Message -match '^ScriptDocDrift:' }).Count) { throw 'NoScriptDocDriftWarningDidNotSilenceIt' }
 
         # D2 (property): the warning fires for exactly the changed, undocumented script about to be
         # committed, never for an untouched, already-documented one, across randomly named scripts.
@@ -252,7 +286,7 @@ function Test-QuietCommitWorkspace {
             $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
             $driftedName = 'Drift' + $random.Next(10000, 99999) + '.ps1'
             [void][IO.File]::WriteAllTextAsync((Join-Path $fixture ('scripts/' + $driftedName)), '# undocumented and about to be committed', $utf8).GetAwaiter().GetResult()
-            $warnings = @(& $candidate -Message 'Property round' -WorkspaceRoot $fixture -NoScriptsReadmeCheck 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+            $warnings = @(& $candidate -Message 'Property round' -WorkspaceRoot $fixture -NoScriptsReadmeCheck -NoScriptContractsCheck 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
             $matching = @($warnings | Where-Object { $_.Message -match [regex]::Escape('scripts/' + $driftedName) })
             if ($matching.Count -ne 1) { throw ("ScriptDocDriftPropertyFailed: seed=97120 round=$round name=$driftedName") }
             if (@($warnings | Where-Object { $_.Message -match 'scripts/Tracked\.ps1' }).Count) { throw "ScriptDocDriftFalsePositiveOnUnchangedDocumentedScript: round=$round" }
@@ -285,7 +319,17 @@ function Test-QuietCommitWorkspace {
         $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
         [void][IO.File]::WriteAllTextAsync((Join-Path $fixture 'large.txt'), ('x' * 200), $utf8).GetAwaiter().GetResult()
         $warnings = @(& $candidate -Message 'Oversized file silenced' -WorkspaceRoot $fixture -MaxChangedFileSize 100 -NoCommitFileSnifferWarning 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
-        if ($warnings.Count) { throw 'NoCommitFileSnifferWarningDidNotSilenceIt' }
+        if (@($warnings | Where-Object { $_.Message -match '^CommitFileSniffer:' }).Count) { throw 'NoCommitFileSnifferWarningDidNotSilenceIt' }
+
+        # Dotfiles are hidden on Unix. Inspect them even when Get-Item requires -Force.
+        foreach ($name in @('.hidden.bin', '.hidden-é.bin')) {
+            $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
+            $hidden = Join-Path $fixture $name
+            [IO.File]::WriteAllBytes($hidden, [byte[]]@(66, 0, 67))
+            if ($IsWindows) { [IO.File]::SetAttributes($hidden, [IO.FileAttributes]::Hidden) }
+            $warnings = @(& $candidate -Message 'Hidden binary' -WorkspaceRoot $fixture 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+            if (@($warnings | Where-Object { $_.Message.StartsWith('CommitFileSniffer: ' + $name + ' (binary content)') }).Count -ne 1) { throw 'CommitFileSnifferBinaryWarningMissing' }
+        }
 
         # G2 (property): the sniffer warns iff a changed file is binary or exceeds the threshold,
         # across randomly generated sizes and byte patterns.
@@ -310,12 +354,17 @@ function Test-QuietCommitWorkspace {
 
     Test-QuietByteCountParsing
 
+    if($CandidatePath){
+        $null=& $verify $CandidatePath $fixtureRoot $realScripts $utf8
+        return
+    }
+
     & $verify $sourcePath $fixtureRoot $realScripts $utf8
 
     $mutants = @(
         @{Id = 'whatif-guard-removed-from-commit'; Find = 'if ($PSCmdlet.ShouldProcess($WorkspaceRoot, "git commit -m <message>")) {'; Replace = 'if ($true) {' },
         @{Id = 'whatif-guard-removed-from-add'; Find = 'if (!$NoAll -and $PSCmdlet.ShouldProcess($WorkspaceRoot, "git add --all --")) {'; Replace = 'if ($true) {' },
-        @{Id = 'sync-gate-skipped-unconditionally'; Find = 'if (!$NoAll -and !$NoSyncChecks -and !$NoScriptsReadmeCheck) {'; Replace = 'if ($false) {' },
+        @{Id = 'sync-gate-skipped-unconditionally'; Find = 'if (!$NoAll) { Invoke-QuietCommitChecks -Root $WorkspaceRoot }'; Replace = 'if ($false) { Invoke-QuietCommitChecks -Root $WorkspaceRoot }' },
         @{Id = 'drift-detection-disabled'; Find = 'if ($ChangedPaths -notcontains $docRelative) {'; Replace = 'if ($false) {' },
         @{Id = 'drift-override-ignored'; Find = 'if (!$NoScriptDocDriftWarning) {'; Replace = 'if ($true) {' },
         @{Id = 'noall-adds-working-tree'; Find = 'if (!$NoAll -and $PSCmdlet.ShouldProcess($WorkspaceRoot, "git add --all --")) {'; Replace = 'if ($PSCmdlet.ShouldProcess($WorkspaceRoot, "git add --all --")) {' },
@@ -325,29 +374,77 @@ function Test-QuietCommitWorkspace {
         @{Id = 'file-sniffer-size-check-weakened'; Find = 'if ($isBinary -or $size -gt $MaxBytes) {'; Replace = 'if ($isBinary -and $size -gt $MaxBytes) {' },
         @{Id = 'file-sniffer-exemption-bypassed'; Find = "if (`$attr.Outcome -eq 'Success' -and @(`$attr.Data.Entries).Count -and `$attr.Data.Entries[0].Value -ceq 'set') { continue }"; Replace = "if (`$false) { continue }" }
     )
-    $results = [Collections.Generic.List[object]]::new()
-    foreach ($mutant in $mutants) {
+    foreach($mutant in $mutants){
         if (([regex]::Matches($source, [regex]::Escape($mutant.Find))).Count -ne 1) { throw ('CommitWorkspaceMutationAnchorInvalid: ' + $mutant.Id) }
-        $candidateDirectory=Join-Path $RunDirectory ('commit-workspace-mutant-'+$mutant.Id)
-        [void][IO.Directory]::CreateDirectory($candidateDirectory)
-        # Keep the real dependency layout: a missing Common.ps1 must never count as a killed mutant.
-        Get-ChildItem -LiteralPath $realScripts -Force|Copy-Item -Destination $candidateDirectory -Recurse -Force
-        $candidatePath = Join-Path $candidateDirectory 'Commit-Workspace.ps1'
-        [void][IO.File]::WriteAllTextAsync($candidatePath, $source.Replace($mutant.Find, $mutant.Replace), $utf8).GetAwaiter().GetResult()
-        $tokens = $null; $errors = $null; $null = [Management.Automation.Language.Parser]::ParseFile($candidatePath, [ref]$tokens, [ref]$errors)
-        if ($errors.Count) { throw ('CommitWorkspaceMutantInvalid: ' + $mutant.Id) }
-        $detected = $false; $detail = $null
-        try { & $verify $candidatePath $fixtureRoot $realScripts $utf8 } catch { $detected = $true; $detail = $_.Exception.Message }
-        if($detected -and $detail -notmatch '^(WhatIfMustNotCommit|WhatIfMustNotStage|WhatIfAttemptedNativeMutation|MissingScriptDocGateDidNotBlock|ScriptDocDriftWarningMissing|NoScriptDocDriftWarningDidNotSilenceIt|NoAllIncludedUnstagedContent|NoAllIncludedUnselectedFile|NoAllWorkingTreeLockChanged|NoAllEmptyIndexAccepted|NoAllDamagedLockAcceptedOrIndexChanged|CommitFileSnifferBinaryWarningMissing|CommitFileSnifferMustNotBlockCommit|CommitFileSnifferExemptionBypassed|CommitFileSnifferSizeWarningMissing|NoCommitFileSnifferWarningDidNotSilenceIt|CommitFileSnifferPropertyMissedExpectedWarning|CommitFileSnifferPropertyFalsePositive)'){
+    }
+    $mutationWorker=Join-Path $PSScriptRoot 'CommitWorkspace.MutationWorker.ps1'
+    # A zero native exit is not a completed mutation; preserve evidence even after an abrupt exit.
+    $abruptDirectory=Join-Path $RunDirectory 'commit-workspace-worker-abrupt-exit'
+    [void][IO.Directory]::CreateDirectory($abruptDirectory)
+    $abruptCandidate=Join-Path $abruptDirectory candidate.ps1
+    [IO.File]::WriteAllText($abruptCandidate,"param([string]`$Message,[string]`$WorkspaceRoot)`n[Environment]::Exit(0)`n",$utf8)
+    $abruptResult=Join-Path $abruptDirectory result.json
+    $abrupt=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -WorkingDirectory $WorkspaceRoot -TimeoutSeconds 120 -ArgumentList @('-NonInteractive','-File',$mutationWorker,'-WorkspaceRoot',$WorkspaceRoot,'-RunDirectory',$abruptDirectory,'-CandidatePath',$abruptCandidate,'-ResultPath',$abruptResult,'-WhatIf:$false','-Confirm:$false') -OnOutput {param($event,$state)}
+    if($abrupt.Outcome -cne 'Success' -or !(Test-Path -LiteralPath $abruptResult)){throw 'MutationAbruptWorkerFixtureFailed'}
+    $unfinished=Get-Content -LiteralPath $abruptResult -Raw -Encoding utf8|ConvertFrom-Json
+    if($unfinished.State -cne 'InfrastructureFailure' -or $unfinished.Stage -ceq 'Completed'){throw 'MutationZeroExitAcceptedAsCompletion'}
+    $parallelResults=@($mutants | ForEach-Object -ThrottleLimit $MaxConcurrency -Parallel {
+        $mutant=$_
+        try {
+            $workerScripts=$using:realScripts
+            $workerMutationWorker=$using:mutationWorker
+            $workerWorkspaceRoot=$using:WorkspaceRoot
+            $workerRunDirectory=$using:RunDirectory
+            $workerSource=$using:source
+            . (Join-Path $workerScripts 'Ci.Process.ps1')
+            $workerUtf8=[Text.UTF8Encoding]::new($false)
+            $candidateDirectory=Join-Path $workerRunDirectory ('commit-workspace-mutant-'+$mutant.Id)
+            [void][IO.Directory]::CreateDirectory($candidateDirectory)
+            # Keep the real dependency layout: a missing Common.ps1 must never count as a killed mutant.
+            Get-ChildItem -LiteralPath $workerScripts -Force|Copy-Item -Destination $candidateDirectory -Recurse -Force
+            $candidatePath=Join-Path $candidateDirectory 'Commit-Workspace.ps1'
+            [void][IO.File]::WriteAllTextAsync($candidatePath,$workerSource.Replace($mutant.Find,$mutant.Replace),$workerUtf8).GetAwaiter().GetResult()
+            $tokens=$null;$errors=$null;$null=[Management.Automation.Language.Parser]::ParseFile($candidatePath,[ref]$tokens,[ref]$errors)
+            if($errors.Count){throw ('CommitWorkspaceMutantInvalid: '+$mutant.Id)}
+            $resultPath=Join-Path $candidateDirectory 'result.json'
+            $processState=@{Lines=0;Tail=[Collections.Generic.Queue[string]]::new()}
+            $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
+            $process=Invoke-CiProcess -FilePath $runner -ArgumentList @('-NonInteractive','-File',$workerMutationWorker,'-WorkspaceRoot',$workerWorkspaceRoot,'-RunDirectory',$candidateDirectory,'-CandidatePath',$candidatePath,'-ResultPath',$resultPath,'-WhatIf:$false','-Confirm:$false') -WorkingDirectory $workerWorkspaceRoot -TimeoutSeconds 900 -State $processState -OnOutput {
+                param($event,$state)
+                $state.Lines++
+                $text=[string]$event.Text
+                $state.Tail.Enqueue($text.Substring(0,[Math]::Min(512,$text.Length)))
+                if($state.Tail.Count -gt 16){[void]$state.Tail.Dequeue()}
+            }
+            $diagnostic=@{Name=$mutant.Id;Outcome=$process.Outcome;ExitCode=$process.ExitCode;ObservedLines=$processState.Lines;Tail=@($processState.Tail);ResultExists=(Test-Path -LiteralPath $resultPath)}
+            [IO.File]::WriteAllText((Join-Path $candidateDirectory 'worker-process.json'),($diagnostic|ConvertTo-Json -Depth 4)+"`n",$workerUtf8)
+            if($process.Outcome -ne 'Success' -or !$diagnostic.ResultExists){throw ('CommitWorkspaceMutationWorkerFailed: '+$mutant.Id+': '+$process.Outcome+'/'+$process.ExitCode+'; diagnostic='+$candidateDirectory+'/worker-process.json')}
+            $receipt=Get-Content -LiteralPath $resultPath -Raw -Encoding utf8|ConvertFrom-Json
+            if($receipt.Name -cne $mutant.Id -or $receipt.Stage -cne 'Completed' -or $receipt.State -cnotin @('Killed','Survived')){throw ('CommitWorkspaceMutationWorkerIncomplete: '+$mutant.Id+'; diagnostic='+$candidateDirectory+'/worker-process.json')}
+            $receipt
+        }catch{
+            [pscustomobject]@{Name=$mutant.Id;State='InfrastructureFailure';Diagnostic=$_.Exception.Message}
+        }
+    })
+    $results=[Collections.Generic.List[object]]::new()
+    foreach($mutant in $mutants){
+        $result=@($parallelResults|Where-Object Name -CEQ $mutant.Id)
+        if($result.Count -ne 1){throw ('CommitWorkspaceMutantResultMissing: '+$mutant.Id)}
+        $detail=$result[0].Diagnostic
+        if($result[0].State -eq 'InfrastructureFailure' -or ($result[0].State -eq 'Killed' -and $detail -notmatch '^(WhatIfMustNotCommit|WhatIfMustNotStage|WhatIfAttemptedNativeMutation|MissingScriptDocGateDidNotBlock|ScriptDocDriftWarningMissing|NoScriptDocDriftWarningDidNotSilenceIt|NoAllIncludedUnstagedContent|NoAllIncludedUnselectedFile|NoAllWorkingTreeLockChanged|NoAllEmptyIndexAccepted|NoAllDamagedLockAcceptedOrIndexChanged|CommitFileSnifferBinaryWarningMissing|CommitFileSnifferMustNotBlockCommit|CommitFileSnifferExemptionBypassed|CommitFileSnifferSizeWarningMissing|NoCommitFileSnifferWarningDidNotSilenceIt|CommitFileSnifferPropertyMissedExpectedWarning|CommitFileSnifferPropertyFalsePositive)')){
             throw ('CommitWorkspaceMutantInfrastructureFailure: '+$mutant.Id+': '+$detail)
         }
-        $results.Add(@{Name = $mutant.Id; State = if ($detected) { 'Killed' } else { 'Survived' }; Diagnostic = $detail })
-        if (!$detected) { throw ('CommitWorkspaceMutantSurvived: ' + $mutant.Id) }
+        $results.Add($result[0])
+        if($result[0].State -ne 'Killed'){throw ('CommitWorkspaceMutantSurvived: '+$mutant.Id)}
     }
     $report = @{
+        TestKind          = 'Integration'
+        Dependencies      = @('FileSystem','GitProcess')
+        FixtureStorage    = 'PhysicalTemporaryDirectory'
         Seed              = 97120
         PropertyExecutions = 25
         FuzzInputs        = 10
+        MaxConcurrency    = $MaxConcurrency
         Mutations         = $results.ToArray()
         SourceSHA256      = (Get-FileHash $sourcePath -Algorithm SHA256).Hash
         Scope             = "Documentation-sync gate wiring, script/doc drift detection, the binary/oversized-file sniffer and the -WhatIf/commit-once/no-remote contract against disposable fixture repositories; the three Sync-*.ps1 gates' own internal correctness is not re-verified here."

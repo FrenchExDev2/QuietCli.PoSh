@@ -1,4 +1,3 @@
-# Objectif : Récupérer une image de test déjà publiée, sans jamais la construire depuis un hôte non-Linux.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -29,11 +28,12 @@ A receipt matching New-CiImage.ps1's shape (Image/RuntimeIdentifier/Fingerprint/
 .EXAMPLE
 $image = ./scripts/Get-CiImageForDevelopment.ps1 -RuntimeIdentifier linux-x64
 #>
-[CmdletBinding()]param(
+[CmdletBinding(SupportsShouldProcess)]param(
     [Parameter(Mandatory)][ValidateSet('linux-x64', 'linux-arm64', 'linux-musl-x64', 'linux-musl-arm64')][string]$RuntimeIdentifier,
     [string]$WorkspaceRoot = (Split-Path $PSScriptRoot -Parent),
     [AllowEmptyString()][string]$RegistryToken = $env:QUIETCLI_REGISTRY_TOKEN
 )
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Get-CiImageForDevelopment')){return}
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 . (Join-Path $PSScriptRoot 'CiImages.ps1')

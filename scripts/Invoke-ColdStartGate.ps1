@@ -50,7 +50,7 @@ Optional log file.
 ./scripts/Invoke-ColdStartGate.ps1 -CandidateModule 'C:\tmp\r2r\FrenchExDev2.QuietCli.Core.PoSh\FrenchExDev2.QuietCli.Core.PoSh.psd1' -CandidateLabel readytorun
 #>
 using module ./lib/RunLog.psm1
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param(
     [Parameter(Mandatory)][string]$CandidateModule,
     [ValidateNotNullOrEmpty()][string]$CandidateLabel = 'candidate',
@@ -64,6 +64,7 @@ param(
     [ValidateSet('Trace', 'Debug', 'Info', 'Warn', 'Error', 'Off')][string]$LogLevel = 'Info',
     [string]$LogPath
 )
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ColdStartGate')){return}
 $ErrorActionPreference = 'Stop'
 foreach ($module in 'RunEncoding', 'RunFormat') { Import-Module (Join-Path $PSScriptRoot "lib/$module.psm1") -Force }
 $logger = New-RunLogger -Level $LogLevel -Component 'coldstart-gate' -LogPath $LogPath

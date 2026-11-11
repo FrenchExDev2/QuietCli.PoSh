@@ -6,7 +6,9 @@
 
 > **Status: under development (`0.2.0-preview`).** This module is the worked example of a QuietCli companion module. Its catalogue is growing, its API may change, and **the complete inventory is not qualified**. Read [Coverage and limits](#coverage-and-limits) before relying on a command.
 
-Git business handlers for the [QuietCli](../README.md) engine. Instead of writing `-Output` and `-Complete` callbacks, you run `quiet -AsObject git <command>` and the module supplies a parser that turns Git's output into typed business data. Use the Core and Git source projects from the same checkout. This Git companion is not published on PowerShell Gallery; the public `QuietCli` package provides Core.
+Git business handlers for the [QuietCli](../README.md) engine. Instead of writing `-Output` and `-Complete` callbacks, run `quiet -AsObject git <command>` and the module supplies a parser that turns output into typed business data. The existing Gallery package is FrenchExDev2.QuietCli.Git.PoSh and its dependency is FrenchExDev2.QuietCli.Core.PoSh. Its independently versioned package is enabled in the qualified tag-publication workflow; partial inventory/command/version qualification remains explicit.
+
+Install a published version with `Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Repository PSGallery`, adding `-Prerelease` for previews, then `Import-Module FrenchExDev2.QuietCli.Git.PoSh`. A compatible published Core dependency must be available. Source development uses both projects from the same checkout.
 
 ## Quick start
 
@@ -14,7 +16,7 @@ Git business handlers for the [QuietCli](../README.md) engine. Instead of writin
 
 ### Check out and build
 
-Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100-rc.3.26522.148`). Build before importing the local modules. Close sessions that already loaded this checkout's assemblies before rebuilding.
+Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100`). Build before importing the local modules. Close sessions that already loaded this checkout's assemblies before rebuilding.
 
 The commands start in a parent directory of your choice and clone the whole monorepo into `$HOME/src/QuietCli`. For an existing checkout, set `$checkout` to its root and skip the clone. Git performs this initial bootstrap before local `quiet` is available; the build script uses the engine-independent process helper.
 
@@ -136,6 +138,8 @@ Outputs are not kept by default: each parser retains only the business values it
 `ls-remote` may contact its source when you request it. No other query adds a hidden fetch or network observation.
 
 ## Tests
+
+[Qualification: when, where and how](../README-qualification-when-where-how.md) maps Git PR triggers to actual Windows/Linux test execution, local entry points and qualification limits.
 
 The companion project [`FrenchExDev2.QuietCli.Git.Tests.PoSh`](../FrenchExDev2.QuietCli.Git.Tests.PoSh/README.md) runs functional scenarios against disposable local repositories, with compiled C# cases and targeted mutation catalogues. Counts and dates change as handlers are added, so they live in the audits and in the generated reports rather than here. A passing local campaign does not qualify other Git versions or platforms; see [Tests and qualification](../README-qualification.md).
 

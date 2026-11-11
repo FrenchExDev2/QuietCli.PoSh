@@ -1,59 +1,59 @@
-# Objectif : Construire le moteur et le producteur C# indépendant avec le SDK .NET 11 RC épinglé.
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Builds the engine and companion C# fixture; does not run tests or publish.
+Builds the solution and prepares declared distributions; does not run tests or publish packages.
 .PARAMETER WorkspaceRoot
-Root containing global.json and the four module repositories.
+Monorepo containing global.json, Quietly.slnx and discovered module manifests.
 .PARAMETER Configuration
 Build configuration, Release by default.
 .PARAMETER RuntimeIdentifier
 Engine distributions to embed. Windows and Linux x64/ARM64, including musl, are published by default.
 .PARAMETER ReadyToRun
-Publishes the engine precompiled (Crossgen2) instead of the plain IL build: lib/inprocess becomes a
-framework-dependent publication for -LocalRuntimeIdentifier rather than a plain `dotnet build`, and every
-lib/engine/<rid> publication adds -p:PublishReadyToRun=true. Opt-in; the default build is unchanged, so this
-is for a local cold-start A/B candidate (see docs/README-run-profiles.md), not for CI or release builds yet.
+Publishes RID-specific net10.0 and net11.0 engines with Crossgen2. Portable IL fallbacks remain available.
+.PARAMETER ReadyToRunRuntimeIdentifier
+RIDs to precompile. Defaults to LocalRuntimeIdentifier; the Windows x64 package job selects all six RIDs.
 .PARAMETER LocalRuntimeIdentifier
-RID of the current machine, used only by -ReadyToRun to publish lib/inprocess. Defaults to the local
-Windows architecture; override on Linux (for example linux-x64).
+Default ReadyToRun target, taken from the actual host runtime (including musl).
+.PARAMETER SolutionOnly
+Rebuilds Quietly.slnx without publishing distributions or updating package binaries.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Release','Debug')][string]$Configuration='Release',[Alias('WindowsRuntimeIdentifier')][ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$RuntimeIdentifier=@('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64'),[switch]$ReadyToRun,[string]$LocalRuntimeIdentifier=('win-'+([Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())))
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Release','Debug')][string]$Configuration='Release',[Alias('WindowsRuntimeIdentifier')][ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$RuntimeIdentifier=@('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64'),[switch]$ReadyToRun,[string]$LocalRuntimeIdentifier=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier,[ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$ReadyToRunRuntimeIdentifier=@(),[switch]$SolutionOnly)
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Build-Workspace')){return}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
+if($SolutionOnly){
+    if($ReadyToRun -or $ReadyToRunRuntimeIdentifier.Count -or $PSBoundParameters.ContainsKey('RuntimeIdentifier') -or $PSBoundParameters.ContainsKey('LocalRuntimeIdentifier')){throw 'SolutionOnlyDoesNotPublishRuntimeTargets'}
+    Invoke-WorkspaceNative dotnet @('build',(Join-Path $WorkspaceRoot 'Quietly.slnx'),'--no-incremental','-c',$Configuration,'--nologo') $WorkspaceRoot
+    return
+}
+if($ReadyToRun -and !$ReadyToRunRuntimeIdentifier.Count){$ReadyToRunRuntimeIdentifier=@($LocalRuntimeIdentifier)}
+foreach($rid in $ReadyToRunRuntimeIdentifier){if($rid -notin $RuntimeIdentifier){throw ('ReadyToRunTargetNotPublished: '+$rid)}}
+if(!$ReadyToRun -and $ReadyToRunRuntimeIdentifier.Count){throw 'ReadyToRunSwitchRequired'}
 Assert-QuietPtyPublications $WorkspaceRoot
-foreach($project in @(@{Path='FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj';Output='FrenchExDev2.QuietCli.Core.PoSh/lib/engine'},@{Path='FrenchExDev2.QuietCli.Core.Tests.PoSh/fixture/QuietCli.Fixture.csproj';Output='FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture'},@{Path='FrenchExDev2.QuietCli.Core.Tests.PoSh/engine-tests/QuietCli.Engine.Tests.csproj';Output='FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/engine-tests'},@{Path='FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests/QuietCli.Git.Parser.Tests.csproj';Output='FrenchExDev2.QuietCli.Git.Tests.PoSh/lib/parser-tests'})){
-    $inputs=@(Get-QuietBinaryInputs $WorkspaceRoot $project.Path)
-    Invoke-WorkspaceNative dotnet @('build',(Join-Path $WorkspaceRoot $project.Path),'-f','net11.0','-c',$Configuration,'-o',(Join-Path $WorkspaceRoot $project.Output),'--nologo') $WorkspaceRoot
-    Write-QuietBuildManifest $WorkspaceRoot $project.Path $project.Output -Inputs $inputs -Configuration $Configuration
+$distributions=@(Get-QuietWorkspaceBuildProjects $WorkspaceRoot)
+[xml]$solution=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'Quietly.slnx') -Raw -Encoding utf8
+$solutionProjects=@($solution.SelectNodes('//Project') | ForEach-Object {$_.GetAttribute('Path').Replace('\','/')})
+$snapshots=@{}
+foreach($distribution in $distributions){
+    if($distribution.Project -cnotin $solutionProjects){throw ('WorkspaceBuildProjectNotInSolution: '+$distribution.Project)}
+    $snapshots[$distribution.Output]=@(Get-QuietBinaryInputs $WorkspaceRoot $distribution.Project)
 }
-# Build both compatible caller-local Git assemblies, independent from the engine.
-foreach($framework in @('net10.0','net11.0')){
-    $toolProject='FrenchExDev2.QuietCli.Core.Tests.PoSh/recall-tools/QuietCli.Recall.Tools.csproj'
-    $toolOutput='FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/recall-tools/'+$framework
-    $toolInputs=@(Get-QuietBinaryInputs $WorkspaceRoot $toolProject)
-    Invoke-WorkspaceNative dotnet @('build',(Join-Path $WorkspaceRoot $toolProject),'-f',$framework,'-c',$Configuration,'-o',(Join-Path $WorkspaceRoot $toolOutput),'--nologo') $WorkspaceRoot
-    Write-QuietBuildManifest $WorkspaceRoot $toolProject $toolOutput -Inputs $toolInputs -Configuration $Configuration
-    $gitProject='FrenchExDev2.QuietCli.Git.PoSh/engine/QuietCli.Git.Parser.csproj'
-    $gitOutput='FrenchExDev2.QuietCli.Git.PoSh/lib/parser/'+$framework
-    $gitInputs=@(Get-QuietBinaryInputs $WorkspaceRoot $gitProject)
-    Invoke-WorkspaceNative dotnet @('build',(Join-Path $WorkspaceRoot $gitProject),'-f',$framework,'-c',$Configuration,'-o',(Join-Path $WorkspaceRoot $gitOutput),'--nologo') $WorkspaceRoot
-    Write-QuietBuildManifest $WorkspaceRoot $gitProject $gitOutput -Inputs $gitInputs -Configuration $Configuration
+Invoke-WorkspaceNative dotnet @('build',(Join-Path $WorkspaceRoot 'Quietly.slnx'),'--no-incremental','-c',$Configuration,'--nologo') $WorkspaceRoot
+foreach($distribution in $distributions){
+    # Publish only copies the solution's portable outputs and dependencies; compilation is disabled.
+    Invoke-WorkspaceNative dotnet @('publish',(Join-Path $WorkspaceRoot $distribution.Project),'-f',$distribution.TargetFramework,'-c',$Configuration,'--no-build','-o',(Join-Path $WorkspaceRoot $distribution.Output),'--nologo') $WorkspaceRoot
+    $slots=if($distribution.Package -ceq 'FrenchExDev2.QuietCli.Core.PoSh'){$ReadyToRunRuntimeIdentifier}else{@()}
+    Write-QuietBuildManifest $WorkspaceRoot $distribution.Project $distribution.Output -Inputs $snapshots[$distribution.Output] -Configuration $Configuration -ReadyToRunTargets @($slots)
 }
-# Build a portable .NET 10 assembly for direct calls from PowerShell 7.6.
-# -ReadyToRun publishes a precompiled, framework-dependent build for -LocalRuntimeIdentifier instead of a plain
-# IL build, so this directory can be used as a cold-start A/B candidate (see docs/README-run-profiles.md).
+# Architecture-specific publications require their own compiler/Crossgen2 settings.
 $project='FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj'
-$output='FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess'
-$inputs=@(Get-QuietBinaryInputs $WorkspaceRoot $project)
-if($ReadyToRun){
-    Invoke-WorkspaceNative dotnet @('publish',(Join-Path $WorkspaceRoot $project),'-f','net10.0','-c',$Configuration,'-r',$LocalRuntimeIdentifier,'--self-contained','false','-p:PublishReadyToRun=true','-o',(Join-Path $WorkspaceRoot $output),'--nologo') $WorkspaceRoot
-}else{
-    Invoke-WorkspaceNative dotnet @('build',(Join-Path $WorkspaceRoot $project),'-f','net10.0','-c',$Configuration,'-o',(Join-Path $WorkspaceRoot $output),'--nologo') $WorkspaceRoot
+foreach($rid in $ReadyToRunRuntimeIdentifier){
+    $output='FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/'+$rid
+    $target=Get-QuietRuntimeTargets $WorkspaceRoot|Where-Object Rid -CEQ $rid
+    $inputs=@(Get-QuietBinaryInputs $WorkspaceRoot $project)
+    Invoke-WorkspaceNative dotnet @('publish',(Join-Path $WorkspaceRoot $project),'-f','net10.0','-c',$Configuration,'-r',$rid,'--self-contained','false',('-p:PlatformTarget='+$target.PlatformTarget),'-p:PublishReadyToRun=true','-o',(Join-Path $WorkspaceRoot $output),'--nologo') $WorkspaceRoot
+    Write-QuietBuildManifest $WorkspaceRoot $project $output -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $rid -PlatformTarget $target.PlatformTarget -ReadyToRun
 }
-# Kept as the 'portable' manifest shape even under -ReadyToRun: this directory is validated the same way
-# everywhere else (Get-QuietWorkspaceIdentity), regardless of which RID it was actually precompiled for.
-Write-QuietBuildManifest $WorkspaceRoot $project $output -Inputs $inputs -Configuration $Configuration
 foreach($rid in $RuntimeIdentifier){
     $project='FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj'
     $output='FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid
@@ -61,8 +61,9 @@ foreach($rid in $RuntimeIdentifier){
     $architecture=$target.PlatformTarget
     $inputs=@(Get-QuietBinaryInputs $WorkspaceRoot $project)
     $publishArguments=@('publish',(Join-Path $WorkspaceRoot $project),'-f','net11.0','-c',$Configuration,'-r',$rid,'--self-contained','false',('-p:PlatformTarget='+$architecture),'-o',(Join-Path $WorkspaceRoot $output),'--nologo')
-    if($ReadyToRun){$publishArguments+='-p:PublishReadyToRun=true'}
+    $precompiled=$rid -in $ReadyToRunRuntimeIdentifier
+    $publishArguments+=('-p:PublishReadyToRun='+$precompiled.ToString().ToLowerInvariant())
     Invoke-WorkspaceNative dotnet $publishArguments $WorkspaceRoot
     Assert-QuietRuntimePublication (Join-Path $WorkspaceRoot $output) $target
-    Write-QuietBuildManifest $WorkspaceRoot $project $output -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $rid -PlatformTarget $architecture
+    Write-QuietBuildManifest $WorkspaceRoot $project $output -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $rid -PlatformTarget $architecture -ReadyToRun:$precompiled
 }

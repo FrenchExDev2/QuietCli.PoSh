@@ -111,7 +111,7 @@ try{
         $seen=[Collections.Generic.List[object]]::new()
         $listener={param($event,$runtime) if($seen.Count -ge 5000){throw 'SmokeEventLimit'};[void]$seen.Add($event);$description=if($event.PSObject.Properties['Fields']){$event.Fields -join ' '}else{$event.Kind};$state.Case=$step.Name+': '+$seen.Count+' events | '+$description.Substring(0,[Math]::Min(120,$description.Length));Write-WorkspaceJson $statusPath $state}
         $attempted=$true
-        $result=quiet -AsObject -Ui -FilePath 'vagrant' -ArgumentList $step.Args -WorkingDirectory $fixture -Environment $environment -TimeoutSeconds 600 -Listeners $listener
+        $result=quiet -AsObject -CollectEvents -Ui -FilePath 'vagrant' -ArgumentList $step.Args -WorkingDirectory $fixture -Environment $environment -TimeoutSeconds 600 -Listeners $listener
         Write-WorkspaceJson (Join-Path $RunDirectory ($step.Name+'.json')) @{Outcome=$result.Outcome;Execution=$result.Execution;Completeness=$result.Completeness;Error=$result.Error;Data=$result.Data;Events=$seen.ToArray()}
         Assert-ProviderCase ($step.Name+' completed without source/analysis loss') ($result.Outcome -eq 'Success' -and $result.Completeness.Source -and $result.Completeness.Analysis -and !$result.Error.Count)
         $ordered=$seen.Count -eq $result.Events.Count -and $seen.Count -gt 0

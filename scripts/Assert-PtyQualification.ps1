@@ -1,4 +1,3 @@
-# Objective: Reject any missing or incomplete mandatory native validation phase.
 function Assert-PtyQualification {
     <#
     .SYNOPSIS

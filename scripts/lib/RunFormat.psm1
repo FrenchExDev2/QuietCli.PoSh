@@ -1,3 +1,4 @@
+#Objective: Presentation helpers shared by the run-profile tooling: compact durations, Unicode tables, counter tables and PowerShell literals.
 #requires -Version 7.6
 <#
 .SYNOPSIS

@@ -1,5 +1,13 @@
 # Assert-QualificationGate.ps1
 
+Core-evidence scopes also require PerformanceResult=success. Git/Vagrant-only scopes require skipped because Core profiling is outside their declared scope. The receipt records Performance and PerformanceRequired, and qualified_sha is never emitted for an absent, skipped, failed or cancelled required report. Windows/Linux success alone cannot qualify Core/All. The property regression independently varies performance alongside platform/mutation job outcomes, including missing results and explicit TTY exclusions.
+
+Receipts include GitHub RunId and RunAttempt when available. Publication reuse requires All, the exact current SHA/run/attempt and successful Windows/Linux with the explicit TTY exclusion, through `Assert-QualificationReceipt.ps1`; local receipts remain usable locally but cannot substitute for a GitHub checkpoint.
+
+`WorkspaceRoot` selects build/companions.yml. The declared suites determine whether native Core
+evidence is required; the gate has no Git-specific condition. Unknown suites fail before a receipt
+or qualified_sha is written. SkipTty still records an explicit exclusion.
+
 ## Purpose
 
 Emits (or rejects) the final, revision-bound "ready to ship" qualification receipt for CI by combining the Windows and Linux test-matrix results with the native mutation-campaign result, and appends `qualified_sha=<Revision>` to the GitHub Actions step output only when every required job succeeded. It is the terminal gate that decides whether a given commit SHA may be trusted downstream (e.g. for publication). It is invoked directly from `.github/workflows/ci.yml` (line 41): `./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -MutationResult skipped -SkipTty -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT`.
@@ -8,7 +16,7 @@ Emits (or rejects) the final, revision-bound "ready to ship" qualification recei
 
 | Parameter | Type | Mandatory | Default |
 |---|---|---|---|
-| `Suite` | `string` (`ValidateSet('All','Core','Git')`) | No | `'All'` |
+| `Suite` | `string` (declared suite or All) | No | `'All'` |
 | `SkipTty` | `switch` | No | off |
 | `Revision` | `string` (`ValidatePattern` 40-hex-char SHA) | Yes | none |
 | `WindowsResult` | `string` | Yes | none |
@@ -49,3 +57,13 @@ The logic is small, readable, and already does the right thing (always records a
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- script-contract:begin -->
+## Execution contract
+
+Purpose: Emits a revision-bound qualification receipt only after every required job succeeds.
+
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+
+See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
+<!-- script-contract:end -->

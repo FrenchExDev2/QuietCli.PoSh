@@ -82,7 +82,8 @@ try{
     $state.Platform=$probe.RuntimeIdentifier
     $locked=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'build/ci-images.lock.json') -Raw -Encoding utf8|ConvertFrom-Json
     Assert-AlpineSmoke 'The installed PowerShell version matches the locked package' ($probe.PowerShellVersion -ceq ($locked.AlpinePowerShellPackage -replace '-r\d+$',''))
-    Assert-AlpineSmoke 'Stable PowerShell uses the distribution CLR 10' ($probe.FrameworkMajor -eq 10 -and $probe.RuntimeDirectory.StartsWith('/usr/lib/dotnet/'))
+    Assert-AlpineSmoke 'Stable PowerShell uses the locked Microsoft CLR 10' ($probe.FrameworkMajor -eq 10 -and $probe.RuntimeDirectory.StartsWith(('/opt/pwsh-runtime/shared/Microsoft.NETCore.App/'+$locked.AlpineRuntime+'/')))
+    Assert-AlpineSmoke 'The actual portable musl RID matches the selected native target' ($probe.RuntimeIdentifier -ceq $RuntimeIdentifier)
     Assert-AlpineSmoke 'The expected musl SQLite asset actually loads' ($probe.Libc -ceq 'Musl' -and $probe.ExpectedNative.Outcome -ceq 'Success' -and $probe.ExpectedNative.HashMatches)
     Assert-AlpineSmoke 'No runtime-root bootstrap correction is needed' (!$diagnosis.BootstrapConfigurationProblem)
     Assert-AlpineSmoke 'Runtime diagnostic container removal was confirmed' ($report.State.Cleanup -ceq 'RemovedOwnedContainer')
@@ -91,6 +92,21 @@ try{
     $sdk=Invoke-AlpineSmokeNative @('run','--rm','--network=none','--name',$sdkName,'--label',('org.frenchexdev.quietcli2.owner='+$sdkName),'--entrypoint','dotnet',$receipt.Image,'--version')
     $expectedSdk=(Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'global.json') -Raw -Encoding utf8|ConvertFrom-Json).sdk.version
     Assert-AlpineSmoke 'The .NET CLI still starts the pinned SDK under the same defaults' ($sdk.Outcome -eq 'Success' -and ($sdk.Stdout -join '').Trim() -ceq $expectedSdk)
+    $state.Case='Verify offline Gallery compression and hidden-file inspection';Write-WorkspaceJson $status $state
+    $packageProbe=@'
+$ErrorActionPreference='Stop'
+$root='/tmp/QuietSmoke'
+$null=New-Item -ItemType Directory -Path $root
+New-ModuleManifest -Path "$root/QuietSmoke.psd1" -ModuleVersion '1.0.0' -Author 'QuietCli tests' -Description 'Offline packaging fixture'
+[IO.File]::WriteAllText("$root/.gitattributes", "*.bin binary`n", [Text.UTF8Encoding]::new($false))
+if((Get-Item -LiteralPath "$root/.gitattributes" -Force).Length -le 0){throw 'HiddenFileUnreadable'}
+Compress-PSResource -Path $root -DestinationPath /tmp -ErrorAction Stop
+if(!(Test-Path /tmp/QuietSmoke.1.0.0.nupkg)){throw 'OfflinePackageMissing'}
+'OfflinePackageAndHiddenFileOK'
+'@
+    $package=Invoke-AlpineSmokeNative @('run','--rm','--network=none','--name',$sdkName,'--entrypoint','pwsh',$receipt.Image,'-NoProfile','-Command',$packageProbe)
+    Write-WorkspaceJson (Join-Path $RunDirectory 'packaging.json') $package
+    Assert-AlpineSmoke 'PSResourceGet creates a real nupkg without network and dotfiles remain readable' ($package.Outcome -eq 'Success' -and ($package.Stdout -contains 'OfflinePackageAndHiddenFileOK'))
     $state.State='Success'
 }catch{$state.State='Failed';$state.Error=$_.ToString();if(!$state.Failed){$state.Failed++}}
 finally{

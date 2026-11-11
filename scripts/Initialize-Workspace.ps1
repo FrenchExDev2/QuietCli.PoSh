@@ -1,4 +1,3 @@
-# Objective: Verify one checkout and its discovered internal projects without cloning child repositories.
 #requires -Version 7.6
 <#
 .SYNOPSIS
@@ -11,7 +10,8 @@ QuietCli2 monorepo root.
 Verifies the existing source lock and restores Core's pinned third-party resources, without modifying
 source files or selecting a branch.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Restore)
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Restore)
+if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Initialize-Workspace')){return}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 if(!(Test-Path -LiteralPath (Join-Path $WorkspaceRoot '.git'))){throw 'MonorepoGitMetadataMissing'}
