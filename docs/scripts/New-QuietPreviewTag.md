@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Creates a local annotated Git tag that names a preview release, using the Core module's `ModuleVersion` from its manifest plus a UTC timestamp. It never commits, pushes, publishes, or rewrites an existing tag; it tags the exact commit (`HEAD`) of a clean checkout. This is the first step of the preview-release workflow: a human or CI step runs it to mint a reproducible, lexically-ordered tag name (`New-QuietPreviewTagName`) before a preview package is built and validated (`New-QuietPreviewPackage.ps1` / `Publish-QuietGallery.ps1 -ValidateOnly`). It is directly exercised by `FrenchExDev2.QuietCli.Core.Tests.PoSh\PreviewTag.Tests.ps1` (line 86), which invokes this exact script path inside a sandbox repository.
+Creates a local annotated tag on the exact observed HEAD of a clean checkout. Default mode uses the Core numeric version and a UTC timestamp for an inert preview marker. `-Release` uses the complete owning manifest version in the public module namespace; explicitly pushing that release tag requests Gallery publication. The script never commits, pushes, publishes or replaces an existing tag. `PreviewTag.Tests.ps1` exercises both modes in an owned disposable repository.
 
 ## Usage
 
@@ -10,6 +10,8 @@ Creates a local annotated Git tag that names a preview release, using the Core m
 |---|---|---|---|
 | `WorkspaceRoot` | `string` | No | `Split-Path $PSScriptRoot -Parent` (this script's own checkout) |
 | `Timestamp` | `DateTimeOffset` | No | `[DateTimeOffset]::UtcNow` |
+| `Release` | `switch` | No | False; selects exact manifest-matched release tags |
+| `Module` | `Core`, `Git`, `Vagrant` | No | `Core`; companion publication capability remains unavailable |
 
 Supports `-WhatIf`/`-Confirm` (`SupportsShouldProcess`, `ConfirmImpact = 'Medium'`). `-WhatIf` is explicitly allowed on a dirty checkout (to preview the tag name); actual creation requires a clean tree.
 
@@ -22,6 +24,15 @@ $tag = ./scripts/New-QuietPreviewTag.ps1
 ```
 
 ## Dependencies
+
+Release mode uses `-Release -Module Core` (Core is the default) to create `QuietCli/v<complete-manifest-version>`. It reads the optional prerelease suffix and calls [GalleryRelease](lib/GalleryRelease.md) before creating the local annotated tag. `-Module Git` and `-Module Vagrant` have independent source versions but are rejected while their public publication capability is unavailable. Without `-Release`, the existing timestamped Core preview tag behavior is unchanged. Pushing a namespaced release tag requests publication; this script itself still never pushes.
+
+```powershell
+./scripts/New-QuietPreviewTag.ps1 -Release -WhatIf
+$release = ./scripts/New-QuietPreviewTag.ps1 -Release
+```
+
+The CI optimization case exercises both modes in an owned disposable repository, checking no-write preview, dirty-tree rejection, annotation, exact commit identity, collision rejection and unchanged manifests.
 
 - Dot-sources nothing directly, but `Import-Module`s two workspace modules by exact path: `FrenchExDev2.QuietCli.Core.PoSh` and `FrenchExDev2.QuietCli.Git.PoSh` (lines 25-36), guarding against an already-loaded module from a different checkout.
 - `Import-Module (Join-Path $PSScriptRoot 'lib/PreviewTag.psm1') -Force` (line 37) — supplies `New-QuietPreviewTagName`.
@@ -57,7 +68,7 @@ This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which 
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Creates a local annotated preview tag using the current Core manifest version and a UTC timestamp.
+Purpose: Creates a local annotated timestamp preview tag or an exact module release tag.
 
 Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 

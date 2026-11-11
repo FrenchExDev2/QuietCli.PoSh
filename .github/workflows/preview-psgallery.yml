@@ -1,12 +1,6 @@
-name: QuietCli2 manual develop preview
+name: QuietCli2 manual preview artifacts
 on:
   workflow_dispatch:
-    inputs:
-      publish:
-        description: Publish publicly after full qualification; false prepares artifacts only
-        type: boolean
-        required: true
-        default: false
 permissions:
   contents: read
   packages: write
@@ -16,4 +10,4 @@ jobs:
     uses: ./.github/workflows/publish-psgallery.yml
     with:
       preview_build: true
-      publish: ${{ inputs.publish == true }}
+      publish: false

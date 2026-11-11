@@ -73,10 +73,10 @@ GHCR toolchain images remain separate from the PowerShell Gallery module.
 
 ```mermaid
 flowchart TD
-    D[Applicable develop push] --> Q[Qualify All for the exact source revision]
+    D[Explicit QuietCli/v version tag push] --> Q[Qualify All for the tagged source revision]
     Q --> W[Windows Release ReadyToRun build of all six RIDs for CLR 10 and 11]
     W --> T[Validate the exact Windows packaging build]
-    T --> P[Prepare one QuietCli prerelease nupkg]
+    T --> P[Prepare one QuietCli nupkg matching the manifest and tag]
     P --> H[Record package SHA-256 and upload the prepared artifact]
     H --> V[Publish job downloads and validates the same nupkg]
     V --> C[Validate the prepared version and qualified checkpoint]
@@ -87,10 +87,12 @@ flowchart TD
 The matrix qualifies a source revision. The Windows packaging job rebuilds its embedded binaries
 afterward; the current pipeline does not assemble the final package from per-RID binaries downloaded
 from the matrix. This distinction must remain visible when describing binary-level qualification.
-Stable publication remains a separate explicitly requested version; a develop preview does not
-publish a stable release. See [the Gallery workflow](../../.github/workflows/publish-psgallery.yml).
-Each successful checkpoint can publish its uniquely versioned prepared package even if `develop`
-has advanced. Publication validates that checkpoint and the prepared bytes, never the current branch HEAD.
+Develop merges run qualification/profiling and can publish missing GHCR toolchain cache entries,
+without publishing a module. Stable and prerelease Gallery publication both require a matching
+module tag push. Manual dispatch prepares artifacts only. See [release tags](github/script-release-tags.md)
+and [the Gallery workflow](../../.github/workflows/publish-psgallery.yml). Publication validates the
+tagged checkpoint and prepared bytes, never the current branch HEAD. Companion versions are
+independent; their reserved tag namespaces remain blocked until public packaging is available.
 
 ## ReadyToRun builds
 

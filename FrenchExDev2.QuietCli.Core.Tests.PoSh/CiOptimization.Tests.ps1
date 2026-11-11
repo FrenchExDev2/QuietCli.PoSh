@@ -269,14 +269,69 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
     $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
     $yaml=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build()
     $workflows=@{}
-    foreach($name in @('ci','companions-ci','preview-psgallery','publish-psgallery')){$workflows[$name]=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot ".github/workflows/$name.yml"),[Text.Encoding]::UTF8))}
+    foreach($name in @('ci','companions-ci','preview-psgallery','publish-psgallery','release-tags')){$workflows[$name]=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot ".github/workflows/$name.yml"),[Text.Encoding]::UTF8))}
     $jobs=$workflows.ci['jobs']
     if($jobs.ContainsKey('linux-suite-images') -or @($jobs['linux-images']['needs']).Count -ne 1 -or @($jobs['linux-images']['needs'])[0] -cne 'linux-matrix'){throw 'DuplicateImageProducerMatrix'}
     $producer=@($jobs['linux-images']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
     if(!$producer.Contains('-ResolveOnly') -or !$producer.Contains('-PublishCache')){throw 'ProducerDownloadsUnusedCachedImages'}
-    if($workflows['preview-psgallery']['on'].ContainsKey('push') -or $workflows['companions-ci']['jobs']['preview']['needs'] -cne 'companions' -or $workflows['companions-ci']['jobs']['preview']['with']['qualified_sha'] -cne '${{ needs.companions.outputs.qualified_sha }}'){throw 'DuplicateAutomaticQualification'}
+    if($workflows['preview-psgallery']['on'].ContainsKey('push') -or $workflows['companions-ci']['jobs'].ContainsKey('preview') -or $workflows['preview-psgallery']['jobs']['preview']['with']['publish'] -cne 'false'){throw 'DevelopStillPublishesGalleryPackages'}
     $publication=$workflows['publish-psgallery']['jobs']
     if($publication['qualification']['if'] -cne "inputs.qualified_sha == ''" -or $publication['reuse-qualification']['steps'][-1]['run'] -notmatch 'Assert-QualificationReceipt.ps1' -or $publication['package']['needs'] -cne 'checkpoint'){throw 'UnverifiedQualificationReuse'}
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/GalleryRelease.psm1) -Force
+    $releaseFixture=Join-Path $fixture release-policy
+    foreach($entry in @(@('Core','3.4.5'),@('Git','1.2.3'),@('Vagrant','8.9.0'))){
+        $project="FrenchExDev2.QuietCli.$($entry[0]).PoSh";$root=Join-Path $releaseFixture $project
+        [void][IO.Directory]::CreateDirectory($root)
+        $text="@{ModuleVersion='$($entry[1])';PrivateData=@{PSData=@{Prerelease='preview'};QuietCli=@{Publishable=`$"+$(if($entry[0] -ceq 'Core'){'true'}else{'false'})+"}}}`n"
+        [IO.File]::WriteAllText((Join-Path $root "$project.psd1"),$text,[Text.UTF8Encoding]::new($false))
+    }
+    $releasePlan=Resolve-QuietGalleryReleaseTag $releaseFixture 'QuietCli/v3.4.5-preview'
+    if($releasePlan.Module -cne 'QuietCli' -or $releasePlan.Component -cne 'Core' -or $releasePlan.Version -cne '3.4.5-preview'){throw 'ReleasePlanIdentityChanged'}
+    $coreManifest=Join-Path $releaseFixture 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'
+    $savedManifest=[IO.File]::ReadAllText($coreManifest,[Text.Encoding]::UTF8)
+    try{
+        [IO.File]::WriteAllText($coreManifest,"@{ModuleVersion='3.4.5';PrivateData=@{PSData=@{};QuietCli=@{Publishable=`$true}}}`n",[Text.UTF8Encoding]::new($false))
+        if((Resolve-QuietGalleryReleaseTag $releaseFixture 'QuietCli/v3.4.5').Version -cne '3.4.5'){throw 'StableReleasePlanRejected'}
+        foreach($policyValue in @('$false',"'true'",'$null')){
+            [IO.File]::WriteAllText($coreManifest,"@{ModuleVersion='3.4.5';PrivateData=@{PSData=@{};QuietCli=@{Publishable=$policyValue}}}`n",[Text.UTF8Encoding]::new($false))
+            $rejected=$false;try{$null=Resolve-QuietGalleryReleaseTag $releaseFixture 'QuietCli/v3.4.5'}catch{$rejected=$_.Exception.Message -like 'GalleryReleaseModuleNotPublishable:*'}
+            if(!$rejected){throw 'NonBooleanOrFalsePublicationPolicyAccepted'}
+        }
+    }finally{[IO.File]::WriteAllText($coreManifest,$savedManifest,[Text.UTF8Encoding]::new($false))}
+    foreach($component in @('Git','Vagrant')){
+        $project="FrenchExDev2.QuietCli.$component.PoSh";$companionManifest=Join-Path $releaseFixture "$project/$project.psd1"
+        $data=[IO.File]::ReadAllText($companionManifest,[Text.Encoding]::UTF8)
+        try{
+            [IO.File]::WriteAllText($companionManifest,$data.Replace('Publishable=$false','Publishable=$true'),[Text.UTF8Encoding]::new($false))
+            $tagVersion=if($component -ceq 'Git'){'1.2.3-preview'}else{'8.9.0-preview'}
+            $rejected=$false;try{$null=Resolve-QuietGalleryReleaseTag $releaseFixture "QuietCli.$component/v$tagVersion"}catch{$rejected=$_.Exception.Message -like 'GalleryReleasePublicPackagingUnavailable:*'}
+            if(!$rejected){throw 'CompanionFlagBypassedMissingPublicPackaging'}
+        }finally{[IO.File]::WriteAllText($companionManifest,$data,[Text.UTF8Encoding]::new($false))}
+    }
+    $releaseRejections=0
+    foreach($tag in @('v3.4.5-preview','QuietCli/v3.4.5','QuietCli/v3.4.6-preview','QuietCli/v03.4.5-preview','quietcli/v3.4.5-preview','QuietCli/v3.4.5-preview.1','QuietCli/v3.4.5-preview+42',"QuietCli/v3.4.5-preview`n",'../QuietCli/v3.4.5-preview','QuietCli.Git/v1.2.3-preview','QuietCli.Vagrant/v8.9.0-preview')){
+        $rejected=$false;try{$null=Resolve-QuietGalleryReleaseTag $releaseFixture $tag}catch{$rejected=$true}
+        if(!$rejected){throw ('InvalidReleaseTagAccepted: '+$tag)};$releaseRejections++
+    }
+    $planScript=Join-Path $WorkspaceRoot scripts/Get-QuietReleasePlan.ps1
+    $planOutput=Join-Path $releaseFixture outputs.txt
+    $null=& $planScript -WorkspaceRoot $releaseFixture -Tag 'QuietCli/v3.4.5-preview' -OutputPath $planOutput -WhatIf
+    if(Test-Path -LiteralPath $planOutput){throw 'ReleasePlanPreviewWroteOutput'}
+    $null=& $planScript -WorkspaceRoot $releaseFixture -Tag 'QuietCli/v3.4.5-preview' -OutputPath $planOutput -Confirm:$false
+    if([IO.File]::ReadAllText($planOutput,[Text.Encoding]::UTF8) -cne "module=QuietCli`nversion=3.4.5-preview`n"){throw 'ReleasePlanOutputsChanged'}
+    $releaseWorkflow=$workflows['release-tags']
+    if($releaseWorkflow['on'].Count -ne 1 -or @($releaseWorkflow['on']['push']['tags']).Count -ne 3 -or $releaseWorkflow['jobs']['release']['needs'] -cne 'plan' -or $releaseWorkflow['jobs']['release']['with']['version'] -cne '${{ needs.plan.outputs.version }}' -or $releaseWorkflow['jobs']['release']['with']['publish'] -cne 'true'){throw 'ReleaseTagRoutingChanged'}
+    $condition=[string]$publication['publish']['if']
+    $expression=$condition.Replace('${{','').Replace('}}','').Replace('!cancelled()','(-not $cancelled)').Replace('inputs.publish','$requestPublish').Replace('inputs.preview_build','$previewBuild').Replace('github.repository','$repository').Replace('github.event_name','$eventName').Replace("startsWith(github.ref, 'refs/tags/QuietCli/v')","`$releaseRef.StartsWith('refs/tags/QuietCli/v',[StringComparison]::Ordinal)").Replace('needs.checkpoint.result','$checkpointResult').Replace('needs.checkpoint.outputs.qualified_sha','$qualifiedSha').Replace('github.sha','$checkoutSha').Replace('&&','-and').Replace('!=','-cne').Replace('==','-ceq').Replace('true','$true')
+    $evaluate=[scriptblock]::Create($expression);$releaseProperties=0
+    foreach($eventName in @('push','workflow_dispatch','pull_request')){foreach($releaseRef in @('refs/heads/develop','refs/tags/QuietCli/v3.4.5-preview','refs/tags/QuietCli.Git/v1.2.3-preview')){foreach($requestPublish in @($true,$false)){foreach($previewBuild in @($true,$false)){foreach($repository in @('FrenchExDev2/QuietCli.PoSh','fork/repo')){foreach($cancelled in @($true,$false)){foreach($checkpointResult in @('success','failure')){foreach($qualifiedSha in @('a','b')){
+        $checkoutSha='a'
+        $expected=$eventName -ceq 'push' -and $releaseRef -ceq 'refs/tags/QuietCli/v3.4.5-preview' -and $requestPublish -and !$previewBuild -and $repository -ceq 'FrenchExDev2/QuietCli.PoSh' -and !$cancelled -and $checkpointResult -ceq 'success' -and $qualifiedSha -ceq $checkoutSha
+        if([bool](& $evaluate) -ne $expected){throw 'ReleasePublicationBoundaryChanged'};$releaseProperties++
+    }}}}}}}}
+    . (Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.Tests.PoSh/PreviewTag.Tests.ps1)
+    Invoke-QuietPreviewTagTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $releaseFixture
+    Write-WorkspaceJson (Join-Path $releaseFixture campaign.json) @{MalformedOrUnavailableTags=$releaseRejections;PublicationProperties=$releaseProperties;RealLocalTagLifecycle=$true;RemotePublication=$false}
     foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){
         $declaration=& (Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $rid
         $packages=@($declaration.Containerfile.Stages|Where-Object Name -CEQ ci)[0].Packages.Split(' ')

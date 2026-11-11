@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: 6E7FE7C713C5FF263E83B706C5BAA827D3791B0E49E2F2A4644A67B1ECD03C9A -->
+<!-- workflow-source-sha256: 06E5ABB238EA24ED727026989AEB98220696C3C0FBEE72A9BC8D1BA95D9AA0DA -->
 
 ## Purpose
 
@@ -21,15 +21,12 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 flowchart TD
     event["Triggers: pull_request, push"]
     job_companions["companions"]
-    job_preview["preview"]
     event --> job_companions
-    job_companions --> job_preview
 ~~~
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
 | companions | reuses ./.github/workflows/ci.yml |  | default success condition |  |
-| preview | reuses ./.github/workflows/publish-psgallery.yml | companions | github.event_name == 'push' && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && needs.companions.outputs.qualified_sha == github.sha |  |
 
 <!-- workflow-generated:end -->
 
@@ -42,7 +39,7 @@ build/companions.yml; the generic resolver selects test runners, image layers an
 controls. Image publication retains the reusable workflow's explicit upstream develop guard.
 The previous Core/Git-specific entry workflows are replaced by this shared entry.
 
-Superseded PR validations are cancelled within their PR concurrency group. Develop uses unique run groups and preserves qualified checkpoints. The preview job depends on the successful All output for this SHA and calls publication with that output; publication requires the same-run/same-attempt receipt instead of starting another matrix. This is the sole automatic develop preview trigger; the preview wrapper is manual only.
+Superseded PR validations are cancelled within their PR concurrency group. Develop uses unique run groups and preserves qualification reports. There is no Gallery packaging/publication job in this caller: merging runs All with profiling and may populate the GHCR toolchain cache. Explicit module tag pushes use the separate release-tags workflow.
 
 ## Validation and limits
 

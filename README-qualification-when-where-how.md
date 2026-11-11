@@ -1,6 +1,6 @@
 # Qualification: when, where and how
 
-For `All`, one build and Linux toolchain image serve the complete target. Core's validation retains its Git dependency and executes first. Only after complete successful Core evidence do Git and Vagrant execute concurrently in isolated PowerShell processes, with separate reports and configuration in that same runner/container. Companion failure blocks the matrix target. Automatic develop packaging reuses the same run/attempt/SHA All receipt instead of running a second full matrix; the packaging build is still verified separately.
+For `All`, one build and Linux toolchain image serve the complete target. Core's validation retains its Git dependency and executes first. Only after complete successful Core evidence do Git and Vagrant execute concurrently in isolated PowerShell processes, with separate reports and configuration in that same runner/container. Companion failure blocks the matrix target. Develop pushes qualify and upload reports without publishing modules. Explicit module release tags start a separate full qualification of the tagged revision before packaging/publication; the packaging build is also verified separately.
 
 [QuietCli overview](README.md) · [Development](README-development.md) · [Tests and qualification](README-qualification.md) · [Documentation index](docs/README.md)
 
@@ -14,6 +14,7 @@ The shared [companions-ci.yml](.github/workflows/companions-ci.yml) caller selec
 - PRs and `develop` pushes matching `FrenchExDev2.QuietCli.*.PoSh/**` or shared automation/build/workflow/SDK/policy files request `All`. The wildcard includes Vagrant and future integration test projects, without a new workflow per companion.
 - Opening a matching PR or updating its branch triggers this one caller. A path-filtered skip is not qualification evidence. Changed-suite selection and image/scheduling optimization remain separate work.
 - Manual dispatch and reusable calls accept a YAML-declared `suite`, defaulting to `All`.
+- A merge into `develop` is a develop push: it runs `All` with profiling and may populate the GHCR toolchain cache, but publishes no PowerShell module. [Module release tags](docs/README-preview-releases.md#module-release-tags-and-independent-versions) separately request Gallery publication.
 - [publish-psgallery.yml](.github/workflows/publish-psgallery.yml) requests `All` qualification before packaging. Its Windows packaging job also rebuilds and rechecks the distributions. Publication has its own input and protected environment; qualification does not itself authorize publication.
 
 `All` expands to the independent suites in [build/companions.yml](build/companions.yml), currently

@@ -12,6 +12,7 @@ Run ./scripts/Sync-GitHubWorkflowsReadme.ps1 -Apply to regenerate graphs and thi
 | [publish-psgallery.yml](../../../.github/workflows/publish-psgallery.yml) | [documentation](script-publish-psgallery.md) |
 | [qualification.yml](../../../.github/workflows/qualification.yml) | [documentation](script-qualification.md) |
 | [quietcli2-readytorun.yml](../../../.github/workflows/quietcli2-readytorun.yml) | [documentation](script-quietcli2-readytorun.md) |
+| [release-tags.yml](../../../.github/workflows/release-tags.yml) | [documentation](script-release-tags.md) |
 | [scripts-docs-apply.yml](../../../.github/workflows/scripts-docs-apply.yml) | [documentation](script-scripts-docs-apply.md) |
 | [scripts-docs-check.yml](../../../.github/workflows/scripts-docs-check.yml) | [documentation](script-scripts-docs-check.md) |
 | [sync-credits-apply.yml](../../../.github/workflows/sync-credits-apply.yml) | [documentation](script-sync-credits-apply.md) |

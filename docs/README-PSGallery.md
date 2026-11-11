@@ -2,17 +2,19 @@
 
 ## GitHub publication
 
-An applicable `develop` push prepares an automatic prerelease after `All` qualification for that exact
-source revision. Windows x64 rebuilds all six embedded RIDs in Release ReadyToRun for CLR 10 and 11,
+An applicable `develop` push executes `All` qualification and profiling without publishing a module.
+An explicit `QuietCli/v<version>` tag push requests a Core release after full qualification of the tagged
+revision. The tag version must exactly match the source manifest, including its prerelease suffix.
+Windows x64 rebuilds all six embedded RIDs in Release ReadyToRun for CLR 10 and 11,
 verifies the Windows build, and prepares one public `QuietCli` nupkg with `-RequireReadyToRun`.
 There is no separate Gallery package per RID. Native Linux matrix tests and Docker fallback qualify
 the source revision; the final package is rebuilt on Windows, not assembled from matrix artifacts.
 
 The publish job downloads the prepared nupkg, verifies its recorded hash, version and qualified
 checkpoint, then uses `Publish-PSResource -NupkgPath` with the `psgallery` environment secret.
-Every qualified checkpoint may publish its unique prerelease even if develop has advanced.
-Stable publication remains manual with an exact version. The manual ReadyToRun A/B benchmark
-is informational and never blocks develop publication. See the diagrams and platform details in
+Publication uses the tagged checkpoint even if develop has advanced. Both stable and prerelease
+publication require a tag push; workflow dispatch only prepares artifacts. The manual ReadyToRun A/B benchmark
+is informational and never blocks a release. See the diagrams and platform details in
 [the CI execution model](ci/execution-model.md).
 
 The public PowerShell module and Gallery package are named `QuietCli`; they provide Core. `FrenchExDev2.QuietCli.Core.PoSh` is the internal source project name, not a public package. The Git example and test companion modules are not published.
@@ -66,12 +68,12 @@ PowerShell Gallery prerelease labels use the supported alphanumeric/hyphen form.
 
 Gallery preparation copies the internal Core project into a separate `QuietCli` staging directory, with `QuietCli.psd1` and `QuietCli.psm1`. The package, publication plan, validation and installation probes use the public `QuietCli` identity. Source project names, manifest versions and GUIDs stay unchanged. Generated calls and companion dependencies use the identity of the imported module, including `QuietCli` after installation.
 
-For generated preview versions, artifact-only scripts and automatic `develop` publication, see
+For generated artifact-only preview versions, independent module tags and release preparation, see
 [preview releases](README-preview-releases.md). Source versions and GUIDs stay unchanged during CI packaging.
 
 A QuietCli release requires qualification of the delivered revision across its supported runtime and platform matrix, including the required property, fuzzing and mutation campaigns for the selected scope. GitHub CI excludes native TTY/PTY campaigns; its reports do not qualify that transport. A targeted development run or a successful run for an older revision does not qualify a new release.
 
-Stable publication is manually requested. The authorized `develop` preview workflow publishes only Core after the configured CI qualification. Build, test and package preparation do not authorize publication. Public package preparation and publication reject Git or any extra nupkg.
+Both stable and prerelease publication are requested by explicit Core tag pushes after the configured CI qualification. Build, test and manual package preparation do not publish. Public package preparation and publication currently reject Git or any extra nupkg. Git and Vagrant retain independent source versions and reserved `QuietCli.Git/v*` / `QuietCli.Vagrant/v*` namespaces; their nonpublishable manifests and missing public packaging reject release requests before qualification. Their activation requires public dependency staging and offline installation/import checks, not a shared Core version bump.
 
 Keep API keys out of code, CLI arguments, reports and chat. Follow [Microsoft's publishing guidelines](https://learn.microsoft.com/en-us/powershell/gallery/concepts/publishing-guidelines) and the [Publish-PSResource documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.psresourceget/publish-psresource) when preparing an explicitly authorized release.
 

@@ -1,14 +1,14 @@
 # preview-psgallery.yml
 
-<!-- workflow-source-sha256: 0FD7BFBF40052BA89480836750AF7070CA6081F92452120DE86609339C7C09F4 -->
+<!-- workflow-source-sha256: F94491A0663031F6807150A1BDD23006972566F193220EEE9BD3B57D2DADFE61 -->
 
 ## Purpose
 
-Manual uniquely versioned develop prerelease delivery through qualified Gallery publication.
+Manual generated-preview artifacts after full qualification, without Gallery publication.
 
 ## Triggers
 
-Manual dispatch only, defaulting publish=false. Repository/ref condition rejects forks and other branches. Automatic develop delivery belongs to companions-ci.yml after its All qualification, preventing a duplicate matrix.
+Manual dispatch only. Repository/ref condition rejects forks and other branches. This wrapper always supplies publish=false; branch pushes do not call it.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
@@ -30,11 +30,11 @@ flowchart TD
 
 ## Scripts and effects
 
-The preview job reuses publish-psgallery.yml with preview_build=true. Dispatch publishes only when its boolean input is true. This wrapper supplies no reusable qualification, so the manual path executes All. It contains no API key and does not publish directly.
+The preview job reuses publish-psgallery.yml with preview_build=true and publish=false. There is no publication input. This wrapper supplies no reusable qualification, so the manual path executes All with matrix profiling. It contains no API key and only prepares artifacts.
 
 ## Validation and limits
 
-The reusable workflow qualifies All and validates the prepared checkpoint and bytes. A later develop head does not invalidate a previously successful checkpoint. Stable versions are not published by this wrapper.
+The reusable workflow qualifies All and validates the prepared checkpoint and bytes. A later develop head does not invalidate a previously successful checkpoint. No version is published by this wrapper; module release tag pushes use release-tags.yml.
 
 <!-- credits:begin -->
 ## Credits

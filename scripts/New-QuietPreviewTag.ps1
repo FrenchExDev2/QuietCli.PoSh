@@ -1,7 +1,7 @@
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Creates a local annotated preview tag using the current Core manifest version and a UTC timestamp.
+Creates a local annotated timestamp preview tag or an exact module release tag.
 .DESCRIPTION
 Tags the exact HEAD observed in a clean QuietCli2 repository. Never commits, pushes,
 publishes, changes manifests or replaces a tag. WhatIf also permits a dirty checkout
@@ -10,6 +10,10 @@ to inspect the proposed name; creation requires committing changes first.
 QuietCli2 repository root; defaults to this script's checkout, independently of the current directory.
 .PARAMETER Timestamp
 Optional reproducible instant; defaults to the current UTC time at invocation.
+.PARAMETER Release
+Uses the public module namespace and complete manifest version; pushing this tag requests publication.
+.PARAMETER Module
+Independently versioned source component; release creation requires its public packaging capability.
 .EXAMPLE
 ./scripts/New-QuietPreviewTag.ps1 -WhatIf
 .EXAMPLE
@@ -18,7 +22,9 @@ $tag = ./scripts/New-QuietPreviewTag.ps1
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
 param(
     [string]$WorkspaceRoot = (Split-Path $PSScriptRoot -Parent),
-    [DateTimeOffset]$Timestamp = [DateTimeOffset]::UtcNow
+    [DateTimeOffset]$Timestamp = [DateTimeOffset]::UtcNow,
+    [switch]$Release,
+    [ValidateSet('Core','Git','Vagrant')][string]$Module='Core'
 )
 $ErrorActionPreference = 'Stop'
 $sourceRoot = Split-Path $PSScriptRoot -Parent
@@ -69,9 +75,18 @@ $comparison = if ($IsWindows) { [StringComparison]::OrdinalIgnoreCase } else { [
 if (!$WorkspaceRoot.Equals([IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($repository)), $comparison)) {
     throw 'PreviewTagWorkspaceMustBeRepositoryRoot'
 }
-$manifestPath = Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'
-$version = [string](Import-PowerShellDataFile -LiteralPath $manifestPath).ModuleVersion
-$tag = New-QuietPreviewTagName -Version $version -Timestamp $Timestamp
+if(!$Release -and $Module -cne 'Core'){throw 'CompanionTagRequiresReleaseMode'}
+$project="FrenchExDev2.QuietCli.$Module.PoSh"
+$manifestPath = Join-Path $WorkspaceRoot "$project/$project.psd1"
+$manifest=Import-PowerShellDataFile -LiteralPath $manifestPath
+$version = [string]$manifest.ModuleVersion
+if($Release){
+    if($manifest.PrivateData.PSData.Prerelease){$version+='-'+$manifest.PrivateData.PSData.Prerelease}
+    $publicName=if($Module -ceq 'Core'){'QuietCli'}else{"QuietCli.$Module"}
+    Import-Module (Join-Path $PSScriptRoot 'lib/GalleryRelease.psm1') -Force
+    $plan=Resolve-QuietGalleryReleaseTag -WorkspaceRoot $WorkspaceRoot -Tag "$publicName/v$version"
+    $tag=$plan.Tag
+}else{$tag = New-QuietPreviewTagName -Version $version -Timestamp $Timestamp}
 $revision = (Invoke-QuietPreviewGit @('rev-parse', '--verify', 'HEAD^{commit}')).Value
 if ($revision -cnotmatch '^(?:[a-f0-9]{40}|[a-f0-9]{64})\z') { throw 'PreviewTagInvalidRevision' }
 $clean = !(Invoke-QuietPreviewGit @('status', '--porcelain=v1', '--untracked-files=normal')).HasOutput
@@ -80,7 +95,8 @@ if ($existing.HasOutput) { throw "PreviewTagAlreadyExists: $tag" }
 $created = $false
 if ($PSCmdlet.ShouldProcess("$WorkspaceRoot @ $revision", "Create annotated tag $tag")) {
     if (!$clean) { throw 'PreviewTagDirtyCheckout: commit changes before tagging HEAD.' }
-    $null = Invoke-QuietPreviewGit @('-c', 'tag.gpgSign=false', 'tag', '--annotate', '--message', "QuietCli $version preview ($($Timestamp.ToUniversalTime().ToString('o')))", '--', $tag, $revision)
+    $message=if($Release){"$($plan.Module) $version release"}else{"QuietCli $version preview ($($Timestamp.ToUniversalTime().ToString('o')))"}
+    $null = Invoke-QuietPreviewGit @('-c', 'tag.gpgSign=false', 'tag', '--annotate', '--message', $message, '--', $tag, $revision)
     $created = $true
 }
 [pscustomobject]@{

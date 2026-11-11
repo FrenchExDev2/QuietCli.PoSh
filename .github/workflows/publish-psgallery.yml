@@ -15,7 +15,7 @@ on:
         type: boolean
         default: false
       publish:
-        description: Publish the verified packages publicly after qualification
+        description: Publish only for a matching module release tag push after qualification
         type: boolean
         default: false
     outputs:
@@ -28,11 +28,6 @@ on:
         description: Exact version of both source manifests, for example 0.2.0-preview
         required: true
         type: string
-      publish:
-        description: Publish publicly to PSGallery; false only prepares and validates artifacts
-        required: true
-        default: false
-        type: boolean
 permissions:
   contents: read
 concurrency:
@@ -171,7 +166,7 @@ jobs:
           retention-days: 14
   publish:
     needs: [checkpoint, package]
-    if: ${{ !cancelled() && inputs.publish == true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.event.pull_request.draft != true && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }}
+    if: ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/QuietCli/v') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }}
     runs-on: windows-latest
     timeout-minutes: 10
     environment: psgallery
@@ -195,15 +190,13 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
         run: ./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -ValidateOnly
-      - name: Validate the prepared preview against its qualified checkpoint
-        if: inputs.preview_build == true
+      - name: Bind the prepared version to the pushed release tag
         shell: pwsh
         env:
-          QUALIFIED_REVISION: ${{ needs.checkpoint.outputs.qualified_sha }}
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
         run: |
-          if($env:GITHUB_REF -cne 'refs/heads/develop'){throw 'PreviewPublicationRequiresDevelop'}
-          ./scripts/Assert-GalleryCheckpoint.ps1 -PackageDirectory ./artifacts/gallery -QualifiedRevision $env:QUALIFIED_REVISION -Version $env:RELEASE_VERSION
+          $plan=./scripts/Get-QuietReleasePlan.ps1 -Tag $env:GITHUB_REF_NAME
+          if($plan.Module -cne 'QuietCli' -or $plan.Version -cne $env:RELEASE_VERSION){throw 'GalleryReleaseTagPackageMismatch'}
       - name: Publish the verified packages, Core only
         shell: pwsh
         env:

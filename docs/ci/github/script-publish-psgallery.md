@@ -1,6 +1,6 @@
 # publish-psgallery.yml
 
-<!-- workflow-source-sha256: 46D70F1C9772024BCBDB39AA667AC51F108A6AD7E8127CF6CD084FC84799795B -->
+<!-- workflow-source-sha256: F3258417C4A3941AF794C1BDFFE90AA106CD4C59DF716DE9E3D2F7D0629192BC -->
 
 ## Purpose
 
@@ -8,7 +8,7 @@ Prepare one verified public QuietCli nupkg, then optionally publish those exact 
 
 ## Triggers
 
-workflow_call and workflow_dispatch. Version, publish and preview_build inputs control stable/manual or reusable preview delivery; job-level conditions enforce qualification and publication scope.
+workflow_call accepts exact version, publish intent and artifact-only preview_build; workflow_dispatch accepts an exact version for artifacts only. Public publication is requested by release-tags.yml for a matching tag push and enforced again by job conditions and tag validation.
 
 
 ## .NET SDK source pin
@@ -41,7 +41,7 @@ flowchart TD
 | --- | --- | --- | --- | --- |
 | checkpoint | runner ubuntu-latest | qualification, reuse-qualification | ${{ !cancelled() && (needs.qualification.result == 'success' &#124;&#124; needs.reuse-qualification.result == 'success') }} |  |
 | package | runner windows-latest | checkpoint | ${{ !cancelled() && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-QuietGalleryPackage.ps1, ./scripts/New-QuietPreviewPackage.ps1, ./scripts/Publish-QuietGallery.ps1, ./scripts/RuntimeTargets.ps1 |
-| publish | runner windows-latest | checkpoint, package | ${{ !cancelled() && inputs.publish == true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') && github.event.pull_request.draft != true && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Assert-GalleryCheckpoint.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Publish-QuietGallery.ps1 |
+| publish | runner windows-latest | checkpoint, package | ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/QuietCli/v') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Get-QuietReleasePlan.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Publish-QuietGallery.ps1 |
 | qualification | reuses ./.github/workflows/ci.yml |  | inputs.qualified_sha == '' |  |
 | reuse-qualification | runner ubuntu-latest |  | inputs.qualified_sha != '' && inputs.qualified_sha == github.sha | ./scripts/Assert-QualificationReceipt.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
 
@@ -53,13 +53,13 @@ Fresh All qualification explicitly requests collect_performance=true. Reused cur
 
 The optional workflow-call qualified_sha input is accepted only with a downloaded All receipt from this exact run, attempt and revision. Assert-QualificationReceipt rejects mismatches before emitting an output. Without it, qualification still calls ci.yml(All). The checkpoint job normalizes the successful path; package/publish explicitly override skipped-ancestor propagation while requiring that successful exact-SHA checkpoint. The caller's SHA alone never authorizes packaging. Resource/host archives and NuGet are cached with their full lock inputs, and all existing exact-package and psgallery environment checks remain required.
 
-The package preparation job uses the shared optional archive cache before Initialize-Workspace. The cache key includes OS and resource-lock hash; resource hashes are verified independently. Publication still consumes the exact prepared artifact and has no dependency on a current develop HEAD check. The publish job accepts only push or workflow_dispatch events and explicitly rejects draft pull-request payloads, including when this reusable workflow is called from another workflow.
+The package preparation job uses the shared optional archive cache before Initialize-Workspace. The cache key includes OS and resource-lock hash; resource hashes are verified independently. Publication consumes the exact prepared artifact without querying current develop HEAD. The publish job requires an original-repository push under refs/tags/QuietCli/v, publish=true, preview_build=false and successful exact-revision qualification. Manual dispatch and branch pushes cannot publish, including through reusable callers. Get-QuietReleasePlan validates the tag against the checked-out source manifest again and requires its version to equal the downloaded package version before the secret-bearing publication step.
 
 The Windows x64 package job checks out the accepted checkpoint revision, builds Release ReadyToRun for six RIDs and CLR 10/11, verifies All, and prepares a package with RequireReadyToRun. Publication downloads the artifact, validates its SHA/version/checkpoint and uses Publish-PSResource -NupkgPath. Only the publish job receives PSGALLERY_API_KEY from the psgallery environment. Failure diagnostics are redacted and retained separately.
 
 ## Validation and limits
 
-One public Core nupkg embeds every RID; Git stays internal. Packaging rebuilds from the qualified source, rather than merging matrix binaries. Automatic previews require develop but never compare its current remote HEAD to the checkpoint. Pull requests, including drafts, cannot reach the public publication job. ValidateOnly performs no public publication; stable publication remains explicit.
+One public Core nupkg embeds every RID; Git and Vagrant remain nonpublishable. Packaging rebuilds from the qualified source, rather than merging matrix binaries. Both stable and prerelease publication require a module-specific tag push matching the full source manifest version. The generated-preview path and workflow dispatch are artifact-only. The psgallery environment must allow the QuietCli/v* tag namespace; no repository setting is changed by these files. Pull requests cannot reach the public publication job. ValidateOnly performs no public publication.
 
 <!-- credits:begin -->
 ## Credits

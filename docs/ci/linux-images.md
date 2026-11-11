@@ -7,10 +7,10 @@ No local ARM machine is required for the GitHub matrix. GitHub runs x64 on `ubun
 1. `New-CiImage.ps1` computes a SHA-256 fingerprint of the recipes, their shared script, the image scripts, `global.json` and the SDK/Git lock files.
 2. It looks for this fingerprint in `ghcr.io/frenchexdev2/quietcli2-ci-{debian|alpine}-{x64|arm64}`.
 3. If it exists and is accessible, it resolves the tag to a digest, pulls that digest, then verifies the architecture, source and fingerprint declared in the labels.
-4. Otherwise, it builds a new image natively. On a push or manual dispatch in the upstream repository on `main`, it publishes the image to GHCR with the fingerprint as its tag. An input change produces a new tag; old images are neither intentionally overwritten nor automatically deleted.
+4. Otherwise, it builds a new image natively. On a push or manual dispatch in the upstream repository on `develop`, it publishes the image to GHCR with the fingerprint as its tag. An input change produces a new tag; old images are neither intentionally overwritten nor automatically deleted. This toolchain cache publication is separate from Gallery module releases, which require explicit module release tags.
 5. The suites run in a private container without network access, using the verified local image ID. Reports retain the actual ID, registry digest and host/guest/engine identities.
 
-A change confined to a handler does not rebuild the image. A pull request reuses an accessible cache or builds locally; it does not publish to the trusted `main` cache. Registry network/server errors remain errors, without automatic retries. A missing or inaccessible cache can be rebuilt.
+A change confined to a handler does not rebuild the image. A pull request reuses an accessible cache or builds locally; it does not publish to the trusted `develop` cache. Registry network/server errors remain errors, without automatic retries. A missing or inaccessible cache can be rebuilt.
 
 ## Tools and stages
 

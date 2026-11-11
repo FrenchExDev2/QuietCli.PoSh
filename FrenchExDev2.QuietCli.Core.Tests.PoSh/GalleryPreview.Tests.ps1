@@ -101,7 +101,7 @@ function Invoke-QuietGalleryPreviewTests {
         $accepted=$false;try{$null=& $mutant -PackageDirectory $directory -QualifiedRevision $revision -Version $version;$accepted=$true}catch{}
         if(!$accepted){throw 'GalleryCheckpointInvalidMutant'}
         $workflow=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/publish-psgallery.yml'),[Text.Encoding]::UTF8)
-        if($workflow.Contains('/git/ref/heads/develop') -or $workflow.Contains('steps.current.outputs.allowed') -or !$workflow.Contains('Assert-GalleryCheckpoint.ps1')){throw 'GalleryPublicationStillDependsOnCurrentHead'}
+        if($workflow.Contains('/git/ref/heads/develop') -or $workflow.Contains('steps.current.outputs.allowed') -or !$workflow.Contains('Get-QuietReleasePlan.ps1')){throw 'GalleryPublicationStillDependsOnCurrentHead'}
         Write-WorkspaceJson (Join-Path $directory campaign.json) @{BranchAdvanceProperties=64;DamagedFields=3;MalformedMetadata=4;MutantsKilled=1;ExternalPublication=$false}
     }
     $cases['staged labels preserve numeric version, GUID, Unicode metadata and source bytes']={
