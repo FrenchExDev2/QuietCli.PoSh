@@ -1,3 +1,70 @@
+function Test-QuietCiFailureRegression {
+    <#
+    .SYNOPSIS
+    Rejects empty Docker parent defaults and exercises report-upload decisions from the actual workflow.
+    .PARAMETER WorkspaceRoot
+    Checkout containing the renderer and GitHub workflow under test.
+    .PARAMETER RunDirectory
+    Owned evidence directory.
+    #>
+    param([string]$WorkspaceRoot,[string]$RunDirectory)
+    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+    $assertRecipe={
+        param($text,$parent)
+        $default=[regex]::Match($text,'(?m)^ARG CORE_IMAGE=(\S+)$')
+        if(!$default.Success -or $default.Groups[1].Value -cne $parent -or $parent -cnotmatch '\Alocalhost/quietcli2-ci-core-(?:debian|alpine)-(?:x64|arm64):[a-f0-9]{64}\z'){throw 'DockerParentDefaultInvalid'}
+    }
+    $plans=0
+    foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){
+        foreach($suite in @('Core','Git','All')){
+            $plan=& (Join-Path $WorkspaceRoot 'scripts/New-CiSuiteImage.ps1') -WorkspaceRoot $WorkspaceRoot -Suite $suite -RuntimeIdentifier $rid -PlanOnly
+            & $assertRecipe $plan.ContainerfileText $plan.ParentReference
+            if(!$plan.ParentReference.EndsWith(':'+$plan.Core.Fingerprint) -or !$plan.ParentReference.Contains('-'+$plan.Core.Architecture+':')){throw 'DockerParentDefaultLostIdentity'}
+            $plans++
+        }
+    }
+    $stages=@([pscustomobject]@{Name='ci'})
+    foreach($bad in @('','scratch','alpine:latest','localhost/quietcli2-ci-core-debian-x64:latest',"invalid`nparent")){
+        $rejected=$false
+        try{$null=Get-QuietModuleContainerfile -Platform debian -Objective fixture -Stages $stages -DefaultCoreImage $bad}catch{$rejected=$_.Exception.Message -ceq 'CiImageDefaultParentReferenceRequired'}
+        if(!$rejected){throw 'UnsafeDockerParentDefaultAccepted'}
+    }
+    $reference='localhost/quietcli2-ci-core-debian-x64:'+('a'*64)
+    $source=(Get-Command Get-QuietModuleContainerfile).ScriptBlock.ToString()
+    $anchor="`$lines.Insert(1,'ARG CORE_IMAGE='+`$DefaultCoreImage)"
+    if(!$source.Contains($anchor)){throw 'DockerParentDefaultMutationAnchorMissing'}
+    $mutant=[scriptblock]::Create($source.Replace($anchor,"`$lines.Insert(1,'ARG CORE_IMAGE')"))
+    $rendered=& $mutant -Platform debian -Objective fixture -Stages $stages -DefaultCoreImage $reference
+    $rejected=$false;try{& $assertRecipe $rendered $reference}catch{$rejected=$_.Exception.Message -ceq 'DockerParentDefaultInvalid'}
+    if(!$rejected){throw 'DockerEmptyDefaultMutantSurvived'}
+    $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
+    $yaml=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build()
+    $workflow=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/ci.yml'),[Text.Encoding]::UTF8))
+    $steps=@($workflow['jobs']['windows']['steps'])
+    $functional=@($steps|Where-Object {$_['id'] -ceq 'run_profiles'})
+    $mutation=@($steps|Where-Object {$_['id'] -ceq 'run_profiles_mutation'})
+    $upload=@($steps|Where-Object {$_['with'] -and $_['with']['path'] -ceq 'artifacts/run-profiles'})
+    if($functional.Count -ne 1 -or $mutation.Count -ne 1 -or $upload.Count -ne 1 -or $upload[0]['with']['if-no-files-found'] -cne 'error'){throw 'RunProfileEvidenceContractChanged'}
+    $condition=[string]$upload[0]['if']
+    $expression=$condition.Replace('always()','$true').Replace('needs.linux-matrix.outputs.has_core','$coreFlag').Replace('matrix.rid','$rid').Replace('matrix.channel','$channel').Replace('matrix.mode','$mode').Replace('steps.run_profiles_mutation.outcome','$mutationOutcome').Replace('steps.run_profiles.outcome','$functionalOutcome').Replace('&&','-and').Replace('||','-or').Replace('!=','-cne').Replace('==','-ceq')
+    $evaluate=[scriptblock]::Create($expression)
+    $states=@('','skipped','success','failure','cancelled');$properties=0
+    foreach($coreFlag in @('true','false')){foreach($rid in @('win-x64','win-arm64')){foreach($channel in @('stable','preview')){foreach($mode in @('InProcess','Process')){
+        foreach($functionalOutcome in $states){foreach($mutationOutcome in $states){
+            $expected=$coreFlag -ceq 'true' -and $rid -ceq 'win-x64' -and $channel -ceq 'stable' -and $mode -ceq 'InProcess' -and (@('success','failure','cancelled') -ccontains $functionalOutcome -or @('success','failure','cancelled') -ccontains $mutationOutcome)
+            if([bool](& $evaluate) -ne $expected){throw 'RunProfileUploadConditionChanged'}
+            $properties++
+        }}
+    }}}}
+    $coreFlag='true';$rid='win-x64';$channel='stable';$mode='InProcess';$functionalOutcome='skipped';$mutationOutcome='skipped'
+    $offset=$expression.IndexOf(' -and ((',[StringComparison]::Ordinal)
+    if($offset -lt 0){throw 'RunProfileOutcomeMutationAnchorMissing'}
+    $mutant=[scriptblock]::Create($expression.Substring(0,$offset))
+    if(![bool](& $mutant) -or [bool](& $evaluate)){throw 'RunProfileSkippedUploadMutantNotDetected'}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'ci-failure-regression.json') @{ImagePlans=$plans;InvalidParentDefaults=5;UploadDecisionProperties=$properties;MutantsKilled=2;DockerBuildExecuted=$false;RemoteWorkflowExecuted=$false}
+}
+
 function Test-QuietCiOptimization {
     <#
     .SYNOPSIS
@@ -92,9 +159,47 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
         . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
         $script:ciCacheCalls=[Collections.Generic.List[string]]::new()
         $plan=[pscustomobject]@{Rid='linux-x64';Architecture='x64';Fingerprint=('a'*64);RegistryPath='fixture/image';Source='https://example.invalid/source';Base=$null;Dockerfile='fixture';Arguments=@{}}
-        function Resolve-QuietVirtEngine {param($ContainerRuntime,$WorkspaceRoot);'docker'}
-        function Get-QuietCiRegistryDigest {param($Plan,$Token,$Actor);if($script:ciCacheHit){'sha256:'+('b'*64)}}
+        function Resolve-QuietVirtEngine {
+            <#
+            .SYNOPSIS
+            Selects the owned Docker adapter without inspecting the host.
+            .PARAMETER ContainerRuntime
+            Requested adapter.
+            .PARAMETER WorkspaceRoot
+            Owned fixture checkout.
+            #>
+            param($ContainerRuntime,$WorkspaceRoot)
+            'docker'
+        }
+        function Get-QuietCiRegistryDigest {
+            <#
+            .SYNOPSIS
+            Supplies a synthetic immutable digest or an explicit cache miss without HTTP.
+            .PARAMETER Plan
+            Expected image plan.
+            .PARAMETER Token
+            Unused fixture credential.
+            .PARAMETER Actor
+            Unused registry actor.
+            #>
+            param($Plan,$Token,$Actor)
+            if($script:ciCacheHit){'sha256:'+('b'*64)}
+        }
         function Invoke-CiProcess {
+            <#
+            .SYNOPSIS
+            Supplies synthetic daemon and image metadata to the actual validation callback.
+            .PARAMETER FilePath
+            Requested container executable.
+            .PARAMETER ArgumentList
+            Metadata operation being observed.
+            .PARAMETER TimeoutSeconds
+            Declared operation deadline.
+            .PARAMETER State
+            Caller-owned accumulator.
+            .PARAMETER OnOutput
+            Real metadata callback under test.
+            #>
             param($FilePath,$ArgumentList,$TimeoutSeconds,$State,$OnOutput)
             $script:ciCacheCalls.Add($ArgumentList[0])
             $json=if($ArgumentList[0] -ceq 'info'){'{"OSType":"linux","Architecture":"amd64"}'}else{
@@ -103,7 +208,24 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
             $null=& $OnOutput ([pscustomobject]@{Stream='stdout';Text=$json}) $State
             [pscustomobject]@{Outcome='Success';ExitCode=0;ElapsedMs=1}
         }
-        function Invoke-WorkspaceNative {param($FilePath,$Arguments,$WorkingDirectory,$TimeoutSeconds,$LogPath);$script:ciCacheCalls.Add($Arguments[0])}
+        function Invoke-WorkspaceNative {
+            <#
+            .SYNOPSIS
+            Records requested image operations without pulling or building an image.
+            .PARAMETER FilePath
+            Requested adapter.
+            .PARAMETER Arguments
+            Exact native argument vector.
+            .PARAMETER WorkingDirectory
+            Owned fixture directory.
+            .PARAMETER TimeoutSeconds
+            Declared deadline.
+            .PARAMETER LogPath
+            Unused diagnostic destination.
+            #>
+            param($FilePath,$Arguments,$WorkingDirectory,$TimeoutSeconds,$LogPath)
+            $script:ciCacheCalls.Add($Arguments[0])
+        }
         $previous=$env:QUIETCLI_REGISTRY_TOKEN;$env:QUIETCLI_REGISTRY_TOKEN=$null
         try{
             foreach($hit in @($false,$true)){

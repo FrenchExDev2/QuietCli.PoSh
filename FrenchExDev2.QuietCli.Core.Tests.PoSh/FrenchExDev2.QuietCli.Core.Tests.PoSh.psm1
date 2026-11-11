@@ -91,6 +91,7 @@ Executes independent native byte and object invariants in a companion module.
     $testScope=@{TtyExcluded=0}
     $cases=[ordered]@{}
     $cases['CI optimization preserves Core prerequisites, parallel isolation and qualified checkpoints']={Test-QuietCiOptimization -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['CI failure regressions reject empty Docker parents and skipped profiling uploads']={Test-QuietCiFailureRegression -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['unit byte-count parsing validates sizes without filesystem or process effects']={Test-QuietByteCountParsing}
     $cases['native Emit listeners preserve Unicode order and bounded JSON/YAML deliveries']={Test-QuietEmitListeners -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['workspace project discovery keeps suite modes and package publication policy separate']={Test-QuietWorkspaceProjects -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
@@ -769,6 +770,7 @@ Executes independent native byte and object invariants in a companion module.
     }
     $caseMetadata=@{
         'CI optimization preserves Core prerequisites, parallel isolation and qualified checkpoints'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess');NativeTransport='OwnedFixture'}
+        'CI failure regressions reject empty Docker parents and skipped profiling uploads'=@{TestKind='Integration';Dependencies=@('FileSystem');NativeTransport='Stubbed'}
         'CI companion declarations separate integration suites and scale without workflow branches'=@{TestKind='Integration';Dependencies=@('FileSystem');NativeTransport='Stubbed'}
         'configuration dotenv preserves literals and deterministic local GitHub presets'=@{TestKind='Integration';Dependencies=@('FileSystem')}
         'GitHub PR push updates preserve previews remote routing and checkpoint identity'=@{TestKind='Integration';Dependencies=@('FileSystem');NativeTransport='Stubbed'}

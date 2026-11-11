@@ -110,6 +110,20 @@ function Test-QuietCiCompanions {
         param($WorkspaceRoot)
         . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
         function Invoke-CiProcess {
+            <#
+            .SYNOPSIS
+            Supplies owned parent-image metadata without starting a container process.
+            .PARAMETER FilePath
+            Container adapter being checked.
+            .PARAMETER ArgumentList
+            Expected image inspection argument vector.
+            .PARAMETER TimeoutSeconds
+            Declared inspection deadline.
+            .PARAMETER State
+            Caller-owned metadata accumulator.
+            .PARAMETER OnOutput
+            Real image inspection callback under test.
+            #>
             param($FilePath,$ArgumentList,$TimeoutSeconds,$State,$OnOutput)
             if($FilePath -cnotin @('docker','podman') -or ($ArgumentList[0..1] -join ',') -cne 'image,inspect'){throw 'UnexpectedImageMetadataOperation'}
             $null=& $OnOutput ([pscustomobject]@{Stream='stdout';Text=($metadata|ConvertTo-Json -Depth 8 -Compress)}) $State

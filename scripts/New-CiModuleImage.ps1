@@ -59,7 +59,7 @@ try{$coreImage=if($ParentPlan){[pscustomobject]@{Image=$ParentImage}}else{& (Joi
 finally{$env:QUIETCLI_REGISTRY_TOKEN=$registryCredential;$registryCredential=$null}
 # A bare image ID cannot be a Dockerfile FROM target; this local tag, keyed by Core's own verified
 # fingerprint, works whether that image just arrived by a GHCR pull-by-digest or a fresh local build.
-$coreTag="localhost/quietcli2-ci-core-$($core.Platform)-$($core.Architecture):$($core.Fingerprint)"
+$coreTag=$plan.ParentReference
 $null=Invoke-WorkspaceNative $ContainerRuntime @('tag',$coreImage.Image,$coreTag) $WorkspaceRoot -TimeoutSeconds 30
 $plan.Arguments.CORE_IMAGE=$coreTag
 Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory (Join-Path $WorkspaceRoot $moduleRoot '.github/containers') -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime

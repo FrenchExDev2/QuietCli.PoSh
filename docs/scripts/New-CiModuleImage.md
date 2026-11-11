@@ -1,5 +1,9 @@
 # New-CiModuleImage.ps1
 
+The verified parent is tagged using the resolved plan's `ParentReference`. The same reference is
+the generated recipe's valid CORE_IMAGE default and its explicit build argument. Neither the
+renderer nor the builder selects an unrelated fallback base when a parent is unavailable.
+
 For standalone registry reuse, a CacheOnly probe of the final module image precedes parent preparation. A verified hit returns directly; a miss retains the existing parent-build path. Supplied ParentPlan/ParentImage identities are still checked before use.
 
 `ParentPlan` and `ParentImage` compose this overlay over the preceding declared layer. PlanOnly

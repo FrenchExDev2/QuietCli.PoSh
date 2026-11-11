@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: EA6990A45D5610442802D469DBE5DAC4CE6AE1EF77BB04A95FF9861CE94C72F3 -->
+<!-- workflow-source-sha256: 03F3F65D9BF6C55C12A3E6B61F2CBB9EE14ACD16E641188FB5035FDF12C7A20F -->
 
 ## Purpose
 
@@ -109,6 +109,14 @@ linux-result validates the selected paths and qualification-gate requires only W
 
 
 ## Mandatory tooling dependencies
+
+The functional and mutation steps have stable IDs `run_profiles` and `run_profiles_mutation`.
+Their combined artifact upload runs only if at least one selected campaign actually started
+(success, failure or cancellation), including partial evidence after failure. If Core failed
+before both campaigns, skipped/absent outcomes do not request a nonexistent artifact. An executed
+campaign without reports still fails `if-no-files-found: error`; the evidence requirement is not
+weakened. The actual workflow condition is checked across 400 eligibility/outcome combinations,
+including a mutation that removes the started-campaign requirement.
 
 Windows selections declaring Core evidence prepare both tools on stable x64 InProcess with
 -Module profiler,dottrace even when collect_performance is false, because RunProfiles requires both

@@ -173,15 +173,17 @@ jobs:
           }
           ./scripts/Invoke-GitHubCi.ps1 @parameters
       - name: Require the complete run-profile tooling suite
+        id: run_profiles
         if: needs.linux-matrix.outputs.has_core == 'true' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
         shell: pwsh
         run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfiles -SkipBuild -RunDirectory ./artifacts/run-profiles/tests
       - name: Require every run-profile tooling mutant to be detected
+        id: run_profiles_mutation
         if: needs.linux-matrix.outputs.has_core == 'true' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
         shell: pwsh
         run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfilesMutation -SkipBuild -RunDirectory ./artifacts/run-profiles/mutation
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: always() && needs.linux-matrix.outputs.has_core == 'true' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
+        if: always() && needs.linux-matrix.outputs.has_core == 'true' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess' && ((steps.run_profiles.outcome != '' && steps.run_profiles.outcome != 'skipped') || (steps.run_profiles_mutation.outcome != '' && steps.run_profiles_mutation.outcome != 'skipped'))
         with:
           name: quietcli-run-profiles-${{ github.sha }}
           path: artifacts/run-profiles

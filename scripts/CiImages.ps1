@@ -78,8 +78,10 @@ function Get-QuietModuleContainerfile {
     rendered as one "ENV k=v k2=v2 ..." line); PathPrefix (directory prepended to PATH, for a stage that
     only needs to extend ${PATH} rather than declare a full Env map); WorkDir ("WORKDIR <dir>");
     Entrypoint (string array, rendered as JSON-array-form "ENTRYPOINT [...]").
+    .PARAMETER DefaultCoreImage
+    Content-addressed local parent reference, required when a stage inherits CORE_IMAGE.
     #>
-    param([Parameter(Mandatory)][ValidateSet('debian','alpine')][string]$Platform,[Parameter(Mandatory)][string]$Objective,[Parameter(Mandatory)][object[]]$Stages)
+    param([Parameter(Mandatory)][ValidateSet('debian','alpine')][string]$Platform,[Parameter(Mandatory)][string]$Objective,[Parameter(Mandatory)][object[]]$Stages,[string]$DefaultCoreImage)
     $manager=if($Platform -ceq 'debian'){'apt'}else{'apk'}
     $cacheMount=if($Platform -ceq 'debian'){'--mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,target=/var/lib/apt,sharing=locked'}else{'--mount=type=cache,target=/var/cache/apk,sharing=locked'}
     $stageNames=@($Stages|ForEach-Object Name)
@@ -120,7 +122,10 @@ function Get-QuietModuleContainerfile {
         if($stage.WorkDir){[void]$lines.Add("WORKDIR $($stage.WorkDir)")}
         if($stage.Entrypoint){[void]$lines.Add('ENTRYPOINT ['+(($stage.Entrypoint|ForEach-Object {'"'+$_+'"'}) -join ',')+']')}
     }
-    if($usesCoreImage){$lines.Insert(1,'ARG CORE_IMAGE')}
+    if($usesCoreImage){
+        if($DefaultCoreImage -cnotmatch '\Alocalhost/quietcli2-ci-core-(?:debian|alpine)-(?:x64|arm64):[a-f0-9]{64}\z'){throw 'CiImageDefaultParentReferenceRequired'}
+        $lines.Insert(1,'ARG CORE_IMAGE='+$DefaultCoreImage)
+    }
     ($lines -join "`n")+"`n"
 }
 function Get-QuietCiModuleImagePlan {
@@ -151,9 +156,10 @@ function Get-QuietCiModuleImagePlan {
     #>
     param([string]$WorkspaceRoot,[ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[Parameter(Mandatory)][string]$Module,[Parameter(Mandatory)]$ContainerfileFragment,[Parameter(Mandatory)]$ModuleArguments,[Parameter(Mandatory)][string[]]$ModuleInputPaths,$ParentPlan)
     $core=if($ParentPlan){$ParentPlan}else{Get-QuietCiImagePlan $WorkspaceRoot $RuntimeIdentifier}
-    $containerfileText=Get-QuietModuleContainerfile -Platform $ContainerfileFragment.Platform -Objective $ContainerfileFragment.Objective -Stages $ContainerfileFragment.Stages
+    $parentReference="localhost/quietcli2-ci-core-$($core.Platform)-$($core.Architecture):$($core.Fingerprint)"
+    $containerfileText=Get-QuietModuleContainerfile -Platform $ContainerfileFragment.Platform -Objective $ContainerfileFragment.Objective -Stages $ContainerfileFragment.Stages -DefaultCoreImage $parentReference
     $fingerprint=Get-QuietCiFingerprint -WorkspaceRoot $WorkspaceRoot -InputPaths $ModuleInputPaths -ContainerfileText $containerfileText -ParentFingerprint $core.Fingerprint
-    [pscustomobject]@{Rid=$RuntimeIdentifier;Architecture=$core.Architecture;Platform=$core.Platform;Core=$core;ContainerfileText=$containerfileText;Arguments=$ModuleArguments;Fingerprint=$fingerprint;RegistryPath="frenchexdev2/quietcli2-ci-$($core.Platform)-$($core.Architecture)-$($Module.ToLowerInvariant())";Source='https://github.com/FrenchExDev2/QuietCli.PoSh'}
+    [pscustomobject]@{Rid=$RuntimeIdentifier;Architecture=$core.Architecture;Platform=$core.Platform;Core=$core;ParentReference=$parentReference;ContainerfileText=$containerfileText;Arguments=$ModuleArguments;Fingerprint=$fingerprint;RegistryPath="frenchexdev2/quietcli2-ci-$($core.Platform)-$($core.Architecture)-$($Module.ToLowerInvariant())";Source='https://github.com/FrenchExDev2/QuietCli.PoSh'}
 }
 function Get-QuietCiVerifiedImage {
     <# .SYNOPSIS

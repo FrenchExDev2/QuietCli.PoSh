@@ -65,7 +65,7 @@ actual Containerfile text.
 `scripts/CiImages.ps1` provides the reusable, module-agnostic side of the contract:
 
 - `Get-QuietModuleContainerfile -Platform -Objective -Stages` renders Containerfile text from a module's own ordered
-  `Stages`, on top of Core's only shared boilerplate (`ARG CORE_IMAGE`), using the right `apt`/`apk`
+   `Stages`, on top of Core's only shared boilerplate (`ARG CORE_IMAGE=<verified-parent-reference>`), using the right `apt`/`apk`
   cache-mount and install syntax for `Fragment.Platform`. A module declares as many stages as it needs,
   each `FROM ${CORE_IMAGE}` or `FROM` an earlier stage's own `Name` — not a fixed `tools`/`ci` pair — so a
   module can install packages or copy build output into any stage it declares, including its own final
@@ -88,7 +88,9 @@ actual Containerfile text.
 
 The single, generic entrypoint for every module, parameterized by `-Module`:
 
-1. Resolves the preceding `-ParentPlan`, or Core's plan when no parent is supplied.
+ 1. Resolves the preceding `-ParentPlan`, or Core's plan when no parent is supplied. Its content-addressed
+    local `ParentReference` becomes the recipe's valid CORE_IMAGE default and the prepared parent's tag,
+    so Docker can validate FROM without an empty ARG. No unrelated fallback image is introduced.
 2. Invokes the module's `ci/Get-CiImageArguments.ps1` by its fixed path, then resolves the fragment
    and fingerprint. A missing declaration fails with `CiModuleContractMissing: <path>`.
    `-PlanOnly` returns here, without native execution or registry access.

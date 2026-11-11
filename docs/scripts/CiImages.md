@@ -6,6 +6,13 @@
 without it, Core remains the parent. Its fingerprint participates in the resulting identity,
 so a changed intermediate layer invalidates every descendant.
 
+The plan exposes `ParentReference`, a local tag keyed by the selected parent's platform,
+architecture and fingerprint. The renderer receives it as `DefaultCoreImage` and emits
+`ARG CORE_IMAGE=<ParentReference>` before the inherited FROM stages. Missing, floating or malformed
+defaults are rejected; there is no unrelated fallback image. The builder tags the already verified
+parent using that same plan property and passes it as CORE_IMAGE. This removes Docker's
+InvalidDefaultArgInFrom warning while preserving parent verification and deterministic identity.
+
 `Get-QuietCiVerifiedImage` validates the local image ID, Linux architecture, input fingerprint
 and source label with bounded metadata. Both build receipts and explicit parent layers use it.
 
@@ -34,7 +41,7 @@ A function library; no script-level params.
 |---|---|
 | `Get-QuietCiFingerprint` | `WorkspaceRoot` (Mandatory), `InputPaths` (Mandatory), `ContainerfileText` (Mandatory), `ParentFingerprint` (optional) |
 | `Get-QuietCiImagePlan` | `WorkspaceRoot`, `RuntimeIdentifier` (`ValidateSet` of 4 Linux RIDs) |
-| `Get-QuietModuleContainerfile` | `Platform` (Mandatory, `ValidateSet('debian','alpine')`), `Objective` (Mandatory), `Stages` (Mandatory) |
+| `Get-QuietModuleContainerfile` | `Platform` (Mandatory, `ValidateSet('debian','alpine')`), `Objective` (Mandatory), `Stages` (Mandatory), `DefaultCoreImage` (required by inherited stages) |
 | `Get-QuietCiModuleImagePlan` | `WorkspaceRoot`, `RuntimeIdentifier`, `Module` (Mandatory), `ContainerfileFragment` (Mandatory), `ModuleArguments` (Mandatory), `ModuleInputPaths` (Mandatory) |
 | `Get-QuietCiLocalImageArchitecture` | `Reference` (Mandatory), `ContainerRuntime` (empty uses the shared resolver) |
 | `Get-QuietCiRegistryDigest` | `Plan`, `Token`, `Actor`, `IncludeConfiguration` (switch) |
