@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Publishes the single validated, public `QuietCli` PowerShell module to the PowerShell Gallery (PSGallery), solving the "last mile" problem of the release pipeline: turning a verified, hashed, locally-built package into a world-reachable release, exactly once, with no silent retry on partial failure. It is invoked by the GitHub Actions workflow `.github/workflows/publish-psgallery.yml` — first in `-ValidateOnly` mode as a pre-flight gate (lines 90, 141 of that workflow) and then for real (line 167) — and is also used in `-ValidateOnly` mode by `New-QuietPreviewPackage.ps1` (line 46) as a packaging-time sanity check, and directly exercised (both success and rejection paths) by `GalleryPreview.Tests.ps1` (lines 165, 183).
+Publishes the single validated, public `FrenchExDev2.QuietCli.Core.PoSh` PowerShell module to the PowerShell Gallery (PSGallery), solving the "last mile" problem of the release pipeline: turning a verified, hashed, locally-built package into a world-reachable release, exactly once, with no silent retry on partial failure. It is invoked by the GitHub Actions workflow `.github/workflows/publish-psgallery.yml` — first in `-ValidateOnly` mode as a pre-flight gate (lines 90, 141 of that workflow) and then for real (line 167) — and is also used in `-ValidateOnly` mode by `New-QuietPreviewPackage.ps1` (line 46) as a packaging-time sanity check, and directly exercised (both success and rejection paths) by `GalleryPreview.Tests.ps1` (lines 165, 183).
 
 ## Usage
 

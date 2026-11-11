@@ -25,7 +25,7 @@ $tag = ./scripts/New-QuietPreviewTag.ps1
 
 ## Dependencies
 
-Release mode uses `-Release -Module Core` (Core is the default) to create `QuietCli/v<complete-manifest-version>`. It reads the optional prerelease suffix and calls [GalleryRelease](lib/GalleryRelease.md) before creating the local annotated tag. `-Module Git` and `-Module Vagrant` have independent source versions but are rejected while their public publication capability is unavailable. Without `-Release`, the existing timestamped Core preview tag behavior is unchanged. Pushing a namespaced release tag requests publication; this script itself still never pushes.
+Release mode uses `-Release -Module Core` (Core is the default) to create `FrenchExDev2.QuietCli.Core.PoSh/v<complete-manifest-version>`. It reads the optional prerelease suffix and calls [GalleryRelease](lib/GalleryRelease.md) before creating the local annotated tag. `-Module Git` and `-Module Vagrant` have independent source versions but are rejected while their public publication capability is unavailable. Without `-Release`, the existing timestamped Core preview tag behavior is unchanged. Pushing a namespaced release tag requests publication; this script itself still never pushes.
 
 ```powershell
 ./scripts/New-QuietPreviewTag.ps1 -Release -WhatIf

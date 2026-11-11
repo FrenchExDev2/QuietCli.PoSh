@@ -27,16 +27,16 @@ Merge into `develop` runs qualification and profiling without Gallery publicatio
 
 | Tag example | Package | Current capability |
 | --- | --- | --- |
-| `QuietCli/v0.2.0-preview` | Core as `QuietCli` | Available after full tagged-revision qualification |
-| `QuietCli.Git/v0.2.0-preview` | Planned `QuietCli.Git` | Rejected: manifest is nonpublishable and public packaging is unavailable |
-| `QuietCli.Vagrant/v0.1.0-preview` | Planned `QuietCli.Vagrant` | Rejected: manifest is nonpublishable and public packaging is unavailable |
+| `FrenchExDev2.QuietCli.Core.PoSh/v0.2.0-preview` | Existing `FrenchExDev2.QuietCli.Core.PoSh` | Available after full tagged-revision qualification |
+| `FrenchExDev2.QuietCli.Git.PoSh/v0.2.0-preview` | Existing `FrenchExDev2.QuietCli.Git.PoSh` | CI release rejected while the manifest is nonpublishable and companion packaging is unavailable |
+| `FrenchExDev2.QuietCli.Vagrant.PoSh/v0.1.0-preview` | `FrenchExDev2.QuietCli.Vagrant.PoSh` | CI release rejected while the manifest is nonpublishable and companion packaging is unavailable |
 
 The tag must exactly match the owning source manifest's numeric version and optional prerelease suffix. Stable publication requires a manifest without `PSData.Prerelease`. No CI version override or automatic numeric bump occurs. Test modules remain internal and are not Gallery releases.
 
 From a committed, clean checkout, preview or create a local release tag:
 
 ```powershell
-./scripts/Get-QuietReleasePlan.ps1 -Tag QuietCli/v0.2.0-preview
+./scripts/Get-QuietReleasePlan.ps1 -Tag FrenchExDev2.QuietCli.Core.PoSh/v0.2.0-preview
 ./scripts/New-QuietPreviewTag.ps1 -Release -WhatIf
 $release = ./scripts/New-QuietPreviewTag.ps1 -Release
 $release.Tag
@@ -44,7 +44,7 @@ $release.Tag
 
 The creation script never pushes. Explicitly pushing that one namespaced tag to GitHub requests publication through `release-tags.yml`: validate tag/capability, qualify `All` with matrix profiling, rebuild/verify packaging, prepare the exact manifest version, then download/validate/publish the same bytes. No GitHub Release is created automatically. A new commit needs a new package version once that identity is public; rerunning never overwrites it.
 
-Publish Core before a companion that depends on it. Companion activation requires staging public module names and `RequiredModules` dependencies against an already available compatible Core release, validating each package independently and testing offline installation/import. Their versions advance for their own changes; a Core release does not imply republishing every companion. Their current partial Git/Vagrant qualification remains explicit, including real-provider gaps. Changing `Publishable` alone does not implement this contract.
+Publish a compatible Core version before a companion that depends on it. Companion CI activation requires preserving its existing script-module/package name and `RequiredModules` dependency on `FrenchExDev2.QuietCli.Core.PoSh`, validating its own package and testing offline installation/import. A Git Gallery entry already exists; the remaining boundary is CI packaging/publication capability. Versions advance independently, and a Core release does not imply republishing every companion. Partial Git/Vagrant qualification remains explicit, including real-provider gaps. Changing `Publishable` alone does not implement this contract.
 
 ## Create a local timestamped Git tag
 
@@ -81,7 +81,7 @@ $packages = Join-Path ([IO.Path]::GetTempPath()) 'quietcli-preview-42-1'
 The destination must be new. The scripts create the public Core `.nupkg`, `package-set.json` and `preview.json`.
 They need no key and do not contact PSGallery. `-QualifiedRevision <sha>` optionally requires the actual checkout HEAD
 to match a qualification receipt. Source manifests are unchanged: only copied package manifests receive the generated
-label. Their numeric versions and GUIDs are preserved. Git remains a development companion and is never included in public packages.
+label. Their numeric versions and GUIDs are preserved. Git's existing Gallery entry is independent; this Core packager never includes the Git companion in the Core nupkg.
 Package preparation does not mark a release as published.
 
 Use the dedicated offline qualification suite, with the shared visible monitor:
@@ -114,7 +114,7 @@ version. Neither manual dispatch publishes. PRs, forks and branch pushes do not 
 
 - Keep `PSGALLERY_API_KEY` only in the existing `psgallery` GitHub environment. Never add it to source, command arguments,
   artifact contents or logs. GHCR continues to use its separate ephemeral `GITHUB_TOKEN`.
-- That environment must allow **tags** matching `QuietCli/v*`. A branch rule for develop alone does not authorize tag
+- That environment must allow **tags** matching `FrenchExDev2.QuietCli.Core.PoSh/v*`. A branch rule for develop alone does not authorize tag
   deployments. Existing approval protection still applies; the workflow does not change account settings. See
   [GitHub's environment rules](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
 - The workflow files must be committed and pushed before GitHub can run them. A local test does not activate remote CI

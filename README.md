@@ -115,11 +115,11 @@ After changing the SDK pin, use `scripts/Update-DotNetCiLock.ps1 -IncludeDevelop
 
 ### From PowerShell Gallery
 
-Install the `QuietCli` package, which provides Core, then import it in the current session:
+Install the `FrenchExDev2.QuietCli.Core.PoSh` package, which provides Core, then import it in the current session:
 
 ```powershell
-Install-PSResource -Name QuietCli -Prerelease -Repository PSGallery -Scope CurrentUser
-Import-Module QuietCli
+Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh -Prerelease -Repository PSGallery -Scope CurrentUser
+Import-Module FrenchExDev2.QuietCli.Core.PoSh
 ```
 
 `-Prerelease` includes available preview packages; omit it to select stable releases only. See [package installation](docs/README-PSGallery.md) for publication status, runtime requirements and platform notes.
@@ -197,7 +197,7 @@ YAML excerpt; invocation IDs and other envelope metadata are omitted. The versio
   "Analysis": true
 ```
 
-The source manifest above loads the local Core project. The public Gallery module is named `QuietCli`; its installation uses `Install-PSResource -Name QuietCli` and `Import-Module QuietCli`.
+The source manifest above loads the local Core project. Its existing Gallery identity is also `FrenchExDev2.QuietCli.Core.PoSh`; installation uses `Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh` and `Import-Module FrenchExDev2.QuietCli.Core.PoSh`.
 
 For source automation, [`scripts/Invoke-Quiet.ps1`](docs/scripts/Invoke-Quiet.md)
 loads that exact local Core module before invoking your block in the same process:
@@ -221,7 +221,7 @@ your own `-Runtime` object; this is separate from native callback runtimes.
 For a Gallery installation, import `QuietCli` and run this SDK-version contract. For a local build, the checkout recipe above already imports the source manifest and executes the same example.
 
 ```powershell
-Import-Module QuietCli -ErrorAction Stop
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
 
 $r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
     -RecordDelimiter "`n" -Data @{ Version = $null; Records = 0 } `
@@ -276,7 +276,7 @@ On a small repository the structured JSON is larger than the raw text, because i
 `Add-QuietAgentInstruction` copies QuietCli's production instructions into your project's `.skills` directory and writes a short, delimited reference block into the instruction file your agent reads. Text outside that block is never touched, and repeating the command changes nothing. It installs no hook, profile change or agent setting.
 
 ```powershell
-Import-Module QuietCli -ErrorAction Stop
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
 $project = (Get-Location).Path
 
 # Preview first, then run without -WhatIf.

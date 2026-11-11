@@ -4,7 +4,7 @@
 
 # QuietCli Core
 
-**The `QuietCli` PowerShell module provides Core, the foundation of the QuietCli ecosystem.** It provides the PowerShell entry point `quiet`, the C# process engine, streaming callbacks, typed execution results and bounded deliveries. Use it directly to turn native output into business data, or as the dependency of a companion module that supplies reusable command handlers.
+**The `FrenchExDev2.QuietCli.Core.PoSh` PowerShell module provides Core, the foundation of the QuietCli ecosystem.** It provides the PowerShell entry point `quiet`, the C# process engine, streaming callbacks, typed execution results and bounded deliveries. Use it directly to turn native output into business data, or as the dependency of a companion module that supplies reusable command handlers.
 
 [QuietCli overview](../README.md) · [Documentation index](../docs/README.md) · [Local checkout, build and first command](#local-checkout-and-first-command)
 
@@ -34,13 +34,13 @@ A built module needs no SDK to import or use. Import does not compile C#, start 
 
 ## Installation
 
-The public module and Gallery package are named `QuietCli`. `FrenchExDev2.QuietCli.Core.PoSh` is the internal source project name.
+The public module, existing Gallery package and source module share the name `FrenchExDev2.QuietCli.Core.PoSh`. QuietCli is the product name.
 
 ### From PowerShell Gallery
 
 ```powershell
-Install-PSResource -Name QuietCli -Prerelease -Repository PSGallery -Scope CurrentUser
-Import-Module QuietCli -ErrorAction Stop
+Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh -Prerelease -Repository PSGallery -Scope CurrentUser
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
 ```
 
 `-Prerelease` includes available previews; omit it for stable releases only. See [package installation](../docs/README-PSGallery.md) for availability and runtime details.
@@ -108,14 +108,14 @@ YAML excerpt; invocation IDs and other envelope metadata are omitted. The versio
   "Analysis": true
 ```
 
-The source manifest above loads the local Core project. The public Gallery module is named `QuietCli`; its installation uses `Install-PSResource -Name QuietCli` and `Import-Module QuietCli`.
+The source manifest above loads the local Core project. Its Gallery identity is also `FrenchExDev2.QuietCli.Core.PoSh`; installation uses `Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh` and `Import-Module FrenchExDev2.QuietCli.Core.PoSh`.
 
 ## First use
 
 This standalone example uses the installed `QuietCli` module. The local checkout recipe above runs the same contract with the source manifest. `dotnet` must be installed.
 
 ```powershell
-Import-Module QuietCli -ErrorAction Stop
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
 
 $r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
     -RecordDelimiter "`n" -Data @{ Version = $null; Records = 0 } `
@@ -205,7 +205,7 @@ measurements. The destination must be a new `.ps1` file in an existing directory
 At least one explicit `-Output` or `-Complete` callback is required.
 
 ```powershell
-Import-Module QuietCli -ErrorAction Stop
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
 
 # Generation writes a new definition and does not execute dotnet.
 $file = quiet -Script ./CountBytes.ps1 -AsObject -StdoutMode Bytes -StderrMode Bytes -DataFactory { @{ Bytes = 0L } } -Output {
@@ -292,7 +292,7 @@ The final result's `Execution` and `Completeness` are detached, read-only snapsh
 Detailed diagnostics remain local. SQLite accepts only closed DTOs, including nested properties; persisted errors contain their codes and phases, without callback messages. Older events are projected onto only the fields allowed at read time, without implicit rewriting. To explicitly purge their old fields:
 
 ```powershell
-Import-Module QuietCli -ErrorAction Stop
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
 
 # Goal: preview the explicit purge of the selected database without modifying history.
 Repair-QuietCliMeasurementPrivacy -WhatIf

@@ -6,15 +6,15 @@
 
 | Tag namespace | Owning project | Publication capability |
 | --- | --- | --- |
-| `QuietCli/v<version>` | Core | Public Core packaging available |
-| `QuietCli.Git/v<version>` | Git | Reserved; rejected while nonpublishable or public packaging is unavailable |
-| `QuietCli.Vagrant/v<version>` | Vagrant | Reserved; rejected while nonpublishable or public packaging is unavailable |
+| `FrenchExDev2.QuietCli.Core.PoSh/v<version>` | Core | Public Core packaging available |
+| `FrenchExDev2.QuietCli.Git.PoSh/v<version>` | Git | Reserved; rejected while nonpublishable or public packaging is unavailable |
+| `FrenchExDev2.QuietCli.Vagrant.PoSh/v<version>` | Vagrant | Reserved; rejected while nonpublishable or public packaging is unavailable |
 
 The complete tag version must match the owning manifest's `ModuleVersion` and optional `PSData.Prerelease`. Other projects may have different versions. No numeric bump, staged override or timestamp is inferred.
 
 ## Dependencies and effects
 
-PowerShell 7.6+ and its data-file reader. Import declares/exports one function; resolution reads one manifest and returns a small plan without modifying files, importing product code or contacting GitHub/Gallery.
+PowerShell 7.6+ and [ModulePackage](ModulePackage.md). Module import declares/exports the resolver only; resolution loads the pure sibling reader and derives the package name and version from the owning `.psm1` and its literal manifest, returning a small plan without modifying files, importing product code or contacting GitHub/Gallery. Core and Git names preserve their existing Gallery entries; the current companion CI publication policy is separate from those entries' existence.
 
 ## Findings and verdict
 

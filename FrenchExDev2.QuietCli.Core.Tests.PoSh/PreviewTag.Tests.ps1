@@ -79,8 +79,9 @@ function Invoke-QuietPreviewTagTests {
     $moduleRoot = Join-Path $directory 'FrenchExDev2.QuietCli.Core.PoSh'
     [void][IO.Directory]::CreateDirectory($moduleRoot)
     $manifest = Join-Path $moduleRoot 'FrenchExDev2.QuietCli.Core.PoSh.psd1'
-    $manifestText = "@{ModuleVersion='3.4.5';PrivateData=@{PSData=@{Prerelease='preview'};QuietCli=@{Publishable=`$true}}}`n"
+    $manifestText = "@{RootModule='FrenchExDev2.QuietCli.Core.PoSh.psm1';ModuleVersion='3.4.5';PrivateData=@{PSData=@{Prerelease='preview'};QuietCli=@{Publishable=`$true}}}`n"
     [void][IO.File]::WriteAllTextAsync($manifest, $manifestText, [Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    [IO.File]::WriteAllText((Join-Path $moduleRoot 'FrenchExDev2.QuietCli.Core.PoSh.psm1'),"throw 'TagExecutedModule'`n",[Text.UTF8Encoding]::new($false))
     $null = Invoke-TagFixtureGit @('add', '--', '.')
     $null = Invoke-TagFixtureGit @('-c', 'commit.gpgSign=false', 'commit', '--quiet', '--no-verify', '-m', 'Owned fixture')
     $script = Join-Path $WorkspaceRoot 'scripts/New-QuietPreviewTag.ps1'
@@ -107,7 +108,7 @@ function Invoke-QuietPreviewTagTests {
     if ((Invoke-TagFixtureGit @('tag', '--list')) -cne $created.Tag -or (Invoke-TagFixtureGit @('rev-parse', 'HEAD')) -cne $before) { throw 'TagUnexpectedRefs' }
     if ([IO.File]::ReadAllTextAsync($manifest, [Text.Encoding]::UTF8).GetAwaiter().GetResult() -cne $manifestText) { throw 'TagChangedManifest' }
     $releasePreview=& $script -WorkspaceRoot $directory -Release -WhatIf
-    if($releasePreview.Created -or $releasePreview.Clean -or $releasePreview.Tag -cne 'QuietCli/v3.4.5-preview' -or $releasePreview.Version -cne '3.4.5-preview'){throw 'ReleaseTagPreviewInvalid'}
+    if($releasePreview.Created -or $releasePreview.Clean -or $releasePreview.Tag -cne 'FrenchExDev2.QuietCli.Core.PoSh/v3.4.5-preview' -or $releasePreview.Version -cne '3.4.5-preview'){throw 'ReleaseTagPreviewInvalid'}
     $rejected=$false
     try{$null=& $script -WorkspaceRoot $directory -Release -Confirm:$false}catch{$rejected=$_.Exception.Message -like 'PreviewTagDirtyCheckout:*'}
     if(!$rejected){throw 'ReleaseTagDirtyCheckoutAccepted'}

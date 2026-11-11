@@ -5,8 +5,8 @@
 Resolve an explicit release tag against its owning manifest before starting release qualification or publishing prepared bytes.
 
 ```powershell
-./scripts/Get-QuietReleasePlan.ps1 -Tag QuietCli/v0.2.0-preview
-./scripts/Get-QuietReleasePlan.ps1 -Tag QuietCli/v0.2.0-preview -OutputPath ./outputs.txt -WhatIf
+./scripts/Get-QuietReleasePlan.ps1 -Tag FrenchExDev2.QuietCli.Core.PoSh/v0.2.0-preview
+./scripts/Get-QuietReleasePlan.ps1 -Tag FrenchExDev2.QuietCli.Core.PoSh/v0.2.0-preview -OutputPath ./outputs.txt -WhatIf
 ```
 
 `-WorkspaceRoot` selects the source checkout. `-OutputPath` optionally appends UTF-8/LF `module` and `version` GitHub outputs. `-WhatIf` validates and returns the plan but does not write outputs. This script never tags, pushes, builds or publishes.

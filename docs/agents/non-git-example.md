@@ -9,7 +9,7 @@ Read the help or official documentation of any other executable before adapting 
 
 ```powershell
 # Objective: List the installed .NET SDKs as typed objects.
-Import-Module QuietCli -ErrorAction Stop
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
 $workingDirectory = (Get-Location).Path
 $sdkOutput = {
     param($event, $runtime)

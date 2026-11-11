@@ -166,7 +166,7 @@ jobs:
           retention-days: 14
   publish:
     needs: [checkpoint, package]
-    if: ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/QuietCli/v') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }}
+    if: ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.Core.PoSh/v') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }}
     runs-on: windows-latest
     timeout-minutes: 10
     environment: psgallery
@@ -196,7 +196,7 @@ jobs:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
         run: |
           $plan=./scripts/Get-QuietReleasePlan.ps1 -Tag $env:GITHUB_REF_NAME
-          if($plan.Module -cne 'QuietCli' -or $plan.Version -cne $env:RELEASE_VERSION){throw 'GalleryReleaseTagPackageMismatch'}
+          if($plan.Component -cne 'Core' -or $plan.Version -cne $env:RELEASE_VERSION){throw 'GalleryReleaseTagPackageMismatch'}
       - name: Publish the verified packages, Core only
         shell: pwsh
         env:

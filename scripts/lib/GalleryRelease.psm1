@@ -10,19 +10,17 @@ function Resolve-QuietGalleryReleaseTag {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$Tag)
-    if($Tag -cnotmatch '\A(QuietCli|QuietCli\.Git|QuietCli\.Vagrant)/v((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[A-Za-z][A-Za-z0-9-]*)?)\z'){
+    if($Tag -cnotmatch '\AFrenchExDev2\.QuietCli\.(Core|Git|Vagrant)\.PoSh/v((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[A-Za-z][A-Za-z0-9-]*)?)\z'){
         throw 'GalleryReleaseTagInvalid'
     }
-    $publicName=$Matches[1];$version=$Matches[2]
+    $component=$Matches[1];$version=$Matches[2]
     try{$null=[semver]$version}catch{throw 'GalleryReleaseTagInvalid'}
-    $component=switch -Exact ($publicName){'QuietCli'{'Core'} 'QuietCli.Git'{'Git'} 'QuietCli.Vagrant'{'Vagrant'}}
+    Import-Module (Join-Path $PSScriptRoot 'ModulePackage.psm1')
     $project="FrenchExDev2.QuietCli.$component.PoSh"
-    $manifest=Import-PowerShellDataFile -LiteralPath (Join-Path $WorkspaceRoot "$project/$project.psd1")
-    $sourceVersion=[string]$manifest.ModuleVersion
-    $label=[string]$manifest.PrivateData.PSData.Prerelease
-    if($label){$sourceVersion+='-'+$label}
-    if($sourceVersion -cne $version){throw 'GalleryReleaseTagManifestMismatch'}
-    if($manifest.PrivateData.QuietCli.Publishable -isnot [bool] -or !$manifest.PrivateData.QuietCli.Publishable){
+    $identity=Get-QuietModulePackageIdentity -Path (Join-Path $WorkspaceRoot "$project/$project.psm1") -RequireManifest
+    $publicName=$identity.Name
+    if($identity.Version -cne $version){throw 'GalleryReleaseTagManifestMismatch'}
+    if($identity.Publishable -isnot [bool] -or !$identity.Publishable){
         throw "GalleryReleaseModuleNotPublishable: $publicName"
     }
     # Public companion identity/dependency staging and installation qualification must precede activation.

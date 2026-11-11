@@ -66,14 +66,14 @@ Docker fallback is not architecture emulation.
 
 ## Gallery publication and RID handling
 
-The current publication model creates one public `QuietCli` module package containing six embedded
+The current publication model creates one public `FrenchExDev2.QuietCli.Core.PoSh` module package containing six embedded
 engine RIDs. Windows prepares that package after source-revision qualification. The publish job
 downloads and verifies the prepared bytes; it does not rebuild or replace a per-RID package.
 GHCR toolchain images remain separate from the PowerShell Gallery module.
 
 ```mermaid
 flowchart TD
-    D[Explicit QuietCli/v version tag push] --> Q[Qualify All for the tagged source revision]
+    D[Explicit FrenchExDev2.QuietCli.Core.PoSh/v version tag push] --> Q[Qualify All for the tagged source revision]
     Q --> W[Windows Release ReadyToRun build of all six RIDs for CLR 10 and 11]
     W --> T[Validate the exact Windows packaging build]
     T --> P[Prepare one QuietCli nupkg matching the manifest and tag]

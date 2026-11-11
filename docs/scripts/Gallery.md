@@ -7,6 +7,8 @@ When package-set.json declares ReadyToRun, Test-QuietGalleryPackageSet in script
 
 ## Purpose
 
+The public Core identity is `FrenchExDev2.QuietCli.Core.PoSh`, matching the existing Gallery entry. `Get-QuietGalleryModuleIdentity` delegates name/version/manifest reads to [ModulePackage](lib/ModulePackage.md). `Copy-QuietGalleryCoreModule` requires a staging directory with that inferred name and copies the `.psd1`/`.psm1` unchanged. Package and remote-identity validation accept this Core identity and reject the obsolete short `QuietCli` package identity or extra companion packages. Gallery identity tests assert byte preservation and include source-checked staging mutations.
+
 Validates every artifact of a public PowerShell-Gallery-bound QuietCli package — version format, manifest identity/GUID stability, nupkg zip integrity and safety, nuspec identity, and the full set of required runtime/engine/PTY payloads per RID — before it is ever allowed to reach the actual publish step. The business problem it solves is "never publish a package whose public manifest, version, or payload set doesn't match exactly what was promised," since a PowerShell Gallery publish cannot be unpublished. It is invoked (dot-sourced) by `scripts/New-QuietGalleryPackage.ps1`, `scripts/New-QuietPreviewPackage.ps1`, and `scripts/Publish-QuietGallery.ps1`, and tested by `FrenchExDev2.QuietCli.Core.Tests.PoSh/GalleryIdentity.Tests.ps1` and `GalleryPreview.Tests.ps1`.
 
 ## Usage
@@ -38,7 +40,7 @@ $plan = Test-QuietGalleryPackageSet -PackageDirectory ./artifacts/gallery -Versi
 
 ## Side effects
 
-- `Copy-QuietGalleryCoreModule` copies an entire directory tree and renames two files in place (lines 18-20), then rewrites the manifest's `RootModule` value via an AST-based text splice (lines 23-30), not a blind string replace.
+- `Copy-QuietGalleryCoreModule` copies the directory tree into a new directory with the inferred package name, preserving filenames, RootModule, source bytes, version and GUID. It performs no package-identity rewrite.
 - `Set-QuietGalleryStagedPrerelease` calls the mutating `Update-ModuleManifest` cmdlet and re-normalizes line endings afterward (lines 99-101).
 - Everything else in this file is read-only validation.
 
@@ -64,7 +66,7 @@ This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which 
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Copies the internal Core project into a public QuietCli staging directory without editing its sources.
+Purpose: Reads the shared package identity from a script module and its literal sibling manifest.
 
 Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 

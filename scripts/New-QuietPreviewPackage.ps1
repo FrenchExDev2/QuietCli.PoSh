@@ -31,7 +31,7 @@ $ErrorActionPreference='Stop'
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 # This list only forbids writing generated artifacts inside source modules. It never selects public packages;
-# New-QuietGalleryPackage.ps1 still explicitly stages and validates only the public QuietCli Core package.
+# New-QuietGalleryPackage.ps1 stages only Core under the existing name inferred from its .psm1 and manifest.
 foreach($name in (Get-QuietWorkspaceProjects $WorkspaceRoot).Name){
     $moduleRoot=(Join-Path $WorkspaceRoot $name)+[IO.Path]::DirectorySeparatorChar
     if($OutputDirectory.StartsWith($moduleRoot,[StringComparison]::OrdinalIgnoreCase)){throw 'GalleryPreviewOutputInsideModule'}

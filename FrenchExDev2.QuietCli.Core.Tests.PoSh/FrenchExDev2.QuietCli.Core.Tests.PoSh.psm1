@@ -766,7 +766,7 @@ Executes independent native byte and object invariants in a companion module.
             $null=& (Join-Path $scripts Publish-QuietGallery.ps1) -PackageDirectory $packages -Version 0.2.0-preview -ValidateOnly
             $null=& (Join-Path $scripts Publish-QuietGallery.ps1) -PackageDirectory $packages -Version 0.2.0-preview -WhatIf
             $plan=Test-QuietGalleryPackageSet $packages -Version '0.2.0-preview'
-            if(@($plan.Packages).Count -ne 1 -or $plan.Packages[0].Module -cne 'QuietCli'){throw 'GalleryCoreOnlyRequired'}
+            if(@($plan.Packages).Count -ne 1 -or $plan.Packages[0].Module -cne 'FrenchExDev2.QuietCli.Core.PoSh'){throw 'GalleryCoreOnlyRequired'}
         } (Join-Path $WorkspaceRoot scripts) $packages
         $probe=Join-Path $PSScriptRoot audit/Probe-GalleryInstall.ps1
         $r=quiet -AsObject -Role Infrastructure -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} pwsh -NoProfile -File $probe -PackageDirectory $packages -InstallationDirectory (Join-Path $root installed)

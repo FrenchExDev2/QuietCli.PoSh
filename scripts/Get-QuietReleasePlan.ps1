@@ -3,7 +3,7 @@
 .SYNOPSIS
 Validates a module-specific publication tag and optionally writes bounded GitHub job outputs.
 .PARAMETER Tag
-Exact pushed tag, such as QuietCli/v0.2.0-preview; must match its source manifest.
+Exact pushed tag, such as FrenchExDev2.QuietCli.Core.PoSh/v0.2.0-preview; must match its script module and manifest.
 .PARAMETER WorkspaceRoot
 Selected QuietCli2 source checkout.
 .PARAMETER OutputPath

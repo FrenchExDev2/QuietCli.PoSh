@@ -2,9 +2,9 @@ name: QuietCli module release tags
 on:
   push:
     tags:
-      - 'QuietCli/v*'
-      - 'QuietCli.Git/v*'
-      - 'QuietCli.Vagrant/v*'
+      - 'FrenchExDev2.QuietCli.Core.PoSh/v*'
+      - 'FrenchExDev2.QuietCli.Git.PoSh/v*'
+      - 'FrenchExDev2.QuietCli.Vagrant.PoSh/v*'
 permissions:
   contents: read
 concurrency:

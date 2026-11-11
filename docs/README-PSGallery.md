@@ -3,10 +3,10 @@
 ## GitHub publication
 
 An applicable `develop` push executes `All` qualification and profiling without publishing a module.
-An explicit `QuietCli/v<version>` tag push requests a Core release after full qualification of the tagged
+An explicit `FrenchExDev2.QuietCli.Core.PoSh/v<version>` tag push requests a Core release after full qualification of the tagged
 revision. The tag version must exactly match the source manifest, including its prerelease suffix.
 Windows x64 rebuilds all six embedded RIDs in Release ReadyToRun for CLR 10 and 11,
-verifies the Windows build, and prepares one public `QuietCli` nupkg with `-RequireReadyToRun`.
+verifies the Windows build, and prepares one public `FrenchExDev2.QuietCli.Core.PoSh` nupkg with `-RequireReadyToRun`.
 There is no separate Gallery package per RID. Native Linux matrix tests and Docker fallback qualify
 the source revision; the final package is rebuilt on Windows, not assembled from matrix artifacts.
 
@@ -17,21 +17,21 @@ publication require a tag push; workflow dispatch only prepares artifacts. The m
 is informational and never blocks a release. See the diagrams and platform details in
 [the CI execution model](ci/execution-model.md).
 
-The public PowerShell module and Gallery package are named `QuietCli`; they provide Core. `FrenchExDev2.QuietCli.Core.PoSh` is the internal source project name, not a public package. The Git example and test companion modules are not published.
+QuietCli is the product name. Core retains its existing PowerShell Gallery identity `FrenchExDev2.QuietCli.Core.PoSh`, and Git retains `FrenchExDev2.QuietCli.Git.PoSh`. The current CI publication path prepares Core only; the existence of an older Git Gallery entry does not enable that CI path. Test companion modules are not public release targets.
 
 ## Installation
 
 ```powershell
 # Objective: Install the latest stable QuietCli release from PowerShell Gallery.
-Install-PSResource -Name QuietCli -Repository PSGallery -Scope CurrentUser
+Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh -Repository PSGallery -Scope CurrentUser
 
 # Objective: Load QuietCli.
-Import-Module QuietCli
+Import-Module FrenchExDev2.QuietCli.Core.PoSh
 ```
 
 Without `-Version`, installation selects the latest stable release available on PSGallery. The optional `-Version` parameter can select a specific release when needed.
 
-Preparing a local nupkg does not make its version available on the gallery. Installation can select only versions actually published under the `QuietCli` package name.
+Preparing a local nupkg does not make its version available on the gallery. Installation can select only versions actually published under the `FrenchExDev2.QuietCli.Core.PoSh` package name.
 
 ## Runtime requirements and supported platforms
 
@@ -57,7 +57,7 @@ To include prereleases when selecting the latest available QuietCli release, add
 
 ```powershell
 # Objective: Install the latest available QuietCli release, including prereleases.
-Install-PSResource -Name QuietCli -Prerelease -Repository PSGallery -Scope CurrentUser
+Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh -Prerelease -Repository PSGallery -Scope CurrentUser
 ```
 
 The development prerelease identity [0.2.0-preview] is an example, not evidence that it is already public. To select a specific release instead of the latest, the optional `-Version` parameter accepts its complete package version, including any prerelease suffix. Installed module directories use the numeric base version; the package identity retains the prerelease suffix.
@@ -66,14 +66,14 @@ PowerShell Gallery prerelease labels use the supported alphanumeric/hyphen form.
 
 ## Publication requirements
 
-Gallery preparation copies the internal Core project into a separate `QuietCli` staging directory, with `QuietCli.psd1` and `QuietCli.psm1`. The package, publication plan, validation and installation probes use the public `QuietCli` identity. Source project names, manifest versions and GUIDs stay unchanged. Generated calls and companion dependencies use the identity of the imported module, including `QuietCli` after installation.
+Gallery preparation copies Core into a separate `FrenchExDev2.QuietCli.Core.PoSh` staging directory, preserving its `.psd1` and `.psm1` names and bytes. The shared [module package reader](scripts/Get-ModulePackageName.md) derives the name from the script module and checks its literal sibling manifest. Package preparation, release tags and publication validation consume that identity; no short-name alias is introduced. Versions and GUIDs remain unchanged, and generated calls and companion dependencies use `FrenchExDev2.QuietCli.Core.PoSh` after installation.
 
 For generated artifact-only preview versions, independent module tags and release preparation, see
 [preview releases](README-preview-releases.md). Source versions and GUIDs stay unchanged during CI packaging.
 
 A QuietCli release requires qualification of the delivered revision across its supported runtime and platform matrix, including the required property, fuzzing and mutation campaigns for the selected scope. GitHub CI excludes native TTY/PTY campaigns; its reports do not qualify that transport. A targeted development run or a successful run for an older revision does not qualify a new release.
 
-Both stable and prerelease publication are requested by explicit Core tag pushes after the configured CI qualification. Build, test and manual package preparation do not publish. Public package preparation and publication currently reject Git or any extra nupkg. Git and Vagrant retain independent source versions and reserved `QuietCli.Git/v*` / `QuietCli.Vagrant/v*` namespaces; their nonpublishable manifests and missing public packaging reject release requests before qualification. Their activation requires public dependency staging and offline installation/import checks, not a shared Core version bump.
+Both stable and prerelease publication are requested by explicit Core tag pushes after the configured CI qualification. Build, test and manual package preparation do not publish. Public package preparation and publication currently reject Git or any extra nupkg. Git and Vagrant retain independent source versions and reserved `FrenchExDev2.QuietCli.Git.PoSh/v*` / `FrenchExDev2.QuietCli.Vagrant.PoSh/v*` namespaces; their nonpublishable manifests and missing public packaging reject release requests before qualification. Their activation requires public dependency staging and offline installation/import checks, not a shared Core version bump.
 
 Keep API keys out of code, CLI arguments, reports and chat. Follow [Microsoft's publishing guidelines](https://learn.microsoft.com/en-us/powershell/gallery/concepts/publishing-guidelines) and the [Publish-PSResource documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.psresourceget/publish-psresource) when preparing an explicitly authorized release.
 

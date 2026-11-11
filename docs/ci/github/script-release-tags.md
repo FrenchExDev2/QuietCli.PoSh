@@ -1,6 +1,6 @@
 # release-tags.yml
 
-<!-- workflow-source-sha256: AEA3D245EB5A5771EE1B2A84B1C1A116041CAADF08FFE7424F0EF1957C06D027 -->
+<!-- workflow-source-sha256: 77A8295E92B181AE1924FA9DEBEA3D5B05658CCE05E8A8D39DC5F6EFB27CE9B2 -->
 
 ## Purpose
 
@@ -8,7 +8,7 @@ Explicit, independently versioned module release requests. Core publication is a
 
 ## Triggers
 
-Tag pushes matching `QuietCli/v*`, `QuietCli.Git/v*` or `QuietCli.Vagrant/v*`. No branch push, PR or manual dispatch trigger. Only the original repository runs the plan. Pushing a tag requests publication; creating a local tag does not.
+Tag pushes matching `FrenchExDev2.QuietCli.Core.PoSh/v*`, `FrenchExDev2.QuietCli.Git.PoSh/v*` or `FrenchExDev2.QuietCli.Vagrant.PoSh/v*`. No branch push, PR or manual dispatch trigger. Only the original repository runs the plan. Pushing a tag requests publication; creating a local tag does not.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
@@ -37,7 +37,7 @@ flowchart TD
 
 ## Validation and limits
 
-Local tests check malformed tags, independent manifest versions, blocked companions, no-write preview and publication event boundaries. Hosted qualification/publication is separate evidence. This workflow does not create GitHub Releases or push tags. It does not modify environment policies: configure a **tag** deployment rule matching `QuietCli/v*` and retain `PSGALLERY_API_KEY` in that environment. Existing approval protections still apply. Legacy `v<version>-preview<timestamp>` tags remain outside the release filters.
+Local tests check malformed tags, independent manifest versions, blocked companions, no-write preview and publication event boundaries. Hosted qualification/publication is separate evidence. This workflow does not create GitHub Releases or push tags. It does not modify environment policies: configure a **tag** deployment rule matching `FrenchExDev2.QuietCli.Core.PoSh/v*` and retain `PSGALLERY_API_KEY` in that environment. Existing approval protections still apply. Legacy `v<version>-preview<timestamp>` tags remain outside the release filters.
 
 <!-- credits:begin -->
 ## Credits

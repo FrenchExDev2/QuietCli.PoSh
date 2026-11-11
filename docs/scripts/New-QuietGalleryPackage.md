@@ -2,7 +2,7 @@
 
 ## Purpose and usage
 
-Prepares one public QuietCli nupkg and its SHA-256 publication plan, without contacting PSGallery.
+Prepares one `FrenchExDev2.QuietCli.Core.PoSh` nupkg and its SHA-256 publication plan, without contacting PSGallery. The shared module-package reader derives its name from the Core `.psm1` and checks the sibling manifest; staging preserves existing filenames and bytes instead of renaming Core to QuietCli.
 
 ```powershell
 ./scripts/New-QuietGalleryPackage.ps1 -OutputDirectory <new-directory> -Version <exact-version> -RequireReadyToRun

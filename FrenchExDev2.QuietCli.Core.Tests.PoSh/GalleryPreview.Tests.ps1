@@ -168,7 +168,7 @@ function Invoke-QuietGalleryPreviewTests {
         }
         $expected=Get-Content -LiteralPath (Join-Path $previewRoot 'packages/package-set.json') -Raw -Encoding utf8|ConvertFrom-Json
         Write-WorkspaceJson (Join-Path $RunDirectory 'gallery-install-diagnostics.json') @{Outcome=$execution.Outcome;ExitCode=$execution.ExitCode;Lines=@($capture.Lines);Report=$capture.Report}
-        if($execution.Outcome -cne 'Success' -or $capture.Report.ModuleName -cne 'QuietCli' -or !$capture.Report.GeneratedScript -or $capture.Report.ScaffoldDependency -cne 'QuietCli' -or $capture.Report.GitModuleLoaded -or $capture.Report.NativeExecution -cne 'Success' -or !$capture.Report.Installed -or $capture.Report.PackageVersion -cne $expected.Version){throw ('PreviewInstallationFailed: '+((@($capture.Lines)|ConvertTo-Json -Compress -Depth 3)))}
+        if($execution.Outcome -cne 'Success' -or $capture.Report.ModuleName -cne $expected.Packages[0].Module -or !$capture.Report.GeneratedScript -or $capture.Report.ScaffoldDependency -cne $expected.Packages[0].Module -or $capture.Report.GitModuleLoaded -or $capture.Report.NativeExecution -cne 'Success' -or !$capture.Report.Installed -or $capture.Report.PackageVersion -cne $expected.Version){throw ('PreviewInstallationFailed: '+((@($capture.Lines)|ConvertTo-Json -Compress -Depth 3)))}
     }
     $cases['publication uses the validated artifacts in Core-only scope without real credentials or network']={
         $previewPublicationCalls=[Collections.Generic.List[string]]::new()
@@ -192,7 +192,7 @@ function Invoke-QuietGalleryPreviewTests {
             #>
             param([string]$NupkgPath,[string]$Repository,[string]$ApiKey,[switch]$SkipDependenciesCheck,[object]$ErrorAction)
             if(!$NupkgPath.EndsWith('.nupkg') -or $Repository -cne 'PSGallery'){throw 'PreviewPublicationDestination'}
-            if(![IO.Path]::GetFileName($NupkgPath).StartsWith('QuietCli.',[StringComparison]::Ordinal) -or $SkipDependenciesCheck -or $previewPublicationCalls.Count){throw 'OnlyCorePublicationAllowed'}
+            if(![IO.Path]::GetFileName($NupkgPath).StartsWith('FrenchExDev2.QuietCli.Core.PoSh.',[StringComparison]::Ordinal) -or $SkipDependenciesCheck -or $previewPublicationCalls.Count){throw 'OnlyCorePublicationAllowed'}
             $previewPublicationCalls.Add([IO.Path]::GetFileName($NupkgPath))
         }
         Set-Alias Get-PSResourceRepository Invoke-PreviewFixtureRepository -Scope Local
@@ -216,7 +216,7 @@ function Invoke-QuietGalleryPreviewTests {
                 $plan=$original|ConvertFrom-Json
                 if($variant -eq 'extra-archive'){[void][IO.File]::WriteAllBytesAsync($extra,[byte[]]@(1)).GetAwaiter().GetResult()}
                 elseif($variant -eq 'git-identity'){$plan.Packages[0].Module='FrenchExDev2.QuietCli.Git.PoSh'}
-                elseif($variant -eq 'source-identity'){$plan.Packages[0].Module='FrenchExDev2.QuietCli.Core.PoSh'}
+                elseif($variant -eq 'source-identity'){$plan.Packages[0].Module='QuietCli'}
                 else{$plan.Packages+=@{Module='FrenchExDev2.QuietCli.Git.PoSh';File='forbidden.nupkg'}}
                 Write-WorkspaceJson $path $plan
                 $rejected=$false

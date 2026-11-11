@@ -19,7 +19,8 @@ $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1');. (Join-P
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path);$OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 if(Test-Path -LiteralPath $OutputDirectory){throw 'GalleryOutputAlreadyExists'}
 $sourceName='FrenchExDev2.QuietCli.Core.PoSh'
-$publicName='QuietCli'
+$identity=Get-QuietGalleryModuleIdentity (Join-Path $WorkspaceRoot "$sourceName/$sourceName.psm1")
+$publicName=$identity.Name
 $manifest=Import-PowerShellDataFile (Join-Path (Join-Path $WorkspaceRoot $sourceName) ($sourceName+'.psd1'))
 $release=Get-QuietGalleryModuleVersion $manifest
 $sourceVersion=$release

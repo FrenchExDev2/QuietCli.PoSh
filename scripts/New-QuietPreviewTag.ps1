@@ -81,8 +81,10 @@ $manifestPath = Join-Path $WorkspaceRoot "$project/$project.psd1"
 $manifest=Import-PowerShellDataFile -LiteralPath $manifestPath
 $version = [string]$manifest.ModuleVersion
 if($Release){
-    if($manifest.PrivateData.PSData.Prerelease){$version+='-'+$manifest.PrivateData.PSData.Prerelease}
-    $publicName=if($Module -ceq 'Core'){'QuietCli'}else{"QuietCli.$Module"}
+    Import-Module (Join-Path $PSScriptRoot 'lib/ModulePackage.psm1')
+    $identity=Get-QuietModulePackageIdentity -Path (Join-Path $WorkspaceRoot "$project/$project.psm1") -RequireManifest
+    $version=$identity.Version
+    $publicName=$identity.Name
     Import-Module (Join-Path $PSScriptRoot 'lib/GalleryRelease.psm1') -Force
     $plan=Resolve-QuietGalleryReleaseTag -WorkspaceRoot $WorkspaceRoot -Tag "$publicName/v$version"
     $tag=$plan.Tag
