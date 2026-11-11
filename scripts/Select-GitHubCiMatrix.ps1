@@ -22,6 +22,6 @@ $images=@(foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-mu
 $matrix=Get-GitHubCiExecutionMatrix $images
 Write-WorkspaceJson (Join-Path $WorkspaceRoot 'artifacts/github-matrix/selection.json') $matrix
 if(!$OutputPath){throw 'GitHubOutputPathRequired'}
-$values="container_matrix=$($matrix.Container|ConvertTo-Json -Depth 5 -Compress)`nfallback_matrix=$($matrix.Fallback|ConvertTo-Json -Depth 5 -Compress)`nhas_container=$($matrix.HasContainer.ToString().ToLowerInvariant())`nhas_fallback=$($matrix.HasFallback.ToString().ToLowerInvariant())`n"
+$values="container_matrix=$($matrix.Container|ConvertTo-Json -Depth 5 -Compress)`ndocker_matrix=$($matrix.Fallback|ConvertTo-Json -Depth 5 -Compress)`nhas_container=$($matrix.HasContainer.ToString().ToLowerInvariant())`nhas_docker_container_runtime=$($matrix.HasFallback.ToString().ToLowerInvariant())`n"
 [void][IO.File]::AppendAllTextAsync($OutputPath,$values,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
 Write-Host ('GitHub Linux selection: '+($matrix|ConvertTo-Json -Depth 5 -Compress))

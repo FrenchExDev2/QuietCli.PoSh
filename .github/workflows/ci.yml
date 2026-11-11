@@ -314,9 +314,9 @@ jobs:
       packages: read
     outputs:
       container_matrix: ${{ steps.select.outputs.container_matrix }}
-      fallback_matrix: ${{ steps.select.outputs.fallback_matrix }}
+      docker_matrix: ${{ steps.select.outputs.docker_matrix }}
       has_container: ${{ steps.select.outputs.has_container }}
-      has_fallback: ${{ steps.select.outputs.has_fallback }}
+      has_docker_container_runtime: ${{ steps.select.outputs.has_docker_container_runtime }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -415,10 +415,10 @@ jobs:
           path: artifacts/failure-diagnostics
           if-no-files-found: warn
           retention-days: 14
-  linux-fallback:
-    name: Linux Docker fallback (${{ matrix.rid }})
+  linux-test-driver:
+    name: Linux test driver (${{ matrix.rid }})
     needs: linux-selection
-    if: ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_fallback == 'true' }}
+    if: ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_docker_container_runtime == 'true' }}
     permissions:
       contents: read
       packages: read
@@ -426,7 +426,7 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.linux-selection.outputs.fallback_matrix) }}
+      matrix: ${{ fromJson(needs.linux-selection.outputs.docker_matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -508,7 +508,7 @@ jobs:
           compression-level: 6
   linux-result:
     name: Require every selected Linux execution path
-    needs: [linux-selection, linux, linux-fallback]
+    needs: [linux-selection, linux, linux-test-driver]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -524,15 +524,15 @@ jobs:
         env:
           SELECTION_RESULT: ${{ needs.linux-selection.result }}
           CONTAINER_RESULT: ${{ needs.linux.result }}
-          FALLBACK_RESULT: ${{ needs.linux-fallback.result }}
+          FALLBACK_RESULT: ${{ needs.linux-test-driver.result }}
           HAS_CONTAINER: ${{ needs.linux-selection.outputs.has_container }}
-          HAS_FALLBACK: ${{ needs.linux-selection.outputs.has_fallback }}
+          HAS_DOCKER_CONTAINER_RUNTIME: ${{ needs.linux-selection.outputs.has_docker_container_runtime }}
         run: |
           . ./scripts/GitHubCi.ps1
-          Assert-GitHubCiLinuxResults -SelectionResult $env:SELECTION_RESULT -ContainerResult $env:CONTAINER_RESULT -FallbackResult $env:FALLBACK_RESULT -HasContainer:($env:HAS_CONTAINER -ceq 'true') -HasFallback:($env:HAS_FALLBACK -ceq 'true')
+          Assert-GitHubCiLinuxResults -SelectionResult $env:SELECTION_RESULT -ContainerResult $env:CONTAINER_RESULT -FallbackResult $env:FALLBACK_RESULT -HasContainer:($env:HAS_CONTAINER -ceq 'true') -HasFallback:($env:HAS_DOCKER_CONTAINER_RUNTIME -ceq 'true')
   performance-results:
     name: Readable performance evidence for the complete matrix
-    needs: [windows, linux, linux-fallback]
+    needs: [windows, linux, linux-test-driver]
     if: ${{ always() && inputs.collect_performance }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

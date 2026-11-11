@@ -12,7 +12,7 @@ selection.json creation or GITHUB_OUTPUT append; the no-effect regression uses a
 ./scripts/Select-GitHubCiMatrix.ps1 -Suite Core -OutputPath $env:GITHUB_OUTPUT
 ```
 
-Outputs: `container_matrix`, `fallback_matrix`, `has_container`, `has_fallback`. The matrices are
+Outputs: `container_matrix`, `docker_matrix`, `has_container`, `has_docker_container_runtime`. The matrices are
 disjoint and cover every target exactly once. An immutable GHCR reference is required for each native
 job container. The full decision is saved in `artifacts/github-matrix/selection.json`.
 The shared JSON writer creates the receipt's parent directories on a clean checkout; no preceding

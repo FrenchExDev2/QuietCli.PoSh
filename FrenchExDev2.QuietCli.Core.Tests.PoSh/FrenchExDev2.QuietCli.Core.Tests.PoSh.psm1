@@ -364,7 +364,7 @@ Executes independent native byte and object invariants in a companion module.
                 if([string]$jobs['performance-results']['if'] -cne '${{ always() && inputs.collect_performance }}'){throw 'PerformanceAggregationNotOptIn'}
                 $prepare=@($jobs['windows']['steps']|Where-Object {$_['name'] -ceq 'Prepare checksum-pinned PowerShell and CLR profilers'})
                 if($prepare.Count -ne 1 -or [string]$prepare[0]['if'] -cne "inputs.suite != 'Git' && (inputs.collect_performance || (matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'))" -or !([string]$prepare[0]['run']).Contains('-Module profiler,dottrace')){throw 'RequiredToolingDependenciesNotPrepared'}
-                foreach($name in @('windows','linux','linux-fallback')){
+                foreach($name in @('windows','linux','linux-test-driver')){
                     $runs=@($jobs[$name]['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
                     if($runs.Contains('if($env:QUIETCLI_SUITE -ne ''Git'')')){throw ('UnconditionalProfiling: '+$name)}
                     $reportSteps=@($jobs[$name]['steps']|Where-Object {$_['run'] -match 'New-CorePerformanceReport.ps1'})

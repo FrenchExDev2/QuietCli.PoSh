@@ -160,7 +160,7 @@ function Test-QuietGitHubCiJsonReceipts {
         $null=& (Join-Path $scripts Select-GitHubCiMatrix.ps1) -WorkspaceRoot $checkout -Suite $suite -OutputPath $outputPath -Confirm:$false
         $selection=Get-Content -LiteralPath (Join-Path $checkout 'artifacts/github-matrix/selection.json') -Raw -Encoding utf8|ConvertFrom-Json
         $outputs=Get-Content -LiteralPath $outputPath -Encoding utf8
-        if($selection.HasContainer -or !$selection.HasFallback -or @($selection.Fallback.include).Count -ne 4 -or $outputs[0] -cne 'existing=value' -or $outputs -cnotcontains 'has_fallback=true' -or $outputs -cnotcontains 'has_container=false'){throw 'GitHubMatrixCleanCheckoutOutputsChanged'}
+        if($selection.HasContainer -or !$selection.HasFallback -or @($selection.Fallback.include).Count -ne 4 -or $outputs[0] -cne 'existing=value' -or $outputs -cnotcontains 'has_docker_container_runtime=true' -or $outputs -cnotcontains 'has_container=false'){throw 'GitHubMatrixCleanCheckoutOutputsChanged'}
     }
     if(@(Get-ChildItem -LiteralPath $fixture -Filter '*.tmp' -File -Recurse).Count){throw 'WorkspaceJsonTemporaryFilesLeaked'}
     Write-WorkspaceJson (Join-Path $RunDirectory 'github-json-receipts.json') @{Seed=$seed;RoundTrips=64;SelectorSuites=@('Core','Git','All');PreviewCases=3;BlockedParentRejected=$true;MutantsKilled=1;RealRegistry=$false;RealHostedRunner=$false}
@@ -256,15 +256,15 @@ function Test-QuietGitHubCi {
             if($index+1 -ge $steps.Count -or [string]$steps[$index+1]['run'] -notmatch '\./scripts/Initialize-CiEnvironment\.ps1 -Target GitHub -ContainerRuntime docker' -or $steps[$index+1]['shell'] -cne 'pwsh'){throw ('GitHubEnvironmentInitializationMissing: '+$name)}
         }
     }
-    foreach($entry in @(@{Job='linux';Flag='has_container'},@{Job='linux-fallback';Flag='has_fallback'})){
+    foreach($entry in @(@{Job='linux';Flag='has_container'},@{Job='linux-test-driver';Flag='has_docker_container_runtime'})){
         $condition=[string]$jobs[$entry.Job]['if']
         if(!$condition.Contains('!cancelled()') -or !$condition.Contains("needs.linux-selection.result == 'success'") -or !$condition.Contains(("needs.linux-selection.outputs."+$entry.Flag+" == 'true'"))){throw ('GitHubCiSelectedJobInheritedSkip: '+$entry.Job)}
     }
     foreach($name in $jobs.Keys){foreach($dependency in @($jobs[$name]['needs'])){if($dependency -and !$jobs.ContainsKey($dependency)){throw 'GitHubWorkflowDanglingDependency'}}}
-    if(!$jobs['linux']['container'] -or $jobs['windows']['container'] -or $jobs['linux-fallback']['container']){throw 'GitHubWorkflowExecutionEnvironmentChanged'}
+    if(!$jobs['linux']['container'] -or $jobs['windows']['container'] -or $jobs['linux-test-driver']['container']){throw 'GitHubWorkflowExecutionEnvironmentChanged'}
     $direct=@($jobs['linux']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
     if(!$direct.Contains('Invoke-GitHubCi.ps1') -or $direct -match 'Invoke-ContainerCi|New-CiImage|podman'){throw 'GitHubContainerNestedRuntimeDetected'}
-    $fallback=@($jobs['linux-fallback']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
+    $fallback=@($jobs['linux-test-driver']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
     if(!$fallback.Contains('-ContainerRuntime docker') -or $fallback.Contains('-PublishCache')){throw 'GitHubFallbackPublicationOrRuntimeChanged'}
     Write-WorkspaceJson (Join-Path $RunDirectory 'github-ci-campaign.json') @{Seed=$seed;PartitionProperties=$properties;MalformedCases=$badInputs.Count;GateCases=$gateCases;MutantsKilled=2;DirectWorkerSameProcess=$true;Workflow=$workflowPath;RealHostedRunner=$false}
 }
