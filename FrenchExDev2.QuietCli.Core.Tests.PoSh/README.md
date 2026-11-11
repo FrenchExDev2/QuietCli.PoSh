@@ -6,9 +6,11 @@
 
 ## Test boundaries and local work branches
 
-Core mixes pure logic with real filesystem, Git, process and package integration. Local feature/fix commits and pushes do not require automatically running these companions. Known cases report TestKind/Dependencies and show their classification in progress; the remaining cases are Unclassified. The existing pure byte-count checks are independently selectable as `-Case 'unit byte-count*'`. Runner bootstrap/report I/O is separate from a pure case body. See [the commit-suite and PSDrive review](../docs/testing/commit-workspace.md) for the actual temporary repository effects, why TestDrive is not an in-memory filesystem, and the remaining separation work.
+Core mixes pure logic with real filesystem, Git, process and package integration. Local feature/fix commits and pushes do not require automatically running these companions. Every top-level case reports explicit TestKind/Dependencies and shows its classification in progress. The shared static check and runtime guard reject missing or malformed metadata before selection; there is no Unclassified fallback. Pure byte-count checks are independently selectable as `-Case 'unit byte-count*'`. Runner bootstrap/report I/O is separate from a pure case body. See [classification and concurrency](../docs/README-test-classification-and-concurrency.md) for the complete boundary and reviewed parallelization candidates, and [the commit-suite and PSDrive review](../docs/testing/commit-workspace.md) for actual temporary repository effects.
 
 ## GitHub execution policy and Docker smoke
+
+`PrivateData.QuietCli.TestExecution` in this companion's manifest declares Ordered defaults, Exclusive measurement/packaging barriers and five reviewed IsolatedProcess cases. Core saves its resolved execution plan before cases run and batches adjacent eligible cases with a cap of two or the smaller caller budget. Each child owns configuration, SQLite and reports and receives one internal worker. `scripts/Test-TestCaseMetadata.ps1 -Plan` previews the complete plan without importing Core or executing a case. The same policy is consumed locally and in CI; Git/Vagrant fan-out still follows complete Core acceptance.
 
 See [Qualification: when, where and how](../README-qualification-when-where-how.md) for PR triggers, the six Windows and four Linux environments, build versus test execution, local launchers and qualification exclusions.
 

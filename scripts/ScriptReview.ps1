@@ -9,7 +9,7 @@ function Get-QuietScriptReview {
     param([string]$WorkspaceRoot)
     . (Join-Path $PSScriptRoot ScriptShouldProcess.ps1)
     $libraries=@('AgentDocuments','Bootstrap','Ci.Process','CiImages','Common','Gallery','GitHubCi','Monitor.Time','ReportPaths','ReportStreaming','ResourceDocumentation','Resources','RuntimeTargets','ScriptReview','ScriptShouldProcess','SourceIdentity','TestConfiguration','WorkflowDocumentation','WorkspaceProjects')
-    $readOnly=@('Assert-CoreIntegrationEvidence','Assert-GalleryCheckpoint','Assert-PtyQualification','Show-ColdStartMatrixReport','Show-ColdStartReport','Test-GitHubWorkflowDocs','Test-Resources','Test-ScriptShouldProcess','Test-ScriptContracts','Watch-Tests','Watch-DotNetTests','Invoke-WorkspaceChecks')
+    $readOnly=@('Assert-CoreIntegrationEvidence','Assert-GalleryCheckpoint','Assert-PtyQualification','Show-ColdStartMatrixReport','Show-ColdStartReport','Test-GitHubWorkflowDocs','Test-Resources','Test-ScriptShouldProcess','Test-ScriptContracts','Test-TestCaseMetadata','Watch-Tests','Watch-DotNetTests','Invoke-WorkspaceChecks')
     foreach($file in Get-ChildItem (Join-Path $WorkspaceRoot scripts) -Recurse -File|Where-Object Extension -In @('.ps1','.psm1')|Sort-Object FullName){
         $tokens=$null;$errors=$null;$ast=[Management.Automation.Language.Parser]::ParseFile($file.FullName,[ref]$tokens,[ref]$errors)
         if($errors.Count){throw ('ScriptReviewParseFailed: '+$file.Name)}

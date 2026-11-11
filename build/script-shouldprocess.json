@@ -19,7 +19,7 @@
     {
       "Path": "scripts/Invoke-WorkspaceChecks.ps1",
       "Reason": "Check-only ordered registry; guarded parser preparation may write prerequisite resource/cache files. No documentation Apply, build, staging, commit or publication; WhatIf propagates.",
-      "SHA256": "698A973EABC09D7ED733E140597EE6DF8B36643D4CEBD7EEB5EB6413A68DAE78"
+      "SHA256": "09ECB26480AE6E93B5A025A22DC1F78A918E18BDAD45988A9F17A82AF32B120A"
     },
     {
       "Path": "scripts/Test-Resources.ps1",
@@ -35,6 +35,11 @@
       "Path": "scripts/Watch-DotNetTests.ps1",
       "SHA256": "B3293C0D13D480FDC523271F37A960DB8871D356253E3D0D59554242B2C43B7D",
       "Reason": "Reviewed read-only observer: delegates solely to the shared Watch-Tests monitor, reading saved run reports and drawing terminal output; no source/report writes or test execution."
+    },
+    {
+      "Path": "scripts/Test-TestCaseMetadata.ps1",
+      "Reason": "Reviewed read-only gate: parses UTF-8 case sources and inert manifest scheduling declarations without importing the product engine, executing tests, downloading, building or writing files.",
+      "SHA256": "BE76A65D424D74C376CF7427C5F016593447743291E2FEC419DF6E9A3DAAF6F1"
     }
   ],
   "LegacyPaths": [

@@ -21,7 +21,7 @@ Core is a custom PowerShell case runner, not a Pester Describe/It suite. Core an
 
 The commit campaign creates fresh repositories for independent scenarios and repeats scenarios against eleven targeted script mutants. These are real Git integration checks, not pure unit tests. Generated properties and mutation are testing techniques; they do not remove filesystem/process dependencies. The repositories live under the run's external temporary report directory and are retained with failure evidence.
 
-Known cases now report TestKind and Dependencies, and progress names show the reviewed boundary before execution. Unreviewed cases remain Unclassified rather than being implicitly declared Unit. The pure byte-count assertions have their own selectable case; their existing invocation inside the commit campaign remains useful for the full integration baseline. Runner startup and report writing still use the filesystem even for a pure test body.
+Every Core top-level case reports explicit TestKind and Dependencies, and progress names show the boundary before execution. The static classification gate and runtime guard reject incomplete metadata before filtering. The pure byte-count assertions have their own selectable case; their existing invocation inside the commit campaign remains useful for the full integration baseline. Runner startup and report writing still use the filesystem even for a pure test body. See [classification and concurrency](../README-test-classification-and-concurrency.md).
 
 ## Would a virtual PSDrive remove Git I/O?
 
@@ -46,7 +46,7 @@ flowchart TD
     S --> I
 ~~~
 
-Extract pure option mapping, byte-count parsing, warning classification and commit-message construction into cohesive functions with injected boundaries where useful. Keep a small set of real-Git invariants for HEAD/index integrity and publication/remote boundaries. Reuse prepared immutable fixture content where isolation remains independently proved; do not share mutable indexes between cases. A full Unit/Integration filter needs the remaining cases reviewed first: this change labels the reviewed subset and does not advertise Core as unit-only.
+Extract pure option mapping, byte-count parsing, warning classification and commit-message construction into cohesive functions with injected boundaries where useful. Keep a small set of real-Git invariants for HEAD/index integrity and publication/remote boundaries. Reuse prepared immutable fixture content where isolation remains independently proved; do not share mutable indexes between cases. Complete metadata is not isolation evidence or a Unit/Integration selection API: Core remains a mixed suite, and its case loop retains ordering dependencies.
 
 This is a source review and classification change. The interrupted All run was explicitly cancelled; it is not a successful qualification. No additional companion campaign was started for the local checkpoint policy change. Existing targeted evidence retains its recorded scope, and the next applicable GitHub workflow must validate the changed runner metadata and remaining contracts.
 

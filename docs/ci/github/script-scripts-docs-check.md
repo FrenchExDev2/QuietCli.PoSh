@@ -1,14 +1,14 @@
 # scripts-docs-check.yml
 
-<!-- workflow-source-sha256: FF1DBE8C22FDB4125947704037531728801CA3889CB134C93A316EB10F73B818 -->
+<!-- workflow-source-sha256: 46D399D453DBC9CA9925B6617D02A3E0F10C55CE4487EAC8492228B9FE4CF0BA -->
 
 ## Purpose
 
-Shared automation-contract pipeline for script docs, workflow docs, resources, objectives and preview support.
+Shared automation-contract pipeline for complete Core test classifications, script docs, workflow docs, resources, objectives and preview support.
 
 ## Triggers
 
-PR/develop path filters cover scripts, docs/scripts, docs/ci/github, docs/resources, README-resources.md, Core resource declarations, the shared archive-cache action, the ShouldProcess policy and every .github/workflows file; manual dispatch is also available.
+PR/develop path filters cover scripts, all Core test-project sources, docs/scripts, docs/ci/github, docs/resources, README-resources.md, Core resource declarations, the shared archive-cache action, the ShouldProcess policy and every .github/workflows file; manual dispatch is also available.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
@@ -30,9 +30,11 @@ flowchart TD
 
 ## Scripts and effects
 
-After checkout the optional shared cache action reuses NuGet resource archives, keyed by OS and resource-lock hash. Invoke-WorkspaceChecks runs ScriptsReadme, GitHubWorkflowDocs, ScriptShouldProcess, Resources, ScriptContracts, DocsCredits and Credits. Workflow parsing independently calls Ensure-QuietResource to verify/prepare the pinned YamlDotNet payload; there is no required preceding restore step. Preparation can write only the selected resource and download cache through ShouldProcess. Checks do not Apply documentation, build, stage, commit, push or access Gallery secrets; permissions are contents:read.
+After checkout the optional shared cache action reuses NuGet resource archives, keyed by OS and resource-lock hash. Invoke-WorkspaceChecks first runs TestCaseMetadata, then ScriptsReadme, GitHubWorkflowDocs, ScriptShouldProcess, Resources, ScriptContracts, DocsCredits and Credits. The classification gate parses every Core case/metadata declaration without importing Core or running tests; omissions and malformed classifications fail, including cases excluded by a runtime filter. Workflow parsing independently calls Ensure-QuietResource to verify/prepare the pinned YamlDotNet payload; there is no required preceding restore step. Preparation can write only the selected resource and download cache through ShouldProcess. Checks do not Apply documentation, build, stage, commit, push or access Gallery secrets; permissions are contents:read.
 
 ## Validation and limits
+
+The first shared gate also parses Core.Tests manifest scheduling policy: missing declarations remain sequential, while malformed modes/caps/timeouts, orphan overrides or missing reasons fail. This read-only check loads no product engine. Core/All launchers repeat validation before their build/test effects, and runtime saves the selected plan and enforces barriers and bounded isolation.
 
 A missing/stale workflow receipt, generated graph/index, script doc, credits block or new-script ShouldProcess contract fails the job. Reviewed read-only exceptions are hash-bound. The frozen legacy script inventory is explicitly unqualified for preview support; static checks do not prove runtime side-effect safety.
 

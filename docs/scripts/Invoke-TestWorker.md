@@ -1,5 +1,11 @@
 # Invoke-TestWorker.ps1
 
+## Declarative Core case scheduling
+
+Core consumes its test manifest's `PrivateData.QuietCli.TestExecution` policy and saves `core-execution-plan.json` before cases run. Only adjacent explicitly eligible cases enter a bounded process batch; Ordered/Exclusive stages preserve barriers. The same built checkout and image are reused. The CaseWorker switch is internal: it requires Core, a case filter, no profiler and MaxConcurrency one, prevents recursive case fan-out and clears inherited stop-on-first behavior so the parent can validate the exact single-case outcome. Child status reports remain available, while only the parent prints cumulative GitHub case counters.
+
+Each child initializes its own configuration, SQLite, Recall root and reports. Host/runtime/RID and TTY scope checks remain active. The parent accepts a partial child only for the exact declared case and aggregates it into its own complete or explicitly partial result. Errors, missing/contradictory receipts and timeouts become failures. See [the scheduling library](lib/TestCaseScheduling.md) and [classification/concurrency](../README-test-classification-and-concurrency.md).
+
 `All` executes Core first and requires complete successful integration evidence before fan-out. Other declared companions run in at most two isolated child processes through `lib/CiCompanionWorkers.psm1`, further bounded by MaxConcurrency. The exact current PSHOME, profile, RID/hosting and TTY scope are retained; each child has its own reports, database and configuration. The common build and Linux image are reused. Any failed/partial Core, failed child or missing/nonzero terminal result blocks All. Child reports remain in `companions/<Suite>` and are collected recursively by the evidence bundle.
 
 The worker is shared by two entry points: a background process with a visible monitor for local

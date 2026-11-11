@@ -1,7 +1,7 @@
 name: QuietCli2 Scripts docs check
 
 # Shared registry: script documentation, workflow source receipts/graphs/index,
-# preview contracts, resource dependencies and credits. Parser preparation is self-contained;
+# test classifications, preview contracts, resource dependencies and credits. Parser preparation is self-contained;
 # the checks never regenerate documentation, build or commit; see
 # docs/README-scripts-have-docs.md for the why/how and scripts-docs-apply.yml for the companion
 # workflow that writes the fix.
@@ -9,6 +9,7 @@ on:
   pull_request:
     paths: &scripts_docs_paths
       - 'scripts/**'
+      - 'FrenchExDev2.QuietCli.Core.Tests.PoSh/**'
       - 'docs/scripts/**'
       - 'docs/ci/github/**'
       - 'docs/resources/**'
@@ -27,7 +28,7 @@ permissions:
 
 jobs:
   check:
-    name: Check script docs, workflow contracts and new-script preview support
+    name: Check test classifications, script docs and automation contracts
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -11,6 +11,12 @@ if(Test-Path -LiteralPath $workspaceHelpers){. $workspaceHelpers}
 . (Join-Path $PSScriptRoot 'GitHubCi.Tests.ps1')
 . (Join-Path $PSScriptRoot 'CiCompanions.Tests.ps1')
 . (Join-Path $PSScriptRoot 'CiOptimization.Tests.ps1')
+. (Join-Path $PSScriptRoot 'TestCaseMetadata.Tests.ps1')
+. (Join-Path $PSScriptRoot 'TestCaseScheduling.Tests.ps1')
+$caseMetadataLibrary=Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts/lib/TestCaseMetadata.psm1'
+if(Test-Path -LiteralPath $caseMetadataLibrary){Import-Module $caseMetadataLibrary -ErrorAction Stop}
+$caseSchedulingLibrary=Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts/lib/TestCaseScheduling.psm1'
+if(Test-Path -LiteralPath $caseSchedulingLibrary){Import-Module $caseSchedulingLibrary -ErrorAction Stop}
 . (Join-Path $PSScriptRoot 'ReadyToRun.Tests.ps1')
 . (Join-Path $PSScriptRoot 'AutomationContracts.Tests.ps1')
 . (Join-Path $PSScriptRoot 'EnvFile.Tests.ps1')
@@ -90,6 +96,8 @@ Executes independent native byte and object invariants in a companion module.
     $galleryEvidence=[Collections.Generic.List[object]]::new()
     $testScope=@{TtyExcluded=0}
     $cases=[ordered]@{}
+    $cases['test case classifications are complete explicit and fail closed before filtering']={Test-QuietCaseMetadata -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['test execution declarations preserve barriers and bounded isolated workers']={Test-QuietCaseScheduling -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['CI optimization preserves Core prerequisites, parallel isolation and qualified checkpoints']={Test-QuietCiOptimization -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['CI failure regressions reject empty Docker parents and skipped profiling uploads']={Test-QuietCiFailureRegression -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['unit byte-count parsing validates sizes without filesystem or process effects']={Test-QuietByteCountParsing}
@@ -769,6 +777,77 @@ Executes independent native byte and object invariants in a companion module.
         $galleryEvidence.Add(@{Packages=$prepared.Packages;Targets=$prepared.Targets;Installation=$r.Data;ExternalPublication=$false})
     }
     $caseMetadata=@{
+        'test execution declarations preserve barriers and bounded isolated workers'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'test case classifications are complete explicit and fail closed before filtering'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'workspace project discovery keeps suite modes and package publication policy separate'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'container runtime diagnosis separates image bootstrap from ABI and RID selection'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'Alpine image recipe installs locked PowerShell and separates its runtime from the SDK'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'configuration and unique tokenized deliveries preserve their contracts'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'reusable scripts, factories and literal property regressions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'Recall capture and offline analysis regressions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'protocol configuration preserves bounds using host .NET APIs'=@{TestKind='Integration';Dependencies=@('FileSystem','EngineState')}
+        'direct status callbacks preserve generated Unicode record digests'=@{TestKind='Unit';Dependencies=@()}
+        'fresh sessions measure inert Core import against a paired baseline'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'CI evidence preserves binary traces and rejects tampered mandatory profiles'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'mandatory integration receipts reject damaged evidence and targeted gate mutants'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'import diagnostics retain independent first-use controls'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'owned complex repositories use only Core callbacks and exact state oracles'=@{TestKind='Integration';Dependencies=@('FileSystem','GitProcess','NativeProcess','EngineState')}
+        'local report paths isolate workspaces and preserve CI upload contracts'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'development workstation host properties and installer policy mutations'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'workstation resources preserve active owners and reject foreign cleanup'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'editor extension inventories preserve update and WhatIf contracts'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'source identity includes profile helpers and excludes generated libraries'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'Core migration preserves metadata and compares local helper costs'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'typed controls preserve duplex bytes and request rejection in both hosts'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'typed controls measure local JSON avoidance with identical stdin'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'compiled text framing and gain reports preserve their contracts'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'Gallery preserves prerelease labels and keeps numeric manifest versions separate'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'Gallery previews preserve source identities, Core-only packages and offline publication boundaries'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'CI requires stable net10 and preview net11 integrated hosts on x64 and ARM64'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'managed target follows the actual CLR including preview and future hosts'=@{TestKind='Integration';Dependencies=@('FileSystem','EngineState')}
+        'compiled framing and direct engine measure local overhead independently'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'CI failure diagnostics preserve redaction bounds and explicit local workflow selection'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'GitHub CI separates native containers, Docker fallback and workstation launchers'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'solution build catalogue discovers new consumers and rejects malformed distributions'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'ReadyToRun builds and loads the matching RID and CLR with portable fallbacks'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'CI process execution is independent and preserves streams failures stdin and deadlines'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'every native property fuzz and mutation phase is mandatory for delivery'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'native mutation refuses a mismatched guest before invoking a compiler'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'release gate rejects failed skipped cancelled or incomplete required jobs'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'GitHub CI excludes native TTY campaigns and has no dangling job dependencies'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'CI images cover four native Linux targets and invalidate the cache on recipe changes'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'cold engine and warm block-size measurements retain no business output'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'build provenance rejects changed binaries and stale source'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'all six embedded engines have matching native and managed architectures'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'C# protocol and concurrent SQLite assertions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'PTY reports a merged terminal counter without fake stderr separation'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'exact stdout/stderr counters with no capture'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'AsObject does not enumerate or serialize business getters'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'large output retains only bounded transport blocks'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'nested callback inherits context without serializing child objects'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'assigned child failure remains visible'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'context is not sticky across independent invocations'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'stdin bytes are exact and output is drained while feeding'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'UTF8 and NUL framing preserve split Unicode characters'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'truncated UTF8 fails analysis rather than dropping bytes'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'Complete runs once after Output failure and native drain'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'accidental Output emission never becomes business Data'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'timeout preserves partial native state'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'interactive cancellation affects only the owned child'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'delimiter overflow fails analysis and still drains bytes'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'native arguments preserve empty strings spaces and Unicode'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'delivery is bounded and AsObject remains unserialized until requested'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'empty singleton and nested arrays preserve JSON shape'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'bounded delivery preserves failure identity without serializing omitted business data'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'generic and named gain filters are independent'=@{TestKind='Integration';Dependencies=@('FileSystem','EngineState')}
+        'delivery token count observes produced text only'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'production agent instructions preserve project rules and installed resources'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'module scaffolding creates inert handlers and independent failing test companions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'monitor duration preserves November timestamps in French and English cultures'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'PowerShell functions have readable help and sources parse without errors'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'security audit counterexamples are closed with independent evidence'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'packaged modules verify and import outside source checkouts'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'PSGallery Core installs outside sources with its embedded engine and no Git companion'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'CI optimization preserves Core prerequisites, parallel isolation and qualified checkpoints'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess');NativeTransport='OwnedFixture'}
         'CI failure regressions reject empty Docker parents and skipped profiling uploads'=@{TestKind='Integration';Dependencies=@('FileSystem');NativeTransport='Stubbed'}
         'CI companion declarations separate integration suites and scale without workflow branches'=@{TestKind='Integration';Dependencies=@('FileSystem');NativeTransport='Stubbed'}
@@ -787,23 +866,56 @@ Executes independent native byte and object invariants in a companion module.
         'native Emit listeners preserve Unicode order and bounded JSON/YAML deliveries'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
         'explicit event collection compiled properties and targeted mutations'=@{TestKind='Integration';Dependencies=@('FileSystem','DotNetBuild','NativeProcess')}
     }
+    Assert-QuietTestCaseMetadata -CaseNames @($cases.Keys) -Metadata $caseMetadata
     $passed=0;$failed=0;$results=[Collections.Generic.List[object]]::new()
     # Development-only selection (QUIETCLI_TEST_CASE wildcard, QUIETCLI_TEST_STOP_ON_FIRST_FAILURE=1); the default run executes every case.
     $casePattern=$env:QUIETCLI_TEST_CASE;$stopOnFirst=$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE -ceq '1'
     $stoppedAt=$null;$skipped=0;$ttyExcluded=0
+    $selected=[Collections.Generic.List[string]]::new()
     foreach($entry in $cases.GetEnumerator()){
         if($env:QUIETCLI_TEST_SKIP_TTY -ceq '1' -and $entry.Key -clike 'PTY *'){$ttyExcluded++;continue}
-        if($stoppedAt -or ($casePattern -and $entry.Key -notlike $casePattern)){$skipped++;continue}
-        $metadata=if($caseMetadata.ContainsKey($entry.Key)){$caseMetadata[$entry.Key]}else{@{TestKind='Unclassified';Dependencies=@()}}
-        $progressName='['+$metadata.TestKind+'] '+$entry.Key
-        if($OnProgress){& $OnProgress $progressName 'Running' $passed $failed}
-        $failure=$null
-        try{$null=& $entry.Value;$passed++;$state='Passed'}catch{$failed++;$state='Failed';$failure=$_.Exception.Message}
-        $results.Add([pscustomobject]@{Name=$entry.Key;State=$state;Error=$failure;TestKind=$metadata.TestKind;Dependencies=@($metadata.Dependencies)})
-        if($OnProgress){& $OnProgress $progressName $state $passed $failed}
-        if($state -eq 'Failed' -and $stopOnFirst){$stoppedAt="stopped at case $($passed+$failed) of $($cases.Count)"}
+        if($casePattern -and $entry.Key -notlike $casePattern){$skipped++;continue}
+        $selected.Add($entry.Key)
     }
-    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Partial=[bool]$casePattern;Incomplete=[bool]$stoppedAt;StoppedAt=$stoppedAt;Skipped=$skipped;TtyExcluded=($ttyExcluded+$testScope.TtyExcluded);Cases=$results.ToArray();Performance=$performance.ToArray();Gallery=$galleryEvidence.ToArray();Integration=$integration.ToArray()}
+    $policy=Get-QuietTestExecutionPolicy -ManifestPath (Join-Path $PSScriptRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -CaseNames @($cases.Keys)
+    $budget=1
+    if($env:QUIETCLI_TEST_MAX_CONCURRENCY -and (![int]::TryParse($env:QUIETCLI_TEST_MAX_CONCURRENCY,[ref]$budget) -or $budget -lt 1 -or $budget -gt 32)){throw 'TestMaxConcurrencyInvalid'}
+    $caseWorker=$env:QUIETCLI_TEST_CASE_WORKER -ceq '1'
+    $plan=Get-QuietTestExecutionPlan -CaseNames $selected.ToArray() -Policy $policy -MaxConcurrency $budget
+    Write-WorkspaceJson (Join-Path $RunDirectory 'core-execution-plan.json') $plan
+    $batches=[Collections.Generic.List[object]]::new()
+    foreach($stage in $plan.Stages){
+        if($stoppedAt){$skipped+=$stage.Cases.Count;continue}
+        if($stage.Mode -ceq 'IsolatedProcess' -and !$caseWorker){
+            $counts=@{Passed=$passed;Failed=$failed}
+            $batch=Invoke-QuietTestCaseWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Cases $stage.Cases.ToArray() -MaxConcurrency $plan.MaxConcurrency -StopOnFirstFailure:$stopOnFirst -SkipTty:($env:QUIETCLI_TEST_SKIP_TTY -ceq '1') -ExpectedRuntimeIdentifier $env:QUIETCLI_TEST_EXPECT_RID -OnCase {
+                param($name,$caseState,$caseResult)
+                if($caseState -ceq 'Passed'){$counts.Passed++}elseif($caseState -ceq 'Failed'){$counts.Failed++}
+                if($OnProgress){& $OnProgress ('['+$caseMetadata[$name].TestKind+'] '+$name) $caseState $counts.Passed $counts.Failed}
+            }
+            $passed=$counts.Passed;$failed=$counts.Failed
+            foreach($item in $batch.Cases){
+                $item|Add-Member NoteProperty TestKind $caseMetadata[$item.Name].TestKind
+                $item|Add-Member NoteProperty Dependencies @($caseMetadata[$item.Name].Dependencies)
+                $results.Add($item)
+            }
+            $skipped+=$batch.NotStarted.Count;$batches.Add($batch)
+            if($stopOnFirst -and @($batch.Cases|Where-Object State -CEQ Failed).Count){$stoppedAt="stopped at case $($passed+$failed) of $($cases.Count)"}
+            continue
+        }
+        foreach($plannedCase in $stage.Cases){
+            if($stoppedAt){$skipped++;continue}
+            $name=$plannedCase.Name;$metadata=$caseMetadata[$name]
+            $progressName='['+$metadata.TestKind+'] '+$name
+            if($OnProgress){& $OnProgress $progressName 'Running' $passed $failed}
+            $failure=$null
+            try{$null=& $cases[$name];$passed++;$state='Passed'}catch{$failed++;$state='Failed';$failure=$_.Exception.Message}
+            $results.Add([pscustomobject]@{Name=$name;State=$state;Error=$failure;TestKind=$metadata.TestKind;Dependencies=@($metadata.Dependencies);ExecutionMode=if($caseWorker){'CaseWorker'}else{$plannedCase.Mode}})
+            if($OnProgress){& $OnProgress $progressName $state $passed $failed}
+            if($state -eq 'Failed' -and $stopOnFirst){$stoppedAt="stopped at case $($passed+$failed) of $($cases.Count)"}
+        }
+    }
+    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Partial=[bool]$casePattern;Incomplete=[bool]$stoppedAt;StoppedAt=$stoppedAt;Skipped=$skipped;TtyExcluded=($ttyExcluded+$testScope.TtyExcluded);Cases=$results.ToArray();Performance=$performance.ToArray();Gallery=$galleryEvidence.ToArray();Integration=$integration.ToArray();ExecutionPlan=$plan;ParallelBatches=$batches.ToArray()}
 }
 Export-ModuleMember -Function Invoke-QuietCoreTests,Assert-QuietEqual,Invoke-QuietConformance
 

@@ -46,6 +46,7 @@ if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-Workspace
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
+if($Suite -in @('Core','All')){$null=& (Join-Path $PSScriptRoot 'Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot}
 if($Profiler){
     if($Suite -notin @('Core','All','Integration')){throw 'ProfilerRequiresCoreIntegration'}
     if(!$ProfilerModulePath -or !$ClrProfilerPath){

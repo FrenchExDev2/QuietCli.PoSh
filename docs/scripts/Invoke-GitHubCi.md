@@ -1,5 +1,7 @@
 # Invoke-GitHubCi.ps1
 
+Core/All invocations validate the complete case catalogue and inert manifest scheduling declarations before build/test effects. The same plan and bounded isolated batches are consumed by Core on runners, job containers and Docker fallback. Each case child reuses the built checkout/image and receives one internal slot, private configuration/database/reports and the selected host/RID/TTY expectations. No extra image build/pull is introduced. See [classification and concurrency](../README-test-classification-and-concurrency.md).
+
 GitHub-only entry point for the existing companion suites. It requires `GITHUB_ACTIONS=true` and
 executes `Invoke-TestWorker.ps1` directly in the current PowerShell process, whether the job runs on
 a native Windows runner or inside a Linux job container. It starts no desktop monitor or local

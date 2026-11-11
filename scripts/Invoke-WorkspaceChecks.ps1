@@ -14,6 +14,7 @@ param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string[]]$Check
 $ErrorActionPreference='Stop'
 # This registry is the single extension point for a new repository check.
 $registry=@(
+    @{Name='TestCaseMetadata';Script='Test-TestCaseMetadata.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
     @{Name='ScriptsReadme';Script='Sync-ScriptsReadme.ps1';Arguments=@{ScriptsPath=(Join-Path $WorkspaceRoot scripts);DocsPath=(Join-Path $WorkspaceRoot docs/scripts)}},
     @{Name='GitHubWorkflowDocs';Script='Test-GitHubWorkflowDocs.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
     @{Name='ScriptShouldProcess';Script='Test-ScriptShouldProcess.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},

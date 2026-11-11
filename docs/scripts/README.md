@@ -106,6 +106,7 @@ file by hand, run:
 - [`Test-ScriptContracts.ps1`](../../scripts/Test-ScriptContracts.ps1) -> [documentation](Test-ScriptContracts.md)
 - [`Test-ScriptShouldProcess.ps1`](../../scripts/Test-ScriptShouldProcess.ps1) -> [documentation](Test-ScriptShouldProcess.md)
 - [`Test-SdkReadiness.ps1`](../../scripts/Test-SdkReadiness.ps1) -> [documentation](Test-SdkReadiness.md)
+- [`Test-TestCaseMetadata.ps1`](../../scripts/Test-TestCaseMetadata.ps1) -> [documentation](Test-TestCaseMetadata.md)
 - [`Test-WorkspacePackage.ps1`](../../scripts/Test-WorkspacePackage.ps1) -> [documentation](Test-WorkspacePackage.md)
 - [`TestConfiguration.ps1`](../../scripts/TestConfiguration.ps1) -> [documentation](TestConfiguration.md)
 - [`Update-DotNetCiLock.ps1`](../../scripts/Update-DotNetCiLock.ps1) -> [documentation](Update-DotNetCiLock.md)
@@ -141,6 +142,8 @@ file by hand, run:
 - [`lib/RunStatistics.psm1`](../../scripts/lib/RunStatistics.psm1) -> [documentation](lib/RunStatistics.md)
 - [`lib/RuntimeDiagnosis.psm1`](../../scripts/lib/RuntimeDiagnosis.psm1) -> [documentation](lib/RuntimeDiagnosis.md)
 - [`lib/RunToolCache.psm1`](../../scripts/lib/RunToolCache.psm1) -> [documentation](lib/RunToolCache.md)
+- [`lib/TestCaseMetadata.psm1`](../../scripts/lib/TestCaseMetadata.psm1) -> [documentation](lib/TestCaseMetadata.md)
+- [`lib/TestCaseScheduling.psm1`](../../scripts/lib/TestCaseScheduling.psm1) -> [documentation](lib/TestCaseScheduling.md)
 - [`lib/WorkstationResources.psm1`](../../scripts/lib/WorkstationResources.psm1) -> [documentation](lib/WorkstationResources.md)
 
 ## `scripts/RunProfiles/`

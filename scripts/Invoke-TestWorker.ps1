@@ -24,8 +24,10 @@ Required native architecture for both the PowerShell host and the separate engin
 Focused .NET tooling campaign, used only with Suite DotNet.
 .PARAMETER MaxConcurrency
 Maximum number of internal test workers used by parallel-safe campaigns.
+.PARAMETER CaseWorker
+Internal single-case child: requires Core and a case filter, forces one internal worker and prevents recursive case fan-out.
 #>
-[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure,[ValidateSet('Readiness','Provisioning','Layout','Locks','All')][string]$DotNetSuite='All',[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)))
+[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure,[ValidateSet('Readiness','Provisioning','Layout','Locks','All')][string]$DotNetSuite='All',[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)),[switch]$CaseWorker)
 dynamicparam {
     . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
@@ -35,6 +37,10 @@ end {
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-TestWorker')){return}
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 $ErrorActionPreference='Stop'
+if($CaseWorker -and ($Suite -cne 'Core' -or !$Case -or $MaxConcurrency -ne 1 -or $Profiler)){throw 'TestCaseWorkerArgumentsInvalid'}
+$env:QUIETCLI_TEST_CASE_WORKER=if($CaseWorker){'1'}else{'0'}
+$env:QUIETCLI_TEST_EXPECT_RID=$ExpectedRuntimeIdentifier
+if($CaseWorker){$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE='0'}
 . (Join-Path $PSScriptRoot 'Common.ps1')
 # Development-only selection, read by the Core case loop; never set by CI or the pre-commit gate.
 $env:QUIETCLI_TEST_SKIP_TTY=if($SkipTty){'1'}else{'0'}
@@ -152,7 +158,7 @@ try{
                 param($name,$caseState,$passed,$failed)
                 $state.Case=$name;$state.Passed=$basePassed+$passed;$state.Failed=$baseFailed+$failed
                 Write-WorkspaceJson $statusPath $state
-                if($env:GITHUB_ACTIONS -ceq 'true'){Write-Host ("CI case [$caseState] $name | passed=$($state.Passed) failed=$($state.Failed)")}
+                if($env:GITHUB_ACTIONS -ceq 'true' -and !$CaseWorker){Write-Host ("CI case [$caseState] $name | passed=$($state.Passed) failed=$($state.Failed)")}
             }
             $command=Get-Command ($selection.TestsModule+'\'+$selection.Command) -ErrorAction Stop
             $parameters=@{WorkspaceRoot=$WorkspaceRoot;OnProgress=$progress}

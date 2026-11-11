@@ -29,6 +29,23 @@ function New-QuietCommitWorkspaceFixture {
         if ($LASTEXITCODE -ne 0) { throw ('CommitWorkspaceFixtureGitFailed: ' + ($arguments -join ' ')) }
     }
     $utf8 = [Text.UTF8Encoding]::new($false)
+    # The real shared registry also validates an inert Core catalogue in exported indexes.
+    $testDirectory=Join-Path $path 'FrenchExDev2.QuietCli.Core.Tests.PoSh'
+    [void][IO.Directory]::CreateDirectory($testDirectory)
+    [IO.File]::WriteAllText((Join-Path $testDirectory 'FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1'),"@{ ModuleVersion='1.0.0' }`n",$utf8)
+    [IO.File]::WriteAllText((Join-Path $testDirectory 'LICENSE_CREDITS.md'),"## Fixture`n`nInert classification fixture ships no dependency.`n",$utf8)
+    $catalogue=@'
+function Invoke-QuietCoreTests {
+    <#
+    .SYNOPSIS
+    Declares one inert classification fixture; commit checks never execute it.
+    #>
+    $cases=[ordered]@{}
+    $cases['fixture']={}
+    $caseMetadata=@{'fixture'=@{TestKind='Unit';Dependencies=@()}}
+}
+'@
+    [IO.File]::WriteAllText((Join-Path $testDirectory 'FrenchExDev2.QuietCli.Core.Tests.PoSh.psm1'),($catalogue+"`n"),$utf8)
     Copy-Item -LiteralPath (Join-Path (Split-Path $RealScriptsPath -Parent) 'global.json') -Destination $path
     $moduleDirectory = Join-Path $path 'FrenchExDev2.QuietCli.Core.PoSh'
     [void][IO.Directory]::CreateDirectory($moduleDirectory)

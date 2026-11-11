@@ -6,6 +6,8 @@ Qualification combines independent examples, generated properties, malformed-inp
 
 ## Local suites
 
+Every Core top-level case declares `TestKind` and `Dependencies`; missing or invalid metadata fails before filtering. The shared `TestCaseMetadata` gate validates the source catalogue without running tests. See [classification and concurrency](docs/README-test-classification-and-concurrency.md) for the Unit/Integration contract, CI enforcement and case-isolation assessment.
+
 Run from the monorepo root in PowerShell Core 7.6+, with the pinned SDK and existing native prerequisites. Builds and tests do not publish packages.
 
 Local feature/fix-branch commits and pushes do not require running the companion suites. Commit-Workspace checks source/documentation contracts and the source lock; it never launches companions. Ask before starting a full local campaign unless explicitly requested. GitHub workflows perform the qualification for their PR/develop/release scope. A cancelled or filtered local run does not prevent creating a work-branch checkpoint and never counts as qualification.

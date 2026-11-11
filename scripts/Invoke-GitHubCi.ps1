@@ -45,6 +45,7 @@ if($env:GITHUB_ACTIONS -cne 'true'){throw 'GitHubCiRequiresGitHubActionsContext;
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,('Build and run GitHub suite '+$Suite))){return}
 . (Join-Path $PSScriptRoot 'Common.ps1')
+if($Suite -in @('Core','All')){$null=& (Join-Path $PSScriptRoot 'Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot}
 if(!$SkipBuild){
     $buildRid=if($ExpectedRuntimeIdentifier){$ExpectedRuntimeIdentifier}else{[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier}
     & (Join-Path $PSScriptRoot 'Build-Workspace.ps1') -WorkspaceRoot $WorkspaceRoot -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier $buildRid
