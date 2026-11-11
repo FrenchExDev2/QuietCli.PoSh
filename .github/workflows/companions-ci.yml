@@ -17,6 +17,9 @@ on:
     paths: *companion_paths
 permissions:
   contents: read
+concurrency:
+  group: quietcli-companions-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   companions:
     permissions:
@@ -25,3 +28,14 @@ jobs:
     uses: ./.github/workflows/ci.yml
     with:
       suite: All
+  preview:
+    needs: companions
+    if: github.event_name == 'push' && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && needs.companions.outputs.qualified_sha == github.sha
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-psgallery.yml
+    with:
+      qualified_sha: ${{ needs.companions.outputs.qualified_sha }}
+      preview_build: true
+      publish: true

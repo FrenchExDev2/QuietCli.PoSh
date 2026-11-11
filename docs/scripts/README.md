@@ -17,6 +17,7 @@ file by hand, run:
 - [`Assert-GalleryCheckpoint.ps1`](../../scripts/Assert-GalleryCheckpoint.ps1) -> [documentation](Assert-GalleryCheckpoint.md)
 - [`Assert-PtyQualification.ps1`](../../scripts/Assert-PtyQualification.ps1) -> [documentation](Assert-PtyQualification.md)
 - [`Assert-QualificationGate.ps1`](../../scripts/Assert-QualificationGate.ps1) -> [documentation](Assert-QualificationGate.md)
+- [`Assert-QualificationReceipt.ps1`](../../scripts/Assert-QualificationReceipt.ps1) -> [documentation](Assert-QualificationReceipt.md)
 - [`Bootstrap.ps1`](../../scripts/Bootstrap.ps1) -> [documentation](Bootstrap.md)
 - [`Build-PtyBridge.ps1`](../../scripts/Build-PtyBridge.ps1) -> [documentation](Build-PtyBridge.md)
 - [`Build-Workspace.ps1`](../../scripts/Build-Workspace.ps1) -> [documentation](Build-Workspace.md)
@@ -123,6 +124,7 @@ file by hand, run:
 ## `scripts/lib/`
 
 - [`lib/CiCompanions.psm1`](../../scripts/lib/CiCompanions.psm1) -> [documentation](lib/CiCompanions.md)
+- [`lib/CiCompanionWorkers.psm1`](../../scripts/lib/CiCompanionWorkers.psm1) -> [documentation](lib/CiCompanionWorkers.md)
 - [`lib/DevelopmentWorkstation.psm1`](../../scripts/lib/DevelopmentWorkstation.psm1) -> [documentation](lib/DevelopmentWorkstation.md)
 - [`lib/DotNetLocks.psm1`](../../scripts/lib/DotNetLocks.psm1) -> [documentation](lib/DotNetLocks.md)
 - [`lib/DotNetProvisioning.psm1`](../../scripts/lib/DotNetProvisioning.psm1) -> [documentation](lib/DotNetProvisioning.md)

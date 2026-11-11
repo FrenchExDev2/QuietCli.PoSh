@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: DAC2968438D84CE416CA2751A6F80E258425697FC61EFA755F9ADB8524FEF748 -->
+<!-- workflow-source-sha256: B6C17ED39E0A302CDE6D7A154F548BC68B6A3F5771175C1BD1C1C62AA3E6514D -->
 
 ## Purpose
 
@@ -21,12 +21,15 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 flowchart TD
     event["Triggers: pull_request, push"]
     job_companions["companions"]
+    job_preview["preview"]
     event --> job_companions
+    job_companions --> job_preview
 ~~~
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
 | companions | reuses ./.github/workflows/ci.yml |  | default success condition |  |
+| preview | reuses ./.github/workflows/publish-psgallery.yml | companions | github.event_name == 'push' && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && needs.companions.outputs.qualified_sha == github.sha |  |
 
 <!-- workflow-generated:end -->
 
@@ -37,10 +40,12 @@ build/companions.yml; the generic resolver selects test runners, image layers an
 controls. Image publication retains the reusable workflow's explicit upstream develop guard.
 The previous Core/Git-specific entry workflows are replaced by this shared entry.
 
+Superseded PR validations are cancelled within their PR concurrency group. Develop uses unique run groups and preserves qualified checkpoints. The preview job depends on the successful All output for this SHA and calls publication with that output; publication requires the same-run/same-attempt receipt instead of starting another matrix. This is the sole automatic develop preview trigger; the preview wrapper is manual only.
+
 ## Validation and limits
 
-This deliberately requests every declared suite. Changed-module selection, scheduling and image
-cache optimization are separate future work. Local generated fixtures establish configuration
+This deliberately requests every declared suite, preserving Core's test-only Git dependency. Core
+executes before isolated parallel companions, using one build and shared image per target. Local generated fixtures establish configuration
 behavior, not hosted execution. Required-check names now come from this shared workflow/job;
 remote branch protection is managed separately and is not modified by repository scripts.
 

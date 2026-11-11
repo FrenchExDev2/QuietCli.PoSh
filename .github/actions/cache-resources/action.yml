@@ -1,5 +1,9 @@
 name: Cache pinned resource archives
 description: Reuse downloaded archives while resource consumers independently verify payload hashes.
+inputs:
+  host-channel:
+    description: Pinned Windows host channel; separate keys avoid immutable stable/preview cache collisions
+    default: stable
 runs:
   using: composite
   steps:
@@ -7,3 +11,8 @@ runs:
       with:
         path: .cache/nuget-resources
         key: ${{ runner.os }}-quietcli-resources-${{ hashFiles('FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json') }}
+    - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      if: runner.os == 'Windows'
+      with:
+        path: .cache/powershell-hosts
+        key: ${{ runner.os }}-${{ runner.arch }}-quietcli-host-${{ inputs.host-channel }}-${{ hashFiles('build/powershell-hosts.lock.json') }}

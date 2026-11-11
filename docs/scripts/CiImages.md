@@ -1,5 +1,7 @@
 # CiImages.ps1
 
+`Invoke-QuietCiImageBuild -RegistryCache -CacheOnly` returns no value on an absent registry digest and never builds in that mode. Existing digests are pulled and verified normally. This permits final-image reuse without downloading or building unused parents; a cache miss falls back explicitly through the suite/module caller. Offline adapter tests cover hits, misses and a mutation of the no-build guard.
+
 `Get-QuietCiModuleImagePlan -ParentPlan` composes an overlay over an explicitly preceding layer;
 without it, Core remains the parent. Its fingerprint participates in the resulting identity,
 so a changed intermediate layer invalidates every descendant.

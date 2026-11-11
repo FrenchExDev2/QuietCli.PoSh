@@ -2,6 +2,10 @@ name: QuietCli2 qualified PowerShell Gallery release
 on:
   workflow_call:
     inputs:
+      qualified_sha:
+        description: Reuse the All receipt from this same workflow run and attempt
+        type: string
+        default: ''
       version:
         description: Exact manifest version for a manually selected release
         type: string
@@ -36,15 +40,53 @@ concurrency:
   cancel-in-progress: false
 jobs:
   qualification:
+    if: inputs.qualified_sha == ''
     permissions:
       contents: read
       packages: write
     uses: ./.github/workflows/ci.yml
     with:
       suite: All
+  reuse-qualification:
+    if: inputs.qualified_sha != '' && inputs.qualified_sha == github.sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      qualified_sha: ${{ steps.receipt.outputs.qualified_sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: quietcli2-qualification-gate
+          path: artifacts/reused-qualification
+      - name: Require All qualification from this exact run, attempt and revision
+        id: receipt
+        shell: pwsh
+        run: ./scripts/Assert-QualificationReceipt.ps1 -ReceiptPath ./artifacts/reused-qualification/receipt.json -Revision '${{ github.sha }}' -RunId '${{ github.run_id }}' -RunAttempt '${{ github.run_attempt }}' -OutputPath $env:GITHUB_OUTPUT
+  checkpoint:
+    needs: [qualification, reuse-qualification]
+    if: ${{ !cancelled() && (needs.qualification.result == 'success' || needs.reuse-qualification.result == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      qualified_sha: ${{ steps.accept.outputs.qualified_sha }}
+    steps:
+      - name: Accept the successful commit-bound qualification path
+        id: accept
+        shell: pwsh
+        env:
+          QUALIFIED_REVISION: ${{ needs.qualification.outputs.qualified_sha || needs.reuse-qualification.outputs.qualified_sha }}
+        run: |
+          if($env:QUALIFIED_REVISION -cne $env:GITHUB_SHA){throw 'QualificationRevisionMismatch'}
+          [IO.File]::AppendAllText($env:GITHUB_OUTPUT,"qualified_sha=$env:QUALIFIED_REVISION`n",[Text.UTF8Encoding]::new($false))
   package:
-    needs: qualification
-    if: ${{ needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }}
+    needs: checkpoint
+    if: ${{ !cancelled() && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }}
     runs-on: windows-latest
     timeout-minutes: 30
     outputs:
@@ -54,12 +96,16 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-          ref: ${{ needs.qualification.outputs.qualified_sha }}
+          ref: ${{ needs.checkpoint.outputs.qualified_sha }}
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
           cache: true
-          cache-dependency-path: '**/*.csproj'
+          cache-dependency-path: |
+            **/*.csproj
+            Directory.Packages.props
+            Directory.Build.props
+            global.json
       - uses: ./.github/actions/cache-resources
       - name: Verify the qualified source lock
         shell: pwsh
@@ -83,7 +129,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ inputs.version }}
           PREVIEW_BUILD: ${{ inputs.preview_build }}
-          QUALIFIED_REVISION: ${{ needs.qualification.outputs.qualified_sha }}
+          QUALIFIED_REVISION: ${{ needs.checkpoint.outputs.qualified_sha }}
         run: |
           if($env:PREVIEW_BUILD -eq 'true'){
             ./scripts/New-QuietPreviewPackage.ps1 -OutputDirectory ./artifacts/gallery -BuildNumber $env:GITHUB_RUN_NUMBER -Attempt $env:GITHUB_RUN_ATTEMPT -QualifiedRevision $env:QUALIFIED_REVISION -RequireReadyToRun
@@ -123,8 +169,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   publish:
-    needs: [qualification, package]
-    if: ${{ inputs.publish == true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.event.pull_request.draft != true && needs.qualification.result == 'success' && needs.qualification.outputs.qualified_sha == github.sha }}
+    needs: [checkpoint, package]
+    if: ${{ !cancelled() && inputs.publish == true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.event.pull_request.draft != true && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }}
     runs-on: windows-latest
     timeout-minutes: 10
     environment: psgallery
@@ -132,11 +178,12 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-          ref: ${{ needs.qualification.outputs.qualified_sha }}
+          ref: ${{ needs.checkpoint.outputs.qualified_sha }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: ${{ needs.package.outputs.artifact_name }}
           path: artifacts/gallery
+      - uses: ./.github/actions/cache-resources
       - name: Select the checksum-pinned stable PowerShell host
         shell: pwsh
         run: |
@@ -151,7 +198,7 @@ jobs:
         if: inputs.preview_build == true
         shell: pwsh
         env:
-          QUALIFIED_REVISION: ${{ needs.qualification.outputs.qualified_sha }}
+          QUALIFIED_REVISION: ${{ needs.checkpoint.outputs.qualified_sha }}
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
         run: |
           if($env:GITHUB_REF -cne 'refs/heads/develop'){throw 'PreviewPublicationRequiresDevelop'}

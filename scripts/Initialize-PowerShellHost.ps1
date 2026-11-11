@@ -10,12 +10,15 @@ Native Windows architecture selected by the CI matrix.
 New private extraction directory; existing destinations are rejected.
 .PARAMETER WorkspaceRoot
 Workspace containing the reviewed host lock.
+.PARAMETER ArchiveCacheDirectory
+Optional checksum-addressed ZIP cache; defaults to the checkout's .cache/powershell-hosts.
 #>
 [CmdletBinding(SupportsShouldProcess)]param(
     [Parameter(Mandatory)][ValidateSet('stable','preview')][string]$Channel,
     [Parameter(Mandatory)][ValidateSet('win-x64','win-arm64')][string]$RuntimeIdentifier,
     [Parameter(Mandatory)][string]$OutputDirectory,
-    [string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent)
+    [string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),
+    [string]$ArchiveCacheDirectory
 )
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Initialize-PowerShellHost')){return}
 $ErrorActionPreference='Stop'
@@ -30,18 +33,30 @@ if(Test-Path -LiteralPath $directory){throw 'PowerShellHostDirectoryExists'}
 [void][IO.Directory]::CreateDirectory($directory)
 $archive=Join-Path $directory 'host.zip'
 $url="https://github.com/PowerShell/PowerShell/releases/download/v$($hostSpec.Version)/PowerShell-$($hostSpec.Version)-$RuntimeIdentifier.zip"
-$client=[Net.Http.HttpClient]::new();$client.Timeout=[TimeSpan]::FromMinutes(5)
-$deadline=[Threading.CancellationTokenSource]::new([TimeSpan]::FromMinutes(5))
-try{
-    $response=$client.GetAsync($url,[Net.Http.HttpCompletionOption]::ResponseHeadersRead,$deadline.Token).GetAwaiter().GetResult()
+if(!$ArchiveCacheDirectory){$ArchiveCacheDirectory=Join-Path $WorkspaceRoot '.cache/powershell-hosts'}
+$cached=Join-Path $ArchiveCacheDirectory ($hostSpec.SHA256+'.zip')
+$cacheHit=Test-Path -LiteralPath $cached
+if($cacheHit){
+    if((Get-Item -LiteralPath $cached -Force).Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'PowerShellHostCacheChecksumMismatch'}
+    Copy-Item -LiteralPath $cached -Destination $archive
+}else{
+    $client=[Net.Http.HttpClient]::new();$client.Timeout=[TimeSpan]::FromMinutes(5)
+    $deadline=[Threading.CancellationTokenSource]::new([TimeSpan]::FromMinutes(5))
     try{
-        [void]$response.EnsureSuccessStatusCode()
-        $input=$response.Content.ReadAsStreamAsync($deadline.Token).GetAwaiter().GetResult()
-        $output=[IO.FileStream]::new($archive,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None,65536,$true)
-        try{[void]$input.CopyToAsync($output,$deadline.Token).WaitAsync($deadline.Token).GetAwaiter().GetResult()}finally{$output.Dispose();$input.Dispose()}
-    }finally{$response.Dispose()}
-}finally{$deadline.Dispose();$client.Dispose()}
-if((Get-FileHash $archive -Algorithm SHA256).Hash -cne $hostSpec.SHA256){throw 'PowerShellHostChecksumMismatch'}
+        $response=$client.GetAsync($url,[Net.Http.HttpCompletionOption]::ResponseHeadersRead,$deadline.Token).GetAwaiter().GetResult()
+        try{
+            [void]$response.EnsureSuccessStatusCode()
+            $input=$response.Content.ReadAsStreamAsync($deadline.Token).GetAwaiter().GetResult()
+            $output=[IO.FileStream]::new($archive,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None,65536,$true)
+            try{[void]$input.CopyToAsync($output,$deadline.Token).WaitAsync($deadline.Token).GetAwaiter().GetResult()}finally{$output.Dispose();$input.Dispose()}
+        }finally{$response.Dispose()}
+    }finally{$deadline.Dispose();$client.Dispose()}
+}
+if((Get-FileHash $archive -Algorithm SHA256).Hash -cne $hostSpec.SHA256){throw $(if($cacheHit){'PowerShellHostCacheChecksumMismatch'}else{'PowerShellHostChecksumMismatch'})}
+if(!$cacheHit){
+    [void][IO.Directory]::CreateDirectory($ArchiveCacheDirectory)
+    if(!(Test-Path -LiteralPath $cached)){[IO.File]::Copy($archive,$cached,$false)}
+}
 $extracted=Join-Path $directory 'host'
 [void][IO.Compression.ZipFile]::ExtractToDirectoryAsync($archive,$extracted,[Threading.CancellationToken]::None).GetAwaiter().GetResult()
 $executable=Join-Path $extracted 'pwsh.exe'

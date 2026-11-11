@@ -46,6 +46,12 @@ if($PlanOnly){return $plan}
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-CiModuleImage')){return}
 
 $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
+if($RegistryCache -and !$ParentPlan){
+    $credential=$env:QUIETCLI_REGISTRY_TOKEN
+    try{$cached=Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory (Join-Path $WorkspaceRoot $moduleRoot '.github/containers') -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache -CacheOnly -ContainerRuntime $ContainerRuntime}
+    finally{$env:QUIETCLI_REGISTRY_TOKEN=$credential;$credential=$null}
+    if($cached){return $cached}
+}
 if($ParentPlan -and !$ParentImage){throw 'CiModuleParentImageRequired'}
 if($ParentPlan){$ParentImage=(Get-QuietCiVerifiedImage -Plan $ParentPlan -Reference $ParentImage -ContainerRuntime $ContainerRuntime).Id}
 $registryCredential=$env:QUIETCLI_REGISTRY_TOKEN

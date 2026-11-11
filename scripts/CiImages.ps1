@@ -305,8 +305,10 @@ function Invoke-QuietCiImageBuild {
     Publish a missing cache entry. Restricted to the upstream develop push/manual workflow, never pull requests.
     .PARAMETER ContainerRuntime
     Podman for workstation runs; Docker for GitHub image preparation and PR fallback.
+    .PARAMETER CacheOnly
+    Pulls and verifies an existing final image, returning no value on a registry miss without building.
     #>
-    param($Plan,[Parameter(Mandatory)][string]$ContextDirectory,[Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$ArtifactPrefix,[switch]$RegistryCache,[switch]$PublishCache,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime)
+    param($Plan,[Parameter(Mandatory)][string]$ContextDirectory,[Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$ArtifactPrefix,[switch]$RegistryCache,[switch]$PublishCache,[switch]$CacheOnly,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime)
     $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
     # The build must land in a native Linux environment matching the plan's architecture, but that environment is
     # Podman's own backend (its machine VM on Windows/macOS, or the host kernel on Linux), never the pwsh process's
@@ -336,6 +338,7 @@ function Invoke-QuietCiImageBuild {
     $registry='ghcr.io/'+$Plan.RegistryPath;$tag=$registry+':'+$Plan.Fingerprint
     try{
         if($RegistryCache){$digest=Get-QuietCiRegistryDigest $Plan $token $env:GITHUB_ACTOR}
+        if($CacheOnly -and !$digest){return}
         if($token -and ($digest -or $PublishCache)){
             $authDirectory=Join-Path ([IO.Path]::GetTempPath()) ('quietcli2-registry-'+[guid]::NewGuid().ToString('N'))
             if($IsWindows){[void][IO.Directory]::CreateDirectory($authDirectory)}else{[void][IO.Directory]::CreateDirectory($authDirectory,[IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute)}

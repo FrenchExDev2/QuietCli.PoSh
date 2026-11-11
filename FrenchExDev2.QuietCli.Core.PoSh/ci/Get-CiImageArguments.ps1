@@ -59,7 +59,7 @@ if($platform -ceq 'debian'){
 # the ordinary CI matrix never uses them, so they are excluded by default and only added when that campaign
 # explicitly opts in, by setting MUTATION_TESTING in the environment that resolves this plan.
 $mutationTesting=[bool]$env:MUTATION_TESTING
-$ciPackages=if($platform -ceq 'debian'){'ca-certificates libicu72 libunwind8 libatomic1 libssl3 zlib1g libsqlite3-0 git tzdata'}else{'ca-certificates icu-data-full icu-libs libatomic libstdc++ libgcc libssl3 sqlite-libs git tzdata'}
+$ciPackages=if($platform -ceq 'debian'){'ca-certificates libicu72 libunwind8 libatomic1 libssl3 zlib1g libsqlite3-0 git tzdata tar zstd'}else{'ca-certificates icu-data-full icu-libs libatomic libstdc++ libgcc libssl3 sqlite-libs git tzdata tar zstd'}
 if($platform -ceq 'alpine'){$ciPackages+=' powershell=$POWERSHELL_PACKAGE'}
 if($mutationTesting){$ciPackages+=if($platform -ceq 'debian'){' gcc libc6-dev g++ clang libclang-rt-dev'}else{' gcc musl-dev g++ clang compiler-rt'}}
 $envMap=if($platform -ceq 'debian'){

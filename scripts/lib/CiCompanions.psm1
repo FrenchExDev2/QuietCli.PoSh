@@ -150,12 +150,31 @@ function Invoke-QuietCiSuiteImage {
     Requests verified registry reuse.
     .PARAMETER PublishCache
     Requests publication under the existing develop-only guard.
+    .PARAMETER ResolveOnly
+    Verifies an existing registry configuration without pulling layers; a miss still prepares the image.
     #>
     [CmdletBinding(SupportsShouldProcess)]
-    param([string]$WorkspaceRoot,$Selection,[string]$RuntimeIdentifier,[string]$ContainerRuntime,[switch]$RegistryCache,[switch]$PublishCache)
+    param([string]$WorkspaceRoot,$Selection,[string]$RuntimeIdentifier,[string]$ContainerRuntime,[switch]$RegistryCache,[switch]$PublishCache,[switch]$ResolveOnly)
     if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Prepare declared companion image layers')){return}
+    if($ResolveOnly -and !$RegistryCache){throw 'CiImageRegistryResolutionRequiresCache'}
     $credential=$env:QUIETCLI_REGISTRY_TOKEN
     try{
+        if($RegistryCache){
+            . (Join-Path $PSScriptRoot '../Common.ps1')
+            . (Join-Path $PSScriptRoot '../CiImages.ps1')
+            $finalPlan=Get-QuietCiSuiteImagePlan $WorkspaceRoot $Selection $RuntimeIdentifier
+            if($ResolveOnly){
+                $identity=Get-QuietCiRegistryDigest $finalPlan $credential $env:GITHUB_ACTOR -IncludeConfiguration
+                if($identity){
+                    $receipt=[pscustomobject]@{Image=$identity.Reference;RuntimeIdentifier=$RuntimeIdentifier;Fingerprint=$finalPlan.Fingerprint;RegistryDigest=$identity.Digest;CacheHit=$true;Published=$false;RegistryOnly=$true}
+                    Write-WorkspaceJson (Join-Path $WorkspaceRoot ('artifacts/ci-images/resolved-'+$RuntimeIdentifier+'/image.json')) $receipt
+                    return $receipt
+                }
+            }
+            $cached=Invoke-QuietCiImageBuild -Plan $finalPlan -ContextDirectory (Join-Path $WorkspaceRoot '.github/containers') -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ('suite-'+$RuntimeIdentifier) -RegistryCache -CacheOnly -ContainerRuntime $ContainerRuntime
+            $env:QUIETCLI_REGISTRY_TOKEN=$credential
+            if($cached){return $cached}
+        }
         $plan=& (Join-Path $PSScriptRoot '../New-CiImage.ps1') -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -PlanOnly
         $image=& (Join-Path $PSScriptRoot '../New-CiImage.ps1') -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
         foreach($name in @($Selection.Images|Select-Object -Skip 1)){

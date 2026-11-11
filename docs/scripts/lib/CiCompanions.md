@@ -1,5 +1,9 @@
 # Declarative CI companions and test suites
 
+Registry preparation first resolves the final suite image and attempts a CacheOnly pull with identity verification. A hit returns immediately without preparing parents. A miss prepares the base and overlays in the same producer job; only the final verified image is required for execution. The retained credential is restored between probes and layers, then cleared on exit.
+
+Producer-only ResolveOnly verifies the final registry configuration without pulling any layer. A miss still builds/publishes through the same reviewed layer path. Owned fixtures reject any attempt to prepare parents on either a final-image pull hit or a metadata-only producer hit.
+
 `scripts/lib/CiCompanions.psm1` reads `build/companions.yml`. Import declares functions only;
 reading configuration uses the checksum-pinned YamlDotNet resource through `Resources.ps1`,
 without importing the QuietCli engine. Missing parser resources are prepared by that consumer.

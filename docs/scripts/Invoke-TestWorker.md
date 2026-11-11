@@ -1,5 +1,7 @@
 # Invoke-TestWorker.ps1
 
+`All` executes Core first and requires complete successful integration evidence before fan-out. Other declared companions run in at most two isolated child processes through `lib/CiCompanionWorkers.psm1`, further bounded by MaxConcurrency. The exact current PSHOME, profile, RID/hosting and TTY scope are retained; each child has its own reports, database and configuration. The common build and Linux image are reused. Any failed/partial Core, failed child or missing/nonzero terminal result blocks All. Child reports remain in `companions/<Suite>` and are collected recursively by the evidence bundle.
+
 The worker is shared by two entry points: a background process with a visible monitor for local
 workstation tests, and direct execution in the current GitHub PowerShell process/container through
 `Invoke-GitHubCi.ps1`. With `GITHUB_ACTIONS=true`, each ordinary companion case logs its name, state

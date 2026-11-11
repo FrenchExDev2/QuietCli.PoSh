@@ -1,14 +1,14 @@
 # preview-psgallery.yml
 
-<!-- workflow-source-sha256: 5EA64B3770964382509380E1D5408E8F0384CD48CC6D887853EA803674FC3DA5 -->
+<!-- workflow-source-sha256: 0FD7BFBF40052BA89480836750AF7070CA6081F92452120DE86609339C7C09F4 -->
 
 ## Purpose
 
-Automatic uniquely versioned develop prerelease delivery through qualified Gallery publication.
+Manual uniquely versioned develop prerelease delivery through qualified Gallery publication.
 
 ## Triggers
 
-Applicable develop pushes matching the declared Core/scripts/build/SDK/lock/workflow paths. Manual dispatch defaults publish=false. Repository/ref condition rejects forks and other branches.
+Manual dispatch only, defaulting publish=false. Repository/ref condition rejects forks and other branches. Automatic develop delivery belongs to companions-ci.yml after its All qualification, preventing a duplicate matrix.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
@@ -17,7 +17,7 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 
 ~~~mermaid
 flowchart TD
-    event["Triggers: push, workflow_dispatch"]
+    event["Triggers: workflow_dispatch"]
     job_preview["preview"]
     event --> job_preview
 ~~~
@@ -30,7 +30,7 @@ flowchart TD
 
 ## Scripts and effects
 
-The preview job reuses publish-psgallery.yml with preview_build=true. Push publishes after qualification; manual dispatch publishes only when its boolean input is true. This wrapper contains no API key and does not publish directly.
+The preview job reuses publish-psgallery.yml with preview_build=true. Dispatch publishes only when its boolean input is true. This wrapper supplies no reusable qualification, so the manual path executes All. It contains no API key and does not publish directly.
 
 ## Validation and limits
 

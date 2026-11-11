@@ -1,5 +1,7 @@
 # Assert-QualificationGate.ps1
 
+Receipts include GitHub RunId and RunAttempt when available. Publication reuse requires All, the exact current SHA/run/attempt and successful Windows/Linux with the explicit TTY exclusion, through `Assert-QualificationReceipt.ps1`; local receipts remain usable locally but cannot substitute for a GitHub checkpoint.
+
 `WorkspaceRoot` selects build/companions.yml. The declared suites determine whether native Core
 evidence is required; the gate has no Git-specific condition. Unknown suites fail before a receipt
 or qualified_sha is written. SkipTty still records an explicit exclusion.

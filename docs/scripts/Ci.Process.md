@@ -1,5 +1,7 @@
 # Ci.Process.ps1
 
+`Start-CiProcess` is the asynchronous counterpart for the bounded companion scheduler. It starts an explicit executable with an exact argument vector, inherited streams and no window or shell. The caller owns the returned Process, observes its exit code and terminal report, applies a deadline, and disposes or kills its owned tree. `-WhatIf` returns before process startup. It never captures or spools native output.
+
 `Invoke-CiProcess -InputText` uses UTF-8 **without a BOM** for redirected stdin. The caller's exact
 credential/fixture bytes are preserved; no `EF BB BF` prefix is added. Output readers decode UTF-8,
 so a child that emits another encoding must declare or initialize its own output encoding. The
@@ -69,7 +71,7 @@ This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which 
 
 Purpose: Quotes one value for a Start-Process argument string following the CommandLineToArgvW rules.
 
-Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 0.
+Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 1.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->

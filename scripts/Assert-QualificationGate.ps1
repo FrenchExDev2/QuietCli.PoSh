@@ -41,6 +41,6 @@ $mutationRequired=!$SkipTty -and $selection.HasCoreEvidence
 $mutationExpected=if($mutationRequired){'success'}else{'skipped'}
 $ready=$WindowsResult -ceq 'success' -and $LinuxResult -ceq 'success' -and $MutationResult -ceq $mutationExpected
 [void][IO.Directory]::CreateDirectory((Split-Path ([IO.Path]::GetFullPath($ReceiptPath,$PWD.Path)) -Parent))
-Write-WorkspaceJson $ReceiptPath @{Revision=$Revision;Suite=$Suite;Ready=$ready;Windows=$WindowsResult;Linux=$LinuxResult;Mutation=$MutationResult;MutationRequired=$mutationRequired;TtyQualification=$(if($SkipTty){'Excluded'}elseif($mutationRequired){'Required for selected Core evidence'}else{'Not required by selected suites'})}
+Write-WorkspaceJson $ReceiptPath @{Revision=$Revision;Suite=$Suite;Ready=$ready;Windows=$WindowsResult;Linux=$LinuxResult;Mutation=$MutationResult;MutationRequired=$mutationRequired;RunId=$env:GITHUB_RUN_ID;RunAttempt=$env:GITHUB_RUN_ATTEMPT;TtyQualification=$(if($SkipTty){'Excluded'}elseif($mutationRequired){'Required for selected Core evidence'}else{'Not required by selected suites'})}
 if(!$ready){throw 'QualificationRejected: every required job must succeed for this revision.'}
 [void][IO.File]::AppendAllTextAsync($OutputPath,("qualified_sha=$Revision`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()

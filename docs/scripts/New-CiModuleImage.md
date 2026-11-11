@@ -1,5 +1,7 @@
 # New-CiModuleImage.ps1
 
+For standalone registry reuse, a CacheOnly probe of the final module image precedes parent preparation. A verified hit returns directly; a miss retains the existing parent-build path. Supplied ParentPlan/ParentImage identities are still checked before use.
+
 `ParentPlan` and `ParentImage` compose this overlay over the preceding declared layer. PlanOnly
 requires only ParentPlan; preparation also requires its prepared image. The parent fingerprint
 participates in the child identity. Omitting both retains standalone Core-overlay behavior.

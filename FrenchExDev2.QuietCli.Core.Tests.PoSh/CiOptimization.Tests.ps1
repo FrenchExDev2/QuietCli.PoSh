@@ -1,0 +1,162 @@
+function Test-QuietCiOptimization {
+    <#
+    .SYNOPSIS
+    Exercises fail-closed qualification reuse, real parallel child isolation and offline host caches.
+    .PARAMETER WorkspaceRoot
+    Checkout containing the automation under test.
+    .PARAMETER RunDirectory
+    Owned output tree for fixtures and receipts.
+    #>
+    param([string]$WorkspaceRoot,[string]$RunDirectory)
+    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    $fixture=Join-Path $RunDirectory 'ci-optimization'
+    [void][IO.Directory]::CreateDirectory($fixture)
+    $revision='a'*40
+    $receipt=[ordered]@{Ready=$true;Revision=$revision;Suite='All';Windows='success';Linux='success';Mutation='skipped';MutationRequired=$false;TtyQualification='Excluded';RunId='42';RunAttempt='2'}
+    $path=Join-Path $fixture receipt.json;$output=Join-Path $fixture outputs.txt
+    $validator=Join-Path $WorkspaceRoot scripts/Assert-QualificationReceipt.ps1
+    Write-WorkspaceJson $path $receipt
+    & $validator -ReceiptPath $path -Revision $revision -RunId 42 -RunAttempt 2 -OutputPath $output
+    if((Get-Content $output -Raw -Encoding utf8) -cne "qualified_sha=$revision`n"){throw 'QualificationReceiptOutputChanged'}
+    $rejections=0
+    foreach($damage in @('Ready','Revision','Suite','Windows','Linux','Mutation','MutationRequired','TtyQualification','RunId','RunAttempt')){
+        $bad=[ordered]@{};foreach($key in $receipt.Keys){$bad[$key]=$receipt[$key]}
+        $bad[$damage]=switch($damage){Ready{$false} MutationRequired{$true} default{'wrong'}}
+        Write-WorkspaceJson $path $bad
+        $before=(Get-FileHash $output).Hash;$rejected=$false
+        try{& $validator -ReceiptPath $path -Revision $revision -RunId 42 -RunAttempt 2 -OutputPath $output}catch{$rejected=$true}
+        if(!$rejected -or (Get-FileHash $output).Hash -cne $before){throw ('DamagedQualificationReceiptAccepted: '+$damage)}
+        $rejections++
+    }
+    foreach($text in @('null','[]','{"Ready":true,"Ready":false}','{')){
+        [IO.File]::WriteAllText($path,$text,[Text.UTF8Encoding]::new($false));$rejected=$false
+        try{& $validator -ReceiptPath $path -Revision $revision -RunId 42 -RunAttempt 2 -OutputPath $output}catch{$rejected=$true}
+        if(!$rejected){throw 'MalformedQualificationReceiptAccepted'};$rejections++
+    }
+    & $validator -ReceiptPath (Join-Path $fixture absent.json) -Revision $revision -RunId 42 -RunAttempt 2 -OutputPath (Join-Path $fixture preview.txt) -WhatIf
+    if(Test-Path (Join-Path $fixture preview.txt)){throw 'QualificationPreviewWroteOutput'}
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiCompanionWorkers.psm1') -Force
+    $worker=Join-Path $fixture 'parallel-worker.ps1'
+    $workerText=@'
+param($WorkspaceRoot,$RunDirectory,$Suite,$MaxConcurrency,$ExpectedRuntimeIdentifier,[switch]$SkipTty)
+. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+$started=[DateTimeOffset]::UtcNow.ToString('o')
+$parent=Split-Path $RunDirectory -Parent
+Write-WorkspaceJson (Join-Path $RunDirectory started.json) @{PID=$PID;Started=$started}
+$other=if($Suite -eq 'Git'){'Vagrant'}else{'Git'}
+$deadline=[DateTimeOffset]::UtcNow.AddSeconds(15)
+while(!(Test-Path (Join-Path $parent "$other/started.json"))){
+    if([DateTimeOffset]::UtcNow -gt $deadline){throw 'SiblingDidNotStartConcurrently'}
+    [void][Threading.Tasks.Task]::Delay(25).GetAwaiter().GetResult()
+}
+if(Test-Path (Join-Path (Split-Path $parent -Parent) fail.txt)){exit 3}
+Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Success';Passed=1;Failed=0};Suites=@(@{Name=$Suite;PID=$PID;MaxConcurrency=$MaxConcurrency;SkipTty=[bool]$SkipTty;Rid=$ExpectedRuntimeIdentifier});Started=$started}
+'@
+    [IO.File]::WriteAllText($worker,$workerText,[Text.UTF8Encoding]::new($false))
+    $selections=@([pscustomobject]@{Name='Git'},[pscustomobject]@{Name='Vagrant'})
+    $core=[pscustomobject]@{Failed=0;Partial=$false;Incomplete=$false}
+    $runs=Join-Path $fixture parallel
+    $children=@(Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory $runs -CoreSummary $core -Selections $selections -WorkerPath $worker -MaxConcurrency 2 -SkipTty -ExpectedRuntimeIdentifier fixture-rid)
+    if($children.Count -ne 2 -or @($children.Suites.PID|Select-Object -Unique).Count -ne 2 -or @($children.Suites|Where-Object {$_.PID -eq $PID -or $_.MaxConcurrency -ne 1 -or !$_.SkipTty -or $_.Rid -cne 'fixture-rid'}).Count){throw 'CompanionProcessIsolationChanged'}
+    foreach($field in @('Failed','Partial','Incomplete')){
+        $bad=[pscustomobject]@{Failed=0;Partial=$false;Incomplete=$false};$bad.$field=1
+        $target=Join-Path $fixture ('blocked-'+$field);$rejected=$false
+        try{$null=Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory $target -CoreSummary $bad -Selections $selections -WorkerPath $worker}catch{$rejected=$true}
+        if(!$rejected -or (Test-Path $target)){throw 'FailedCoreStartedCompanions'}
+    }
+    $null=Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory (Join-Path $fixture preview) -CoreSummary $core -Selections $selections -WorkerPath $worker -WhatIf
+    if(Test-Path (Join-Path $fixture preview)){throw 'CompanionPreviewCreatedWorkers'}
+    $failed=Join-Path $fixture failed;[void][IO.Directory]::CreateDirectory($failed)
+    [IO.File]::WriteAllText((Join-Path $failed fail.txt),'fail',[Text.UTF8Encoding]::new($false))
+    $rejected=$false
+    try{$null=Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory $failed -CoreSummary $core -Selections $selections -WorkerPath $worker}catch{$rejected=$_.Exception.Message -like 'CompanionWorker*'}
+    if(!$rejected){throw 'ChildFailureAccepted'}
+    # An independently constructed ZIP proves the host can be prepared with no HTTP request.
+    $hostRoot=Join-Path $fixture host;[void][IO.Directory]::CreateDirectory((Join-Path $hostRoot build))
+    $zipInput=Join-Path $fixture zip;[void][IO.Directory]::CreateDirectory($zipInput)
+    [IO.File]::WriteAllText((Join-Path $zipInput pwsh.exe),'owned fixture',[Text.UTF8Encoding]::new($false))
+    $zip=Join-Path $fixture host.zip;[IO.Compression.ZipFile]::CreateFromDirectory($zipInput,$zip)
+    $hash=(Get-FileHash $zip).Hash
+    Write-WorkspaceJson (Join-Path $hostRoot build/powershell-hosts.lock.json) @{SchemaVersion=1;Hosts=@(@{Channel='stable';Rid='win-x64';Version='7.6.7';SHA256=$hash;RuntimeMajor=10})}
+    $cache=Join-Path $hostRoot '.cache/powershell-hosts';[void][IO.Directory]::CreateDirectory($cache)
+    Copy-Item $zip (Join-Path $cache ($hash+'.zip'))
+    foreach($index in 1..2){
+        $hostInfo=& (Join-Path $WorkspaceRoot scripts/Initialize-PowerShellHost.ps1) -WorkspaceRoot $hostRoot -Channel stable -RuntimeIdentifier win-x64 -OutputDirectory (Join-Path $hostRoot "output-$index")
+        if([IO.File]::ReadAllText($hostInfo.Executable) -cne 'owned fixture'){throw 'HostArchiveCacheChangedPayload'}
+    }
+    [IO.File]::WriteAllText((Join-Path $cache ($hash+'.zip')),'tampered',[Text.UTF8Encoding]::new($false))
+    $rejected=$false
+    try{$null=& (Join-Path $WorkspaceRoot scripts/Initialize-PowerShellHost.ps1) -WorkspaceRoot $hostRoot -Channel stable -RuntimeIdentifier win-x64 -OutputDirectory (Join-Path $hostRoot damaged)}catch{$rejected=$_.Exception.Message -ceq 'PowerShellHostCacheChecksumMismatch'}
+    if(!$rejected){throw 'DamagedHostCacheAccepted'}
+    $cacheChecks=& {
+        . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+        $script:ciCacheCalls=[Collections.Generic.List[string]]::new()
+        $plan=[pscustomobject]@{Rid='linux-x64';Architecture='x64';Fingerprint=('a'*64);RegistryPath='fixture/image';Source='https://example.invalid/source';Base=$null;Dockerfile='fixture';Arguments=@{}}
+        function Resolve-QuietVirtEngine {param($ContainerRuntime,$WorkspaceRoot);'docker'}
+        function Get-QuietCiRegistryDigest {param($Plan,$Token,$Actor);if($script:ciCacheHit){'sha256:'+('b'*64)}}
+        function Invoke-CiProcess {
+            param($FilePath,$ArgumentList,$TimeoutSeconds,$State,$OnOutput)
+            $script:ciCacheCalls.Add($ArgumentList[0])
+            $json=if($ArgumentList[0] -ceq 'info'){'{"OSType":"linux","Architecture":"amd64"}'}else{
+                @{Id=('sha256:'+('1'*64));Architecture='amd64';Os='linux';Config=@{Labels=@{'org.frenchexdev.quietcli2.inputs'=('a'*64);'org.opencontainers.image.source'='https://example.invalid/source'}}}|ConvertTo-Json -Depth 6 -Compress
+            }
+            $null=& $OnOutput ([pscustomobject]@{Stream='stdout';Text=$json}) $State
+            [pscustomobject]@{Outcome='Success';ExitCode=0;ElapsedMs=1}
+        }
+        function Invoke-WorkspaceNative {param($FilePath,$Arguments,$WorkingDirectory,$TimeoutSeconds,$LogPath);$script:ciCacheCalls.Add($Arguments[0])}
+        $previous=$env:QUIETCLI_REGISTRY_TOKEN;$env:QUIETCLI_REGISTRY_TOKEN=$null
+        try{
+            foreach($hit in @($false,$true)){
+                $script:ciCacheCalls.Clear();$script:ciCacheHit=$hit
+                $result=Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory $fixture -WorkspaceRoot $fixture -ArtifactPrefix cache-only -RegistryCache -CacheOnly -ContainerRuntime docker
+                if('build' -cin $script:ciCacheCalls -or @($script:ciCacheCalls|Where-Object {$_ -ceq 'pull'}).Count -ne [int]$hit -or [bool]$result -ne $hit){throw 'CacheOnlyPreparedMissingParents'}
+            }
+            $source=(Get-Command Invoke-QuietCiImageBuild).ScriptBlock.ToString()
+            $anchor='if($CacheOnly -and !$digest){return}'
+            if(!$source.Contains($anchor)){throw 'CacheOnlyMutationAnchorMissing'}
+            $mutant=[scriptblock]::Create($source.Replace($anchor,''))
+            $script:ciCacheHit=$false;$script:ciCacheCalls.Clear()
+            $null=& $mutant -Plan $plan -ContextDirectory $fixture -WorkspaceRoot $fixture -ArtifactPrefix mutant -RegistryCache -CacheOnly -ContainerRuntime docker
+            if('build' -cnotin $script:ciCacheCalls){throw 'CacheOnlyMutantNotDetected'}
+        }finally{$env:QUIETCLI_REGISTRY_TOKEN=$previous}
+        2
+    }
+    Write-WorkspaceJson $path $receipt
+    $source=[IO.File]::ReadAllText($validator,[Text.Encoding]::UTF8)
+    $mutant=[scriptblock]::Create($source.Replace('$receipt.Revision -cne $Revision','$false'))
+    $damaged=[ordered]@{};foreach($key in $receipt.Keys){$damaged[$key]=$receipt[$key]};$damaged.Revision='b'*40;Write-WorkspaceJson $path $damaged
+    $mutantOutput=Join-Path $fixture mutant-output.txt
+    & $mutant -ReceiptPath $path -Revision $revision -RunId 42 -RunAttempt 2 -OutputPath $mutantOutput
+    if(!(Test-Path $mutantOutput)){throw 'QualificationRevisionMutantNotExercised'}
+    $warmRoot=Join-Path $fixture warm;$warmScripts=Join-Path $warmRoot scripts
+    [void][IO.Directory]::CreateDirectory((Join-Path $warmScripts lib))
+    Copy-Item (Join-Path $WorkspaceRoot scripts/lib/CiCompanions.psm1) (Join-Path $warmScripts lib/CiCompanions.psm1)
+    $common='function Write-WorkspaceJson {param($Path,$Value); [void][IO.Directory]::CreateDirectory((Split-Path $Path -Parent));[IO.File]::WriteAllText($Path,($Value|ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))}'
+    $images='function Get-QuietCiRegistryDigest {param($Plan,$Token,$Actor,[switch]$IncludeConfiguration); if(!$IncludeConfiguration){throw "ConfigurationNotVerified"}; [pscustomobject]@{Digest=("sha256:"+("b"*64));Reference=("ghcr.io/fixture@sha256:"+("b"*64))}}; function Invoke-QuietCiImageBuild {param($Plan,$ContextDirectory,$WorkspaceRoot,$ArtifactPrefix,[switch]$RegistryCache,[switch]$CacheOnly,$ContainerRuntime);if(!$CacheOnly){throw "UnexpectedBuild"};[pscustomobject]@{Image="verified-final-local";CacheHit=$true}}'
+    $plan='param($WorkspaceRoot,$RuntimeIdentifier,$Module,$ParentPlan,[switch]$PlanOnly);if(!$PlanOnly){throw "ParentPreparedOnFinalHit"};[pscustomobject]@{Fingerprint=("a"*64);Rid=$RuntimeIdentifier}'
+    foreach($entry in @{'Common.ps1'=$common;'CiImages.ps1'=$images;'New-CiImage.ps1'=$plan;'New-CiModuleImage.ps1'=$plan}.GetEnumerator()){[IO.File]::WriteAllText((Join-Path $warmScripts $entry.Key),$entry.Value,[Text.UTF8Encoding]::new($false))}
+    $module=Import-Module (Join-Path $warmScripts lib/CiCompanions.psm1) -PassThru -Force
+    try{
+        $selection=[pscustomobject]@{Images=@('Core','Git')}
+        $resolved=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ResolveOnly -ContainerRuntime docker} $warmRoot $selection
+        $pulled=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ContainerRuntime docker} $warmRoot $selection
+        if(!$resolved.RegistryOnly -or !$resolved.CacheHit -or $pulled.Image -cne 'verified-final-local'){throw 'WarmFinalImagePreparedParents'}
+    }finally{Remove-Module -ModuleInfo $module -Force}
+    $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
+    $yaml=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build()
+    $workflows=@{}
+    foreach($name in @('ci','companions-ci','preview-psgallery','publish-psgallery')){$workflows[$name]=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot ".github/workflows/$name.yml"),[Text.Encoding]::UTF8))}
+    $jobs=$workflows.ci['jobs']
+    if($jobs.ContainsKey('linux-suite-images') -or @($jobs['linux-images']['needs']).Count -ne 1 -or @($jobs['linux-images']['needs'])[0] -cne 'linux-matrix'){throw 'DuplicateImageProducerMatrix'}
+    $producer=@($jobs['linux-images']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
+    if(!$producer.Contains('-ResolveOnly') -or !$producer.Contains('-PublishCache')){throw 'ProducerDownloadsUnusedCachedImages'}
+    if($workflows['preview-psgallery']['on'].ContainsKey('push') -or $workflows['companions-ci']['jobs']['preview']['needs'] -cne 'companions' -or $workflows['companions-ci']['jobs']['preview']['with']['qualified_sha'] -cne '${{ needs.companions.outputs.qualified_sha }}'){throw 'DuplicateAutomaticQualification'}
+    $publication=$workflows['publish-psgallery']['jobs']
+    if($publication['qualification']['if'] -cne "inputs.qualified_sha == ''" -or $publication['reuse-qualification']['steps'][-1]['run'] -notmatch 'Assert-QualificationReceipt.ps1' -or $publication['package']['needs'] -cne 'checkpoint'){throw 'UnverifiedQualificationReuse'}
+    foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){
+        $declaration=& (Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $rid
+        $packages=@($declaration.Containerfile.Stages|Where-Object Name -CEQ ci)[0].Packages.Split(' ')
+        if('tar' -cnotin $packages -or 'zstd' -cnotin $packages){throw 'ContainerCacheArchiveToolsMissing'}
+    }
+    Write-WorkspaceJson (Join-Path $fixture campaign.json) @{QualificationRejections=$rejections;RealParallelProcesses=2;CorePrerequisiteRejections=3;ChildFailureRejected=$true;HostCacheHits=2;DamagedCacheRejected=$true;CacheOnlyCases=$cacheChecks;WarmFinalImageCases=2;MutantsKilled=2;NetworkRequests=0;ExternalPublication=$false}
+}

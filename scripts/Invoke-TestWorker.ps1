@@ -138,7 +138,11 @@ try{
         # RequiredModules imports do not inherit DisableNameChecking from the importing companion.
         Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -DisableNameChecking -ErrorAction Stop
         # Parser/handler qualification uses the owned process fixture; it never installs Vagrant or a provider.
-        foreach($selection in Get-QuietWorkspaceSuiteSelection -WorkspaceRoot $WorkspaceRoot -Suite $Suite){
+        $selections=@(Get-QuietWorkspaceSuiteSelection -WorkspaceRoot $WorkspaceRoot -Suite $Suite)
+        $parallelCompanions=$Suite -eq 'All' -and @($selections|Where-Object Name -CEQ Core).Count -eq 1
+        if($parallelCompanions){$selections=@($selections|Sort-Object {if($_.Name -ceq 'Core'){0}else{1}})}
+        foreach($selection in $selections){
+            if($parallelCompanions -and $selection.Name -cne 'Core'){continue}
             $selected=$selection.Name
             $project=$selection.Project
             $state.Project=$project;$state.ProjectDirectory=Join-Path $WorkspaceRoot $project
@@ -163,6 +167,17 @@ try{
                 $state.Task+=if($summary.Incomplete){" [INCOMPLETE: $($summary.StoppedAt)]"}else{' [PARTIAL: case filter]'}
                 Write-WorkspaceJson $statusPath $state
             }elseif($selected -eq 'Core' -and !$summary.Failed){& (Join-Path $PSScriptRoot 'Assert-CoreIntegrationEvidence.ps1') -Summary $summary}
+            if($parallelCompanions -and ($summary.Failed -or $summary.Partial -or $summary.Incomplete)){throw 'CompanionFanoutRequiresSuccessfulCompleteCore'}
+        }
+        if($parallelCompanions){
+            Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanionWorkers.psm1')
+            $corePassed=$state.Passed;$coreFailed=$state.Failed
+            $children=@(Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -CoreSummary $summary -Selections @($selections|Where-Object Name -CNE Core) -SkipTty:$SkipTty -ExpectedRuntimeIdentifier $ExpectedRuntimeIdentifier -MaxConcurrency ([Math]::Min(2,$MaxConcurrency)) -OnProgress {
+                param($passed,$failed)
+                $state.Case='Core accepted; independent companion suites running';$state.Passed=$corePassed+$passed;$state.Failed=$coreFailed+$failed
+                Write-WorkspaceJson $statusPath $state
+            })
+            foreach($child in $children){foreach($summary in $child.Suites){$summaries.Add($summary)}}
         }
     }
     if($Profiler){

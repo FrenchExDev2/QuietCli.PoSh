@@ -1,5 +1,7 @@
 # Add a QuietCli companion
 
+The automatic `All` path prepares one shared toolchain image per RID from the declared test requirements. Core's tests require Git even though the Core product does not depend on the Git module. Core validates first, then the other declared suites execute concurrently in separate processes inside the same runner/container. A fixture-only companion can keep `image: none`; adding a native tool requirement extends the shared image without introducing another workflow branch or build.
+
 A companion owns the business meaning of a native tool. Core owns process execution, streaming,
 hosting, lifecycle and bounded delivery. Keep tool-specific argument binding, parsing, projections,
 supported-version policy and independent assertions in the companion and its test project.

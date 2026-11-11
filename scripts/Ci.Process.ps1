@@ -27,6 +27,27 @@ function ConvertTo-CiArgument {
     [void]$builder.Append('\',($backslashes*2)).Append('"')
     $builder.ToString()
 }
+function Start-CiProcess {
+    <#
+    .SYNOPSIS
+    Starts an owned asynchronous process with inherited streams and an exact argument vector.
+    .PARAMETER FilePath
+    Explicit executable; never resolved through an alias or shell.
+    .PARAMETER ArgumentList
+    Native argument vector, without shell quoting or interpolation.
+    .PARAMETER WorkingDirectory
+    Already prepared checkout used by the child.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param([Parameter(Mandatory)][string]$FilePath,[string[]]$ArgumentList,[string]$WorkingDirectory)
+    if(!$PSCmdlet.ShouldProcess($FilePath,'Start owned process with inherited output streams')){return}
+    $application=Get-Command $FilePath -CommandType Application -ErrorAction Stop|Select-Object -First 1
+    $start=[Diagnostics.ProcessStartInfo]::new($application.Source)
+    $start.UseShellExecute=$false;$start.CreateNoWindow=$true;$start.WorkingDirectory=$WorkingDirectory
+    foreach($argument in $ArgumentList){[void]$start.ArgumentList.Add($argument)}
+    $process=[Diagnostics.Process]::new();$process.StartInfo=$start
+    try{if(!$process.Start()){throw 'CiProcessStartFailed'};$process}catch{$process.Dispose();throw}
+}
 function Invoke-CiProcess {
     <#
     .SYNOPSIS

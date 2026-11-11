@@ -1,16 +1,5 @@
-name: QuietCli2 automatic develop previews
+name: QuietCli2 manual develop preview
 on:
-  push:
-    branches: [develop]
-    paths:
-      - 'FrenchExDev2.QuietCli.Core.PoSh/**'
-      - 'scripts/**'
-      - 'build/**'
-      - 'global.json'
-      - 'repositories.lock.json'
-      - '.github/workflows/preview-psgallery.yml'
-      - '.github/workflows/publish-psgallery.yml'
-      - '.github/workflows/ci.yml'
   workflow_dispatch:
     inputs:
       publish:
@@ -27,4 +16,4 @@ jobs:
     uses: ./.github/workflows/publish-psgallery.yml
     with:
       preview_build: true
-      publish: ${{ github.event_name == 'push' || inputs.publish == true }}
+      publish: ${{ inputs.publish == true }}

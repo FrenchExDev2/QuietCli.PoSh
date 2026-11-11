@@ -1,5 +1,9 @@
 # New-CiSuiteImage.ps1
 
+Registry reuse probes the final suite image before preparing any parent. A verified hit pulls only that final image; a miss prepares the base and overlays in the same job. The automatic All path uses that one image for Core, then isolated parallel companions. There is one image-producer matrix, not separate base/suite producer runners.
+
+`-ResolveOnly -RegistryCache` is the producer path: verify an existing registry configuration and return its immutable reference without pulling layers. A miss follows the normal build/publication path. A metadata reference is not a local Docker image ID; execution resolves/pulls its verified final image separately.
+
 Resolves `-Suite <name>|All` image requirements from `build/companions.yml` through
 `scripts/lib/CiCompanions.psm1`. Core's test suite requires Core and Git, so Debian Core tests use
 the pinned Git overlay rather than distro Git 2.39. Vagrant's current fixture tests declare no

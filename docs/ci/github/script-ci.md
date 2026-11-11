@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 8354A960B4B80E2CCDEE958FA998E77ABFEA7A107A85A679FE890769DACA67A7 -->
+<!-- workflow-source-sha256: EA6990A45D5610442802D469DBE5DAC4CE6AE1EF77BB04A95FF9861CE94C72F3 -->
 
 ## Purpose
 
@@ -31,7 +31,6 @@ flowchart TD
     job_linux_matrix["linux-matrix"]
     job_linux_result["linux-result"]
     job_linux_selection["linux-selection"]
-    job_linux_suite_images["linux-suite-images"]
     job_linux_test_driver["linux-test-driver"]
     job_performance_results["performance-results"]
     job_qualification_gate["qualification-gate"]
@@ -44,9 +43,6 @@ flowchart TD
     job_linux_test_driver --> job_linux_result
     job_linux_matrix --> job_linux_selection
     job_linux_images --> job_linux_selection
-    job_linux_suite_images --> job_linux_selection
-    job_linux_matrix --> job_linux_suite_images
-    job_linux_images --> job_linux_suite_images
     job_linux_selection --> job_linux_test_driver
     job_linux_matrix --> job_performance_results
     job_windows --> job_performance_results
@@ -60,11 +56,10 @@ flowchart TD
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
 | linux | runner ${{ matrix.runner }}; container ${{ matrix.image }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_container == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
-| linux-images | runner ${{ matrix.runner }} | linux-matrix | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiImage.ps1 |
+| linux-images | runner ${{ matrix.runner }} | linux-matrix | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiSuiteImage.ps1 |
 | linux-matrix | runner ubuntu-latest |  | default success condition | ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
 | linux-result | runner ubuntu-latest | linux-selection, linux, linux-test-driver | always() | ./scripts/GitHubCi.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
-| linux-selection | runner ubuntu-latest | linux-matrix, linux-images, linux-suite-images | ${{ always() && !cancelled() && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' &#124;&#124; needs.linux-images.result == 'skipped') && (needs.linux-suite-images.result == 'success' &#124;&#124; needs.linux-suite-images.result == 'skipped') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Select-GitHubCiMatrix.ps1 |
-| linux-suite-images | runner ${{ matrix.runner }} | linux-matrix, linux-images | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiSuiteImage.ps1 |
+| linux-selection | runner ubuntu-latest | linux-matrix, linux-images | ${{ always() && !cancelled() && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' &#124;&#124; needs.linux-images.result == 'skipped') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Select-GitHubCiMatrix.ps1 |
 | linux-test-driver | runner ${{ matrix.runner }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_docker_container_runtime == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CiSuiteImage.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 | performance-results | runner ubuntu-latest | linux-matrix, windows, linux, linux-test-driver | ${{ always() && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 | qualification-gate | runner ubuntu-latest | windows, linux-result | ${{ always() }} | ./scripts/Assert-QualificationGate.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
@@ -73,6 +68,8 @@ flowchart TD
 <!-- workflow-generated:end -->
 
 ## Scripts and effects
+
+One `linux-images` matrix prepares the final suite image per RID. The producer uses ResolveOnly: existing registry configurations are verified without pulling layers; misses prepare/publish base and overlays on the same runner. Execution pulls only the verified final image, without preparing parents on a hit. PR fallback remains non-publishing. All tests share that image: Core completes first with its Git requirement, then other suites run in bounded isolated processes in the same matrix target. There is no extra build or image transfer for this fan-out. Windows host ZIP caching separates channel/architecture/lock keys; NuGet keys include central versions, build properties and global.json. Supported Linux job containers use resource and NuGet caches too. Every cache consumer retains integrity verification.
 
 `build/companions.yml` separates product dependencies, image participation and independent test
 suites. Initialize-CiCompanions.ps1 exports Core-evidence policy and RID/CLR-matched controls through
@@ -105,6 +102,8 @@ selection, cancellation and an unselected path still prevent execution. See the 
 and [status functions](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#status-check-functions).
 
 ## Validation and limits
+
+The shared final image explicitly includes GNU tar and zstd for actions/cache, including Alpine where BusyBox tar does not implement the archive flags used by the action. Recipe assertions cover all four RID declarations. This source check does not substitute for actual hosted archive restore/save.
 
 linux-result validates the selected paths and qualification-gate requires only Windows and Linux success before returning the exact qualified revision. Optional performance-results is not a gate dependency. When performance collection is explicitly requested, incomplete evidence still fails its requested report; the report validator is not weakened. The workflow contract regression checks default-off inputs, guarded reports and the absence of a performance gate dependency. Native TTY campaigns are excluded. wrkflw 0.8.0 cannot qualify the expression-valued matrices locally. Source qualification precedes a separate Windows package rebuild; it does not attest byte-identical matrix/package outputs.
 

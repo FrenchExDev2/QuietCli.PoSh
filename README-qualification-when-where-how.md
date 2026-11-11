@@ -1,5 +1,7 @@
 # Qualification: when, where and how
 
+For `All`, one build and Linux toolchain image serve the complete target. Core's validation retains its Git dependency and executes first. Only after complete successful Core evidence do Git and Vagrant execute concurrently in isolated PowerShell processes, with separate reports and configuration in that same runner/container. Companion failure blocks the matrix target. Automatic develop packaging reuses the same run/attempt/SHA All receipt instead of running a second full matrix; the packaging build is still verified separately.
+
 [QuietCli overview](README.md) · [Development](README-development.md) · [Tests and qualification](README-qualification.md) · [Documentation index](docs/README.md)
 
 GitHub qualification builds the solution **and executes the selected companion tests**. Windows tests run directly on native runners; Linux tests run inside containers. A successful build alone does not qualify the software. This guide describes the configured execution paths, not the outcome of a particular workflow run.
