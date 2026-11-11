@@ -26,6 +26,28 @@ Local commits and pushes do not launch local companion suites. [Commit-Workspace
 
 Other path-filtered PR checks run on `ubuntu-latest`: [scripts-docs-check.yml](.github/workflows/scripts-docs-check.yml) checks the shared automation/documentation contracts, and [sync-credits-check.yml](.github/workflows/sync-credits-check.yml) checks credit aggregation and links. These jobs do not execute companion suites. A green documentation check alone does not establish functional test coverage.
 
+## Profiling reports and manual PR runs
+
+Automatic matching PR runs request `All` with `collect_performance=true`. Core profiling runs across all six Windows combinations and four Linux containers. A separate instrumented pass collects PowerShell line profiles and CLR traces outside the ordinary benchmark samples. The `Readable performance evidence for the complete matrix` job verifies the ten evidence bundles and uploads `quietcli-performance-results-<sha>`, containing standalone `PERFORMANCES_RESULTS.html`, Markdown, JSON and integrity metadata. Download the artifact from the workflow run's **Artifacts** section and open the HTML locally. Raw profiles remain in the per-environment evidence artifacts. Missing or failed evidence prevents Core qualification; a partial report does not establish a completed matrix.
+
+`RunProfiles` and `RunProfilesMutation` qualify the profiling tools themselves, on Windows stable x64 InProcess. They do not enable the Core profiling pass or replace its ten-target evidence. `collect_performance` controls that pass in CI; locally, `Invoke-WorkspaceCi.ps1 -Suite Integration -SkipBuild -Profiler` selects the focused instrumented workload. Keep profiler instrumentation outside A/A and A/B timing samples to avoid measuring the profiler's overhead as product performance.
+
+To obtain profiling plus A/B evidence for a PR:
+
+1. Push the intended commits to the PR branch. Matching changes automatically start the qualification/profiling workflow; the pushed revision must include this configuration.
+2. Manually dispatch `quietcli2-readytorun.yml` on that same pushed branch. It compares IL and ReadyToRun builds of the selected revision after an A/A noise check; it does **not** compare the PR head with `develop`.
+3. Check the source revision of both runs, then link the manual run in the PR. A PR-triggered run can use GitHub's merge ref, whereas manual dispatch tests the selected branch/tag; these are distinct checkout identities. The manual A/B run is informational and is not an automatic PR qualification dependency.
+
+From the workspace root, the second step is:
+
+```powershell
+./scripts/Invoke-RemoteWorkflow.ps1 -Repository FrenchExDev2/QuietCli.PoSh -Workflow quietcli2-readytorun.yml -Ref fix/develop-pr-gh-wf
+```
+
+Replace the ref with the pushed PR branch. To rerun qualification manually as a separate run, use the same command with `-Workflow ci.yml`; that workflow defaults to `All` and `collect_performance=true`. To avoid duplicate qualification costs, the automatic PR run is normally sufficient.
+
+In GitHub, open **Actions**, choose **QuietCli2 ReadyToRun profiling**, click **Run workflow** and select the PR branch. For manual qualification choose **QuietCli2 PR**, keep `suite=All` and `collect_performance` enabled. Dispatch requires the workflow to exist on the default branch, but the selected ref need not be `develop`. See [manual dispatch](docs/scripts/Invoke-RemoteWorkflow.md) and [the A/B report guide](docs/README-readytorun_profiling.md#manual-github-runs-and-pr-evidence).
+
 ## How a qualification job executes
 
 ```mermaid

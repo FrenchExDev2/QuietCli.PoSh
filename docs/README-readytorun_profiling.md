@@ -17,6 +17,21 @@ precompiles the engine's native code ahead of time, so that cost should shrink o
 **first** call in a process; once the JIT has warmed up, R2R and IL converge. The gate measures exactly that shape
 of effect, instead of assuming it.
 
+## Manual GitHub runs and PR evidence
+
+The [ReadyToRun workflow](../.github/workflows/quietcli2-readytorun.yml) runs only through `workflow_dispatch`. It has no `develop` branch filter and no PR/push trigger. Choose the pushed PR branch through **Actions → QuietCli2 ReadyToRun profiling → Run workflow**, or use the existing automation entry point from the workspace root:
+
+```powershell
+./scripts/Invoke-RemoteWorkflow.ps1 -Repository FrenchExDev2/QuietCli.PoSh -Workflow quietcli2-readytorun.yml -Ref fix/develop-pr-gh-wf
+./scripts/Invoke-RemoteWorkflow.ps1 -Repository FrenchExDev2/QuietCli.PoSh -Workflow quietcli2-readytorun.yml -Status
+```
+
+Replace the ref with the branch/tag being evaluated. The workflow must already exist on the default branch for dispatch to be available; `-Ref` selects which revision runs. Local unpushed commits are not tested. See [GitHub's manual-run documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow).
+
+This experiment compares an IL baseline and an R2R candidate built from the same checkout, **not the PR head against `develop`**. It runs on Windows and four Linux distribution/architecture targets. Download `quietcli2-readytorun-<sha>` and `quietcli2-readytorun-<rid>-<sha>` from the run's **Artifacts** section for the cold-start JSON reports. A noisy A/A control can prevent an A/B result; a green informational job alone does not prove a performance improvement.
+
+A matching PR push separately runs Core's ten-target PowerShell/CLR profiling and combined HTML report. `RunProfiles` is the test suite for profiling tooling; it is not the switch for that Core pass. Keep instrumentation separate from A/A and A/B measured samples. For profiling plus this A/B experiment, let automatic PR qualification run, dispatch this workflow on the pushed PR branch, then link its run in the PR after checking both checkout identities. A manual run targets the selected ref, while PR qualification can target GitHub's merge ref. See [the complete PR procedure](../README-qualification-when-where-how.md#profiling-reports-and-manual-pr-runs).
+
 ## Building the R2R candidate
 
 `-CandidateModule` must point at an already-built module manifest; the gate only orchestrates measurement, it does
