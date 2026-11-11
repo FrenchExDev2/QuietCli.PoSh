@@ -92,6 +92,39 @@ Test-Case 'tool-cache: the initializer forwards the selected directory, offline 
     $path = Join-Path $work 'initializer fixture'
     $result = & (Join-Path $scripts 'Initialize-Profilers.ps1') -OutputDirectory $path -Offline
     Assert-That ($result.Directory -ceq $path -and $result.Offline -and $result.Packages.Count -eq 2 -and $result.Packages[0].Version -ceq '4.3.0') 'initializer discarded its contract'
+    foreach($selection in @(@('profiler'),@('dottrace'),@('dottrace','profiler'),@('PROFILER','profiler'))){
+        $result=& (Join-Path $scripts 'Initialize-Profilers.ps1') -OutputDirectory $path -Module $selection -Offline
+        $expected=@(if($selection -contains 'profiler'){'Profiler'};if($selection -contains 'dottrace'){'dotnet-trace'})
+        Assert-That (($result.Packages.Name -join ',') -ceq ($expected -join ',')) 'initializer ignored requested modules'
+    }
+    foreach($invalid in @(@('unknown'),@('profiler','bad'),@(''),@())){
+        $rejected=$false
+        try{$null=& (Join-Path $scripts 'Initialize-Profilers.ps1') -OutputDirectory $path -Module $invalid -Offline}catch{$rejected=$true}
+        Assert-That $rejected 'invalid module selection accepted'
+    }
+    $preview=@(& (Join-Path $scripts 'Initialize-Profilers.ps1') -OutputDirectory $path -Module profiler -WhatIf)
+    Assert-That ($preview.Count -eq 0 -and !(Test-Path $path)) 'preview executed initializer'
+}
+Test-Case 'tool-cache: only requested packages are required and unselected tools remain absent' {
+    foreach($selection in @(@('profiler'),@('dottrace'),@('profiler','dottrace'))){
+        $fixture=New-ToolCacheFixture
+        $names=@(Get-RunProfilerPackages -Module $selection | ForEach-Object Name)
+        $selected=@($fixture.Packages | Where-Object Name -In $names)
+        $target=Join-Path $work ([guid]::NewGuid().ToString('N'))
+        $calls=[Collections.Generic.List[string]]::new()
+        $tools=Initialize-RunToolCache -OutputDirectory $target -Packages $selected -DownloadBytes {
+            param($url)
+            $calls.Add($url)
+            $p=@($fixture.Packages | Where-Object Url -CEQ $url)[0]
+            ,([IO.File]::ReadAllBytes((Join-Path $fixture.Directory ($p.Name+'/'+$p.Name+'.'+$p.Version+'.nupkg'))))
+        }.GetNewClosure()
+        Assert-That ($calls.Count -eq $selected.Count) 'unrequested download'
+        Assert-That ([bool]$tools.ProfilerModulePath -eq ($selection -contains 'profiler') -and [bool]$tools.ClrProfilerPath -eq ($selection -contains 'dottrace')) 'unrequested tool path'
+        foreach($p in $fixture.Packages){
+            Assert-That ((Test-Path (Join-Path $target $p.Name)) -eq ($names -contains $p.Name)) 'unrequested tool created'
+        }
+        Assert-Throws { Initialize-RunToolCache -OutputDirectory (Join-Path $target 'missing') -Packages $selected -Offline } 'ProfilerOfflineCacheMiss'
+    }
 }
 Test-Case 'tool-cache: offline cache verifies, extracts, reuses and records both tools without global installation' {
     $fixture = New-ToolCacheFixture
@@ -134,14 +167,16 @@ Test-Case 'tool-cache: downloaded bytes are independently verified before cache 
 Test-Case 'tool-cache-live: the initializer verifies both cached official archives offline' {
     $manifest = Resolve-RunProfilerModule
     $source = Split-Path (Split-Path $manifest -Parent) -Parent
-    $destination = Join-Path $work 'official-cache'
-    foreach ($package in Get-RunProfilerPackages) {
+    foreach($selection in @(@('profiler'),@('dottrace'),@('profiler','dottrace'))){
+    $destination = Join-Path $work ('official-cache-'+($selection -join '-'))
+    foreach ($package in Get-RunProfilerPackages -Module $selection) {
         $name = $package.Name + '.' + $package.Version + '.nupkg'
         $directory = Join-Path $destination $package.Name
         [void][IO.Directory]::CreateDirectory($directory)
         Copy-Item -LiteralPath (Join-Path $source ($package.Name + '/' + $name)) -Destination (Join-Path $directory $name)
     }
-    $result = & (Join-Path $scripts 'Initialize-Profilers.ps1') -OutputDirectory $destination -Offline
-    Assert-That ([IO.File]::Exists($result.ProfilerModulePath) -and [IO.File]::Exists($result.ClrProfilerPath) -and [IO.File]::Exists($result.Receipt)) 'initializer did not forward its arguments'
+    $result = & (Join-Path $scripts 'Initialize-Profilers.ps1') -OutputDirectory $destination -Module $selection -Offline
+    Assert-That ([IO.File]::Exists($result.ProfilerModulePath) -eq ($selection -contains 'profiler') -and [IO.File]::Exists($result.ClrProfilerPath) -eq ($selection -contains 'dottrace') -and [IO.File]::Exists($result.Receipt)) 'initializer did not honor requested modules'
+    }
     Assert-Throws { & (Join-Path $scripts 'Initialize-Profilers.ps1') -OutputDirectory (Join-Path $work 'initializer-cache-miss') -Offline } 'ProfilerOfflineCacheMiss'
 }

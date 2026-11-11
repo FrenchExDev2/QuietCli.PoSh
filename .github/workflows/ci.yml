@@ -129,10 +129,10 @@ jobs:
         shell: pwsh
         run: ./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
       - name: Prepare checksum-pinned PowerShell and CLR profilers
-        if: inputs.collect_performance && inputs.suite != 'Git'
+        if: inputs.suite != 'Git' && (inputs.collect_performance || (matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'))
         shell: pwsh
         run: |
-          $tools=./scripts/Initialize-Profilers.ps1 -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-profilers')
+          $tools=./scripts/Initialize-Profilers.ps1 -Module profiler,dottrace -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-profilers')
           $values="QUIETCLI_PROFILER_MODULE=$($tools.ProfilerModulePath)`nQUIETCLI_CLR_PROFILER=$($tools.ClrProfilerPath)`n"
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_ENV,$values,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
           [void][IO.Directory]::CreateDirectory('./artifacts/tests')

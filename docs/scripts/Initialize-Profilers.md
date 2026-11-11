@@ -45,6 +45,13 @@ Example:
 
 Fit for purpose as a thin wrapper; its correctness is entirely delegated to and dependent on `lib/RunToolCache.psm1`, which should be reviewed and tested directly. Highest-priority fix: add `[ValidateNotNullOrEmpty()]` to `-OutputDirectory` and confirm/create test coverage for the underlying `RunToolCache.psm1` module rather than this file.
 
+
+## Selective dependencies
+
+Use -Module profiler, -Module dottrace or -Module profiler,dottrace. The string-array parameter validates those two names before effects, defaults to both and deduplicates case-insensitively. Only requested packages are downloaded, verified and extracted. Unselected return paths are null, even if an earlier invocation populated that tool. Offline fails on a missing requested archive, never on a missing unrequested one. WhatIf prepares nothing. Example: ./scripts/Initialize-Profilers.ps1 -OutputDirectory ./cache -Module profiler -Offline.
+
+Review: Initialize-Profilers.ps1:12 delegates selection to Get-RunProfilerPackages; RunProfiles.Profiler.Tests.ps1 covers single/both selections, duplicates, invalid/empty inputs, preview and real offline archives. The cache receipt describes this invocation, not an inventory of every prior cache entry. No global installation or module import is performed by preparation.
+
 <!-- credits:begin -->
 ## Credits
 

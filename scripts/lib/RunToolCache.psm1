@@ -6,11 +6,18 @@ function Get-RunProfilerPackages {
     <#
     .SYNOPSIS
     Returns the two checksum-pinned diagnostic packages and their required entrypoints.
+    .PARAMETER Module
+    Selects profiler and/or dottrace, once each in catalogue order. Defaults to both.
     #>
-    @(
+    param([ValidateNotNullOrEmpty()][ValidateCount(1,2)][ValidateSet('profiler','dottrace')][string[]]$Module=@('profiler','dottrace'))
+    $catalogue=@(
         @{ Name = 'Profiler'; Version = '4.3.0'; Url = 'https://www.powershellgallery.com/api/v2/package/Profiler/4.3.0'; SHA256 = '4BB44C89117EABAAFDA17B3DFFA622CFDFC770ED05EB6084469203C66DB43E0F'; Entrypoint = 'Profiler.psd1' }
         @{ Name = 'dotnet-trace'; Version = '10.0.750501'; Url = 'https://api.nuget.org/v3-flatcontainer/dotnet-trace/10.0.750501/dotnet-trace.10.0.750501.nupkg'; SHA256 = 'EF17F25724A55F9685BFAF8506A778EA87C2B62783ECA2CA73263226128B0D4E'; Entrypoint = 'tools/net8.0/any/dotnet-trace.dll' }
     )
+    foreach($package in $catalogue){
+        $key=if($package.Name -ceq 'Profiler'){'profiler'}else{'dottrace'}
+        if($Module -contains $key){$package}
+    }
 }
 
 function Initialize-RunToolCache {

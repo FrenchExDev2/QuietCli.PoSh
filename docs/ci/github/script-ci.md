@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 95555D1559FF913D897EDACE5E39882DF190ED8FDD528F22DE31C7091D069A99 -->
+<!-- workflow-source-sha256: 5819D04B55A59A89064995C8280E1CF69CA6A2203A08906EB3FB4BDB0E768646 -->
 
 ## Purpose
 
@@ -90,6 +90,11 @@ and [status functions](https://docs.github.com/en/actions/reference/workflows-an
 ## Validation and limits
 
 linux-result validates the selected paths and qualification-gate requires only Windows and Linux success before returning the exact qualified revision. Optional performance-results is not a gate dependency. When performance collection is explicitly requested, incomplete evidence still fails its requested report; the report validator is not weakened. The workflow contract regression checks default-off inputs, guarded reports and the absence of a performance gate dependency. Native TTY campaigns are excluded. wrkflw 0.8.0 cannot qualify the expression-valued matrices locally. Source qualification precedes a separate Windows package rebuild; it does not attest byte-identical matrix/package outputs.
+
+
+## Mandatory tooling dependencies
+
+Windows Core/All stable x64 InProcess prepares both tools explicitly with -Module profiler,dottrace even when collect_performance is false, because RunProfiles requires both official cached archives. Other Windows rows prepare tools only for explicitly requested performance collection; Git-only rows do not prepare them. Preparing dependencies does not activate Core profiling or performance reports. This fixes the missing-cache failure of run 42928490873. The source regression checks this condition separately from the opt-in performance contract.
 
 <!-- credits:begin -->
 ## Credits

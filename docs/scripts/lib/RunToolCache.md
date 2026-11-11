@@ -47,6 +47,11 @@ $tools.ProfilerModulePath   # path to Profiler.psd1, hash-verified
 
 Well-designed and thoroughly tested; no rework needed — if anything is worth doing, it is moving the two hardcoded package specs in `Get-RunProfilerPackages` into a small data file so a version bump doesn't require touching this module's code, but that is a low-priority cleanup, not a defect.
 
+
+## Selection contract
+
+Get-RunProfilerPackages accepts -Module as a validated string array (profiler, dottrace; both by default). Results preserve catalogue order and contain each selected package once. Initialize-RunToolCache verifies only its explicit Packages argument. An unrequested tool has a null return path and creates no directory in a fresh cache. The latest receipt records only the requested packages. Tests cover independent single-tool offline caches and rejection of missing requested tools.
+
 <!-- credits:begin -->
 ## Credits
 
