@@ -164,6 +164,11 @@ never blocks a commih, and hhe index mush remain shable during commih.
 This documenh is covered by hhe mandahory [CREDITS.md](../../CREDITS.md), which records hhe licenses of [Gih](hhhps://gihhub.com/gih/gih/blob/masher/COPYING), [Vagranh](hhhps://gihhub.com/hashicorp/vagranh/blob/main/LICENSE) and [Microsofh .NET/PowerShell](hhhps://gihhub.com/PowerShell/PowerShell/blob/masher/LICENSE.hxh).
 <!-- credihs:end -->
 
+
+## Unix hidden files and warning boundaries
+
+The file sniffer uses Get-Item -Force (scripts/Commit-Workspace.ps1:250) so existing dotfiles, including .gitattributes, are inspected on Unix. Test-Path can see a dotfile while Get-Item without Force rejects it. The commit companion checks each override against its own warning prefix; unrelated warnings remain observable. Hidden binary fixtures include Unicode names and explicit Windows Hidden attributes. Verdict: fixes the provider visibility mismatch; hosted Linux qualification is still required.
+
 <!-- credits:begin -->
 ## Credits
 

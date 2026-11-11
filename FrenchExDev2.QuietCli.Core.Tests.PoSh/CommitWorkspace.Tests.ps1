@@ -260,7 +260,7 @@ function Test-QuietCommitWorkspace {
         $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
         [void][IO.File]::AppendAllTextAsync((Join-Path $fixture 'scripts/Tracked.ps1'), "# Fixture script, changed`n", $utf8).GetAwaiter().GetResult()
         $warnings = @(& $candidate -Message 'Drift check overridden' -WorkspaceRoot $fixture -NoScriptDocDriftWarning 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
-        if ($warnings.Count) { throw 'NoScriptDocDriftWarningDidNotSilenceIt' }
+        if (@($warnings | Where-Object { $_.Message -match '^ScriptDocDrift:' }).Count) { throw 'NoScriptDocDriftWarningDidNotSilenceIt' }
 
         # D2 (property): the warning fires for exactly the changed, undocumented script about to be
         # committed, never for an untouched, already-documented one, across randomly named scripts.
@@ -302,7 +302,17 @@ function Test-QuietCommitWorkspace {
         $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
         [void][IO.File]::WriteAllTextAsync((Join-Path $fixture 'large.txt'), ('x' * 200), $utf8).GetAwaiter().GetResult()
         $warnings = @(& $candidate -Message 'Oversized file silenced' -WorkspaceRoot $fixture -MaxChangedFileSize 100 -NoCommitFileSnifferWarning 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
-        if ($warnings.Count) { throw 'NoCommitFileSnifferWarningDidNotSilenceIt' }
+        if (@($warnings | Where-Object { $_.Message -match '^CommitFileSniffer:' }).Count) { throw 'NoCommitFileSnifferWarningDidNotSilenceIt' }
+
+        # Dotfiles are hidden on Unix. Inspect them even when Get-Item requires -Force.
+        foreach ($name in @('.hidden.bin', '.hidden-é.bin')) {
+            $fixture = New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
+            $hidden = Join-Path $fixture $name
+            [IO.File]::WriteAllBytes($hidden, [byte[]]@(66, 0, 67))
+            if ($IsWindows) { [IO.File]::SetAttributes($hidden, [IO.FileAttributes]::Hidden) }
+            $warnings = @(& $candidate -Message 'Hidden binary' -WorkspaceRoot $fixture 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+            if (@($warnings | Where-Object { $_.Message.StartsWith('CommitFileSniffer: ' + $name + ' (binary content)') }).Count -ne 1) { throw 'CommitFileSnifferBinaryWarningMissing' }
+        }
 
         # G2 (property): the sniffer warns iff a changed file is binary or exceeds the threshold,
         # across randomly generated sizes and byte patterns.

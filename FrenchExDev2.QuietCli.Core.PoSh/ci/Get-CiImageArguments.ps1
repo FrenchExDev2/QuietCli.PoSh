@@ -46,6 +46,14 @@ if($platform -ceq 'debian'){
     $arguments.RUNTIME_URL="https://builds.dotnet.microsoft.com/dotnet/Runtime/$($lock.AlpineRuntime)/dotnet-runtime-$($lock.AlpineRuntime)-$RuntimeIdentifier.tar.gz"
     $arguments.RUNTIME_SHA512=$target.Runtime_SHA512
     $toolsArgs+=@('RUNTIME_URL','RUNTIME_SHA512')
+    # The distro PowerShell package does not provide the Gallery packaging cmdlets.
+    # Reuse the already pinned Microsoft archive for managed PSResourceGet only.
+    $donors=@($lock.Platforms|Where-Object Rid -CEQ ('linux-'+$architecture))
+    if($donors.Count -ne 1 -or $donors[0].PowerShell -cnotmatch '\A7\.[6-9]\.\d+\z' -or $donors[0].PowerShell_SHA256 -cnotmatch '\A[a-f0-9]{64}\z'){throw 'CiImagePSResourceGetDonorInvalid'}
+    $donor=$donors[0]
+    $arguments.POWERSHELL_URL="https://github.com/PowerShell/PowerShell/releases/download/v$($donor.PowerShell)/powershell-$($donor.PowerShell)-linux-$architecture.tar.gz"
+    $arguments.POWERSHELL_SHA256=$donor.PowerShell_SHA256
+    $toolsArgs+=@('POWERSHELL_URL','POWERSHELL_SHA256')
 }
 # gcc/clang/etc. only serve a separate, local-only native mutation/ASan/UBSan campaign (docs/ci/linux-images.md);
 # the ordinary CI matrix never uses them, so they are excluded by default and only added when that campaign
@@ -67,6 +75,8 @@ if($platform -ceq 'debian'){
 }else{
     $ciStage.Args=@('POWERSHELL_PACKAGE='+$lock.AlpinePowerShellPackage)
     $ciStage.Copy+=[pscustomobject]@{Stage='tools';Spec='/opt/pwsh-runtime /opt/pwsh-runtime'}
+    $ciStage.Copy+=[pscustomobject]@{Stage='tools';Spec='/opt/powershell/Modules/Microsoft.PowerShell.PSResourceGet /usr/local/share/powershell/Modules/Microsoft.PowerShell.PSResourceGet'}
+    $ciStage.Run=@('pwsh -NoProfile -Command "Get-Command Compress-PSResource -ErrorAction Stop | Out-Null"')
 }
 $containerfile=[pscustomobject]@{
     Platform=$platform

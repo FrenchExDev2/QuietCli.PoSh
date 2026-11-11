@@ -31,6 +31,9 @@ function Test-QuietCiImageRecipe {
         param($Declaration,[string]$Version,[bool]$Alpine)
         $final=@($Declaration.Containerfile.Stages | Where-Object Name -eq ci)[0]
         if($Alpine){
+            if($Declaration.Arguments.POWERSHELL_URL -notmatch '/powershell-7\.[6-9]\.\d+-linux-(x64|arm64)\.tar\.gz\z' -or $Declaration.Arguments.POWERSHELL_SHA256 -cnotmatch '\A[a-f0-9]{64}\z'){throw 'AlpinePSResourceGetDonorNotPinned'}
+            if(@($final.Copy|Where-Object Spec -CEQ '/opt/powershell/Modules/Microsoft.PowerShell.PSResourceGet /usr/local/share/powershell/Modules/Microsoft.PowerShell.PSResourceGet').Count -ne 1){throw 'AlpinePSResourceGetNotCopied'}
+            if(($final.Run -join ' ') -notmatch 'Get-Command Compress-PSResource -ErrorAction Stop'){throw 'AlpinePackagingCapabilityNotChecked'}
             if('powershell=$POWERSHELL_PACKAGE' -cnotin @($final.Packages -split '\s+')){throw 'AlpinePowerShellNotInstalled'}
             if(('POWERSHELL_PACKAGE='+$Version) -cnotin @($final.Args) -or $Declaration.Arguments.POWERSHELL_PACKAGE -cne $Version){throw 'AlpinePowerShellVersionNotLocked'}
             if($final.Env.DOTNET_ROOT -cne '/opt/pwsh-runtime'){throw 'AlpinePowerShellRuntimeRootIncorrect'}
@@ -65,6 +68,7 @@ function Test-QuietCiImageRecipe {
     }
     [void][IO.File]::WriteAllTextAsync($lockPath,$lockText,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     $mutants=@(
+        @{Name='psresourceget-copy-removed';From="`$ciStage.Copy+=[pscustomobject]@{Stage='tools';Spec='/opt/powershell/Modules/Microsoft.PowerShell.PSResourceGet /usr/local/share/powershell/Modules/Microsoft.PowerShell.PSResourceGet'}";To=''},
         @{Name='powershell-installation-removed';From="if(`$platform -ceq 'alpine'){`$ciPackages+=' powershell=`$POWERSHELL_PACKAGE'}";To=''},
         @{Name='powershell-package-unpinned';From=' powershell=$POWERSHELL_PACKAGE';To=' powershell'},
         @{Name='alpine-host-root-points-at-sdk';From="DOTNET_ROOT='/opt/pwsh-runtime'";To="DOTNET_ROOT='/usr/share/dotnet'"},

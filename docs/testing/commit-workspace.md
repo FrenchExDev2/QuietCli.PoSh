@@ -50,6 +50,11 @@ Extract pure option mapping, byte-count parsing, warning classification and comm
 
 This is a source review and classification change. The interrupted All run was explicitly cancelled; it is not a successful qualification. No additional companion campaign was started for the local checkpoint policy change. Existing targeted evidence retains its recorded scope, and the next applicable GitHub workflow must validate the changed runner metadata and remaining contracts.
 
+
+## PR 2 Linux regressions
+
+Warning override assertions select ScriptDocDrift or CommitFileSniffer explicitly instead of requiring every warning stream to be empty. A dotfile fixture is created before inspection; Get-Item requires Force for hidden Unix files. Existing .gitattributes exemption coverage and generated hidden binary names exercise this boundary. The drift-override mutation must still be detected.
+
 <!-- credits:begin -->
 ## Credits
 

@@ -247,7 +247,7 @@ function Test-QuietCommitFileSniffer {
         if (!(Test-Path -LiteralPath $full -PathType Leaf)) { continue }
         $attr = quiet -AsObject -WorkingDirectory $WorkspaceRoot -- git check-attr binary -- $entry.Path
         if ($attr.Outcome -eq 'Success' -and @($attr.Data.Entries).Count -and $attr.Data.Entries[0].Value -ceq 'set') { continue }
-        $size = (Get-Item -LiteralPath $full).Length
+        $size = (Get-Item -LiteralPath $full -Force).Length
         $isBinary = Test-QuietBinaryContent -Path $full
         if ($isBinary -or $size -gt $MaxBytes) {
             $reason = if ($isBinary) { 'binary content' } else { "size $size bytes exceeds $MaxBytes bytes" }

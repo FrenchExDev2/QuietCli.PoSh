@@ -42,6 +42,11 @@ Native qualification also requires all 43 baseline assertions (including process
 
 Native mutation containers have a 1 GiB cgroup memory limit. On musl the fuzzer requires that external limit before disabling its defective internal RSS-monitor thread; ASan, UBSan and LeakSanitizer remain enabled. The delivery guard requires at least 20,000 executed fuzz inputs, all process properties and all 31 targeted mutants. Runtime-leak reproducers are retained for the separate future libFuzzer patch.
 
+
+## Alpine Gallery packaging dependency
+
+Alpine keeps its native PowerShell executable and musl runtime. Its image additionally copies only Microsoft.PowerShell.PSResourceGet from the same-architecture Microsoft archive already pinned by the Debian lock entry. The tools stage verifies that archive SHA-256; no glibc PowerShell executable is copied to the final Alpine image. The build requires Compress-PSResource to resolve. The Alpine smoke probe creates a real nupkg with network disabled. This preparation changes the image fingerprint and leaves guest test execution offline. It neither publishes a package nor bypasses Gallery tests. Missing or malformed donor locks fail explicitly.
+
 <!-- credits:begin -->
 ## Credits
 
