@@ -32,6 +32,7 @@ file by hand, run:
 - [`Get-DotNetBaseImages.ps1`](../../scripts/Get-DotNetBaseImages.ps1) -> [documentation](Get-DotNetBaseImages.md)
 - [`GitHubCi.ps1`](../../scripts/GitHubCi.ps1) -> [documentation](GitHubCi.md)
 - [`Import-DotNetTooling.ps1`](../../scripts/Import-DotNetTooling.ps1) -> [documentation](Import-DotNetTooling.md)
+- [`Initialize-CiCompanions.ps1`](../../scripts/Initialize-CiCompanions.ps1) -> [documentation](Initialize-CiCompanions.md)
 - [`Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.ps1) -> [documentation](Initialize-CiEnvironment.md)
 - [`Initialize-PowerShellHost.ps1`](../../scripts/Initialize-PowerShellHost.ps1) -> [documentation](Initialize-PowerShellHost.md)
 - [`Initialize-Profilers.ps1`](../../scripts/Initialize-Profilers.ps1) -> [documentation](Initialize-Profilers.md)
@@ -64,6 +65,7 @@ file by hand, run:
 - [`Monitor.Time.ps1`](../../scripts/Monitor.Time.ps1) -> [documentation](Monitor.Time.md)
 - [`New-CiImage.ps1`](../../scripts/New-CiImage.ps1) -> [documentation](New-CiImage.md)
 - [`New-CiModuleImage.ps1`](../../scripts/New-CiModuleImage.ps1) -> [documentation](New-CiModuleImage.md)
+- [`New-CiSuiteImage.ps1`](../../scripts/New-CiSuiteImage.ps1) -> [documentation](New-CiSuiteImage.md)
 - [`New-CoreEvidenceBundle.ps1`](../../scripts/New-CoreEvidenceBundle.ps1) -> [documentation](New-CoreEvidenceBundle.md)
 - [`New-CorePerformanceReport.ps1`](../../scripts/New-CorePerformanceReport.ps1) -> [documentation](New-CorePerformanceReport.md)
 - [`New-QuietGalleryPackage.ps1`](../../scripts/New-QuietGalleryPackage.ps1) -> [documentation](New-QuietGalleryPackage.md)
@@ -120,6 +122,7 @@ file by hand, run:
 
 ## `scripts/lib/`
 
+- [`lib/CiCompanions.psm1`](../../scripts/lib/CiCompanions.psm1) -> [documentation](lib/CiCompanions.md)
 - [`lib/DevelopmentWorkstation.psm1`](../../scripts/lib/DevelopmentWorkstation.psm1) -> [documentation](lib/DevelopmentWorkstation.md)
 - [`lib/DotNetLocks.psm1`](../../scripts/lib/DotNetLocks.psm1) -> [documentation](lib/DotNetLocks.md)
 - [`lib/DotNetProvisioning.psm1`](../../scripts/lib/DotNetProvisioning.psm1) -> [documentation](lib/DotNetProvisioning.md)

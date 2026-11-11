@@ -1,5 +1,10 @@
 # WorkspaceProjects.ps1
 
+When build/companions.yml exists, suite names and runner selection come from its independent
+suite declarations through lib/CiCompanions.psm1. Integration suites can name a dedicated exported
+runner and require multiple products without reverse product dependencies. Manifest discovery
+remains available for package/build inventory and fixtures without the YAML.
+
 ## Purpose
 
 The foundational project-discovery library for the entire `scripts/` orchestration layer: it answers

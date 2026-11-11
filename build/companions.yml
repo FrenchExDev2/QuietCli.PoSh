@@ -1,0 +1,37 @@
+schema: 1
+companions:
+  Core:
+    requires: []
+    image: base
+  Git:
+    requires: [Core]
+    image: overlay
+  Vagrant:
+    requires: [Core]
+    image: none
+suites:
+  Core:
+    test_project: FrenchExDev2.QuietCli.Core.Tests.PoSh
+    command: Invoke-QuietCoreTests
+    requires: [Core, Git]
+    core_evidence: true
+  Git:
+    test_project: FrenchExDev2.QuietCli.Git.Tests.PoSh
+    command: Invoke-QuietGitTests
+    requires: [Git]
+    core_evidence: false
+    qualification:
+      - rid: win-x64
+        runtime_major: 11
+        environment:
+          QUIETCLI_GIT_PUSH_MUTATION: '1'
+          QUIETCLI_GIT_COMMAND_MUTATION: '1'
+          QUIETCLI_GIT_QUERY_MUTATION: '1'
+          QUIETCLI_GIT_ATTRIBUTION_MUTATION: '1'
+          QUIETCLI_GIT_PATH_QUERY_MUTATION: '1'
+          QUIETCLI_GIT_REVISION_MUTATION: '1'
+  Vagrant:
+    test_project: FrenchExDev2.QuietCli.Vagrant.Tests.PoSh
+    command: Invoke-QuietVagrantTests
+    requires: [Vagrant]
+    core_evidence: false

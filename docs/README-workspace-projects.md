@@ -23,6 +23,11 @@ are mutually exclusive filters.
 
 ## Projects are actual source modules
 
+CI suite selection additionally reads [build/companions.yml](../build/companions.yml) through
+[CiCompanions](scripts/lib/CiCompanions.md). Its suite declarations can name dedicated integration
+test projects independently of product dependencies. Manifest discovery remains the source/build
+inventory; fixtures without the YAML retain manifest-based suite selection.
+
 Discovery reads immediate `FrenchExDev2.QuietCli.*.PoSh` directories and their matching `.psd1`
 manifests as inert UTF-8 data. Generated directories and archived/extracted modules below them are
 outside this search. Linked project directories/manifests, duplicate names and missing manifests

@@ -148,9 +148,9 @@ function Test-QuietGitHubCiJsonReceipts {
     }
     $adapter='function Get-QuietCiRegistryDigest { param($Plan,$Token,$Actor,[switch]$IncludeConfiguration); return $null }'
     [void][IO.File]::WriteAllTextAsync((Join-Path $scripts CiImages.ps1),$adapter,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-    $plan='param($WorkspaceRoot,$RuntimeIdentifier,$Module,[switch]$PlanOnly); [pscustomobject]@{Platform=$(if($RuntimeIdentifier.Contains("-musl-")){"alpine"}else{"debian"})}'
-    foreach($name in @('New-CiImage.ps1','New-CiModuleImage.ps1')){[void][IO.File]::WriteAllTextAsync((Join-Path $scripts $name),$plan,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}
-    foreach($suite in @('Core','Git','All')){
+    $plan='param($WorkspaceRoot,$RuntimeIdentifier,$Suite,[switch]$PlanOnly); if($Suite -notin @("Core","Git","Vagrant","All")){throw "SuiteNotForwarded"}; [pscustomobject]@{Platform=$(if($RuntimeIdentifier.Contains("-musl-")){"alpine"}else{"debian"})}'
+    foreach($name in @('New-CiSuiteImage.ps1')){[void][IO.File]::WriteAllTextAsync((Join-Path $scripts $name),$plan,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}
+    foreach($suite in @('Core','Git','Vagrant','All')){
         $checkout=Join-Path $fixture ('selector/'+$suite)
         $outputPath=Join-Path $fixture ($suite+'-output.txt')
         [void][IO.File]::WriteAllTextAsync($outputPath,"existing=value`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
@@ -163,7 +163,7 @@ function Test-QuietGitHubCiJsonReceipts {
         if($selection.HasContainer -or !$selection.HasFallback -or @($selection.Fallback.include).Count -ne 4 -or $outputs[0] -cne 'existing=value' -or $outputs -cnotcontains 'has_docker_container_runtime=true' -or $outputs -cnotcontains 'has_container=false'){throw 'GitHubMatrixCleanCheckoutOutputsChanged'}
     }
     if(@(Get-ChildItem -LiteralPath $fixture -Filter '*.tmp' -File -Recurse).Count){throw 'WorkspaceJsonTemporaryFilesLeaked'}
-    Write-WorkspaceJson (Join-Path $RunDirectory 'github-json-receipts.json') @{Seed=$seed;RoundTrips=64;SelectorSuites=@('Core','Git','All');PreviewCases=3;BlockedParentRejected=$true;MutantsKilled=1;RealRegistry=$false;RealHostedRunner=$false}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'github-json-receipts.json') @{Seed=$seed;RoundTrips=64;SelectorSuites=@('Core','Git','Vagrant','All');PreviewCases=4;BlockedParentRejected=$true;MutantsKilled=1;RealRegistry=$false;RealHostedRunner=$false}
 }
 function Test-QuietGitHubCi {
     <#
@@ -266,5 +266,8 @@ function Test-QuietGitHubCi {
     if(!$direct.Contains('Invoke-GitHubCi.ps1') -or $direct -match 'Invoke-ContainerCi|New-CiImage|podman'){throw 'GitHubContainerNestedRuntimeDetected'}
     $fallback=@($jobs['linux-test-driver']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
     if(!$fallback.Contains('-ContainerRuntime docker') -or $fallback.Contains('-PublishCache')){throw 'GitHubFallbackPublicationOrRuntimeChanged'}
+    if($fallback -notmatch 'New-CiSuiteImage\.ps1 -Suite' -or $fallback -match '-Module Git' -or $jobs.ContainsKey('linux-git-images')){throw 'CompanionSpecificWorkflowImageBranch'}
+    $workflowSource=[IO.File]::ReadAllText($workflowPath,[Text.Encoding]::UTF8)
+    if($workflowSource -match "QUIETCLI_GIT_|inputs\.suite\s*!=\s*'Git'"){throw 'CompanionSpecificWorkflowControls'}
     Write-WorkspaceJson (Join-Path $RunDirectory 'github-ci-campaign.json') @{Seed=$seed;PartitionProperties=$properties;MalformedCases=$badInputs.Count;GateCases=$gateCases;MutantsKilled=2;DirectWorkerSameProcess=$true;Workflow=$workflowPath;RealHostedRunner=$false}
 }

@@ -1,5 +1,10 @@
 # New-CiModuleImage.ps1
 
+`ParentPlan` and `ParentImage` compose this overlay over the preceding declared layer. PlanOnly
+requires only ParentPlan; preparation also requires its prepared image. The parent fingerprint
+participates in the child identity. Omitting both retains standalone Core-overlay behavior.
+Suite composition lives in `lib/CiCompanions.psm1`.
+
 Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
 
 `-ContainerRuntime podman|docker` is optional; empty reads checkout `.env`, then discovers Podman before Docker on Windows and Linux and forwards the resolved engine consistently to Core image

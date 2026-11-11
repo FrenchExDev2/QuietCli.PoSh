@@ -6,6 +6,10 @@ The [generated inventory and source dependencies](docs/resources/README.md) desc
 
 Automation that needs a particular resource calls `Ensure-QuietResource` from `scripts/Resources.ps1`. It verifies the declared hash, restores only the corresponding package if needed, verifies the resulting bytes, and optionally loads the required managed type. An already loaded assembly must match the pinned hash; an incompatible assembly requires a fresh process. Workflow documentation uses this function for YamlDotNet in development and CI, without relying on an earlier workflow step.
 
+The CI companion catalogue uses the same pinned YAML reader from `scripts/lib/CiCompanions.psm1`.
+It prepares its own parser dependency and loads no product engine. Preview entry points return
+before preparation; image PlanOnly mode may prepare this parser but performs no native or registry operation.
+
 ```powershell
 #Objective: Preview preparation of the pinned workflow parser.
 . ./scripts/Resources.ps1

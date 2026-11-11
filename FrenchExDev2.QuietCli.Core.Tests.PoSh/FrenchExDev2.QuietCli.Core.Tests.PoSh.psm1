@@ -9,6 +9,7 @@ if(Test-Path -LiteralPath $workspaceHelpers){. $workspaceHelpers}
 . (Join-Path $PSScriptRoot 'ReportPaths.Tests.ps1')
 . (Join-Path $PSScriptRoot 'CiDiagnostics.Tests.ps1')
 . (Join-Path $PSScriptRoot 'GitHubCi.Tests.ps1')
+. (Join-Path $PSScriptRoot 'CiCompanions.Tests.ps1')
 . (Join-Path $PSScriptRoot 'ReadyToRun.Tests.ps1')
 . (Join-Path $PSScriptRoot 'AutomationContracts.Tests.ps1')
 . (Join-Path $PSScriptRoot 'EnvFile.Tests.ps1')
@@ -210,6 +211,7 @@ Executes independent native byte and object invariants in a companion module.
     }
     $cases['CI failure diagnostics preserve redaction bounds and explicit local workflow selection']={Test-QuietCiDiagnostics -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['GitHub CI separates native containers, Docker fallback and workstation launchers']={Test-QuietGitHubCi -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['CI companion declarations separate integration suites and scale without workflow branches']={Test-QuietCiCompanions -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['GitHub CI JSON receipts create missing parents and preserve preview boundaries']={Test-QuietGitHubCiJsonReceipts -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['GitHub CI companion helpers load privately without caller profile dependencies']={Test-QuietCompanionHelperScope -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
     $cases['GitHub CI container inputs include docs and restored packages without secrets or path escapes']={Test-QuietContainerInputs -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
@@ -361,14 +363,14 @@ Executes independent native byte and object invariants in a companion module.
                     $option=$workflow['on'][$trigger]['inputs']['collect_performance']
                     if(!$option -or $option['type'] -cne 'boolean' -or [string]$option['default'] -cne 'false'){throw 'PerformanceMustBeExplicitlyRequested'}
                 }
-                if([string]$jobs['performance-results']['if'] -cne '${{ always() && inputs.collect_performance }}'){throw 'PerformanceAggregationNotOptIn'}
+                if([string]$jobs['performance-results']['if'] -cne '${{ always() && inputs.collect_performance && needs.linux-matrix.outputs.has_core == ''true'' }}'){throw 'PerformanceAggregationNotOptIn'}
                 $prepare=@($jobs['windows']['steps']|Where-Object {$_['name'] -ceq 'Prepare checksum-pinned PowerShell and CLR profilers'})
-                if($prepare.Count -ne 1 -or [string]$prepare[0]['if'] -cne "inputs.suite != 'Git' && (inputs.collect_performance || (matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'))" -or !([string]$prepare[0]['run']).Contains('-Module profiler,dottrace')){throw 'RequiredToolingDependenciesNotPrepared'}
+                if($prepare.Count -ne 1 -or [string]$prepare[0]['if'] -cne "needs.linux-matrix.outputs.has_core == 'true' && (inputs.collect_performance || (matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'))" -or !([string]$prepare[0]['run']).Contains('-Module profiler,dottrace')){throw 'RequiredToolingDependenciesNotPrepared'}
                 foreach($name in @('windows','linux','linux-test-driver')){
                     $runs=@($jobs[$name]['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
                     if($runs.Contains('if($env:QUIETCLI_SUITE -ne ''Git'')')){throw ('UnconditionalProfiling: '+$name)}
                     $reportSteps=@($jobs[$name]['steps']|Where-Object {$_['run'] -match 'New-CorePerformanceReport.ps1'})
-                    if($reportSteps.Count -ne 1 -or [string]$reportSteps[0]['env']['QUIETCLI_COLLECT_PERFORMANCE'] -cne '${{ inputs.collect_performance }}' -or !([string]$reportSteps[0]['run']).Contains('if($env:QUIETCLI_COLLECT_PERFORMANCE -ceq ''true'')')){throw ('PerformanceReportNotOptIn: '+$name)}
+                    if($reportSteps.Count -ne 1 -or [string]$reportSteps[0]['env']['QUIETCLI_COLLECT_PERFORMANCE'] -cne '${{ inputs.collect_performance }}' -or !([string]$reportSteps[0]['run']).Contains('if($env:QUIETCLI_COLLECT_PERFORMANCE -ceq ''true'' -and $env:QUIETCLI_SUITE_HAS_CORE -ceq ''true'')')){throw ('PerformanceReportNotOptIn: '+$name)}
                 }
             }
         }
@@ -764,6 +766,7 @@ Executes independent native byte and object invariants in a companion module.
         $galleryEvidence.Add(@{Packages=$prepared.Packages;Targets=$prepared.Targets;Installation=$r.Data;ExternalPublication=$false})
     }
     $caseMetadata=@{
+        'CI companion declarations separate integration suites and scale without workflow branches'=@{TestKind='Integration';Dependencies=@('FileSystem');NativeTransport='Stubbed'}
         'configuration dotenv preserves literals and deterministic local GitHub presets'=@{TestKind='Integration';Dependencies=@('FileSystem')}
         'GitHub PR push updates preserve previews remote routing and checkpoint identity'=@{TestKind='Integration';Dependencies=@('FileSystem');NativeTransport='Stubbed'}
         'GitHub CI container inputs include docs and restored packages without secrets or path escapes'=@{TestKind='Integration';Dependencies=@('FileSystem')}

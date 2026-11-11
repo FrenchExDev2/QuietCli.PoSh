@@ -8,7 +8,7 @@ it is not a dry run. Neither Docker nor Podman is installed implicitly.
 
 ```powershell
 ./scripts/Invoke-LocalWorkflow.ps1 -WrkflwPath C:/tools/wrkflw.exe -Workflow .github/workflows/ci.yml
-./scripts/Invoke-LocalWorkflow.ps1 -WrkflwPath C:/tools/wrkflw.exe -Mode Run -Job core -TimeoutSeconds 180
+./scripts/Invoke-LocalWorkflow.ps1 -WrkflwPath C:/tools/wrkflw.exe -Mode Run -Job companions -TimeoutSeconds 180
 ```
 
 The Windows launcher opens the shared read-only monitor and prints its reopen command. The worker
@@ -21,7 +21,7 @@ wrkflw 0.8.0 may reject expression-valued matrices even when GitHub accepts them
 Podman commands also need Podman inside the chosen runner environment, beyond wrkflw's own runtime.
 
 Parameters: `-WorkspaceRoot` defaults to the repository; `-WrkflwPath` is mandatory;
-`-Workflow` defaults to `.github/workflows/core-ci.yml`; `-Mode` defaults to `Validate`.
+`-Workflow` defaults to `.github/workflows/companions-ci.yml`; `-Mode` defaults to `Validate`.
 `-Job` is mandatory in `Run` mode. `-Runtime` accepts `podman`, `docker` or `emulation`, defaulting
 to `podman`. `-TimeoutSeconds` defaults to 180 (range 1–1800); `-RunDirectory` selects a new report
 directory. `-Worker` is internal; use the monitored launcher. `-WhatIf` starts no process.

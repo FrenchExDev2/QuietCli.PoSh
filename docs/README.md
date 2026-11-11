@@ -39,6 +39,11 @@ The [agent documentation index](agents/README.md) identifies distributed instruc
 
 ## Development, CI and distribution
 
+- [CI companions and independent integration suites](scripts/lib/CiCompanions.md): YAML declarations,
+  dependency expansion, image composition and shared script entry points.
+- [Add a companion](../README-add-companion.md): product/test projects, Vagrant, dedicated integration
+  runners, image tooling, checks and qualification boundaries.
+
 Repository development follows the root [AGENTS.md](../AGENTS.md). Consumer-project agent instructions are documented separately in the [agent index](agents/README.md).
 
 - [Development](../README-development.md): source checkout, prerequisites and builds.

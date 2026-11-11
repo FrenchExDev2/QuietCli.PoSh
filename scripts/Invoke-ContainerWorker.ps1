@@ -30,8 +30,10 @@ Runs the direct GitHub entry point inside the fallback container, without a nest
 Explicit guest execution deadline, independent of the caller's job deadline.
 .PARAMETER MaxConcurrency
 Maximum number of internal test workers used by parallel-safe guest campaigns.
+.PARAMETER Case
+Development-only Core case wildcard; unavailable for the unfiltered GitHub entry point.
 #>
-[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime,[switch]$GitHubActions,[ValidateRange(1,7200)][int]$TimeoutSeconds=360,[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)))
+[CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime,[switch]$GitHubActions,[ValidateRange(1,7200)][int]$TimeoutSeconds=360,[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)),[string]$Case)
 dynamicparam {
     . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
@@ -40,6 +42,7 @@ dynamicparam {
 end {
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ContainerWorker')){return}
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
+if($Case -and ($Suite -ne 'Core' -or $GitHubActions)){throw 'ContainerCaseRequiresLocalCoreSuite'}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 . (Join-Path $PSScriptRoot 'ContainerInputs.ps1')
 $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
@@ -80,6 +83,7 @@ try{
     if($Suite -ne 'Mutation'){$guestArguments+=@('-MaxConcurrency',$MaxConcurrency)}
     if($SkipTty){if($Suite -eq 'Mutation'){throw 'TtyMutationCannotRunWithSkipTty'};$guestArguments+='-SkipTty'}
     if($Suite -ne 'Mutation'){$guestArguments+=@('-Suite',$Suite)}
+    if($Case){$guestArguments+=@('-Case',$Case)}
     if($Profiler){
         $toolRoot=Join-Path $stage '.profilers'
         [void][IO.Directory]::CreateDirectory($toolRoot)
@@ -116,7 +120,7 @@ try{
         if($inspection.Outcome -ne 'Success' -or $containerState.Value -in @('exited','stopped')){break}
         [void][Threading.Tasks.Task]::Delay(2000).GetAwaiter().GetResult()
     }while($true)
-    $null=Invoke-WorkspaceNative $ContainerRuntime @('cp',($name+':/workspace/artifacts/tests/container-run'),(Join-Path $RunDirectory 'guest')) $WorkspaceRoot -TimeoutSeconds 60
+    $null=Invoke-WorkspaceNative $ContainerRuntime @('cp',($name+':/workspace/artifacts/tests/container-run'),(Join-Path $RunDirectory 'guest')) $WorkspaceRoot -TimeoutSeconds $TimeoutSeconds
     $summary=Get-Content -LiteralPath (Join-Path $RunDirectory 'guest/summary.json') -Encoding utf8 -Raw|ConvertFrom-Json
     if($summary.PSObject.Properties['Suites']){$guestSuites=@($summary.Suites)}
     $exit=@{Value=''}

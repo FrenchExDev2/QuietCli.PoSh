@@ -1,6 +1,6 @@
 # Select-GitHubCiMatrix.ps1
 
-Resolves the selected Core or Git-consumer recipe for all four Linux targets, looks up each fingerprint
+Resolves the YAML-declared suite image through New-CiSuiteImage.ps1 for all four Linux targets, looks up each fingerprint
 in GHCR and verifies its configuration digest, architecture, Linux OS, source and fingerprint labels.
 No image is built or published. Missing/inaccessible images select the approved local Docker fallback;
 unexpected HTTP errors and invalid identities remain explicit failures.
@@ -24,8 +24,10 @@ boundaries` runs the real selector for Core/Git/All with offline image adapters.
 creation from absent directories, GitHub output append and WhatIf no-write behavior, without GHCR
 access. This is filesystem integration evidence, not a hosted-runner or registry qualification.
 
-`-WorkspaceRoot` defaults to the repository. `-Suite` accepts `Core`, `Git` or `All`, defaulting to
-`All`. `-OutputPath` defaults to `GITHUB_OUTPUT`; a missing output path is an error.
+`-WorkspaceRoot` defaults to the repository. `-Suite` accepts a suite declared in
+`build/companions.yml` or `All`, including every declared suite. `-OutputPath` defaults to
+`GITHUB_OUTPUT`; a missing output path is an error. Core's Git test requirement belongs in
+the YAML, so image selection has no companion-specific branch.
 
 <!-- credits:begin -->
 ## Credits

@@ -1,5 +1,12 @@
 # Invoke-ContainerWorker.ps1
 
+`-Case` forwards a development-only Core wildcard to `Invoke-WorkspaceCi.ps1`. The guest
+retains partial-run metadata. It is rejected with other suites or `-GitHubActions`, keeping
+the hosted qualification entry point unfiltered.
+
+Copying the retained guest report uses TimeoutSeconds rather than a fixed 60-second limit;
+the host launcher still bounds the entire run, including transfer and cleanup.
+
 Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
 
 Before container creation, the worker logs the requested image reference, resolved immutable image

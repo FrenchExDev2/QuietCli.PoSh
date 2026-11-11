@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 54C99E151E44B1BFF4B8ADA4E7D42F55909F25C974603ADC2C3D6729C2D78328 -->
+<!-- workflow-source-sha256: 8354A960B4B80E2CCDEE958FA998E77ABFEA7A107A85A679FE890769DACA67A7 -->
 
 ## Purpose
 
@@ -8,7 +8,10 @@ Shared qualification for the selected Core, Git or All source scope across six W
 
 ## Triggers
 
-Reusable workflow_call accepts suite and collect_performance (boolean, default false); workflow_dispatch uses All and exposes the same optional collect_performance checkbox. Core/Git callers provide path-filtered PR/develop events without requesting performance collection. Image publication is restricted in job conditions to upstream develop pushes/manual dispatch; PR images are never published.
+Reusable workflow_call and workflow_dispatch accept a declared suite (default All) and
+collect_performance (boolean, default false). companions-ci.yml provides generic path-filtered
+PR/develop events without requesting performance collection. Image publication remains restricted
+to upstream develop pushes/manual dispatch; PR images are never published.
 
 
 ## .NET SDK source pin
@@ -24,50 +27,64 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 flowchart TD
     event["Triggers: workflow_call, workflow_dispatch"]
     job_linux["linux"]
-    job_linux_git_images["linux-git-images"]
     job_linux_images["linux-images"]
     job_linux_matrix["linux-matrix"]
     job_linux_result["linux-result"]
     job_linux_selection["linux-selection"]
+    job_linux_suite_images["linux-suite-images"]
     job_linux_test_driver["linux-test-driver"]
     job_performance_results["performance-results"]
     job_qualification_gate["qualification-gate"]
     job_windows["windows"]
     job_linux_selection --> job_linux
-    job_linux_matrix --> job_linux_git_images
-    job_linux_images --> job_linux_git_images
     job_linux_matrix --> job_linux_images
     event --> job_linux_matrix
     job_linux_selection --> job_linux_result
     job_linux --> job_linux_result
     job_linux_test_driver --> job_linux_result
+    job_linux_matrix --> job_linux_selection
     job_linux_images --> job_linux_selection
-    job_linux_git_images --> job_linux_selection
+    job_linux_suite_images --> job_linux_selection
+    job_linux_matrix --> job_linux_suite_images
+    job_linux_images --> job_linux_suite_images
     job_linux_selection --> job_linux_test_driver
+    job_linux_matrix --> job_performance_results
     job_windows --> job_performance_results
     job_linux --> job_performance_results
     job_linux_test_driver --> job_performance_results
     job_windows --> job_qualification_gate
     job_linux_result --> job_qualification_gate
-    event --> job_windows
+    job_linux_matrix --> job_windows
 ~~~
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
 | linux | runner ${{ matrix.runner }}; container ${{ matrix.image }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_container == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
-| linux-git-images | runner ${{ matrix.runner }} | linux-matrix, linux-images | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') && ((inputs.suite &#124;&#124; 'All') == 'Git' &#124;&#124; (inputs.suite &#124;&#124; 'All') == 'All') | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiModuleImage.ps1 |
 | linux-images | runner ${{ matrix.runner }} | linux-matrix | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiImage.ps1 |
-| linux-matrix | runner ubuntu-latest |  | default success condition |  |
+| linux-matrix | runner ubuntu-latest |  | default success condition | ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
 | linux-result | runner ubuntu-latest | linux-selection, linux, linux-test-driver | always() | ./scripts/GitHubCi.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
-| linux-selection | runner ubuntu-latest | linux-images, linux-git-images | ${{ always() && !cancelled() && (needs.linux-images.result == 'success' &#124;&#124; needs.linux-images.result == 'skipped') && (needs.linux-git-images.result == 'success' &#124;&#124; needs.linux-git-images.result == 'skipped') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Select-GitHubCiMatrix.ps1 |
-| linux-test-driver | runner ${{ matrix.runner }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_docker_container_runtime == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CiImage.ps1, ./scripts/New-CiModuleImage.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
-| performance-results | runner ubuntu-latest | windows, linux, linux-test-driver | ${{ always() && inputs.collect_performance }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CorePerformanceReport.ps1 |
+| linux-selection | runner ubuntu-latest | linux-matrix, linux-images, linux-suite-images | ${{ always() && !cancelled() && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' &#124;&#124; needs.linux-images.result == 'skipped') && (needs.linux-suite-images.result == 'success' &#124;&#124; needs.linux-suite-images.result == 'skipped') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Select-GitHubCiMatrix.ps1 |
+| linux-suite-images | runner ${{ matrix.runner }} | linux-matrix, linux-images | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiSuiteImage.ps1 |
+| linux-test-driver | runner ${{ matrix.runner }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_docker_container_runtime == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CiSuiteImage.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
+| performance-results | runner ubuntu-latest | linux-matrix, windows, linux, linux-test-driver | ${{ always() && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 | qualification-gate | runner ubuntu-latest | windows, linux-result | ${{ always() }} | ./scripts/Assert-QualificationGate.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
-| windows | runner ${{ matrix.image }} |  | default success condition | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
+| windows | runner ${{ matrix.image }} | linux-matrix | default success condition | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 
 <!-- workflow-generated:end -->
 
 ## Scripts and effects
+
+`build/companions.yml` separates product dependencies, image participation and independent test
+suites. Initialize-CiCompanions.ps1 exports Core-evidence policy and RID/CLR-matched controls through
+scripts/lib/CiCompanions.psm1. The shared workflow contains no companion-specific mutation variables
+or image branch. New-CiSuiteImage.ps1 composes the declared layers for linux-suite-images, registry
+selection and the non-publishing Docker fallback. Core's commit test declares its Git requirement
+there, fixing Debian's Unsupported status result with distro Git 2.39 on x64 and ARM64.
+
+Core/Vagrant integration tests can declare their own test module/runner and both required products;
+Core's product graph remains unchanged. The shared entry wildcard covers future companion and
+integration test directories. Image caching and test scheduling optimization are not part of this
+generalization.
 
 All native/job-container build steps and Docker test-driver preparation use `Build-Workspace.ps1`, as does the local launcher. It compiles `Quietly.slnx` once, prepares portable outputs from `Get-QuietWorkspaceBuildProjects` using `dotnet publish --no-build`, then performs the existing RID/ReadyToRun engine publications. Binary identity reads the same manifest declarations. Container staging preserves `Quietly.slnx` and `Directory.Build.props`. No additional solution-only step recompiles the same projects in a matrix row. These source contracts do not establish that the hosted matrix has executed.
 
@@ -94,7 +111,11 @@ linux-result validates the selected paths and qualification-gate requires only W
 
 ## Mandatory tooling dependencies
 
-Windows Core/All stable x64 InProcess prepares both tools explicitly with -Module profiler,dottrace even when collect_performance is false, because RunProfiles requires both official cached archives. Other Windows rows prepare tools only for explicitly requested performance collection; Git-only rows do not prepare them. Preparing dependencies does not activate Core profiling or performance reports. This fixes the missing-cache failure of run 42928490873. The source regression checks this condition separately from the opt-in performance contract.
+Windows selections declaring Core evidence prepare both tools on stable x64 InProcess with
+-Module profiler,dottrace even when collect_performance is false, because RunProfiles requires both
+official cached archives. Other Windows rows prepare them only for requested Core performance
+collection. Tool dependencies alone do not enable Core evidence. Preparing tools does not activate
+profiling or reports. The source regression checks this separately from the opt-in contract.
 
 <!-- credits:begin -->
 ## Credits

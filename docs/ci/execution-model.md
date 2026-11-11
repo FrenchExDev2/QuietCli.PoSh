@@ -125,8 +125,7 @@ The separate manual A/B workflow compares an IL baseline with an R2R candidate. 
 | Workflow | Execution environment |
 | --- | --- |
 | `ci.yml` | Native Windows; verified Linux job containers; Docker image preparation/fallback on native Ubuntu runners. No Podman dependency in this workflow. |
-| `core-ci.yml` | Reuses `ci.yml` with `suite=Core`. |
-| `git-ci.yml` | Reuses `ci.yml` with `suite=Git`. |
+| `companions-ci.yml` | Reuses `ci.yml` with `suite=All` from the companion/suite YAML; wildcard paths cover future companions and integration test projects. |
 | `publish-psgallery.yml` | Reuses `ci.yml` with `suite=All`; packaging/publication jobs are Windows-native. |
 | `preview-psgallery.yml` | Reuses `publish-psgallery.yml` and its qualification gate. |
 | `quietcli2-readytorun.yml` | Separate manual profiling workflow: native Windows, Docker on native Linux runners, direct cold-start worker without a desktop launcher. Informational; never a develop gate. |

@@ -10,7 +10,7 @@ profile modification or workflow execution is part of workstation setup.
 
 [`Invoke-LocalWorkflow.ps1`](Invoke-LocalWorkflow.md) provides a focused, monitored local
 validation/execution entry point with explicit job/runtime selection and `-WhatIf`. The real
-`core-ci.yml` run reaches the reusable `ci.yml`, where wrkflw 0.8.0 rejects expression-valued matrices
+`companions-ci.yml` reaches the reusable `ci.yml`, where wrkflw 0.8.0 rejects expression-valued matrices
 before executing jobs. This is an explicit local-run qualification gap, not a GitHub YAML error.
 
 The other helpers below remain **planned, not implemented**. They are not entries in the generated

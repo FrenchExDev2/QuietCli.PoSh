@@ -150,7 +150,10 @@ function Get-QuietWorkspaceSuiteNames {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Host','Container')][string]$Scope='Host')
     $special=if($Scope -eq 'Container'){@('All','Import','Integration','Mutation')}else{@('All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview','DotNet')}
-    $suites=@(Get-QuietWorkspaceTestSuites $WorkspaceRoot)
+    $suites=@(if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot 'build/companions.yml')){
+        Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanions.psm1')
+        (Read-QuietCiCompanions $WorkspaceRoot).Suites.Values
+    }else{Get-QuietWorkspaceTestSuites $WorkspaceRoot})
     foreach($suite in $suites){if($special -contains $suite.Name){throw ('WorkspaceSuiteNameConflict: '+$suite.Name)}}
     @($suites.Name)+$special
 }
@@ -186,6 +189,17 @@ function Get-QuietWorkspaceSuiteSelection {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[string]$Suite='All')
+    if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot 'build/companions.yml')){
+        Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanions.psm1')
+        $configuration=Read-QuietCiCompanions $WorkspaceRoot
+        $selection=Resolve-QuietCiCompanions $configuration -Suite $Suite
+        foreach($name in $selection.Selected){
+            $entry=$configuration.Suites[$name]
+            $project=if($configuration.Companions.Contains($name)){'FrenchExDev2.QuietCli.'+$name+'.PoSh'}else{$entry.TestsModule}
+            [pscustomobject]@{Name=$name;Project=$project;ProjectDirectory=(Join-Path $WorkspaceRoot $project);TestsModule=$entry.TestsModule;TestsManifest=$entry.TestsManifest;Command=$entry.Command}
+        }
+        return
+    }
     $suites=@(Get-QuietWorkspaceTestSuites $WorkspaceRoot)
     if($Suite -eq 'All'){return $suites}
     $selected=@($suites | Where-Object Name -IEQ $Suite)

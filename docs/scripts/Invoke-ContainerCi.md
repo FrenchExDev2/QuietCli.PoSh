@@ -1,5 +1,9 @@
 # Invoke-ContainerCi.ps1
 
+For a focused Linux regression, use `-Suite Core -Case '*commit workspace*'`. The wildcard
+is forwarded to the guest's existing case selector; its report remains partial and cannot
+qualify a release. Other suites reject `-Case`. `-TimeoutSeconds` also bounds the guest worker.
+
 Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
 
 This is the local workstation container launcher. `-ContainerRuntime docker|podman` explicitly

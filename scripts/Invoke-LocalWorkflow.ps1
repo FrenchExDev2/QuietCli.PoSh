@@ -23,7 +23,7 @@ Internal background entry point. Use the monitored launcher locally.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$WrkflwPath,
-    [ValidatePattern('^\.github/workflows/[\w.-]+\.ya?ml$')][string]$Workflow='.github/workflows/core-ci.yml',
+    [ValidatePattern('^\.github/workflows/[\w.-]+\.ya?ml$')][string]$Workflow='.github/workflows/companions-ci.yml',
     [ValidateSet('Validate','Run')][string]$Mode='Validate',[ValidatePattern('^[\w.-]+$')][string]$Job,
     [ValidateSet('podman','docker','emulation')][string]$Runtime='podman',
     [ValidateRange(1,1800)][int]$TimeoutSeconds=180,[string]$RunDirectory,[switch]$Worker)

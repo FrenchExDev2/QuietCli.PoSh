@@ -1,5 +1,12 @@
 # CiImages.ps1
 
+`Get-QuietCiModuleImagePlan -ParentPlan` composes an overlay over an explicitly preceding layer;
+without it, Core remains the parent. Its fingerprint participates in the resulting identity,
+so a changed intermediate layer invalidates every descendant.
+
+`Get-QuietCiVerifiedImage` validates the local image ID, Linux architecture, input fingerprint
+and source label with bounded metadata. Both build receipts and explicit parent layers use it.
+
 ## Purpose
 
 The local architecture/build helpers accept an empty ContainerRuntime and use the shared

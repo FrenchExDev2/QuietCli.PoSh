@@ -146,12 +146,42 @@ function Get-QuietCiModuleImagePlan {
     Ordered build-arg map contributed by the module's own ci script.
     .PARAMETER ModuleInputPaths
     Workspace-relative paths (the module's own fetch script, locks) hashed into the fingerprint.
+    .PARAMETER ParentPlan
+    Preceding layer plan; its fingerprint invalidates every dependent overlay when changed.
     #>
-    param([string]$WorkspaceRoot,[ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[Parameter(Mandatory)][string]$Module,[Parameter(Mandatory)]$ContainerfileFragment,[Parameter(Mandatory)]$ModuleArguments,[Parameter(Mandatory)][string[]]$ModuleInputPaths)
-    $core=Get-QuietCiImagePlan $WorkspaceRoot $RuntimeIdentifier
+    param([string]$WorkspaceRoot,[ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[Parameter(Mandatory)][string]$Module,[Parameter(Mandatory)]$ContainerfileFragment,[Parameter(Mandatory)]$ModuleArguments,[Parameter(Mandatory)][string[]]$ModuleInputPaths,$ParentPlan)
+    $core=if($ParentPlan){$ParentPlan}else{Get-QuietCiImagePlan $WorkspaceRoot $RuntimeIdentifier}
     $containerfileText=Get-QuietModuleContainerfile -Platform $ContainerfileFragment.Platform -Objective $ContainerfileFragment.Objective -Stages $ContainerfileFragment.Stages
     $fingerprint=Get-QuietCiFingerprint -WorkspaceRoot $WorkspaceRoot -InputPaths $ModuleInputPaths -ContainerfileText $containerfileText -ParentFingerprint $core.Fingerprint
     [pscustomobject]@{Rid=$RuntimeIdentifier;Architecture=$core.Architecture;Platform=$core.Platform;Core=$core;ContainerfileText=$containerfileText;Arguments=$ModuleArguments;Fingerprint=$fingerprint;RegistryPath="frenchexdev2/quietcli2-ci-$($core.Platform)-$($core.Architecture)-$($Module.ToLowerInvariant())";Source='https://github.com/FrenchExDev2/QuietCli.PoSh'}
+}
+function Get-QuietCiVerifiedImage {
+    <# .SYNOPSIS
+    Verifies local image identity, architecture and labels before using an image or parent layer.
+    .PARAMETER Plan
+    Expected immutable input identity and native architecture.
+    .PARAMETER Reference
+    Already prepared local image; never pulled here.
+    .PARAMETER ContainerRuntime
+    Selected native adapter.
+    #>
+    param($Plan,[string]$Reference,[string]$ContainerRuntime)
+    $observed=@{Json=[Text.StringBuilder]::new()}
+    $inspection=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('image','inspect',$Reference) -TimeoutSeconds 30 -State $observed -OnOutput {
+        param($event,$state)
+        if($event.Stream -eq 'stdout'){
+            if($state.Json.Length+$event.Text.Length -gt 65536){throw 'CiImageMetadataTooLarge'}
+            [void]$state.Json.Append($event.Text)
+        }
+    }
+    if($inspection.Outcome -ne 'Success'){throw 'CiImageInspectionFailed'}
+    $items=@($observed.Json.ToString()|ConvertFrom-Json)
+    if($items.Count -ne 1){throw 'CiImageIdentityMismatch'}
+    $info=$items[0]
+    $expected=if($Plan.Architecture -eq 'x64'){'amd64'}else{'arm64'}
+    $labels=if($info.PSObject.Properties['Labels']){$info.Labels}else{$info.Config.Labels}
+    if($info.Id -cnotmatch '\A(?:sha256:)?[a-f0-9]{64}\z' -or $info.Architecture -cne $expected -or $info.Os -cne 'linux' -or $labels.'org.frenchexdev.quietcli2.inputs' -cne $Plan.Fingerprint -or $labels.'org.opencontainers.image.source' -cne $Plan.Source){throw 'CiImageIdentityMismatch'}
+    $info
 }
 function Get-QuietCiLocalImageArchitecture {
     <#
@@ -361,13 +391,7 @@ function Invoke-QuietCiImageBuild {
             $null=Invoke-WorkspaceNative $ContainerRuntime $arguments $WorkspaceRoot -TimeoutSeconds 1800 -LogPath $logPath
             $image=$tag
         }
-        $observed=@{Json=[Text.StringBuilder]::new()}
-        $inspection=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('image','inspect',$image) -TimeoutSeconds 30 -State $observed -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Json.Append($e.Text)}}
-        if($inspection.Outcome -ne 'Success'){throw 'CiImageInspectionFailed'}
-        $info=@($observed.Json.ToString()|ConvertFrom-Json)[0]
-        $expected=if($Plan.Architecture -eq 'x64'){'amd64'}else{'arm64'}
-        $labels=if($info.PSObject.Properties['Labels']){$info.Labels}else{$info.Config.Labels}
-        if($info.Architecture -cne $expected -or $info.Os -cne 'linux' -or $labels.'org.frenchexdev.quietcli2.inputs' -cne $Plan.Fingerprint -or $labels.'org.opencontainers.image.source' -cne $Plan.Source){throw 'CiImageIdentityMismatch'}
+        $info=Get-QuietCiVerifiedImage -Plan $Plan -Reference $image -ContainerRuntime $ContainerRuntime
         if($PublishCache -and !$cacheHit){
             if(!$token){throw 'CiRegistryCredentialMissing'}
             $digestFile=Join-Path $directory registry.digest

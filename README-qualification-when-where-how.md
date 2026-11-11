@@ -6,17 +6,19 @@ GitHub qualification builds the solution **and executes the selected companion t
 
 ## When tests run
 
-The path-filtered callers select which suites enter the shared [ci.yml](.github/workflows/ci.yml) workflow:
+The shared [companions-ci.yml](.github/workflows/companions-ci.yml) caller selects suites for
+[ci.yml](.github/workflows/ci.yml):
 
-- [core-ci.yml](.github/workflows/core-ci.yml) selects `Core` for PRs and `develop` pushes changing Core/Core.Tests, `scripts/**`, `build/**`, `.github/**`, `global.json`, `Quietly.slnx`, `Directory.Build.props`, `Directory.Packages.props`, `AGENTS.md` or `.gitattributes`.
-- [git-ci.yml](.github/workflows/git-ci.yml) selects `Git` for PRs and `develop` pushes changing Git/Git.Tests, its own workflow, `Quietly.slnx`, `Directory.Build.props` or `Directory.Packages.props`.
-- Opening a matching PR or updating its branch triggers the applicable PR workflows. Both callers can run for the same revision; Core and Git then have separate test matrices and qualification gates. A skipped caller due to its path filter is not evidence that its suite passed.
-- A manual dispatch of `ci.yml` uses `All`. The reusable workflow accepts `suite`, defaulting to `All`; the Core/Git callers explicitly override that default.
+- PRs and `develop` pushes matching `FrenchExDev2.QuietCli.*.PoSh/**` or shared automation/build/workflow/SDK/policy files request `All`. The wildcard includes Vagrant and future integration test projects, without a new workflow per companion.
+- Opening a matching PR or updating its branch triggers this one caller. A path-filtered skip is not qualification evidence. Changed-suite selection and image/scheduling optimization remain separate work.
+- Manual dispatch and reusable calls accept a YAML-declared `suite`, defaulting to `All`.
 - [publish-psgallery.yml](.github/workflows/publish-psgallery.yml) requests `All` qualification before packaging. Its Windows packaging job also rebuilds and rechecks the distributions. Publication has its own input and protected environment; qualification does not itself authorize publication.
 
-`All` expands to the dependency-ordered companions discovered from manifests: currently Core, Git and Vagrant. It is an execution mode, not a module. Selecting `Git` imports required dependencies but does not execute the complete Core companion suite merely because that module is imported.
-
-**Current Vagrant trigger gap:** neither PR caller selects Vagrant-only changes. A PR changing only Vagrant/Vagrant.Tests does not automatically run that suite through these two callers. Vagrant is covered when `All` is selected, including the publication qualification path and manual shared workflow. Adding a consumer to the project/build catalogue does not automatically create its GitHub trigger policy.
+`All` expands to the independent suites in [build/companions.yml](build/companions.yml), currently
+Core, Git and Vagrant. Products and suites are separate declarations: an integration suite can
+require Core and Vagrant and name its own test runner. Tool requirements do not execute another
+suite implicitly. Core's commit test requires Git's supported toolchain, but Core-only selection
+does not execute Git's mutation campaigns. See [the CI catalogue](docs/scripts/lib/CiCompanions.md).
 
 Local commits and pushes do not launch local companion suites. [Commit-Workspace.ps1](scripts/Commit-Workspace.ps1) checks source/documentation contracts and the source lock. [Push-Workspace.ps1](scripts/Push-Workspace.ps1) pushes and updates the existing PR; the resulting PR event can start GitHub tests independently.
 
