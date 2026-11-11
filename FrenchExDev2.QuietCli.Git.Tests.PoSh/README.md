@@ -28,6 +28,13 @@ Set QUIETCLI_GIT_COMMAND_MUTATION=1 to request eight source-checked C# repositor
 
 ## Query parser qualification
 
+The shared parser mutation runner stages `global.json`, `Directory.Build.props` and
+`Directory.Packages.props` above every isolated project. Baselines and mutants therefore
+retain the workspace SDK selection, central package versions and warning-as-error policy.
+Missing build inputs fail explicitly. A failed build reports its log path and up to three
+distinct compiler/restore error lines (at most 1,200 characters) in the CI case error;
+the complete diagnostic stays in the campaign's `baseline/build.log` or mutant `build.log`.
+
 Queries.Tests.ps1 adds five independent native workflows for twelve commands. QueryCases.cs adds six compiled cases: generated SHA-1/SHA-256 IDs/parents (seed 73051), generated index modes/stages/path boundaries (seed 73052), symbolic/peeled/raw refs, counters/alternates/rejection, versions, and 20,000 bounded malformed inputs across four parsers (seed 73053). No partial rows may survive rejection.
 
 The compiled runner now contains 28 cases. Set QUIETCLI_GIT_QUERY_MUTATION=1 for the eight source-checked query mutations. Parser.Mutation.ps1 is the shared runner; mutation/catalogues.json owns the separate Push, Repository and Query catalogues. The old environment selectors still work. The common CI selects Query alongside the earlier catalogues only in Windows Preview x64 qualification. A normal development run has 48 scenarios; enabling only Query produces 49. Reports are retained under artifacts/git-query-mutation and artifacts/tests/git-query-{stable,preview}-1. Timing is bounded per build/execution; survivors, invalid mutants, timeouts and infrastructure errors fail the campaign.
