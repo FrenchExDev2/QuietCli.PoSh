@@ -109,10 +109,7 @@ their metadata asks for publication. The reasons are:
 | `PublicationNotDeclared` | Eligibility is absent and defaults to false |
 | `TestProject` | A test companion is excluded |
 
-Currently only the public `FrenchExDev2.QuietCli.Core.PoSh` Core package is eligible. Package identity follows the root `.psm1` and matching manifest, as checked by [Get-ModulePackageName](scripts/Get-ModulePackageName.md). Git and Vagrant explicitly declare
-`$false`; every test companion is excluded. The existing Gallery preparer/verifier still permits
-exactly the public Core package. Changing metadata does not authorize publication or extend that
-publisher's supported package set; its qualification and explicit publication gates remain required.
+Core and Git explicitly declare publication eligibility; Vagrant remains disabled and every test companion is excluded. Package identity follows the root .psm1/matching manifest through [Get-ModulePackageName](scripts/Get-ModulePackageName.md). GalleryRelease reuses this workspace discovery for release aliases, full names and All; no duplicate publication YAML is introduced. Each prepared artifact contains exactly one selected business module with validated identity, dependencies and declared compiled outputs. The existing build/companions.yml still declares the CI suites/images that must qualify a new companion before publication.
 
 ## Validation
 

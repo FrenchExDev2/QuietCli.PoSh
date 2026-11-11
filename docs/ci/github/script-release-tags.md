@@ -1,14 +1,14 @@
 # release-tags.yml
 
-<!-- workflow-source-sha256: 77A8295E92B181AE1924FA9DEBEA3D5B05658CCE05E8A8D39DC5F6EFB27CE9B2 -->
+<!-- workflow-source-sha256: 7F68B3EC1D35E444510608D010F02375DB6EB2E4C4D6B330BDC5088DF95B3F5B -->
 
 ## Purpose
 
-Explicit, independently versioned module release requests. Core publication is available; Git and Vagrant namespaces remain reserved behind their existing publication capability boundaries.
+Explicit independently versioned business-module releases. Core and Git are enabled by their existing manifests; Vagrant remains disabled. Test modules are never release targets.
 
 ## Triggers
 
-Tag pushes matching `FrenchExDev2.QuietCli.Core.PoSh/v*`, `FrenchExDev2.QuietCli.Git.PoSh/v*` or `FrenchExDev2.QuietCli.Vagrant.PoSh/v*`. No branch push, PR or manual dispatch trigger. Only the original repository runs the plan. Pushing a tag requests publication; creating a local tag does not.
+Push tags matching FrenchExDev2.QuietCli.*.PoSh/v*. The wildcard supplies routing, not permission: the plan discovers the exact owner and requires its publication flag/version. No branch, PR or manual trigger. Only the original repository runs the plan.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
@@ -33,11 +33,13 @@ flowchart TD
 
 ## Scripts and effects
 
-`Get-QuietReleasePlan.ps1` validates the exact tag against its owning manifest and public packaging capability before emitting the version. Invalid and currently unavailable companion tags fail before the expensive qualification workflow. Successful plans invoke `publish-psgallery.yml` with the exact version and publication intent. That workflow runs full All qualification with matrix profiling, rebuilds and checks the packaging build, uploads immutable prepared bytes, revalidates the tag/package identity and publishes through the `psgallery` environment.
+Get-QuietReleasePlan derives module/component/version from existing workspace manifests and the script-module identity reader. Invalid, mismatching, disabled and test targets fail before qualification. The release job passes the exact module and version to publish-psgallery, which runs full All qualification with profiling, verifies the packaging build and publishes one selected immutable package after tag/package validation.
+
+Operator-generated tags are collision-checked locally/remotely before edits, never forced, and only selected refs are pushed. Separate module tags start independent workflows; a compatible Core dependency must already be available for Git publication. This workflow does not create GitHub Releases or order independent public dependency releases.
 
 ## Validation and limits
 
-Local tests check malformed tags, independent manifest versions, blocked companions, no-write preview and publication event boundaries. Hosted qualification/publication is separate evidence. This workflow does not create GitHub Releases or push tags. It does not modify environment policies: configure a **tag** deployment rule matching `FrenchExDev2.QuietCli.Core.PoSh/v*` and retain `PSGALLERY_API_KEY` in that environment. Existing approval protections still apply. Legacy `v<version>-preview<timestamp>` tags remain outside the release filters.
+Local tests cover dynamic targets, numeric previews, exact versions, disabled targets, local/remote collisions, no-write previews and private bare-remote pushes. GalleryPreview validates Core/Git packages and isolated imports. Hosted execution and actual Gallery availability remain separate evidence. Configure the psgallery environment to allow release tags for both enabled package namespaces (or the reviewed common FrenchExDev2.QuietCli.*.PoSh/v* pattern). Existing approval protections and PSGALLERY_API_KEY stay in that environment.
 
 <!-- credits:begin -->
 ## Credits

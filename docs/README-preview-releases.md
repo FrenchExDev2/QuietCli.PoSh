@@ -28,7 +28,7 @@ Merge into `develop` runs qualification and profiling without Gallery publicatio
 | Tag example | Package | Current capability |
 | --- | --- | --- |
 | `FrenchExDev2.QuietCli.Core.PoSh/v0.2.0-preview` | Existing `FrenchExDev2.QuietCli.Core.PoSh` | Available after full tagged-revision qualification |
-| `FrenchExDev2.QuietCli.Git.PoSh/v0.2.0-preview` | Existing `FrenchExDev2.QuietCli.Git.PoSh` | CI release rejected while the manifest is nonpublishable and companion packaging is unavailable |
+| `FrenchExDev2.QuietCli.Git.PoSh/v0.2.0-preview1` | Existing `FrenchExDev2.QuietCli.Git.PoSh` | Enabled; parser payload/dependency validation and isolated installation required |
 | `FrenchExDev2.QuietCli.Vagrant.PoSh/v0.1.0-preview` | `FrenchExDev2.QuietCli.Vagrant.PoSh` | CI release rejected while the manifest is nonpublishable and companion packaging is unavailable |
 
 The tag must exactly match the owning source manifest's numeric version and optional prerelease suffix. Stable publication requires a manifest without `PSData.Prerelease`. No CI version override or automatic numeric bump occurs. Test modules remain internal and are not Gallery releases.
@@ -42,9 +42,11 @@ $release = ./scripts/New-QuietPreviewTag.ps1 -Release
 $release.Tag
 ```
 
-The creation script never pushes. Explicitly pushing that one namespaced tag to GitHub requests publication through `release-tags.yml`: validate tag/capability, qualify `All` with matrix profiling, rebuild/verify packaging, prepare the exact manifest version, then download/validate/publish the same bytes. No GitHub Release is created automatically. A new commit needs a new package version once that identity is public; rerunning never overwrites it.
+For commit/tag/push orchestration, use New-QuietPreviewTag.ps1 with Version and one or more Module aliases. NextPreview computes preview1, preview2, etc. independently per module/base from exact local and remote tags; Preview accepts an explicit number or null. Example: `./scripts/New-QuietPreviewTag.ps1 -Module Core,Git -Version 0.3.0 -NextPreview -WhatIf`. Remove WhatIf to execute, or use NoPush for local commits/tags. NoCommit requires versions already committed. Existing local or remote tags are refused without force. See [all operator options and recovery rules](scripts/New-QuietPreviewTag.md).
 
-Publish a compatible Core version before a companion that depends on it. Companion CI activation requires preserving its existing script-module/package name and `RequiredModules` dependency on `FrenchExDev2.QuietCli.Core.PoSh`, validating its own package and testing offline installation/import. A Git Gallery entry already exists; the remaining boundary is CI packaging/publication capability. Versions advance independently, and a Core release does not imply republishing every companion. Partial Git/Vagrant qualification remains explicit, including real-provider gaps. Changing `Publishable` alone does not implement this contract.
+Namespaced tag pushes request publication through release-tags.yml: validate the selected manifest, qualify All with profiling, prepare one verified selected package and publish those bytes. Legacy local timestamp/exact-manifest tag modes without Version still never push. No GitHub Release is created automatically, and a published identity is never overwritten.
+
+Publish a compatible Core version before a companion that depends on it. Git CI publication now preserves its existing script-module/package name and RequiredModules dependency, validates net10.0/net11.0 parser payloads and exercises isolated installation plus a Git handler. Versions advance independently; a Core release does not imply republishing every companion. Partial command/version and real-provider qualification remains explicit.
 
 ## Create a local timestamped Git tag
 

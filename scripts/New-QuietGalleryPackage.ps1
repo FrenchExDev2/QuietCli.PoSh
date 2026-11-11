@@ -1,7 +1,7 @@
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Creates the public Core nupkg without contacting or publishing to a repository.
+Creates one selected business-module nupkg without contacting or publishing to a repository.
 .PARAMETER WorkspaceRoot
 QuietCli2 workspace.
 .PARAMETER OutputDirectory
@@ -12,13 +12,18 @@ Optional expected package version; source manifests must match unless a staged P
 Optional alphanumeric label applied only to staged manifests. Source versions, GUIDs and files stay unchanged.
 .PARAMETER RequireReadyToRun
 Requires verified Release ReadyToRun engines for every packaged RID and CLR before compression.
+.PARAMETER Module
+Discovered component alias or full package name; Core by default.
 #>
-[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputDirectory,[string]$Version,[string]$Prerelease,[switch]$RequireReadyToRun)
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputDirectory,[string]$Version,[string]$Prerelease,[switch]$RequireReadyToRun,[string]$Module='Core')
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-QuietGalleryPackage')){return}
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1');. (Join-Path $PSScriptRoot 'Gallery.ps1')
+$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1');Import-Module (Join-Path $PSScriptRoot 'lib/Gallery.psm1')
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path);$OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 if(Test-Path -LiteralPath $OutputDirectory){throw 'GalleryOutputAlreadyExists'}
-$sourceName='FrenchExDev2.QuietCli.Core.PoSh'
+Import-Module (Join-Path $PSScriptRoot 'lib/GalleryRelease.psm1')
+$target=@(Select-QuietGalleryReleaseTargets -WorkspaceRoot $WorkspaceRoot -Module $Module)
+if($target.Count -ne 1){throw 'GallerySinglePackageRequired'}
+$sourceName=$target[0].Project
 $identity=Get-QuietGalleryModuleIdentity (Join-Path $WorkspaceRoot "$sourceName/$sourceName.psm1")
 $publicName=$identity.Name
 $manifest=Import-PowerShellDataFile (Join-Path (Join-Path $WorkspaceRoot $sourceName) ($sourceName+'.psd1'))
@@ -32,13 +37,14 @@ if($PSBoundParameters.ContainsKey('Prerelease')){
 }
 if($Version -and $Version -cne $release){throw 'GalleryReleaseVersionMismatch'}
 $stage=Join-Path $OutputDirectory workspace-packages
-$null=& (Join-Path $PSScriptRoot 'New-WorkspacePackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $stage -RequireReadyToRun:$RequireReadyToRun
+$corePackage=$target[0].Component -ceq 'Core'
+$null=& (Join-Path $PSScriptRoot 'New-WorkspacePackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $stage -Module $sourceName -RequireReadyToRun:($RequireReadyToRun -and $corePackage)
 $publicStage=Join-Path $OutputDirectory 'public-modules'
 [void][IO.Directory]::CreateDirectory($publicStage)
 Copy-QuietGalleryCoreModule -SourceDirectory (Join-Path $stage $sourceName) -ModuleDirectory (Join-Path $publicStage $publicName)
 $modulePath=$env:PSModulePath;$packages=[Collections.Generic.List[object]]::new()
 try{
-    $env:PSModulePath=$publicStage+[IO.Path]::PathSeparator+$modulePath
+    $env:PSModulePath=$publicStage+[IO.Path]::PathSeparator+$WorkspaceRoot+[IO.Path]::PathSeparator+$modulePath
     foreach($name in @($publicName)){
         $module=Join-Path $publicStage $name
         if($PSBoundParameters.ContainsKey('Prerelease')){Set-QuietGalleryStagedPrerelease -Path (Join-Path $module ($name+'.psd1')) -Prerelease $Prerelease}
@@ -48,7 +54,7 @@ try{
         $packages.Add(@{Module=$name;File=[IO.Path]::GetFileName($path);SHA256=(Get-FileHash $path -Algorithm SHA256).Hash;Bytes=(Get-Item $path).Length})
     }
 }finally{$env:PSModulePath=$modulePath}
-$plan=@{SchemaVersion=1;Version=$release;SourceVersion=$sourceVersion;BaseVersion=$releaseInfo.BaseVersion;ReadyToRun=[bool]$RequireReadyToRun;Repository='https://www.powershellgallery.com/api/v2';Targets=@(Get-QuietRuntimeTargets $WorkspaceRoot);Packages=$packages.ToArray();SourceLockSHA256=(Get-FileHash (Join-Path $WorkspaceRoot repositories.lock.json) -Algorithm SHA256).Hash;Published=$false}
+$plan=@{SchemaVersion=1;Module=$publicName;Version=$release;SourceVersion=$sourceVersion;BaseVersion=$releaseInfo.BaseVersion;ReadyToRun=[bool]($RequireReadyToRun -and $corePackage);Repository='https://www.powershellgallery.com/api/v2';Targets=@(if($corePackage){Get-QuietRuntimeTargets $WorkspaceRoot});Packages=$packages.ToArray();SourceLockSHA256=(Get-FileHash (Join-Path $WorkspaceRoot repositories.lock.json) -Algorithm SHA256).Hash;Published=$false}
 Write-WorkspaceJson (Join-Path $OutputDirectory package-set.json) $plan
 $verified=Test-QuietGalleryPackageSet $OutputDirectory -Version $release
-[pscustomobject]@{State='Prepared';Version=$verified.Version;Packages=$verified.Packages;Targets=$verified.Targets.Rid;Published=$false}
+[pscustomobject]@{State='Prepared';Version=$verified.Version;Packages=$verified.Packages;Targets=@($verified.Targets|ForEach-Object {$_.Rid});Published=$false}

@@ -15,6 +15,6 @@ $ErrorActionPreference='Stop'
 Import-Module (Join-Path $PSScriptRoot 'lib/GalleryRelease.psm1') -Force
 $plan=Resolve-QuietGalleryReleaseTag -WorkspaceRoot $WorkspaceRoot -Tag $Tag
 if($OutputPath -and $PSCmdlet.ShouldProcess($OutputPath,'Append validated Gallery release outputs')){
-    [IO.File]::AppendAllText([IO.Path]::GetFullPath($OutputPath,$PWD.Path),"module=$($plan.Module)`nversion=$($plan.Version)`n",[Text.UTF8Encoding]::new($false))
+    [IO.File]::AppendAllText([IO.Path]::GetFullPath($OutputPath,$PWD.Path),"module=$($plan.Module)`ncomponent=$($plan.Component)`nversion=$($plan.Version)`n",[Text.UTF8Encoding]::new($false))
 }
 $plan

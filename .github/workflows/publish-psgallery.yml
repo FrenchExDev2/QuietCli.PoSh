@@ -2,6 +2,10 @@ name: QuietCli2 qualified PowerShell Gallery release
 on:
   workflow_call:
     inputs:
+      module:
+        description: Publishable component alias or exact package name
+        type: string
+        default: Core
       qualified_sha:
         description: Reuse the All receipt from this same workflow run and attempt
         type: string
@@ -24,14 +28,18 @@ on:
         value: ${{ jobs.package.outputs.version }}
   workflow_dispatch:
     inputs:
+      module:
+        description: Publishable component alias or exact package name
+        type: string
+        default: Core
       version:
-        description: Exact version of both source manifests, for example 0.2.0-preview
+        description: Exact version of the selected module manifest, for example 0.2.0-preview1
         required: true
         type: string
 permissions:
   contents: read
 concurrency:
-  group: quietcli2-psgallery
+  group: quietcli2-psgallery-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   qualification:
@@ -124,18 +132,20 @@ jobs:
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_MODULE: ${{ inputs.module }}
           PREVIEW_BUILD: ${{ inputs.preview_build }}
           QUALIFIED_REVISION: ${{ needs.checkpoint.outputs.qualified_sha }}
         run: |
           if($env:PREVIEW_BUILD -eq 'true'){
+            if($env:RELEASE_MODULE -cnotin @('Core','FrenchExDev2.QuietCli.Core.PoSh')){throw 'GeneratedPreviewArtifactRequiresCore'}
             ./scripts/New-QuietPreviewPackage.ps1 -OutputDirectory ./artifacts/gallery -BuildNumber $env:GITHUB_RUN_NUMBER -Attempt $env:GITHUB_RUN_ATTEMPT -QualifiedRevision $env:QUALIFIED_REVISION -RequireReadyToRun
           }else{
             if([string]::IsNullOrWhiteSpace($env:RELEASE_VERSION)){throw 'ExactReleaseVersionRequired'}
-            ./scripts/New-QuietGalleryPackage.ps1 -OutputDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -RequireReadyToRun
+            ./scripts/New-QuietGalleryPackage.ps1 -OutputDirectory ./artifacts/gallery -Module $env:RELEASE_MODULE -Version $env:RELEASE_VERSION -RequireReadyToRun
             ./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -ValidateOnly
           }
           $plan=Get-Content ./artifacts/gallery/package-set.json -Raw -Encoding utf8|ConvertFrom-Json
-          $artifact='quietcli2-gallery-'+$plan.Version+'-'+$env:GITHUB_SHA+'-attempt'+$env:GITHUB_RUN_ATTEMPT
+          $artifact='quietcli2-gallery-'+$plan.Module+'-'+$plan.Version+'-'+$env:GITHUB_SHA+'-attempt'+$env:GITHUB_RUN_ATTEMPT
           $output="version=$($plan.Version)`nartifact_name=$artifact`n"
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_OUTPUT,$output,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -166,7 +176,7 @@ jobs:
           retention-days: 14
   publish:
     needs: [checkpoint, package]
-    if: ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.Core.PoSh/v') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }}
+    if: ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }}
     runs-on: windows-latest
     timeout-minutes: 10
     environment: psgallery
@@ -196,8 +206,9 @@ jobs:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
         run: |
           $plan=./scripts/Get-QuietReleasePlan.ps1 -Tag $env:GITHUB_REF_NAME
-          if($plan.Component -cne 'Core' -or $plan.Version -cne $env:RELEASE_VERSION){throw 'GalleryReleaseTagPackageMismatch'}
-      - name: Publish the verified packages, Core only
+          $package=Get-Content ./artifacts/gallery/package-set.json -Raw -Encoding utf8|ConvertFrom-Json
+          if($plan.Module -cne $package.Module -or $plan.Version -cne $env:RELEASE_VERSION){throw 'GalleryReleaseTagPackageMismatch'}
+      - name: Publish the selected verified business package
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}

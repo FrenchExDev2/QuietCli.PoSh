@@ -143,7 +143,7 @@ function Invoke-QuietGalleryIdentityTests {
     Test-QuietGalleryStagingProperties -CopyCommand $copy -Root (Join-Path $root 'baseline')
     Test-QuietGalleryManifestCorpus -ReadCommand $read -Root (Join-Path $root 'parser')
     Test-QuietModulePackageIdentity -Root (Join-Path $root 'inferred-package-names')
-    foreach($name in @('QuietCli','FrenchExDev2.QuietCli.Git.PoSh','quietcli',("FrenchExDev2.QuietCli.Core.PoSh"+[char]10),"QuietCli';unexpected")){
+    foreach($name in @('QuietCli','FrenchExDev2.QuietCli.Vagrant.PoSh','quietcli',("FrenchExDev2.QuietCli.Core.PoSh"+[char]10),"QuietCli';unexpected")){
         $rejected=$false;try{$null=Get-QuietGalleryRemoteIdentity -Module $name -Version 2.3.4}catch{$rejected=$_.Exception.Message -ceq 'InvalidGalleryRemoteIdentity'}
         if(!$rejected){throw 'NonpublicRemoteIdentityAccepted'}
     }

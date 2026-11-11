@@ -1,19 +1,14 @@
 # publish-psgallery.yml
 
-<!-- workflow-source-sha256: 82AEFE9B7DBEB746619C612EE825F183356A85018F311A08630970343913DF49 -->
+<!-- workflow-source-sha256: 12F386A841A02954D3A171685A763421A74D8224F6707C9DED8D514D69179771 -->
 
 ## Purpose
 
-Prepare one verified public QuietCli nupkg, then optionally publish those exact bytes to PSGallery.
+Prepare one selected Core/companion package after exact-revision qualification and optionally publish those same verified bytes for a matching tag push.
 
 ## Triggers
 
-workflow_call accepts exact version, publish intent and artifact-only preview_build; workflow_dispatch accepts an exact version for artifacts only. Public publication is requested by release-tags.yml for a matching tag push and enforced again by job conditions and tag validation.
-
-
-## .NET SDK source pin
-
-The reviewed setup-dotnet steps read the checked-out global.json through global-json-file, so the CI, publication preparation and manual ReadyToRun jobs follow the selected SDK instead of embedding an old RC string. This source review does not establish hosted execution or full matrix qualification.
+workflow_call accepts module (alias/full name), version, publication intent, qualified_sha and the legacy Core-only generated-preview artifact mode. workflow_dispatch accepts module/version for artifacts only. Independent tag refs have independent concurrency groups, so different module/version requests do not replace one another's pending runs.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
@@ -41,7 +36,7 @@ flowchart TD
 | --- | --- | --- | --- | --- |
 | checkpoint | runner ubuntu-latest | qualification, reuse-qualification | ${{ !cancelled() && (needs.qualification.result == 'success' &#124;&#124; needs.reuse-qualification.result == 'success') }} |  |
 | package | runner windows-latest | checkpoint | ${{ !cancelled() && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-QuietGalleryPackage.ps1, ./scripts/New-QuietPreviewPackage.ps1, ./scripts/Publish-QuietGallery.ps1, ./scripts/RuntimeTargets.ps1 |
-| publish | runner windows-latest | checkpoint, package | ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.Core.PoSh/v') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Get-QuietReleasePlan.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Publish-QuietGallery.ps1 |
+| publish | runner windows-latest | checkpoint, package | ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Get-QuietReleasePlan.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Publish-QuietGallery.ps1 |
 | qualification | reuses ./.github/workflows/ci.yml |  | inputs.qualified_sha == '' |  |
 | reuse-qualification | runner ubuntu-latest |  | inputs.qualified_sha != '' && inputs.qualified_sha == github.sha | ./scripts/Assert-QualificationReceipt.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
 
@@ -49,17 +44,15 @@ flowchart TD
 
 ## Scripts and effects
 
-Fresh All qualification explicitly requests collect_performance=true. Reused current-run receipts must include successful required matrix performance evidence; an older/unprofiled receipt cannot bypass the report gate.
+Qualification requests All with collect_performance=true, or validates a downloaded current-run/current-attempt All receipt matching github.sha. The checkpoint normalizes the successful path before package/publish jobs.
 
-The optional workflow-call qualified_sha input is accepted only with a downloaded All receipt from this exact run, attempt and revision. Assert-QualificationReceipt rejects mismatches before emitting an output. Without it, qualification still calls ci.yml(All). The checkpoint job normalizes the successful path; package/publish explicitly override skipped-ancestor propagation while requiring that successful exact-SHA checkpoint. The caller's SHA alone never authorizes packaging. Resource/host archives and NuGet are cached with their full lock inputs, and all existing exact-package and psgallery environment checks remain required.
+The Windows packaging job follows global.json, builds verified Release ReadyToRun distributions, tests the exact packaging build and calls New-QuietGalleryPackage with the selected module. Package artifacts include module/version/SHA/attempt in their identity. Git includes its parser outputs and Core dependency; Core includes its RID/CLR payloads. Generated run/attempt preview artifacts remain Core-only and cannot publish.
 
-The package preparation job uses the shared optional archive cache before Initialize-Workspace. The cache key includes OS and resource-lock hash; resource hashes are verified independently. Publication consumes the exact prepared artifact without querying current develop HEAD. The publish job requires an original-repository push under refs/tags/FrenchExDev2.QuietCli.Core.PoSh/v, publish=true, preview_build=false and successful exact-revision qualification. Manual dispatch and branch pushes cannot publish, including through reusable callers. Get-QuietReleasePlan validates the tag against the checked-out source manifest again and requires its version to equal the downloaded package version before the secret-bearing publication step.
-
-The Windows x64 package job checks out the accepted checkpoint revision, builds Release ReadyToRun for six RIDs and CLR 10/11, verifies All, and prepares a package with RequireReadyToRun. Publication downloads the artifact, validates its SHA/version/checkpoint and uses Publish-PSResource -NupkgPath. Only the publish job receives PSGALLERY_API_KEY from the psgallery environment. Failure diagnostics are redacted and retained separately.
+The publish job requires original-repository push/tag context, explicit publication intent, no generated-preview mode and successful exact-revision qualification. It downloads the exact artifact, validates module/version/GUID/dependencies/binaries, re-resolves the tag against its owning source manifest and requires tag module/version to match the prepared plan. Only then does Publish-QuietGallery publish through the psgallery environment. Pull requests, branches, forks and manual dispatch cannot publish. No current develop HEAD lookup or automatic retry occurs.
 
 ## Validation and limits
 
-One public Core nupkg embeds every RID; Git and Vagrant remain nonpublishable. Packaging rebuilds from the qualified source, rather than merging matrix binaries. Both stable and prerelease publication require a module-specific tag push matching the full source manifest version. The generated-preview path and workflow dispatch are artifact-only. The psgallery environment must allow the FrenchExDev2.QuietCli.Core.PoSh/v* tag namespace; no repository setting is changed by these files. Pull requests cannot reach the public publication job. ValidateOnly performs no public publication.
+Local policy tests cover event boundaries and discovered targets; GalleryPreview checks independent Core/Git packages, isolated import/handler execution and mutation cases. New targets require their own declarations and CI qualification coverage. Git requires a compatible publicly available Core dependency; simultaneous independent tag workflows do not guarantee publication order. Environment tag rules and keys are external configuration, not changed by this workflow. ValidateOnly and package preparation do not publish.
 
 <!-- credits:begin -->
 ## Credits

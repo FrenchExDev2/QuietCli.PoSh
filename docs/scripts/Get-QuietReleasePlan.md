@@ -9,7 +9,7 @@ Resolve an explicit release tag against its owning manifest before starting rele
 ./scripts/Get-QuietReleasePlan.ps1 -Tag FrenchExDev2.QuietCli.Core.PoSh/v0.2.0-preview -OutputPath ./outputs.txt -WhatIf
 ```
 
-`-WorkspaceRoot` selects the source checkout. `-OutputPath` optionally appends UTF-8/LF `module` and `version` GitHub outputs. `-WhatIf` validates and returns the plan but does not write outputs. This script never tags, pushes, builds or publishes.
+`-WorkspaceRoot` selects the source checkout. `-OutputPath` appends UTF-8/LF module, component and version outputs after dynamic business-target/version validation. Core and Git are enabled by metadata; Vagrant is disabled. WhatIf validates without writing. This script never tags, pushes, builds or publishes.
 
 ## Dependencies and effects
 
@@ -17,7 +17,7 @@ Imports [GalleryRelease](lib/GalleryRelease.md), which reads only the selected m
 
 ## Findings and verdict
 
-`scripts/Get-QuietReleasePlan.ps1` delegates policy to one shared resolver and guards its optional append with ShouldProcess. Exact version mismatches and unavailable companion publication fail before outputs are written. The CI optimization companion case checks malformed tags, independently versioned manifests, output bytes and no-write preview. This establishes local policy behavior, not hosted publication or the existence of the Gallery secret. Companion namespaces are reserved; enabling a manifest flag alone does not supply missing public packaging.
+`scripts/Get-QuietReleasePlan.ps1` delegates policy to one shared resolver and guards its optional append with ShouldProcess. Exact version mismatches and disabled companion publication fail before outputs are written. The CI optimization companion case checks malformed tags, independently versioned manifests, output bytes and no-write preview. Core and Git have package preparation and validation paths; Vagrant remains disabled. This establishes local policy behavior, not hosted publication, environment tag permissions or the existence of the Gallery secret.
 
 <!-- script-contract:begin -->
 ## Execution contract

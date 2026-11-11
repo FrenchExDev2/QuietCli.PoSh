@@ -6,7 +6,9 @@
 
 > **Status: under development (`0.2.0-preview`).** This module is the worked example of a QuietCli companion module. Its catalogue is growing, its API may change, and **the complete inventory is not qualified**. Read [Coverage and limits](#coverage-and-limits) before relying on a command.
 
-Git business handlers for the [QuietCli](../README.md) engine. Instead of writing `-Output` and `-Complete` callbacks, you run `quiet -AsObject git <command>` and the module supplies a parser that turns Git's output into typed business data. Use the Core and Git source projects from the same checkout. This Git companion is not published on PowerShell Gallery; the public `QuietCli` package provides Core.
+Git business handlers for the [QuietCli](../README.md) engine. Instead of writing `-Output` and `-Complete` callbacks, run `quiet -AsObject git <command>` and the module supplies a parser that turns output into typed business data. The existing Gallery package is FrenchExDev2.QuietCli.Git.PoSh and its dependency is FrenchExDev2.QuietCli.Core.PoSh. Its independently versioned package is enabled in the qualified tag-publication workflow; partial inventory/command/version qualification remains explicit.
+
+Install a published version with `Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Repository PSGallery`, adding `-Prerelease` for previews, then `Import-Module FrenchExDev2.QuietCli.Git.PoSh`. A compatible published Core dependency must be available. Source development uses both projects from the same checkout.
 
 ## Quick start
 

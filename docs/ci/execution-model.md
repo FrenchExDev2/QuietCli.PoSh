@@ -66,10 +66,7 @@ Docker fallback is not architecture emulation.
 
 ## Gallery publication and RID handling
 
-The current publication model creates one public `FrenchExDev2.QuietCli.Core.PoSh` module package containing six embedded
-engine RIDs. Windows prepares that package after source-revision qualification. The publish job
-downloads and verifies the prepared bytes; it does not rebuild or replace a per-RID package.
-GHCR toolchain images remain separate from the PowerShell Gallery module.
+The current publication model prepares one selected business-module package per tag. Core embeds six engine RIDs; Git embeds its net10.0/net11.0 parser outputs and retains its separate Core dependency. Windows prepares the selected package after exact-source All qualification. Publication downloads and verifies those bytes without rebuilding or replacing a per-RID package. GHCR toolchain images remain separate from Gallery packages.
 
 ```mermaid
 flowchart TD

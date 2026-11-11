@@ -2,7 +2,7 @@
 
 ## Purpose and usage
 
-Prepares a uniquely versioned, Core-only preview without publishing.
+Prepares a uniquely versioned, Core-only preview without publishing. The public identity remains FrenchExDev2.QuietCli.Core.PoSh, inferred from its .psm1 and matching manifest; staging does not rename it to QuietCli. Numbered release previews (preview1, preview2, ...) belong to New-QuietPreviewTag.ps1 -Version -NextPreview; this artifact-only helper retains its run/attempt labels.
 
 ```powershell
 ./scripts/New-QuietPreviewPackage.ps1 -OutputDirectory <new-directory> -BuildNumber 42 -Attempt 1 -RequireReadyToRun
@@ -12,7 +12,7 @@ WorkspaceRoot defaults to the repository root. BuildNumber defaults to GITHUB_RU
 
 ## Dependencies and side effects
 
-Uses Common.ps1, Gallery.ps1, New-QuietGalleryPackage.ps1 and Publish-QuietGallery.ps1 -ValidateOnly. Writes staged files, nupkg, package-set.json and preview.json. Source versions and GUIDs remain unchanged. No key, publication or remote branch query.
+Uses Common.ps1, lib/Gallery.psm1, New-QuietGalleryPackage.ps1 and Publish-QuietGallery.ps1 -ValidateOnly. Writes staged files, nupkg, package-set.json and preview.json. Source versions and GUIDs remain unchanged. No key, publication or remote branch query.
 
 ## Critical review
 

@@ -2,28 +2,24 @@
 
 ## Purpose and usage
 
-`Resolve-QuietGalleryReleaseTag -WorkspaceRoot <checkout> -Tag <tag>` maps independent public tag namespaces to their source modules:
+Get-QuietGalleryReleaseTargets discovers business projects from existing WorkspaceProjects/manifests, derives identity through ModulePackage and checks the explicit boolean Publishable policy. IncludeDisabled exposes disabled business targets for diagnostics; test projects are always excluded.
 
-| Tag namespace | Owning project | Publication capability |
-| --- | --- | --- |
-| `FrenchExDev2.QuietCli.Core.PoSh/v<version>` | Core | Public Core packaging available |
-| `FrenchExDev2.QuietCli.Git.PoSh/v<version>` | Git | Reserved; rejected while nonpublishable or public packaging is unavailable |
-| `FrenchExDev2.QuietCli.Vagrant.PoSh/v<version>` | Vagrant | Reserved; rejected while nonpublishable or public packaging is unavailable |
+Select-QuietGalleryReleaseTargets accepts component aliases, exact package names or All, rejects unknown/disabled targets, deduplicates selection and preserves dependency ordering. Core and Git are currently enabled; Vagrant is disabled.
 
-The complete tag version must match the owning manifest's `ModuleVersion` and optional `PSData.Prerelease`. Other projects may have different versions. No numeric bump, staged override or timestamp is inferred.
+Resolve-QuietGalleryReleaseTag accepts the exact package namespace and full version, then requires a unique discovered target, publication eligibility and an exact owning manifest version. It returns module/component/project/version metadata. No hardcoded Core/Git/Vagrant switch or second publication YAML is used.
 
 ## Dependencies and effects
 
-PowerShell 7.6+ and [ModulePackage](ModulePackage.md). Module import declares/exports the resolver only; resolution loads the pure sibling reader and derives the package name and version from the owning `.psm1` and its literal manifest, returning a small plan without modifying files, importing product code or contacting GitHub/Gallery. Core and Git names preserve their existing Gallery entries; the current companion CI publication policy is separate from those entries' existence.
+Imports the pure ModulePackage reader and privately loads WorkspaceProjects inside discovery. Import declares/exports three functions only. Calls read literal manifests/source and return metadata; no product import, native command, write, network access or publication occurs. build/companions.yml continues to own test/image declarations and must cover new publication targets.
 
-## Findings and verdict
+## Review and validation
 
-`scripts/lib/GalleryRelease.psm1` rejects malformed/case-mismatched tags, newline suffixes, source-version mismatches, missing/false `Publishable` and unavailable public packaging. It deliberately retains the companions' current nonpublication boundary. Before activating those namespaces, implement public module/dependency staging, independent package validation and offline installation/import qualification. Tags and local tests do not establish platform or real-provider qualification.
+CI optimization and release-tag tests cover malformed names, independent versions, disabled flags, dynamically added fixture modules and plan outputs. GalleryPreview separately verifies Core/Git package contents, dependencies and isolated imports. Discovery and a true publication flag do not establish remote Gallery availability or qualification of unexecuted commands/providers.
 
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Resolves an independently versioned release tag against its owning source manifest.
+Purpose: Discovers independently versioned business packages from the existing workspace manifests.
 
 Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 

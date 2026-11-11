@@ -19,7 +19,7 @@ function Get-QuietResourceDocumentation {
         $lines.Add('| '+$file.Path+' | '+$file.Package+' | '+$file.Version+' | '+$file.Bytes+' | '+$file.SHA256+' | '+$origin+' |')
     }
     $lines.Add('');$lines.Add('## Direct source references');$lines.Add('')
-    $lines.Add('References are extracted from PowerShell/C# source text. Dynamic module copies also transport resources: New-WorkspacePackage.ps1, Copy-QuietGalleryCoreModule in Gallery.ps1, and Invoke-ContainerWorker.ps1. The source hashes below make edits to readers/writers visible to this gate.')
+    $lines.Add('References are extracted from PowerShell/C# source text. Dynamic module copies also transport resources: New-WorkspacePackage.ps1, Copy-QuietGalleryCoreModule in lib/Gallery.psm1, and Invoke-ContainerWorker.ps1. The source hashes below make edits to readers/writers visible to this gate.')
     $lines.Add('');$lines.Add('| Source | Resource-related code | Source SHA-256 |');$lines.Add('| --- | --- | --- |')
     . (Join-Path $PSScriptRoot SourceIdentity.ps1)
     foreach($file in Get-QuietSourceFiles $WorkspaceRoot){

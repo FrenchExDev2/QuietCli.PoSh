@@ -8,8 +8,10 @@ QuietCli2 root.
 New artifact directory.
 .PARAMETER RequireReadyToRun
 Rejects packages unless both CLR builds are verified ReadyToRun for all six release RIDs.
+.PARAMETER Module
+Optional exact source project names to package; omitted packages are not archived.
 #>
-[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputDirectory,[switch]$RequireReadyToRun)
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputDirectory,[switch]$RequireReadyToRun,[string[]]$Module=@())
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-WorkspacePackage')){return}
 $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 . (Join-Path $PSScriptRoot 'AgentDocuments.ps1')
@@ -33,7 +35,8 @@ foreach($rid in (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){
 if(Test-Path -LiteralPath $OutputDirectory){throw 'PackageOutputAlreadyExists'}
 [void][IO.Directory]::CreateDirectory($OutputDirectory)
 $lock=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'repositories.lock.json') -Encoding utf8 -Raw|ConvertFrom-Json
-foreach($repository in $lock.Projects){
+foreach($name in $Module){if($name -cnotin @($lock.Projects.Name)){throw ('PackageProjectUnknown: '+$name)}}
+foreach($repository in $lock.Projects | Where-Object {!$Module.Count -or $_.Name -cin $Module}){
     $source=Join-Path $WorkspaceRoot $repository.Path;$stage=Join-Path $OutputDirectory $repository.Name
     [void][IO.Directory]::CreateDirectory($stage)
     foreach($item in Get-ChildItem -LiteralPath $source -Force){

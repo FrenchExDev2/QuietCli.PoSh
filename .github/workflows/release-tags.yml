@@ -2,9 +2,7 @@ name: QuietCli module release tags
 on:
   push:
     tags:
-      - 'FrenchExDev2.QuietCli.Core.PoSh/v*'
-      - 'FrenchExDev2.QuietCli.Git.PoSh/v*'
-      - 'FrenchExDev2.QuietCli.Vagrant.PoSh/v*'
+      - 'FrenchExDev2.QuietCli.*.PoSh/v*'
 permissions:
   contents: read
 concurrency:
@@ -17,6 +15,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       module: ${{ steps.release.outputs.module }}
+      component: ${{ steps.release.outputs.component }}
       version: ${{ steps.release.outputs.version }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -33,5 +32,6 @@ jobs:
       packages: write
     uses: ./.github/workflows/publish-psgallery.yml
     with:
+      module: ${{ needs.plan.outputs.module }}
       version: ${{ needs.plan.outputs.version }}
       publish: true

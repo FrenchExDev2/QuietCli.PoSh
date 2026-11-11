@@ -17,7 +17,7 @@ publication require a tag push; workflow dispatch only prepares artifacts. The m
 is informational and never blocks a release. See the diagrams and platform details in
 [the CI execution model](ci/execution-model.md).
 
-QuietCli is the product name. Core retains its existing PowerShell Gallery identity `FrenchExDev2.QuietCli.Core.PoSh`, and Git retains `FrenchExDev2.QuietCli.Git.PoSh`. The current CI publication path prepares Core only; the existence of an older Git Gallery entry does not enable that CI path. Test companion modules are not public release targets.
+QuietCli is the product name. Core and Git retain their existing PowerShell Gallery identities, FrenchExDev2.QuietCli.Core.PoSh and FrenchExDev2.QuietCli.Git.PoSh. Both are enabled as independently versioned CI publication targets. Git's package contains its parser outputs and a declared dependency on Core; it never embeds the Core package. Vagrant remains disabled and test modules are never public release targets.
 
 ## Installation
 
@@ -73,7 +73,19 @@ For generated artifact-only preview versions, independent module tags and releas
 
 A QuietCli release requires qualification of the delivered revision across its supported runtime and platform matrix, including the required property, fuzzing and mutation campaigns for the selected scope. GitHub CI excludes native TTY/PTY campaigns; its reports do not qualify that transport. A targeted development run or a successful run for an older revision does not qualify a new release.
 
-Both stable and prerelease publication are requested by explicit Core tag pushes after the configured CI qualification. Build, test and manual package preparation do not publish. Public package preparation and publication currently reject Git or any extra nupkg. Git and Vagrant retain independent source versions and reserved `FrenchExDev2.QuietCli.Git.PoSh/v*` / `FrenchExDev2.QuietCli.Vagrant.PoSh/v*` namespaces; their nonpublishable manifests and missing public packaging reject release requests before qualification. Their activation requires public dependency staging and offline installation/import checks, not a shared Core version bump.
+Both stable and prerelease publication are requested by explicit module tag pushes after qualification. Each artifact contains exactly one selected business package; unexpected extra nupkgs are rejected. Get-QuietReleasePlan discovers the owning business manifest and requires its version and publication flag. Core/Git releases use their existing package names; Vagrant requests fail while Publishable=false. New modules join publication through their own metadata and CI qualification declarations rather than a hardcoded release selector.
+
+## Companion packages
+
+| Package | CI publication | Dependency/scope |
+| --- | --- | --- |
+| FrenchExDev2.QuietCli.Core.PoSh | Enabled | Core engine and supported embedded RIDs |
+| FrenchExDev2.QuietCli.Git.PoSh | Enabled | Requires compatible Core; Git command/version qualification remains partial |
+| FrenchExDev2.QuietCli.Vagrant.PoSh | Disabled | Source companion; real-provider qualification remains partial |
+
+Install the published Git companion with `Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Repository PSGallery`; add `-Prerelease` when selecting previews. Its RequiredModules dependency remains FrenchExDev2.QuietCli.Core.PoSh. Publish a compatible Core dependency first; independent simultaneous tag workflows do not guarantee publication order. Package preparation/isolated import checks do not establish which dependency versions are currently available on the public Gallery.
+
+For checked version commits, numbered previews and selected tag pushes, see [the release operator](scripts/New-QuietPreviewTag.md). No module is published merely by merging develop.
 
 Keep API keys out of code, CLI arguments, reports and chat. Follow [Microsoft's publishing guidelines](https://learn.microsoft.com/en-us/powershell/gallery/concepts/publishing-guidelines) and the [Publish-PSResource documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.psresourceget/publish-psresource) when preparing an explicitly authorized release.
 

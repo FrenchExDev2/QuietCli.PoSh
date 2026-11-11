@@ -51,7 +51,7 @@ function Invoke-QuietGalleryPreviewTests {
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory,[switch]$Mutation,[scriptblock]$OnProgress)
     . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
-    . (Join-Path $WorkspaceRoot 'scripts/Gallery.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Gallery.psm1')
     $previewRoot=Join-Path $RunDirectory 'gallery-preview';[void][IO.Directory]::CreateDirectory($previewRoot)
     $cases=[ordered]@{};$results=[Collections.Generic.List[object]]::new();$mutants=[Collections.Generic.List[object]]::new()
     $identityEvidence=[Collections.Generic.List[object]]::new()
@@ -170,6 +170,21 @@ function Invoke-QuietGalleryPreviewTests {
         Write-WorkspaceJson (Join-Path $RunDirectory 'gallery-install-diagnostics.json') @{Outcome=$execution.Outcome;ExitCode=$execution.ExitCode;Lines=@($capture.Lines);Report=$capture.Report}
         if($execution.Outcome -cne 'Success' -or $capture.Report.ModuleName -cne $expected.Packages[0].Module -or !$capture.Report.GeneratedScript -or $capture.Report.ScaffoldDependency -cne $expected.Packages[0].Module -or $capture.Report.GitModuleLoaded -or $capture.Report.NativeExecution -cne 'Success' -or !$capture.Report.Installed -or $capture.Report.PackageVersion -cne $expected.Version){throw ('PreviewInstallationFailed: '+((@($capture.Lines)|ConvertTo-Json -Compress -Depth 3)))}
     }
+    $cases['Git package keeps the Core dependency and imports compiled handlers from an isolated installation']={
+        $gitDirectory=Join-Path $previewRoot 'git-packages'
+        $prepared=& (Join-Path $WorkspaceRoot scripts/New-QuietGalleryPackage.ps1) -WorkspaceRoot $WorkspaceRoot -Module Git -OutputDirectory $gitDirectory
+        if($prepared.Packages.Count -ne 1 -or $prepared.Packages[0].Module -cne 'FrenchExDev2.QuietCli.Git.PoSh'){throw 'IndependentGitPackageIdentityChanged'}
+        $probe=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/Probe-GalleryInstall.ps1'
+        $capture=@{Report=$null;Lines=[Collections.Generic.Queue[object]]::new()}
+        $execution=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -WorkingDirectory $WorkspaceRoot -ArgumentList @('-NoProfile','-File',$probe,'-PackageDirectory',(Join-Path $previewRoot packages),'-CompanionPackageDirectory',$gitDirectory,'-InstallationDirectory',(Join-Path $previewRoot git-installed)) -State $capture -OnOutput {
+            param($line,$data)
+            if($data.Lines.Count -ge 16){$null=$data.Lines.Dequeue()}
+            $data.Lines.Enqueue(@{Stream=$line.Stream;Text=$line.Text.Substring(0,[Math]::Min(2048,$line.Text.Length))})
+            if($line.Stream -eq 'stdout' -and $line.Text.StartsWith('{')){$data.Report=$line.Text|ConvertFrom-Json}
+        }
+        Write-WorkspaceJson (Join-Path $RunDirectory git-gallery-install-diagnostics.json) @{Outcome=$execution.Outcome;ExitCode=$execution.ExitCode;Lines=@($capture.Lines);Report=$capture.Report}
+        if($execution.Outcome -cne 'Success' -or !$capture.Report.GitModuleLoaded -or $capture.Report.GitNativeExecution -cne 'Success'){throw 'IndependentGitPackageInstallationFailed'}
+    }
     $cases['publication uses the validated artifacts in Core-only scope without real credentials or network']={
         $previewPublicationCalls=[Collections.Generic.List[string]]::new()
         function Invoke-PreviewFixtureRepository {
@@ -238,7 +253,8 @@ function Invoke-QuietGalleryPreviewTests {
             if($compiled.Failed -or $compiled.Mutations.Count -ne 4 -or @($compiled.Mutations|Where-Object State -CNE Killed).Count){throw 'CompiledModuleIdentityMutationFailed'}
         }
         $cases['version mutations are all detected by independent examples, properties and malformed inputs']={
-            $path=Join-Path $WorkspaceRoot 'scripts/Gallery.ps1';$source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
+            $path=Join-Path $WorkspaceRoot 'scripts/lib/Gallery.psm1';$source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
+            $source=[regex]::Replace($source,'(?m)^Export-ModuleMember[^\r\n]*$','')
             $catalogue=@(
                 @{Name='build-minimum';From='$build -lt 1';To='$build -lt 0'},
                 @{Name='build-maximum';From='$build -gt 99999999';To='$build -gt 100000000'},

@@ -295,7 +295,7 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
         if((Resolve-QuietGalleryReleaseTag $releaseFixture 'FrenchExDev2.QuietCli.Core.PoSh/v3.4.5').Version -cne '3.4.5'){throw 'StableReleasePlanRejected'}
         foreach($policyValue in @('$false',"'true'",'$null')){
             [IO.File]::WriteAllText($coreManifest,"@{RootModule='FrenchExDev2.QuietCli.Core.PoSh.psm1';ModuleVersion='3.4.5';PrivateData=@{PSData=@{};QuietCli=@{Publishable=$policyValue}}}`n",[Text.UTF8Encoding]::new($false))
-            $rejected=$false;try{$null=Resolve-QuietGalleryReleaseTag $releaseFixture 'FrenchExDev2.QuietCli.Core.PoSh/v3.4.5'}catch{$rejected=$_.Exception.Message -like 'GalleryReleaseModuleNotPublishable:*'}
+            $rejected=$false;try{$null=Resolve-QuietGalleryReleaseTag $releaseFixture 'FrenchExDev2.QuietCli.Core.PoSh/v3.4.5'}catch{$rejected=$_.Exception.Message -like 'GalleryReleaseModuleNotPublishable:*' -or $_.Exception.Message -ceq 'GalleryPublicationPolicyMustBeBoolean'}
             if(!$rejected){throw 'NonBooleanOrFalsePublicationPolicyAccepted'}
         }
     }finally{[IO.File]::WriteAllText($coreManifest,$savedManifest,[Text.UTF8Encoding]::new($false))}
@@ -305,8 +305,8 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
         try{
             [IO.File]::WriteAllText($companionManifest,$data.Replace('Publishable=$false','Publishable=$true'),[Text.UTF8Encoding]::new($false))
             $tagVersion=if($component -ceq 'Git'){'1.2.3-preview'}else{'8.9.0-preview'}
-            $rejected=$false;try{$null=Resolve-QuietGalleryReleaseTag $releaseFixture "$project/v$tagVersion"}catch{$rejected=$_.Exception.Message -like 'GalleryReleasePublicPackagingUnavailable:*'}
-            if(!$rejected){throw 'CompanionFlagBypassedMissingPublicPackaging'}
+            $enabled=Resolve-QuietGalleryReleaseTag $releaseFixture "$project/v$tagVersion"
+            if($enabled.Module -cne $project -or $enabled.Version -cne $tagVersion){throw 'IndependentCompanionReleaseIdentityChanged'}
         }finally{[IO.File]::WriteAllText($companionManifest,$data,[Text.UTF8Encoding]::new($false))}
     }
     $releaseRejections=0
@@ -319,19 +319,21 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
     $null=& $planScript -WorkspaceRoot $releaseFixture -Tag 'FrenchExDev2.QuietCli.Core.PoSh/v3.4.5-preview' -OutputPath $planOutput -WhatIf
     if(Test-Path -LiteralPath $planOutput){throw 'ReleasePlanPreviewWroteOutput'}
     $null=& $planScript -WorkspaceRoot $releaseFixture -Tag 'FrenchExDev2.QuietCli.Core.PoSh/v3.4.5-preview' -OutputPath $planOutput -Confirm:$false
-    if([IO.File]::ReadAllText($planOutput,[Text.Encoding]::UTF8) -cne "module=FrenchExDev2.QuietCli.Core.PoSh`nversion=3.4.5-preview`n"){throw 'ReleasePlanOutputsChanged'}
+    if([IO.File]::ReadAllText($planOutput,[Text.Encoding]::UTF8) -cne "module=FrenchExDev2.QuietCli.Core.PoSh`ncomponent=Core`nversion=3.4.5-preview`n"){throw 'ReleasePlanOutputsChanged'}
     $releaseWorkflow=$workflows['release-tags']
-    if($releaseWorkflow['on'].Count -ne 1 -or @($releaseWorkflow['on']['push']['tags']).Count -ne 3 -or $releaseWorkflow['jobs']['release']['needs'] -cne 'plan' -or $releaseWorkflow['jobs']['release']['with']['version'] -cne '${{ needs.plan.outputs.version }}' -or $releaseWorkflow['jobs']['release']['with']['publish'] -cne 'true'){throw 'ReleaseTagRoutingChanged'}
+    if($releaseWorkflow['on'].Count -ne 1 -or @($releaseWorkflow['on']['push']['tags']).Count -ne 1 -or $releaseWorkflow['on']['push']['tags'][0] -cne 'FrenchExDev2.QuietCli.*.PoSh/v*' -or $releaseWorkflow['jobs']['release']['needs'] -cne 'plan' -or $releaseWorkflow['jobs']['release']['with']['module'] -cne '${{ needs.plan.outputs.module }}' -or $releaseWorkflow['jobs']['release']['with']['version'] -cne '${{ needs.plan.outputs.version }}' -or $releaseWorkflow['jobs']['release']['with']['publish'] -cne 'true'){throw 'ReleaseTagRoutingChanged'}
     $condition=[string]$publication['publish']['if']
-    $expression=$condition.Replace('${{','').Replace('}}','').Replace('!cancelled()','(-not $cancelled)').Replace('inputs.publish','$requestPublish').Replace('inputs.preview_build','$previewBuild').Replace('github.repository','$repository').Replace('github.event_name','$eventName').Replace("startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.Core.PoSh/v')","`$releaseRef.StartsWith('refs/tags/FrenchExDev2.QuietCli.Core.PoSh/v',[StringComparison]::Ordinal)").Replace('needs.checkpoint.result','$checkpointResult').Replace('needs.checkpoint.outputs.qualified_sha','$qualifiedSha').Replace('github.sha','$checkoutSha').Replace('&&','-and').Replace('!=','-cne').Replace('==','-ceq').Replace('true','$true')
+    $expression=$condition.Replace('${{','').Replace('}}','').Replace('!cancelled()','(-not $cancelled)').Replace('inputs.publish','$requestPublish').Replace('inputs.preview_build','$previewBuild').Replace('github.repository','$repository').Replace('github.event_name','$eventName').Replace("startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.')","`$releaseRef.StartsWith('refs/tags/FrenchExDev2.QuietCli.',[StringComparison]::Ordinal)").Replace('needs.checkpoint.result','$checkpointResult').Replace('needs.checkpoint.outputs.qualified_sha','$qualifiedSha').Replace('github.sha','$checkoutSha').Replace('&&','-and').Replace('!=','-cne').Replace('==','-ceq').Replace('true','$true')
     $evaluate=[scriptblock]::Create($expression);$releaseProperties=0
     foreach($eventName in @('push','workflow_dispatch','pull_request')){foreach($releaseRef in @('refs/heads/develop','refs/tags/FrenchExDev2.QuietCli.Core.PoSh/v3.4.5-preview','refs/tags/FrenchExDev2.QuietCli.Git.PoSh/v1.2.3-preview')){foreach($requestPublish in @($true,$false)){foreach($previewBuild in @($true,$false)){foreach($repository in @('FrenchExDev2/QuietCli.PoSh','fork/repo')){foreach($cancelled in @($true,$false)){foreach($checkpointResult in @('success','failure')){foreach($qualifiedSha in @('a','b')){
         $checkoutSha='a'
-        $expected=$eventName -ceq 'push' -and $releaseRef -ceq 'refs/tags/FrenchExDev2.QuietCli.Core.PoSh/v3.4.5-preview' -and $requestPublish -and !$previewBuild -and $repository -ceq 'FrenchExDev2/QuietCli.PoSh' -and !$cancelled -and $checkpointResult -ceq 'success' -and $qualifiedSha -ceq $checkoutSha
+        $expected=$eventName -ceq 'push' -and $releaseRef.StartsWith('refs/tags/FrenchExDev2.QuietCli.',[StringComparison]::Ordinal) -and $requestPublish -and !$previewBuild -and $repository -ceq 'FrenchExDev2/QuietCli.PoSh' -and !$cancelled -and $checkpointResult -ceq 'success' -and $qualifiedSha -ceq $checkoutSha
         if([bool](& $evaluate) -ne $expected){throw 'ReleasePublicationBoundaryChanged'};$releaseProperties++
     }}}}}}}}
     . (Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.Tests.PoSh/PreviewTag.Tests.ps1)
     Invoke-QuietPreviewTagTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $releaseFixture
+    . (Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.Tests.PoSh/ReleaseTags.Tests.ps1)
+    Test-QuietReleaseTags -WorkspaceRoot $WorkspaceRoot -RunDirectory $releaseFixture
     Write-WorkspaceJson (Join-Path $releaseFixture campaign.json) @{MalformedOrUnavailableTags=$releaseRejections;PublicationProperties=$releaseProperties;RealLocalTagLifecycle=$true;RemotePublication=$false}
     foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){
         $declaration=& (Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $rid

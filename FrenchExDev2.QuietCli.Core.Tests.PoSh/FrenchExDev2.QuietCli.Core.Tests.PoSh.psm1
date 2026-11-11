@@ -181,7 +181,7 @@ Executes independent native byte and object invariants in a companion module.
     $cases['Gallery preserves prerelease labels and keeps numeric manifest versions separate']={
         & {
             param($scripts)
-            . (Join-Path $scripts Common.ps1);. (Join-Path $scripts Gallery.ps1)
+            . (Join-Path $scripts Common.ps1);Import-Module (Join-Path $scripts lib/Gallery.psm1)
             foreach($label in @('preview','preview1','beta2')){
                 $manifest=@{ModuleVersion='2.3.4';PrivateData=@{PSData=@{Prerelease=$label}}}
                 if((Get-QuietGalleryModuleVersion $manifest) -cne ('2.3.4-'+$label)){throw 'GalleryPrereleaseSuffixLost'}
@@ -753,21 +753,22 @@ Executes independent native byte and object invariants in a companion module.
     $cases['PSGallery Core installs outside sources with its embedded engine and no Git companion']={
         $root=Join-Path $WorkspaceRoot ('artifacts/gallery-tests/'+[guid]::NewGuid().ToString('N'))
         $packages=Join-Path $root packages
-        $prepared=& (Join-Path $WorkspaceRoot 'scripts/New-QuietGalleryPackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $packages -Version 0.2.0-preview
-        Assert-QuietEqual $prepared.Version '0.2.0-preview'
+        $sourceIdentity=& (Join-Path $WorkspaceRoot scripts/Get-ModulePackageName.ps1) -Path (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psm1') -AsObject -RequireManifest
+        $prepared=& (Join-Path $WorkspaceRoot 'scripts/New-QuietGalleryPackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $packages -Version $sourceIdentity.Version
+        Assert-QuietEqual $prepared.Version $sourceIdentity.Version
         & {
-            param($scripts,$packages)
-            . (Join-Path $scripts Common.ps1);. (Join-Path $scripts Gallery.ps1)
-            foreach($wrong in @('9.9.9','0.2.0','0.2.0-preview1')){
+            param($scripts,$packages,$expectedVersion)
+            . (Join-Path $scripts Common.ps1);Import-Module (Join-Path $scripts lib/Gallery.psm1)
+            foreach($wrong in @('0.0.0-invalid','999.999.999-invalid','0.0.0')|Where-Object {$_ -cne $expectedVersion}){
                 $rejected=$false
                 try{$null=Test-QuietGalleryPackageSet $packages -Version $wrong}catch{$rejected=$_.Exception.Message -eq 'GalleryReleaseVersionMismatch'}
                 if(!$rejected){throw 'Wrong or stripped prerelease version was accepted'}
             }
-            $null=& (Join-Path $scripts Publish-QuietGallery.ps1) -PackageDirectory $packages -Version 0.2.0-preview -ValidateOnly
-            $null=& (Join-Path $scripts Publish-QuietGallery.ps1) -PackageDirectory $packages -Version 0.2.0-preview -WhatIf
-            $plan=Test-QuietGalleryPackageSet $packages -Version '0.2.0-preview'
+            $null=& (Join-Path $scripts Publish-QuietGallery.ps1) -PackageDirectory $packages -Version $expectedVersion -ValidateOnly
+            $null=& (Join-Path $scripts Publish-QuietGallery.ps1) -PackageDirectory $packages -Version $expectedVersion -WhatIf
+            $plan=Test-QuietGalleryPackageSet $packages -Version $expectedVersion
             if(@($plan.Packages).Count -ne 1 -or $plan.Packages[0].Module -cne 'FrenchExDev2.QuietCli.Core.PoSh'){throw 'GalleryCoreOnlyRequired'}
-        } (Join-Path $WorkspaceRoot scripts) $packages
+        } (Join-Path $WorkspaceRoot scripts) $packages $sourceIdentity.Version
         $probe=Join-Path $PSScriptRoot audit/Probe-GalleryInstall.ps1
         $r=quiet -AsObject -Role Infrastructure -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} pwsh -NoProfile -File $probe -PackageDirectory $packages -InstallationDirectory (Join-Path $root installed)
         Assert-QuietEqual $r.Outcome Success
@@ -775,7 +776,7 @@ Executes independent native byte and object invariants in a companion module.
         Assert-QuietEqual $r.Data.CoreLoadedFromPackage $true
         Assert-QuietEqual $r.Data.GitModuleLoaded $false
         Assert-QuietEqual $r.Data.NativeExecution Success
-        Assert-QuietEqual $r.Data.PackageVersion '0.2.0-preview'
+        Assert-QuietEqual $r.Data.PackageVersion $sourceIdentity.Version
         $galleryEvidence.Add(@{Packages=$prepared.Packages;Targets=$prepared.Targets;Installation=$r.Data;ExternalPublication=$false})
     }
     $caseMetadata=@{

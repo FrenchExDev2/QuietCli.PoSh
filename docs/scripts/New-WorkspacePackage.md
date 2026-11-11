@@ -2,7 +2,7 @@
 
 ## Purpose and usage
 
-Stages and archives independently versioned internal modules after verifying their compiled payloads.
+Stages and archives independently versioned modules after verifying their compiled payloads. The optional Module array selects exact source project names from repositories.lock.json; omitted projects are not archived. With no selection, all locked projects retain the existing distribution behavior.
 
 ```powershell
 ./scripts/New-WorkspacePackage.ps1 -OutputDirectory <new-directory> -RequireReadyToRun

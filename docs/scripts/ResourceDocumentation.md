@@ -6,7 +6,7 @@ Dot-source this library and call `Get-QuietResourceDocumentation -WorkspaceRoot 
 
 ## Dependencies and effects
 
-Reads lock/source files, returns deterministic Markdown including a Mermaid lifecycle and direct dependency references; does not load resource binaries or write files.
+Reads lock/source files, returns deterministic Markdown including a Mermaid lifecycle and direct dependency references; does not load resource binaries or write files. Gallery consumers now refer to scripts/lib/Gallery.psm1; the generated inventory tracks that module's source hash and dynamic resource staging rather than the removed root Gallery.ps1 file.
 
 ## Critical review and verdict
 

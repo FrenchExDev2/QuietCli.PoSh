@@ -27,7 +27,7 @@ param(
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-QuietPreviewPackage')){return}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
-. (Join-Path $PSScriptRoot 'Gallery.ps1')
+Import-Module (Join-Path $PSScriptRoot 'lib/Gallery.psm1')
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 # This list only forbids writing generated artifacts inside source modules. It never selects public packages;

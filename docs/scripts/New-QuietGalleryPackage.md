@@ -2,7 +2,7 @@
 
 ## Purpose and usage
 
-Prepares one `FrenchExDev2.QuietCli.Core.PoSh` nupkg and its SHA-256 publication plan, without contacting PSGallery. The shared module-package reader derives its name from the Core `.psm1` and checks the sibling manifest; staging preserves existing filenames and bytes instead of renaming Core to QuietCli.
+Prepares one selected publishable business-module nupkg and its SHA-256 publication plan, without contacting PSGallery. Module defaults to Core; -Module Git selects FrenchExDev2.QuietCli.Git.PoSh. Workspace manifests and the shared reader derive eligibility/name/version, preserving existing filenames, GUID and dependencies. Core keeps its six RID payloads; Git keeps its declared net10.0/net11.0 parser outputs and Core dependency.
 
 ```powershell
 ./scripts/New-QuietGalleryPackage.ps1 -OutputDirectory <new-directory> -Version <exact-version> -RequireReadyToRun
@@ -12,7 +12,7 @@ Parameters: optional WorkspaceRoot, required new OutputDirectory, optional exact
 
 ## Dependencies and side effects
 
-Uses Common.ps1, Gallery.ps1 and Microsoft.PowerShell.PSResourceGet's Compress-PSResource. Creates internal staging, the public module, one nupkg and package-set.json. Temporarily changes PSModulePath and restores it in finally. Test-QuietGalleryPackageSet verifies the compressed package; for R2R plans it checks all twelve embedded manifests and actual native-header signatures. No API key or publication is used.
+Uses Common.ps1, lib/Gallery.psm1, GalleryRelease target discovery and Compress-PSResource. New-WorkspacePackage selects only the requested project. Temporary PSModulePath includes source dependencies during validation and is restored in finally. The plan records the exact Module; validation checks nuspec/manifest identity, dependencies and declared binary hashes. Only Core uses RID/R2R checks. No API key or publication is used.
 
 ## Critical review
 
@@ -33,7 +33,7 @@ This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which 
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Creates the public Core nupkg without contacting or publishing to a repository.
+Purpose: Creates one selected business-module nupkg without contacting or publishing to a repository.
 
 Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
