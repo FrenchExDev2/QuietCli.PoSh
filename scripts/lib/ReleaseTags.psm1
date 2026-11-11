@@ -155,9 +155,11 @@ function Invoke-QuietModuleRelease {
             $result.Revision=$revision
         }
         if((& $GitCommand @('status','--porcelain=v1','--untracked-files=normal')).HasOutput){throw 'ReleaseCheckoutChangedBeforeTagging'}
+        $batch=@{SchemaVersion=1;Revision=$revision;Tags=@($releases.Tag)}|ConvertTo-Json -Compress
         foreach($release in $releases){
             $plan=Resolve-QuietGalleryReleaseTag -WorkspaceRoot $WorkspaceRoot -Tag $release.Tag
-            $null=& $GitCommand @('-c','tag.gpgSign=false','tag','--annotate','--message',($plan.Module+' '+$plan.Version+' release'),'--',$release.Tag,$revision)
+            $annotation=$plan.Module+' '+$plan.Version+" release`n`nQuietCli-Release-Batch: "+$batch
+            $null=& $GitCommand @('-c','tag.gpgSign=false','tag','--annotate','--message',$annotation,'--',$release.Tag,$revision)
             $result.Created+=@($release.Tag)
         }
         if(!$NoPush){

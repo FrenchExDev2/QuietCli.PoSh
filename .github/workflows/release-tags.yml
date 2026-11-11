@@ -1,4 +1,5 @@
 name: QuietCli module release tags
+run-name: Release ${{ github.ref_name }}
 on:
   push:
     tags:
@@ -17,6 +18,8 @@ jobs:
       module: ${{ steps.release.outputs.module }}
       component: ${{ steps.release.outputs.component }}
       version: ${{ steps.release.outputs.version }}
+      is_leader: ${{ steps.release.outputs.is_leader }}
+      release_tags: ${{ steps.release.outputs.release_tags }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -24,9 +27,10 @@ jobs:
       - name: Validate the tag, manifest version and publication capability
         id: release
         shell: pwsh
-        run: ./scripts/Get-QuietReleasePlan.ps1 -Tag $env:GITHUB_REF_NAME -OutputPath $env:GITHUB_OUTPUT
+        run: ./scripts/Get-QuietReleasePlan.ps1 -Tag $env:GITHUB_REF_NAME -Revision $env:GITHUB_SHA -ReadBatch -OutputPath $env:GITHUB_OUTPUT
   release:
     needs: plan
+    if: needs.plan.outputs.is_leader == 'true'
     permissions:
       contents: read
       packages: write
@@ -35,3 +39,4 @@ jobs:
       module: ${{ needs.plan.outputs.module }}
       version: ${{ needs.plan.outputs.version }}
       publish: true
+      release_tags: ${{ needs.plan.outputs.release_tags }}

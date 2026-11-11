@@ -184,6 +184,52 @@ function Invoke-QuietGalleryPreviewTests {
         }
         Write-WorkspaceJson (Join-Path $RunDirectory git-gallery-install-diagnostics.json) @{Outcome=$execution.Outcome;ExitCode=$execution.ExitCode;Lines=@($capture.Lines);Report=$capture.Report}
         if($execution.Outcome -cne 'Success' -or !$capture.Report.GitModuleLoaded -or $capture.Report.GitNativeExecution -cne 'Success'){throw 'IndependentGitPackageInstallationFailed'}
+        Import-Module (Join-Path $WorkspaceRoot scripts/lib/GalleryRelease.psm1)
+        $targets=@(Select-QuietGalleryReleaseTargets $WorkspaceRoot -Module Core,Git)
+        $tags=@($targets|ForEach-Object {$_.Module+'/v'+$_.Version})
+        $options=@{WorkspaceRoot=$WorkspaceRoot;ReleaseTagsJson=($tags|ConvertTo-Json -Compress -AsArray);TriggerTag=$tags[0];Revision=('a'*40);PackageDirectory=(Join-Path $previewRoot release-batch)}
+        $operator=Join-Path $WorkspaceRoot scripts/Invoke-QuietGalleryRelease.ps1
+        $null=& $operator @options -Operation Prepare -WhatIf
+        if(Test-Path -LiteralPath $options.PackageDirectory){throw 'GalleryBatchPreviewWroteOutput'}
+        $null=& $operator @options -Operation Prepare -Confirm:$false
+        $null=& $operator @options -Operation Validate -Confirm:$false
+        $batchCalls=[Collections.Generic.List[string]]::new()
+        function Get-BatchFixtureRepository {
+            <# .SYNOPSIS
+            Returns the standard destination without a remote call.
+            #>
+            param([string]$Name,[object]$ErrorAction)
+            [pscustomobject]@{Uri=[uri]'https://www.powershellgallery.com/api/v2'}
+        }
+        function Get-BatchFixtureIdentity {
+            <# .SYNOPSIS
+            Reports absent fixture versions without network access.
+            #>
+            param([string]$Module,[string]$Version)
+            $false
+        }
+        function Send-BatchFixturePublication {
+            <# .SYNOPSIS
+            Records dependency-ordered publication without sending credentials or network requests.
+            #>
+            param([string]$NupkgPath,[string]$Repository,[string]$ApiKey,[switch]$SkipDependenciesCheck,[object]$ErrorAction)
+            if($Repository -cne 'PSGallery' -or $SkipDependenciesCheck){throw 'BatchPublicationBoundaryChanged'}
+            $batchCalls.Add([IO.Path]::GetFileName([IO.Path]::GetDirectoryName($NupkgPath)))
+        }
+        Set-Alias Get-PSResourceRepository Get-BatchFixtureRepository -Scope Local
+        Set-Alias Get-QuietGalleryRemoteIdentity Get-BatchFixtureIdentity -Scope Local
+        Set-Alias Publish-PSResource Send-BatchFixturePublication -Scope Local
+        $archive=Get-ChildItem -LiteralPath (Join-Path $options.PackageDirectory $targets[-1].Module) -Filter '*.nupkg'|Select-Object -First 1
+        $original=[IO.File]::ReadAllBytes($archive.FullName);$savedKey=$env:PSGALLERY_API_KEY
+        try{
+            $env:PSGALLERY_API_KEY='non-secret-fixture'
+            [IO.File]::WriteAllBytes($archive.FullName,[byte[]]@(1,2,3))
+            $rejected=$false;try{$null=& $operator @options -Operation Publish -Confirm:$false}catch{$rejected=$true}
+            if(!$rejected -or $batchCalls.Count){throw 'BatchPublishedBeforeValidatingAllPackages'}
+            [IO.File]::WriteAllBytes($archive.FullName,$original)
+            $null=& $operator @options -Operation Publish -Confirm:$false
+            if(($batchCalls -join ',') -cne ($targets.Module -join ',')){throw 'BatchDependencyPublicationOrderChanged'}
+        }finally{[IO.File]::WriteAllBytes($archive.FullName,$original);$env:PSGALLERY_API_KEY=$savedKey}
     }
     $cases['publication uses the validated artifacts in Core-only scope without real credentials or network']={
         $previewPublicationCalls=[Collections.Generic.List[string]]::new()

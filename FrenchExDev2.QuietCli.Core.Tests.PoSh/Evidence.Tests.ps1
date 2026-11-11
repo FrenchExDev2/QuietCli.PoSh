@@ -10,6 +10,9 @@ function Test-QuietEvidenceBundle {
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
     $builder=Join-Path $WorkspaceRoot 'scripts/New-CoreEvidenceBundle.ps1'
+    $workflow=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/ci.yml'),[Text.Encoding]::UTF8)
+    $uploads=@([regex]::Matches($workflow,'(?ms)^          name: quietcli-core-evidence-.*?(?=^      -|^  [a-z]|\z)'))
+    if($uploads.Count -ne 3 -or @($uploads|Where-Object {$_.Value -notmatch '(?m)^          include-hidden-files: true\r?$'}).Count){throw 'OwnedHiddenEvidenceNotUploaded'}
     $root=Join-Path $RunDirectory 'evidence-unit'
     [void][IO.Directory]::CreateDirectory($root)
     $random=[Random]::new(73597)
@@ -24,13 +27,24 @@ function Test-QuietEvidenceBundle {
         Write-WorkspaceJson (Join-Path $inputRoot 'summary.json') @{SyntheticIntegrityFixture=$true;State=@{State='Success';Platform='synthetic-rid';Passed=1;Failed=0};Suites=@();Profiling=$null;EngineIdentity=@{Mode='InProcess'};PowerShellVersion='synthetic';HostRuntime='synthetic'}
         [void][IO.Directory]::CreateDirectory((Join-Path $inputRoot 'workspace'))
         Write-WorkspaceJson (Join-Path $inputRoot 'workspace/excluded.json') @{Sentinel='excluded staged workspace'}
+        # Gallery XML names and owned hidden evidence must retain literal paths, sizes and hashes.
+        $literalNames=@('[Content_Types].xml','nested [é]/[Content_Types].xml','.quietcli-evidence/owned/manifest.json')
+        foreach($name in $literalNames){
+            $path=Join-Path $inputRoot $name
+            [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))
+            [IO.File]::WriteAllBytes($path,$bytes)
+        }
         $outputRoot=Join-Path $root "output-$iteration"
         $null=& $builder -ReportRoot $inputRoot -OutputDirectory $outputRoot -Revision ('a'*40) -RequireProfiling
         $manifest=Get-Content (Join-Path $outputRoot 'evidence-manifest.json') -Raw -Encoding utf8|ConvertFrom-Json
         if($manifest.EvidenceGaps.Count -or $manifest.SuccessfulProfilingReports -ne 1 -or (Test-Path (Join-Path $outputRoot 'workspace'))){throw 'EvidenceCopyOrExclusionChanged: seed 73597'}
         $copied=[IO.File]::ReadAllBytesAsync((Join-Path $outputRoot 'profiling/synthetic.nettrace')).GetAwaiter().GetResult()
         if([Convert]::ToHexString($copied) -cne [Convert]::ToHexString($bytes)){throw 'BinaryEvidenceChanged'}
-        foreach($file in $manifest.Files){if((Get-FileHash (Join-Path $outputRoot $file.Path) -Algorithm SHA256).Hash -cne $file.SHA256){throw 'EvidenceManifestHashMismatch'}}
+        foreach($file in $manifest.Files){if((Get-FileHash -LiteralPath (Join-Path $outputRoot $file.Path) -Algorithm SHA256).Hash -cne $file.SHA256){throw 'EvidenceManifestHashMismatch'}}
+        foreach($name in $literalNames){
+            $entry=@($manifest.Files|Where-Object Path -CEQ $name)
+            if($entry.Count -ne 1 -or $entry[0].Bytes -ne $bytes.Length -or $entry[0].SHA256 -cne [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))){throw 'LiteralEvidenceReceiptInvalid'}
+        }
         $renderer=Join-Path $WorkspaceRoot 'scripts/New-CorePerformanceReport.ps1'
         $null=& $renderer -EvidenceRoot $outputRoot -OutputDirectory $outputRoot -Revision ('a'*40) -ExpectedReports 1 -Suite Git
         $reportText=[IO.File]::ReadAllTextAsync((Join-Path $outputRoot 'PERFORMANCES_RESULTS.md'),[Text.Encoding]::UTF8).GetAwaiter().GetResult()

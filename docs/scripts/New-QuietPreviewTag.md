@@ -1,5 +1,7 @@
 # New-QuietPreviewTag.ps1
 
+Version-mode annotations declare the selected release batch and exact commit. Only its dependency-ordered leader starts the release matrix; sibling tag runs stop after validating the plan. Publication is ordered within the batch and retains every module's own version/tag. PR qualification remains independent. Existing manually created tags without batch metadata retain standalone behavior; no existing tag is rewritten to adopt batching.
+
 ## Purpose and usage
 
 With Version, create a release for one or more dynamically discovered business packages: edit selected versions, commit through the checked workspace pipeline, create annotated tags, push the branch through Push-Workspace, then atomically push exactly those tags.

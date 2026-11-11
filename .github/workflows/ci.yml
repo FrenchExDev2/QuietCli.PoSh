@@ -214,6 +214,7 @@ jobs:
         with:
           name: quietcli-core-evidence-${{ matrix.rid }}-${{ matrix.channel }}-${{ matrix.mode }}-${{ github.sha }}
           path: artifacts/evidence
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
           compression-level: 1
@@ -402,6 +403,7 @@ jobs:
         with:
           name: quietcli-core-evidence-${{ matrix.rid }}-Auto-${{ github.sha }}
           path: artifacts/evidence
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
           compression-level: 1
@@ -492,6 +494,7 @@ jobs:
         with:
           name: quietcli-core-evidence-${{ matrix.rid }}-Auto-${{ github.sha }}
           path: artifacts/evidence
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
           compression-level: 1

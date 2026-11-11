@@ -1,5 +1,7 @@
 # ReleaseTags.psm1
 
+Every operator-created module tag annotation carries the same bounded `QuietCli-Release-Batch` JSON (schema, exact commit and selected tag names). The tag workflow validates every member and elects one dependency-ordered leader. A Core/Git operation therefore runs one release qualification and one packaging build, publishing Core before Git. It retains independent module versions/tags; a separate PR validation is not reused as release evidence. Legacy/manual tags without batch metadata still trigger standalone release qualification.
+
 ## Purpose and usage
 
 Shared release planning and orchestration behind [New-QuietPreviewTag](../New-QuietPreviewTag.md).

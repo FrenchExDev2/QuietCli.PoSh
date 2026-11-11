@@ -6,6 +6,10 @@ on:
         description: Publishable component alias or exact package name
         type: string
         default: Core
+      release_tags:
+        description: Validated annotated release batch; empty preserves standalone packaging
+        type: string
+        default: ''
       qualified_sha:
         description: Reuse the All receipt from this same workflow run and attempt
         type: string
@@ -133,10 +137,15 @@ jobs:
         env:
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_MODULE: ${{ inputs.module }}
+          RELEASE_TAGS: ${{ inputs.release_tags }}
           PREVIEW_BUILD: ${{ inputs.preview_build }}
           QUALIFIED_REVISION: ${{ needs.checkpoint.outputs.qualified_sha }}
         run: |
-          if($env:PREVIEW_BUILD -eq 'true'){
+          if($env:RELEASE_TAGS){
+            if($env:PREVIEW_BUILD -eq 'true'){throw 'ReleaseBatchCannotGeneratePreviewIdentity'}
+            ./scripts/Invoke-QuietGalleryRelease.ps1 -Operation Prepare -PackageDirectory ./artifacts/gallery -ReleaseTagsJson $env:RELEASE_TAGS -TriggerTag $env:GITHUB_REF_NAME -Revision $env:QUALIFIED_REVISION -RequireReadyToRun
+            $plan=[pscustomobject]@{Module='batch';Version=$env:RELEASE_VERSION}
+          }elseif($env:PREVIEW_BUILD -eq 'true'){
             if($env:RELEASE_MODULE -cnotin @('Core','FrenchExDev2.QuietCli.Core.PoSh')){throw 'GeneratedPreviewArtifactRequiresCore'}
             ./scripts/New-QuietPreviewPackage.ps1 -OutputDirectory ./artifacts/gallery -BuildNumber $env:GITHUB_RUN_NUMBER -Attempt $env:GITHUB_RUN_ATTEMPT -QualifiedRevision $env:QUALIFIED_REVISION -RequireReadyToRun
           }else{
@@ -144,7 +153,7 @@ jobs:
             ./scripts/New-QuietGalleryPackage.ps1 -OutputDirectory ./artifacts/gallery -Module $env:RELEASE_MODULE -Version $env:RELEASE_VERSION -RequireReadyToRun
             ./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -ValidateOnly
           }
-          $plan=Get-Content ./artifacts/gallery/package-set.json -Raw -Encoding utf8|ConvertFrom-Json
+          if(!$env:RELEASE_TAGS){$plan=Get-Content ./artifacts/gallery/package-set.json -Raw -Encoding utf8|ConvertFrom-Json}
           $artifact='quietcli2-gallery-'+$plan.Module+'-'+$plan.Version+'-'+$env:GITHUB_SHA+'-attempt'+$env:GITHUB_RUN_ATTEMPT
           $output="version=$($plan.Version)`nartifact_name=$artifact`n"
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_OUTPUT,$output,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
@@ -155,6 +164,9 @@ jobs:
             artifacts/gallery/*.nupkg
             artifacts/gallery/package-set.json
             artifacts/gallery/preview.json
+            artifacts/gallery/release-set.json
+            artifacts/gallery/*/*.nupkg
+            artifacts/gallery/*/package-set.json
           if-no-files-found: error
           retention-days: 30
       - name: Require preview properties, offline installation and targeted mutations
@@ -199,12 +211,21 @@ jobs:
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
-        run: ./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -ValidateOnly
+          RELEASE_TAGS: ${{ inputs.release_tags }}
+        run: |
+          if($env:RELEASE_TAGS){
+            ./scripts/Invoke-QuietGalleryRelease.ps1 -Operation Validate -PackageDirectory ./artifacts/gallery -ReleaseTagsJson $env:RELEASE_TAGS -TriggerTag $env:GITHUB_REF_NAME -Revision $env:GITHUB_SHA
+          }else{./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION -ValidateOnly}
       - name: Bind the prepared version to the pushed release tag
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
+          RELEASE_TAGS: ${{ inputs.release_tags }}
         run: |
+          if($env:RELEASE_TAGS){
+            ./scripts/Invoke-QuietGalleryRelease.ps1 -Operation Validate -PackageDirectory ./artifacts/gallery -ReleaseTagsJson $env:RELEASE_TAGS -TriggerTag $env:GITHUB_REF_NAME -Revision $env:GITHUB_SHA
+            return
+          }
           $plan=./scripts/Get-QuietReleasePlan.ps1 -Tag $env:GITHUB_REF_NAME
           $package=Get-Content ./artifacts/gallery/package-set.json -Raw -Encoding utf8|ConvertFrom-Json
           if($plan.Module -cne $package.Module -or $plan.Version -cne $env:RELEASE_VERSION){throw 'GalleryReleaseTagPackageMismatch'}
@@ -212,11 +233,17 @@ jobs:
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
+          RELEASE_TAGS: ${{ inputs.release_tags }}
           PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
-        run: ./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION
+        run: |
+          if($env:RELEASE_TAGS){
+            ./scripts/Invoke-QuietGalleryRelease.ps1 -Operation Publish -PackageDirectory ./artifacts/gallery -ReleaseTagsJson $env:RELEASE_TAGS -TriggerTag $env:GITHUB_REF_NAME -Revision $env:GITHUB_SHA
+          }else{./scripts/Publish-QuietGallery.ps1 -PackageDirectory ./artifacts/gallery -Version $env:RELEASE_VERSION}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: quietcli2-publication-${{ needs.package.outputs.version }}-attempt${{ github.run_attempt }}
-          path: artifacts/gallery/publication.json
+          path: |
+            artifacts/gallery/publication.json
+            artifacts/gallery/*/publication.json
           if-no-files-found: ignore

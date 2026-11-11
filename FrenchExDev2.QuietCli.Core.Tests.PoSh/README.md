@@ -4,6 +4,10 @@
 
 # FrenchExDev2.QuietCli.Core.Tests.PoSh
 
+Host-matrix assertions require Windows, Linux selection/results and performance prerequisites as a set, allowing reordered/additional dependencies while rejecting each removed prerequisite. Evidence properties include bracketed Unicode paths and owned hidden manifests. CI uploads only the prepared evidence tree with hidden files included. Mutation workers write a start receipt and a terminal receipt in finally; parents retain bounded output tails/process metadata and reject absent or unfinished receipts even after exit code zero. An abrupt-exit fixture verifies that boundary; this does not claim a native ARM64 rerun.
+
+Release tests exercise a unique batch leader, remote sibling-tag revision rejection, dependency-ordered Core/Git validation and mock publication, and no-write previews. The leader qualifies/packages once, while PR validation remains independent. Legacy tags without annotations retain standalone releases.
+
 ## Test boundaries and local work branches
 
 Core mixes pure logic with real filesystem, Git, process and package integration. Local feature/fix commits and pushes do not require automatically running these companions. Every top-level case reports explicit TestKind/Dependencies and shows its classification in progress. The shared static check and runtime guard reject missing or malformed metadata before selection; there is no Unclassified fallback. Pure byte-count checks are independently selectable as `-Case 'unit byte-count*'`. Runner bootstrap/report I/O is separate from a pure case body. See [classification and concurrency](../docs/README-test-classification-and-concurrency.md) for the complete boundary and reviewed parallelization candidates, and [the commit-suite and PSDrive review](../docs/testing/commit-workspace.md) for actual temporary repository effects.

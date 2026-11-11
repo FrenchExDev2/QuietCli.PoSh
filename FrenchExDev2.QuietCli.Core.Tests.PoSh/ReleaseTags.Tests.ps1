@@ -93,6 +93,61 @@ function Test-QuietReleaseTags {
     $next=Invoke-QuietModuleRelease -WorkspaceRoot $fixture -Module Core,Git -Version 2.3.4 -NextPreview -NoPush -GitCommand $git -CommitCommand $commit -PushCommand $push -Confirm:$false
     if(!$next.Committed -or $next.Created.Count -ne 2 -or $next.Pushed -or $observed.Commits -ne 1 -or $observed.Pushes -or $next.Releases[0].Version -cne '2.3.4-preview3' -or $next.Releases[1].Version -cne '2.3.4-preview6'){throw 'IndependentNextPreviewCommitFailed'}
     foreach($tag in $next.Created){if((Invoke-ReleaseFixtureGit @('cat-file','-t',('refs/tags/'+$tag))).Value -cne 'tag'){throw 'ReleaseTagNotAnnotated'}}
+    $annotation=(Invoke-ReleaseFixtureGit @('for-each-ref','--format=%(contents)',('refs/tags/'+$next.Created[0]))).Lines -join "`n"
+    $batch=Resolve-QuietGalleryReleaseBatch -WorkspaceRoot $fixture -Tag $next.Created[0] -Revision $next.Revision -Annotation $annotation
+    $follower=Resolve-QuietGalleryReleaseBatch -WorkspaceRoot $fixture -Tag $next.Created[1] -Revision $next.Revision -Annotation $annotation
+    if(!$batch.IsLeader -or $follower.IsLeader -or $batch.Releases.Count -ne 2){throw 'ReleaseBatchLeaderNotUnique'}
+    $null=Invoke-ReleaseFixtureGit (@('push','--atomic','origin')+@($next.Created|ForEach-Object {'refs/tags/'+$_}))
+    $planScript=Join-Path $WorkspaceRoot scripts/Get-QuietReleasePlan.ps1
+    $outputs=Join-Path $RunDirectory release-batch-outputs.txt
+    $leader=& $planScript -WorkspaceRoot $fixture -Tag $next.Created[0] -Revision $next.Revision -ReadBatch -OutputPath $outputs
+    $other=& $planScript -WorkspaceRoot $fixture -Tag $next.Created[1] -Revision $next.Revision -ReadBatch
+    if(!$leader.Batch.IsLeader -or $other.Batch.IsLeader){throw 'RemoteReleaseBatchLeaderNotUnique'}
+    $wire=[IO.File]::ReadAllText($outputs,[Text.Encoding]::UTF8)
+    $json=[regex]::Match($wire,'(?m)^release_tags=(.+)$').Groups[1].Value
+    if($wire -notmatch '(?m)^is_leader=true\r?$' -or ((@($json|ConvertFrom-Json)) -join ',') -cne ($next.Created -join ',')){throw 'ReleaseBatchWorkflowOutputsInvalid'}
+    $random=[Random]::new(611113)
+    foreach($round in 1..32){
+        $shuffled=@($next.Created|Sort-Object {$random.Next()})
+        $sample=Resolve-QuietGalleryReleaseBatch -WorkspaceRoot $fixture -Tag $next.Created[1] -Revision $next.Revision -Tags $shuffled
+        if($sample.IsLeader -or $sample.LeaderTag -cne $next.Created[0]){throw 'ReleaseBatchDependsOnAnnotationOrder'}
+    }
+    foreach($invalid in @(
+        @{SchemaVersion=$true;Revision=$next.Revision;Tags=$next.Created},
+        @{SchemaVersion=2;Revision=$next.Revision;Tags=$next.Created},
+        @{SchemaVersion=1;Revision=('0'*40);Tags=$next.Created},
+        @{SchemaVersion=1;Revision=$next.Revision;Tags=@($next.Created[0],$next.Created[0])},
+        @{SchemaVersion=1;Revision=$next.Revision;Tags=@('FrenchExDev2.QuietCli.Vagrant.PoSh/v2.3.4-preview1')}
+    )){
+        $rejected=$false
+        try{$null=Resolve-QuietGalleryReleaseBatch -WorkspaceRoot $fixture -Tag $next.Created[0] -Revision $next.Revision -Annotation ('QuietCli-Release-Batch: '+($invalid|ConvertTo-Json -Compress))}catch{$rejected=$true}
+        if(!$rejected){throw 'InvalidReleaseBatchAccepted'}
+    }
+    foreach($invalid in @('{','[]','null','{"SchemaVersion":1,"SchemaVersion":1}','{"SchemaVersion":1,"Tags":null}')){
+        $rejected=$false
+        try{$null=Resolve-QuietGalleryReleaseBatch -WorkspaceRoot $fixture -Tag $next.Created[0] -Revision $next.Revision -Annotation ('QuietCli-Release-Batch: '+$invalid)}catch{$rejected=$true}
+        if(!$rejected){throw 'MalformedReleaseBatchAccepted'}
+    }
+    $standalone=Resolve-QuietGalleryReleaseBatch -WorkspaceRoot $fixture -Tag $next.Created[1] -Revision $next.Revision -Annotation 'Ordinary manual release tag'
+    if(!$standalone.IsLeader -or $standalone.Releases.Count -ne 1){throw 'StandaloneReleaseTagChanged'}
+    $null=Invoke-ReleaseFixtureGit @('tag','--force',$next.Created[1],$before)
+    $null=Invoke-ReleaseFixtureGit @('push','--force','origin',('refs/tags/'+$next.Created[1]))
+    $rejected=$false
+    try{$null=& $planScript -WorkspaceRoot $fixture -Tag $next.Created[0] -Revision $next.Revision -ReadBatch}catch{$rejected=$_.Exception.Message -like 'ReleaseBatchRemoteTagMismatch:*'}
+    if(!$rejected){throw 'ForeignRevisionBatchMemberAccepted'}
+    # Removing the remote revision guard accepts this same independent counterexample.
+    $source=[IO.File]::ReadAllText($planScript,[Text.Encoding]::UTF8)
+    $anchor='if($actual -cne $Revision)'
+    if(!$source.Contains($anchor)){throw 'ReleaseRevisionMutantAnchorInvalid'}
+    foreach($dependency in @('lib/GalleryRelease.psm1','Ci.Process.ps1')){
+        $relative="(Join-Path `$PSScriptRoot '$dependency')"
+        $absolute="'"+(Join-Path $WorkspaceRoot ('scripts/'+$dependency)).Replace("'","''")+"'"
+        $source=$source.Replace($relative,$absolute)
+    }
+    $mutant=Join-Path $RunDirectory release-plan-mutant.ps1
+    [IO.File]::WriteAllText($mutant,$source.Replace($anchor,'if($false)'),[Text.UTF8Encoding]::new($false))
+    $accepted=& $mutant -WorkspaceRoot $fixture -Tag $next.Created[0] -Revision $next.Revision -ReadBatch
+    if(!$accepted.Batch.IsLeader){throw 'ReleaseRevisionMutantInvalid'}
     $published=Invoke-QuietModuleRelease -WorkspaceRoot $fixture -Module Core -Version 2.3.4 -Preview 4 -PreviewSpecified -GitCommand $git -CommitCommand $commit -PushCommand $push -Confirm:$false
     if(!$published.Pushed -or !$published.BranchPushed -or $observed.Pushes -ne 1 -or $observed.Commits -ne 2){throw 'OwnedReleasePushFailed'}
     $remoteValue=(Invoke-ReleaseFixtureGit @('ls-remote','origin',('refs/tags/'+$published.Created[0]+'^{}'))).Value

@@ -1,5 +1,7 @@
 # Get-QuietReleasePlan.ps1
 
+`-ReadBatch -Revision <sha>` reads the triggering annotated tag, validates its optional `QuietCli-Release-Batch` JSON line, and verifies every batch tag's peeled commit on origin. It emits `is_leader` and `release_tags` in addition to the existing outputs. Only the first dependency-ordered member qualifies/publishes; followers finish after planning. Ordinary manual tags without a batch remain independent single releases. Missing/foreign remote refs fail before qualification. WhatIf makes no Git/network probe or output write.
+
 ## Purpose and usage
 
 Resolve an explicit release tag against its owning manifest before starting release qualification or publishing prepared bytes.

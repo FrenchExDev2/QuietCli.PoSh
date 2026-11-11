@@ -67,4 +67,43 @@ function Resolve-QuietGalleryReleaseTag {
     if($target[0].Version -cne $version){throw 'GalleryReleaseTagManifestMismatch'}
     [pscustomobject]@{Tag=$Tag;Module=$publicName;Component=$target[0].Component;Project=$target[0].Project;Version=$version;Published=$false}
 }
-Export-ModuleMember -Function Get-QuietGalleryReleaseTargets,Select-QuietGalleryReleaseTargets,Resolve-QuietGalleryReleaseTag
+function Resolve-QuietGalleryReleaseBatch {
+    <#
+    .SYNOPSIS
+    Validates a bounded annotated release batch and chooses one dependency-ordered leader.
+    .PARAMETER WorkspaceRoot
+    Checkout whose unchanged manifests own every tag.
+    .PARAMETER Tag
+    Triggering module tag; ordinary manual tags form a single-module batch.
+    .PARAMETER Revision
+    Exact commit shared by the tags.
+    .PARAMETER Annotation
+    Optional tag annotation containing one QuietCli-Release-Batch JSON line.
+    .PARAMETER Tags
+    Explicit batch members for package validation, instead of annotation parsing.
+    #>
+    [CmdletBinding()]
+    param([string]$WorkspaceRoot,[string]$Tag,[ValidatePattern('\A[a-f0-9]{40}\z')][string]$Revision,[string]$Annotation,[string[]]$Tags)
+    if(!$PSBoundParameters.ContainsKey('Tags')){
+        $Tags=@($Tag)
+        $records=@([regex]::Matches($Annotation,'(?m)^QuietCli-Release-Batch: (.+)\r?$'))
+        if($records.Count -gt 1 -or $Annotation.Length -gt 32768){throw 'GalleryReleaseBatchInvalid'}
+        if($records.Count){
+            $json=$records[0].Groups[1].Value
+            $document=[Text.Json.JsonDocument]::Parse($json)
+            try{
+                $keys=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                foreach($property in $document.RootElement.EnumerateObject()){if(!$keys.Add($property.Name)){throw 'GalleryReleaseBatchInvalid'}}
+            }finally{$document.Dispose()}
+            $data=$json|ConvertFrom-Json
+            if(($data.SchemaVersion -isnot [int] -and $data.SchemaVersion -isnot [long]) -or $data.SchemaVersion -ne 1 -or $data.Revision -cne $Revision -or $data.Tags -isnot [array] -or @($data.PSObject.Properties.Name|Where-Object {$_ -cnotin @('SchemaVersion','Revision','Tags')}).Count){throw 'GalleryReleaseBatchInvalid'}
+            $Tags=@($data.Tags)
+        }
+    }
+    if(!$Tags.Count -or $Tags.Count -gt 32 -or $Tag -cnotin $Tags){throw 'GalleryReleaseBatchInvalid'}
+    $plans=@($Tags|ForEach-Object {Resolve-QuietGalleryReleaseTag -WorkspaceRoot $WorkspaceRoot -Tag $_})
+    if(@($plans.Module|Select-Object -Unique).Count -ne $plans.Count){throw 'GalleryReleaseBatchDuplicateModule'}
+    $ordered=@(Select-QuietGalleryReleaseTargets -WorkspaceRoot $WorkspaceRoot -Module $plans.Module|ForEach-Object {$module=$_.Module;$plans|Where-Object Module -CEQ $module})
+    [pscustomobject]@{Revision=$Revision;LeaderTag=$ordered[0].Tag;IsLeader=($Tag -ceq $ordered[0].Tag);Tags=@($ordered.Tag);Releases=$ordered}
+}
+Export-ModuleMember -Function Get-QuietGalleryReleaseTargets,Select-QuietGalleryReleaseTargets,Resolve-QuietGalleryReleaseTag,Resolve-QuietGalleryReleaseBatch

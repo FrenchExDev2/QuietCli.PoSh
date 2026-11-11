@@ -40,7 +40,7 @@ if(Test-Path -LiteralPath $source){
                     try{[void]$evidenceInputStream.CopyToAsync($evidenceOutputStream).GetAwaiter().GetResult()}finally{$evidenceOutputStream.Dispose()}
                 }finally{$evidenceInputStream.Dispose()}
             }catch{$gaps.Add('EvidenceCopyFailed: '+$relative+'; '+$_.Exception.Message);$collectionFailures++;continue}
-            $files.Add(@{Path=$relative.Replace('\','/');Bytes=(Get-Item $target).Length;SHA256=(Get-FileHash $target -Algorithm SHA256).Hash})
+            $files.Add(@{Path=$relative.Replace('\','/');Bytes=(Get-Item -LiteralPath $target -Force).Length;SHA256=(Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash})
             if($relative.Replace('\','/') -match '^(?:[^/]+/)?(?:guest/)?profiling/summary\.json$'){
                 $profileReports.Add($target)
             }

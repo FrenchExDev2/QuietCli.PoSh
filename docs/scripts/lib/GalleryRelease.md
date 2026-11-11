@@ -1,5 +1,9 @@
 # GalleryRelease.psm1
 
+`Resolve-QuietGalleryReleaseBatch` validates bounded annotation JSON or explicit members against current publication policies and exact manifest versions. It rejects wrong revisions, duplicate modules, disabled/unknown owners and absent trigger membership, then uses workspace dependency order to elect one leader. It performs no Git/network operation; the release-plan entry point verifies all remote tag commits before starting qualification.
+
+The schema version must be an integer, not a coercible boolean. The parser rejects duplicate fields, malformed JSON, non-array tags and oversized batches. Seeded member permutations preserve the same leader; a remote-revision guard mutant is rejected by the foreign-commit counterexample.
+
 ## Purpose and usage
 
 Get-QuietGalleryReleaseTargets discovers business projects from existing WorkspaceProjects/manifests, derives identity through ModulePackage and checks the explicit boolean Publishable policy. IncludeDisabled exposes disabled business targets for diagnostics; test projects are always excluded.

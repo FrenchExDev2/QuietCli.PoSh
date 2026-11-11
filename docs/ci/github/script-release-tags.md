@@ -1,10 +1,12 @@
 # release-tags.yml
 
-<!-- workflow-source-sha256: 7F68B3EC1D35E444510608D010F02375DB6EB2E4C4D6B330BDC5088DF95B3F5B -->
+<!-- workflow-source-sha256: 9BA057B7224A55E2B83C7FCEB7348DFCA5C6B92EC5949CF0A7DC69293B7FA761 -->
 
 ## Purpose
 
 Explicit independently versioned business-module releases. Core and Git are enabled by their existing manifests; Vagrant remains disabled. Test modules are never release targets.
+
+Run titles include the triggering module tag. Multiple operator-created tags may produce multiple visible planning runs, but only the batch leader starts the expensive release matrix and packaging build.
 
 ## Triggers
 
@@ -27,7 +29,7 @@ flowchart TD
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
 | plan | runner ubuntu-latest |  | github.repository == 'FrenchExDev2/QuietCli.PoSh' | ./scripts/Get-QuietReleasePlan.ps1 |
-| release | reuses ./.github/workflows/publish-psgallery.yml | plan | default success condition |  |
+| release | reuses ./.github/workflows/publish-psgallery.yml | plan | needs.plan.outputs.is_leader == 'true' |  |
 
 <!-- workflow-generated:end -->
 
@@ -35,7 +37,7 @@ flowchart TD
 
 Get-QuietReleasePlan derives module/component/version from existing workspace manifests and the script-module identity reader. Invalid, mismatching, disabled and test targets fail before qualification. The release job passes the exact module and version to publish-psgallery, which runs full All qualification with profiling, verifies the packaging build and publishes one selected immutable package after tag/package validation.
 
-Operator-generated tags are collision-checked locally/remotely before edits, never forced, and only selected refs are pushed. Separate module tags start independent workflows; a compatible Core dependency must already be available for Git publication. This workflow does not create GitHub Releases or order independent public dependency releases.
+Operator-created annotations declare one batch and exact commit. Every tag run verifies all remote members and their manifest versions, but only its dependency-ordered leader starts qualification and packaging. The leader publishes Core before selected companions through Invoke-QuietGalleryRelease. Followers stop after planning; standalone/manual tags without batch annotations retain independent runs. Collision checks and the no-force policy remain. Git still requires a publicly visible compatible Core dependency; indexing delay can reject Git. No GitHub Release object is created.
 
 ## Validation and limits
 

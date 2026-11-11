@@ -24,5 +24,34 @@ function Assert-QuietHostMatrix {
         if(@($rows|Where-Object {$_.Value -match "(?m)^            rid: $rid\r?$" -and $_.Value -match '(?m)^            mode: Process\r?$'}).Count -ne 1){throw 'IsolatedHostCoverageRemoved'}
     }
     $gate=[regex]::Match($workflow,'(?ms)^  qualification-gate:.*?(?=^  [a-z][a-z-]*:|\z)').Value
-    if($gate -notmatch '(?m)^    needs: \[windows, linux-result\]\r?$'){throw 'HostMatrixNotRequiredByQualification'}
+    Assert-QuietHostQualificationDependencies $gate
+    # Dependency order and additional prerequisites do not remove host coverage.
+    $random=[Random]::new(611112)
+    foreach($round in 1..32){
+        $names=@('windows','linux-result','linux-matrix','performance-results','future-evidence')|Sort-Object {$random.Next()}
+        Assert-QuietHostQualificationDependencies ('    needs: ['+($names -join ', ')+']')
+    }
+    foreach($removed in @('windows','linux-result','linux-matrix','performance-results')){
+        $names=@('windows','linux-result','linux-matrix','performance-results')|Where-Object {$_ -cne $removed}
+        $rejected=$false
+        try{Assert-QuietHostQualificationDependencies ('    needs: ['+($names -join ', ')+']')}catch{$rejected=$_.Exception.Message -ceq 'HostMatrixNotRequiredByQualification'}
+        if(!$rejected){throw ('HostQualificationDependencyRemovalAccepted: '+$removed)}
+    }
+}
+
+function Assert-QuietHostQualificationDependencies {
+    <#
+    .SYNOPSIS
+    Requires all matrix and profiling prerequisites regardless of ordering or additional gates.
+    .PARAMETER Workflow
+    Qualification job text containing one literal inline dependency list.
+    #>
+    param([string]$Workflow)
+    $match=[regex]::Matches($Workflow,'(?m)^    needs: \[([^\]\r\n]+)\]\s*$')
+    if($match.Count -ne 1){throw 'HostMatrixNotRequiredByQualification'}
+    $needs=@($match[0].Groups[1].Value.Split(',')|ForEach-Object {$_.Trim()})
+    if(@($needs|Select-Object -Unique).Count -ne $needs.Count){throw 'HostMatrixNotRequiredByQualification'}
+    foreach($required in @('windows','linux-result','linux-matrix','performance-results')){
+        if($required -cnotin $needs){throw 'HostMatrixNotRequiredByQualification'}
+    }
 }

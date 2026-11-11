@@ -1,10 +1,10 @@
 # publish-psgallery.yml
 
-<!-- workflow-source-sha256: 12F386A841A02954D3A171685A763421A74D8224F6707C9DED8D514D69179771 -->
+<!-- workflow-source-sha256: 97D3F9EDA59B647228C15474FF247BCD03EE30EF4AB67A3A5B95D5055B1BEAD5 -->
 
 ## Purpose
 
-Prepare one selected Core/companion package after exact-revision qualification and optionally publish those same verified bytes for a matching tag push.
+Prepare one selected package or annotated batch after exact-revision qualification and optionally publish those same verified bytes for a matching tag push. A batch shares qualification and the packaging build, validates every module first, then publishes in dependency order.
 
 ## Triggers
 
@@ -35,8 +35,8 @@ flowchart TD
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
 | checkpoint | runner ubuntu-latest | qualification, reuse-qualification | ${{ !cancelled() && (needs.qualification.result == 'success' &#124;&#124; needs.reuse-qualification.result == 'success') }} |  |
-| package | runner windows-latest | checkpoint | ${{ !cancelled() && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-QuietGalleryPackage.ps1, ./scripts/New-QuietPreviewPackage.ps1, ./scripts/Publish-QuietGallery.ps1, ./scripts/RuntimeTargets.ps1 |
-| publish | runner windows-latest | checkpoint, package | ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Get-QuietReleasePlan.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Publish-QuietGallery.ps1 |
+| package | runner windows-latest | checkpoint | ${{ !cancelled() && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/Invoke-QuietGalleryRelease.ps1, ./scripts/New-QuietGalleryPackage.ps1, ./scripts/New-QuietPreviewPackage.ps1, ./scripts/Publish-QuietGallery.ps1, ./scripts/RuntimeTargets.ps1 |
+| publish | runner windows-latest | checkpoint, package | ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Get-QuietReleasePlan.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Invoke-QuietGalleryRelease.ps1, ./scripts/Publish-QuietGallery.ps1 |
 | qualification | reuses ./.github/workflows/ci.yml |  | inputs.qualified_sha == '' |  |
 | reuse-qualification | runner ubuntu-latest |  | inputs.qualified_sha != '' && inputs.qualified_sha == github.sha | ./scripts/Assert-QualificationReceipt.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
 
@@ -52,7 +52,7 @@ The publish job requires original-repository push/tag context, explicit publicat
 
 ## Validation and limits
 
-Local policy tests cover event boundaries and discovered targets; GalleryPreview checks independent Core/Git packages, isolated import/handler execution and mutation cases. New targets require their own declarations and CI qualification coverage. Git requires a compatible publicly available Core dependency; simultaneous independent tag workflows do not guarantee publication order. Environment tag rules and keys are external configuration, not changed by this workflow. ValidateOnly and package preparation do not publish.
+Local policy tests cover event boundaries and discovered targets; GalleryPreview checks independent Core/Git packages and isolated imports/handlers. The validated release_tags input routes one annotated batch through one All qualification and packaging build. Invoke-QuietGalleryRelease validates every package before publishing any, in dependency order; followers stop after planning. Standalone tags retain their own runs. Git requires a publicly visible compatible Core dependency; indexing delay remains a boundary without retry or bypass. New targets require declarations and qualification. Environment rules/keys remain external. ValidateOnly and preparation do not publish.
 
 <!-- credits:begin -->
 ## Credits

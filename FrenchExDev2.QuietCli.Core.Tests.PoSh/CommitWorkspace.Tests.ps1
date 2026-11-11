@@ -378,6 +378,16 @@ function Test-QuietCommitWorkspace {
         if (([regex]::Matches($source, [regex]::Escape($mutant.Find))).Count -ne 1) { throw ('CommitWorkspaceMutationAnchorInvalid: ' + $mutant.Id) }
     }
     $mutationWorker=Join-Path $PSScriptRoot 'CommitWorkspace.MutationWorker.ps1'
+    # A zero native exit is not a completed mutation; preserve evidence even after an abrupt exit.
+    $abruptDirectory=Join-Path $RunDirectory 'commit-workspace-worker-abrupt-exit'
+    [void][IO.Directory]::CreateDirectory($abruptDirectory)
+    $abruptCandidate=Join-Path $abruptDirectory candidate.ps1
+    [IO.File]::WriteAllText($abruptCandidate,"param([string]`$Message,[string]`$WorkspaceRoot)`n[Environment]::Exit(0)`n",$utf8)
+    $abruptResult=Join-Path $abruptDirectory result.json
+    $abrupt=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -WorkingDirectory $WorkspaceRoot -TimeoutSeconds 120 -ArgumentList @('-NonInteractive','-File',$mutationWorker,'-WorkspaceRoot',$WorkspaceRoot,'-RunDirectory',$abruptDirectory,'-CandidatePath',$abruptCandidate,'-ResultPath',$abruptResult,'-WhatIf:$false','-Confirm:$false') -OnOutput {param($event,$state)}
+    if($abrupt.Outcome -cne 'Success' -or !(Test-Path -LiteralPath $abruptResult)){throw 'MutationAbruptWorkerFixtureFailed'}
+    $unfinished=Get-Content -LiteralPath $abruptResult -Raw -Encoding utf8|ConvertFrom-Json
+    if($unfinished.State -cne 'InfrastructureFailure' -or $unfinished.Stage -ceq 'Completed'){throw 'MutationZeroExitAcceptedAsCompletion'}
     $parallelResults=@($mutants | ForEach-Object -ThrottleLimit $MaxConcurrency -Parallel {
         $mutant=$_
         try {
@@ -397,11 +407,21 @@ function Test-QuietCommitWorkspace {
             $tokens=$null;$errors=$null;$null=[Management.Automation.Language.Parser]::ParseFile($candidatePath,[ref]$tokens,[ref]$errors)
             if($errors.Count){throw ('CommitWorkspaceMutantInvalid: '+$mutant.Id)}
             $resultPath=Join-Path $candidateDirectory 'result.json'
-            $processState=@{Lines=0}
+            $processState=@{Lines=0;Tail=[Collections.Generic.Queue[string]]::new()}
             $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
-            $process=Invoke-CiProcess -FilePath $runner -ArgumentList @('-File',$workerMutationWorker,'-WorkspaceRoot',$workerWorkspaceRoot,'-RunDirectory',$candidateDirectory,'-CandidatePath',$candidatePath,'-ResultPath',$resultPath) -WorkingDirectory $workerWorkspaceRoot -TimeoutSeconds 900 -State $processState -OnOutput {param($event,$state)$state.Lines++}
-            if($process.Outcome -ne 'Success' -or !(Test-Path -LiteralPath $resultPath)){throw ('CommitWorkspaceMutationWorkerFailed: '+$mutant.Id+': '+$process.Outcome+'/'+$process.ExitCode)}
-            Get-Content -LiteralPath $resultPath -Raw -Encoding utf8|ConvertFrom-Json
+            $process=Invoke-CiProcess -FilePath $runner -ArgumentList @('-NonInteractive','-File',$workerMutationWorker,'-WorkspaceRoot',$workerWorkspaceRoot,'-RunDirectory',$candidateDirectory,'-CandidatePath',$candidatePath,'-ResultPath',$resultPath,'-WhatIf:$false','-Confirm:$false') -WorkingDirectory $workerWorkspaceRoot -TimeoutSeconds 900 -State $processState -OnOutput {
+                param($event,$state)
+                $state.Lines++
+                $text=[string]$event.Text
+                $state.Tail.Enqueue($text.Substring(0,[Math]::Min(512,$text.Length)))
+                if($state.Tail.Count -gt 16){[void]$state.Tail.Dequeue()}
+            }
+            $diagnostic=@{Name=$mutant.Id;Outcome=$process.Outcome;ExitCode=$process.ExitCode;ObservedLines=$processState.Lines;Tail=@($processState.Tail);ResultExists=(Test-Path -LiteralPath $resultPath)}
+            [IO.File]::WriteAllText((Join-Path $candidateDirectory 'worker-process.json'),($diagnostic|ConvertTo-Json -Depth 4)+"`n",$workerUtf8)
+            if($process.Outcome -ne 'Success' -or !$diagnostic.ResultExists){throw ('CommitWorkspaceMutationWorkerFailed: '+$mutant.Id+': '+$process.Outcome+'/'+$process.ExitCode+'; diagnostic='+$candidateDirectory+'/worker-process.json')}
+            $receipt=Get-Content -LiteralPath $resultPath -Raw -Encoding utf8|ConvertFrom-Json
+            if($receipt.Name -cne $mutant.Id -or $receipt.Stage -cne 'Completed' -or $receipt.State -cnotin @('Killed','Survived')){throw ('CommitWorkspaceMutationWorkerIncomplete: '+$mutant.Id+'; diagnostic='+$candidateDirectory+'/worker-process.json')}
+            $receipt
         }catch{
             [pscustomobject]@{Name=$mutant.Id;State='InfrastructureFailure';Diagnostic=$_.Exception.Message}
         }

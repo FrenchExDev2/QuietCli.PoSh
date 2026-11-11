@@ -83,7 +83,7 @@ Both stable and prerelease publication are requested by explicit module tag push
 | FrenchExDev2.QuietCli.Git.PoSh | Enabled | Requires compatible Core; Git command/version qualification remains partial |
 | FrenchExDev2.QuietCli.Vagrant.PoSh | Disabled | Source companion; real-provider qualification remains partial |
 
-Install the published Git companion with `Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Repository PSGallery`; add `-Prerelease` when selecting previews. Its RequiredModules dependency remains FrenchExDev2.QuietCli.Core.PoSh. Publish a compatible Core dependency first; independent simultaneous tag workflows do not guarantee publication order. Package preparation/isolated import checks do not establish which dependency versions are currently available on the public Gallery.
+Install the published Git companion with `Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Repository PSGallery`; add `-Prerelease` when selecting previews. Its RequiredModules dependency remains FrenchExDev2.QuietCli.Core.PoSh. Operator-created batches qualify once and publish Core before Git. Separately created manual tags remain independent; publish a compatible Core dependency first. Public indexing delays can reject Git even after Core upload. Package preparation/isolated import checks do not establish which versions are currently available on the Gallery.
 
 For checked version commits, numbered previews and selected tag pushes, see [the release operator](scripts/New-QuietPreviewTag.md). No module is published merely by merging develop.
 

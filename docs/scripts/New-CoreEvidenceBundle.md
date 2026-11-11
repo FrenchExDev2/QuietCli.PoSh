@@ -1,5 +1,7 @@
 # New-CoreEvidenceBundle.ps1
 
+Paths are literal throughout size/hash collection, including Gallery `[Content_Types].xml` names and owned hidden `.quietcli-evidence` manifests. The CI upload includes hidden files only from the prepared `artifacts/evidence` tree. Generated fixtures verify byte counts and SHA-256 independently for Unicode, bracketed and hidden paths; uploads never point at the whole checkout.
+
 ## Purpose
 
 Collects a CI job's test/container report tree into a separate, checksummed "evidence bundle" directory — attaching workflow revision/run identity and SHA-256 per file — so that downstream reporting (`New-CorePerformanceReport.ps1`) and human reviewers can trust that the evidence wasn't silently modified or partially produced, and so that missing or incomplete mandatory profiling data becomes an explicit, visible gap rather than a silent pass. It is called twice from `.github/workflows/ci.yml` (lines 169, 331) — once per test-matrix job and once per container job — immediately before `New-CorePerformanceReport.ps1` consumes the resulting `evidence-manifest.json`.

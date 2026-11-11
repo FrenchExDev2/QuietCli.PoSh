@@ -64,7 +64,7 @@ foreach($manifestFile in $manifests){
     if($manifest.Revision -cne $Revision){$gaps.Add('Revision mismatch: '+$manifestFile.FullName);continue}
     foreach($file in $manifest.Files){
         $path=Join-Path $bundle $file.Path
-        if(!(Test-Path $path) -or (Get-FileHash $path -Algorithm SHA256).Hash -cne $file.SHA256){$gaps.Add('Missing/modified evidence: '+$file.Path)}
+        if(!(Test-Path -LiteralPath $path) -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -cne $file.SHA256){$gaps.Add('Missing/modified evidence: '+$file.Path)}
     }
     foreach($gap in $manifest.EvidenceGaps){$gaps.Add([string]$gap)}
     $main=@($manifest.Files|Where-Object {$_.Path -match '^(?:[^/]+/)?(?:guest/)?summary\.json$' -and $_.Path -notmatch '(^|/)profiling/'})
@@ -85,7 +85,7 @@ foreach($manifestFile in $manifests){
         $mode=if($profileData -and $profileData.PSObject.Properties['TargetIdentity']){$profileData.TargetIdentity.EngineMode}elseif($summary.EngineIdentity){$summary.EngineIdentity.Mode}else{'-'}
         $label=$summary.State.Platform+' / '+$summary.PowerShellVersion+' / '+$mode
         if(!$identities.Add($label)){$gaps.Add('Duplicate matrix environment: '+$label)}
-        $row=[ordered]@{Label=$label;RID=$summary.State.Platform;PowerShell=$summary.PowerShellVersion;CLR=$summary.HostRuntime;Mode=$mode;State=$summary.State.State;Passed=$summary.State.Passed;Failed=$summary.State.Failed;ImportMedianMs=$null;ImportP95Ms=$null;AllocatedMiB=$null;ControlledStates=0;Profiling='Not requested';ClrCollectors=0;Source=$entry.Path}
+        $row=[ordered]@{Label=$label;RID=$summary.State.Platform;PowerShell=$summary.PowerShellVersion;CLR=$summary.HostRuntime;Mode=$mode;State=$summary.State.State;Passed=$summary.State.Passed;Failed=$summary.State.Failed;ImportMedianMs=$null;ImportP95Ms=$null;AllocatedMiB=$null;ControlledStates=0;Profiling=$(if($Suite -ceq 'Git'){'Outside selected scope'}else{'Missing (phase not reached)'});ClrCollectors=0;Source=$entry.Path}
         if($import){$row.ImportMedianMs=$import.Statistics.ElapsedMs.Import.Median;$row.ImportP95Ms=$import.Statistics.ElapsedMs.Import.P95;$row.AllocatedMiB=$import.Statistics.AllocatedBytes.PairedDelta.Median/1MB}
         if($controlled){
             $row.ControlledStates=$controlled.Scenarios.Count

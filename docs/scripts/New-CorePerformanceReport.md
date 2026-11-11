@@ -1,5 +1,9 @@
 # New-CorePerformanceReport.ps1
 
+Manifest file existence and SHA-256 checks use literal paths so bracketed Gallery XML names cannot become wildcard matches. Missing hidden evidence remains a real integrity failure. A functional failure before the profiling phase still produces readable partial HTML, while qualification rejects the missing profiles.
+
+Absent Core profiling is displayed as `Missing (phase not reached)`, rather than implying that profiling was disabled. Git-only reports label it outside their selected scope.
+
 ## Standalone HTML and detailed profiling
 
 Every rendering produces PERFORMANCES_RESULTS.html alongside Markdown and JSON, including incomplete-evidence failures. The HTML uses PowerShell's installed ConvertFrom-Markdown cmdlet, embedded CSS/UTF-8 and a restrictive content-security policy; it needs no external script/style/network resource. Report manifests checksum all three formats. The combined artifact is `quietcli-performance-results-<revision>`; open the HTML after downloading it. GitHub's step summary continues to use Markdown, not a Pages deployment.

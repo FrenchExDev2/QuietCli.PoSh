@@ -1,5 +1,7 @@
 # Publish-QuietGallery.ps1
 
+Annotated multi-module releases use [Invoke-QuietGalleryRelease](Invoke-QuietGalleryRelease.md) to validate all packages first, then call this unchanged single-module publication boundary in dependency order. Each module retains its own publication receipt; no cross-run qualification or dependency bypass is introduced.
+
 ## Purpose and usage
 
 Publish one selected verified business package once, preserving existing Gallery identities, without rebuilding or silently retrying.

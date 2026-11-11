@@ -1,10 +1,12 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 3710688B7C5A22D25EC7EC6A900C2806AE41C4D45C3DC369343D64BE92761E59 -->
+<!-- workflow-source-sha256: 7433781CDE6F5448823FC66927DC90076BB0C98F87FC312E3080905B70F69980 -->
 
 ## Purpose
 
 Shared qualification for the selected Core, Git or All source scope across six Windows host/mode combinations and four native Linux RID targets.
+
+The host contract checks required prerequisites as a set rather than requiring an obsolete exact dependency line. Core evidence uploads include owned hidden files from artifacts/evidence only; literal bracketed Gallery XML paths retain their real byte counts and hashes. Functional failure prevents companion fan-out and the later profiling phase, but partial HTML and original failure diagnostics are retained. Missing profiles still block qualification.
 
 ## Triggers
 

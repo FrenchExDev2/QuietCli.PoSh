@@ -1,5 +1,7 @@
 # Preview versions and GitHub publication
 
+Version-mode operator tags share an annotated batch. One dependency-ordered leader runs release qualification and packaging once, then publishes selected modules in order. Followers validate the plan without another matrix. PR qualification stays independent, with no cross-run receipt reuse. Legacy/manual tags without batch metadata remain standalone; existing immutable tags are not rewritten.
+
 Keep the package name, GUID and numeric target release stable while iterating on a preview. For a target `0.2.0`,
 the packaging workflow produces identities such as:
 
