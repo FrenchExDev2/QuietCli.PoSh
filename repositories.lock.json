@@ -1,79 +1,79 @@
 {
+  "Runtime": "11.0.0",
   "Projects": [
     {
       "SourceSHA256": "6B8B7F0AE16AD996F2D7BA7484C59FF6D7FC256A7001CA7E2B29EABC5C9016BA",
-      "Name": "FrenchExDev2.QuietCli.Core.PoSh",
       "Dependencies": [],
-      "Path": "FrenchExDev2.QuietCli.Core.PoSh"
+      "Path": "FrenchExDev2.QuietCli.Core.PoSh",
+      "Name": "FrenchExDev2.QuietCli.Core.PoSh"
     },
     {
       "SourceSHA256": "7A4B0C97E804813D55C3D1B80EA412A90279EEB1DE613A89D8CE9E3C54A59680",
-      "Name": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Core.PoSh"
       ],
-      "Path": "FrenchExDev2.QuietCli.Core.Tests.PoSh"
+      "Path": "FrenchExDev2.QuietCli.Core.Tests.PoSh",
+      "Name": "FrenchExDev2.QuietCli.Core.Tests.PoSh"
     },
     {
       "SourceSHA256": "C61352099F7411A104BD7E3FE1B192F2D35BD6781C739AF8A31A4600FA3C8792",
-      "Name": "FrenchExDev2.QuietCli.Distribution.Tests.PoSh",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Core.Tests.PoSh"
       ],
-      "Path": "FrenchExDev2.QuietCli.Distribution.Tests.PoSh"
+      "Path": "FrenchExDev2.QuietCli.Distribution.Tests.PoSh",
+      "Name": "FrenchExDev2.QuietCli.Distribution.Tests.PoSh"
     },
     {
       "SourceSHA256": "944EDE96882F1515CCE98A90484EE36B9069F704A1EAFF80972A02B78053998E",
-      "Name": "FrenchExDev2.QuietCli.Git.PoSh",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Core.PoSh"
       ],
-      "Path": "FrenchExDev2.QuietCli.Git.PoSh"
+      "Path": "FrenchExDev2.QuietCli.Git.PoSh",
+      "Name": "FrenchExDev2.QuietCli.Git.PoSh"
     },
     {
       "SourceSHA256": "2893450790939102444AAF2B965898A46F2016057E3063C6111158A960EF736D",
-      "Name": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Git.PoSh",
         "FrenchExDev2.QuietCli.Core.Tests.PoSh"
       ],
-      "Path": "FrenchExDev2.QuietCli.Git.Tests.PoSh"
+      "Path": "FrenchExDev2.QuietCli.Git.Tests.PoSh",
+      "Name": "FrenchExDev2.QuietCli.Git.Tests.PoSh"
     },
     {
       "SourceSHA256": "F6B47FD9F1CC703C305BD687357444ABDE9C0B04CC392C4D69F459B8D59524E1",
-      "Name": "FrenchExDev2.QuietCli.Vagrant.PoSh",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Core.PoSh"
       ],
-      "Path": "FrenchExDev2.QuietCli.Vagrant.PoSh"
+      "Path": "FrenchExDev2.QuietCli.Vagrant.PoSh",
+      "Name": "FrenchExDev2.QuietCli.Vagrant.PoSh"
     },
     {
       "SourceSHA256": "AD3AC12580EE517FDD23CB794A6A81F5B659B09B3F78A4BFD8DBB4E1375162CF",
-      "Name": "FrenchExDev2.QuietCli.Vagrant.Tests.PoSh",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Vagrant.PoSh",
         "FrenchExDev2.QuietCli.Core.Tests.PoSh"
       ],
-      "Path": "FrenchExDev2.QuietCli.Vagrant.Tests.PoSh"
+      "Path": "FrenchExDev2.QuietCli.Vagrant.Tests.PoSh",
+      "Name": "FrenchExDev2.QuietCli.Vagrant.Tests.PoSh"
     },
     {
-      "SourceSHA256": "27DF746139022DB73F30FC12C74F3727215B2CD8F8471B5C8BC27D7F706952FB",
-      "Name": "FrenchExDev2.QuietCli.Tooling.Tests.PoSh",
+      "SourceSHA256": "E8CFA3D239F4288A9D8C9E8DBD7A01A00D3B9ED4F286D66B551DC1885FC95FE9",
       "Dependencies": [
         "FrenchExDev2.QuietCli.Core.Tests.PoSh",
         "FrenchExDev2.QuietCli.Git.PoSh",
         "FrenchExDev2.QuietCli.Vagrant.PoSh"
       ],
-      "Path": "FrenchExDev2.QuietCli.Tooling.Tests.PoSh"
+      "Path": "FrenchExDev2.QuietCli.Tooling.Tests.PoSh",
+      "Name": "FrenchExDev2.QuietCli.Tooling.Tests.PoSh"
     }
   ],
-  "SDK": "11.0.100",
+  "SchemaVersion": 3,
   "Layout": "Monorepo",
-  "Runtime": "11.0.0",
   "Repository": {
-    "SourceSHA256": "A90C83AB74566248C346E3B0946BAA23E8478056E2A87E38011D81BB4B1AA050",
-    "Name": "FrenchExDev2.QuietCli.PoSh",
-    "Remote": "https://github.com/FrenchExDev2/QuietCli.PoSh.git"
+    "Remote": "https://github.com/FrenchExDev2/QuietCli.PoSh.git",
+    "SourceSHA256": "4E2FB548FAC8FD9D7648CF80B58FF5790751EAB2F7CDF8BA446B25B39884EDCF",
+    "Name": "FrenchExDev2.QuietCli.PoSh"
   },
-  "SchemaVersion": 3
+  "SDK": "11.0.100"
 }

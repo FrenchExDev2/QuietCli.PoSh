@@ -1,5 +1,7 @@
 # QuietCli repository tooling tests
 
+Performance aggregation scope is checked as a restricted boolean condition over cache-only mode, explicit profiling and the selected Core scope. Sixteen combinations and four removed-guard mutants replace an exact-text assertion, retaining profiling for Core qualification and `always()` for failure diagnostics while rejecting cache warm-up as qualification evidence. No workflow expression is evaluated before token validation.
+
 This private test companion owns repository automation qualification, independently of the Core product matrix.
 It is never published to PowerShell Gallery. Its own manifest declares its runner, complete test metadata and execution policy.
 

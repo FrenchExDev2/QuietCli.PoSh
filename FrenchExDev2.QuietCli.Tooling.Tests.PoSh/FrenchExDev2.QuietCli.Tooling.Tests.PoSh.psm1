@@ -251,7 +251,27 @@ function Invoke-QuietToolingTests {
                     $option=$workflow['on'][$trigger]['inputs']['collect_performance']
                     if(!$option -or $option['type'] -cne 'boolean' -or [string]$option['default'] -cne 'true'){throw 'PerformanceMustBeEnabledByDefault'}
                 }
-                if([string]$jobs['performance-results']['if'] -cne '${{ always() && inputs.collect_performance && needs.linux-matrix.outputs.has_core == ''true'' }}'){throw 'PerformanceAggregationNotOptIn'}
+                $assertAggregationScope={
+                    param([string]$condition)
+                    $condition=$condition.Trim()
+                    if($condition.StartsWith('${{') -and $condition.EndsWith('}}')){$condition=$condition.Substring(3,$condition.Length-5).Trim()}
+                    if($condition -cnotmatch '(?<![\w.])always\(\)'){throw 'PerformanceAggregationFailureReportsRequired'}
+                    if($condition -cnotmatch "\A(?:(?:always\(\)|inputs\.images_only|inputs\.collect_performance|needs\.linux-matrix\.outputs\.has_core|'true'|'false')|&&|\|\||==|!=|!|[()]|\s)+\z"){throw 'PerformanceAggregationConditionInvalid'}
+                    $expression=$condition.Replace('always()','$true').Replace('inputs.images_only','$imagesOnly').Replace('inputs.collect_performance','$collectPerformance').Replace('needs.linux-matrix.outputs.has_core','$hasCore').Replace('&&',' -and ').Replace('||',' -or ').Replace('==',' -eq ').Replace('!=',' -ne ').Replace('!',' -not ')
+                    $evaluate=[scriptblock]::Create($expression)
+                    foreach($imagesOnly in @($false,$true)){foreach($collectPerformance in @($false,$true)){foreach($hasCore in @('true','false','','unknown')){
+                        $expected=!$imagesOnly -and $collectPerformance -and $hasCore -ceq 'true'
+                        if([bool](& $evaluate) -ne $expected){throw 'PerformanceAggregationScopeChanged'}
+                    }}}
+                }
+                $aggregationCondition=[string]$jobs['performance-results']['if']
+                & $assertAggregationScope $aggregationCondition
+                $aggregationDamages=@($aggregationCondition.Replace('!inputs.images_only && ',''),$aggregationCondition.Replace('inputs.collect_performance && ',''),$aggregationCondition.Replace("needs.linux-matrix.outputs.has_core == 'true'","'true' == 'true'"),$aggregationCondition.Replace('always() && ',''))
+                foreach($damaged in $aggregationDamages){
+                    $rejected=$false;try{& $assertAggregationScope $damaged}catch{$rejected=$true}
+                    if(!$rejected){throw 'PerformanceAggregationGuardMutantSurvived'}
+                }
+                Write-WorkspaceJson (Join-Path $RunDirectory 'ci-performance-aggregation-scope.json') @{ScopeProperties=16;GuardMutantsRejected=4;CachePreparationProducesQualification=$false}
                 foreach($name in @('windows','linux','linux-test-driver')){
                     $runs=@($jobs[$name]['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
                     if($runs.Contains('if($env:QUIETCLI_SUITE -ne ''Git'')')){throw ('UnconditionalProfiling: '+$name)}
