@@ -15,7 +15,7 @@ function Get-QuietSourceFiles {
     while($pending.Count){
         $directory=$pending.Pop()
         foreach($item in Get-ChildItem -LiteralPath $directory -Force){
-            if($item.Name -in @('.git','.dotnet','bin','obj','artifacts','.vs','.profilers')){continue}
+            if($item.Name -in @('.git','.dotnet','.cache','bin','obj','artifacts','.vs','.profilers')){continue}
             if(!$item.PSIsContainer -and $item.Name -match '\.(json|csproj|props)\.bak-'){continue}
             if($item.Name -eq 'lib' -and $item.FullName -ne (Join-Path $rootPath 'scripts/lib')){continue}
             if($directory -eq $rootPath -and $item.Name -in $ExcludeChildren){continue}
@@ -166,7 +166,7 @@ function Read-QuietRepositoryValue {
     #>
     param([string]$Path,[string[]]$Arguments)
     $state=@{Value=[Text.StringBuilder]::new()}
-    $result=Invoke-CiProcess -FilePath git -ArgumentList $Arguments -WorkingDirectory $Path -State $state -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Value.Append($e.Text)}}
+    $result=Invoke-CiProcess -FilePath git -ArgumentList (@('-c',('safe.directory='+[IO.Path]::GetFullPath($Path)))+$Arguments) -WorkingDirectory $Path -State $state -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Value.Append($e.Text)}}
     if($result.Outcome -eq 'Success'){return $state.Value.ToString().Trim()};return $null
 }
 function Get-QuietWorkspaceIdentity {
@@ -177,8 +177,10 @@ function Get-QuietWorkspaceIdentity {
     QuietCli2 root.
     .PARAMETER IncludeBinaries
     Verifies build/source associations and records binary digests.
+    .PARAMETER Suite
+    Restricts binary verification to the selected dependency closure; source drift still covers the checkout.
     #>
-    param([string]$WorkspaceRoot,[switch]$IncludeBinaries)
+    param([string]$WorkspaceRoot,[switch]$IncludeBinaries,[string]$Suite='All')
     $children=@((Get-QuietWorkspaceProjects $WorkspaceRoot).Name)
     $revision=$null;$remote=$null;$dirty=$false
     $allowedFiles=$null
@@ -187,7 +189,7 @@ function Get-QuietWorkspaceIdentity {
         $remote=Read-QuietRepositoryValue $WorkspaceRoot @('remote','get-url','origin')
         $dirty=![string]::IsNullOrWhiteSpace((Read-QuietRepositoryValue $WorkspaceRoot @('status','--porcelain=v1')))
         $selection=@{Files=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)}
-        $listed=Invoke-CiProcess -FilePath git -ArgumentList @('-c','core.quotepath=false','ls-files','--cached','--others','--exclude-standard') -WorkingDirectory $WorkspaceRoot -State $selection -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Files.Add($e.Text)}}
+        $listed=Invoke-CiProcess -FilePath git -ArgumentList @('-c',('safe.directory='+[IO.Path]::GetFullPath($WorkspaceRoot)),'-c','core.quotepath=false','ls-files','--cached','--others','--exclude-standard') -WorkingDirectory $WorkspaceRoot -State $selection -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){[void]$s.Files.Add($e.Text)}}
         if($listed.Outcome -ne 'Success'){throw 'MonorepoSourceListUnavailable'}
         $allowedFiles=$selection.Files
     }
@@ -195,7 +197,10 @@ function Get-QuietWorkspaceIdentity {
     $rootFiles=@(Get-QuietSourceFiles $WorkspaceRoot|Where-Object {$null -eq $allowedFiles -or $allowedFiles.Contains($_.Path)})
     $repository=@{Name='FrenchExDev2.QuietCli.PoSh';Revision=$revision;Remote=$remote;Dirty=$dirty;SourceSHA256=(Get-QuietManifestDigest $rootFiles);Files=$rootFiles}
     $binaries=@()
-    if($IncludeBinaries){foreach($distribution in Get-QuietWorkspaceBuildProjects $WorkspaceRoot){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $distribution.Output}}
+    if($IncludeBinaries){
+        $selectedModules=@(Get-QuietWorkspaceBuildSelection $WorkspaceRoot -Suite $Suite)
+        foreach($distribution in Get-QuietWorkspaceBuildProjects $WorkspaceRoot|Where-Object Package -CIn $selectedModules){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $distribution.Output}
+    }
     if($IncludeBinaries){foreach($rid in (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){
         $output='FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid
         if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot $output)){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $output}

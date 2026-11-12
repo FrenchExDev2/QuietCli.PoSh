@@ -243,6 +243,13 @@ function Test-QuietGitHubCi {
         $result=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot $fixture -Suite Import -SkipBuild -SkipTty -RunDirectory $run
         $receipt=Get-Content -LiteralPath (Join-Path $run summary.json) -Raw -Encoding utf8|ConvertFrom-Json
         if($result.State -cne 'Success' -or $receipt.WorkerPid -ne $PID -or !$receipt.SkipTty){throw 'GitHubEntryDidNotExecuteDirectWorker'}
+        foreach($flag in @('Partial','Incomplete')){
+            $partialWorker=$worker.Replace(';WorkerPid',(';Suites=@(@{'+$flag+'=$true});WorkerPid'))
+            [IO.File]::WriteAllText((Join-Path $scripts Invoke-TestWorker.ps1),$partialWorker,[Text.UTF8Encoding]::new($false))
+            $rejected=$false
+            try{$null=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot $fixture -Suite Import -SkipBuild -RunDirectory (Join-Path $fixture ('artifacts/tests/'+$flag))}catch{$rejected=$_.Exception.Message -ceq 'GitHubCiRequiresCompleteUnfilteredSuites'}
+            if(!$rejected){throw ('GitHubEntryAccepted'+$flag+'Evidence')}
+        }
     }finally{$env:GITHUB_ACTIONS=$previous}
     $workflowPath=if($env:QUIETCLI_CI_CANDIDATE){$env:QUIETCLI_CI_CANDIDATE}else{Join-Path $WorkspaceRoot '.github/workflows/ci.yml'}
     $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
@@ -250,6 +257,10 @@ function Test-QuietGitHubCi {
     try{$workflow=$parser.Deserialize($reader,[object])}finally{$reader.Dispose()}
     $jobs=$workflow['jobs']
     foreach($name in $jobs.Keys){
+        if(!$jobs[$name].ContainsKey('steps')){
+            if(!$jobs[$name].ContainsKey('uses')){throw 'GitHubJobHasNoExecutionContract'}
+            continue
+        }
         $steps=@($jobs[$name]['steps'])
         for($index=0;$index -lt $steps.Count;$index++){
             if([string]$steps[$index]['uses'] -notlike 'actions/checkout@*'){continue}

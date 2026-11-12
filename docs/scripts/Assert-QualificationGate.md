@@ -1,5 +1,9 @@
 # Assert-QualificationGate.ps1
 
+## Scoped CI execution
+
+ToolingResult and ToolingMutationResult must match RequireTooling. Receipts record the exact HEAD tree and required tooling outcomes. Develop verifies the tree against the merged commit and successful originating PR run/attempt. Publication still validates the exact revision/current workflow attempt.
+
 Core-evidence scopes also require PerformanceResult=success. Git/Vagrant-only scopes require skipped because Core profiling is outside their declared scope. The receipt records Performance and PerformanceRequired, and qualified_sha is never emitted for an absent, skipped, failed or cancelled required report. Windows/Linux success alone cannot qualify Core/All. The property regression independently varies performance alongside platform/mutation job outcomes, including missing results and explicit TTY exclusions.
 
 Receipts include GitHub RunId and RunAttempt when available. Publication reuse requires All, the exact current SHA/run/attempt and successful Windows/Linux with the explicit TTY exclusion, through `Assert-QualificationReceipt.ps1`; local receipts remain usable locally but cannot substitute for a GitHub checkpoint.

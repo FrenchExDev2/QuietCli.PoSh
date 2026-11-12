@@ -1,6 +1,6 @@
 # Qualification: when, where and how
 
-For `All`, one build and Linux toolchain image serve the complete target. Core's validation retains its Git dependency and executes first. Only after complete successful Core evidence do Git and Vagrant execute concurrently in isolated PowerShell processes, with separate reports and configuration in that same runner/container. Companion failure blocks the matrix target. Develop pushes qualify and upload reports without publishing modules. Explicit module release tags start a separate full qualification of the tagged revision before packaging/publication; the packaging build is also verified separately.
+For All, one build and image serve the target: complete Core validation precedes bounded independent companion workers. Core.Tests generates its own scripted Git-status companion and requires no real Git module. Tooling runs separately. Develop reuses verified same-tree PR evidence, then runs integrity smoke and image-cache resolution; missing evidence falls back to All. Publication remains explicit-module-tag-only.
 
 [QuietCli overview](README.md) · [Development](README-development.md) · [Tests and qualification](README-qualification.md) · [Documentation index](docs/README.md)
 
@@ -11,10 +11,10 @@ GitHub qualification builds the solution **and executes the selected companion t
 The shared [companions-ci.yml](.github/workflows/companions-ci.yml) caller selects suites for
 [ci.yml](.github/workflows/ci.yml):
 
-- PRs and `develop` pushes matching `FrenchExDev2.QuietCli.*.PoSh/**` or shared automation/build/workflow/SDK/policy files request `All`. The wildcard includes Vagrant and future integration test projects, without a new workflow per companion.
-- Opening a matching PR or updating its branch triggers this one caller. A path-filtered skip is not qualification evidence. Changed-suite selection and image/scheduling optimization remain separate work.
+- Every PR receives a complete-diff plan. A companion-only change selects its dependent suites; shared/Core/unknown paths select All plus tooling. Multiple affected companions share one matrix.
+- Opening or updating a PR triggers the caller. The unconditional QuietCli required CI check reports the planned scope, including intentional documentation-only omissions.
 - Manual dispatch and reusable calls accept a YAML-declared `suite`, defaulting to `All`.
-- A merge into `develop` is a develop push: it runs `All` with profiling and may populate the GHCR toolchain cache, but publishes no PowerShell module. [Module release tags](docs/README-preview-releases.md#module-release-tags-and-independent-versions) separately request Gallery publication.
+- A develop merge reuses successful PR qualification only for an identical Git tree and exact originating workflow attempt. It still runs merged-source integration smoke and refreshes missing image layers. Absent or mismatched proof requires full qualification; module tags separately request publication.
 - [publish-psgallery.yml](.github/workflows/publish-psgallery.yml) requests `All` qualification before packaging. Its Windows packaging job also rebuilds and rechecks the distributions. Publication has its own input and protected environment; qualification does not itself authorize publication.
 
 `All` expands to the independent suites in [build/companions.yml](build/companions.yml), currently
@@ -29,9 +29,9 @@ Other path-filtered PR checks run on `ubuntu-latest`: [scripts-docs-check.yml](.
 
 ## Profiling reports and manual PR runs
 
-Automatic matching PR runs request `All` with `collect_performance=true`. Core profiling runs across all six Windows combinations and four Linux containers. A separate instrumented pass collects PowerShell line profiles and CLR traces outside the ordinary benchmark samples. The `Readable performance evidence for the complete matrix` job verifies the ten evidence bundles and uploads `quietcli-performance-results-<sha>`, containing standalone `PERFORMANCES_RESULTS.html`, Markdown, JSON and integrity metadata. Download the artifact from the workflow run's **Artifacts** section and open the HTML locally. Raw profiles remain in the per-environment evidence artifacts. Missing or failed evidence prevents Core qualification; a partial report does not establish a completed matrix.
+PR scopes declaring Core evidence request collect_performance=true. Core profiling runs across all six Windows combinations and four Linux containers. A separate instrumented pass collects PowerShell line profiles and CLR traces outside the ordinary benchmark samples. The `Readable performance evidence for the complete matrix` job verifies the ten evidence bundles and uploads `quietcli-performance-results-<sha>`, containing standalone `PERFORMANCES_RESULTS.html`, Markdown, JSON and integrity metadata. Download the artifact from the workflow run's **Artifacts** section and open the HTML locally. Raw profiles remain in the per-environment evidence artifacts. Missing or failed evidence prevents Core qualification; a partial report does not establish a completed matrix.
 
-`RunProfiles` and `RunProfilesMutation` qualify the profiling tools themselves, on Windows stable x64 InProcess. They do not enable the Core profiling pass or replace its ten-target evidence. `collect_performance` controls that pass in CI; locally, `Invoke-WorkspaceCi.ps1 -Suite Integration -SkipBuild -Profiler` selects the focused instrumented workload. Keep profiler instrumentation outside A/A and A/B timing samples to avoid measuring the profiler's overhead as product performance.
+`RunProfiles` and `RunProfilesMutation` qualify the profiling tools themselves, in independent tooling jobs, outside the product timing runners. Mutation uses at most two isolated workers after a green baseline. They do not enable the Core profiling pass or replace its ten-target evidence. `collect_performance` controls that pass in CI; locally, `Invoke-WorkspaceCi.ps1 -Suite Integration -SkipBuild -Profiler` selects the focused instrumented workload. Keep profiler instrumentation outside A/A and A/B timing samples to avoid measuring the profiler's overhead as product performance.
 
 To obtain profiling plus A/B evidence for a PR:
 

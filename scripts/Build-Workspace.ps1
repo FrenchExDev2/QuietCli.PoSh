@@ -16,21 +16,47 @@ RIDs to precompile. Defaults to LocalRuntimeIdentifier; the Windows x64 package 
 Default ReadyToRun target, taken from the actual host runtime (including musl).
 .PARAMETER SolutionOnly
 Rebuilds Quietly.slnx without publishing distributions or updating package binaries.
+.PARAMETER Suite
+Builds only the selected test suite and its transitive module dependencies. All builds the complete solution.
 #>
-[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Release','Debug')][string]$Configuration='Release',[Alias('WindowsRuntimeIdentifier')][ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$RuntimeIdentifier=@('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64'),[switch]$ReadyToRun,[string]$LocalRuntimeIdentifier=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier,[ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$ReadyToRunRuntimeIdentifier=@(),[switch]$SolutionOnly)
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Release','Debug')][string]$Configuration='Release',[Alias('WindowsRuntimeIdentifier')][ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$RuntimeIdentifier=@('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64'),[switch]$ReadyToRun,[string]$LocalRuntimeIdentifier=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier,[ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$ReadyToRunRuntimeIdentifier=@(),[switch]$SolutionOnly,[string]$Suite='All')
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Build-Workspace')){return}
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
+$selectedModules=@(Get-QuietWorkspaceBuildSelection $WorkspaceRoot -Suite $Suite)
+$solutionPath=Join-Path $WorkspaceRoot 'Quietly.slnx'
+if($Suite -cne 'All'){
+    [xml]$selectedSolution=Get-Content -LiteralPath $solutionPath -Raw -Encoding utf8
+    $paths=@($selectedSolution.SelectNodes('//Project')|ForEach-Object {$_.GetAttribute('Path').Replace('\','/')}|Where-Object {($_.Split('/')[0]) -cin $selectedModules})
+    if(!$paths.Count){throw 'WorkspaceBuildSelectionEmpty'}
+    foreach($path in $paths){
+        $projectPath=Join-Path $WorkspaceRoot $path
+        $projectXml=[xml]::new();$projectXml.XmlResolver=$null;$projectXml.LoadXml([IO.File]::ReadAllText($projectPath,[Text.Encoding]::UTF8))
+        foreach($reference in $projectXml.SelectNodes('//ProjectReference')){
+            $resolved=[IO.Path]::GetFullPath($reference.GetAttribute('Include'),[IO.Path]::GetDirectoryName($projectPath))
+            $relative=[IO.Path]::GetRelativePath($WorkspaceRoot,$resolved).Replace('\','/')
+            if($relative -cnotin $paths){throw ('WorkspaceBuildUndeclaredProjectReference: '+$relative)}
+        }
+    }
+    $solutionDirectory=Join-Path $WorkspaceRoot ('artifacts/build-selection/'+[guid]::NewGuid().ToString('N'))
+    [void][IO.Directory]::CreateDirectory($solutionDirectory)
+    $solutionPath=Join-Path $solutionDirectory 'Selected.slnx'
+    $document=[xml]::new();$document.XmlResolver=$null;$document.LoadXml('<Solution />')
+    foreach($path in $paths){
+        $project=$document.CreateElement('Project');$project.SetAttribute('Path',[IO.Path]::GetFullPath((Join-Path $WorkspaceRoot $path)));$null=$document.DocumentElement.AppendChild($project)
+    }
+    [IO.File]::WriteAllText($solutionPath,$document.OuterXml,[Text.UTF8Encoding]::new($false))
+}
 if($SolutionOnly){
     if($ReadyToRun -or $ReadyToRunRuntimeIdentifier.Count -or $PSBoundParameters.ContainsKey('RuntimeIdentifier') -or $PSBoundParameters.ContainsKey('LocalRuntimeIdentifier')){throw 'SolutionOnlyDoesNotPublishRuntimeTargets'}
-    Invoke-WorkspaceNative dotnet @('build',(Join-Path $WorkspaceRoot 'Quietly.slnx'),'--no-incremental','-c',$Configuration,'--nologo') $WorkspaceRoot
+    Invoke-WorkspaceNative dotnet @('build',$solutionPath,'-c',$Configuration,'--nologo') $WorkspaceRoot
     return
 }
 if($ReadyToRun -and !$ReadyToRunRuntimeIdentifier.Count){$ReadyToRunRuntimeIdentifier=@($LocalRuntimeIdentifier)}
 foreach($rid in $ReadyToRunRuntimeIdentifier){if($rid -notin $RuntimeIdentifier){throw ('ReadyToRunTargetNotPublished: '+$rid)}}
 if(!$ReadyToRun -and $ReadyToRunRuntimeIdentifier.Count){throw 'ReadyToRunSwitchRequired'}
 Assert-QuietPtyPublications $WorkspaceRoot
-$distributions=@(Get-QuietWorkspaceBuildProjects $WorkspaceRoot)
+$distributions=@(Get-QuietWorkspaceBuildProjects $WorkspaceRoot|Where-Object Package -CIn $selectedModules)
 [xml]$solution=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'Quietly.slnx') -Raw -Encoding utf8
 $solutionProjects=@($solution.SelectNodes('//Project') | ForEach-Object {$_.GetAttribute('Path').Replace('\','/')})
 $snapshots=@{}
@@ -38,7 +64,7 @@ foreach($distribution in $distributions){
     if($distribution.Project -cnotin $solutionProjects){throw ('WorkspaceBuildProjectNotInSolution: '+$distribution.Project)}
     $snapshots[$distribution.Output]=@(Get-QuietBinaryInputs $WorkspaceRoot $distribution.Project)
 }
-Invoke-WorkspaceNative dotnet @('build',(Join-Path $WorkspaceRoot 'Quietly.slnx'),'--no-incremental','-c',$Configuration,'--nologo') $WorkspaceRoot
+Invoke-WorkspaceNative dotnet @('build',$solutionPath,'-c',$Configuration,'--nologo') $WorkspaceRoot
 foreach($distribution in $distributions){
     # Publish only copies the solution's portable outputs and dependencies; compilation is disabled.
     Invoke-WorkspaceNative dotnet @('publish',(Join-Path $WorkspaceRoot $distribution.Project),'-f',$distribution.TargetFramework,'-c',$Configuration,'--no-build','-o',(Join-Path $WorkspaceRoot $distribution.Output),'--nologo') $WorkspaceRoot

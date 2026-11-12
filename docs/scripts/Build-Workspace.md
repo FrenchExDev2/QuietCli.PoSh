@@ -1,5 +1,9 @@
 # Build-Workspace.ps1
 
+## Scoped CI execution
+
+Suite selects the test module and transitive RequiredModules closure. A scoped owned solution contains its projects; undeclared ProjectReferences fail before compilation. All preserves the complete solution. Incremental compilation reuses valid MSBuild outputs; portable publications remain --no-build. Matrix calls publish only their tested RuntimeIdentifier; packaging retains every required RID. WhatIf creates no scoped solution.
+
 ## Purpose and usage
 
 Compiles `Quietly.slnx` once in Release by default, then prepares the portable distributions declared by the discovered packages, without tests or registry publication. Both local launchers and GitHub workflows use this same entry point.
@@ -18,7 +22,7 @@ Compiles `Quietly.slnx` once in Release by default, then prepares the portable d
 
 `WorkspaceRoot` defaults to the repository root; `Configuration` accepts Release/Debug. `RuntimeIdentifier` selects embedded net11.0 distributions (all six by default). `ReadyToRun` enables Crossgen2 for `ReadyToRunRuntimeIdentifier`, defaulting to `LocalRuntimeIdentifier`, itself the actual host RID. A precompiled target must also be in `RuntimeIdentifier`. Supplying targets without the switch fails before compilation.
 
-`SolutionOnly` rebuilds all seven C# projects and every declared target framework through `Quietly.slnx` with `--no-incremental`. The solution groups the three production packages under `src` and all `*.Tests.PoSh` companions under `test`; pure PowerShell packages appear as solution files. Repository-wide `Directory.Build.props` enables `TreatWarningsAsErrors=true` for direct project builds and solution builds alike. This mode requires no PTY publication receipts, does not update `lib/` distributions or their manifests, and rejects runtime-publication options. Standard `-WhatIf` returns before any build, restore or filesystem effect.
+`SolutionOnly` rebuilds all seven C# projects and every declared target framework through `Quietly.slnx` with incremental MSBuild reuse. The solution groups the three production packages under `src` and all `*.Tests.PoSh` companions under `test`; pure PowerShell packages appear as solution files. Repository-wide `Directory.Build.props` enables `TreatWarningsAsErrors=true` for direct project builds and solution builds alike. This mode requires no PTY publication receipts, does not update `lib/` distributions or their manifests, and rejects runtime-publication options. Standard `-WhatIf` returns before any build, restore or filesystem effect.
 
 ## Outputs and dependencies
 

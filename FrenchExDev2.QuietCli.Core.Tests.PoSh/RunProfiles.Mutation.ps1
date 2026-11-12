@@ -5,8 +5,8 @@ Mutation campaign for the run-profile tooling: proves that the RunProfiles tests
 
 .DESCRIPTION
 For every mutant, a fresh sandbox copy of scripts/ (lib modules and the two profile scripts) and of the test suite is
-created, exactly one source substitution is applied, and the suite runs in a child process started through `quiet`
-(-Output captures the SUMMARY line, -Complete freezes it). Outcomes:
+created, exactly one source substitution is applied, and the suite runs in an owned child process through the engine-independent Ci.Process helper
+(only SUMMARY counters are retained). Outcomes:
 Killed (at least one case failed), Survived (all cases passed: a missing assertion or an equivalent mutant to justify),
 Crashed (no summary: the mutant does not parse or the suite aborted; detected but not a valid behavioral mutant),
 Timeout, Invalid (the substitution target does not occur exactly once). The baseline must pass first.
@@ -23,6 +23,8 @@ Restricts the campaign to the named mutants.
 
 .PARAMETER MutantTimeoutSeconds
 Deadline of one suite run.
+.PARAMETER MaxConcurrency
+Maximum isolated mutation processes. The green baseline always finishes before any mutant starts.
 
 .PARAMETER OutputPath
 Optional UTF-8 JSON file receiving every outcome.
@@ -40,6 +42,7 @@ param(
     [ValidateRange(10, 100000)][int]$Iterations = 120,
     [string[]]$MutantName = @(),
     [ValidateRange(30, 3600)][int]$MutantTimeoutSeconds = 300,
+    [ValidateRange(1,32)][int]$MaxConcurrency = 2,
     [string]$OutputPath,
     [ValidateSet('Trace', 'Debug', 'Info', 'Warn', 'Error', 'Off')][string]$LogLevel = 'Info',
     [ValidateSet('utf-8', 'oem')][string]$ConsoleEncoding = 'utf-8'
@@ -47,6 +50,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $workspace = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $scripts = Join-Path $workspace 'scripts'
+. (Join-Path $scripts 'Ci.Process.ps1')
 foreach ($module in 'RunEncoding', 'RunFormat') { Import-Module (Join-Path $scripts "lib/$module.psm1") -Force }
 [void](Set-RunConsoleEncoding -Name $ConsoleEncoding)
 $logger = New-RunLogger -Level $LogLevel -Component 'mutation'
@@ -149,11 +153,13 @@ $catalogue = @(
     @{ Name = 'initializer-selection-ignored'; File = 'Initialize-Profilers.ps1'; From = 'Get-RunProfilerPackages -Module $Module'; To = 'Get-RunProfilerPackages' }
     @{ Name = 'initializer-directory-ignored'; File = 'Initialize-Profilers.ps1'; From = '-OutputDirectory $OutputDirectory'; To = '-OutputDirectory "wrong-cache"' }
 )
+$totalCatalogue=$catalogue.Count
+if(!$MutantName.Count -and $env:QUIETCLI_TEST_CASE){$MutantName=@($catalogue|Where-Object Name -Like $env:QUIETCLI_TEST_CASE|ForEach-Object Name)}
+if($env:QUIETCLI_TEST_CASE -and !$MutantName.Count){throw 'MutationFilterMatchedNoCases'}
 if ($MutantName.Count -gt 0) { $catalogue = @($catalogue | Where-Object { $_.Name -in $MutantName }) }
 if ($catalogue.Count -eq 0) { throw 'MutationCatalogueEmpty' }
 $logger.Info("catalogue: $($catalogue.Count) mutants, $Iterations iterations per property case, seed $Seed")
 
-if (-not (Get-Command quiet -ErrorAction SilentlyContinue)) { Import-Module (Join-Path $workspace 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1') }
 
 function New-MutationSandbox {
     <#
@@ -173,25 +179,20 @@ function New-MutationSandbox {
 function Invoke-SandboxSuite {
     <#
     .SYNOPSIS
-    Runs the suite of a sandbox through quiet and returns its outcome and counters.
+    Runs the baseline through the engine-independent process helper and returns bounded counters.
     .PARAMETER Root
-    Sandbox root.
+    Owned sandbox containing the test suite.
     #>
     param([string]$Root)
     $logger.Increment('suite.started')
-    $result = quiet -AsObject -RecordDelimiter "`n" -TimeoutSeconds $MutantTimeoutSeconds `
-        -Data @{ Line = $null; Summary = $null } `
-        -Output {
-            param($event, $runtime)
-            if ($event.Stream -eq 'stdout' -and $event.Text.StartsWith('SUMMARY ', [StringComparison]::Ordinal)) { $runtime.Data.Line = $event.Text.Trim() }
-        } `
-        -Complete {
-            param($runtime)
-            if ($runtime.Data.Line -match 'Passed=(\d+) Failed=(\d+) Skipped=(\d+)') { $runtime.Data.Summary = [pscustomobject]@{ Passed = [int]$Matches[1]; Failed = [int]$Matches[2]; Skipped = [int]$Matches[3] } }
-        } `
-        pwsh -NoProfile -File (Join-Path $Root 'FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1') -Seed $Seed -Iterations $Iterations -ConsoleEncoding $ConsoleEncoding -Skip 'profiler:,console:,coldstart-live:,tool-cache-live:'
-    $errorCode = if ($result.Error.Count -gt 0) { [string]$result.Error[0]['Code'] } else { '' }
-    return [pscustomobject]@{ Outcome = [string]$result.Outcome; Summary = $result.Data.Summary; ErrorCode = $errorCode }
+    $capture=@{Summary=$null}
+    $result=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -ArgumentList @('-File',(Join-Path $Root 'FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1'),'-Seed',"$Seed",'-Iterations',"$Iterations",'-ConsoleEncoding',$ConsoleEncoding,'-Skip','profiler:,console:,coldstart-live:,tool-cache-live:') -WorkingDirectory $Root -TimeoutSeconds $MutantTimeoutSeconds -State $capture -OnOutput {
+        param($record,$state)
+        if($record.Stream -eq 'stdout' -and $record.Text -match '^SUMMARY Passed=(\d+) Failed=(\d+) Skipped=(\d+)$'){
+            $state.Summary=[pscustomobject]@{Passed=[int]$Matches[1];Failed=[int]$Matches[2];Skipped=[int]$Matches[3]}
+        }
+    }
+    [pscustomobject]@{Outcome=$result.Outcome;Summary=$capture.Summary;ErrorCode=$(if($result.Outcome -ne 'Success'){'SuiteProcessFailed'}else{''})}
 }
 
 function Remove-MutationSandbox {
@@ -221,30 +222,63 @@ try {
 finally { Remove-MutationSandbox $baselineRoot }
 
 $results = [Collections.Generic.List[object]]::new()
-$index = 0
-foreach ($mutant in $catalogue) {
-    $index++
-    $root = New-MutationSandbox
-    $mutantClock = [Diagnostics.Stopwatch]::StartNew()
-    try {
-        $path = Join-Path $root "scripts/$($mutant.File)"
-        $text = Read-RunTextFile -Path $path
-        $occurrences = [regex]::Matches($text, [regex]::Escape($mutant.From)).Count
-        if ($occurrences -ne 1) { $outcome = 'Invalid'; $detail = "target occurs $occurrences times" }
-        else {
-            Write-RunTextFile -Path $path -Text $text.Replace($mutant.From, $mutant.To)
-            $run = Invoke-SandboxSuite $root
-            if ($run.Outcome -eq 'Timeout') { $outcome = 'Timeout'; $detail = "no result within $MutantTimeoutSeconds s" }
-            elseif ($null -eq $run.Summary) { $outcome = 'Crashed'; $detail = "no summary (parse error or aborted suite, error '$($run.ErrorCode)')" }
-            elseif ($run.Summary.Failed -gt 0) { $outcome = 'Killed'; $detail = "$($run.Summary.Failed) failing case(s)" }
-            else { $outcome = 'Survived'; $detail = 'all cases passed' }
+. (Join-Path $workspace 'scripts/Ci.Process.ps1')
+$workerPath=Join-Path $PSScriptRoot 'RunProfiles.MutationWorker.ps1'
+$runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
+$active=[Collections.Generic.List[object]]::new()
+$completed=@{};$next=0;$peak=0
+try {
+    while($next -lt $catalogue.Count -or $active.Count){
+        while($next -lt $catalogue.Count -and $active.Count -lt $MaxConcurrency){
+            $mutant=$catalogue[$next];$ordinal=$next;$next++
+            $root=New-MutationSandbox
+            $watch=[Diagnostics.Stopwatch]::StartNew()
+            $path=Join-Path $root ("scripts/"+$mutant.File)
+            $text=Read-RunTextFile -Path $path
+            $occurrences=[regex]::Matches($text,[regex]::Escape($mutant.From)).Count
+            if($occurrences -ne 1){
+                $completed[$ordinal]=[pscustomobject]@{Name=$mutant.Name;File=$mutant.File;Outcome='Invalid';Detail=("target occurs $occurrences times");DurationMs=[long]$watch.ElapsedMilliseconds;Sandbox=$root}
+                continue
+            }
+            Write-RunTextFile -Path $path -Text $text.Replace($mutant.From,$mutant.To)
+            $process=Start-CiProcess -FilePath $runner -WorkingDirectory $workspace -ArgumentList @('-File',$workerPath,'-WorkspaceRoot',$workspace,'-Sandbox',$root,'-Seed',"$Seed",'-Iterations',"$Iterations",'-TimeoutSeconds',"$MutantTimeoutSeconds",'-ConsoleEncoding',$ConsoleEncoding)
+            $active.Add([pscustomobject]@{Process=$process;Root=$root;Mutant=$mutant;Ordinal=$ordinal;Clock=$watch})
+            $peak=[Math]::Max($peak,$active.Count)
         }
+        foreach($job in @($active.ToArray())){
+            if(!$job.Process.HasExited -and $job.Clock.Elapsed.TotalSeconds -le $MutantTimeoutSeconds+30){continue}
+            $outcome='Crashed';$detail='worker exited without a valid summary'
+            if(!$job.Process.HasExited){$job.Process.Kill($true);$job.Process.WaitForExit();$outcome='Timeout';$detail="no result within $MutantTimeoutSeconds s"}
+            else{
+                $receipt=Join-Path $job.Root 'mutation-worker-result.json'
+                if([IO.File]::Exists($receipt)){
+                    try{
+                        $run=Read-RunTextFile -Path $receipt|ConvertFrom-Json
+                        if($run.Sandbox -cne $job.Root -or $run.ProcessId -ne $job.Process.Id){throw 'MutationWorkerIdentityMismatch'}
+                        if($run.Outcome -eq 'Timeout'){$outcome='Timeout';$detail="no result within $MutantTimeoutSeconds s"}
+                        elseif($null -ne $run.Summary -and $run.Summary.Passed -ge 0 -and $run.Summary.Failed -ge 0){
+                            if($run.Summary.Failed -gt 0){$outcome='Killed';$detail="$($run.Summary.Failed) failing case(s)"}
+                            elseif($run.Outcome -eq 'Success' -and $job.Process.ExitCode -eq 0){$outcome='Survived';$detail='all cases passed'}
+                        }
+                    }catch{$detail=$_.Exception.Message}
+                }
+            }
+            $completed[$job.Ordinal]=[pscustomobject]@{Name=$job.Mutant.Name;File=$job.Mutant.File;Outcome=$outcome;Detail=$detail;DurationMs=[long]$job.Clock.ElapsedMilliseconds;Sandbox=$(if($outcome -ne 'Killed'){$job.Root}else{$null})}
+            if($outcome -eq 'Killed'){Remove-MutationSandbox $job.Root}
+            $job.Process.Dispose();$null=$active.Remove($job)
+        }
+        # Persisted parent progress is deterministic; workers never share a logger, engine or sandbox.
+        while($completed.ContainsKey($results.Count)){
+            $row=$completed[$results.Count];$completed.Remove($results.Count);$results.Add($row)
+            $logger.Increment("mutant.$($row.Outcome.ToLowerInvariant())")
+            $logger.Info(('[{0}/{1}] {2,-30} {3,-9} {4} ({5})' -f $results.Count,$catalogue.Count,$row.Name,$row.Outcome,$row.Detail,(Format-RunDuration $row.DurationMs)))
+        }
+        if($active.Count){[void][Threading.Tasks.Task]::Delay(100).GetAwaiter().GetResult()}
     }
-    finally { if ($outcome -eq 'Killed') { Remove-MutationSandbox $root } }
-    $logger.Increment("mutant.$($outcome.ToLowerInvariant())")
-    $logger.Info(('[{0}/{1}] {2,-30} {3,-9} {4} ({5})' -f $index, $catalogue.Count, $mutant.Name, $outcome, $detail, (Format-RunDuration $mutantClock.Elapsed.TotalMilliseconds)))
-    $results.Add([pscustomobject]@{ Name = $mutant.Name; File = $mutant.File; Outcome = $outcome; Detail = $detail; DurationMs = [long]$mutantClock.ElapsedMilliseconds; Sandbox = $(if ($outcome -ne 'Killed') { $root } else { $null }) })
+}finally{
+    foreach($job in $active){if(!$job.Process.HasExited){$job.Process.Kill($true);$job.Process.WaitForExit()};$job.Process.Dispose()}
 }
+if($results.Count -ne $catalogue.Count){throw 'MutationCatalogueCoverageIncomplete'}
 
 $killed = $logger.Get('mutant.killed'); $survived = $logger.Get('mutant.survived'); $crashed = $logger.Get('mutant.crashed'); $invalid = $logger.Get('mutant.invalid'); $timeouts = $logger.Get('mutant.timeout')
 $score = if (($killed + $survived) -gt 0) { [Math]::Round(100.0 * $killed / ($killed + $survived), 1) } else { 0 }
@@ -260,7 +294,7 @@ $summaryRows = [Collections.Generic.List[object]]::new()
 $summaryRows.Add(@([string]$catalogue.Count, [string]$killed, [string]$survived, [string]$crashed, [string]$timeouts, [string]$invalid, "$score%", (Format-RunDuration $clock.Elapsed.TotalMilliseconds)))
 Format-RunTable -Headers @('Mutants', 'Killed', 'Survived', 'Crashed', 'Timeout', 'Invalid', 'Score', 'Duration') -Rows $summaryRows -RightAligned @(0, 1, 2, 3, 4, 5, 6, 7)
 if ($OutputPath) {
-    $document = [ordered]@{ Seed = $Seed; Iterations = $Iterations; Score = $score; Counters = $logger.Snapshot(); Results = $results }
+    $document = [ordered]@{ Seed = $Seed; Iterations = $Iterations; MaxConcurrency=$MaxConcurrency; MaxActive=$peak; Partial=($catalogue.Count -ne $totalCatalogue); TotalCatalogue=$totalCatalogue; Score = $score; Counters = $logger.Snapshot(); Results = $results }
     Write-RunTextFile -Path ([IO.Path]::GetFullPath($OutputPath)) -Text ((ConvertTo-Json -InputObject $document -Depth 5) + "`n")
 }
 exit ($survived + $crashed + $timeouts + $invalid)

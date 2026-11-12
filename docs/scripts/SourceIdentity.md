@@ -1,5 +1,9 @@
 # SourceIdentity.ps1
 
+## Scoped CI execution
+
+Suite limits binary verification to the selected build closure; source drift still covers the checkout. Git reads pass command-local safe.directory for the exact checkout root, handling job-container ownership without a global configuration change. .cache is pruned before hashing large intermediate Docker caches.
+
 ## Purpose and usage
 
 Common.ps1 loads deterministic source/binary identity helpers. `Get-QuietWorkspaceIdentity -WorkspaceRoot <root> -IncludeBinaries` verifies current source associations and output hashes. `Write-QuietBuildManifest` records project, configuration, RID, architecture, sources and direct binary files. Optional `-ReadyToRun` requires a real native R2R header; `-ReadyToRunTargets <rids>` declares selected child slots in portable manifests. `Test-QuietBuildManifest` rejects stale or modified output.

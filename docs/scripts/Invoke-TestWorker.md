@@ -1,5 +1,13 @@
 # Invoke-TestWorker.ps1
 
+Workers prefer the already-installed matching private SDK host when it supplies the fixture's stable runtime, then restore process PATH/DOTNET_ROOT. RunProfilesMutation skips engine cleanup as well as import, so command autoload cannot introduce a product dependency; it imports no product engine and verifies source identity without product binaries.
+
+Tooling progress uses the same explicit Unit/Integration CI labels as product companions; no Unclassified fallback is emitted.
+
+## Scoped CI execution
+
+Tooling loads its independently owned catalogue outside product All. Binary identity uses Suite. RunProfiles mutation shares the configured budget with a cap of two isolated process workers. Ordered/exclusive measurements retain their barriers. Partial summaries are explicitly marked.
+
 ## Independent companion catalogues
 
 Core, Git and Vagrant retain their own `.psm1` case metadata and manifest TestCatalogue/TestExecution declarations. The worker forwards run directories and applies Partial/Incomplete handling to every ordinary companion, not only Core. CaseWorker accepts a declared ordinary suite with an exact parent-selected filter, one internal slot and no profiler. It cannot launch All/focused tooling as a case worker. All divides the parent budget among Git/Vagrant suite slots; individual isolated cases still receive one. Each owner writes its own execution plan and classification/progress, with no central Core case list for siblings.

@@ -19,8 +19,12 @@ function Test-QuietCiFailureRegression {
     foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){
         foreach($suite in @('Core','Git','All')){
             $plan=& (Join-Path $WorkspaceRoot 'scripts/New-CiSuiteImage.ps1') -WorkspaceRoot $WorkspaceRoot -Suite $suite -RuntimeIdentifier $rid -PlanOnly
-            & $assertRecipe $plan.ContainerfileText $plan.ParentReference
-            if(!$plan.ParentReference.EndsWith(':'+$plan.Core.Fingerprint) -or !$plan.ParentReference.Contains('-'+$plan.Core.Architecture+':')){throw 'DockerParentDefaultLostIdentity'}
+            if($suite -ceq 'Core'){
+                if($plan.ContainerfileText.Contains('${CORE_IMAGE}') -or $plan.Fingerprint -cnotmatch '\A[a-f0-9]{64}\z'){throw 'CoreImageDependsOnBusinessOverlay'}
+            }else{
+                & $assertRecipe $plan.ContainerfileText $plan.ParentReference
+                if(!$plan.ParentReference.EndsWith(':'+$plan.Core.Fingerprint) -or !$plan.ParentReference.Contains('-'+$plan.Core.Architecture+':')){throw 'DockerParentDefaultLostIdentity'}
+            }
             $plans++
         }
     }
@@ -40,28 +44,28 @@ function Test-QuietCiFailureRegression {
     if(!$rejected){throw 'DockerEmptyDefaultMutantSurvived'}
     $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
     $yaml=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build()
-    $workflow=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/ci.yml'),[Text.Encoding]::UTF8))
-    $steps=@($workflow['jobs']['windows']['steps'])
-    $functional=@($steps|Where-Object {$_['id'] -ceq 'run_profiles'})
-    $mutation=@($steps|Where-Object {$_['id'] -ceq 'run_profiles_mutation'})
-    $upload=@($steps|Where-Object {$_['with'] -and $_['with']['path'] -ceq 'artifacts/run-profiles'})
-    if($functional.Count -ne 1 -or $mutation.Count -ne 1 -or $upload.Count -ne 1 -or $upload[0]['with']['if-no-files-found'] -cne 'error'){throw 'RunProfileEvidenceContractChanged'}
-    $condition=[string]$upload[0]['if']
-    $expression=$condition.Replace('always()','$true').Replace('needs.linux-matrix.outputs.has_core','$coreFlag').Replace('matrix.rid','$rid').Replace('matrix.channel','$channel').Replace('matrix.mode','$mode').Replace('steps.run_profiles_mutation.outcome','$mutationOutcome').Replace('steps.run_profiles.outcome','$functionalOutcome').Replace('&&','-and').Replace('||','-or').Replace('!=','-cne').Replace('==','-ceq')
-    $evaluate=[scriptblock]::Create($expression)
-    $states=@('','skipped','success','failure','cancelled');$properties=0
-    foreach($coreFlag in @('true','false')){foreach($rid in @('win-x64','win-arm64')){foreach($channel in @('stable','preview')){foreach($mode in @('InProcess','Process')){
-        foreach($functionalOutcome in $states){foreach($mutationOutcome in $states){
-            $expected=$coreFlag -ceq 'true' -and $rid -ceq 'win-x64' -and $channel -ceq 'stable' -and $mode -ceq 'InProcess' -and (@('success','failure','cancelled') -ccontains $functionalOutcome -or @('success','failure','cancelled') -ccontains $mutationOutcome)
-            if([bool](& $evaluate) -ne $expected){throw 'RunProfileUploadConditionChanged'}
-            $properties++
-        }}
-    }}}}
-    $coreFlag='true';$rid='win-x64';$channel='stable';$mode='InProcess';$functionalOutcome='skipped';$mutationOutcome='skipped'
-    $offset=$expression.IndexOf(' -and ((',[StringComparison]::Ordinal)
-    if($offset -lt 0){throw 'RunProfileOutcomeMutationAnchorMissing'}
-    $mutant=[scriptblock]::Create($expression.Substring(0,$offset))
-    if(![bool](& $mutant) -or [bool](& $evaluate)){throw 'RunProfileSkippedUploadMutantNotDetected'}
+    $workflow=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/tooling-ci.yml'),[Text.Encoding]::UTF8))
+    $functional=@($workflow['jobs']['tooling']['steps'])
+    $mutation=@($workflow['jobs']['run-profiles-mutation']['steps'])
+    if(@($functional|Where-Object {$_['id'] -ceq 'run_profiles'}).Count -ne 1 -or @($mutation|Where-Object {$_['id'] -ceq 'run_profiles_mutation'}).Count -ne 1){throw 'RunProfileEvidenceContractChanged'}
+    $properties=0
+    foreach($spec in @(@{Steps=$functional;Name='quietcli-tooling-*';Dual=$true},@{Steps=$mutation;Name='quietcli-run-profiles-mutation-*';Dual=$false})){
+        $upload=@($spec.Steps|Where-Object {$_['with'] -and $_['with']['name'] -like $spec.Name})
+        if($upload.Count -ne 1 -or $upload[0]['with']['if-no-files-found'] -cne 'error'){throw 'RunProfileEvidenceContractChanged'}
+        $expression=([string]$upload[0]['if']).Replace('always()','$true').Replace('steps.tooling_tests.outcome','$toolingOutcome').Replace('steps.run_profiles_mutation.outcome','$mutationOutcome').Replace('steps.run_profiles.outcome','$functionalOutcome').Replace('&&','-and').Replace('||','-or').Replace('!=','-cne')
+        $evaluate=[scriptblock]::Create($expression)
+        foreach($toolingOutcome in @('','skipped','success','failure','cancelled')){
+            foreach($functionalOutcome in @('','skipped','success','failure','cancelled')){
+                foreach($mutationOutcome in @('','skipped','success','failure','cancelled')){
+                    $expected=if($spec.Dual){@('success','failure','cancelled') -ccontains $toolingOutcome -or @('success','failure','cancelled') -ccontains $functionalOutcome}else{@('success','failure','cancelled') -ccontains $mutationOutcome}
+                    if([bool](& $evaluate) -ne $expected){throw 'RunProfileUploadConditionChanged'}
+                    $properties++
+                }
+            }
+        }
+        $toolingOutcome='skipped';$functionalOutcome='skipped';$mutationOutcome='skipped'
+        if([bool](& $evaluate)){throw 'RunProfileSkippedUploadMutantNotDetected'}
+    }
     Write-WorkspaceJson (Join-Path $RunDirectory 'ci-failure-regression.json') @{ImagePlans=$plans;InvalidParentDefaults=5;UploadDecisionProperties=$properties;MutantsKilled=2;DockerBuildExecuted=$false;RemoteWorkflowExecuted=$false}
 }
 
@@ -263,8 +267,14 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
     try{
         $selection=[pscustomobject]@{Images=@('Core','Git')}
         $resolved=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ResolveOnly -ContainerRuntime docker} $warmRoot $selection
+        $probed=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ProbeOnly -ContainerRuntime docker} $warmRoot $selection
         $pulled=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ContainerRuntime docker} $warmRoot $selection
         if(!$resolved.RegistryOnly -or !$resolved.CacheHit -or $pulled.Image -cne 'verified-final-local'){throw 'WarmFinalImagePreparedParents'}
+        if(!$probed.RegistryOnly -or !$probed.CacheHit){throw 'ProbePreparedWarmImage'}
+        $missSource=$images.Replace('if(!$IncludeConfiguration)', 'if($true){return};if(!$IncludeConfiguration)')
+        [IO.File]::WriteAllText((Join-Path $warmScripts CiImages.ps1),$missSource,[Text.UTF8Encoding]::new($false))
+        $miss=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ProbeOnly -ContainerRuntime docker} $warmRoot $selection
+        if(!$miss.RegistryOnly -or $miss.CacheHit){throw 'ProbePreparedMissingImage'}
     }finally{Remove-Module -ModuleInfo $module -Force}
     $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
     $yaml=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build()

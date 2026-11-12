@@ -25,12 +25,12 @@ $monitor=Start-Process -FilePath $pwsh -WindowStyle Normal -ArgumentList @('-Fil
 "Monitor: pwsh -File `"$watch`" -RunDirectory `"$RunDirectory`""
 $deadline=[DateTimeOffset]::UtcNow.AddMinutes(4)
 while(!$worker.HasExited){
-    if([DateTimeOffset]::UtcNow -gt $deadline){$worker.Kill($true);$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Audit sécurité et logiciel';Workspace=$WorkspaceRoot;ProjectDirectory=$WorkspaceRoot;Platform='win-x64';ProcessId=$worker.Id;StartedUtc=$deadline.AddMinutes(-4).ToString('o');FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o');State='Timeout';Passed=$null;Failed=$null;Case='Audit worker timed out';Error='See worker logs'};Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$state};Write-WorkspaceJson (Join-Path $RunDirectory 'status.json') $state;break}
+    if([DateTimeOffset]::UtcNow -gt $deadline){$worker.Kill($true);$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Audit sécurité et logiciel';Workspace=$WorkspaceRoot;ProjectDirectory=$WorkspaceRoot;Platform='win-x64';ProcessId=$worker.Id;StartedUtc=$deadline.AddMinutes(-4).ToString('o');FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o');State='Timeout';Passed=$null;Failed=$null;Case='Audit worker timed out';Error='See worker logs'};Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$state};Write-WorkspaceJson (Join-Path $RunDirectory 'status.json') $state;break}
     if($monitor.HasExited){$monitor=Start-Process -FilePath $pwsh -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($watch)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory))) -PassThru}
     [void][Threading.Tasks.Task]::Delay(500).GetAwaiter().GetResult()
 }
 if(!(Test-Path -LiteralPath (Join-Path $RunDirectory 'summary.json'))){
-    $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Audit sécurité et logiciel';Workspace=$WorkspaceRoot;ProjectDirectory=$WorkspaceRoot;Platform='win-x64';ProcessId=$worker.Id;StartedUtc=$deadline.AddMinutes(-4).ToString('o');FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o');State='Crash';Passed=$null;Failed=$null;Case='Audit worker exited without a report';Error='See worker logs'}
+    $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Audit sécurité et logiciel';Workspace=$WorkspaceRoot;ProjectDirectory=$WorkspaceRoot;Platform='win-x64';ProcessId=$worker.Id;StartedUtc=$deadline.AddMinutes(-4).ToString('o');FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o');State='Crash';Passed=$null;Failed=$null;Case='Audit worker exited without a report';Error='See worker logs'}
     Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$state}
     Write-WorkspaceJson (Join-Path $RunDirectory 'status.json') $state
 }

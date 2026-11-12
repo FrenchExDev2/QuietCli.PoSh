@@ -10,14 +10,16 @@ function Invoke-RunProfileQualification {
     Runs every registered mutation, requiring a green baseline and no invalid outcomes.
     .PARAMETER OnProgress
     Receives observable case or mutant progress and independent counters.
+    .PARAMETER MaxConcurrency
+    Maximum isolated mutation workers; measurements in the functional campaign remain ordered.
     #>
-    param([string]$WorkspaceRoot, [string]$RunDirectory, [switch]$Mutation, [scriptblock]$OnProgress)
+    param([string]$WorkspaceRoot, [string]$RunDirectory, [switch]$Mutation, [scriptblock]$OnProgress,[ValidateRange(1,32)][int]$MaxConcurrency=2)
     . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
     $tests = Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh'
     $report = Join-Path $RunDirectory 'run-profiles-mutation.json'
     $scriptName = if ($Mutation) { 'RunProfiles.Mutation.ps1' } else { 'RunProfiles.Tests.ps1' }
     $arguments = @('-File', (Join-Path $tests $scriptName))
-    if ($Mutation) { $arguments += @('-OutputPath', $report) }
+    if ($Mutation) { $arguments += @('-OutputPath', $report,'-MaxConcurrency',"$MaxConcurrency") }
     $capture = @{ Passed = 0; Failed = 0; Skipped = 0; Summary = $false; Lines = 0; Diagnostics = [Collections.Generic.Queue[string]]::new() }
     $process = Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' })) -ArgumentList $arguments -WorkingDirectory $WorkspaceRoot -TimeoutSeconds 5400 -State $capture -OnOutput {
         param($record, $capture)
@@ -32,6 +34,7 @@ function Invoke-RunProfileQualification {
         if ($OnProgress) { $null = & $OnProgress $record.Text $capture.Passed $capture.Failed }
         [Console]::Out.WriteLine($record.Text)
     }
+    $data=$null
     if ($Mutation -and [IO.File]::Exists($report)) {
         $data = Get-Content -LiteralPath $report -Raw -Encoding utf8 | ConvertFrom-Json
         $capture.Passed = @($data.Results | Where-Object Outcome -CEQ Killed).Count
@@ -39,7 +42,8 @@ function Invoke-RunProfileQualification {
         $capture.Summary = $data.Results.Count -gt 0
     }
     if (-not $capture.Summary -or $process.Outcome -ne 'Success' -or (-not $Mutation -and $capture.Skipped -gt 0)) { $capture.Failed = [Math]::Max(1, $capture.Failed) }
-    $summary = [pscustomobject]@{ Project = 'RunProfiles'; Mutation = [bool]$Mutation; Passed = $capture.Passed; Failed = $capture.Failed; Skipped = $capture.Skipped; Process = $process; Diagnostics = $capture.Diagnostics.ToArray() }
+    $partial=$Mutation -and $null -ne $data -and $data.Partial
+    $summary = [pscustomobject]@{ Project = 'RunProfiles'; Mutation = [bool]$Mutation; Partial=[bool]$partial; Incomplete=$false; Passed = $capture.Passed; Failed = $capture.Failed; Skipped = $capture.Skipped; Process = $process; Diagnostics = $capture.Diagnostics.ToArray() }
     if (-not $Mutation) { Write-WorkspaceJson (Join-Path $RunDirectory 'run-profiles-suite.json') $summary }
     return $summary
 }

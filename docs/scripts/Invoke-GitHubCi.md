@@ -1,5 +1,11 @@
 # Invoke-GitHubCi.ps1
 
+RunProfilesMutation skips product compilation. GitHub rejects Partial or Incomplete suite summaries even when their terminal state says Success.
+
+## Scoped CI execution
+
+Builds the selected suite dependency closure and only the expected native RID when a build is requested. Tooling remains separate; GitHub-only/headless restrictions, native RID checks and complete-run evidence requirements remain.
+
 Ordinary companion and All invocations validate the complete case catalogue and inert manifest scheduling declarations before build/test effects. The same plan and bounded isolated batches are consumed by the owning runner on runners, job containers and Docker fallback. Each case child reuses the built checkout/image and receives one internal slot, private configuration/database/reports and the selected host/RID/TTY expectations. No extra image build/pull is introduced. See [classification and concurrency](../README-test-classification-and-concurrency.md).
 
 GitHub-only entry point for the existing companion suites. It requires `GITHUB_ACTIONS=true` and

@@ -79,19 +79,6 @@ $result = & $LauncherPath -Code {
     $runtime.Data.Native
 }
 if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis -or $result.Error.Count -or $result.Data.Bytes -ne 5) { throw 'LauncherNativeCallFailed' }
-$beforeCompanions = @(Get-Module FrenchExDev2.QuietCli.*.PoSh -All).Count
-$paths = @(& $LauncherPath -Companion Git,Vagrant -Code {
-    param($runtime)
-    $handlers = @(Get-QuietHandler)
-    if (@($handlers | Where-Object Id -EQ 'FrenchExDev2.QuietCli.Git.PoSh').Count -ne 1 -or
-        @($handlers | Where-Object Id -Like 'FrenchExDev2.QuietCli.Vagrant.PoSh.*').Count -ne 2) { throw 'LauncherCompanionHandlersMissing' }
-    @('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Git.PoSh','FrenchExDev2.QuietCli.Vagrant.PoSh') |
-        ForEach-Object { (Get-Module $_ -ErrorAction Stop).Path }
-})
-if ($paths.Count -ne 3 -or @(Get-Module FrenchExDev2.QuietCli.*.PoSh -All).Count -ne $beforeCompanions) { throw 'LauncherCompanionLifecycleChanged' }
-$invalidCompanionRejected = $false
-try { & $LauncherPath -Companion Unknown -Code {} } catch { $invalidCompanionRejected = $true }
-if (!$invalidCompanionRejected) { throw 'LauncherInvalidCompanionAccepted' }
 $conflict = New-Module -Name FrenchExDev2.QuietCli.Core.PoSh -ScriptBlock {} | Import-Module -Scope Local -PassThru
 try {
     $rejected = $false

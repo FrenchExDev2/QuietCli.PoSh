@@ -41,6 +41,8 @@ The [agent documentation index](agents/README.md) identifies distributed instruc
 
 ## Development, CI and distribution
 
+- [Scalable companion qualification](ci/scalable-companions.md): consumer boundaries, Core independence, affected suites, intermediate caches, bounded mutation and verified develop reuse.
+
 - [CI companions and independent integration suites](scripts/lib/CiCompanions.md): YAML declarations,
   dependency expansion, image composition and shared script entry points.
 - [Add a companion](../README-add-companion.md): product/test projects, Vagrant, dedicated integration

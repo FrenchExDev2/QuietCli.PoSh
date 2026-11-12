@@ -13,7 +13,7 @@ suites:
   Core:
     test_project: FrenchExDev2.QuietCli.Core.Tests.PoSh
     command: Invoke-QuietCoreTests
-    requires: [Core, Git]
+    requires: [Core]
     core_evidence: true
   Git:
     test_project: FrenchExDev2.QuietCli.Git.Tests.PoSh

@@ -17,6 +17,7 @@ Run ./scripts/Sync-GitHubWorkflowsReadme.ps1 -Apply to regenerate graphs and thi
 | [scripts-docs-check.yml](../../../.github/workflows/scripts-docs-check.yml) | [documentation](script-scripts-docs-check.md) |
 | [sync-credits-apply.yml](../../../.github/workflows/sync-credits-apply.yml) | [documentation](script-sync-credits-apply.md) |
 | [sync-credits-check.yml](../../../.github/workflows/sync-credits-check.yml) | [documentation](script-sync-credits-check.md) |
+| [tooling-ci.yml](../../../.github/workflows/tooling-ci.yml) | [documentation](script-tooling-ci.md) |
 
 [Execution model](../execution-model.md) and [automation requirements](../../README-automation-contracts.md).
 

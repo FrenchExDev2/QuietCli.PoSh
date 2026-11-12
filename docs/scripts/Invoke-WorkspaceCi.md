@@ -1,5 +1,11 @@
 # Invoke-WorkspaceCi.ps1
 
+RunProfilesMutation uses only the PowerShell tooling and engine-independent process helper; it does not request a product build even when SkipBuild is omitted.
+
+## Scoped CI execution
+
+Builds the selected suite dependency closure. Suite Tooling selects the private repository-automation catalogue. Local execution retains the visible monitor. RunProfilesMutation accepts the owning Case wildcard for targeted development mutants and preserves partial evidence.
+
 Ordinary companion and All invocations validate the complete case catalogue and manifest scheduling declarations before profiler preparation, builds, worker/report creation or case execution. Invalid classifications/policies therefore fail early even for a filtered run. WhatIf still returns before orchestration effects. Each owning runner saves its plan and enforces declared Ordered/Exclusive barriers and bounded isolated batches; `MaxConcurrency` combines with the manifest cap, with one internal slot per case child. See [classification and concurrency](../README-test-classification-and-concurrency.md).
 
 ## Purpose

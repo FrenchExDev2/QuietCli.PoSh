@@ -141,7 +141,45 @@ Tests independently prepared repositories, hook counts and local bare push targe
     foreach($entry in $semanticCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $ciImageCases=Get-QuietGitCiImageCases -WorkspaceRoot $WorkspaceRoot
     foreach($entry in $ciImageCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
+    $cases['Git audit preserves reference case and private artifact cleanup']={
+        $git=Get-Module FrenchExDev2.QuietCli.Git.PoSh
+        function Add-AuditEvidence {
+            <# .SYNOPSIS
+            Asserts a migrated Git-owned security invariant.
+            .PARAMETER Id
+            Independent finding identifier.
+            .PARAMETER Resolved
+            Required invariant.
+            .PARAMETER Evidence
+            Bounded synthetic facts.
+            #>
+            param($Id,[bool]$Resolved,$Evidence)
+            if(!$Resolved){throw ($Id+': '+($Evidence|ConvertTo-Json -Compress))}
+        }
+    $changes=& $git {$before=@(@{Name='refs/heads/Feature';ObjectId=('1'*40)},@{Name='refs/heads/feature';ObjectId=('2'*40)});$after=@(@{Name='refs/heads/Feature';ObjectId=('3'*40)},@{Name='refs/heads/feature';ObjectId=('2'*40)});@(Get-QuietGitRefChanges $before $after).Count}
+    Add-AuditEvidence REL-03 ($changes -eq 1) @{ExpectedChanges=1;ObservedChanges=$changes}
+
+    $temporary=Join-Path $RunDirectory 'owned-temp';[void][IO.Directory]::CreateDirectory($temporary)
+    $saved=@{TEMP=$env:TEMP;TMP=$env:TMP;TMPDIR=$env:TMPDIR};$env:TEMP=$temporary;$env:TMP=$temporary;$env:TMPDIR=$temporary
+    try{
+        $gitPath=(Get-Command git -CommandType Application|Select-Object -First 1).Source
+        $failed=& $git {param($file,$directory)$runtime=[pscustomobject]@{Request=@{WorkingDirectory=$directory;Environment=@{};FilePath=$file;TimeoutSeconds=1;Transport='Pipe'}};Invoke-QuietGitBlobOutput $runtime @('--version') 'synthetic'} $gitPath (Join-Path $RunDirectory 'nonexistent-directory')
+        $left=@(Get-ChildItem -LiteralPath $temporary -Recurse -File).Count
+        Add-AuditEvidence REL-04 (!$failed.ContainsKey('File') -and $null -eq $failed.Artifact -and $left -eq 0) @{InternalStreamReturned=$failed.ContainsKey('File');RemainingFiles=$left}
+        if(!$IsWindows){
+            $successful=& $git {param($file,$directory)$runtime=[pscustomobject]@{Request=@{WorkingDirectory=$directory;Environment=@{};FilePath=$file;TimeoutSeconds=5;Transport='Pipe'}};Invoke-QuietGitBlobOutput $runtime @('--version') 'synthetic'} $gitPath $RunDirectory
+            try{
+                $fileMode=[IO.File]::GetUnixFileMode($successful.Artifact.Path)
+                $directoryMode=[IO.File]::GetUnixFileMode([IO.Path]::GetDirectoryName($successful.Artifact.Path))
+                Add-AuditEvidence SEC-04 ([int]$fileMode -eq 384 -and [int]$directoryMode -eq 448) @{FileMode=[int]$fileMode;DirectoryMode=[int]$directoryMode}
+            }finally{Remove-QuietGitArtifact $successful.Artifact}
+        }
+    }finally{foreach($name in $saved.Keys){[Environment]::SetEnvironmentVariable($name,$saved[$name])}}
+
+
+    }
     $caseMetadata=@{
+        'Git audit preserves reference case and private artifact cleanup'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
         'compiled Git parsers preserve migration vectors and measure local costs'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'compiled Git formats and argument bindings satisfy independent assertions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'status distinguishes unborn state and Unicode untracked paths'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}

@@ -257,3 +257,5 @@ The automation-contract cases cover Docker/Podman discovery, standard ShouldProc
 # Focused .NET tooling validation
 
 Run `../scripts/Invoke-DotNetTests.ps1` from this directory, or `./scripts/Invoke-DotNetTests.ps1` from the checkout root. The shared `DotNet` worker selects Readiness, Provisioning and Layout fixtures, bounded properties/fuzz inputs and targeted mutations without building or importing the product engine. Reports use the shared external temporary root and visible monitor. This focused Windows evidence is separate from Core/All release qualification. See [the user guide](../README-dotnet-and-global-dot-json.md).
+
+Core product qualification requires only Core. The scaffolding case generates a scripted git-status companion and checks clean/untracked Unicode observations without the real Git module. Repository commit, packaging and source-check catalogues belong to private Tooling.Tests. Build-Workspace -Suite Core compiles only Core and its own tests; Test-CoreIndependence verifies a source copy with Git absent.

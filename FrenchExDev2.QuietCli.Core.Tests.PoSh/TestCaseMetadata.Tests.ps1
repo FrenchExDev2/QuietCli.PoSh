@@ -10,7 +10,8 @@ function Test-QuietCaseMetadata {
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     $runner=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psm1'
     $inventory=Get-QuietTestCaseInventory -Path $runner
-    Assert-QuietEqual $inventory.Metadata['PowerShell functions have readable help and sources parse without errors'].TestKind Integration
+    $tooling=Get-QuietCompanionTestInventory -ManifestPath (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Tooling.Tests.PoSh/FrenchExDev2.QuietCli.Tooling.Tests.PoSh.psd1')
+    Assert-QuietEqual $tooling.Metadata['PowerShell functions have readable help and sources parse without errors'].TestKind Integration
     Assert-QuietEqual $inventory.Metadata['security audit counterexamples are closed with independent evidence'].TestKind Integration
     Assert-QuietEqual $inventory.Metadata['direct status callbacks preserve generated Unicode record digests'].TestKind Unit
     $random=[Random]::new(111187)
@@ -92,8 +93,8 @@ function Invoke-QuietCoreTests {
     $workflow=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/scripts-docs-check.yml'),[Text.Encoding]::UTF8)
     if(!$workflow.Contains("'FrenchExDev2.QuietCli.*.Tests.PoSh/**'") -or !$workflow.Contains('run: ./scripts/Invoke-WorkspaceChecks.ps1')){throw 'TestCaseMetadataCiPathOrRegistryMissing'}
     $companions=@(& (Join-Path $WorkspaceRoot 'scripts/Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot)
-    Assert-QuietEqual (($companions.Suite|Sort-Object) -join '|') 'Core|Git|Vagrant'
-    Assert-QuietEqual ($companions|Where-Object Suite -CEQ Git).Cases 77
+    Assert-QuietEqual (($companions.Suite|Sort-Object) -join '|') 'Core|Git|Tooling|Vagrant'
+    Assert-QuietEqual ($companions|Where-Object Suite -CEQ Git).Cases 78
     Assert-QuietEqual ($companions|Where-Object Suite -CEQ Vagrant).Unit 6
     $owned=Join-Path $directory owned-catalogue;[void][IO.Directory]::CreateDirectory($owned)
     $ownedModule=Join-Path $owned owned.psm1;$ownedManifest=Join-Path $owned owned.psd1;$helper=Join-Path $owned cases.ps1

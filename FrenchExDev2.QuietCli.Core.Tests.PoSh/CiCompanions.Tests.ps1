@@ -11,7 +11,7 @@ function Test-QuietCiCompanions {
     Import-Module $library
     $configuration=Read-QuietCiCompanions $WorkspaceRoot
     $core=Resolve-QuietCiCompanions $configuration -Suite Core -RuntimeIdentifier win-x64 -RuntimeMajor 11
-    if(($core.Images -join ',') -cne 'Core,Git' -or @($core.Environment.Values|Where-Object {$_ -cne '0'}).Count){throw 'CoreTestToolDependencyChanged'}
+    if(($core.Images -join ',') -cne 'Core' -or ($core.Dependencies -join ',') -cne 'Core' -or @($core.Environment.Values|Where-Object {$_ -cne '0'}).Count){throw 'CoreTestToolDependencyChanged'}
     $git=Resolve-QuietCiCompanions $configuration -Suite Git -RuntimeIdentifier win-x64 -RuntimeMajor 11
     if($git.HasCoreEvidence -or @($git.Environment.Values|Where-Object {$_ -ceq '1'}).Count -ne 6){throw 'CompanionQualificationControlsChanged'}
     $vagrant=Resolve-QuietCiCompanions $configuration -Suite Vagrant
@@ -172,6 +172,10 @@ function Test-QuietCiCompanions {
     $null=Invoke-QuietCiSuiteImage -WorkspaceRoot $missing -Selection $selection -RuntimeIdentifier linux-arm64 -WhatIf
     if(Test-Path -LiteralPath $missing){throw 'CompanionLibraryPreviewCreatedFiles'}
     $entry=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/companions-ci.yml'),[Text.Encoding]::UTF8)
-    if(!$entry.Contains("'FrenchExDev2.QuietCli.*.PoSh/**'") -or !$entry.Contains('suite: All') -or (Test-Path (Join-Path $WorkspaceRoot '.github/workflows/git-ci.yml')) -or (Test-Path (Join-Path $WorkspaceRoot '.github/workflows/core-ci.yml'))){throw 'PerCompanionEntryWorkflowRequired'}
+    $workflow=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build().Deserialize($entry)
+    if(!$workflow['on'].ContainsKey('pull_request') -or $null -ne $workflow['on']['pull_request'] -or !$workflow['jobs'].ContainsKey('plan') -or
+        $workflow['jobs']['companions']['with']['suite'] -cne '${{ needs.plan.outputs.suite }}' -or
+        $workflow['jobs']['ci-status']['name'] -cne 'QuietCli required CI' -or
+        (Test-Path (Join-Path $WorkspaceRoot '.github/workflows/git-ci.yml')) -or (Test-Path (Join-Path $WorkspaceRoot '.github/workflows/core-ci.yml'))){throw 'PerCompanionEntryWorkflowRequired'}
     Write-WorkspaceJson (Join-Path $RunDirectory 'ci-companions.json') @{Seed=20261111;GeneratedCompanions=100;DependencyProperties=$properties;MalformedYamlInputs=$invalid.Count;ParentIdentityRejections=$imageChecks;MutantsKilled=3;DedicatedIntegrationRunner=$true;ReverseCoreDependency=$false;NativeExecutions=0;SourceSHA256=(Get-FileHash $library).Hash}
 }

@@ -46,9 +46,9 @@ $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['S
 if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,('Build and run GitHub suite '+$Suite))){return}
 . (Join-Path $PSScriptRoot 'Common.ps1')
 if($Suite -ceq 'All' -or $Suite -cin @(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object {!$_.IsTest}|ForEach-Object Suite)){$null=& (Join-Path $PSScriptRoot 'Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot}
-if(!$SkipBuild){
+if(!$SkipBuild -and $Suite -ne 'RunProfilesMutation'){
     $buildRid=if($ExpectedRuntimeIdentifier){$ExpectedRuntimeIdentifier}else{[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier}
-    & (Join-Path $PSScriptRoot 'Build-Workspace.ps1') -WorkspaceRoot $WorkspaceRoot -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier $buildRid
+    & (Join-Path $PSScriptRoot 'Build-Workspace.ps1') -WorkspaceRoot $WorkspaceRoot -Suite $Suite -Configuration Release -ReadyToRun -RuntimeIdentifier $buildRid -ReadyToRunRuntimeIdentifier $buildRid
 }
 if(!$RunDirectory){$RunDirectory=Join-Path $WorkspaceRoot ('artifacts/tests/github-'+[guid]::NewGuid().ToString('N').Substring(0,8))}
 if(Test-Path -LiteralPath $RunDirectory){throw 'GitHubCiRunDirectoryExists'}
@@ -65,6 +65,8 @@ if($Image){
     & (Join-Path $PSScriptRoot 'Invoke-TestWorker.ps1') @parameters
 }
 $summary=Get-Content -LiteralPath (Join-Path $RunDirectory 'summary.json') -Raw -Encoding utf8|ConvertFrom-Json
+$suiteSummaries=if($summary.PSObject.Properties['Suites']){@($summary.Suites)}else{@()}
+if(@($suiteSummaries|Where-Object {$_ -and (($_.PSObject.Properties['Partial'] -and $_.Partial) -or ($_.PSObject.Properties['Incomplete'] -and $_.Incomplete))}).Count){throw 'GitHubCiRequiresCompleteUnfilteredSuites'}
 if($summary.State.State -ne 'Success'){
     Write-WorkspaceFailureDiagnostics -Summary $summary -RunDirectory $RunDirectory
     throw "GitHub companion tests failed. See $RunDirectory"

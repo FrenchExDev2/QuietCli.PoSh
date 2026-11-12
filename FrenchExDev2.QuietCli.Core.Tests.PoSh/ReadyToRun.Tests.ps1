@@ -60,6 +60,7 @@ function Test-QuietReadyToRun {
     $mock=@'
 function Assert-QuietPtyPublications { param($WorkspaceRoot) }
 function Get-QuietWorkspaceBuildProjects { param($WorkspaceRoot) $buildDistributions }
+function Get-QuietWorkspaceBuildSelection { param($WorkspaceRoot,$Suite) @($buildDistributions.Package|Select-Object -Unique) }
 function Assert-QuietRuntimePublication { param($Directory,$Target) }
 function Get-QuietBinaryInputs { param($WorkspaceRoot,$Project) ,@{Path='fixture';SHA256='fixture'} }
 function Get-QuietRuntimeTargets { param($WorkspaceRoot) foreach($rid in @('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){[pscustomobject]@{Rid=$rid;PlatformTarget=$(if($rid.EndsWith('arm64')){'ARM64'}else{'x64'})}} }
@@ -106,7 +107,7 @@ function Write-QuietBuildManifest { param($WorkspaceRoot,$Project,$Output,$Input
     }
     foreach($job in @('ci.yml','publish-psgallery.yml')){
         $workflow=Get-Content -LiteralPath (Join-Path $WorkspaceRoot ('.github/workflows/'+$job)) -Raw -Encoding utf8
-        if($workflow -notmatch 'Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier'){throw 'ReadyToRunGitHubBuildMissing'}
+        if($workflow -notmatch 'Build-Workspace.ps1[^\r\n]*-Configuration Release[^\r\n]*-ReadyToRunRuntimeIdentifier'){throw 'ReadyToRunGitHubBuildMissing'}
         if($job -eq 'publish-psgallery.yml' -and $workflow -notmatch 'New-QuietGalleryPackage.ps1[^\r\n]+-RequireReadyToRun'){throw 'ReadyToRunPackageRequirementMissing'}
     }
     $manual=Get-Content -LiteralPath (Join-Path $WorkspaceRoot '.github/workflows/quietcli2-readytorun.yml') -Raw -Encoding utf8

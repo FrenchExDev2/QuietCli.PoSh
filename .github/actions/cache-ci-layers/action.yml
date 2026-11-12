@@ -1,0 +1,36 @@
+name: Cache intermediate CI image layers
+description: Restore or save BuildKit mode=max caches independently of product test success.
+inputs:
+  mode:
+    description: restore before building; save immediately after building
+    required: true
+  rid:
+    description: Native target architecture and libc scope
+    required: true
+  fingerprint:
+    description: Final image plan fingerprint including every declared recipe input and parent
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-docker-action@3f1ab1ab0e29231562e4db4ca600c1a49653bac6 # v5
+      if: inputs.mode == 'restore'
+      with:
+        daemon-config: |
+          {"features":{"containerd-snapshotter":true}}
+    - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      if: inputs.mode == 'restore'
+      with:
+        path: .cache/ci-buildkit
+        key: quietcli-buildkit-v2-${{ inputs.rid }}-${{ inputs.fingerprint }}
+        restore-keys: quietcli-buildkit-v2-${{ inputs.rid }}-
+    - name: Enable the checkout-owned intermediate cache
+      if: inputs.mode == 'restore'
+      shell: pwsh
+      run: |
+        [IO.File]::AppendAllText($env:GITHUB_ENV,"QUIETCLI_BUILDKIT_CACHE_DIR=$((Join-Path $env:GITHUB_WORKSPACE '.cache/ci-buildkit'))`n",[Text.UTF8Encoding]::new($false))
+    - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      if: inputs.mode == 'save'
+      with:
+        path: .cache/ci-buildkit
+        key: quietcli-buildkit-v2-${{ inputs.rid }}-${{ inputs.fingerprint }}
