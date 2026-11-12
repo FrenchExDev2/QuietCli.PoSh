@@ -36,7 +36,10 @@ jobs:
           name: quietcli-core-independence
           path: |
             artifacts/core-independence/*/independence.json
-            artifacts/core-independence/*/tests
+            artifacts/core-independence/*/tests/*.json
+            artifacts/core-independence/*/tests/*.log
+            artifacts/core-independence/*/tests/core-cases/*/*.json
+            artifacts/core-independence/*/tests/core-cases/*/*.log
           if-no-files-found: error
           retention-days: 14
   tooling:
@@ -84,12 +87,28 @@ jobs:
         with:
           name: quietcli-tooling-${{ github.sha }}
           path: |
-            artifacts/tooling
-            artifacts/run-profiles
+            artifacts/tooling/tests/*.json
+            artifacts/tooling/tests/*.log
+            artifacts/tooling/tests/core-cases/*/*.json
+            artifacts/tooling/tests/core-cases/*/*.log
+            artifacts/run-profiles/tests/*.json
+            artifacts/run-profiles/tests/*.log
             artifacts/core-independence/*/independence.json
-            artifacts/core-independence/*/tests
+            artifacts/core-independence/*/tests/*.json
+            artifacts/core-independence/*/tests/*.log
           if-no-files-found: error
           retention-days: 14
+      - name: Preserve tooling fixtures only after a failed campaign
+        if: failure() && (steps.tooling_tests.outcome == 'failure' || steps.run_profiles.outcome == 'failure')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: quietcli-failed-tooling-fixtures-${{ github.sha }}
+          path: |
+            artifacts/tooling
+            artifacts/run-profiles/tests
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 1
   run-profiles-mutation:
     name: Run-profile mutation (two isolated workers)
     runs-on: windows-latest

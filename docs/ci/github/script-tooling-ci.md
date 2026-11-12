@@ -1,6 +1,6 @@
 # tooling-ci.yml
 
-<!-- workflow-source-sha256: B3471826A87FAE7D578B5515F71675C84398E7FE690655BD232871EA9EB555C4 -->
+<!-- workflow-source-sha256: F3D3CCC34068BBC47243BCB01C5F27609D715430F0494C67CE71729C8C0B0E39 -->
 
 ## Purpose
 
@@ -13,6 +13,8 @@ Mutation uses Ci.Process exclusively and performs no product build or import. Fu
 ## Validation and limits
 
 Failures in any job fail this reusable workflow and its calling gate. Artifact uploads require started test campaigns; skipped run-profile steps cannot create empty-artifact failures. Local partial tests do not establish the complete hosted catalogue or a measured speedup. This workflow never publishes packages.
+
+Ordinary tooling and independence artifacts select top-level JSON reports, receipts and diagnostic logs, plus isolated case-worker reports. They exclude nested fixture workspaces, binaries and generated packages. Functional tooling failures additionally upload their existing fixture trees under a separate seven-day diagnostic artifact; those trees are never uploaded on success. Missing required report evidence still fails the ordinary artifact upload. Product/release package artifacts are unaffected.
 
 ## Triggers
 

@@ -113,6 +113,14 @@ function Test-QuietCiFailureRegression {
     $yaml=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build()
     $workflow=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/tooling-ci.yml'),[Text.Encoding]::UTF8))
     $functional=@($workflow['jobs']['tooling']['steps'])
+    $toolingUpload=@($functional|Where-Object {$_['with'] -and $_['with']['name'] -clike 'quietcli-tooling-*'})[0]
+    $reportPaths=@(([string]$toolingUpload['with']['path']).Trim().Split("`n")|ForEach-Object {$_.Trim()})
+    foreach($required in @('artifacts/tooling/tests/*.json','artifacts/tooling/tests/*.log','artifacts/run-profiles/tests/*.json','artifacts/core-independence/*/independence.json')){
+        if($required -cnotin $reportPaths){throw 'ToolingReportEvidenceMissing'}
+    }
+    foreach($path in $reportPaths){if($path -cnotmatch '\.(json|log)\z'){throw 'ToolingFixtureTreeUploadedOnSuccess'}}
+    $failureUpload=@($functional|Where-Object {$_['with'] -and $_['with']['name'] -clike 'quietcli-failed-tooling-fixtures-*'})
+    if($failureUpload.Count -ne 1 -or [string]$failureUpload[0]['if'] -cnotmatch '^failure\(\) && ' -or $failureUpload[0]['with']['retention-days'] -ne 7){throw 'ToolingFailureFixturesNotBounded'}
     $mutation=@($workflow['jobs']['run-profiles-mutation']['steps'])
     $product=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/ci.yml'),[Text.Encoding]::UTF8))
     $profilerContract=Assert-QuietCiProfilerPreparation $product $workflow
