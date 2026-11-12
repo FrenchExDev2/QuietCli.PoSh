@@ -6,6 +6,8 @@
 
 Host-matrix assertions require Windows, Linux selection/results and performance prerequisites as a set, allowing reordered/additional dependencies while rejecting each removed prerequisite. Evidence properties include bracketed Unicode paths and owned hidden manifests. CI uploads only the prepared evidence tree with hidden files included. Mutation workers write a start receipt and a terminal receipt in finally; parents retain bounded output tails/process metadata and reject absent or unfinished receipts even after exit code zero. An abrupt-exit fixture verifies that boundary; this does not claim a native ARM64 rerun.
 
+Private profiler-contract helpers parse literal PowerShell tool selections and check a restricted boolean condition against Core/profiling scope properties. They distinguish optional product profiling from mandatory Tooling preparation before RunProfiles, including both tool paths. The Tooling companion owns the actual cases. Generated variants and damaged workflow fixtures exercise the guard without preparing tools, starting collectors or executing arbitrary workflow code.
+
 Release tests exercise a unique batch leader, remote sibling-tag revision rejection, dependency-ordered Core/Git validation and mock publication, and no-write previews. The leader qualifies/packages once, while PR validation remains independent. Legacy tags without annotations retain standalone releases.
 
 ## Test boundaries and local work branches

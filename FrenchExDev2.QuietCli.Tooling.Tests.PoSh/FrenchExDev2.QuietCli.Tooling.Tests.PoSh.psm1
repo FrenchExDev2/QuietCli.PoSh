@@ -219,12 +219,15 @@ function Invoke-QuietToolingTests {
         }
     }
         $cases['GitHub CI excludes native TTY campaigns and has no dangling job dependencies']={
+        $productWorkflow=$null;$toolingWorkflow=$null
         $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
         $parser=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build()
         foreach($file in Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot '.github/workflows') -Filter '*.yml'){
             $reader=[IO.StringReader]::new([IO.File]::ReadAllTextAsync($file.FullName,[Text.Encoding]::UTF8).GetAwaiter().GetResult())
             try{$workflow=$parser.Deserialize($reader,[object])}finally{$reader.Dispose()}
             $jobs=$workflow['jobs']
+            if($file.Name -ceq 'ci.yml'){$productWorkflow=$workflow}
+            if($file.Name -ceq 'tooling-ci.yml'){$toolingWorkflow=$workflow}
             foreach($name in $jobs.Keys){
                 if($name -match '(?i)pty|tty'){throw 'NativeTtyJobStillScheduled'}
                 foreach($dependency in @($jobs[$name]['needs'])){
@@ -249,8 +252,6 @@ function Invoke-QuietToolingTests {
                     if(!$option -or $option['type'] -cne 'boolean' -or [string]$option['default'] -cne 'true'){throw 'PerformanceMustBeEnabledByDefault'}
                 }
                 if([string]$jobs['performance-results']['if'] -cne '${{ always() && inputs.collect_performance && needs.linux-matrix.outputs.has_core == ''true'' }}'){throw 'PerformanceAggregationNotOptIn'}
-                $prepare=@($jobs['windows']['steps']|Where-Object {$_['name'] -ceq 'Prepare checksum-pinned PowerShell and CLR profilers'})
-                if($prepare.Count -ne 1 -or [string]$prepare[0]['if'] -cne "needs.linux-matrix.outputs.has_core == 'true' && (inputs.collect_performance || (matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'))" -or !([string]$prepare[0]['run']).Contains('-Module profiler,dottrace')){throw 'RequiredToolingDependenciesNotPrepared'}
                 foreach($name in @('windows','linux','linux-test-driver')){
                     $runs=@($jobs[$name]['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
                     if($runs.Contains('if($env:QUIETCLI_SUITE -ne ''Git'')')){throw ('UnconditionalProfiling: '+$name)}
@@ -259,6 +260,8 @@ function Invoke-QuietToolingTests {
                 }
             }
         }
+        if(!$productWorkflow -or !$toolingWorkflow){throw 'ProfilerQualificationWorkflowsRequired'}
+        $null=Assert-QuietCiProfilerPreparation $productWorkflow $toolingWorkflow
     }
         $cases['CI images cover four native Linux targets and invalidate the cache on recipe changes']={
         & {

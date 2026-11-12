@@ -4,6 +4,8 @@ Workers prefer the already-installed matching private SDK host when it supplies 
 
 Tooling progress uses the same explicit Unit/Integration CI labels as product companions; no Unclassified fallback is emitted.
 
+Tooling and Distribution explicitly preload their Core.Tests dependency with `-DisableNameChecking` before importing the owning test manifest. PowerShell does not forward that option into implicit RequiredModules imports. The helper-scope regression imports the actual Core.Tests silently, then executes the real worker import commands against a minimized RequiredModules fixture in the clean child. Both modes must emit no warnings; a missing-preload mutation must reproduce the warning. Other warning categories are not globally suppressed.
+
 ## Scoped CI execution
 
 Tooling and Distribution load their independently owned catalogues and manifest-declared runners outside product All. Distribution runs all three package/architecture cases behind the single tooling build barrier. Binary identity uses Suite. RunProfiles mutation shares the configured budget with a cap of two isolated process workers. Ordered/exclusive measurements retain their barriers. Partial summaries are explicitly marked.
