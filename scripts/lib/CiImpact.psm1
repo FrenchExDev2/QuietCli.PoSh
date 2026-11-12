@@ -13,10 +13,15 @@ function Get-QuietCiImpact {
     Import-Module (Join-Path $PSScriptRoot 'CiCompanions.psm1') -ErrorAction Stop
     $configuration=Read-QuietCiCompanions $WorkspaceRoot
     $selected=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    # Shared profiling/encoding helpers, evidence renderers and unknown scripts
+    # retain the full matrix. Only restricted development-profile entry points
+    # belong to this reviewed tooling boundary.
+    $toolingOnly=@('scripts/New-RunProfile.ps1','scripts/Invoke-RunProfile.ps1','scripts/lib/RunProfileStore.psm1')
     $full=$false;$tooling=$false
     foreach($path in $ChangedPaths){
         if(!$path -or $path.Contains([char]0) -or $path.StartsWith('/') -or $path.Split('/') -contains '..'){throw 'CiImpactPathInvalid'}
         if($path -match '\A(?:docs/|README[^/]*\.md\z|CREDITS\.md\z|icons/)'){continue}
+        if($path -cin $toolingOnly -or $path -cmatch '\Ascripts/RunProfiles/[a-z0-9][a-z0-9-]{0,63}\.profile\.ps1\z'){$tooling=$true;continue}
         if($path.StartsWith('FrenchExDev2.QuietCli.Tooling.Tests.PoSh/',[StringComparison]::Ordinal)){$tooling=$true;continue}
         $matched=$false
         foreach($name in $configuration.Companions.Keys){

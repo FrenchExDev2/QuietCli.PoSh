@@ -30,6 +30,42 @@ function Test-QuietCiScalability {
     $combined=Get-QuietCiImpact -WorkspaceRoot $WorkspaceRoot -ChangedPaths @($vectors[0].Path,$vectors[2].Path)
     Assert-QuietEqual $combined.Suite All
     Assert-QuietEqual $combined.SelectedSuites.Count 3
+    # Independent boundary oracle: siblings and mixed shared changes cannot
+    # inherit the reviewed entry points' tooling-only qualification scope.
+    $toolingPaths=@('scripts/New-RunProfile.ps1','scripts/Invoke-RunProfile.ps1','scripts/lib/RunProfileStore.psm1','scripts/RunProfiles/coldstart-100.profile.ps1')
+    $sharedPaths=@('scripts/lib/RunProfiler.psm1','scripts/lib/RunEncoding.psm1','scripts/New-CorePerformanceReport.ps1','scripts/lib/CiImpact.psm1','scripts/RunProfiles/unknown.ps1')
+    $impactProperties=0;$impactSeed=20261112;$impactRandom=[Random]::new($impactSeed)
+    foreach($path in $toolingPaths){
+        $plan=Get-QuietCiImpact $WorkspaceRoot @($path)
+        Assert-QuietEqual $plan.RunProducts $false $path
+        Assert-QuietEqual $plan.RunTooling $true $path
+        foreach($bad in @($path+'.bak',$path.ToUpperInvariant(),$path.Replace('scripts/','scripts/not-reviewed/'))){
+            Assert-QuietEqual (Get-QuietCiImpact $WorkspaceRoot @($bad)).RunProducts $true $bad
+        }
+        foreach($shared in $sharedPaths){
+            foreach($paths in @(@($path,$shared),@($shared,$path))){
+                $plan=Get-QuietCiImpact $WorkspaceRoot $paths
+                Assert-QuietEqual $plan.RunProducts $true
+                Assert-QuietEqual $plan.ConservativeFull $true
+                $impactProperties++
+            }
+        }
+    }
+    foreach($iteration in 1..64){
+        $plan=Get-QuietCiImpact $WorkspaceRoot @('scripts/RunProfiles/profile-'+$impactRandom.Next(100000)+'.profile.ps1')
+        Assert-QuietEqual $plan.RunProducts $false
+        Assert-QuietEqual $plan.RunTooling $true
+        $impactProperties++
+    }
+    $impactModule=Get-Module CiImpact
+    $impactSource=(Get-Command Get-QuietCiImpact).ScriptBlock.ToString()
+    $impactAnchor='if($path -cin $toolingOnly -or $path -cmatch'
+    if(!$impactSource.Contains($impactAnchor)){throw 'CiImpactMutationAnchorMissing'}
+    $impactSource=$impactSource.Replace("(Join-Path `$PSScriptRoot 'CiCompanions.psm1')","(Join-Path `$WorkspaceRoot 'scripts/lib/CiCompanions.psm1')")
+    $impactMutant=[scriptblock]::Create($impactSource.Replace($impactAnchor,'if($false -and $path -cmatch'))
+    $mutantPlan=& $impactModule {param($body,$root,$path) & $body -WorkspaceRoot $root -ChangedPaths @($path)} $impactMutant $WorkspaceRoot $toolingPaths[0]
+    Assert-QuietEqual $mutantPlan.RunProducts $true 'Removing the reviewed boundary must be observable'
+    Write-WorkspaceJson (Join-Path $RunDirectory 'ci-impact-properties.json') @{Seed=$impactSeed;Properties=$impactProperties;UnknownPaths=12;MutantsDetected=1}
     foreach($path in @('../escape','/absolute',("bad"+[char]0+'name'))){
         $rejected=$false;try{$null=Get-QuietCiImpact -WorkspaceRoot $WorkspaceRoot -ChangedPaths @($path)}catch{$rejected=$_.Exception.Message -ceq 'CiImpactPathInvalid'}
         Assert-QuietEqual $rejected $true

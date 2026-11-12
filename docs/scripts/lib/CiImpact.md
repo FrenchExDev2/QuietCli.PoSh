@@ -6,6 +6,8 @@ Get-QuietCiImpact reads the validated YAML suite catalogue. Companion changes se
 
 Test-QuietDevelopReceipt requires explicit booleans, exact tree/run/attempt identities and successful required Windows, Linux, performance, tooling and mutation outcomes. Missing fields fail closed.
 
+The reviewed tooling-only boundary is exact: `scripts/New-RunProfile.ps1`, `scripts/Invoke-RunProfile.ps1`, `scripts/lib/RunProfileStore.psm1`, and restricted lowercase `scripts/RunProfiles/<name>.profile.ps1` definitions. These changes still require the complete tooling workflow. Shared profiler/encoding helpers, evidence reports, the impact resolver itself and unknown scripts retain All. Combining a tooling-only path with a product/shared path unions both requirements, independently of path order. CiScalability.Tests exercises generated names, malformed/sibling paths, mixed scopes and a targeted resolver mutation.
+
 ## Critical review and verdict
 
 scripts/lib/CiImpact.psm1:1 favors a conservative full matrix over guessed dependencies. The caller supplies a complete no-rename diff. Companion manifests determine build closure; the YAML determines qualification/image requirements. Tests exercise known scopes, unknown paths, compound scopes, malformed paths, every required receipt field and stale identities. Hosted API and cache transfer behavior still require GitHub execution.
