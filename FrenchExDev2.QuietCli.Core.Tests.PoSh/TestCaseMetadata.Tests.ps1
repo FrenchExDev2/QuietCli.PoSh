@@ -93,7 +93,13 @@ function Invoke-QuietCoreTests {
     $workflow=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/scripts-docs-check.yml'),[Text.Encoding]::UTF8)
     if(!$workflow.Contains("'FrenchExDev2.QuietCli.*.Tests.PoSh/**'") -or !$workflow.Contains('run: ./scripts/Invoke-WorkspaceChecks.ps1')){throw 'TestCaseMetadataCiPathOrRegistryMissing'}
     $companions=@(& (Join-Path $WorkspaceRoot 'scripts/Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot)
-    Assert-QuietEqual (($companions.Suite|Sort-Object) -join '|') 'Core|Git|Tooling|Vagrant'
+    Assert-QuietEqual (($companions.Suite|Sort-Object) -join '|') 'Core|Distribution|Git|Tooling|Vagrant'
+    $distribution=Get-QuietCompanionTestInventory -ManifestPath (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Distribution.Tests.PoSh/FrenchExDev2.QuietCli.Distribution.Tests.PoSh.psd1')
+    Assert-QuietEqual $distribution.Count 3
+    foreach($name in @('all six embedded engines have matching native and managed architectures','PSGallery Core installs outside sources with its embedded engine and no Git companion')){
+        Assert-QuietEqual ($inventory.CaseNames -ccontains $name) $false
+        Assert-QuietEqual ($distribution.CaseNames -ccontains $name) $true
+    }
     Assert-QuietEqual ($companions|Where-Object Suite -CEQ Git).Cases 78
     Assert-QuietEqual ($companions|Where-Object Suite -CEQ Vagrant).Unit 6
     $owned=Join-Path $directory owned-catalogue;[void][IO.Directory]::CreateDirectory($owned)

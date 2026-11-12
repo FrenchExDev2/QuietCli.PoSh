@@ -250,41 +250,6 @@ throw 'CrashCallbackNotExecuted'
         Assert-QuietEqual $r.Recall.State Failed
         Assert-QuietEqual ($r.Recall.RecallId.Length -eq 32) $true
     }
-    $cases['Recall companion development tools work in source-free packages']={
-        $packages=Join-Path $RunDirectory 'recall-packages'
-        $null=& (Join-Path $WorkspaceRoot 'scripts/New-WorkspacePackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $packages
-        Assert-QuietEqual (Test-Path (Join-Path $packages 'FrenchExDev2.QuietCli.Core.Tests.PoSh/recall-tools')) $false
-        $worker=Join-Path $RunDirectory 'package-recall.ps1'
-        $code=@'
-<#
-.SYNOPSIS
-Checks packaged offline tools without source or orchestration helpers.
-.PARAMETER PackageRoot
-Extracted four-module package root.
-#>
-param([string]$PackageRoot)
-$ErrorActionPreference='Stop'
-Import-Module (Join-Path $PackageRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
-    Import-Module (Join-Path $PackageRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -DisableNameChecking
-$r=quiet -AsObject -Recall -Output {} pwsh -Command "'fixture'"
-if($r.Outcome -ne 'Success'){throw 'PackagedCaptureFailed'}
-$comparison=Compare-QuietRecallAnalysis $r -First @{Complete={1}} -Second @{Complete={1}}
-$reduction=Reduce-QuietRecall $r -FailurePredicate {param($c)$c.RetainedBytes -gt 0} -MaxAttempts 5
-if(!$comparison.Equal -or $reduction.Capture.RetainedBytes -lt 1){throw 'PackagedToolsFailed'}
-[pscustomobject]@{Equal=$comparison.Equal;ProvenMinimal=$reduction.ProvenMinimal}|ConvertTo-Json -Compress
-'@
-        [void][IO.File]::WriteAllTextAsync($worker,$code.Replace("`r`n","`n")+"`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-        $r=quiet -AsObject -Role Infrastructure -TimeoutSeconds 120 -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} pwsh -File $worker -PackageRoot $packages
-        Assert-QuietEqual $r.Outcome Success (($r.Error|ConvertTo-Json -Compress))
-        Assert-QuietEqual $r.Data.Equal $true
-        $framework=if([Environment]::Version.Major -ge 11){'net11.0'}else{'net10.0'}
-        $binary=Join-Path $packages ('FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/recall-tools/'+$framework+'/QuietCli.Recall.Tools.dll')
-        $bytes=[IO.File]::ReadAllBytesAsync($binary).GetAwaiter().GetResult();$bytes[-1]=$bytes[-1] -bxor 1
-        [void][IO.File]::WriteAllBytesAsync($binary,$bytes).GetAwaiter().GetResult()
-        $broken=quiet -AsObject -Role Infrastructure -TimeoutSeconds 120 -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)[void]$r.Data.Append($e.Text)} -Complete {param($r)$r.Data.ToString()} pwsh -File $worker -PackageRoot $packages
-        Assert-QuietEqual $broken.Outcome Failed
-        Assert-QuietEqual $broken.Data.Contains('RecallToolsBinaryIntegrityFailed') $true
-    }
     $passed=0;$failed=0;$ttyExcluded=0;$results=[Collections.Generic.List[object]]::new()
     foreach($case in $cases.GetEnumerator()){
         if($env:QUIETCLI_TEST_SKIP_TTY -ceq '1' -and $case.Key -clike 'PTY *'){$ttyExcluded++;continue}

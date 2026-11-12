@@ -242,7 +242,7 @@ function Invoke-QuietToolingTests {
                     if(!$runs.Contains('SkipTty=$true')){throw ('TtyScopeNotForwarded: '+$name)}
                 }
                 $gate=@($jobs['qualification-gate']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
-                if(!$gate.Contains('-MutationResult skipped -SkipTty')){throw 'TtyGateExclusionNotExplicit'}
+                if($gate -notmatch '(?<!\S)-MutationResult\s+skipped(?=\s|$)' -or $gate -notmatch '(?<!\S)-SkipTty(?=\s|$)'){throw 'TtyGateExclusionNotExplicit'}
                 if(@($jobs['qualification-gate']['needs']) -cnotcontains 'performance-results' -or $gate -notmatch '-PerformanceResult \$env:PERFORMANCE_RESULT'){throw 'PerformanceEvidenceMustGateQualification'}
                 foreach($trigger in @('workflow_call','workflow_dispatch')){
                     $option=$workflow['on'][$trigger]['inputs']['collect_performance']

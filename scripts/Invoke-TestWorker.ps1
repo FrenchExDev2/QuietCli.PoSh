@@ -80,11 +80,14 @@ try{
         $dotnetWorkerState=$state
         $summary=Invoke-QuietDotNetQualification -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Suite $DotNetSuite -OnProgress {param($name,$passed,$failed)$dotnetWorkerState.Case=$name;$dotnetWorkerState.Passed=$passed;$dotnetWorkerState.Failed=$failed;Write-WorkspaceJson $statusPath $dotnetWorkerState}
         $state.Passed=$summary.Passed;$state.Failed=$summary.Failed;$summaries.Add($summary)
-    }elseif($Suite -eq 'Tooling'){
-        Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Tooling.Tests.PoSh/FrenchExDev2.QuietCli.Tooling.Tests.PoSh.psd1') -DisableNameChecking -ErrorAction Stop
-        $state.Project='FrenchExDev2.QuietCli.Tooling.Tests.PoSh';$state.Task='Repository automation qualification'
+    }elseif($Suite -in @('Tooling','Distribution')){
+        $testModule='FrenchExDev2.QuietCli.'+$Suite+'.Tests.PoSh'
+        $testManifest=Join-Path $WorkspaceRoot ($testModule+'/'+$testModule+'.psd1')
+        Import-Module $testManifest -DisableNameChecking -ErrorAction Stop
+        $runnerName=(Import-PowerShellDataFile -LiteralPath $testManifest).PrivateData.QuietCli.TestCatalogue.Runner
+        $state.Project=$testModule;$state.Task=$Suite+' qualification'
         $toolingState=$state
-        $summary=Invoke-QuietToolingTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {
+        $summary=& (Get-Command ($testModule+'\'+$runnerName) -ErrorAction Stop) -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {
             param($name,$caseState,$passed,$failed)
             $toolingState.Case=$name;$toolingState.Passed=$passed;$toolingState.Failed=$failed;Write-WorkspaceJson $statusPath $toolingState
             if($env:GITHUB_ACTIONS -ceq 'true'){Write-Host ("CI case [$caseState] $name | passed=$passed failed=$failed")}

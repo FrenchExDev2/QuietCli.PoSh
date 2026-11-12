@@ -8,9 +8,9 @@ Shared manual/reusable qualification. Six native Windows host/mode rows and four
 
 run_tooling defaults true for manual/release callers; PR planning may disable it for companion-only changes. The separate tooling-ci.yml workflow must succeed when required, and qualification receipts record its outcomes plus the exact Git tree. Failures, missing profiles and cancelled jobs block qualification.
 
-Core requires only the base toolchain image. All runs Core completely before bounded independent companion workers consume the same image. Build-Workspace compiles only the selected dependency closure and publishes the tested RID. Public packaging retains all required RIDs in its separate workflow.
+Core requires only the base toolchain image. All runs Core completely before bounded independent companion workers consume the same image. Build-Workspace compiles only the selected dependency closure and publishes the tested RID. Full IL distributions and their three private Distribution.Tests checks run once in tooling-ci.yml. Public release packaging retains its separate all-RID ReadyToRun requirement.
 
-Linux resolves verified final GHCR images before building parents. Missing images use Docker BuildKit mode=max intermediate caches via cache-ci-layers. Its default builder uses the containerd image store so local parent images remain visible. Cache save follows image preparation and precedes tests. PRs never publish images. Native architecture, fingerprints, parent provenance and labels remain mandatory.
+Linux resolves verified final GHCR images before building parents. Missing images use Docker BuildKit mode=max intermediate caches via cache-ci-layers. The active-context builder uses the containerd image store so local parent images remain visible. Cache save follows image preparation and precedes tests. PRs never publish images. Native architecture, fingerprints, parent provenance and labels remain mandatory.
 
 ## Validation and limits
 

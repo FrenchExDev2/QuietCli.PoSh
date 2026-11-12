@@ -45,10 +45,14 @@ if($env:GITHUB_ACTIONS -cne 'true'){throw 'GitHubCiRequiresGitHubActionsContext;
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,('Build and run GitHub suite '+$Suite))){return}
 . (Join-Path $PSScriptRoot 'Common.ps1')
+$WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
+if($RunDirectory){$RunDirectory=[IO.Path]::GetFullPath($RunDirectory,$PWD.Path)}
 if($Suite -ceq 'All' -or $Suite -cin @(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object {!$_.IsTest}|ForEach-Object Suite)){$null=& (Join-Path $PSScriptRoot 'Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot}
 if(!$SkipBuild -and $Suite -ne 'RunProfilesMutation'){
     $buildRid=if($ExpectedRuntimeIdentifier){$ExpectedRuntimeIdentifier}else{[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier}
-    & (Join-Path $PSScriptRoot 'Build-Workspace.ps1') -WorkspaceRoot $WorkspaceRoot -Suite $Suite -Configuration Release -ReadyToRun -RuntimeIdentifier $buildRid -ReadyToRunRuntimeIdentifier $buildRid
+    $build=@{WorkspaceRoot=$WorkspaceRoot;Suite=$Suite;Configuration='Release';ReadyToRun=$true;ReadyToRunRuntimeIdentifier=@($buildRid)}
+    if($Suite -notin @('Tooling','Distribution','GalleryPreview')){$build.RuntimeIdentifier=@($buildRid)}
+    & (Join-Path $PSScriptRoot 'Build-Workspace.ps1') @build
 }
 if(!$RunDirectory){$RunDirectory=Join-Path $WorkspaceRoot ('artifacts/tests/github-'+[guid]::NewGuid().ToString('N').Substring(0,8))}
 if(Test-Path -LiteralPath $RunDirectory){throw 'GitHubCiRunDirectoryExists'}

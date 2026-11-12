@@ -2,6 +2,8 @@
 
 ## Purpose
 
+`-PrDescriptionBodyFile <utf8.md>` explicitly replaces the verified existing PR description with `gh pr edit --body-file` after pushing. Both Markdown files are validated before the push. Description editing and commenting use the same selected remote, branch and exact head verification; WhatIf performs neither. Omitting the new option preserves comment-only behavior. Failures are reported separately from the successful push.
+
 After a successful `feature/*` or `fix/*` push, RAC-PR-001 adds an update to the existing open PR
 on the selected GitHub remote. `-PrCommentBodyFile <utf8.md>` supplies a reviewed summary of changes
 and actual validation; without it, the comment lists the PR's current commits and leaves qualification

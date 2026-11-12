@@ -67,6 +67,9 @@ jobs:
         id: tooling_tests
         shell: pwsh
         run: ./scripts/Invoke-GitHubCi.ps1 -Suite Tooling -SkipBuild -SkipTty -MaxConcurrency 2 -RunDirectory ./artifacts/tooling/tests
+      - name: Qualify every distribution case once without Git or another build
+        shell: pwsh
+        run: ./scripts/Test-CoreIndependence.ps1 -Suite Distribution -SkipBuild
       - name: Prepare exact profiler prerequisites for functional tooling tests
         shell: pwsh
         run: |
@@ -83,6 +86,8 @@ jobs:
           path: |
             artifacts/tooling
             artifacts/run-profiles
+            artifacts/core-independence/*/independence.json
+            artifacts/core-independence/*/tests
           if-no-files-found: error
           retention-days: 14
   run-profiles-mutation:

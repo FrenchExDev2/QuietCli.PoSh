@@ -46,6 +46,10 @@ function Test-QuietCiScalability {
     }
     $core=@(Get-QuietWorkspaceBuildSelection $WorkspaceRoot Core)
     Assert-QuietEqual ($core -join ',') 'FrenchExDev2.QuietCli.Core.PoSh,FrenchExDev2.QuietCli.Core.Tests.PoSh'
+    Assert-QuietEqual (@(Get-QuietWorkspaceBuildSelection -WorkspaceRoot $WorkspaceRoot -Module FrenchExDev2.QuietCli.Core.PoSh) -join ',') 'FrenchExDev2.QuietCli.Core.PoSh'
+    Assert-QuietEqual (@(Get-QuietWorkspaceBuildSelection -WorkspaceRoot $WorkspaceRoot -Module FrenchExDev2.QuietCli.Git.PoSh) -join ',') 'FrenchExDev2.QuietCli.Core.PoSh,FrenchExDev2.QuietCli.Git.PoSh'
+    $unknown=$false;try{$null=Get-QuietWorkspaceBuildSelection -WorkspaceRoot $WorkspaceRoot -Module FrenchExDev2.QuietCli.Absent.PoSh}catch{$unknown=$_.Exception.Message -clike 'WorkspaceBuildModuleMissing:*'}
+    Assert-QuietEqual $unknown $true
     $vagrant=@(Get-QuietWorkspaceBuildSelection $WorkspaceRoot Vagrant)
     Assert-QuietEqual ($vagrant -ccontains 'FrenchExDev2.QuietCli.Git.PoSh') $false
     $coverage=Join-Path $RunDirectory 'ci-catalogue-coverage'
@@ -89,6 +93,20 @@ function Test-QuietCiScalability {
     $null=& (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.MutationWorker.ps1') -WorkspaceRoot $WorkspaceRoot -Sandbox $previewSandbox -WhatIf
     Assert-QuietEqual (Test-Path -LiteralPath $previewSandbox) $false
     $previousCache=$env:QUIETCLI_BUILDKIT_CACHE_DIR;$previousActions=$env:GITHUB_ACTIONS
+    $seed=20261112;$random=[Random]::new($seed)
+    foreach($context in @('default','setup-docker-action','desktop-linux')+@(1..24|ForEach-Object {'fixture-'+$random.Next()})){
+        $command=@(Get-QuietCiBuildCommand -ContainerRuntime docker -Cached -DockerContext $context)
+        Assert-QuietEqual ($command -join '|') ('buildx|build|--builder|'+$context+'|--load')
+        Assert-QuietEqual (@(Get-QuietCiBuildCommand -ContainerRuntime docker -DockerContext $context) -join '|') 'build'
+        Assert-QuietEqual (@(Get-QuietCiBuildCommand -ContainerRuntime podman -Cached -DockerContext $context) -join '|') 'build'
+    }
+    foreach($context in @('','../escape',"context`nother",'two contexts','--invalid')){
+        $rejected=$false;try{$null=Get-QuietCiBuildCommand -ContainerRuntime docker -Cached -DockerContext $context}catch{$rejected=$_.Exception.Message -ceq 'CiDockerContextInvalid'}
+        Assert-QuietEqual $rejected $true
+    }
+    $builderSource=(Get-Command Get-QuietCiBuildCommand).ScriptBlock.ToString()
+    $mutant=[scriptblock]::Create($builderSource.Replace("'--builder',`$DockerContext","'--builder','default'"))
+    if((& $mutant -ContainerRuntime docker -Cached -DockerContext setup-docker-action) -join '|' -ceq 'buildx|build|--builder|setup-docker-action|--load'){throw 'CiDefaultBuilderMutantSurvived'}
     try{
         $env:GITHUB_ACTIONS='true';$env:QUIETCLI_BUILDKIT_CACHE_DIR=Join-Path $cacheWorkspace '.cache/ci-buildkit'
         $plan=[pscustomobject]@{RegistryPath='fixture/linux-x64-core'}

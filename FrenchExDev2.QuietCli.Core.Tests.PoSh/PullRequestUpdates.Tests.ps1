@@ -9,7 +9,7 @@ function Test-QuietPullRequestUpdates {
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     . (Join-Path $WorkspaceRoot scripts/PullRequestUpdates.ps1)
-    $fixture=@{Calls=0;Comments=0;Url='git@github.com:FrenchExDev2/QuietCli.PoSh.git';Branch='fix/fixture';Head=('a'*40);Local=('a'*40);Duplicate=$false;Body=$null;Missing=$false;Ambiguous=$false;Fail=$false}
+    $fixture=@{Calls=0;Comments=0;Edits=0;Description=$null;Url='git@github.com:FrenchExDev2/QuietCli.PoSh.git';Branch='fix/fixture';Head=('a'*40);Local=('a'*40);Duplicate=$false;Body=$null;Missing=$false;Ambiguous=$false;Fail=$false}
     function Invoke-CiProcess {
         <#
         .SYNOPSIS
@@ -33,6 +33,10 @@ function Test-QuietPullRequestUpdates {
             if($ArgumentList[0] -eq 'remote'){$fixture.Url}else{$fixture.Local}
         }elseif($ArgumentList[1] -eq 'list'){
             if($fixture.Missing){'[]'}elseif($fixture.Ambiguous){'[{"number":2},{"number":3}]'}else{@(@{number=2;headRefName=$fixture.Branch})|ConvertTo-Json -AsArray -Compress}
+        }elseif($ArgumentList[1] -eq 'edit'){
+            if($ArgumentList[4] -cne 'FrenchExDev2/QuietCli.PoSh'){throw 'PrDescriptionUsedWrongRepository'}
+            $fixture.Description=[IO.File]::ReadAllText($ArgumentList[6],[Text.UTF8Encoding]::new($false,$true));$fixture.Edits++
+            'https://github.com/FrenchExDev2/QuietCli.PoSh/pull/2'
         }elseif($ArgumentList[1] -eq 'comment'){
             if($ArgumentList[4] -cne 'FrenchExDev2/QuietCli.PoSh'){throw 'PrUpdateUsedWrongRepository'}
             $fixture.Body=[IO.File]::ReadAllText($ArgumentList[6],[Text.UTF8Encoding]::new($false,$true));$fixture.Comments++
@@ -72,6 +76,13 @@ function Test-QuietPullRequestUpdates {
     $rejected=$false;try{Send-QuietPullRequestUpdate $WorkspaceRoot origin $fixture.Branch -Confirm:$false}catch{$rejected=$_.Exception.Message -eq 'PullRequestCheckpointChanged'}
     if(!$rejected){throw 'PrCheckpointRaceAccepted'}
     $fixture.Local=$fixture.Head
+    $before=$fixture.Calls
+    Send-QuietPullRequestUpdate $WorkspaceRoot origin $fixture.Branch -Description 'Preview description' -WhatIf
+    if($fixture.Calls -ne $before -or $fixture.Edits){throw 'PrDescriptionPreviewInvokedTool'}
+    $fixture.Duplicate=$true
+    Send-QuietPullRequestUpdate $WorkspaceRoot origin $fixture.Branch -Description "Reviewed é漢 description`r`nValidated scope." -Confirm:$false
+    if($fixture.Edits -ne 1 -or $fixture.Description -cne "Reviewed é漢 description`nValidated scope.`n"){throw 'PrDescriptionUnicodeOrLineEndingsChanged'}
+    $fixture.Duplicate=$false
     Send-QuietPullRequestUpdate $WorkspaceRoot origin $fixture.Branch -Body "Reviewed details`nValidation: focused checks only." -Confirm:$false
     if(!$fixture.Body.Contains("Reviewed details`nValidation: focused checks only.")){throw 'PrReviewedBodyChanged'}
     $count=$fixture.Comments

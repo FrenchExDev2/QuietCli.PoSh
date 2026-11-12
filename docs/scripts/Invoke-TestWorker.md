@@ -6,7 +6,7 @@ Tooling progress uses the same explicit Unit/Integration CI labels as product co
 
 ## Scoped CI execution
 
-Tooling loads its independently owned catalogue outside product All. Binary identity uses Suite. RunProfiles mutation shares the configured budget with a cap of two isolated process workers. Ordered/exclusive measurements retain their barriers. Partial summaries are explicitly marked.
+Tooling and Distribution load their independently owned catalogues and manifest-declared runners outside product All. Distribution runs all three package/architecture cases behind the single tooling build barrier. Binary identity uses Suite. RunProfiles mutation shares the configured budget with a cap of two isolated process workers. Ordered/exclusive measurements retain their barriers. Partial summaries are explicitly marked.
 
 ## Independent companion catalogues
 

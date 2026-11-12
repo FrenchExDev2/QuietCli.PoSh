@@ -127,12 +127,16 @@ function Get-QuietWorkspaceBuildSelection {
     Selected checkout.
     .PARAMETER Suite
     Product suite or focused orchestration mode. All and Tooling retain the complete build.
+    .PARAMETER Module
+    Exact project roots for packaging validation; includes their transitive manifest dependencies.
     #>
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$WorkspaceRoot,[string]$Suite='All')
+    [CmdletBinding(DefaultParameterSetName='Suite')]
+    param([Parameter(Mandatory,Position=0)][string]$WorkspaceRoot,
+        [Parameter(ParameterSetName='Suite',Position=1)][string]$Suite='All',
+        [Parameter(Mandatory,ParameterSetName='Module',Position=1)][ValidateNotNullOrEmpty()][string[]]$Module)
     $projects=@(Get-QuietWorkspaceProjects $WorkspaceRoot)
-    if($Suite -in @('All','Tooling','GalleryPreview','DotNet')){return $projects.Name}
-    $roots=if($Suite -in @('Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','Mutation','RunProfiles','RunProfilesMutation')){@('FrenchExDev2.QuietCli.Core.Tests.PoSh')}else{@('FrenchExDev2.QuietCli.'+$Suite+'.Tests.PoSh')}
+    if($PSCmdlet.ParameterSetName -ceq 'Suite' -and $Suite -in @('All','Tooling','GalleryPreview','DotNet')){return $projects.Name}
+    $roots=if($PSCmdlet.ParameterSetName -ceq 'Module'){@($Module)}elseif($Suite -in @('Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','Mutation','RunProfiles','RunProfilesMutation')){@('FrenchExDev2.QuietCli.Core.Tests.PoSh')}else{@('FrenchExDev2.QuietCli.'+$Suite+'.Tests.PoSh')}
     $selected=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $pending=[Collections.Generic.Queue[string]]::new()
     foreach($name in $roots){$pending.Enqueue($name)}
@@ -213,7 +217,7 @@ function Get-QuietWorkspaceSuiteNames {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Host','Container')][string]$Scope='Host')
-    $special=if($Scope -eq 'Container'){@('All','Import','Integration','Mutation','Tooling')}else{@('All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview','DotNet','Tooling')}
+    $special=if($Scope -eq 'Container'){@('All','Import','Integration','Mutation','Tooling')}else{@('All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview','DotNet','Tooling','Distribution')}
     $suites=@(if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot 'build/companions.yml')){
         Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanions.psm1')
         (Read-QuietCiCompanions $WorkspaceRoot).Suites.Values

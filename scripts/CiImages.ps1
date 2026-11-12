@@ -311,6 +311,25 @@ function Get-QuietCiBuildCacheOptions {
     [pscustomobject]@{Source=$source;Destination=$destination;Arguments=$arguments;Scope=$scope}
 }
 
+function Get-QuietCiBuildCommand {
+    <#
+    .SYNOPSIS
+    Keeps cached Docker builds on the active daemon context and preserves the Podman command.
+    .PARAMETER ContainerRuntime
+    Selected Docker or Podman executable.
+    .PARAMETER Cached
+    Enables Docker BuildKit import/export with local image loading.
+    .PARAMETER DockerContext
+    Exact active context reported by docker context show, required for cached Docker builds.
+    #>
+    param([ValidateSet('docker','podman')][string]$ContainerRuntime,[switch]$Cached,[string]$DockerContext)
+    if($ContainerRuntime -ceq 'docker' -and $Cached){
+        if($DockerContext -cnotmatch '\A[A-Za-z0-9][A-Za-z0-9_.-]*\z'){throw 'CiDockerContextInvalid'}
+        return @('buildx','build','--builder',$DockerContext,'--load')
+    }
+    return @('build')
+}
+
 function Invoke-QuietCiImageBuild {
     <#
     .SYNOPSIS
@@ -423,7 +442,14 @@ function Invoke-QuietCiImageBuild {
             }
             $buildOptions=if($ContainerRuntime -eq 'podman'){@('--pull=never','--jobs','1')}else{@('--pull=false')}
             $buildCache=Get-QuietCiBuildCacheOptions -Plan $Plan -WorkspaceRoot $WorkspaceRoot -ContainerRuntime $ContainerRuntime
-            $command=@(if($buildCache){'buildx','build','--builder','default','--load'}else{'build'})
+            $context=$null
+            if($buildCache){
+                $contextState=@{Lines=[Collections.Generic.List[string]]::new()}
+                $contextResult=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('context','show') -TimeoutSeconds 20 -State $contextState -OnOutput {param($event,$state)if($event.Stream -ceq 'stdout'){$state.Lines.Add($event.Text)}}
+                if($contextResult.Outcome -cne 'Success' -or $contextState.Lines.Count -ne 1){throw 'CiDockerContextUnavailable'}
+                $context=$contextState.Lines[0].Trim()
+            }
+            $command=@(Get-QuietCiBuildCommand -ContainerRuntime $ContainerRuntime -Cached:([bool]$buildCache) -DockerContext $context)
             $arguments=$command+$buildOptions+$platform+@('--label',('org.opencontainers.image.source='+$Plan.Source),'--label',('org.frenchexdev.quietcli2.inputs='+$Plan.Fingerprint),'-f',$dockerfilePath,'-t',$tag)
             if($buildCache){$arguments+=@($buildCache.Arguments)}
             foreach($entry in $Plan.Arguments.GetEnumerator()){$arguments+=@('--build-arg',($entry.Key+'='+$entry.Value))}

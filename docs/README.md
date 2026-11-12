@@ -4,6 +4,8 @@ Start with the [product README](../README.md) for installation, requirements and
 
 ## Usage guides
 
+- [Distribution test companion](../FrenchExDev2.QuietCli.Distribution.Tests.PoSh/README.md): one complete six-RID packaging qualification outside the native matrix.
+
 - [Core test classification and concurrency](README-test-classification-and-concurrency.md): explicit case metadata, fail-closed checks and process-isolation candidates.
 
 - [.NET SDK installation and global.json updates](../README-dotnet-and-global-dot-json.md): release checks, verified portable SDKs, optional images and backed-up SDK pins.

@@ -174,35 +174,6 @@ Executes independent native byte and object invariants in a companion module.
         }
     }
 
-    $cases['all six embedded engines have matching native and managed architectures']={
-        & {
-            param($root)
-            . (Join-Path $root 'scripts/Common.ps1')
-            $targets=@(Get-QuietRuntimeTargets $root)
-            $expected=@('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')
-            if($targets.Count -ne 6 -or @($expected|Where-Object {$_ -cnotin $targets.Rid}).Count){throw 'Release target set incomplete'}
-            foreach($target in $targets){
-                $output='FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$target.Rid
-                $manifest=Test-QuietBuildManifest $root $output
-                if($manifest.RuntimeIdentifier -cne $target.Rid -or $manifest.PlatformTarget -cne $target.PlatformTarget){throw 'Compiler target metadata mismatch'}
-                Assert-QuietRuntimePublication (Join-Path $root $output) $target
-                $configuration=Get-Content -LiteralPath (Join-Path (Join-Path $root $output) 'QuietCli.Engine.runtimeconfig.json') -Encoding utf8 -Raw|ConvertFrom-Json
-                [xml]$runtimeProject=Get-Content (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj') -Raw -Encoding utf8
-                $expectedRuntime=@($runtimeProject.SelectNodes('//RuntimeFrameworkVersion')|Where-Object {$_.GetAttribute('Condition') -match 'net11\.0'})
-                if($expectedRuntime.Count -ne 1 -or $configuration.runtimeOptions.framework.version -cne $expectedRuntime[0].InnerText){throw 'Published engine runtime does not match its source pin'}
-            }
-        } $WorkspaceRoot
-        $identity=Get-QuietEngine
-        $hostRid=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
-        $expected=$hostRid
-        if($identity.Mode -eq 'InProcess'){
-            $directory=if([Environment]::Version.Major -ge 11){'lib/engine'}else{'lib/inprocess'}
-            $build=Get-Content -LiteralPath (Join-Path $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/'+$directory+'/build-manifest.json')) -Raw -Encoding utf8|ConvertFrom-Json
-            $slots=if($build.PSObject.Properties['ReadyToRunTargets']){@($build.ReadyToRunTargets)}else{@()}
-            $expected=if($hostRid -cin $slots){$hostRid}else{'portable'}
-        }
-        Assert-QuietEqual $identity.Engine.BuildRuntimeIdentifier $expected
-    }
     $cases['C# protocol and concurrent SQLite assertions']={
         $assembly=Join-Path $PSScriptRoot 'lib/engine-tests/QuietCli.Engine.Tests.dll'
         $nativeDirectory=Join-Path $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/'+[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier+'/native')
@@ -452,35 +423,6 @@ Register-QuietHandler -Id 'Sample.QuietStatus.PoSh' -Definition @{
         Assert-QuietEqual $r.Data.Failed 0
     }
 
-    $cases['PSGallery Core installs outside sources with its embedded engine and no Git companion']={
-        $root=Join-Path $WorkspaceRoot ('artifacts/gallery-tests/'+[guid]::NewGuid().ToString('N'))
-        $packages=Join-Path $root packages
-        $sourceIdentity=& (Join-Path $WorkspaceRoot scripts/Get-ModulePackageName.ps1) -Path (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psm1') -AsObject -RequireManifest
-        $prepared=& (Join-Path $WorkspaceRoot 'scripts/New-QuietGalleryPackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $packages -Version $sourceIdentity.Version
-        Assert-QuietEqual $prepared.Version $sourceIdentity.Version
-        & {
-            param($scripts,$packages,$expectedVersion)
-            . (Join-Path $scripts Common.ps1);Import-Module (Join-Path $scripts lib/Gallery.psm1)
-            foreach($wrong in @('0.0.0-invalid','999.999.999-invalid','0.0.0')|Where-Object {$_ -cne $expectedVersion}){
-                $rejected=$false
-                try{$null=Test-QuietGalleryPackageSet $packages -Version $wrong}catch{$rejected=$_.Exception.Message -eq 'GalleryReleaseVersionMismatch'}
-                if(!$rejected){throw 'Wrong or stripped prerelease version was accepted'}
-            }
-            $null=& (Join-Path $scripts Publish-QuietGallery.ps1) -PackageDirectory $packages -Version $expectedVersion -ValidateOnly
-            $null=& (Join-Path $scripts Publish-QuietGallery.ps1) -PackageDirectory $packages -Version $expectedVersion -WhatIf
-            $plan=Test-QuietGalleryPackageSet $packages -Version $expectedVersion
-            if(@($plan.Packages).Count -ne 1 -or $plan.Packages[0].Module -cne 'FrenchExDev2.QuietCli.Core.PoSh'){throw 'GalleryCoreOnlyRequired'}
-        } (Join-Path $WorkspaceRoot scripts) $packages $sourceIdentity.Version
-        $probe=Join-Path $PSScriptRoot audit/Probe-GalleryInstall.ps1
-        $r=quiet -AsObject -Role Infrastructure -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} pwsh -NoProfile -File $probe -PackageDirectory $packages -InstallationDirectory (Join-Path $root installed)
-        Assert-QuietEqual $r.Outcome Success
-        Assert-QuietEqual $r.Data.Installed $true
-        Assert-QuietEqual $r.Data.CoreLoadedFromPackage $true
-        Assert-QuietEqual $r.Data.GitModuleLoaded $false
-        Assert-QuietEqual $r.Data.NativeExecution Success
-        Assert-QuietEqual $r.Data.PackageVersion $sourceIdentity.Version
-        $galleryEvidence.Add(@{Packages=$prepared.Packages;Targets=$prepared.Targets;Installation=$r.Data;ExternalPublication=$false})
-    }
     $caseMetadata=@{
         'native Emit listeners preserve Unicode order and bounded JSON/YAML deliveries'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
         'configuration and unique tokenized deliveries preserve their contracts'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
@@ -499,7 +441,6 @@ Register-QuietHandler -Id 'Sample.QuietStatus.PoSh' -Definition @{
         'compiled framing and direct engine measure local overhead independently'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'explicit event collection compiled properties and targeted mutations'=@{TestKind='Integration';Dependencies=@('FileSystem','DotNetBuild','NativeProcess')}
         'cold engine and warm block-size measurements retain no business output'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
-        'all six embedded engines have matching native and managed architectures'=@{TestKind='Integration';Dependencies=@('FileSystem')}
         'C# protocol and concurrent SQLite assertions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'PTY reports a merged terminal counter without fake stderr separation'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'exact stdout/stderr counters with no capture'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
@@ -525,7 +466,6 @@ Register-QuietHandler -Id 'Sample.QuietStatus.PoSh' -Definition @{
         'production agent instructions preserve project rules and installed resources'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
         'module scaffolding creates inert handlers and independent failing test companions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
         'security audit counterexamples are closed with independent evidence'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
-        'PSGallery Core installs outside sources with its embedded engine and no Git companion'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
     }
     Assert-QuietTestCaseMetadata -CaseNames @($cases.Keys) -Metadata $caseMetadata
     $passed=0;$failed=0;$results=[Collections.Generic.List[object]]::new()

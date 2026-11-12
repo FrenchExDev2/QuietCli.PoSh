@@ -18,10 +18,14 @@ $ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 Assert-QuietPtyPublications $WorkspaceRoot
-foreach($framework in @('net10.0','net11.0')){$null=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Git.PoSh/lib/parser/'+$framework)}
-$null=Test-QuietBuildManifest $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess'
-$null=Test-QuietBuildManifest $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/lib/engine'
-foreach($rid in (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){
+$lock=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'repositories.lock.json') -Encoding utf8 -Raw|ConvertFrom-Json
+foreach($name in $Module){if($name -cnotin @($lock.Projects.Name)){throw ('PackageProjectUnknown: '+$name)}}
+$roots=if($Module.Count){$Module}else{@($lock.Projects.Name)}
+$selected=@(Get-QuietWorkspaceBuildSelection -WorkspaceRoot $WorkspaceRoot -Module $roots)
+foreach($distribution in @(Get-QuietWorkspaceBuildProjects $WorkspaceRoot|Where-Object Package -CIn $selected)){
+    $null=Test-QuietBuildManifest $WorkspaceRoot $distribution.Output
+}
+foreach($rid in @(if($selected -ccontains 'FrenchExDev2.QuietCli.Core.PoSh'){(Get-QuietRuntimeTargets $WorkspaceRoot).Rid})){
     $build=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid)
     if($build.RuntimeIdentifier -cne $rid){throw ('EngineDistributionMissing: '+$rid)}
     if($RequireReadyToRun){
@@ -34,8 +38,6 @@ foreach($rid in (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){
 }
 if(Test-Path -LiteralPath $OutputDirectory){throw 'PackageOutputAlreadyExists'}
 [void][IO.Directory]::CreateDirectory($OutputDirectory)
-$lock=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'repositories.lock.json') -Encoding utf8 -Raw|ConvertFrom-Json
-foreach($name in $Module){if($name -cnotin @($lock.Projects.Name)){throw ('PackageProjectUnknown: '+$name)}}
 foreach($repository in $lock.Projects | Where-Object {!$Module.Count -or $_.Name -cin $Module}){
     $source=Join-Path $WorkspaceRoot $repository.Path;$stage=Join-Path $OutputDirectory $repository.Name
     [void][IO.Directory]::CreateDirectory($stage)

@@ -20,7 +20,6 @@
    'compiled framing and direct engine measure local overhead independently'=@{Mode='Exclusive';Reason='Overhead measurements must not overlap competing test campaigns.'}
    'cold engine and warm block-size measurements retain no business output'=@{Mode='Exclusive';Reason='Cold engine restart and warm timing samples require exclusive execution.'}
    'large output retains only bounded transport blocks'=@{Mode='Exclusive';Reason='Process-wide allocation measurements must not overlap other test cases.'}
-   'PSGallery Core installs outside sources with its embedded engine and no Git companion'=@{Mode='Exclusive';Reason='Consumes shared build and package inputs behind the packaging barrier.'}
   }
  }}}
 }

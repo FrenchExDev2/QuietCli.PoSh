@@ -232,13 +232,17 @@ function Test-QuietGitHubCi {
         }
     }
     foreach($name in @('Invoke-GitHubCi.ps1','Common.ps1','EnvFile.ps1','Ci.Process.ps1','SourceIdentity.ps1','RuntimeTargets.ps1','ReportPaths.ps1','WorkspaceProjects.ps1')){Copy-Item -LiteralPath (Join-Path $WorkspaceRoot "scripts/$name") -Destination $scripts}
-    $worker='param($WorkspaceRoot,$RunDirectory,$Suite,$ExpectedRuntimeIdentifier,[switch]$SkipTty); . (Join-Path $PSScriptRoot Common.ps1); Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State="Success";Passed=3;Failed=0};WorkerPid=$PID;Suite=$Suite;SkipTty=[bool]$SkipTty}'
+    $worker='param($WorkspaceRoot,$RunDirectory,$Suite,$ExpectedRuntimeIdentifier,[switch]$SkipTty); . (Join-Path $PSScriptRoot Common.ps1); if(![IO.Path]::IsPathFullyQualified($WorkspaceRoot) -or ![IO.Path]::IsPathFullyQualified($RunDirectory)){throw "GitHubWorkerPathsMustBeAbsolute"}; Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State="Success";Passed=3;Failed=0};WorkerPid=$PID;Suite=$Suite;SkipTty=[bool]$SkipTty}'
     [void][IO.File]::WriteAllTextAsync((Join-Path $scripts 'Invoke-TestWorker.ps1'),$worker,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     $previous=$env:GITHUB_ACTIONS
     try{
         $env:GITHUB_ACTIONS='false';$rejected=$false
         try{$null=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot $fixture -Suite Import -SkipBuild}catch{$rejected=$true}
         if(!$rejected -or (Test-Path (Join-Path $fixture artifacts))){throw 'GitHubEntryRanOutsideGitHubContext'}
+        $env:GITHUB_ACTIONS='true'
+        Push-Location $RunDirectory
+        try{$null=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot './github-entry-fixture' -RunDirectory './relative-entry-run' -Suite Import -SkipBuild}finally{Pop-Location}
+        if(!(Test-Path -LiteralPath (Join-Path $RunDirectory 'relative-entry-run/summary.json'))){throw 'GitHubRelativeRunDirectoryLost'}
         $env:GITHUB_ACTIONS='true';$run=Join-Path $fixture 'artifacts/tests/direct'
         $result=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot $fixture -Suite Import -SkipBuild -SkipTty -RunDirectory $run
         $receipt=Get-Content -LiteralPath (Join-Path $run summary.json) -Raw -Encoding utf8|ConvertFrom-Json

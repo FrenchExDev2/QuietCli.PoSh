@@ -28,6 +28,12 @@ function Test-QuietCiCompanions {
     $tests=Join-Path $source $testProject
     [void][IO.Directory]::CreateDirectory($tests)
     $utf8=[Text.UTF8Encoding]::new($false)
+    foreach($component in @('Core','Vagrant')){
+        $product='FrenchExDev2.QuietCli.'+$component+'.PoSh'
+        $testsName='FrenchExDev2.QuietCli.'+$component+'.Tests.PoSh'
+        New-QuietWorkspaceFixtureProject $source $product -Metadata ("@{TestsModule='"+$testsName+"'}")
+        New-QuietWorkspaceFixtureProject $source $testsName @($product) -Command ('Invoke-Quiet'+$component+'Tests')
+    }
     [IO.File]::WriteAllText((Join-Path $tests ($testProject+'.psd1')),"@{ModuleVersion='1.0.0';RootModule='DoNotImport.psm1';FunctionsToExport=@('Invoke-QuietPairTests')}`n",$utf8)
     [IO.File]::WriteAllText((Join-Path $tests 'DoNotImport.psm1'),"throw 'ConfigurationDiscoveryImportedTestCode'`n",$utf8)
     $prefix="schema: 1`ncompanions:`n  Core:`n    requires: []`n    image: base`n  Vagrant:`n    requires: [Core]`n    image: none`n"
@@ -37,7 +43,7 @@ function Test-QuietCiCompanions {
         $previous=if($index -eq 1){'Core'}else{'Node'+($index-1).ToString('000')}
         [void]$nodes.Append("  ${name}:`n    requires: [$previous]`n    image: none`n")
     }
-    $suffix="suites:`n  CoreVagrantIntegration:`n    test_project: $testProject`n    command: Invoke-QuietPairTests`n    requires: [Core, Vagrant, Node100]`n    core_evidence: false`n"
+    $suffix="suites:`n  Core:`n    test_project: FrenchExDev2.QuietCli.Core.Tests.PoSh`n    command: Invoke-QuietCoreTests`n    requires: [Core]`n    core_evidence: false`n  Vagrant:`n    test_project: FrenchExDev2.QuietCli.Vagrant.Tests.PoSh`n    command: Invoke-QuietVagrantTests`n    requires: [Vagrant]`n    core_evidence: false`n  CoreVagrantIntegration:`n    test_project: $testProject`n    command: Invoke-QuietPairTests`n    requires: [Core, Vagrant, Node100]`n    core_evidence: false`n"
     $yaml=$nodes.ToString()+$suffix
     $path=Join-Path $source 'build/companions.yml'
     [void][IO.Directory]::CreateDirectory((Split-Path $path -Parent))
@@ -49,7 +55,7 @@ function Test-QuietCiCompanions {
     $runner=@(Get-QuietWorkspaceSuiteSelection $source CoreVagrantIntegration)
     if($runner.Count -ne 1 -or $runner[0].TestsModule -cne $testProject -or $runner[0].Command -cne 'Invoke-QuietPairTests'){throw 'DedicatedIntegrationRunnerNotSelected'}
     $all=Resolve-QuietCiCompanions $generated -Suite All
-    if(($all.Selected -join ',') -cne 'CoreVagrantIntegration'){throw 'AllDidNotDiscoverIndependentIntegrationSuite'}
+    if(($all.Selected -join ',') -cne 'Core,Vagrant,CoreVagrantIntegration'){throw 'AllDidNotDiscoverIndependentIntegrationSuite'}
     $random=[Random]::new(20261111);$properties=0
     foreach($round in 1..48){
         $last=$random.Next(1,101)
