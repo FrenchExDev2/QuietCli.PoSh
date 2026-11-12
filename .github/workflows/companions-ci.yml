@@ -23,6 +23,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: ./.github/actions/cache-resources
+      - uses: ./.github/actions/setup-powershell
       - name: Resolve the complete change scope
         id: plan
         shell: pwsh
@@ -72,6 +73,7 @@ jobs:
             Directory.Build.props
             global.json
       - uses: ./.github/actions/cache-resources
+      - uses: ./.github/actions/setup-powershell
       - name: Verify merged source lock and exercise Core
         shell: pwsh
         run: |
@@ -114,6 +116,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/cache-resources
+      - uses: ./.github/actions/setup-powershell
       - name: Probe final image before restoring intermediate layers
         id: image_probe
         shell: pwsh

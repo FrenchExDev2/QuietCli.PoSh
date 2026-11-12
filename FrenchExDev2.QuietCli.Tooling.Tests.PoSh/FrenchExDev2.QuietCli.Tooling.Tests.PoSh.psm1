@@ -97,7 +97,7 @@ function Invoke-QuietToolingTests {
         $previewSummary=Invoke-QuietGalleryPreviewTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
         if($previewSummary.Failed){throw ($previewSummary.Cases|Where-Object State -EQ Failed|ConvertTo-Json -Depth 5 -Compress)}
     }
-        $cases['CI requires stable net10 and preview net11 integrated hosts on x64 and ARM64']={Assert-QuietHostMatrix $WorkspaceRoot}
+        $cases['CI requires GA native hosts and explicitly optional next-version preview']={Assert-QuietHostMatrix $WorkspaceRoot;Test-QuietPowerShellReleasePolicy -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['CI failure diagnostics preserve redaction bounds and explicit local workflow selection']={Test-QuietCiDiagnostics -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['GitHub CI separates native containers, Docker fallback and workstation launchers']={Test-QuietGitHubCi -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['CI companion declarations separate integration suites and scale without workflow branches']={Test-QuietCiCompanions -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
@@ -449,7 +449,7 @@ if (!$invalidCompanionRejected) { throw 'LauncherInvalidCompanionAccepted' }
         'source identity includes profile helpers and excludes generated libraries'=@{TestKind='Integration';Dependencies=@('FileSystem')}
         'Gallery preserves prerelease labels and keeps numeric manifest versions separate'=@{TestKind='Integration';Dependencies=@('FileSystem')}
         'Gallery previews preserve source identities, Core-only packages and offline publication boundaries'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
-        'CI requires stable net10 and preview net11 integrated hosts on x64 and ARM64'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'CI requires GA native hosts and explicitly optional next-version preview'=@{TestKind='Integration';Dependencies=@('FileSystem')}
         'CI failure diagnostics preserve redaction bounds and explicit local workflow selection'=@{TestKind='Integration';Dependencies=@('FileSystem')}
         'GitHub CI separates native containers, Docker fallback and workstation launchers'=@{TestKind='Integration';Dependencies=@('FileSystem')}
         'CI companion declarations separate integration suites and scale without workflow branches'=@{Dependencies=@('FileSystem');NativeTransport='Stubbed';TestKind='Integration'}

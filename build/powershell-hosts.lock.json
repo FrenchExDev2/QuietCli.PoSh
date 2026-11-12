@@ -1,10 +1,39 @@
 {
   "SchemaVersion": 1,
   "Source": "https://github.com/PowerShell/PowerShell/releases",
+  "StableVersion": "7.7.0",
+  "Preview": {
+    "Version": "7.8.0-preview.1",
+    "Available": false
+  },
   "Hosts": [
-    { "Channel": "stable", "Version": "7.6.7", "RuntimeMajor": 10, "Rid": "win-x64", "SHA256": "D2F952EBDBF24386CB8923553AA58E41A846DB35A6155EA04C58142A4B16DBB7" },
-    { "Channel": "stable", "Version": "7.6.7", "RuntimeMajor": 10, "Rid": "win-arm64", "SHA256": "119BD9221254EF3637523CB1990797618F5FD68848B57DE40F12B561D743149E" },
-    { "Channel": "preview", "Version": "7.7.0-preview.5", "RuntimeMajor": 11, "Rid": "win-x64", "SHA256": "BA727D1890F7DBCBA05286BC0E61FC9F168DE9BA2A1003C4934BCE8E38BBFD1B" },
-    { "Channel": "preview", "Version": "7.7.0-preview.5", "RuntimeMajor": 11, "Rid": "win-arm64", "SHA256": "8BF495D9CDA9BD701E3633B450946FA2F94772D812559E4A5ADAC7343CCD4CD9" }
+    {
+      "Channel": "stable",
+      "Version": "7.7.0",
+      "RuntimeMajor": 11,
+      "Rid": "win-x64",
+      "SHA256": "7C74E03B20A75B59715847439D046A6214B1863EE79B187872980F139BB4A05F"
+    },
+    {
+      "Channel": "stable",
+      "Version": "7.7.0",
+      "RuntimeMajor": 11,
+      "Rid": "win-arm64",
+      "SHA256": "5DC7440CD98F0BA786A44D7DB9205DF5058474FD4DB143CAF7171E8375F34F75"
+    },
+    {
+      "Channel": "stable",
+      "Version": "7.7.0",
+      "RuntimeMajor": 11,
+      "Rid": "linux-x64",
+      "SHA256": "C89D9C682D2C403DFE726F3DF948E359675235A5BD6FAB535776DE69729CA0CB"
+    },
+    {
+      "Channel": "stable",
+      "Version": "7.7.0",
+      "RuntimeMajor": 11,
+      "Rid": "linux-arm64",
+      "SHA256": "E59C89776EAA59790D44B3EDD14277435225AB08B6E7603763101B89DE83D935"
+    }
   ]
 }

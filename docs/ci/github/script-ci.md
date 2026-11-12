@@ -1,10 +1,10 @@
 # ci.yml
 
-<!-- workflow-source-sha256: D5997144689675C47117F6536102C474D89CE022F6CD25C349D26A18C50E49CA -->
+<!-- workflow-source-sha256: 52C4BB0281A3F39F0548240C0C85B767136CE77709B963A32E0DFBE72B4A85B4 -->
 
 ## Purpose
 
-Shared manual/reusable qualification. Six native Windows host/mode rows and four Linux glibc/musl architecture rows run the selected product suite. Core/All keeps mandatory per-environment import, controlled Git-status and PowerShell/CLR profiling evidence. Git/Vagrant-only selections do not claim Core qualification.
+Shared manual/reusable qualification. Four required GA Windows host/mode rows and four Linux glibc/musl architecture rows run the selected product suite. Core/All keeps mandatory per-environment import, controlled Git-status and PowerShell/CLR profiling evidence. Git/Vagrant-only selections do not claim Core qualification.
 
 run_tooling defaults true for manual/release callers; PR planning may disable it for companion-only changes. The separate tooling-ci.yml workflow must succeed when required, and qualification receipts record its outcomes plus the exact Git tree. Failures, missing profiles and cancelled jobs block qualification.
 
@@ -14,11 +14,11 @@ Linux resolves verified final GHCR images before building parents. Missing image
 
 ## Validation and limits
 
-Source changes preserve all ten product targets. RunProfiles functional/mutation campaigns moved out of the product matrix; profiling each environment remains independent. Local mocked/cache-boundary tests do not establish hosted cache transfer speed or ARM64 execution. See [scalable companion qualification](../scalable-companions.md).
+Production requires eight product targets. Explicit run_preview=true adds two Windows InProcess targets for a published next-version prerelease; the default false does not depend on Preview availability. RunProfiles functional/mutation campaigns moved out of the product matrix; profiling each environment remains independent. Local mocked/cache-boundary tests do not establish hosted cache transfer speed or ARM64 execution. See [scalable companion qualification](../scalable-companions.md).
 
 ## Triggers
 
-Manual workflow_dispatch and reusable workflow_call. Suite, collect_performance and run_tooling are explicit inputs.
+Manual workflow_dispatch and reusable workflow_call. Suite, collect_performance, run_tooling and run_preview are explicit inputs. run_preview defaults false for both triggers.
 
 Manual dispatch additionally exposes `images_only` (false by default). On the upstream `develop` ref, selecting it runs the existing native Linux image producer and its verified GHCR/BuildKit preparation without product tests, tooling mutation, performance aggregation or a qualification receipt. The shared context guard rejects forks, PR events and other refs. Existing trusted develop producers continue populating the same caches; PR fallback remains read-only for GHCR. This mode primes base-branch caches for later PRs instead of storing the only reusable layers under a PR merge ref. It never qualifies a package or emits `qualified_sha`.
 
@@ -33,13 +33,13 @@ flowchart LR
     INPUT[Manual or reusable inputs] --> MODE{images_only?}
     MODE -- Yes --> CONTEXT[Require upstream develop dispatch]
     CONTEXT --> CACHE[Four native Linux image producers]
-    MODE -- No --> PRODUCT[Six Windows and four Linux product targets]
+    MODE -- No --> PRODUCT[Four GA Windows and four Linux product targets]
     PRODUCT --> EVIDENCE[Selected tests and declared Core profiles]
     EVIDENCE --> GATE[Require platforms, profiling and requested tooling]
     GATE --> RECEIPT[Revision, tree, run and attempt receipt]
 ```
 
-Core evidence requires the combined ten-environment performance report. `always()` retains failure-report assembly; cache-only mode and scopes without Core evidence skip it. A collect_performance opt-out cannot qualify Core. Windows rows use checksum-pinned hosts and one tested RID; tooling owns the complete IL distribution checks outside the matrix. The [CI map](../README.md) explains script roles and source-change dates.
+Core evidence requires the combined eight-environment production report, or ten when Preview is explicitly selected. Select-PowerShellCiMatrix derives the rows and expected report count from the host lock. GA is 7.7.0 / CLR 11; the announced 7.8.0-preview.1 is unavailable until published and verified. Alpine keeps the approved native 7.6.9-r0 / CLR 10 exception. `always()` retains failure-report assembly; cache-only mode and scopes without Core evidence skip it. A collect_performance opt-out cannot qualify Core. Windows rows use checksum-pinned hosts and one tested RID; tooling owns the complete IL distribution checks outside the matrix. The [CI map](../README.md) explains script roles and source-change dates.
 
 The [tooling shard boundary](script-tooling-ci.md#shard-execution-boundary) accepts validated intermediate partitions while retaining Partial=true. Only complete aggregation satisfies required tooling. Configured graphs describe routing, not a successful hosted qualification.
 
@@ -87,7 +87,7 @@ flowchart TD
 | --- | --- | --- | --- | --- |
 | linux | runner ${{ matrix.runner }}; container ${{ matrix.image }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_container == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 | linux-images | runner ${{ matrix.runner }} | linux-matrix | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiSuiteImage.ps1 |
-| linux-matrix | runner ubuntu-latest |  | default success condition | ./scripts/GitHubCi.ps1, ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
+| linux-matrix | runner ubuntu-latest |  | default success condition | ./scripts/GitHubCi.ps1, ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Select-PowerShellCiMatrix.ps1 |
 | linux-result | runner ubuntu-latest | linux-selection, linux, linux-test-driver | ${{ always() && !inputs.images_only }} | ./scripts/GitHubCi.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
 | linux-selection | runner ubuntu-latest | linux-matrix, linux-images | ${{ always() && !cancelled() && !inputs.images_only && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' &#124;&#124; needs.linux-images.result == 'skipped') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Select-GitHubCiMatrix.ps1 |
 | linux-test-driver | runner ${{ matrix.runner }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_docker_container_runtime == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CiSuiteImage.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |

@@ -12,6 +12,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/cache-resources
+      - uses: ./.github/actions/setup-powershell
       - name: Verify monorepo source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore

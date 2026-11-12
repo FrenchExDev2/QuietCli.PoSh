@@ -29,9 +29,9 @@ Other path-filtered PR checks run on `ubuntu-latest`: [scripts-docs-check.yml](.
 
 ## Profiling reports and manual PR runs
 
-PR scopes declaring Core evidence request collect_performance=true. Core profiling runs across all six Windows combinations and four Linux containers. A separate instrumented pass collects PowerShell line profiles and CLR traces outside the ordinary benchmark samples. The `Readable performance evidence for the complete matrix` job verifies the ten evidence bundles and uploads `quietcli-performance-results-<sha>`, containing standalone `PERFORMANCES_RESULTS.html`, Markdown, JSON and integrity metadata. Download the artifact from the workflow run's **Artifacts** section and open the HTML locally. Raw profiles remain in the per-environment evidence artifacts. Missing or failed evidence prevents Core qualification; a partial report does not establish a completed matrix.
+PR scopes declaring Core evidence request collect_performance=true. Core profiling runs across four GA Windows combinations and four Linux containers; explicitly selected next-version Preview adds two Windows combinations. A separate instrumented pass collects PowerShell line profiles and CLR traces outside the ordinary benchmark samples. The `Readable performance evidence for the complete matrix` job verifies the eight production evidence bundles (ten with Preview) and uploads `quietcli-performance-results-<sha>`, containing standalone `PERFORMANCES_RESULTS.html`, Markdown, JSON and integrity metadata. Download the artifact from the workflow run's **Artifacts** section and open the HTML locally. Raw profiles remain in the per-environment evidence artifacts. Missing or failed evidence prevents Core qualification; a partial report does not establish a completed matrix.
 
-`RunProfiles` and `RunProfilesMutation` qualify the profiling tools themselves, in independent tooling jobs, outside the product timing runners. Mutation uses two matrix shards, each with its own green baseline and at most two isolated workers. Completion requires all 92 source-bound mutants exactly once, all Killed, with matching revision, source hashes, seed and iterations. Each shard alone is partial evidence. The GitHub entry accepts only validated partitions under explicit shard controls and retains Partial=true; complete aggregation remains required. See [the shard execution contract](docs/scripts/Invoke-GitHubCi.md#shard-execution-and-completion). The shard design does not enable or replace Core's ten-target profiling evidence. `collect_performance` controls that pass in CI; locally, `Invoke-WorkspaceCi.ps1 -Suite Integration -SkipBuild -Profiler` selects the focused instrumented workload. Keep profiler instrumentation outside A/A and A/B timing samples to avoid measuring the profiler's overhead as product performance.
+`RunProfiles` and `RunProfilesMutation` qualify the profiling tools themselves, in independent tooling jobs, outside the product timing runners. Mutation uses two matrix shards, each with its own green baseline and at most two isolated workers. Completion requires all 92 source-bound mutants exactly once, all Killed, with matching revision, source hashes, seed and iterations. Each shard alone is partial evidence. The GitHub entry accepts only validated partitions under explicit shard controls and retains Partial=true; complete aggregation remains required. See [the shard execution contract](docs/scripts/Invoke-GitHubCi.md#shard-execution-and-completion). The shard design does not enable or replace Core's selected eight- or ten-target profiling evidence. `collect_performance` controls that pass in CI; locally, `Invoke-WorkspaceCi.ps1 -Suite Integration -SkipBuild -Profiler` selects the focused instrumented workload. Keep profiler instrumentation outside A/A and A/B timing samples to avoid measuring the profiler's overhead as product performance.
 
 To obtain profiling plus A/B evidence for a PR:
 
@@ -55,7 +55,7 @@ In GitHub, open **Actions**, choose **QuietCli2 ReadyToRun profiling**, click **
 flowchart TD
     P[PR or develop push requiring product replay] --> S[companions-ci complete-diff plan selects suites]
     S --> C[Shared ci.yml]
-    C --> W[Six Windows combinations]
+    C --> W[Four GA Windows combinations; two Preview rows only on opt-in]
     C --> L[Select four native Linux targets]
     W --> WB[Build solution and prepare distributions on runner]
     WB --> WT[Run selected tests on Windows runner]
@@ -84,15 +84,15 @@ The worker resolves the suite through [WorkspaceProjects.ps1](scripts/WorkspaceP
 
 ## Where Windows tests run
 
-Each selected suite has six native Windows combinations. For **each** of `win-x64` on `windows-latest` and `win-arm64` on `windows-11-arm`, the workflow runs:
+Each selected suite has four required native Windows combinations. `run_preview=true` explicitly adds two next-version Preview combinations; the default is false. For **each** of `win-x64` on `windows-latest` and `win-arm64` on `windows-11-arm`, the workflow runs:
 
-- Stable PowerShell / CLR 10 with `Process`: the engine runs in a separate .NET 11 process.
-- Stable PowerShell / CLR 10 with `InProcess`: the engine uses its compatible .NET 10 build in PowerShell.
-- Preview PowerShell / CLR 11 with `InProcess`: the engine uses its .NET 11 build in PowerShell.
+- GA PowerShell 7.7.0 / CLR 11 with `Process`: the engine runs in a separate .NET 11 process.
+- GA PowerShell 7.7.0 / CLR 11 with `InProcess`: the engine uses its .NET 11 build in PowerShell.
+- Optional next-version Preview with `InProcess`: only a published release newer than GA is accepted. The current announced 7.8.0-preview.1 has no published archives, so opt-in fails explicitly until the lock is refreshed.
 
 These jobs do not run in Windows containers. Each job selects its checksum-pinned PowerShell host, builds the required distributions and executes the selected suite. The source of exact host versions and archive checksums is [build/powershell-hosts.lock.json](build/powershell-hosts.lock.json), with the expected versions/modes declared in [the Windows matrix](.github/workflows/ci.yml).
 
-The host CLR, engine hosting mode and compiled test executable framework are separate facts. In particular, the C# companion executables target .NET 11 even when the calling stable PowerShell host uses CLR 10. The SDK comes from [global.json](global.json).
+The host CLR, engine hosting mode and compiled test executable framework are separate facts. In particular, the C# companion executables target .NET 11 while Alpine retains its explicitly accepted 7.6.9 / CLR 10 exception. The SDK comes from [global.json](global.json).
 
 ## Where Linux tests run
 
@@ -103,7 +103,7 @@ Each selected suite has four native Linux targets:
 - Debian ARM64, `linux-arm64`, on an `ubuntu-24.04-arm` runner.
 - Alpine ARM64, `linux-musl-arm64`, on an `ubuntu-24.04-arm` runner.
 
-The runner is the Ubuntu machine providing the CPU and Docker host. Debian/Alpine is the **guest environment where the tests execute**. ARM64 rows use ARM64 runners; an x64 execution is not accepted as ARM64 qualification. Current images use stable PowerShell hosts; Linux does not repeat the Windows Stable/Preview/Process matrix. Image and host pins are in [build/ci-images.lock.json](build/ci-images.lock.json).
+The runner is the Ubuntu machine providing the CPU and Docker host. Debian/Alpine is the **guest environment where the tests execute**. ARM64 rows use ARM64 runners; an x64 execution is not accepted as ARM64 qualification. Debian uses GA 7.7.0 / CLR 11; Alpine temporarily retains native 7.6.9-r0 / CLR 10 because its GA package and Microsoft musl ARM64 archive are unavailable; Linux does not repeat the Windows Stable/Preview/Process matrix. Image and host pins are in [build/ci-images.lock.json](build/ci-images.lock.json).
 
 [Select-GitHubCiMatrix.ps1](scripts/Select-GitHubCiMatrix.ps1) and [GitHubCi.ps1](scripts/GitHubCi.ps1) partition these four targets between two paths. Each target belongs to exactly one path:
 
@@ -134,7 +134,7 @@ Core is a mixed suite: pure logic, temporary files/repositories, child processes
 - PowerShell/CLR profiling and HTML/Markdown/JSON matrix aggregation default to enabled for Core/All. Automatic companion/publication calls explicitly request them; qualification requires the successful combined report. A manual collection opt-out cannot qualify Core evidence. RunProfiles/RunProfilesMutation remain separate Windows tooling campaigns.
 - Actual Vagrant-provider and interactive-console checks are not ordinary PR matrix tests.
 - A filtered `-Case` run or a stopped/incomplete campaign establishes only its reported development scope.
-- Ten configured product environments describe the intended matrix, not ten completed successes. Several selected companions share one matrix; All runs Core before bounded independent companion workers. Setup/build failures can prevent tests from starting.
+- Eight production environments (ten with explicitly selected Preview) describe the configured scope; they do not establish completed successes. Several selected companions share one matrix; All runs Core before bounded independent companion workers. Setup/build failures can prevent tests from starting.
 - Successful job execution is distinct from repository branch-protection settings. A qualification receipt does not establish which checks GitHub requires before merge.
 
 The shared gate requires Windows and selected Linux paths, combined profiling for scopes declaring Core evidence, and tooling when requested. It emits `qualified_sha` only after acceptance and records revision, Git tree, run/attempt and TTY exclusion. A profiling opt-out cannot qualify Core. Git/Vagrant-only scopes expect profiling to be skipped. Publication requests All and verifies current-run exact-source evidence before packaging.
@@ -158,7 +158,7 @@ Then use a **fresh PowerShell Core 7.6+ process with its normal profile** after 
 ./scripts/Invoke-WorkspaceCi.ps1 -Suite Core -SkipBuild -Case 'solution build catalogue*'
 ```
 
-These commands execute tests on the local host; they do not automatically create all ten GitHub environments. The local Windows launcher starts a background worker and visible read-only monitor, prints the report/reopening paths, and saves the terminal summary before closing the monitor. `-Headless` is for CI. Full local companion or mutation campaigns are explicit operations, not prerequisites automatically launched by a commit or push.
+These commands execute tests on the local host; they do not automatically create the selected GitHub environments. The local Windows launcher starts a background worker and visible read-only monitor, prints the report/reopening paths, and saves the terminal summary before closing the monitor. `-Headless` is for CI. Full local companion or mutation campaigns are explicit operations, not prerequisites automatically launched by a commit or push.
 
 For prepared local Linux images, use [Invoke-ContainerCi.ps1](scripts/Invoke-ContainerCi.ps1) with the documented image, platform, suite and expected RID. It supervises tests in the guest through the local monitor. Runtime selection is explicit `-ContainerRuntime`, then the checkout's `.env`, then Podman-first application discovery. It does not silently pull an image, install tools or start a daemon. A local container result qualifies only its actual guest/runtime/suite scope.
 

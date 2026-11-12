@@ -24,14 +24,12 @@ Each sample starts the current `$PSHOME` executable with `-NoProfile -NonInterac
 
 The following focused Windows measurements used PowerShell **7.6.9 / .NET 10.0.14 / win-x64**. Duration is the median import interval; allocations are median signed paired differences from the baseline.
 
-```text
-┌─────────────────────────────┬─────────────┬───────────────┬────────────────────┐
-│ Loader                      │ Duration    │ Import p95    │ Allocated MiB      │
-├─────────────────────────────┼─────────────┼───────────────┼────────────────────┤
-│ Cmdlet-based loader         │ 2 220.48 ms │   2 941.94 ms │              54.93 │
-│ Host .NET APIs              │   211.23 ms │     352.68 ms │               6.99 │
-└─────────────────────────────┴─────────────┴───────────────┴────────────────────┘
-```
+| CI matrix | Architecture | Hosting / PowerShell |
+| --- | --- | --- |
+| Windows GA | x64 and ARM64 | Process and InProcess; 7.7.0 / CLR 11 |
+| Optional Windows Preview | x64 and ARM64 | InProcess; published next-version release only |
+| Debian / glibc | x64 and ARM64 | Auto; 7.7.0 / CLR 11 |
+| Alpine / musl | x64 and ARM64 | Auto; accepted native 7.6.9-r0 / CLR 10 exception |
 
 These snapshots observed about **90.5% less import time** and **87.3% fewer cumulative managed allocations**. This is a local observation, not a universal performance guarantee. Allocations are not retained-memory or working-set guarantees. CPU, managed heap, working-set/private-memory deltas, raw pairs and end-to-end invocation timing are also retained in the original reports. Signed differences are never clamped.
 
@@ -113,14 +111,14 @@ Plain human-readable `git status` reuses the same comparison code as `RealStatus
 
 Fixtures use fixed identities/dates, SHA-1 repositories, explicit line/rename settings, empty global/system configuration and disabled hooks/signing. Creation requires a new absolute owned root. All mutating setup stays below that root; a ceiling prevents parent-repository discovery. Only the local submodule source is allowed. Generated fixtures, seeds, partial reports, telemetry and final evidence stay within the current run directory so the existing artifact uploads retain them, including failure diagnostics. No existing repository is modified by this suite.
 
-`Assert-CoreIntegrationEvidence.ps1` rejects missing import/diagnostic evidence, missing or duplicate states, missing block/mode combinations, incomplete streams, a loaded companion, and failed assertion qualification. Timing observations have no machine-dependent speed threshold. Core changes trigger `core-ci.yml`, which calls reusable `ci.yml` with `suite: All`; Git-only development retains its narrower suite. The shared worker enforces the evidence gate before reporting a successful Core result.
+`Assert-CoreIntegrationEvidence.ps1` rejects missing import/diagnostic evidence, missing or duplicate states, missing block/mode combinations, incomplete streams, a loaded companion, and failed assertion qualification. Timing observations have no machine-dependent speed threshold. Core changes select All through `companions-ci.yml`, which calls reusable `ci.yml`; Git-only development retains its narrower suite. The shared worker enforces the evidence gate before reporting a successful Core result.
 
 ```text
 ┌───────────────────┬─────────────────┬───────────────────────────────────────┐
 │ CI matrix         │ Architecture    │ Hosting / PowerShell                  │
 ├───────────────────┼─────────────────┼───────────────────────────────────────┤
-│ Windows stable    │ x64 and ARM64   │ Process and InProcess; PS 7.6.7       │
-│ Windows preview   │ x64 and ARM64   │ InProcess; PS 7.7.0-preview.5         │
+│ Windows stable    │ x64 and ARM64   │ Process and InProcess; GA PS 7.7.0       │
+│ Windows preview   │ x64 and ARM64   │ Optional InProcess; next-version Preview         │
 │ Debian / glibc    │ x64 and ARM64   │ Existing native image / Auto hosting │
 │ Alpine / musl     │ x64 and ARM64   │ Existing native image / Auto hosting │
 └───────────────────┴─────────────────┴───────────────────────────────────────┘
@@ -192,13 +190,13 @@ Primary tool documentation: [Profiler](https://github.com/nohwnd/Profiler), [Pro
 
 Windows artifacts are named `quietcli-core-evidence-<RID>-<channel>-<mode>-<SHA>`; Linux artifacts are named `quietcli-core-evidence-<RID>-Auto-<SHA>`. Upload runs with `if: always()`, including failed jobs, uses the pinned upload-artifact action, errors when no artifact is found, and retains evidence for 30 days. This configures publication by the workflow; it does not claim a remote run was dispatched by local validation.
 
-`New-CoreEvidenceBundle.ps1` copies report JSON, diagnostic logs, fixture manifests/seeds and any requested PS line/speedscope output and CLR traces while excluding staged workspaces, Git internals and tool caches. Its `evidence-manifest.json` records the exact revision, GitHub repository/run/attempt, runner identity and per-file sizes/SHA-256 values. When profiling is requested, its receipts are checked against their actual trace files and hashes. Successful-looking receipts with missing or changed traces fail that requested evidence step; incomplete failure evidence is still uploaded. Ordinary CI does not require profiling receipts. Checksums establish integrity, not standalone author authentication. Synthetic integrity-test inputs are labeled and do not count as real run profiling receipts.
+`New-CoreEvidenceBundle.ps1` copies report JSON, diagnostic logs, fixture manifests/seeds and any requested PS line/speedscope output and CLR traces while excluding staged workspaces, Git internals and tool caches. Its `evidence-manifest.json` records the exact revision, GitHub repository/run/attempt, runner identity and per-file sizes/SHA-256 values. When profiling is requested, its receipts are checked against their actual trace files and hashes. Successful-looking receipts with missing or changed traces fail that requested evidence step; incomplete failure evidence is still uploaded. Core/All CI requires profiling receipts and a complete combined report. Checksums establish integrity, not standalone author authentication. Synthetic integrity-test inputs are labeled and do not count as real run profiling receipts.
 
 For a local instrumented development run: `./scripts/Invoke-WorkspaceCi.ps1 -Suite Integration -SkipBuild -Profiler`. The integration report retains controlled-status assertion mutants, CI receipt-gate mutants and binary-evidence integrity tests in addition to the historical import/parser qualification.
 
 ### Human-readable matrix results
 
-Only with `collect_performance=true`, every job bundle also contains **PERFORMANCES_RESULTS.md** and its structured JSON counterpart. The optional `performance-results` job downloads all ten matrix bundles, checks their revisions and hashes, and publishes one combined `quietcli-performance-results-<SHA>` artifact, with the Markdown also displayed in the GitHub job summary. The qualification gate depends only on functional Windows/Linux results. Missing jobs, failed functional runs, absent requested profiling or altered evidence still fail the requested performance report; its readable output is uploaded with `if: always()`. With the default false input, no performance report is generated or aggregated.
+Only with `collect_performance=true`, every job bundle also contains **PERFORMANCES_RESULTS.md** and its structured JSON counterpart. The optional `performance-results` job downloads eight production bundles (ten with explicitly selected Preview), checks their revisions and hashes, and publishes one combined `quietcli-performance-results-<SHA>` artifact, with the Markdown also displayed in the GitHub job summary. Core qualification also requires the successful performance report. Missing jobs, failed functional runs, absent requested profiling or altered evidence still fail the requested performance report; its readable output is uploaded with `if: always()`. Collection defaults true; opting out cannot qualify Core evidence.
 
 The generated report compares host/RID/CLR/engine mode, test outcomes, import median/p95 and allocations, each controlled Git state's first/warm/reference/callback durations, and PS line versus CLR frame categories. It explains what these measurements mean, marks unavailable data rather than inventing values, and does not turn frame-name counts into CPU percentages. Readers can assess the result before opening any raw trace.
 

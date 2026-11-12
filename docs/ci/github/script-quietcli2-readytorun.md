@@ -1,10 +1,12 @@
 # quietcli2-readytorun.yml
 
-<!-- workflow-source-sha256: 3E7050C563E835372898CF39CD8F53AA3F58ACB23B5B15684FC9DFBED466638A -->
+<!-- workflow-source-sha256: AADD08BCC05458CDB929A4D3E9B9B9C460211C6B2D10DEB6AD105B29D5869F73 -->
 
 ## Purpose
 
 Informational IL-versus-ReadyToRun cold-start comparison, separate from production R2R qualification builds.
+
+Native orchestration and test/smoke steps select checksum-pinned GA PowerShell through the local setup-powershell action. Linux guest images retain their own reviewed lock (Debian 7.7.0; accepted Alpine 7.6.9-r0 exception). The setup changes only the job PATH; it does not install a machine-wide host or enable optional Preview.
 
 ## Triggers
 

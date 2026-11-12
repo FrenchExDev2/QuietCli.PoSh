@@ -1,27 +1,32 @@
 function Assert-QuietHostMatrix {
     <#
     .SYNOPSIS
-    Requires stable/preview integrated coverage on both native Windows architectures and retained isolation.
+    Requires GA integrated/isolated coverage on both native architectures and opt-in future preview.
     .PARAMETER WorkspaceRoot
     Workspace containing the reusable workflow and reviewed host lock.
     #>
     param([string]$WorkspaceRoot)
     $lock=Get-Content (Join-Path $WorkspaceRoot 'build/powershell-hosts.lock.json') -Raw -Encoding utf8|ConvertFrom-Json
     $workflow=Get-Content (Join-Path $WorkspaceRoot '.github/workflows/ci.yml') -Raw -Encoding utf8
-    $windows=[regex]::Match($workflow,'(?ms)^  windows:.*?(?=^  linux-images:)').Value
-    $rows=@([regex]::Matches($windows,'(?ms)^          - image:.*?(?=^          - image:|^    runs-on:)'))
-    if($rows.Count -ne 6){throw 'WindowsHostMatrixCardinalityMismatch'}
+    . (Join-Path $WorkspaceRoot 'scripts/GitHubCi.ps1')
+    $selection=Get-GitHubCiWindowsMatrix $lock
+    $rows=@($selection.Matrix.include)
+    if($rows.Count -ne 4 -or $selection.ExpectedReports -ne 8){throw 'WindowsHostMatrixCardinalityMismatch'}
+    if(!$workflow.Contains('matrix: ${{ fromJson(needs.linux-matrix.outputs.windows_matrix) }}') -or !$workflow.Contains('EXPECTED_REPORTS: ${{ needs.linux-matrix.outputs.expected_reports }}') -or !$workflow.Contains('-ExpectedReports ([int]$env:EXPECTED_REPORTS)')){throw 'WindowsHostMatrixPlanNotConsumed'}
+    $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
+    $parsed=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build().Deserialize($workflow)
+    foreach($trigger in @('workflow_call','workflow_dispatch')){
+        $option=$parsed['on'][$trigger]['inputs']['run_preview']
+        if(!$option -or $option['type'] -cne 'boolean' -or [string]$option['default'] -cne 'false'){throw 'PowerShellPreviewMustBeOptIn'}
+    }
     foreach($rid in @('win-x64','win-arm64')){
-        foreach($channel in @('stable','preview')){
-            $hostSpec=@($lock.Hosts|Where-Object {$_.Rid -ceq $rid -and $_.Channel -ceq $channel})
-            if($hostSpec.Count -ne 1 -or $hostSpec[0].SHA256 -cnotmatch '^[A-F0-9]{64}$'){throw 'MatrixHostLockMissing'}
-            $match=@($rows|Where-Object {$_.Value -match "(?m)^            rid: $rid\r?$" -and $_.Value -match "(?m)^            channel: $channel\r?$" -and $_.Value -match '(?m)^            mode: InProcess\r?$'})
-            if($match.Count -ne 1){throw 'IntegratedHostMatrixEntryMissing'}
-            $version=[regex]::Escape($hostSpec[0].Version)
-            $major=if($channel -eq 'stable'){10}else{11}
-            if($hostSpec[0].RuntimeMajor -ne $major -or $match[0].Value -notmatch "(?m)^            host_version: $version\r?$" -or $match[0].Value -notmatch "(?m)^            runtime_major: $major\r?$"){throw 'MatrixHostRuntimeMismatch'}
+        $hostSpec=@($lock.Hosts|Where-Object {$_.Rid -ceq $rid -and $_.Channel -ceq 'stable'})
+        if($hostSpec.Count -ne 1 -or $hostSpec[0].SHA256 -cnotmatch '^[A-F0-9]{64}$'){throw 'MatrixHostLockMissing'}
+        foreach($mode in @('Process','InProcess')){
+            $match=@($rows|Where-Object {$_.rid -ceq $rid -and $_.channel -ceq 'stable' -and $_.mode -ceq $mode})
+            if($match.Count -ne 1){throw 'ProductionHostMatrixEntryMissing'}
+            if($match[0].host_version -cne $lock.StableVersion -or $match[0].runtime_major -ne $hostSpec[0].RuntimeMajor){throw 'MatrixHostRuntimeMismatch'}
         }
-        if(@($rows|Where-Object {$_.Value -match "(?m)^            rid: $rid\r?$" -and $_.Value -match '(?m)^            mode: Process\r?$'}).Count -ne 1){throw 'IsolatedHostCoverageRemoved'}
     }
     $gate=[regex]::Match($workflow,'(?ms)^  qualification-gate:.*?(?=^  [a-z][a-z-]*:|\z)').Value
     Assert-QuietHostQualificationDependencies $gate

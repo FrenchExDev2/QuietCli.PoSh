@@ -6,7 +6,7 @@
 
 One `companions-ci.yml` caller plans the complete diff. Companion paths select dependent suites; Core/shared/unknown changes require All and tooling. Reviewed tooling-only paths avoid product replay. Develop omits replay only with verified successful PR evidence for the identical Git tree, and still runs merged-source smoke and cache resolution. Missing proof falls back to All.
 
-The shared `ci.yml` selects six native Windows host/mode rows and four Linux targets. Tooling runs once outside this product matrix. All executes complete Core before bounded independent companions on the same prepared image/build.
+The shared `ci.yml` selects four native GA Windows host/mode rows and four Linux targets; run_preview=true explicitly adds two next-version Preview rows. Tooling runs once outside this product matrix. All executes complete Core before bounded independent companions on the same prepared image/build.
 
 ```mermaid
 flowchart TD
@@ -55,7 +55,7 @@ Alpine ARM64 keeps JavaScript checkout/upload actions on Ubuntu and tests real m
 flowchart TD
     W[Windows matrix success] --> G[Assert-QualificationGate]
     L[Selected Linux paths succeed] --> G
-    P[Complete ten-environment profiles for Core scopes] --> G
+    P[Complete selected eight- or ten-environment profiles for Core scopes] --> G
     T[Tooling workflow when required] --> G
     S[Two mutation shards] --> U[Verified complete catalogue union]
     U --> T

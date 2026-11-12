@@ -22,6 +22,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - uses: ./.github/actions/cache-resources
+      - uses: ./.github/actions/setup-powershell
       - name: Initialize deterministic GitHub environment
         shell: pwsh
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
@@ -112,6 +114,7 @@ jobs:
           cache: true
           cache-dependency-path: '**/*.csproj'
       - uses: ./.github/actions/cache-resources
+      - uses: ./.github/actions/setup-powershell
       - name: Verify monorepo source lock
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore

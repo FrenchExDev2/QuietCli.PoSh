@@ -6,6 +6,10 @@ The [generated inventory and source dependencies](docs/resources/README.md) desc
 
 Automation that needs a particular resource calls `Ensure-QuietResource` from `scripts/Resources.ps1`. It verifies the declared hash, restores only the corresponding package if needed, verifies the resulting bytes, and optionally loads the required managed type. An already loaded assembly must match the pinned hash; an incompatible assembly requires a fresh process. Workflow documentation uses this function for YamlDotNet in development and CI, without relying on an earlier workflow step.
 
+PowerShell production archives have a separate [availability audit](docs/scripts/Test-PowerShellReleaseAvailability.md) and [guarded lock updater](docs/scripts/Update-PowerShellCiLock.md). The reviewed host lock selects GA 7.7.0 for Windows/Linux glibc x64/ARM64; downloaded archives are SHA-256 verified before extraction. Next-version preview execution is opt-in and has no invented hash while unpublished. An existing PowerShell process cannot change its CLR/version in place; prepared executables start fresh sessions without changing profiles or the machine installation.
+
+Alpine 3.24 and edge currently publish only native 7.6.9-r0, and Microsoft publishes no 7.7.0 musl ARM64 archive. The explicitly accepted `PowerShellException` retains that package and its separate .NET 10 runtime. Debian uses GA 7.7.0. SDK/OS pins are preserved. Compile-time SMA references use 7.7.0 on net11.0 and compatible servicing 7.6.10 on net10.0.
+
 The CI companion catalogue uses the same pinned YAML reader from `scripts/lib/CiCompanions.psm1`.
 It prepares its own parser dependency and loads no product engine. Preview entry points return
 before preparation; image PlanOnly mode may prepare this parser but performs no native or registry operation.
