@@ -1,5 +1,7 @@
 # New-WorkspacePackage.ps1
 
+Selected packages and their transitive RequiredModules determine which declared build outputs must validate. No Git parser path is hard-coded. Module Core validates Core only; Git validates Git and Core. Unknown modules fail before output creation. Core-containing packages retain all six engine RID checks; RequireReadyToRun retains both CLR builds for all six RIDs. scripts/New-WorkspacePackage.ps1:21 and Get-QuietWorkspaceBuildSelection own this boundary; inert discovery and the Git-absent distribution regression verify it.
+
 ## Purpose and usage
 
 Stages and archives independently versioned modules after verifying their compiled payloads. The optional Module array selects exact source project names from repositories.lock.json; omitted projects are not archived. With no selection, all locked projects retain the existing distribution behavior.

@@ -1,14 +1,20 @@
 # scripts-docs-check.yml
 
-<!-- workflow-source-sha256: 178E61C36B9E0587A0960F6AC39E392BE8F3788CB395BFE5DB69DA2EAC235FA0 -->
+<!-- workflow-source-sha256: E142564B348F176C864F09CAB7B3690C0CCF2A9620408C5CC1E3AD0446D863A8 -->
 
 ## Purpose
+
+All .github/actions changes now trigger the shared checks, including the Docker CI intermediate-cache action. Localhost may use Podman; GitHub execution explicitly selects Docker.
 
 Shared automation-contract pipeline for complete Core test classifications, script docs, workflow docs, resources, objectives and preview support.
 
 ## Triggers
 
 PR/develop path filters cover scripts, all Core test-project sources, docs/scripts, docs/ci/github, docs/resources, README-resources.md, Core resource declarations, the shared archive-cache action, the ShouldProcess policy and every .github/workflows file; manual dispatch is also available.
+
+## Checked scope
+
+Runs the shared eight-check registry: case metadata, scripts index, workflow receipts/graphs/index, ShouldProcess policy, resources, script contracts, documentation credits and aggregate credits. Checks are read-only apart from declared consumer preparation of verified resources. They execute no product companion campaign and cannot establish hosted functional or ARM64 qualification. See [the script map](../README.md#script-map).
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies

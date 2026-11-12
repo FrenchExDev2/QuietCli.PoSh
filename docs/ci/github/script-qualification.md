@@ -10,6 +10,10 @@ Explicit full Git capability qualification on a separately provisioned self-host
 
 Manual workflow_dispatch only; no develop or publication dependency.
 
+## Execution and limits
+
+This manual path declares a separately provisioned self-hosted Linux/Podman/KVM runner. Its full capability runner remains deliberately unimplemented and fails closed; it cannot currently establish exhaustive Git qualification. It is independent of the hosted ten-target product matrix and has no release/develop dependency. See [execution boundaries](../execution-model.md).
+
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
 

@@ -6,7 +6,7 @@
 
 ## Owned metadata and scheduling
 
-This companion owns its runner and complete literal `$caseMetadata` table in its own `.psm1`. Its manifest declares the RootModule, TestCatalogue runner/helper sources and TestExecution policy; shared infrastructure discovers/validates the declarations without a central Core-owned Git case list. The catalogue contains 77 cases, with 68 active by default and nine optional mutation cases. Each optional entry declares its exact EnabledWhen environment flag, statically checked against the registration guard; inactive campaigns are explicit and cannot hide an omitted active test.
+This companion owns its runner and complete literal `$caseMetadata` table in its own `.psm1`. Its manifest declares the RootModule, TestCatalogue runner/helper sources and TestExecution policy; shared infrastructure discovers/validates the declarations without a central Core-owned Git case list. The catalogue contains 78 cases, with 69 active by default and nine optional mutation cases. Each optional entry declares its exact EnabledWhen environment flag, statically checked against the registration guard; inactive campaigns are explicit and cannot hide an omitted active test.
 
 MaxParallelCases is two, while the default remains Ordered: cases share mutable synthetic repositories, handler/probe state and earlier observations. Parser timing is explicitly Exclusive within this companion. No Git case opts into isolated parallel execution until its prerequisites and fixtures are independently isolated. Git and Vagrant can still run as separate suites after accepted Core; the parent divides its worker budget among suite slots. `-Case` and stop-on-first now apply to this runner as well and produce Partial/Incomplete reports. Inspect `scripts/Test-TestCaseMetadata.ps1 -Suite Git -Plan` before execution.
 
@@ -33,6 +33,8 @@ The compiled runner is checked against 57 independent cases. RepositoryCommandCa
 Set QUIETCLI_GIT_COMMAND_MUTATION=1 to request eight source-checked C# repository-format/outcome mutants with the shared monitored launcher. QUIETCLI_GIT_PUSH_MUTATION=1 requests the separate eight push mutants. Ordinary development runs omit compiler-based campaigns unless needed. The reusable CI enables both in the Windows Preview x64 qualification job and retains artifacts/git-repository-mutation and artifacts/git-push-mutation. A baseline must pass, then every selected mutant must be detected; report survivors, invalid builds, timeouts and infrastructure failures separately. Mutation compilation uses the short owned staging directory documented by each receipt.
 
 ## Query parser qualification
+
+Compiler mutation catalogues run after shared repository scenarios, in isolated processes capped at two by the existing worker budget. Measurement barriers remain exclusive. Each catalogue owns a short build tree, restores packages once, resets pristine sources before every mutant and forces compilation with `--no-incremental`; subsequent builds use `--no-restore`. Every baseline still requires all 57 assertions, and every mutant still executes the complete assertion runner. Reports expose build/restore counts with separate per-mutant diagnostics. Concurrent catalogues share neither assemblies nor mutable build trees.
 
 The shared parser mutation runner stages `global.json`, `Directory.Build.props` and
 `Directory.Packages.props` above every isolated project. Baselines and mutants therefore
@@ -62,3 +64,5 @@ The compiled runner now has 39 cases. QUIETCLI_GIT_PATH_QUERY_MUTATION=1 selects
 ## Revision parser qualification
 
 Revisions.Tests.ps1 adds four native workflows. RevisionCases.cs adds five compiled cases: 1,000 fragmented scalar properties (seed 76051), scalar bounds/state and exact booleans, 1,000 long-description properties (seed 76052), native label/summary parsing, and 20,000 malformed inputs (seed 76053). The compiled runner has 44 cases. Baseline development has 63 scenarios; selecting only QUIETCLI_GIT_REVISION_MUTATION=1 yields 64. All six compiler mutation catalogues yield 69 scenarios and 48 mutants. Revision selects eight source-checked mutations with distinct boundary, terminator, boolean, tag, distance, revision label, undefined and count invariants. CI selects this catalogue in Preview x64; reports remain under artifacts/git-revision-mutation.
+
+Git.Tests also owns the reference-case and private temporary-artifact security regressions formerly mixed into the Core audit. Core no longer imports Git for these assertions.

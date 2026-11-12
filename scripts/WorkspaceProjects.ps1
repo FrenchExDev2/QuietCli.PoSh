@@ -87,6 +87,71 @@ function Get-QuietWorkspaceBuildProjects {
     }
 }
 
+function Get-QuietWorkspaceDotNetHost {
+    <#
+    .SYNOPSIS
+    Finds an already-installed checkout-pinned SDK host with the stable runtime required by native test fixtures.
+    .PARAMETER WorkspaceRoot
+    Checkout containing global.json and optional private SDK installation receipt; nothing is installed or executed.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorkspaceRoot)
+    $pin=Join-Path $WorkspaceRoot 'global.json'
+    if(!(Test-Path -LiteralPath $pin)){return}
+    $sdk=(Get-Content -LiteralPath $pin -Raw -Encoding utf8|ConvertFrom-Json).sdk.version
+    if($sdk -cnotmatch '\A[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?\z'){throw 'WorkspaceSdkVersionInvalid'}
+    $directory=Join-Path $WorkspaceRoot ('.dotnet/'+$sdk)
+    $hostPath=Join-Path $directory $(if($IsWindows){'dotnet.exe'}else{'dotnet'})
+    $receiptPath=Join-Path $directory 'frenchexdev-install.json'
+    if(!(Test-Path -LiteralPath $hostPath) -or !(Test-Path -LiteralPath $receiptPath)){return}
+    $receipt=Get-Content -LiteralPath $receiptPath -Raw -Encoding utf8|ConvertFrom-Json
+    if($receipt.SdkVersion -cne $sdk -or $receipt.Rid -cne [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier){return}
+    $manifestPath=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1'
+    $manifest=Import-PowerShellDataFile -LiteralPath $manifestPath
+    $fixture=@($manifest.PrivateData.QuietCli.BuildProjects|Where-Object Project -CEQ 'fixture/QuietCli.Fixture.csproj')
+    if($fixture.Count -ne 1 -or $fixture[0].Outputs.Count -ne 1){throw 'WorkspaceFixtureFrameworkAmbiguous'}
+    $framework=@($fixture[0].Outputs.Keys)[0]
+    if($framework -cnotmatch '\Anet([0-9]+)\.([0-9]+)\z'){throw 'WorkspaceFixtureFrameworkInvalid'}
+    $prefix=$Matches[1]+'.'+$Matches[2]+'.'
+    $runtimes=Join-Path $directory 'shared/Microsoft.NETCore.App'
+    $stable=@(Get-ChildItem -LiteralPath $runtimes -Directory -ErrorAction SilentlyContinue|Where-Object {$_.Name.StartsWith($prefix,[StringComparison]::Ordinal) -and $_.Name -cmatch '\A[0-9]+\.[0-9]+\.[0-9]+\z'})
+    if(!$stable.Count){return}
+    [pscustomobject]@{Path=$hostPath;Directory=$directory;SdkVersion=$sdk;FixtureFramework=$framework}
+}
+
+function Get-QuietWorkspaceBuildSelection {
+    <#
+    .SYNOPSIS
+    Resolves suite test modules and their transitive manifest dependencies without importing the engine.
+    .PARAMETER WorkspaceRoot
+    Selected checkout.
+    .PARAMETER Suite
+    Product suite or focused orchestration mode. All and Tooling retain the complete build.
+    .PARAMETER Module
+    Exact project roots for packaging validation; includes their transitive manifest dependencies.
+    #>
+    [CmdletBinding(DefaultParameterSetName='Suite')]
+    param([Parameter(Mandatory,Position=0)][string]$WorkspaceRoot,
+        [Parameter(ParameterSetName='Suite',Position=1)][string]$Suite='All',
+        [Parameter(Mandatory,ParameterSetName='Module',Position=1)][ValidateNotNullOrEmpty()][string[]]$Module)
+    $projects=@(Get-QuietWorkspaceProjects $WorkspaceRoot)
+    if($PSCmdlet.ParameterSetName -ceq 'Suite' -and $Suite -in @('All','Tooling','GalleryPreview','DotNet')){return $projects.Name}
+    $roots=if($PSCmdlet.ParameterSetName -ceq 'Module'){@($Module)}elseif($Suite -in @('Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','Mutation','RunProfiles','RunProfilesMutation')){@('FrenchExDev2.QuietCli.Core.Tests.PoSh')}else{@('FrenchExDev2.QuietCli.'+$Suite+'.Tests.PoSh')}
+    $selected=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $pending=[Collections.Generic.Queue[string]]::new()
+    foreach($name in $roots){$pending.Enqueue($name)}
+    while($pending.Count){
+        $name=$pending.Dequeue()
+        if(!$selected.Add($name)){continue}
+        $project=@($projects|Where-Object Name -CEQ $name)
+        if($project.Count -ne 1){throw ('WorkspaceBuildModuleMissing: '+$name)}
+        foreach($dependency in $project[0].RequiredModules){
+            if($dependency -clike 'FrenchExDev2.QuietCli.*.PoSh'){$pending.Enqueue($dependency)}
+        }
+    }
+    @($projects|Where-Object {$selected.Contains($_.Name)}|ForEach-Object Name)
+}
+
 function Get-QuietWorkspaceTestSuites {
     <#
     .SYNOPSIS
@@ -102,8 +167,11 @@ function Get-QuietWorkspaceTestSuites {
         if(!$project.TestsModule){throw ('WorkspaceTestModuleUndeclared: '+$project.Name)}
         $tests=@($projects | Where-Object Name -CEQ $project.TestsModule)
         if($tests.Count -ne 1 -or !$tests[0].IsTest -or $tests[0].Dependencies -cnotcontains $project.Name){throw ('WorkspaceTestModuleInvalid: '+$project.Name)}
-        if($tests[0].Manifest.FunctionsToExport -cnotcontains $project.TestCommand){throw ('WorkspaceTestRunnerNotExported: '+$project.TestCommand)}
-        [pscustomobject]@{Name=$project.Suite;Project=$project.Name;ProjectDirectory=$project.Directory;TestsModule=$tests[0].Name;TestsManifest=$tests[0].ManifestPath;Command=$project.TestCommand}
+        $private=$tests[0].Manifest['PrivateData']
+        $metadata=if($private -and $private['QuietCli']){$private['QuietCli']}else{@{}}
+        $command=if($metadata['TestCatalogue'] -and $metadata['TestCatalogue']['Runner']){[string]$metadata['TestCatalogue']['Runner']}else{$project.TestCommand}
+        if($tests[0].Manifest.FunctionsToExport -cnotcontains $command){throw ('WorkspaceTestRunnerNotExported: '+$command)}
+        [pscustomobject]@{Name=$project.Suite;Project=$project.Name;ProjectDirectory=$project.Directory;TestsModule=$tests[0].Name;TestsManifest=$tests[0].ManifestPath;Command=$command}
     }
 }
 
@@ -149,7 +217,7 @@ function Get-QuietWorkspaceSuiteNames {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Host','Container')][string]$Scope='Host')
-    $special=if($Scope -eq 'Container'){@('All','Import','Integration','Mutation')}else{@('All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview','DotNet')}
+    $special=if($Scope -eq 'Container'){@('All','Import','Integration','Mutation','Tooling')}else{@('All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview','DotNet','Tooling','Distribution')}
     $suites=@(if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot 'build/companions.yml')){
         Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanions.psm1')
         (Read-QuietCiCompanions $WorkspaceRoot).Suites.Values
@@ -192,6 +260,12 @@ function Get-QuietWorkspaceSuiteSelection {
     if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot 'build/companions.yml')){
         Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanions.psm1')
         $configuration=Read-QuietCiCompanions $WorkspaceRoot
+        foreach($owned in @(Get-QuietWorkspaceTestSuites $WorkspaceRoot)){
+            if(!$configuration.Companions.Contains($owned.Name) -or !$configuration.Suites.Contains($owned.Name) -or
+                $configuration.Suites[$owned.Name].TestsModule -cne $owned.TestsModule -or $configuration.Suites[$owned.Name].Command -cne $owned.Command){
+                throw ('WorkspaceCompanionQualificationUndeclared: '+$owned.Name)
+            }
+        }
         $selection=Resolve-QuietCiCompanions $configuration -Suite $Suite
         foreach($name in $selection.Selected){
             $entry=$configuration.Suites[$name]

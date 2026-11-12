@@ -11,7 +11,7 @@ Dedicated evidence directory; no real secret or user repository is read.
 [CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory)
 $ErrorActionPreference='Stop';. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
 [void][IO.Directory]::CreateDirectory($RunDirectory)
-$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Régressions sécurité et logiciel';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;ProcessId=$PID;StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null;State='Running';Passed=0;Failed=0;Case='Starting independent security checks';Error=$null}
+$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Régressions sécurité et logiciel';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;ProcessId=$PID;StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null;State='Running';Passed=0;Failed=0;Case='Starting independent security checks';Error=$null}
 $checks=[Collections.Generic.List[object]]::new();Write-WorkspaceJson (Join-Path $RunDirectory 'status.json') $state
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
 . (Join-Path $WorkspaceRoot 'scripts/TestConfiguration.ps1')
@@ -35,7 +35,6 @@ function Add-AuditEvidence {
 $core=$null
 try{
     $core=Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1') -PassThru
-    $git=Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1') -PassThru
     $dotnet=(Get-Command dotnet -CommandType Application|Select-Object -First 1).Source
     $fixture=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture/QuietCli.Fixture.dll'
     $fault=& $core {
@@ -98,26 +97,6 @@ try{
     Add-AuditEvidence SEC-01 ($probe.Outcome -ne 'Success' -and !(Test-Path -LiteralPath $marker)) @{Rejected=($probe.Outcome -ne 'Success');UnexpectedCodeExecuted=(Test-Path -LiteralPath $marker)}
     . (Join-Path $PSScriptRoot 'Package.Tests.ps1')
     foreach($check in Invoke-AuditPackageChecks $WorkspaceRoot $RunDirectory){Add-AuditEvidence $check.Id $check.Resolved $check.Evidence}
-
-    $changes=& $git {$before=@(@{Name='refs/heads/Feature';ObjectId=('1'*40)},@{Name='refs/heads/feature';ObjectId=('2'*40)});$after=@(@{Name='refs/heads/Feature';ObjectId=('3'*40)},@{Name='refs/heads/feature';ObjectId=('2'*40)});@(Get-QuietGitRefChanges $before $after).Count}
-    Add-AuditEvidence REL-03 ($changes -eq 1) @{ExpectedChanges=1;ObservedChanges=$changes}
-
-    $temporary=Join-Path $RunDirectory 'owned-temp';[void][IO.Directory]::CreateDirectory($temporary)
-    $saved=@{TEMP=$env:TEMP;TMP=$env:TMP;TMPDIR=$env:TMPDIR};$env:TEMP=$temporary;$env:TMP=$temporary;$env:TMPDIR=$temporary
-    try{
-        $gitPath=(Get-Command git -CommandType Application|Select-Object -First 1).Source
-        $failed=& $git {param($file,$directory)$runtime=[pscustomobject]@{Request=@{WorkingDirectory=$directory;Environment=@{};FilePath=$file;TimeoutSeconds=1;Transport='Pipe'}};Invoke-QuietGitBlobOutput $runtime @('--version') 'synthetic'} $gitPath (Join-Path $RunDirectory 'nonexistent-directory')
-        $left=@(Get-ChildItem -LiteralPath $temporary -Recurse -File).Count
-        Add-AuditEvidence REL-04 (!$failed.ContainsKey('File') -and $null -eq $failed.Artifact -and $left -eq 0) @{InternalStreamReturned=$failed.ContainsKey('File');RemainingFiles=$left}
-        if(!$IsWindows){
-            $successful=& $git {param($file,$directory)$runtime=[pscustomobject]@{Request=@{WorkingDirectory=$directory;Environment=@{};FilePath=$file;TimeoutSeconds=5;Transport='Pipe'}};Invoke-QuietGitBlobOutput $runtime @('--version') 'synthetic'} $gitPath $RunDirectory
-            try{
-                $fileMode=[IO.File]::GetUnixFileMode($successful.Artifact.Path)
-                $directoryMode=[IO.File]::GetUnixFileMode([IO.Path]::GetDirectoryName($successful.Artifact.Path))
-                Add-AuditEvidence SEC-04 ([int]$fileMode -eq 384 -and [int]$directoryMode -eq 448) @{FileMode=[int]$fileMode;DirectoryMode=[int]$directoryMode}
-            }finally{Remove-QuietGitArtifact $successful.Artifact}
-        }
-    }finally{foreach($name in $saved.Keys){[Environment]::SetEnvironmentVariable($name,$saved[$name])}}
 
     $held=@{}
     $r=quiet -AsObject -State $held -Output {param($e,$r)$r.State.Runtime=$r} $dotnet $fixture emit 1

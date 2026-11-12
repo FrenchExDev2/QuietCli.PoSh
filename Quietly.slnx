@@ -37,4 +37,14 @@
     <File Path="FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh.psd1" />
     <File Path="FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh.psm1" />
   </Folder>
+  <Folder Name="/test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/">
+    <File Path="FrenchExDev2.QuietCli.Tooling.Tests.PoSh/FrenchExDev2.QuietCli.Tooling.Tests.PoSh.psd1" />
+    <File Path="FrenchExDev2.QuietCli.Tooling.Tests.PoSh/FrenchExDev2.QuietCli.Tooling.Tests.PoSh.psm1" />
+    <File Path="FrenchExDev2.QuietCli.Tooling.Tests.PoSh/README.md" />
+  </Folder>
+  <Folder Name="/test/FrenchExDev2.QuietCli.Distribution.Tests.PoSh/">
+    <File Path="FrenchExDev2.QuietCli.Distribution.Tests.PoSh/FrenchExDev2.QuietCli.Distribution.Tests.PoSh.psd1" />
+    <File Path="FrenchExDev2.QuietCli.Distribution.Tests.PoSh/FrenchExDev2.QuietCli.Distribution.Tests.PoSh.psm1" />
+    <File Path="FrenchExDev2.QuietCli.Distribution.Tests.PoSh/README.md" />
+  </Folder>
 </Solution>

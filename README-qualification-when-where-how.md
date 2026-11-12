@@ -1,20 +1,20 @@
 # Qualification: when, where and how
 
-For `All`, one build and Linux toolchain image serve the complete target. Core's validation retains its Git dependency and executes first. Only after complete successful Core evidence do Git and Vagrant execute concurrently in isolated PowerShell processes, with separate reports and configuration in that same runner/container. Companion failure blocks the matrix target. Develop pushes qualify and upload reports without publishing modules. Explicit module release tags start a separate full qualification of the tagged revision before packaging/publication; the packaging build is also verified separately.
+For All, one build and image serve the target: complete Core validation precedes bounded independent companion workers. Core.Tests generates its own scripted Git-status companion and requires no real Git module. Tooling runs separately. Develop reuses verified same-tree PR evidence, then runs integrity smoke and image-cache resolution; missing evidence falls back to All. Publication remains explicit-module-tag-only.
 
 [QuietCli overview](README.md) · [Development](README-development.md) · [Tests and qualification](README-qualification.md) · [Documentation index](docs/README.md)
 
 GitHub qualification builds the solution **and executes the selected companion tests**. Windows tests run directly on native runners; Linux tests run inside containers. A successful build alone does not qualify the software. This guide describes the configured execution paths, not the outcome of a particular workflow run.
 
-## When tests run
+[CI map, scripts and source-change dates](docs/ci/README.md) connects current execution paths to the changes through 12 November 2026. Dates refer to Git history, not checkout timestamps.
 
 The shared [companions-ci.yml](.github/workflows/companions-ci.yml) caller selects suites for
 [ci.yml](.github/workflows/ci.yml):
 
-- PRs and `develop` pushes matching `FrenchExDev2.QuietCli.*.PoSh/**` or shared automation/build/workflow/SDK/policy files request `All`. The wildcard includes Vagrant and future integration test projects, without a new workflow per companion.
-- Opening a matching PR or updating its branch triggers this one caller. A path-filtered skip is not qualification evidence. Changed-suite selection and image/scheduling optimization remain separate work.
+- Every PR receives a complete-diff plan. A companion-only change selects its dependent suites; shared/Core/unknown paths select All plus tooling. Multiple affected companions share one matrix.
+- Opening or updating a PR triggers the caller. The unconditional QuietCli required CI check reports the planned scope, including intentional documentation-only omissions.
 - Manual dispatch and reusable calls accept a YAML-declared `suite`, defaulting to `All`.
-- A merge into `develop` is a develop push: it runs `All` with profiling and may populate the GHCR toolchain cache, but publishes no PowerShell module. [Module release tags](docs/README-preview-releases.md#module-release-tags-and-independent-versions) separately request Gallery publication.
+- A develop merge reuses successful PR qualification only for an identical Git tree and exact originating workflow attempt. It still runs merged-source integration smoke and refreshes missing image layers. Absent or mismatched proof requires full qualification; module tags separately request publication.
 - [publish-psgallery.yml](.github/workflows/publish-psgallery.yml) requests `All` qualification before packaging. Its Windows packaging job also rebuilds and rechecks the distributions. Publication has its own input and protected environment; qualification does not itself authorize publication.
 
 `All` expands to the independent suites in [build/companions.yml](build/companions.yml), currently
@@ -29,9 +29,9 @@ Other path-filtered PR checks run on `ubuntu-latest`: [scripts-docs-check.yml](.
 
 ## Profiling reports and manual PR runs
 
-Automatic matching PR runs request `All` with `collect_performance=true`. Core profiling runs across all six Windows combinations and four Linux containers. A separate instrumented pass collects PowerShell line profiles and CLR traces outside the ordinary benchmark samples. The `Readable performance evidence for the complete matrix` job verifies the ten evidence bundles and uploads `quietcli-performance-results-<sha>`, containing standalone `PERFORMANCES_RESULTS.html`, Markdown, JSON and integrity metadata. Download the artifact from the workflow run's **Artifacts** section and open the HTML locally. Raw profiles remain in the per-environment evidence artifacts. Missing or failed evidence prevents Core qualification; a partial report does not establish a completed matrix.
+PR scopes declaring Core evidence request collect_performance=true. Core profiling runs across all six Windows combinations and four Linux containers. A separate instrumented pass collects PowerShell line profiles and CLR traces outside the ordinary benchmark samples. The `Readable performance evidence for the complete matrix` job verifies the ten evidence bundles and uploads `quietcli-performance-results-<sha>`, containing standalone `PERFORMANCES_RESULTS.html`, Markdown, JSON and integrity metadata. Download the artifact from the workflow run's **Artifacts** section and open the HTML locally. Raw profiles remain in the per-environment evidence artifacts. Missing or failed evidence prevents Core qualification; a partial report does not establish a completed matrix.
 
-`RunProfiles` and `RunProfilesMutation` qualify the profiling tools themselves, on Windows stable x64 InProcess. They do not enable the Core profiling pass or replace its ten-target evidence. `collect_performance` controls that pass in CI; locally, `Invoke-WorkspaceCi.ps1 -Suite Integration -SkipBuild -Profiler` selects the focused instrumented workload. Keep profiler instrumentation outside A/A and A/B timing samples to avoid measuring the profiler's overhead as product performance.
+`RunProfiles` and `RunProfilesMutation` qualify the profiling tools themselves, in independent tooling jobs, outside the product timing runners. Mutation uses two matrix shards, each with its own green baseline and at most two isolated workers. Completion requires all 92 source-bound mutants exactly once, all Killed, with matching revision, source hashes, seed and iterations. Each shard alone is partial evidence. The GitHub entry accepts only validated partitions under explicit shard controls and retains Partial=true; complete aggregation remains required. See [the shard execution contract](docs/scripts/Invoke-GitHubCi.md#shard-execution-and-completion). The shard design does not enable or replace Core's ten-target profiling evidence. `collect_performance` controls that pass in CI; locally, `Invoke-WorkspaceCi.ps1 -Suite Integration -SkipBuild -Profiler` selects the focused instrumented workload. Keep profiler instrumentation outside A/A and A/B timing samples to avoid measuring the profiler's overhead as product performance.
 
 To obtain profiling plus A/B evidence for a PR:
 
@@ -53,7 +53,7 @@ In GitHub, open **Actions**, choose **QuietCli2 ReadyToRun profiling**, click **
 
 ```mermaid
 flowchart TD
-    P[Matching PR or develop push] --> S[Core or Git caller selects its suite]
+    P[PR or develop push requiring product replay] --> S[companions-ci complete-diff plan selects suites]
     S --> C[Shared ci.yml]
     C --> W[Six Windows combinations]
     C --> L[Select four native Linux targets]
@@ -63,7 +63,7 @@ flowchart TD
     J -- Yes --> JB[Build and test inside job container]
     J -- No --> FB[Build distributions on Ubuntu runner]
     FB --> FT[Stage inputs and run tests inside Docker]
-    WT --> G[Require Windows and Linux success]
+    WT --> G[Require Windows, Linux and declared evidence]
     JB --> G
     FT --> G
     G --> Q[Revision-bound qualification receipt]
@@ -72,7 +72,7 @@ flowchart TD
 The common build entry point is [Build-Workspace.ps1](scripts/Build-Workspace.ps1):
 
 1. Verify build prerequisites and declared portable outputs.
-2. Compile `Quietly.slnx` once, covering every project and target framework in the solution. `Directory.Build.props` treats compiler warnings as errors.
+2. Compile the selected dependency closure once, using an owned scoped solution; All builds `Quietly.slnx`. Undeclared cross-project references fail before compilation. `Directory.Build.props` treats compiler warnings as errors.
 3. Prepare the declared portable distributions with `dotnet publish --no-build`. [Get-QuietWorkspaceBuildProjects](docs/README-workspace-projects.md#compiled-distributions) supplies the project/framework/output values from inert manifest declarations.
 4. Build the engine's architecture-specific distributions and requested ReadyToRun slots separately, preserving their integrity receipts.
 
@@ -126,7 +126,7 @@ The compiled programs are custom executable assertion runners, not a `dotnet tes
 
 Core is a mixed suite: pure logic, temporary files/repositories, child processes, properties, malformed-input corpora and targeted mutations. It is not a unit-only suite. The focused `Integration` mode selects the import/performance workload, not every case with integration effects. See [test boundaries](docs/testing/commit-workspace.md) and [suite scopes](README-qualification.md).
 
-For Core/All, Windows x64 Stable `InProcess` also runs the complete `RunProfiles` and `RunProfilesMutation` tooling suites. These tests are distinct from collecting performance profiles for every matrix row.
+`tooling-ci.yml` runs repository automation, functional RunProfiles, Distribution once using verified full IL outputs, a separate Core build/suite without the Git module, and the two mutation shards plus completion. Product rows do not repeat these packaging/tooling campaigns. Nine enabled Git mutation catalogues run in isolated process batches capped at two; each restores dependencies once and resets/recompiles pristine sources for every mutant. See [scheduling and mutations](docs/ci/scalable-companions.md).
 
 ## What a green qualification does not include
 
@@ -134,10 +134,10 @@ For Core/All, Windows x64 Stable `InProcess` also runs the complete `RunProfiles
 - PowerShell/CLR profiling and HTML/Markdown/JSON matrix aggregation default to enabled for Core/All. Automatic companion/publication calls explicitly request them; qualification requires the successful combined report. A manual collection opt-out cannot qualify Core evidence. RunProfiles/RunProfilesMutation remain separate Windows tooling campaigns.
 - Actual Vagrant-provider and interactive-console checks are not ordinary PR matrix tests.
 - A filtered `-Case` run or a stopped/incomplete campaign establishes only its reported development scope.
-- Ten configured environments per selected suite describe the intended matrix, not ten completed successes. Setup/build failures can prevent tests from starting. When both Core and Git callers apply, there are two independent ten-environment matrices, plus their tooling/control jobs.
+- Ten configured product environments describe the intended matrix, not ten completed successes. Several selected companions share one matrix; All runs Core before bounded independent companion workers. Setup/build failures can prevent tests from starting.
 - Successful job execution is distinct from repository branch-protection settings. A qualification receipt does not establish which checks GitHub requires before merge.
 
-The shared qualification gate requires Windows and Linux success for the selected suite and emits a revision-bound `qualified_sha`. Linux aggregation requires the selected container/fallback paths to succeed. Requested performance reports can fail separately; performance aggregation is not a dependency of the functional qualification gate. Publication requests `All` and verifies the qualification revision before packaging.
+The shared gate requires Windows and selected Linux paths, combined profiling for scopes declaring Core evidence, and tooling when requested. It emits `qualified_sha` only after acceptance and records revision, Git tree, run/attempt and TTY exclusion. A profiling opt-out cannot qualify Core. Git/Vagrant-only scopes expect profiling to be skipped. Publication requests All and verifies current-run exact-source evidence before packaging.
 
 ## How to run local checks
 
@@ -166,13 +166,13 @@ For prepared local Linux images, use [Invoke-ContainerCi.ps1](scripts/Invoke-Con
 
 Open the PR's checks and expand the relevant workflow:
 
-1. Identify the caller (`QuietCli2 Core` or `QuietCli2 Git`) and the Windows/RID or Linux target.
+1. Identify the `QuietCli2 Companions` impact plan, selected suites and Windows host/RID or Linux target. For manual/release runs, inspect explicit caller inputs.
 2. Check the build step separately from `Run selected suites ...`. Build success with a failed/skipped test step is not a passing test suite.
 3. For Linux, inspect selection and the matching `Linux job container` or `Linux Docker fallback` job. Do not infer test coverage from image preparation/publication jobs.
 4. Read case progress and the saved `summary.json` / suite reports. Inspect the uploaded evidence and, on failure, bounded diagnostic artifacts. The fallback worker preserves guest status, exit and identity evidence.
 5. Check `linux-result` and the final qualification gate. An in-progress, skipped, cancelled or failed required path is not qualified.
 
-Local reports are stored outside the checkout under the shared temporary report root resolved by [ReportPaths.ps1](scripts/ReportPaths.ps1). GitHub jobs retain their reports under `artifacts/` and upload evidence/diagnostics with workflow-specific retention. The launchers print the actual paths. Neither this guide nor the presence of a workflow proves that a particular revision has passed; use that revision's saved reports and GitHub check results.
+Local reports are stored outside the checkout under the shared temporary report root resolved by [ReportPaths.ps1](scripts/ReportPaths.ps1). GitHub jobs retain reports under `artifacts/` with workflow-specific retention. Ordinary tooling artifacts select JSON/logs and case-worker reports, excluding nested workspaces/binaries/packages. Failed functional fixtures are uploaded separately for seven days; mutation artifacts are bound to SHA/shard/attempt. The launchers print the actual paths. Neither this guide nor the presence of a workflow proves that a particular revision has passed; use that revision's saved reports and GitHub check results.
 
 <!-- credits:begin -->
 ## Credits

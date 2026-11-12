@@ -2,6 +2,8 @@
 
 ## Purpose and usage
 
+An explicit `-Description <markdown>` replaces the existing PR body through `gh pr edit --body-file` after verifying the exact pushed checkpoint. Unicode and LF are preserved in an owned temporary Markdown file removed in finally. Description editing remains explicit even when a checkpoint comment already exists. Without Description, no PR metadata is changed. The scoped offline regression covers preview, duplicate comments, Unicode and description replacement.
+
 `Send-QuietPullRequestUpdate -WorkspaceRoot $root -Remote origin -Branch fix/example [-Body $markdown]`
 implements RAC-PR-001 for `Push-Workspace.ps1`. It resolves the selected GitHub remote, reads the one
 existing open PR, verifies its head matches the local branch, and adds a checkpoint-marked comment

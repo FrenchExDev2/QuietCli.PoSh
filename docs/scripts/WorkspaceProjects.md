@@ -1,5 +1,15 @@
 # WorkspaceProjects.ps1
 
+Get-QuietWorkspaceDotNetHost only reads an existing private SDK receipt for the global.json version, matching the native RID and the stable framework declared by the fixture BuildProjects entry. Test workers use that host without installation or profile changes. Each owning test manifest's TestCatalogue.Runner takes precedence over naming conventions; the YAML must agree.
+
+## Qualification coverage
+
+When the CI catalogue exists, every discovered business module must declare its owning suite, test module and runner there. Undeclared newly generated companions fail before suite execution; All cannot silently omit them. Dedicated integration-only test projects remain supported.
+
+## Scoped CI execution
+
+Get-QuietWorkspaceBuildSelection resolves inert test manifests and transitive RequiredModules, rejecting missing local dependencies. Core selects only Core/Core.Tests. The Module parameter set resolves exact package roots and their dependencies through that same closure; Core packaging never requires Git outputs. Distribution selects its own private test manifest and Core.Tests. Tooling and public package campaigns retain the complete build; RunProfiles selects Core helpers only. Tooling is an orchestration mode, separate from product All.
+
 When build/companions.yml exists, suite names and runner selection come from its independent
 suite declarations through lib/CiCompanions.psm1. Integration suites can name a dedicated exported
 runner and require multiple products without reverse product dependencies. Manifest discovery

@@ -27,15 +27,18 @@ function Invoke-QuietGitParserMutation {
     $mutants=@($definition.Mutants)
     if(!$mutants.Count -or !$definition.CasePrefix){throw 'InvalidParserMutationCatalogue'}
     $results=[Collections.Generic.List[object]]::new()
+    # Reuse only restored package assets in this catalogue's owned tree.
+    # Every iteration resets pristine sources and forces fresh compilation.
+    $stage=Join-Path $staging 'build'
+    $engine=Join-Path $stage 'FrenchExDev2.QuietCli.Git.PoSh/engine'
+    $testDirectory=Join-Path $stage 'FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests'
+    [void][IO.Directory]::CreateDirectory($engine)
+    [void][IO.Directory]::CreateDirectory($testDirectory)
+    $buildCount=0;$restoreCount=0
     try {
         foreach($mutation in @(@{Name='baseline';From=$null;To=$null})+$mutants){
             $directory=Join-Path $run $mutation.Name
             [void][IO.Directory]::CreateDirectory($directory)
-            $stage=Join-Path $staging $mutation.Name
-            $engine=Join-Path $stage 'FrenchExDev2.QuietCli.Git.PoSh/engine'
-            $testDirectory=Join-Path $stage 'FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests'
-            [void][IO.Directory]::CreateDirectory($engine)
-            [void][IO.Directory]::CreateDirectory($testDirectory)
             foreach($file in Get-ChildItem -LiteralPath $production -File | Where-Object Extension -In @('.cs','.csproj')){Copy-Item -LiteralPath $file.FullName -Destination $engine}
             foreach($file in Get-ChildItem -LiteralPath $tests -File | Where-Object Extension -In @('.cs','.csproj')){Copy-Item -LiteralPath $file.FullName -Destination $testDirectory}
             if($mutation.From){
@@ -45,7 +48,10 @@ function Invoke-QuietGitParserMutation {
             }
             $log=[Collections.Generic.List[string]]::new()
             $observer={param($record,$state)$state.Add($record.Text)}
-            $build=Invoke-CiProcess dotnet @('build',(Join-Path $testDirectory 'QuietCli.Git.Parser.Tests.csproj'),'-c','Release','-o',(Join-Path $stage 'out'),'--nologo') -WorkingDirectory $WorkspaceRoot -TimeoutSeconds 120 -OnOutput $observer -State $log
+            $buildArguments=@('build',(Join-Path $testDirectory 'QuietCli.Git.Parser.Tests.csproj'),'-c','Release','-o',(Join-Path $stage 'out'),'--nologo','--no-incremental')
+            if($buildCount){$buildArguments+='--no-restore'}else{$restoreCount++}
+            $build=Invoke-CiProcess dotnet $buildArguments -WorkingDirectory $WorkspaceRoot -TimeoutSeconds 120 -OnOutput $observer -State $log
+            $buildCount++
             [void][IO.File]::WriteAllLinesAsync((Join-Path $directory 'build.log'),$log,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
             if($build.ExitCode -ne 0){
                 $diagnostic=(@($log | Where-Object {$_ -match '(?i)\berror\s+[A-Z]+[0-9]+'} | Select-Object -Unique -First 3) -join ' | ')
@@ -65,7 +71,7 @@ function Invoke-QuietGitParserMutation {
                 if($execution.ExitCode -ne 1 -or $pushFailures.Count -eq 0){throw ('MutationSurvivedOrCrashed: '+$mutation.Name)}
                 $state='Killed'
             }
-            $results.Add([pscustomobject]@{Name=$mutation.Name;State=$state;FailedCases=$pushFailures.Name;ExitCode=$execution.ExitCode})
+            $results.Add([pscustomobject]@{Name=$mutation.Name;State=$state;FailedCases=@($pushFailures|ForEach-Object Name);ExitCode=$execution.ExitCode})
         }
     }catch{
         $message=$_.Exception.Message
@@ -73,7 +79,7 @@ function Invoke-QuietGitParserMutation {
         $results.Add([pscustomobject]@{Name=$mutation.Name;State=$failureState;Error=$message})
         throw
     }finally{
-        $summary=[ordered]@{Catalogue=$Catalogue;StagingDirectory=$staging;Sources=@(foreach($file in @($mutants.File|Sort-Object -Unique)){@{File=$file;SHA256=(Get-FileHash -LiteralPath (Join-Path $production $file)).Hash}});Selected=$mutants.Count;Killed=@($results|Where-Object State -EQ Killed).Count;Completed=$results.Count;Survived=@($results|Where-Object State -EQ Survived).Count;Invalid=@($results|Where-Object State -EQ Invalid).Count;Timeout=@($results|Where-Object State -EQ Timeout).Count;InfrastructureError=@($results|Where-Object State -EQ InfrastructureError).Count;Results=$results.ToArray()}
+        $summary=[ordered]@{Catalogue=$Catalogue;StagingDirectory=$staging;BuildCount=$buildCount;RestoreCount=$restoreCount;ForcedCompilation=$true;Sources=@(foreach($file in @($mutants.File|Sort-Object -Unique)){@{File=$file;SHA256=(Get-FileHash -LiteralPath (Join-Path $production $file)).Hash}});Selected=$mutants.Count;Killed=@($results|Where-Object State -EQ Killed).Count;Completed=$results.Count;Survived=@($results|Where-Object State -EQ Survived).Count;Invalid=@($results|Where-Object State -EQ Invalid).Count;Timeout=@($results|Where-Object State -EQ Timeout).Count;InfrastructureError=@($results|Where-Object State -EQ InfrastructureError).Count;Results=$results.ToArray()}
         [void][IO.File]::WriteAllTextAsync((Join-Path $run 'summary.json'),($summary|ConvertTo-Json -Depth 6),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     }
     return $run

@@ -39,6 +39,10 @@ Source identity, workspace locking, initialization, local ZIP verification and c
 this catalogue. Local workspace ZIPs include companion tests for offline verification; those archives
 are separate from publicly installable Gallery packages.
 
+## Scoped builds and private tooling
+
+Build-Workspace -Suite selects the test manifest and transitive RequiredModules, then builds an owned scoped solution with cross-project reference validation. Core selects Core/Core.Tests only. Tooling.Tests owns repository automation and has its own metadata; it is never a public package or product All member. Existing application modules consume Core plus separately generated native companions.
+
 ## Compiled distributions
 
 `Get-QuietWorkspaceBuildProjects -WorkspaceRoot $PWD.Path` is the common read-only function for portable build outputs. The build and `Get-QuietWorkspaceIdentity -IncludeBinaries` use the same catalogue; no launcher maintains a second project/output list. Each returned row contains `Package`, `Project`, `TargetFramework` and `Output`, with workspace-relative paths. Pure PowerShell packages omit `BuildProjects` and produce no compiled rows.

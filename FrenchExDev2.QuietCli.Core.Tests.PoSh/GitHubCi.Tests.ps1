@@ -63,11 +63,14 @@ function Test-QuietCompanionHelperScope {
             $ErrorActionPreference='Stop'
             $utf8=[Text.UTF8Encoding]::new($false)
             [Console]::InputEncoding=$utf8;[Console]::OutputEncoding=$utf8;$OutputEncoding=$utf8
+            $stagePath=Join-Path $run 'companion-helper-stage.txt'
+            [IO.File]::WriteAllText($stagePath,'Core import',$utf8)
             $helpers=@('Invoke-CiProcess','Write-WorkspaceJson','ConvertTo-QuietByteCount','Get-QuietWorkspaceProjects')
             foreach($name in $helpers){if(Test-Path ('Function:'+ $name)){throw ('CallerHelperAlreadyPresent: '+$name)}}
             Import-Module (Join-Path $root 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
             $importWarnings=@()
             $module=Import-Module (Join-Path $root 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -PassThru -DisableNameChecking -WarningVariable importWarnings
+            [IO.File]::WriteAllText($stagePath,'Private helper assertions',$utf8)
             if($importWarnings.Count){throw 'CompanionImportEmittedWarnings'}
             $result=& $module {
                 param($root,$run,$helpers)
@@ -83,21 +86,68 @@ function Test-QuietCompanionHelperScope {
                 [pscustomobject]@{Helpers=$helpers.Count;Private=$true;ProfileRequired=$false}
             } $root $run $helpers
             foreach($name in $helpers){if(Test-Path ('Function:'+ $name)){throw ('CompanionHelperLeakedToCaller: '+$name)}}
+            $tokens=$null;$errors=$null
+            $workerAst=[Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'scripts/Invoke-TestWorker.ps1'),[ref]$tokens,[ref]$errors)
+            if($errors.Count){throw 'WorkerImportProbeSyntaxInvalid'}
+            $clauses=@(foreach($statement in $workerAst.FindAll({param($node)$node -is [Management.Automation.Language.IfStatementAst]},$true)){
+                foreach($clause in $statement.Clauses){if($clause.Item1.Extent.Text -ceq '$Suite -in @(''Tooling'',''Distribution'')'){$clause.Item2}}
+            })
+            if($clauses.Count -ne 1){throw 'WorkerImportBootstrapNotFound'}
+            $imports=@($clauses[0].FindAll({param($node)$node -is [Management.Automation.Language.CommandAst] -and $node.GetCommandName() -ceq 'Import-Module'},$true))
+            # Minimized dependency graph tests PowerShell's warning propagation without reloading product companions.
+            $WorkspaceRoot=Join-Path $run 'worker-import-fixture';$checks=0
+            $dependency='FrenchExDev2.QuietCli.Core.Tests.PoSh'
+            foreach($suite in @('Core','Tooling','Distribution')){
+                $name='FrenchExDev2.QuietCli.'+$suite+'.Tests.PoSh'
+                $directory=Join-Path $WorkspaceRoot $name
+                [void][IO.Directory]::CreateDirectory($directory)
+                $exports=if($suite -ceq 'Core'){'Reduce-WorkerImportProbe'}else{'Invoke-WorkerImportProbe'}
+                $required=if($suite -ceq 'Core'){''}else{"RequiredModules=@('$dependency');"}
+                [IO.File]::WriteAllText((Join-Path $directory ($name+'.psm1')),('function '+$exports+' {}; Export-ModuleMember -Function '+$exports),$utf8)
+                [IO.File]::WriteAllText((Join-Path $directory ($name+'.psd1')),("@{RootModule='$name.psm1';ModuleVersion='0.1.0';"+$required+"FunctionsToExport=@('$exports')}"),$utf8)
+            }
+            $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+(Join-Path $PSHOME 'Modules')
+            foreach($mode in @('Tooling','Distribution','MissingPreload')){
+                [IO.File]::WriteAllText($stagePath,('Dependency import: '+$mode),$utf8)
+                foreach($name in @('FrenchExDev2.QuietCli.Tooling.Tests.PoSh','FrenchExDev2.QuietCli.Distribution.Tests.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh')){Remove-Module $name -Force -ErrorAction SilentlyContinue}
+                if(@(Get-Module FrenchExDev2.QuietCli.Core.Tests.PoSh -All).Count){throw 'WorkerImportProbeNotIsolated'}
+                $testModule='FrenchExDev2.QuietCli.'+$(if($mode -ceq 'MissingPreload'){'Tooling'}else{$mode})+'.Tests.PoSh'
+                $testManifest=Join-Path $WorkspaceRoot ($testModule+'/'+$testModule+'.psd1')
+                $selected=@($imports|Where-Object {$mode -cne 'MissingPreload' -or $_.Extent.Text -notmatch 'FrenchExDev2\.QuietCli\.Core\.Tests\.PoSh'})
+                $body=($selected|ForEach-Object {$_.Extent.Text}) -join "`n"
+                'QUIETCLI_IMPORT_PROBE='+$mode
+                $warnings=@(& ([scriptblock]::Create($body)) 3>&1|Where-Object {$_ -is [Management.Automation.WarningRecord]})
+                foreach($warning in $warnings){$warning.Message}
+                if($mode -cne 'MissingPreload'){
+                    if($warnings.Count){throw ('WorkerDependencyImportEmittedWarnings: '+$mode)}
+                    $checks++
+                }
+            }
+            $result|Add-Member NoteProperty DependencyImportChecks $checks
             'QUIETCLI_HELPER_PROBE='+($result|ConvertTo-Json -Compress)
     }.ToString()
     $path=Join-Path $RunDirectory 'companion-helper-probe.ps1'
     [void][IO.File]::WriteAllTextAsync($path,$script,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-    $state=@{Receipt=$null;Diagnostics=[Collections.Generic.List[string]]::new()}
+    $state=@{Receipt=$null;Mode=$null;ImportWarnings=@{Tooling=0;Distribution=0;MissingPreload=0};Diagnostics=[Collections.Generic.List[string]]::new()}
     $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
     # Deliberate profile isolation detects caller/session dependencies hidden by workstation startup.
     $execution=Invoke-CiProcess -FilePath $runner -ArgumentList @('-NoProfile','-File',$path,$WorkspaceRoot,$RunDirectory) -TimeoutSeconds 45 -State $state -OnOutput {
         param($event,$state)
         $prefix='QUIETCLI_HELPER_PROBE='
         if($event.Text.StartsWith($prefix)){$state.Receipt=$event.Text.Substring($prefix.Length)|ConvertFrom-Json}
+        elseif($event.Text.StartsWith('QUIETCLI_IMPORT_PROBE=')){$state.Mode=$event.Text.Substring('QUIETCLI_IMPORT_PROBE='.Length)}
+        elseif($state.Mode -and $event.Text -match 'FrenchExDev2\.QuietCli\.Core\.Tests\.PoSh'){$state.ImportWarnings[$state.Mode]++}
         elseif($state.Diagnostics.Count -lt 8){$state.Diagnostics.Add($event.Text)}
     }
-    if($execution.Outcome -ne 'Success'){throw ('CompanionHelperScopeProbeFailed: '+($state.Diagnostics -join '; '))}
-    if(!$state.Receipt -or $state.Receipt.Helpers -ne 4 -or !$state.Receipt.Private){throw 'CompanionHelperScopeReceiptChanged'}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'companion-helper-process.json') @{Outcome=$execution.Outcome;ExitCode=$execution.ExitCode;ElapsedMs=$execution.ElapsedMs;Diagnostics=$state.Diagnostics.ToArray();Receipt=$state.Receipt;ImportWarnings=$state.ImportWarnings;MissingPreloadMutantDetected=($state.ImportWarnings.MissingPreload -gt 0)}
+    if($execution.Outcome -ne 'Success'){
+        $stagePath=Join-Path $RunDirectory 'companion-helper-stage.txt'
+        $stage=if(Test-Path -LiteralPath $stagePath){[IO.File]::ReadAllText($stagePath,[Text.Encoding]::UTF8)}else{'Not started'}
+        throw ('CompanionHelperScopeProbeFailed: '+$execution.Outcome+' at '+$stage+'; '+($state.Diagnostics -join '; '))
+    }
+    if(!$state.Receipt -or $state.Receipt.Helpers -ne 4 -or !$state.Receipt.Private -or $state.Receipt.DependencyImportChecks -ne 2){throw 'CompanionHelperScopeReceiptChanged'}
+    if($state.ImportWarnings.Tooling -or $state.ImportWarnings.Distribution){throw 'WorkerImplicitDependencyImportEmittedWarnings'}
+    if(!$state.ImportWarnings.MissingPreload){throw 'MissingPreloadWarningMutantSurvived'}
 }
 function Test-QuietGitHubCiJsonReceipts {
     <#
@@ -232,17 +282,28 @@ function Test-QuietGitHubCi {
         }
     }
     foreach($name in @('Invoke-GitHubCi.ps1','Common.ps1','EnvFile.ps1','Ci.Process.ps1','SourceIdentity.ps1','RuntimeTargets.ps1','ReportPaths.ps1','WorkspaceProjects.ps1')){Copy-Item -LiteralPath (Join-Path $WorkspaceRoot "scripts/$name") -Destination $scripts}
-    $worker='param($WorkspaceRoot,$RunDirectory,$Suite,$ExpectedRuntimeIdentifier,[switch]$SkipTty); . (Join-Path $PSScriptRoot Common.ps1); Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State="Success";Passed=3;Failed=0};WorkerPid=$PID;Suite=$Suite;SkipTty=[bool]$SkipTty}'
+    $worker='param($WorkspaceRoot,$RunDirectory,$Suite,$ExpectedRuntimeIdentifier,[switch]$SkipTty); . (Join-Path $PSScriptRoot Common.ps1); if(![IO.Path]::IsPathFullyQualified($WorkspaceRoot) -or ![IO.Path]::IsPathFullyQualified($RunDirectory)){throw "GitHubWorkerPathsMustBeAbsolute"}; Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State="Success";Passed=3;Failed=0};WorkerPid=$PID;Suite=$Suite;SkipTty=[bool]$SkipTty}'
     [void][IO.File]::WriteAllTextAsync((Join-Path $scripts 'Invoke-TestWorker.ps1'),$worker,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     $previous=$env:GITHUB_ACTIONS
     try{
         $env:GITHUB_ACTIONS='false';$rejected=$false
         try{$null=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot $fixture -Suite Import -SkipBuild}catch{$rejected=$true}
         if(!$rejected -or (Test-Path (Join-Path $fixture artifacts))){throw 'GitHubEntryRanOutsideGitHubContext'}
+        $env:GITHUB_ACTIONS='true'
+        Push-Location $RunDirectory
+        try{$null=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot './github-entry-fixture' -RunDirectory './relative-entry-run' -Suite Import -SkipBuild}finally{Pop-Location}
+        if(!(Test-Path -LiteralPath (Join-Path $RunDirectory 'relative-entry-run/summary.json'))){throw 'GitHubRelativeRunDirectoryLost'}
         $env:GITHUB_ACTIONS='true';$run=Join-Path $fixture 'artifacts/tests/direct'
         $result=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot $fixture -Suite Import -SkipBuild -SkipTty -RunDirectory $run
         $receipt=Get-Content -LiteralPath (Join-Path $run summary.json) -Raw -Encoding utf8|ConvertFrom-Json
         if($result.State -cne 'Success' -or $receipt.WorkerPid -ne $PID -or !$receipt.SkipTty){throw 'GitHubEntryDidNotExecuteDirectWorker'}
+        foreach($flag in @('Partial','Incomplete')){
+            $partialWorker=$worker.Replace(';WorkerPid',(';Suites=@(@{'+$flag+'=$true});WorkerPid'))
+            [IO.File]::WriteAllText((Join-Path $scripts Invoke-TestWorker.ps1),$partialWorker,[Text.UTF8Encoding]::new($false))
+            $rejected=$false
+            try{$null=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot $fixture -Suite Import -SkipBuild -RunDirectory (Join-Path $fixture ('artifacts/tests/'+$flag))}catch{$rejected=$_.Exception.Message -ceq 'GitHubCiRequiresCompleteUnfilteredSuites'}
+            if(!$rejected){throw ('GitHubEntryAccepted'+$flag+'Evidence')}
+        }
     }finally{$env:GITHUB_ACTIONS=$previous}
     $workflowPath=if($env:QUIETCLI_CI_CANDIDATE){$env:QUIETCLI_CI_CANDIDATE}else{Join-Path $WorkspaceRoot '.github/workflows/ci.yml'}
     $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
@@ -250,6 +311,10 @@ function Test-QuietGitHubCi {
     try{$workflow=$parser.Deserialize($reader,[object])}finally{$reader.Dispose()}
     $jobs=$workflow['jobs']
     foreach($name in $jobs.Keys){
+        if(!$jobs[$name].ContainsKey('steps')){
+            if(!$jobs[$name].ContainsKey('uses')){throw 'GitHubJobHasNoExecutionContract'}
+            continue
+        }
         $steps=@($jobs[$name]['steps'])
         for($index=0;$index -lt $steps.Count;$index++){
             if([string]$steps[$index]['uses'] -notlike 'actions/checkout@*'){continue}

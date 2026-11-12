@@ -54,7 +54,7 @@ if($Profiler){
         $ProfilerModulePath=$tools.ProfilerModulePath;$ClrProfilerPath=$tools.ClrProfilerPath
     }
 }
-if(!$SkipBuild -and $Suite -ne 'DotNet'){& (Join-Path $PSScriptRoot 'Build-Workspace.ps1') -WorkspaceRoot $WorkspaceRoot}
+if(!$SkipBuild -and $Suite -notin @('DotNet','RunProfilesMutation')){& (Join-Path $PSScriptRoot 'Build-Workspace.ps1') -WorkspaceRoot $WorkspaceRoot -Suite $Suite}
 if(!$RunDirectory){$RunDirectory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'tests') ([DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))}
 if(Test-Path -LiteralPath $RunDirectory){throw 'TestRunDirectoryExists'}
 [void][IO.Directory]::CreateDirectory($RunDirectory)

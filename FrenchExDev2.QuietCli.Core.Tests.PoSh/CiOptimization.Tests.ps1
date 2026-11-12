@@ -1,3 +1,70 @@
+function Get-QuietCiProfilerModules {
+    <#
+    .SYNOPSIS
+    Reads literal profiler selections from a parsed preparation command without executing workflow code.
+    .PARAMETER Text
+    PowerShell preparation step from the inspected workflow.
+    #>
+    param([string]$Text)
+    $tokens=$null;$errors=$null
+    $ast=[Management.Automation.Language.Parser]::ParseInput($Text,[ref]$tokens,[ref]$errors)
+    if($errors.Count){throw 'CiProfilerPreparationSyntaxInvalid'}
+    $commands=@($ast.FindAll({param($node)$node -is [Management.Automation.Language.CommandAst] -and $node.GetCommandName() -match '(^|[\\/])Initialize-Profilers\.ps1$'},$true))
+    if($commands.Count -ne 1){throw 'CiProfilerPreparationCommandRequired'}
+    $elements=$commands[0].CommandElements
+    $parameters=@(0..($elements.Count-1)|Where-Object {$elements[$_] -is [Management.Automation.Language.CommandParameterAst] -and $elements[$_].ParameterName -ieq 'Module'})
+    if($parameters.Count -ne 1){throw 'CiProfilerModulesRequired'}
+    $parameter=$elements[$parameters[0]]
+    $argument=if($parameter.Argument){$parameter.Argument}elseif($parameters[0]+1 -lt $elements.Count){$elements[$parameters[0]+1]}else{$null}
+    if(!$argument){throw 'CiProfilerModulesRequired'}
+    try{$modules=@($argument.SafeGetValue()|ForEach-Object {([string]$_).ToLowerInvariant()})}catch{throw 'CiProfilerModulesMustBeLiteral'}
+    if((($modules|Sort-Object) -join '|') -cne 'dottrace|profiler'){throw 'CiProfilerModulesIncomplete'}
+    $modules
+}
+
+function Assert-QuietCiProfilerPreparation {
+    <#
+    .SYNOPSIS
+    Separates optional product profiling from mandatory functional-tooling prerequisites.
+    .PARAMETER ProductWorkflow
+    Parsed reusable product workflow; only a restricted boolean condition is evaluated.
+    .PARAMETER ToolingWorkflow
+    Parsed tooling workflow whose preparation must precede its functional run.
+    #>
+    param($ProductWorkflow,$ToolingWorkflow)
+    $prepare=@($ProductWorkflow['jobs']['windows']['steps']|Where-Object {[string]$_['run'] -match 'Initialize-Profilers\.ps1'})
+    if($prepare.Count -ne 1){throw 'CiProductProfilerPreparationRequired'}
+    $null=Get-QuietCiProfilerModules ([string]$prepare[0]['run'])
+    $condition=([string]$prepare[0]['if']).Trim()
+    if($condition.StartsWith('${{') -and $condition.EndsWith('}}')){$condition=$condition.Substring(3,$condition.Length-5).Trim()}
+    # Whitelist the two declared inputs and boolean operators before translating to PowerShell.
+    if($condition -cnotmatch "\A(?:(?:needs\.linux-matrix\.outputs\.has_core|inputs\.collect_performance|'true'|'false')|&&|\|\||==|!=|[!()]|\s)+\z"){throw 'CiProductProfilerConditionInvalid'}
+    $expression=$condition.Replace('needs.linux-matrix.outputs.has_core','$hasCore').Replace('inputs.collect_performance','$collectPerformance').Replace('&&',' -and ').Replace('||',' -or ').Replace('==',' -eq ').Replace('!=',' -ne ').Replace('!',' -not ')
+    try{$evaluate=[scriptblock]::Create($expression)}catch{throw 'CiProductProfilerConditionInvalid'}
+    $properties=0
+    foreach($hasCore in @('true','false','','unknown')){foreach($collectPerformance in @($false,$true)){
+        $expected=$hasCore -ceq 'true' -and $collectPerformance
+        if([bool](& $evaluate) -ne $expected){throw 'CiProductProfilerScopeChanged'}
+        $properties++
+    }}
+    $steps=@($ToolingWorkflow['jobs']['tooling']['steps'])
+    $prepareIndices=@(0..($steps.Count-1)|Where-Object {[string]$steps[$_]['run'] -match 'Initialize-Profilers\.ps1'})
+    $runIndices=@(0..($steps.Count-1)|Where-Object {$steps[$_]['id'] -ceq 'run_profiles'})
+    if($prepareIndices.Count -ne 1 -or $runIndices.Count -ne 1){throw 'CiToolingProfilerPreparationRequired'}
+    $prepareIndex=$prepareIndices[0];$runIndex=$runIndices[0]
+    if($prepareIndex -ge $runIndex){throw 'CiToolingProfilerPreparationTooLate'}
+    $null=Get-QuietCiProfilerModules ([string]$steps[$prepareIndex]['run'])
+    foreach($index in @($prepareIndex,$runIndex)){
+        $condition=([string]$steps[$index]['if']).Trim()
+        if($condition.StartsWith('${{') -and $condition.EndsWith('}}')){$condition=$condition.Substring(3,$condition.Length-5).Trim()}
+        if($condition -and $condition -cne 'success()'){throw 'CiToolingProfilerMustRemainRequired'}
+    }
+    $preparation=[string]$steps[$prepareIndex]['run']
+    foreach($name in @('GITHUB_ENV','QUIETCLI_PROFILER_MODULE','QUIETCLI_CLR_PROFILER')){if(!$preparation.Contains($name)){throw 'CiToolingProfilerPathsNotForwarded'}}
+    if([string]$steps[$runIndex]['run'] -notmatch 'Invoke-GitHubCi\.ps1\s+-Suite\s+RunProfiles(?:\s|$)'){throw 'CiToolingProfilerFunctionalRunRequired'}
+    [pscustomobject]@{ProductScopeProperties=$properties;ToolingPreparationPrecedesRun=$true}
+}
+
 function Test-QuietCiFailureRegression {
     <#
     .SYNOPSIS
@@ -19,8 +86,12 @@ function Test-QuietCiFailureRegression {
     foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){
         foreach($suite in @('Core','Git','All')){
             $plan=& (Join-Path $WorkspaceRoot 'scripts/New-CiSuiteImage.ps1') -WorkspaceRoot $WorkspaceRoot -Suite $suite -RuntimeIdentifier $rid -PlanOnly
-            & $assertRecipe $plan.ContainerfileText $plan.ParentReference
-            if(!$plan.ParentReference.EndsWith(':'+$plan.Core.Fingerprint) -or !$plan.ParentReference.Contains('-'+$plan.Core.Architecture+':')){throw 'DockerParentDefaultLostIdentity'}
+            if($suite -ceq 'Core'){
+                if($plan.ContainerfileText.Contains('${CORE_IMAGE}') -or $plan.Fingerprint -cnotmatch '\A[a-f0-9]{64}\z'){throw 'CoreImageDependsOnBusinessOverlay'}
+            }else{
+                & $assertRecipe $plan.ContainerfileText $plan.ParentReference
+                if(!$plan.ParentReference.EndsWith(':'+$plan.Core.Fingerprint) -or !$plan.ParentReference.Contains('-'+$plan.Core.Architecture+':')){throw 'DockerParentDefaultLostIdentity'}
+            }
             $plans++
         }
     }
@@ -40,29 +111,88 @@ function Test-QuietCiFailureRegression {
     if(!$rejected){throw 'DockerEmptyDefaultMutantSurvived'}
     $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
     $yaml=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build()
-    $workflow=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/ci.yml'),[Text.Encoding]::UTF8))
-    $steps=@($workflow['jobs']['windows']['steps'])
-    $functional=@($steps|Where-Object {$_['id'] -ceq 'run_profiles'})
-    $mutation=@($steps|Where-Object {$_['id'] -ceq 'run_profiles_mutation'})
-    $upload=@($steps|Where-Object {$_['with'] -and $_['with']['path'] -ceq 'artifacts/run-profiles'})
-    if($functional.Count -ne 1 -or $mutation.Count -ne 1 -or $upload.Count -ne 1 -or $upload[0]['with']['if-no-files-found'] -cne 'error'){throw 'RunProfileEvidenceContractChanged'}
-    $condition=[string]$upload[0]['if']
-    $expression=$condition.Replace('always()','$true').Replace('needs.linux-matrix.outputs.has_core','$coreFlag').Replace('matrix.rid','$rid').Replace('matrix.channel','$channel').Replace('matrix.mode','$mode').Replace('steps.run_profiles_mutation.outcome','$mutationOutcome').Replace('steps.run_profiles.outcome','$functionalOutcome').Replace('&&','-and').Replace('||','-or').Replace('!=','-cne').Replace('==','-ceq')
-    $evaluate=[scriptblock]::Create($expression)
-    $states=@('','skipped','success','failure','cancelled');$properties=0
-    foreach($coreFlag in @('true','false')){foreach($rid in @('win-x64','win-arm64')){foreach($channel in @('stable','preview')){foreach($mode in @('InProcess','Process')){
-        foreach($functionalOutcome in $states){foreach($mutationOutcome in $states){
-            $expected=$coreFlag -ceq 'true' -and $rid -ceq 'win-x64' -and $channel -ceq 'stable' -and $mode -ceq 'InProcess' -and (@('success','failure','cancelled') -ccontains $functionalOutcome -or @('success','failure','cancelled') -ccontains $mutationOutcome)
-            if([bool](& $evaluate) -ne $expected){throw 'RunProfileUploadConditionChanged'}
-            $properties++
-        }}
-    }}}}
-    $coreFlag='true';$rid='win-x64';$channel='stable';$mode='InProcess';$functionalOutcome='skipped';$mutationOutcome='skipped'
-    $offset=$expression.IndexOf(' -and ((',[StringComparison]::Ordinal)
-    if($offset -lt 0){throw 'RunProfileOutcomeMutationAnchorMissing'}
-    $mutant=[scriptblock]::Create($expression.Substring(0,$offset))
-    if(![bool](& $mutant) -or [bool](& $evaluate)){throw 'RunProfileSkippedUploadMutantNotDetected'}
-    Write-WorkspaceJson (Join-Path $RunDirectory 'ci-failure-regression.json') @{ImagePlans=$plans;InvalidParentDefaults=5;UploadDecisionProperties=$properties;MutantsKilled=2;DockerBuildExecuted=$false;RemoteWorkflowExecuted=$false}
+    $workflow=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/tooling-ci.yml'),[Text.Encoding]::UTF8))
+    $functional=@($workflow['jobs']['tooling']['steps'])
+    $toolingUpload=@($functional|Where-Object {$_['with'] -and $_['with']['name'] -clike 'quietcli-tooling-*'})[0]
+    $reportPaths=@(([string]$toolingUpload['with']['path']).Trim().Split("`n")|ForEach-Object {$_.Trim()})
+    foreach($required in @('artifacts/tooling/tests/*.json','artifacts/tooling/tests/*.log','artifacts/run-profiles/tests/*.json','artifacts/core-independence/*/independence.json')){
+        if($required -cnotin $reportPaths){throw 'ToolingReportEvidenceMissing'}
+    }
+    foreach($path in $reportPaths){if($path -cnotmatch '\.(json|log)\z'){throw 'ToolingFixtureTreeUploadedOnSuccess'}}
+    $failureUpload=@($functional|Where-Object {$_['with'] -and $_['with']['name'] -clike 'quietcli-failed-tooling-fixtures-*'})
+    if($failureUpload.Count -ne 1 -or [string]$failureUpload[0]['if'] -cnotmatch '^failure\(\) && ' -or $failureUpload[0]['with']['retention-days'] -ne 7){throw 'ToolingFailureFixturesNotBounded'}
+    $mutation=@($workflow['jobs']['run-profiles-mutation']['steps'])
+    $product=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/ci.yml'),[Text.Encoding]::UTF8))
+    $profilerContract=Assert-QuietCiProfilerPreparation $product $workflow
+    $productText=$product|ConvertTo-Json -Depth 60 -Compress
+    $toolingText=$workflow|ConvertTo-Json -Depth 60 -Compress
+    $productSteps=@($product['jobs']['windows']['steps'])
+    $productIndex=@(0..($productSteps.Count-1)|Where-Object {[string]$productSteps[$_]['run'] -match 'Initialize-Profilers\.ps1'})[0]
+    $prepareIndex=@(0..($functional.Count-1)|Where-Object {[string]$functional[$_]['run'] -match 'Initialize-Profilers\.ps1'})[0]
+    $runIndex=@(0..($functional.Count-1)|Where-Object {$functional[$_]['id'] -ceq 'run_profiles'})[0]
+    $profilerProperties=0;$seed=20261112;$random=[Random]::new($seed)
+    $conditions=@(
+        "needs.linux-matrix.outputs.has_core == 'true' && inputs.collect_performance",
+        "inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true'",
+        "!(needs.linux-matrix.outputs.has_core != 'true' || !inputs.collect_performance)"
+    )
+    foreach($iteration in 1..24){
+        $candidateProduct=$productText|ConvertFrom-Json -AsHashtable
+        $candidateTooling=$toolingText|ConvertFrom-Json -AsHashtable
+        $condition=$conditions[$random.Next($conditions.Count)]
+        $condition=(' '*$random.Next(1,4))+'('+$condition+')'+(' '*$random.Next(1,4))
+        if($iteration%2){$condition='${{ '+$condition+' }}'}
+        $candidateProduct['jobs']['windows']['steps'][$productIndex]['if']=$condition
+        if($iteration%3){$candidateTooling['jobs']['tooling']['steps'][$prepareIndex]['run']=$candidateTooling['jobs']['tooling']['steps'][$prepareIndex]['run'].Replace('-Module profiler,dottrace','-Module dottrace,profiler')}
+        $profilerProperties+=(Assert-QuietCiProfilerPreparation $candidateProduct $candidateTooling).ProductScopeProperties
+    }
+    $damages=@(
+        @{Id='legacy-stable-row-condition';Change={param($p,$t)$p['jobs']['windows']['steps'][$productIndex]['if']="needs.linux-matrix.outputs.has_core == 'true' && (inputs.collect_performance || (matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'))"}},
+        @{Id='product-core-condition-only';Change={param($p,$t)$p['jobs']['windows']['steps'][$productIndex]['if']="needs.linux-matrix.outputs.has_core == 'true'"}},
+        @{Id='product-performance-condition-only';Change={param($p,$t)$p['jobs']['windows']['steps'][$productIndex]['if']='inputs.collect_performance'}},
+        @{Id='missing-product-preparation';Change={param($p,$t)$p['jobs']['windows']['steps'][$productIndex]['run']='Write-Host fixture'}},
+        @{Id='missing-product-clr-tool';Change={param($p,$t)$p['jobs']['windows']['steps'][$productIndex]['run']=$p['jobs']['windows']['steps'][$productIndex]['run'].Replace('-Module profiler,dottrace','-Module profiler')}},
+        @{Id='missing-tooling-ps-tool';Change={param($p,$t)$t['jobs']['tooling']['steps'][$prepareIndex]['run']=$t['jobs']['tooling']['steps'][$prepareIndex]['run'].Replace('-Module profiler,dottrace','-Module dottrace')}},
+        @{Id='missing-tooling-preparation';Change={param($p,$t)$t['jobs']['tooling']['steps'][$prepareIndex]['run']='Write-Host fixture'}},
+        @{Id='late-tooling-preparation';Change={param($p,$t)$steps=$t['jobs']['tooling']['steps'];$saved=$steps[$prepareIndex];$steps[$prepareIndex]=$steps[$runIndex];$steps[$runIndex]=$saved}},
+        @{Id='optional-tooling-preparation';Change={param($p,$t)$t['jobs']['tooling']['steps'][$prepareIndex]['if']='inputs.collect_performance'}},
+        @{Id='skipped-functional-run';Change={param($p,$t)$t['jobs']['tooling']['steps'][$runIndex]['if']='false'}},
+        @{Id='missing-tool-path-forwarding';Change={param($p,$t)$t['jobs']['tooling']['steps'][$prepareIndex]['run']=$t['jobs']['tooling']['steps'][$prepareIndex]['run'].Replace('QUIETCLI_CLR_PROFILER','UNRELATED_VARIABLE')}},
+        @{Id='dynamic-tool-selection';Change={param($p,$t)$t['jobs']['tooling']['steps'][$prepareIndex]['run']=$t['jobs']['tooling']['steps'][$prepareIndex]['run'].Replace('-Module profiler,dottrace','-Module $env:TOOLS')}}
+    )
+    foreach($damage in $damages){
+        $candidateProduct=$productText|ConvertFrom-Json -AsHashtable;$candidateTooling=$toolingText|ConvertFrom-Json -AsHashtable
+        & $damage.Change $candidateProduct $candidateTooling
+        $rejected=$false;try{$null=Assert-QuietCiProfilerPreparation $candidateProduct $candidateTooling}catch{$rejected=$_.Exception.Message -match '^Ci(?:ProductProfiler|ToolingProfiler|Profiler)'}
+        if(!$rejected){throw ('CiProfilerWorkflowMutationAccepted: '+$damage.Id)}
+    }
+    $conditionDamages=@('inputs.collect_performance; throw "must never execute"','$(throw "must never execute")',"needs.linux-matrix.outputs.has_core == 'true' && inputs.collect_performance`0")
+    foreach($condition in $conditionDamages){
+        $candidateProduct=$productText|ConvertFrom-Json -AsHashtable
+        $candidateProduct['jobs']['windows']['steps'][$productIndex]['if']=$condition
+        $rejected=$false;try{$null=Assert-QuietCiProfilerPreparation $candidateProduct $workflow}catch{$rejected=$_.Exception.Message -ceq 'CiProductProfilerConditionInvalid'}
+        if(!$rejected){throw 'CiProfilerUnsafeConditionAccepted'}
+    }
+    if(@($functional|Where-Object {$_['id'] -ceq 'run_profiles'}).Count -ne 1 -or @($mutation|Where-Object {$_['id'] -ceq 'run_profiles_mutation'}).Count -ne 1){throw 'RunProfileEvidenceContractChanged'}
+    $properties=0
+    foreach($spec in @(@{Steps=$functional;Name='quietcli-tooling-*';Dual=$true},@{Steps=$mutation;Name='quietcli-run-profiles-mutation-*';Dual=$false})){
+        $upload=@($spec.Steps|Where-Object {$_['with'] -and $_['with']['name'] -like $spec.Name})
+        if($upload.Count -ne 1 -or $upload[0]['with']['if-no-files-found'] -cne 'error'){throw 'RunProfileEvidenceContractChanged'}
+        $expression=([string]$upload[0]['if']).Replace('always()','$true').Replace('steps.tooling_tests.outcome','$toolingOutcome').Replace('steps.run_profiles_mutation.outcome','$mutationOutcome').Replace('steps.run_profiles.outcome','$functionalOutcome').Replace('&&','-and').Replace('||','-or').Replace('!=','-cne')
+        $evaluate=[scriptblock]::Create($expression)
+        foreach($toolingOutcome in @('','skipped','success','failure','cancelled')){
+            foreach($functionalOutcome in @('','skipped','success','failure','cancelled')){
+                foreach($mutationOutcome in @('','skipped','success','failure','cancelled')){
+                    $expected=if($spec.Dual){@('success','failure','cancelled') -ccontains $toolingOutcome -or @('success','failure','cancelled') -ccontains $functionalOutcome}else{@('success','failure','cancelled') -ccontains $mutationOutcome}
+                    if([bool](& $evaluate) -ne $expected){throw 'RunProfileUploadConditionChanged'}
+                    $properties++
+                }
+            }
+        }
+        $toolingOutcome='skipped';$functionalOutcome='skipped';$mutationOutcome='skipped'
+        if([bool](& $evaluate)){throw 'RunProfileSkippedUploadMutantNotDetected'}
+    }
+    Write-WorkspaceJson (Join-Path $RunDirectory 'ci-failure-regression.json') @{ImagePlans=$plans;InvalidParentDefaults=5;UploadDecisionProperties=$properties;MutantsKilled=2;ProfilerScopeProperties=($profilerProperties+$profilerContract.ProductScopeProperties);ProfilerWorkflowMutationsRejected=$damages.Count;MalformedProfilerConditionsRejected=$conditionDamages.Count;ProfilerSeed=$seed;DockerBuildExecuted=$false;RemoteWorkflowExecuted=$false}
 }
 
 function Test-QuietCiOptimization {
@@ -263,8 +393,14 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
     try{
         $selection=[pscustomobject]@{Images=@('Core','Git')}
         $resolved=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ResolveOnly -ContainerRuntime docker} $warmRoot $selection
+        $probed=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ProbeOnly -ContainerRuntime docker} $warmRoot $selection
         $pulled=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ContainerRuntime docker} $warmRoot $selection
         if(!$resolved.RegistryOnly -or !$resolved.CacheHit -or $pulled.Image -cne 'verified-final-local'){throw 'WarmFinalImagePreparedParents'}
+        if(!$probed.RegistryOnly -or !$probed.CacheHit){throw 'ProbePreparedWarmImage'}
+        $missSource=$images.Replace('if(!$IncludeConfiguration)', 'if($true){return};if(!$IncludeConfiguration)')
+        [IO.File]::WriteAllText((Join-Path $warmScripts CiImages.ps1),$missSource,[Text.UTF8Encoding]::new($false))
+        $miss=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ProbeOnly -ContainerRuntime docker} $warmRoot $selection
+        if(!$miss.RegistryOnly -or $miss.CacheHit){throw 'ProbePreparedMissingImage'}
     }finally{Remove-Module -ModuleInfo $module -Force}
     $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
     $yaml=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build()

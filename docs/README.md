@@ -4,6 +4,8 @@ Start with the [product README](../README.md) for installation, requirements and
 
 ## Usage guides
 
+- [Distribution test companion](../FrenchExDev2.QuietCli.Distribution.Tests.PoSh/README.md): one complete six-RID packaging qualification outside the native matrix.
+
 - [Core test classification and concurrency](README-test-classification-and-concurrency.md): explicit case metadata, fail-closed checks and process-isolation candidates.
 
 - [.NET SDK installation and global.json updates](../README-dotnet-and-global-dot-json.md): release checks, verified portable SDKs, optional images and backed-up SDK pins.
@@ -41,6 +43,10 @@ The [agent documentation index](agents/README.md) identifies distributed instruc
 
 ## Development, CI and distribution
 
+- [CI map and source-change landmarks](ci/README.md): workflow routing, dates/commits, script responsibilities and evidence boundaries.
+
+- [Scalable companion qualification](ci/scalable-companions.md): consumer boundaries, Core independence, affected suites, intermediate caches, bounded mutation and verified develop reuse.
+
 - [CI companions and independent integration suites](scripts/lib/CiCompanions.md): YAML declarations,
   dependency expansion, image composition and shared script entry points.
 - [Add a companion](../README-add-companion.md): product/test projects, Vagrant, dedicated integration
@@ -55,11 +61,11 @@ Repository development follows the root [AGENTS.md](../AGENTS.md). Consumer-proj
 - [Projects, suites and package eligibility](README-workspace-projects.md): reusable manifest discovery, dynamic suite parameters and explicit public-package policy.
 - [Development workstation](../README-development-workstation.md): platform-specific installations and the host-aware prerequisite installer, including VS Code Stable/Insiders.
 - [Local workflows with wrkflw](scripts/README-wrkflw-plan.md): pinned workstation integration, released capabilities and the explicit backlog of PowerShell usage helpers.
-- [CI execution model](ci/execution-model.md): direct and indirect Podman dependencies, GitHub/local boundaries, image identity and known adaptation gaps.
+- [CI execution model](ci/execution-model.md): shared workers, GitHub/local boundaries, Linux routing, qualification gates and Gallery publication.
 - [Deterministic local/GitHub environment](ci/environment.md): dotenv editing, runtime precedence, generated presets and the RAC-ENV-001 contract.
 - [Editor extensions](README-development-editor-extensions.md): export the installed inventory and install/update the saved set in Stable or Insiders with `-WhatIf` and `-Update`.
 - [Tests and qualification](../README-qualification.md): companion suites, property testing, fuzzing, mutation campaigns and qualification limits.
-- [Qualification: when, where and how](../README-qualification-when-where-how.md): PR path filters, Windows hosts, Linux job containers/Docker fallback, actual test execution, local entry points and excluded scopes.
+- [Qualification: when, where and how](../README-qualification-when-where-how.md): affected-suite planning, Windows hosts, Linux job containers/Docker fallback, tooling, actual test execution and excluded scopes.
 - [Commit-suite boundaries and PSDrive feasibility](testing/commit-workspace.md): optional local campaigns, integration labels, physical Git fixtures and pure logic separation.
 - [Repository and distribution](../README-distribution.md): monorepo layout, packaging and publication gates.
 - [Credits and syncing](README-credits-and-syncing.md): why `CREDITS.md` is generated, the two sync scripts, their check/apply workflows and how to run the sync locally.

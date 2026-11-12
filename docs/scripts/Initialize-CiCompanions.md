@@ -15,8 +15,7 @@ resource preparation or output writes.
 ./scripts/Initialize-CiCompanions.ps1 -Suite All -RuntimeIdentifier win-x64 -RuntimeMajor 11 -EnvironmentPath $env:GITHUB_ENV
 ```
 
-Tool dependencies do not select their test suites: Core requiring Git's handler does not enable
-Git mutations. Integration suites declare several companions and their own test module/command.
+Tool dependencies do not select their test suites: a required Git executable does not select Git handler tests or mutations. Integration suites declare several companions and their own test module/command.
 
 <!-- script-contract:begin -->
 ## Execution contract

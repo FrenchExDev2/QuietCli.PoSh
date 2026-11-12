@@ -15,7 +15,7 @@ on:
       - 'docs/resources/**'
       - 'README-resources.md'
       - 'FrenchExDev2.QuietCli.Core.PoSh/resources/**'
-      - '.github/actions/cache-resources/**'
+      - '.github/actions/**'
       - 'build/script-shouldprocess.json'
       - '.github/workflows/**'
   push:

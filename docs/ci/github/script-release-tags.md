@@ -12,6 +12,10 @@ Run titles include the triggering module tag. Multiple operator-created tags may
 
 Push tags matching FrenchExDev2.QuietCli.*.PoSh/v*. The wildcard supplies routing, not permission: the plan discovers the exact owner and requires its publication flag/version. No branch, PR or manual trigger. Only the original repository runs the plan.
 
+## Release routing
+
+The plan validates tag owner/version/publication eligibility and annotated batch membership. A batch leader shares one All qualification and one packaging build; other tag planning runs do not each repeat the expensive matrix. Prepared packages are published in dependency order after validation. Branch/PR/cache-only evidence cannot authorize this path. See [publication boundaries](../execution-model.md#gallery-publication) and [source-change landmarks](../README.md#source-change-landmarks).
+
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
 

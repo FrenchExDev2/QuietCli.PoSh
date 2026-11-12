@@ -6,6 +6,11 @@ on:
         description: Exact revision accepted by all required qualification jobs
         value: ${{ jobs.qualification-gate.outputs.qualified_sha }}
     inputs:
+      run_tooling:
+        description: Require repository automation and run-profile mutation independently of the product matrix
+        type: boolean
+        required: false
+        default: true
       suite:
         type: string
         required: false
@@ -17,6 +22,16 @@ on:
         default: true
   workflow_dispatch:
     inputs:
+      images_only:
+        description: Warm verified Linux image caches on develop without product qualification
+        type: boolean
+        required: false
+        default: false
+      run_tooling:
+        description: Require repository automation and run-profile mutation independently of the product matrix
+        type: boolean
+        required: false
+        default: true
       suite:
         description: Declared test suite or All
         type: string
@@ -29,11 +44,13 @@ on:
         default: true
 permissions:
   contents: read
+env:
+  QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
 jobs:
   qualification-gate:
     name: QuietCli2 qualification gate
-    needs: [linux-matrix, windows, linux-result, performance-results]
-    if: ${{ always() }}
+    needs: [linux-matrix, windows, linux-result, performance-results, tooling]
+    if: ${{ always() && !inputs.images_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -54,17 +71,24 @@ jobs:
           WINDOWS_RESULT: ${{ needs.windows.result }}
           LINUX_RESULT: ${{ needs.linux-result.result }}
           PERFORMANCE_RESULT: ${{ needs.performance-results.result }}
+          TOOLING_RESULT: ${{ needs.tooling.result }}
+          TOOLING_MUTATION_RESULT: ${{ needs.tooling.result }}
+          REQUIRE_TOOLING: ${{ inputs.run_tooling }}
         run: |
           # Objective: Fail closed and emit a commit-bound receipt only after every required check succeeds.
-          ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -PerformanceResult $env:PERFORMANCE_RESULT -MutationResult skipped -SkipTty -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
+          ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -PerformanceResult $env:PERFORMANCE_RESULT -MutationResult skipped -ToolingResult $env:TOOLING_RESULT -ToolingMutationResult $env:TOOLING_MUTATION_RESULT -RequireTooling:($env:REQUIRE_TOOLING -ceq 'true') -SkipTty -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: quietcli2-qualification-gate
           path: artifacts/qualification-gate
+  tooling:
+    if: inputs.run_tooling && !inputs.images_only
+    uses: ./.github/workflows/tooling-ci.yml
   windows:
     name: Windows (${{ matrix.rid }}, ${{ matrix.channel }}, ${{ matrix.mode }})
     needs: linux-matrix
+    if: ${{ !inputs.images_only }}
     env:
       QUIETCLI_SUITE_HAS_CORE: ${{ needs.linux-matrix.outputs.has_core }}
     strategy:
@@ -142,14 +166,14 @@ jobs:
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_PATH,($hostInfo.Directory+"`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
       - name: Build all required distributions in Release
         shell: pwsh
-        run: ./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
+        run: ./scripts/Build-Workspace.ps1 -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
       - name: Resolve declared companion qualification controls
         shell: pwsh
         env:
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
         run: ./scripts/Initialize-CiCompanions.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier '${{ matrix.rid }}' -RuntimeMajor ${{ matrix.runtime_major }} -EnvironmentPath $env:GITHUB_ENV
       - name: Prepare checksum-pinned PowerShell and CLR profilers
-        if: needs.linux-matrix.outputs.has_core == 'true' && (inputs.collect_performance || (matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'))
+        if: needs.linux-matrix.outputs.has_core == 'true' && inputs.collect_performance
         shell: pwsh
         run: |
           $tools=./scripts/Initialize-Profilers.ps1 -Module profiler,dottrace -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-profilers')
@@ -173,23 +197,6 @@ jobs:
             $parameters.Profiler=$true;$parameters.ProfilerModulePath=$env:QUIETCLI_PROFILER_MODULE;$parameters.ClrProfilerPath=$env:QUIETCLI_CLR_PROFILER
           }
           ./scripts/Invoke-GitHubCi.ps1 @parameters
-      - name: Require the complete run-profile tooling suite
-        id: run_profiles
-        if: needs.linux-matrix.outputs.has_core == 'true' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
-        shell: pwsh
-        run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfiles -SkipBuild -RunDirectory ./artifacts/run-profiles/tests
-      - name: Require every run-profile tooling mutant to be detected
-        id: run_profiles_mutation
-        if: needs.linux-matrix.outputs.has_core == 'true' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess'
-        shell: pwsh
-        run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfilesMutation -SkipBuild -RunDirectory ./artifacts/run-profiles/mutation
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: always() && needs.linux-matrix.outputs.has_core == 'true' && matrix.rid == 'win-x64' && matrix.channel == 'stable' && matrix.mode == 'InProcess' && ((steps.run_profiles.outcome != '' && steps.run_profiles.outcome != 'skipped') || (steps.run_profiles_mutation.outcome != '' && steps.run_profiles_mutation.outcome != 'skipped'))
-        with:
-          name: quietcli-run-profiles-${{ github.sha }}
-          path: artifacts/run-profiles
-          if-no-files-found: error
-          retention-days: 30
       - name: Assemble revision-bound report and trace evidence
         if: always()
         shell: pwsh
@@ -252,7 +259,10 @@ jobs:
         shell: pwsh
         env:
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+          QUIETCLI_IMAGES_ONLY: ${{ inputs.images_only }}
         run: |
+          . ./scripts/GitHubCi.ps1
+          Assert-GitHubCiImagePreparationContext -ImagesOnly:($env:QUIETCLI_IMAGES_ONLY -ceq 'true') -Event $env:GITHUB_EVENT_NAME -Ref $env:GITHUB_REF -Repository $env:GITHUB_REPOSITORY
           ./scripts/Initialize-CiCompanions.ps1 -Suite $env:QUIETCLI_SUITE -OutputPath $env:GITHUB_OUTPUT
           # Objective: single source of truth shared by image and execution jobs,
           # instead of three hand-duplicated YAML copies of the same four native targets.
@@ -286,6 +296,21 @@ jobs:
       - name: Initialize deterministic GitHub environment
         shell: pwsh
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+      - name: Probe final image before restoring intermediate layers
+        id: image_probe
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          $probe=./scripts/New-CiSuiteImage.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -ProbeOnly
+          [IO.File]::AppendAllText($env:GITHUB_OUTPUT,"cache_hit=$($probe.CacheHit.ToString().ToLowerInvariant())`nfingerprint=$($probe.Fingerprint)`n",[Text.UTF8Encoding]::new($false))
+      - uses: ./.github/actions/cache-ci-layers
+        if: steps.image_probe.outputs.cache_hit != 'true'
+        with:
+          mode: restore
+          rid: ${{ matrix.rid }}
+          fingerprint: ${{ steps.image_probe.outputs.fingerprint }}
       - name: Prepare the image layers declared by the selected suites
         shell: pwsh
         env:
@@ -293,6 +318,12 @@ jobs:
           QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
         run: ./scripts/New-CiSuiteImage.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -PublishCache -ResolveOnly -ContainerRuntime docker
+      - uses: ./.github/actions/cache-ci-layers
+        if: steps.image_probe.outputs.cache_hit != 'true'
+        with:
+          mode: save
+          rid: ${{ matrix.rid }}
+          fingerprint: ${{ steps.image_probe.outputs.fingerprint }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -301,7 +332,7 @@ jobs:
   linux-selection:
     name: Select verified Linux images and Docker fallback
     needs: [linux-matrix, linux-images]
-    if: ${{ always() && !cancelled() && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') }}
+    if: ${{ always() && !cancelled() && !inputs.images_only && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -372,7 +403,7 @@ jobs:
       - name: Verify source lock and restore pinned resources
         run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Build distributions in the selected native toolchain image
-        run: ./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
+        run: ./scripts/Build-Workspace.ps1 -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
       - name: Run selected suites directly inside the GitHub job container
         env:
           EXPECTED_RID: ${{ matrix.rid }}
@@ -455,7 +486,33 @@ jobs:
         run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Build engines for the six distributions
         shell: pwsh
-        run: ./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
+        run: ./scripts/Build-Workspace.ps1 -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
+      - name: Plan the intermediate cache key without registry or daemon access
+        id: image_plan
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+        run: |
+          $plan=./scripts/New-CiSuiteImage.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -PlanOnly
+          [IO.File]::AppendAllText($env:GITHUB_OUTPUT,"fingerprint=$($plan.Fingerprint)`n",[Text.UTF8Encoding]::new($false))
+      - uses: ./.github/actions/cache-ci-layers
+        with:
+          mode: restore
+          rid: ${{ matrix.rid }}
+          fingerprint: ${{ steps.image_plan.outputs.fingerprint }}
+      - name: Prepare the selected native image
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          $image=./scripts/New-CiSuiteImage.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -ContainerRuntime docker
+          [IO.File]::AppendAllText($env:GITHUB_ENV,"QUIETCLI_NATIVE_IMAGE=$($image.Image)`n",[Text.UTF8Encoding]::new($false))
+      - uses: ./.github/actions/cache-ci-layers
+        with:
+          mode: save
+          rid: ${{ matrix.rid }}
+          fingerprint: ${{ steps.image_plan.outputs.fingerprint }}
       - name: Run selected suites and Core integration in the native image
         shell: pwsh
         env:
@@ -466,10 +523,9 @@ jobs:
           QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
         run: |
           # Objectif : Réutiliser le cache publié ; construire localement si une PR ne peut pas y accéder.
-          $image = ./scripts/New-CiSuiteImage.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -ContainerRuntime docker
           # Core/All also requires Core-only controlled Git evidence on every Linux matrix RID.
           # Objectif : Tester sans réseau dans l’image native dont l’identité vient d’être vérifiée.
-          $parameters=@{Image=$image.Image;Platform=$env:PLATFORM;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID;SkipBuild=$true;SkipTty=$true;RunDirectory='./artifacts/containers/github-docker'}
+          $parameters=@{Image=$env:QUIETCLI_NATIVE_IMAGE;Platform=$env:PLATFORM;Suite=$env:QUIETCLI_SUITE;ExpectedRuntimeIdentifier=$env:EXPECTED_RID;SkipBuild=$true;SkipTty=$true;RunDirectory='./artifacts/containers/github-docker'}
           if($env:QUIETCLI_COLLECT_PERFORMANCE -ceq 'true' -and $env:QUIETCLI_SUITE_HAS_CORE -ceq 'true'){
             $tools=./scripts/Initialize-Profilers.ps1 -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-profilers')
             $parameters.Profiler=$true;$parameters.ProfilerModulePath=$tools.ProfilerModulePath;$parameters.ClrProfilerPath=$tools.ClrProfilerPath
@@ -516,7 +572,7 @@ jobs:
   linux-result:
     name: Require every selected Linux execution path
     needs: [linux-selection, linux, linux-test-driver]
-    if: always()
+    if: ${{ always() && !inputs.images_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -540,7 +596,7 @@ jobs:
   performance-results:
     name: Readable performance evidence for the complete matrix
     needs: [linux-matrix, windows, linux, linux-test-driver]
-    if: ${{ always() && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }}
+    if: ${{ always() && !inputs.images_only && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

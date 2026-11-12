@@ -41,7 +41,7 @@ A Core-consumer module `FrenchExDev2.QuietCli.<Module>.PoSh` owns, under its own
 
   | Property | Shape | Meaning |
   |---|---|---|
-  | `Arguments` | ordered hashtable | Podman build ARGs specific to the module (for example `GIT_URL`, `GIT_SHA256`). |
+  | `Arguments` | ordered hashtable | Docker/Podman build ARGs specific to the module (for example `GIT_URL`, `GIT_SHA256`). |
   | `InputPaths` | string array | The module's own files that participate in the module's cache fingerprint. Never a Core-owned path. |
   | `Containerfile` | object (a *fragment*, not a path) | `Platform`, `Objective`, `Stages` — an ordered list of stage declarations, described below. |
 
@@ -81,7 +81,7 @@ actual Containerfile text.
      but the parent can be the preceding overlay. A changed intermediate layer invalidates every
      descendant, as does a change to Core's base.
   The registry path carries the module suffix: `frenchexdev2/quietcli2-ci-{platform}-{architecture}-{module}`.
-- `Invoke-QuietCiImageBuild` is the shared Podman build/pull/push/verify/receipt orchestration, reused by
+- `Invoke-QuietCiImageBuild` is the shared Docker/Podman build/pull/push/verify/receipt orchestration, reused by
   both Core's own `New-CiImage.ps1` and every module's build — not duplicated per module.
 
 ## `scripts/New-CiModuleImage.ps1`
@@ -94,7 +94,7 @@ The single, generic entrypoint for every module, parameterized by `-Module`:
 2. Invokes the module's `ci/Get-CiImageArguments.ps1` by its fixed path, then resolves the fragment
    and fingerprint. A missing declaration fails with `CiModuleContractMissing: <path>`.
    `-PlanOnly` returns here, without native execution or registry access.
-3. For preparation, uses `-ParentImage` when a parent plan is supplied; otherwise it prepares Core via
+3. Registry reuse checks the final overlay before Core preparation. A verified hit returns without preparing parents. On a miss, uses `-ParentImage` when a parent plan is supplied; otherwise it prepares Core via
    `New-CiImage.ps1`. A supplied parent image is checked for ID, native architecture, input fingerprint
    and source label before use. Metadata reads are bounded.
 4. Tags the prepared parent locally as
@@ -125,6 +125,8 @@ Image selection delegates to `New-CiSuiteImage.ps1` and `scripts/lib/CiCompanion
 plan is used for registry lookup and Docker fallback. Suite registration, generic entry triggers
 and cross-product integration belong to [the onboarding guide's CI section](../README-add-companion.md#5-ci).
 This reference does not define a second registration procedure or a per-module workflow.
+
+One native producer matrix prepares the base and required overlays in the same job. Core alone uses the base; All reuses its final image for Core then bounded companion workers. Final registry hits avoid unused parents and intermediate-cache transfer. The Docker-only BuildKit cache and trusted develop/cache-only publication are described in [Linux images](ci/linux-images.md). See [the dated CI map](ci/README.md) for the corresponding source changes.
 
 <!-- credits:begin -->
 ## Credits

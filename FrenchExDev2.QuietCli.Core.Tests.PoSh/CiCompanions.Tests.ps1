@@ -11,7 +11,7 @@ function Test-QuietCiCompanions {
     Import-Module $library
     $configuration=Read-QuietCiCompanions $WorkspaceRoot
     $core=Resolve-QuietCiCompanions $configuration -Suite Core -RuntimeIdentifier win-x64 -RuntimeMajor 11
-    if(($core.Images -join ',') -cne 'Core,Git' -or @($core.Environment.Values|Where-Object {$_ -cne '0'}).Count){throw 'CoreTestToolDependencyChanged'}
+    if(($core.Images -join ',') -cne 'Core' -or ($core.Dependencies -join ',') -cne 'Core' -or @($core.Environment.Values|Where-Object {$_ -cne '0'}).Count){throw 'CoreTestToolDependencyChanged'}
     $git=Resolve-QuietCiCompanions $configuration -Suite Git -RuntimeIdentifier win-x64 -RuntimeMajor 11
     if($git.HasCoreEvidence -or @($git.Environment.Values|Where-Object {$_ -ceq '1'}).Count -ne 6){throw 'CompanionQualificationControlsChanged'}
     $vagrant=Resolve-QuietCiCompanions $configuration -Suite Vagrant
@@ -28,6 +28,12 @@ function Test-QuietCiCompanions {
     $tests=Join-Path $source $testProject
     [void][IO.Directory]::CreateDirectory($tests)
     $utf8=[Text.UTF8Encoding]::new($false)
+    foreach($component in @('Core','Vagrant')){
+        $product='FrenchExDev2.QuietCli.'+$component+'.PoSh'
+        $testsName='FrenchExDev2.QuietCli.'+$component+'.Tests.PoSh'
+        New-QuietWorkspaceFixtureProject $source $product -Metadata ("@{TestsModule='"+$testsName+"'}")
+        New-QuietWorkspaceFixtureProject $source $testsName @($product) -Command ('Invoke-Quiet'+$component+'Tests')
+    }
     [IO.File]::WriteAllText((Join-Path $tests ($testProject+'.psd1')),"@{ModuleVersion='1.0.0';RootModule='DoNotImport.psm1';FunctionsToExport=@('Invoke-QuietPairTests')}`n",$utf8)
     [IO.File]::WriteAllText((Join-Path $tests 'DoNotImport.psm1'),"throw 'ConfigurationDiscoveryImportedTestCode'`n",$utf8)
     $prefix="schema: 1`ncompanions:`n  Core:`n    requires: []`n    image: base`n  Vagrant:`n    requires: [Core]`n    image: none`n"
@@ -37,7 +43,7 @@ function Test-QuietCiCompanions {
         $previous=if($index -eq 1){'Core'}else{'Node'+($index-1).ToString('000')}
         [void]$nodes.Append("  ${name}:`n    requires: [$previous]`n    image: none`n")
     }
-    $suffix="suites:`n  CoreVagrantIntegration:`n    test_project: $testProject`n    command: Invoke-QuietPairTests`n    requires: [Core, Vagrant, Node100]`n    core_evidence: false`n"
+    $suffix="suites:`n  Core:`n    test_project: FrenchExDev2.QuietCli.Core.Tests.PoSh`n    command: Invoke-QuietCoreTests`n    requires: [Core]`n    core_evidence: false`n  Vagrant:`n    test_project: FrenchExDev2.QuietCli.Vagrant.Tests.PoSh`n    command: Invoke-QuietVagrantTests`n    requires: [Vagrant]`n    core_evidence: false`n  CoreVagrantIntegration:`n    test_project: $testProject`n    command: Invoke-QuietPairTests`n    requires: [Core, Vagrant, Node100]`n    core_evidence: false`n"
     $yaml=$nodes.ToString()+$suffix
     $path=Join-Path $source 'build/companions.yml'
     [void][IO.Directory]::CreateDirectory((Split-Path $path -Parent))
@@ -49,7 +55,7 @@ function Test-QuietCiCompanions {
     $runner=@(Get-QuietWorkspaceSuiteSelection $source CoreVagrantIntegration)
     if($runner.Count -ne 1 -or $runner[0].TestsModule -cne $testProject -or $runner[0].Command -cne 'Invoke-QuietPairTests'){throw 'DedicatedIntegrationRunnerNotSelected'}
     $all=Resolve-QuietCiCompanions $generated -Suite All
-    if(($all.Selected -join ',') -cne 'CoreVagrantIntegration'){throw 'AllDidNotDiscoverIndependentIntegrationSuite'}
+    if(($all.Selected -join ',') -cne 'Core,Vagrant,CoreVagrantIntegration'){throw 'AllDidNotDiscoverIndependentIntegrationSuite'}
     $random=[Random]::new(20261111);$properties=0
     foreach($round in 1..48){
         $last=$random.Next(1,101)
@@ -172,6 +178,10 @@ function Test-QuietCiCompanions {
     $null=Invoke-QuietCiSuiteImage -WorkspaceRoot $missing -Selection $selection -RuntimeIdentifier linux-arm64 -WhatIf
     if(Test-Path -LiteralPath $missing){throw 'CompanionLibraryPreviewCreatedFiles'}
     $entry=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/companions-ci.yml'),[Text.Encoding]::UTF8)
-    if(!$entry.Contains("'FrenchExDev2.QuietCli.*.PoSh/**'") -or !$entry.Contains('suite: All') -or (Test-Path (Join-Path $WorkspaceRoot '.github/workflows/git-ci.yml')) -or (Test-Path (Join-Path $WorkspaceRoot '.github/workflows/core-ci.yml'))){throw 'PerCompanionEntryWorkflowRequired'}
+    $workflow=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build().Deserialize($entry)
+    if(!$workflow['on'].ContainsKey('pull_request') -or $null -ne $workflow['on']['pull_request'] -or !$workflow['jobs'].ContainsKey('plan') -or
+        $workflow['jobs']['companions']['with']['suite'] -cne '${{ needs.plan.outputs.suite }}' -or
+        $workflow['jobs']['ci-status']['name'] -cne 'QuietCli required CI' -or
+        (Test-Path (Join-Path $WorkspaceRoot '.github/workflows/git-ci.yml')) -or (Test-Path (Join-Path $WorkspaceRoot '.github/workflows/core-ci.yml'))){throw 'PerCompanionEntryWorkflowRequired'}
     Write-WorkspaceJson (Join-Path $RunDirectory 'ci-companions.json') @{Seed=20261111;GeneratedCompanions=100;DependencyProperties=$properties;MalformedYamlInputs=$invalid.Count;ParentIdentityRejections=$imageChecks;MutantsKilled=3;DedicatedIntegrationRunner=$true;ReverseCoreDependency=$false;NativeExecutions=0;SourceSHA256=(Get-FileHash $library).Hash}
 }

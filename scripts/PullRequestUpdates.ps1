@@ -33,9 +33,11 @@ function Send-QuietPullRequestUpdate {
     Feature/fix branch; other branch families skip the update.
     .PARAMETER Body
     Optional reviewed Markdown explaining changes and actual validation; omitted uses PR commit titles.
+    .PARAMETER Description
+    Explicit reviewed PR description to replace through gh pr edit after checkpoint verification.
     #>
     [CmdletBinding(SupportsShouldProcess)]
-    param([string]$WorkspaceRoot,[string]$Remote,[string]$Branch,[AllowNull()][AllowEmptyString()][string]$Body)
+    param([string]$WorkspaceRoot,[string]$Remote,[string]$Branch,[AllowNull()][AllowEmptyString()][string]$Body,[AllowNull()][string]$Description)
     if($Branch -cnotmatch '^(feature|fix)/'){return}
     if(!$PSCmdlet.ShouldProcess($Branch,'Comment on the existing GitHub pull request')){return}
     $url=Invoke-QuietPullRequestTool $WorkspaceRoot git @('remote','get-url',$Remote)
@@ -50,6 +52,15 @@ function Send-QuietPullRequestUpdate {
     $pr=(Invoke-QuietPullRequestTool $WorkspaceRoot gh @('pr','view',$number,'--repo',$repository,'--json','headRefOid,commits'))|ConvertFrom-Json
     $revision=Invoke-QuietPullRequestTool $WorkspaceRoot git @('rev-parse','--verify',('refs/heads/'+$Branch))
     if($pr.headRefOid -cnotmatch '\A[0-9a-f]{40}\z' -or $pr.headRefOid -cne $revision){throw 'PullRequestCheckpointChanged'}
+    if($PSBoundParameters.ContainsKey('Description')){
+        if([string]::IsNullOrWhiteSpace($Description) -or $Description.Length -gt 60000){throw 'PullRequestDescriptionInvalid'}
+        $descriptionPath=Join-Path ([IO.Path]::GetTempPath()) ('quietcli-pr-description-'+[guid]::NewGuid().ToString('N')+'.md')
+        try{
+            [IO.File]::WriteAllText($descriptionPath,$Description.Replace("`r`n","`n").Replace("`r","`n")+"`n",[Text.UTF8Encoding]::new($false))
+            $edited=Invoke-QuietPullRequestTool $WorkspaceRoot gh @('pr','edit',$number,'--repo',$repository,'--body-file',$descriptionPath)
+            Write-Host ('PR description updated: '+$edited)
+        }finally{if([IO.File]::Exists($descriptionPath)){[IO.File]::Delete($descriptionPath)}}
+    }
     $marker='<!-- quietcli:push-update:'+ $pr.headRefOid +' -->'
     $comments=(Invoke-QuietPullRequestTool $WorkspaceRoot gh @('pr','view',$number,'--repo',$repository,'--json','comments'))|ConvertFrom-Json
     if(@($comments.comments|Where-Object {$_.body.Contains($marker)}).Count){Write-Host ('PR update already exists for '+$pr.headRefOid);return}

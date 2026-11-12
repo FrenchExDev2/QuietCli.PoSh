@@ -32,6 +32,7 @@ Core mixes pure logic, filesystem integration, native processes and qualificatio
 | `ConfigurationDelivery` | YAML schema, unique deliveries, tokenization, historical SQLite fixtures and targeted mutations. |
 | `Vagrant` | Deterministic parser/handler fixtures and 200 seeded fragmented-stream cases; no Vagrant installation or real provider. Set `QUIETCLI_VAGRANT_PARSER_MUTATION=1` for the targeted parser catalogue. |
 | `AgentInstructions`, `Script` | Distributed agent instructions and examples; reusable scripts, factories, generated inputs and targeted mutations. |
+| `Tooling` | Repository automation, packaging and source checks, independently of product All. |
 | `RunProfiles`, `RunProfilesMutation` | Complete profiling-tooling suite or its entire targeted mutation catalogue. |
 | `GalleryPreview` | Preview-version properties, malformed inputs, staged manifests, offline package installation and targeted mutations. |
 
@@ -117,18 +118,18 @@ Details: [A/B protocol](docs/README-ab_testing.md), [R2R walkthrough](docs/READM
 
 | Workflow | Trigger and actual responsibility |
 | --- | --- |
-| [core-ci.yml](.github/workflows/core-ci.yml) | Path-filtered PRs and `develop` pushes for Core/tests/shared infrastructure; calls reusable CI with `suite: Core`. |
-| [git-ci.yml](.github/workflows/git-ci.yml) | Path-filtered PRs and `develop` pushes for Git/tests/shared solution/build/package inputs; calls reusable CI with `suite: Git`. |
+| [companions-ci.yml](.github/workflows/companions-ci.yml) | Complete-diff PR selection, verified same-tree develop reuse and the stable required CI check. |
+| [tooling-ci.yml](.github/workflows/tooling-ci.yml) | Private automation tests once, Core independence and bounded run-profile mutation outside product measurements. |
 | [ci.yml](.github/workflows/ci.yml) | Reusable/manual Windows/Linux matrix, evidence aggregation and revision-bound `qualified_sha` gate. |
 | [quietcli2-readytorun.yml](.github/workflows/quietcli2-readytorun.yml) | Manual informational R2R comparison: one Windows job plus four Debian/Alpine x64/ARM64 container jobs. It does not gate qualification or publication. |
 | [qualification.yml](.github/workflows/qualification.yml) | Manual full-Git entry point on a self-hosted Linux x64 Podman/KVM runner, using `QUIETCLI_QUALIFICATION_CONFIG`. The underlying runner currently refuses exhaustive certification; see below. |
-| [publish-psgallery.yml](.github/workflows/publish-psgallery.yml) | Reusable/manual packaging after `All` qualification of the exact SHA; rebuilds/rechecks packages. Manual dispatch prepares artifacts only; publication requires a matching Core tag push, publication intent and the `psgallery` environment. |
+| [publish-psgallery.yml](.github/workflows/publish-psgallery.yml) | Reusable/manual packaging after `All` qualification of the exact SHA; rebuilds/rechecks packages. Manual dispatch prepares artifacts only; publication requires a matching selected-module tag push, publication intent and the `psgallery` environment. |
 | [preview-psgallery.yml](.github/workflows/preview-psgallery.yml) | Manual generated-preview artifacts on upstream `develop`, without publication. |
-| [release-tags.yml](.github/workflows/release-tags.yml) | Explicit independent module tag pushes; validate the manifest/capability before full qualification and Core publication. Git/Vagrant namespaces remain blocked until public packaging is available. |
+| [release-tags.yml](.github/workflows/release-tags.yml) | Explicit independent module tag pushes; validate the manifest/capability before full qualification and Core/Git publication; Vagrant remains nonpublishable. |
 
 Reusable CI has **ten test/evidence entries**: six Windows entries (x64/ARM64, stable/.NET 10 with `Process` and `InProcess`, preview/.NET 11 with `InProcess`) and four native Linux entries (Debian glibc and Alpine musl, x64/ARM64, `Auto`). Pinned host receipts and actual PowerShell/CLR/engine/RID checks reject architecture substitution. [Linux image jobs](docs/ci/linux-images.md) build/reuse fingerprinted toolchains on matching native runners; developer image pulls do not publish images.
 
-PowerShell/CLR profiling is enabled by default and explicitly requested by automatic PR/develop/publication callers for every Core/All matrix row. `performance-results` requires all ten revision-bound Windows/Linux reports and publishes standalone HTML, Markdown and JSON with PS line hotspots and CLR trace provenance. The qualification gate depends on this successful report as well as Windows/Linux execution. Explicitly disabling collection cannot qualify Core evidence. Windows x64 stable InProcess also runs RunProfiles and its mutation catalogue as separate tooling tests; these do not substitute for profiling each environment. Git/Vagrant-only scopes keep Core profiling outside their scope. Gallery packaging requires the accepted exact revision and a performance-qualified current-run receipt.
+PowerShell/CLR profiling is enabled by default and explicitly requested by automatic PR/develop/publication callers for every Core/All matrix row. `performance-results` requires all ten revision-bound Windows/Linux reports and publishes standalone HTML, Markdown and JSON with PS line hotspots and CLR trace provenance. The qualification gate depends on this successful report as well as Windows/Linux execution. Explicitly disabling collection cannot qualify Core evidence. Independent tooling jobs run RunProfiles and its mutation catalogue once, with two isolated mutation workers; these do not substitute for profiling each environment. Git/Vagrant-only scopes keep Core profiling outside their scope. Gallery packaging requires the accepted exact revision and a performance-qualified current-run receipt.
 
 GitHub CI explicitly passes **`-SkipTty`**: native TTY/PTY execution and its standalone C property/fuzz/mutation campaigns are excluded, not passed. This is also the publication workflow's configured gate scope. R2R workflow comparison errors/noisy controls are retained as informational warnings; inspect the reports rather than inferring a speedup from a green job. Build/setup failures and missing required upload artifacts can still fail that workflow. It neither publishes the candidate nor covers Windows ARM64 R2R.
 

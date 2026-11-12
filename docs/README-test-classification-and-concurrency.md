@@ -2,9 +2,9 @@
 
 ## Classification contract
 
-Each companion owns its catalogue: Core.Tests, Git.Tests and Vagrant.Tests declare their own literal metadata inside their own .psm1. Their manifests declare TestCatalogue (runner and explicitly scoped helper sources) and TestExecution independently. Shared readers validate these declarations without importing product modules or moving Git/Vagrant cases into a Core-owned registry. The default gate discovers all test projects; use -Suite to inspect one.
+Each companion owns its catalogue: Core.Tests, Git.Tests, Vagrant.Tests and Tooling.Tests declare their own literal metadata inside their own .psm1. Their manifests declare TestCatalogue (runner and explicitly scoped helper sources) and TestExecution independently. Shared readers validate these declarations without importing product modules or moving Git/Vagrant cases into a Core-owned registry. The default gate discovers all test projects; use -Suite to inspect one.
 
-Git declares 77 cases, including nine optional mutation cases, and preserves its shared-repository prerequisites. Vagrant declares 14 cases, with six pure Unit parsers eligible for isolated processes; its environment/handler/native-fixture cases remain ordered. Both companion caps are two. EnabledWhen declarations are statically matched to actual literal optional registration guards; active runtime catalogues must match exactly before filtering. ProcessEnvironment is an explicit dependency. Filtered/stopped Git/Vagrant runs now preserve Partial/Incomplete scope too.
+Git declares 78 cases, including nine optional mutation cases, and preserves its shared-repository prerequisites. Vagrant declares 14 cases, with six pure Unit parsers eligible for isolated processes; its environment/handler/native-fixture cases remain ordered. Both companion caps are two. EnabledWhen declarations are statically matched to actual literal optional registration guards; active runtime catalogues must match exactly before filtering. ProcessEnvironment is an explicit dependency. Filtered/stopped Git/Vagrant runs now preserve Partial/Incomplete scope too.
 
 Core progress includes the case kind: `CI case [Running] [Integration] ...`. Reports preserve `TestKind` and `Dependencies` for each executed top-level case. Every registration in `Invoke-QuietCoreTests` has an explicit matching `$caseMetadata` entry; the old partial table and `Unclassified` fallback are removed. Missing, orphan, duplicate, dynamic or malformed entries fail before filtering or execution. A focused run cannot hide an unclassified case elsewhere in the catalogue.
 
@@ -15,7 +15,7 @@ Dependencies use `FileSystem`, `NativeProcess`, `GitProcess`, `DotNetBuild` and 
 ```powershell
 ./scripts/Test-TestCaseMetadata.ps1
 ./scripts/Invoke-WorkspaceChecks.ps1 -Check TestCaseMetadata
-./scripts/Invoke-WorkspaceCi.ps1 -Suite Core -SkipBuild -SkipTty -Case 'test case classifications*'
+./scripts/Invoke-WorkspaceCi.ps1 -Suite Tooling -SkipBuild -SkipTty -Case 'test case classifications*'
 ```
 
 `TestCaseMetadata` is first in the shared local/commit/CI registry. The GitHub check workflow includes Core test-source changes in its path filters. The runtime guard remains active for direct Core/All execution, including manual CI invocations. Classification cannot turn a failed/skipped case into success or qualify a partial run.
@@ -82,6 +82,8 @@ The largest observed case is already partly parallel. It retains its ordered sta
 Core uses a parent-owned bounded queue of isolated PowerShell processes through `TestCaseScheduling` and `Ci.Process`, with a manifest cap of two. Performance and source-lock mutation cases run outside that pool. No C# rebuild, new runner or image pull is required to schedule these cases.
 
 The scheduling regression verifies generated barrier plans, malformed manifests, actual process overlap and the upper bound, distinct report/configuration/database paths, literal wildcard names, deterministic receipts, serial/parallel outcome equivalence, admission closure, timeout/report failures, cancellation cleanup, no-effect WhatIf and actual concurrency/barrier mutants. Hosted elapsed time and peak memory still need measurement; configuration and local assertions do not establish a quantified CI speedup.
+
+The nine optional Git compiler-mutation cases are explicitly IsolatedProcess and are deferred together after shared-repository scenarios. The shared budget caps their independent catalogue workers at two; each child receives one internal worker. Each catalogue restores package assets once but resets sources and forces compilation for every mutant. Mutation scheduling does not move ordinary Git prerequisites or overlap exclusive measurement barriers. Scheduler properties and pristine-build process doubles accompany the real compiled campaigns.
 
 <!-- credits:begin -->
 ## Credits

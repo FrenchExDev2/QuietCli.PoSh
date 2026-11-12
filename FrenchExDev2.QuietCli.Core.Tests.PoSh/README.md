@@ -6,6 +6,8 @@
 
 Host-matrix assertions require Windows, Linux selection/results and performance prerequisites as a set, allowing reordered/additional dependencies while rejecting each removed prerequisite. Evidence properties include bracketed Unicode paths and owned hidden manifests. CI uploads only the prepared evidence tree with hidden files included. Mutation workers write a start receipt and a terminal receipt in finally; parents retain bounded output tails/process metadata and reject absent or unfinished receipts even after exit code zero. An abrupt-exit fixture verifies that boundary; this does not claim a native ARM64 rerun.
 
+Private profiler-contract helpers parse literal PowerShell tool selections and check a restricted boolean condition against Core/profiling scope properties. They distinguish optional product profiling from mandatory Tooling preparation before RunProfiles, including both tool paths. The Tooling companion owns the actual cases. Generated variants and damaged workflow fixtures exercise the guard without preparing tools, starting collectors or executing arbitrary workflow code.
+
 Release tests exercise a unique batch leader, remote sibling-tag revision rejection, dependency-ordered Core/Git validation and mock publication, and no-write previews. The leader qualifies/packages once, while PR validation remains independent. Legacy tags without annotations retain standalone releases.
 
 ## Test boundaries and local work branches
@@ -14,7 +16,7 @@ Core mixes pure logic with real filesystem, Git, process and package integration
 
 ## GitHub execution policy and Docker smoke
 
-`PrivateData.QuietCli.TestExecution` in this companion's manifest declares Ordered defaults, Exclusive measurement/packaging barriers and five reviewed IsolatedProcess cases. Core saves its resolved execution plan before cases run and batches adjacent eligible cases with a cap of two or the smaller caller budget. Each child owns configuration, SQLite and reports and receives one internal worker. `scripts/Test-TestCaseMetadata.ps1 -Plan` previews the complete plan without importing Core or executing a case. The same policy is consumed locally and in CI; Git/Vagrant fan-out still follows complete Core acceptance.
+`PrivateData.QuietCli.TestExecution` in this companion's manifest declares Ordered defaults, Exclusive measurement barriers and one reviewed IsolatedProcess audit case. Core saves its resolved execution plan before cases run and batches adjacent eligible cases with a cap of two or the smaller caller budget. Each child owns configuration, SQLite and reports and receives one internal worker. `scripts/Test-TestCaseMetadata.ps1 -Plan` previews the complete plan without importing Core or executing a case. The same policy is consumed locally and in CI; Git/Vagrant fan-out still follows complete Core acceptance.
 
 See [Qualification: when, where and how](../README-qualification-when-where-how.md) for PR triggers, the six Windows and four Linux environments, build versus test execution, local launchers and qualification exclusions.
 
@@ -257,3 +259,5 @@ The automation-contract cases cover Docker/Podman discovery, standard ShouldProc
 # Focused .NET tooling validation
 
 Run `../scripts/Invoke-DotNetTests.ps1` from this directory, or `./scripts/Invoke-DotNetTests.ps1` from the checkout root. The shared `DotNet` worker selects Readiness, Provisioning and Layout fixtures, bounded properties/fuzz inputs and targeted mutations without building or importing the product engine. Reports use the shared external temporary root and visible monitor. This focused Windows evidence is separate from Core/All release qualification. See [the user guide](../README-dotnet-and-global-dot-json.md).
+
+Core product qualification requires only Core. The scaffolding case generates a scripted git-status companion and checks clean/untracked Unicode observations without the real Git module. Repository commit and source-check catalogues belong to private Tooling.Tests. The three full-distribution architecture, Gallery installation and packaged Recall checks belong to private Distribution.Tests and run once behind the tooling build barrier. Build-Workspace -Suite Core compiles only Core and its own tests; Test-CoreIndependence verifies a source copy with Git absent.

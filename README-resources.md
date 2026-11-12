@@ -50,3 +50,5 @@ The generated reference list is source inspection, not exhaustive static data-fl
 
 This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+Intermediate Docker layers use a separate checkout-owned .cache/ci-buildkit cache. These toolchain-only layers are outside source identity and pinned archive inventories; final image provenance and pinned payload verification remain required. A final registry hit is probed before restoring any intermediate layer cache.

@@ -1,0 +1,170 @@
+name: QuietCli repository tooling
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  core-independence:
+    name: Core builds and qualifies without the Git companion
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            Directory.Packages.props
+            Directory.Build.props
+            global.json
+      - uses: ./.github/actions/cache-resources
+      - name: Verify sources and pinned resources
+        shell: pwsh
+        run: |
+          ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+          ./scripts/Initialize-Workspace.ps1 -Restore
+      - name: Build only Core and run its entire suite with Git source absent
+        shell: pwsh
+        run: ./scripts/Test-CoreIndependence.ps1
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quietcli-core-independence
+          path: |
+            artifacts/core-independence/*/independence.json
+            artifacts/core-independence/*/tests/*.json
+            artifacts/core-independence/*/tests/*.log
+            artifacts/core-independence/*/tests/core-cases/*/*.json
+            artifacts/core-independence/*/tests/core-cases/*/*.log
+          if-no-files-found: error
+          retention-days: 14
+  tooling:
+    name: Repository automation and run-profile behavior
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            Directory.Packages.props
+            Directory.Build.props
+            global.json
+      - uses: ./.github/actions/cache-resources
+      - name: Initialize and verify the checkout
+        shell: pwsh
+        run: |
+          ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+          ./scripts/Initialize-Workspace.ps1 -Restore
+          ./scripts/Build-Workspace.ps1
+      - name: Qualify repository automation once
+        id: tooling_tests
+        shell: pwsh
+        run: ./scripts/Invoke-GitHubCi.ps1 -Suite Tooling -SkipBuild -SkipTty -MaxConcurrency 2 -RunDirectory ./artifacts/tooling/tests
+      - name: Qualify every distribution case once without Git or another build
+        shell: pwsh
+        run: ./scripts/Test-CoreIndependence.ps1 -Suite Distribution -SkipBuild
+      - name: Prepare exact profiler prerequisites for functional tooling tests
+        shell: pwsh
+        run: |
+          $tools=./scripts/Initialize-Profilers.ps1 -Module profiler,dottrace -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-profilers')
+          [IO.File]::AppendAllText($env:GITHUB_ENV,"QUIETCLI_PROFILER_MODULE=$($tools.ProfilerModulePath)`nQUIETCLI_CLR_PROFILER=$($tools.ClrProfilerPath)`n",[Text.UTF8Encoding]::new($false))
+      - name: Require the complete run-profile tooling suite
+        id: run_profiles
+        shell: pwsh
+        run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfiles -SkipBuild -MaxConcurrency 2 -RunDirectory ./artifacts/run-profiles/tests
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always() && ((steps.tooling_tests.outcome != '' && steps.tooling_tests.outcome != 'skipped') || (steps.run_profiles.outcome != '' && steps.run_profiles.outcome != 'skipped'))
+        with:
+          name: quietcli-tooling-${{ github.sha }}
+          path: |
+            artifacts/tooling/tests/*.json
+            artifacts/tooling/tests/*.log
+            artifacts/tooling/tests/core-cases/*/*.json
+            artifacts/tooling/tests/core-cases/*/*.log
+            artifacts/run-profiles/tests/*.json
+            artifacts/run-profiles/tests/*.log
+            artifacts/core-independence/*/independence.json
+            artifacts/core-independence/*/tests/*.json
+            artifacts/core-independence/*/tests/*.log
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve tooling fixtures only after a failed campaign
+        if: failure() && (steps.tooling_tests.outcome == 'failure' || steps.run_profiles.outcome == 'failure')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: quietcli-failed-tooling-fixtures-${{ github.sha }}
+          path: |
+            artifacts/tooling
+            artifacts/run-profiles/tests
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 1
+  run-profiles-mutation:
+    name: Run-profile mutation (shard ${{ matrix.shard }}, two isolated workers)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/cache-resources
+      - name: Verify source inputs without a product build
+        shell: pwsh
+        run: |
+          ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+          ./scripts/Initialize-Workspace.ps1 -Restore
+      - name: Require every run-profile tooling mutant to be detected
+        id: run_profiles_mutation
+        shell: pwsh
+        env:
+          QUIETCLI_MUTATION_SHARD_INDEX: ${{ matrix.shard }}
+          QUIETCLI_MUTATION_SHARD_COUNT: 2
+        run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfilesMutation -SkipBuild -MaxConcurrency 2 -RunDirectory ./artifacts/run-profiles/mutation
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always() && steps.run_profiles_mutation.outcome != '' && steps.run_profiles_mutation.outcome != 'skipped'
+        with:
+          name: quietcli-run-profiles-mutation-${{ github.sha }}-shard${{ matrix.shard }}-attempt${{ github.run_attempt }}
+          path: artifacts/run-profiles
+          if-no-files-found: error
+          retention-days: 14
+  mutation-complete:
+    name: Require the exact complete mutation catalogue
+    needs: run-profiles-mutation
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: quietcli-run-profiles-mutation-${{ github.sha }}-shard*-attempt${{ github.run_attempt }}
+          path: artifacts/mutation-shards
+      - name: Verify all shards from this revision and attempt
+        shell: pwsh
+        env:
+          SHARD_RESULT: ${{ needs.run-profiles-mutation.result }}
+        run: |
+          if($env:SHARD_RESULT -cne 'success'){throw 'MutationShardJobsRequired'}
+          ./scripts/Assert-RunProfileMutationShards.ps1 -ReportRoot ./artifacts/mutation-shards -Revision $env:GITHUB_SHA -OutputPath ./artifacts/mutation-complete/receipt.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: quietcli-mutation-complete-${{ github.sha }}-attempt${{ github.run_attempt }}
+          path: artifacts/mutation-complete
+          if-no-files-found: error
+          retention-days: 14

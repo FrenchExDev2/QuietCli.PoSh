@@ -10,6 +10,10 @@ Manual generated-preview artifacts after full qualification, without Gallery pub
 
 Manual dispatch only. Repository/ref condition rejects forks and other branches. This wrapper always supplies publish=false; branch pushes do not call it.
 
+## Qualification and effects
+
+Calls the shared publication/preparation workflow with publication disabled. Full exact-source qualification precedes the generated preview package; its artifact-only version does not modify source manifests or create a release tag. Local unpushed commits are outside a remotely selected ref. Required tooling includes [validated shard execution and complete aggregation](script-tooling-ci.md#shard-execution-boundary).
+
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
 

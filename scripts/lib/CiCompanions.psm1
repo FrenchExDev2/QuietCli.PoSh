@@ -152,18 +152,21 @@ function Invoke-QuietCiSuiteImage {
     Requests publication under the existing develop-only guard.
     .PARAMETER ResolveOnly
     Verifies an existing registry configuration without pulling layers; a miss still prepares the image.
+    .PARAMETER ProbeOnly
+    Returns final registry hit/miss without preparing images or contacting the container daemon.
     #>
     [CmdletBinding(SupportsShouldProcess)]
-    param([string]$WorkspaceRoot,$Selection,[string]$RuntimeIdentifier,[string]$ContainerRuntime,[switch]$RegistryCache,[switch]$PublishCache,[switch]$ResolveOnly)
+    param([string]$WorkspaceRoot,$Selection,[string]$RuntimeIdentifier,[string]$ContainerRuntime,[switch]$RegistryCache,[switch]$PublishCache,[switch]$ResolveOnly,[switch]$ProbeOnly)
     if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Prepare declared companion image layers')){return}
-    if($ResolveOnly -and !$RegistryCache){throw 'CiImageRegistryResolutionRequiresCache'}
+    if(($ResolveOnly -or $ProbeOnly) -and !$RegistryCache){throw 'CiImageRegistryResolutionRequiresCache'}
+    if($ProbeOnly -and $PublishCache){throw 'CiImageProbeCannotPublish'}
     $credential=$env:QUIETCLI_REGISTRY_TOKEN
     try{
         if($RegistryCache){
             . (Join-Path $PSScriptRoot '../Common.ps1')
             . (Join-Path $PSScriptRoot '../CiImages.ps1')
             $finalPlan=Get-QuietCiSuiteImagePlan $WorkspaceRoot $Selection $RuntimeIdentifier
-            if($ResolveOnly){
+            if($ResolveOnly -or $ProbeOnly){
                 $identity=Get-QuietCiRegistryDigest $finalPlan $credential $env:GITHUB_ACTOR -IncludeConfiguration
                 if($identity){
                     $receipt=[pscustomobject]@{Image=$identity.Reference;RuntimeIdentifier=$RuntimeIdentifier;Fingerprint=$finalPlan.Fingerprint;RegistryDigest=$identity.Digest;CacheHit=$true;Published=$false;RegistryOnly=$true}
@@ -171,6 +174,7 @@ function Invoke-QuietCiSuiteImage {
                     return $receipt
                 }
             }
+            if($ProbeOnly){return [pscustomobject]@{RuntimeIdentifier=$RuntimeIdentifier;Fingerprint=$finalPlan.Fingerprint;CacheHit=$false;Published=$false;RegistryOnly=$true}}
             $cached=Invoke-QuietCiImageBuild -Plan $finalPlan -ContextDirectory (Join-Path $WorkspaceRoot '.github/containers') -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ('suite-'+$RuntimeIdentifier) -RegistryCache -CacheOnly -ContainerRuntime $ContainerRuntime
             $env:QUIETCLI_REGISTRY_TOKEN=$credential
             if($cached){return $cached}

@@ -283,6 +283,53 @@ function ConvertTo-QuietCiRegistryDiagnostic {
     if($Text.Length -gt 2048){$Text=$Text.Substring(0,2048)}
     return $Text
 }
+function Get-QuietCiBuildCacheOptions {
+    <#
+    .SYNOPSIS
+    Plans a workflow-owned Docker BuildKit intermediate cache without filesystem or process effects.
+    .PARAMETER Plan
+    Verified image input plan; its registry path provides an independent architecture/layer scope.
+    .PARAMETER WorkspaceRoot
+    Checkout owning the optional .cache/ci-buildkit directory.
+    .PARAMETER ContainerRuntime
+    Podman retains its existing build behavior.
+    #>
+    param($Plan,[string]$WorkspaceRoot,[string]$ContainerRuntime)
+    if($ContainerRuntime -cne 'docker' -or !$env:QUIETCLI_BUILDKIT_CACHE_DIR){return}
+    $expected=[IO.Path]::GetFullPath((Join-Path $WorkspaceRoot '.cache/ci-buildkit'))
+    $root=[IO.Path]::GetFullPath($env:QUIETCLI_BUILDKIT_CACHE_DIR,$WorkspaceRoot)
+    if($env:GITHUB_ACTIONS -cne 'true' -or $root -cne $expected){throw 'CiBuildCacheMustBelongToWorkflowCheckout'}
+    $scope=$Plan.RegistryPath.Replace('/','-')
+    if($scope -cnotmatch '\A[a-z0-9-]+\z'){throw 'CiBuildCacheScopeInvalid'}
+    $source=Join-Path $root $scope
+    $destination=Join-Path $root ($scope+'.next-'+[guid]::NewGuid().ToString('N'))
+    foreach($path in @((Join-Path $WorkspaceRoot '.cache'),$root,$source)){
+        if((Test-Path -LiteralPath $path) -and ((Get-Item -LiteralPath $path -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'CiBuildCacheLinkRejected'}
+    }
+    $arguments=@('--cache-to',('type=local,dest='+$destination+',mode=max'))
+    if(Test-Path -LiteralPath (Join-Path $source 'index.json')){$arguments+=@('--cache-from',('type=local,src='+$source))}
+    [pscustomobject]@{Source=$source;Destination=$destination;Arguments=$arguments;Scope=$scope}
+}
+
+function Get-QuietCiBuildCommand {
+    <#
+    .SYNOPSIS
+    Keeps cached Docker builds on the active daemon context and preserves the Podman command.
+    .PARAMETER ContainerRuntime
+    Selected Docker or Podman executable.
+    .PARAMETER Cached
+    Enables Docker BuildKit import/export with local image loading.
+    .PARAMETER DockerContext
+    Exact active context reported by docker context show, required for cached Docker builds.
+    #>
+    param([ValidateSet('docker','podman')][string]$ContainerRuntime,[switch]$Cached,[string]$DockerContext)
+    if($ContainerRuntime -ceq 'docker' -and $Cached){
+        if($DockerContext -cnotmatch '\A[A-Za-z0-9][A-Za-z0-9_.-]*\z'){throw 'CiDockerContextInvalid'}
+        return @('buildx','build','--builder',$DockerContext,'--load')
+    }
+    return @('build')
+}
+
 function Invoke-QuietCiImageBuild {
     <#
     .SYNOPSIS
@@ -394,10 +441,30 @@ function Invoke-QuietCiImageBuild {
                 Join-Path $WorkspaceRoot $Plan.Dockerfile
             }
             $buildOptions=if($ContainerRuntime -eq 'podman'){@('--pull=never','--jobs','1')}else{@('--pull=false')}
-            $arguments=@('build')+$buildOptions+$platform+@('--label',('org.opencontainers.image.source='+$Plan.Source),'--label',('org.frenchexdev.quietcli2.inputs='+$Plan.Fingerprint),'-f',$dockerfilePath,'-t',$tag)
+            $buildCache=Get-QuietCiBuildCacheOptions -Plan $Plan -WorkspaceRoot $WorkspaceRoot -ContainerRuntime $ContainerRuntime
+            $context=$null
+            if($buildCache){
+                $contextState=@{Lines=[Collections.Generic.List[string]]::new()}
+                $contextResult=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('context','show') -TimeoutSeconds 20 -State $contextState -OnOutput {param($event,$state)if($event.Stream -ceq 'stdout'){$state.Lines.Add($event.Text)}}
+                if($contextResult.Outcome -cne 'Success' -or $contextState.Lines.Count -ne 1){throw 'CiDockerContextUnavailable'}
+                $context=$contextState.Lines[0].Trim()
+            }
+            $command=@(Get-QuietCiBuildCommand -ContainerRuntime $ContainerRuntime -Cached:([bool]$buildCache) -DockerContext $context)
+            $arguments=$command+$buildOptions+$platform+@('--label',('org.opencontainers.image.source='+$Plan.Source),'--label',('org.frenchexdev.quietcli2.inputs='+$Plan.Fingerprint),'-f',$dockerfilePath,'-t',$tag)
+            if($buildCache){$arguments+=@($buildCache.Arguments)}
             foreach($entry in $Plan.Arguments.GetEnumerator()){$arguments+=@('--build-arg',($entry.Key+'='+$entry.Value))}
             $arguments+=$ContextDirectory
             $null=Invoke-WorkspaceNative $ContainerRuntime $arguments $WorkspaceRoot -TimeoutSeconds 1800 -LogPath $logPath
+            if($buildCache){
+                if(!(Test-Path -LiteralPath (Join-Path $buildCache.Destination 'index.json'))){throw 'CiBuildCacheExportMissing'}
+                # Rotate only this validated checkout-owned cache; old unreferenced BuildKit blobs never accumulate.
+                if(Test-Path -LiteralPath $buildCache.Source){
+                    $old=$buildCache.Source+'.old-'+[guid]::NewGuid().ToString('N')
+                    [IO.Directory]::Move($buildCache.Source,$old)
+                    [IO.Directory]::Move($buildCache.Destination,$buildCache.Source)
+                    [IO.Directory]::Delete($old,$true)
+                }else{[IO.Directory]::Move($buildCache.Destination,$buildCache.Source)}
+            }
             $image=$tag
         }
         $info=Get-QuietCiVerifiedImage -Plan $Plan -Reference $image -ContainerRuntime $ContainerRuntime
