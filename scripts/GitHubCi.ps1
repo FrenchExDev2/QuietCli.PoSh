@@ -59,4 +59,3 @@ function Assert-GitHubCiImagePreparationContext {
     param([bool]$ImagesOnly,[string]$Event,[string]$Ref,[string]$Repository)
     if($ImagesOnly -and ($Event -cne 'workflow_dispatch' -or $Ref -cne 'refs/heads/develop' -or $Repository -cne 'FrenchExDev2/QuietCli.PoSh')){throw 'CiImagesOnlyRequiresUpstreamDevelopDispatch'}
 }
-

@@ -1,6 +1,6 @@
 # tooling-ci.yml
 
-<!-- workflow-source-sha256: F3D3CCC34068BBC47243BCB01C5F27609D715430F0494C67CE71729C8C0B0E39 -->
+<!-- workflow-source-sha256: F7F344ACD157D297FBDDB825B648C321BE33DAE5FFF2D04EEE1DDF219A0D9F71 -->
 
 ## Purpose
 
@@ -9,6 +9,8 @@ Reusable private repository-automation qualification, run once independently of 
 A third job builds and runs complete Core qualification in a fresh source copy without the real Git module. Git remains an executable fixture dependency. It uses a short temporary path to avoid Windows native-library path limits. Saved evidence records the isolated source/binary identity and generated scripted companion regression.
 
 Mutation uses Ci.Process exclusively and performs no product build or import. Functional RunProfiles explicitly prepares both pinned profiler tools. New native build jobs reuse the common NuGet cache.
+
+Run-profile mutation uses two independent matrix shards, each with two isolated workers and its own successful baseline. `QUIETCLI_MUTATION_SHARD_INDEX`/`QUIETCLI_MUTATION_SHARD_COUNT` configure only the mutation test launcher; local defaults still execute the entire catalogue. Each shard is partial evidence. A dependent completion job downloads only this SHA/attempt's artifacts and requires the exact union of the source-controlled catalogue, matching input hashes and fixed qualification settings. A missing, duplicate, stale, invalid or surviving result blocks the reusable workflow. Sharding changes scheduling, not the catalogue, seeds, iterations or acceptance criteria.
 
 ## Validation and limits
 
@@ -33,9 +35,11 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 flowchart TD
     event["Triggers: workflow_call"]
     job_core_independence["core-independence"]
+    job_mutation_complete["mutation-complete"]
     job_run_profiles_mutation["run-profiles-mutation"]
     job_tooling["tooling"]
     event --> job_core_independence
+    job_run_profiles_mutation --> job_mutation_complete
     event --> job_run_profiles_mutation
     event --> job_tooling
 ~~~
@@ -43,6 +47,7 @@ flowchart TD
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
 | core-independence | runner windows-latest |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Test-CoreIndependence.ps1 |
+| mutation-complete | runner ubuntu-latest | run-profiles-mutation | ${{ always() && !cancelled() }} | ./scripts/Assert-RunProfileMutationShards.ps1 |
 | run-profiles-mutation | runner windows-latest |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1 |
 | tooling | runner windows-latest |  | default success condition | ./scripts/Build-Workspace.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/Test-CoreIndependence.ps1 |
 

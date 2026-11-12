@@ -20,6 +20,11 @@ function Invoke-RunProfileQualification {
     $scriptName = if ($Mutation) { 'RunProfiles.Mutation.ps1' } else { 'RunProfiles.Tests.ps1' }
     $arguments = @('-File', (Join-Path $tests $scriptName))
     if ($Mutation) { $arguments += @('-OutputPath', $report,'-MaxConcurrency',"$MaxConcurrency") }
+    if($Mutation -and ($env:QUIETCLI_MUTATION_SHARD_INDEX -or $env:QUIETCLI_MUTATION_SHARD_COUNT)){
+        $index=0;$count=0
+        if(![int]::TryParse($env:QUIETCLI_MUTATION_SHARD_INDEX,[ref]$index) -or ![int]::TryParse($env:QUIETCLI_MUTATION_SHARD_COUNT,[ref]$count) -or $count -lt 1 -or $count -gt 32 -or $index -lt 0 -or $index -ge $count){throw 'MutationShardEnvironmentInvalid'}
+        $arguments+=@('-ShardIndex',"$index",'-ShardCount',"$count")
+    }
     $capture = @{ Passed = 0; Failed = 0; Skipped = 0; Summary = $false; Lines = 0; Diagnostics = [Collections.Generic.Queue[string]]::new() }
     $process = Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' })) -ArgumentList $arguments -WorkingDirectory $WorkspaceRoot -TimeoutSeconds 5400 -State $capture -OnOutput {
         param($record, $capture)

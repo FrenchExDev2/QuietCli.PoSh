@@ -110,9 +110,13 @@ jobs:
           retention-days: 7
           compression-level: 1
   run-profiles-mutation:
-    name: Run-profile mutation (two isolated workers)
+    name: Run-profile mutation (shard ${{ matrix.shard }}, two isolated workers)
     runs-on: windows-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -126,11 +130,41 @@ jobs:
       - name: Require every run-profile tooling mutant to be detected
         id: run_profiles_mutation
         shell: pwsh
+        env:
+          QUIETCLI_MUTATION_SHARD_INDEX: ${{ matrix.shard }}
+          QUIETCLI_MUTATION_SHARD_COUNT: 2
         run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfilesMutation -SkipBuild -MaxConcurrency 2 -RunDirectory ./artifacts/run-profiles/mutation
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always() && steps.run_profiles_mutation.outcome != '' && steps.run_profiles_mutation.outcome != 'skipped'
         with:
-          name: quietcli-run-profiles-mutation-${{ github.sha }}
+          name: quietcli-run-profiles-mutation-${{ github.sha }}-shard${{ matrix.shard }}-attempt${{ github.run_attempt }}
           path: artifacts/run-profiles
+          if-no-files-found: error
+          retention-days: 14
+  mutation-complete:
+    name: Require the exact complete mutation catalogue
+    needs: run-profiles-mutation
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: quietcli-run-profiles-mutation-${{ github.sha }}-shard*-attempt${{ github.run_attempt }}
+          path: artifacts/mutation-shards
+      - name: Verify all shards from this revision and attempt
+        shell: pwsh
+        env:
+          SHARD_RESULT: ${{ needs.run-profiles-mutation.result }}
+        run: |
+          if($env:SHARD_RESULT -cne 'success'){throw 'MutationShardJobsRequired'}
+          ./scripts/Assert-RunProfileMutationShards.ps1 -ReportRoot ./artifacts/mutation-shards -Revision $env:GITHUB_SHA -OutputPath ./artifacts/mutation-complete/receipt.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: quietcli-mutation-complete-${{ github.sha }}-attempt${{ github.run_attempt }}
+          path: artifacts/mutation-complete
           if-no-files-found: error
           retention-days: 14

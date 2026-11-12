@@ -8,6 +8,8 @@ function Test-QuietCiScalability {
     Owned fixture directory.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
+    . (Join-Path $PSScriptRoot 'MutationShards.Tests.ps1')
+    Test-QuietMutationShardContracts -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImpact.psm1')
     . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
     . (Join-Path $WorkspaceRoot 'scripts/GitHubCi.ps1')
