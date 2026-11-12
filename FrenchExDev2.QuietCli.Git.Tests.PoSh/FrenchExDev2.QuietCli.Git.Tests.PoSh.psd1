@@ -6,6 +6,15 @@
  TestCatalogue=@{Runner='Invoke-QuietGitTests';Sources=@('IndexOperations.Tests.ps1','Revisions.Tests.ps1','PathQueries.Tests.ps1','Attribution.Tests.ps1','Queries.Tests.ps1','RepositoryCommands.Tests.ps1','Semantic.Tests.ps1','CiImages.Tests.ps1')}
  TestExecution=@{SchemaVersion=1;DefaultMode='Ordered';DefaultReason='Cases mutate shared synthetic Git repositories, handlers and probe history; preserve their prerequisites.';MaxParallelCases=2;Cases=@{
   'compiled Git parsers preserve migration vectors and measure local costs'=@{Mode='Exclusive';Reason='Paired parser cost measurements require exclusive execution within this companion.'}
+  'push targeted mutations are detected by independent assertions'=@{Mode='IsolatedProcess';Reason='Owned source/build tree; no shared Git fixture or compiler outputs.'}
+  'repository command C# mutants are detected'=@{Mode='IsolatedProcess';Reason='Owned source/build tree; no shared Git fixture or compiler outputs.'}
+  'query parser C# mutants are detected'=@{Mode='IsolatedProcess';Reason='Owned source/build tree; no shared Git fixture or compiler outputs.'}
+  'attribution parser C# mutants are detected'=@{Mode='IsolatedProcess';Reason='Owned source/build tree; no shared Git fixture or compiler outputs.'}
+  'pathquery parser C# mutants are detected'=@{Mode='IsolatedProcess';Reason='Owned source/build tree; no shared Git fixture or compiler outputs.'}
+  'argument filter C# mutants are detected'=@{Mode='IsolatedProcess';Reason='Owned source/build tree; no shared Git fixture or compiler outputs.'}
+  'schema parser C# mutants are detected'=@{Mode='IsolatedProcess';Reason='Owned source/build tree; no shared Git fixture or compiler outputs.'}
+  'invocation parser C# mutants are detected'=@{Mode='IsolatedProcess';Reason='Owned source/build tree; no shared Git fixture or compiler outputs.'}
+  'revision parser C# mutants are detected'=@{Mode='IsolatedProcess';Reason='Owned source/build tree; no shared Git fixture or compiler outputs.'}
  }}
  BuildProjects=@(
   @{Project='parser-tests/QuietCli.Git.Parser.Tests.csproj';Outputs=@{'net11.0'='lib/parser-tests'}}

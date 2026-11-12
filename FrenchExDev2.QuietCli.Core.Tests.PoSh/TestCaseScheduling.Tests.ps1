@@ -8,6 +8,11 @@ function Test-QuietCaseScheduling {
     Owned fixtures and evidence; no existing user files or external services are used.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
+    . (Join-Path $PSScriptRoot 'GitMutationScheduling.Tests.ps1')
+    try{Test-QuietGitMutationScheduling -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}catch{
+        Write-WorkspaceJson (Join-Path $RunDirectory 'git-mutation-scheduling-failure.json') @{Message=$_.Exception.Message;Stack=$_.ScriptStackTrace;Position=$_.InvocationInfo.PositionMessage}
+        throw
+    }
     $root=Join-Path $RunDirectory 'test-case-scheduling';[void][IO.Directory]::CreateDirectory($root)
     $utf8=[Text.UTF8Encoding]::new($false)
     $manifest=Join-Path $root 'fixture.psd1'

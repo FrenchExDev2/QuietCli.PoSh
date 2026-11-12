@@ -34,6 +34,8 @@ Set QUIETCLI_GIT_COMMAND_MUTATION=1 to request eight source-checked C# repositor
 
 ## Query parser qualification
 
+Compiler mutation catalogues run after shared repository scenarios, in isolated processes capped at two by the existing worker budget. Measurement barriers remain exclusive. Each catalogue owns a short build tree, restores packages once, resets pristine sources before every mutant and forces compilation with `--no-incremental`; subsequent builds use `--no-restore`. Every baseline still requires all 57 assertions, and every mutant still executes the complete assertion runner. Reports expose build/restore counts with separate per-mutant diagnostics. Concurrent catalogues share neither assemblies nor mutable build trees.
+
 The shared parser mutation runner stages `global.json`, `Directory.Build.props` and
 `Directory.Packages.props` above every isolated project. Baselines and mutants therefore
 retain the workspace SDK selection, central package versions and warning-as-error policy.

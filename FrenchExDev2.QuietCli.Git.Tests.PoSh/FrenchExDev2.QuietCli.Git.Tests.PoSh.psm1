@@ -258,6 +258,15 @@ Tests independently prepared repositories, hook counts and local bare push targe
         'gain filters select the business module without serializing its objects'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'Git module CI image plan derives from its own files and from Core, never the reverse'=@{TestKind='Integration';Dependencies=@('FileSystem')}
     }
+    # Independent compiler catalogues use no shared repository prerequisites.
+    # Group them after ordinary scenarios so the bounded scheduler can batch them.
+    $deferred=[ordered]@{}
+    foreach($name in @($cases.Keys)){
+        if($caseMetadata[$name].ContainsKey('EnabledWhen') -and $caseMetadata[$name].Dependencies -contains 'DotNetBuild'){
+            $deferred.Add($name,$cases[$name]);$cases.Remove($name)
+        }
+    }
+    foreach($name in $deferred.Keys){$cases.Add($name,$deferred[$name])}
     $inventory=Get-QuietCompanionTestInventory -ManifestPath (Join-Path $PSScriptRoot 'FrenchExDev2.QuietCli.Git.Tests.PoSh.psd1')
     Assert-QuietTestCaseMetadata -CaseNames $inventory.CaseNames -Metadata $caseMetadata
     $passed=0;$failed=0;$ttyExcluded=0;$skipped=0;$stoppedAt=$null;$results=[Collections.Generic.List[object]]::new()

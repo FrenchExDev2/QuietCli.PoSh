@@ -83,6 +83,8 @@ Core uses a parent-owned bounded queue of isolated PowerShell processes through 
 
 The scheduling regression verifies generated barrier plans, malformed manifests, actual process overlap and the upper bound, distinct report/configuration/database paths, literal wildcard names, deterministic receipts, serial/parallel outcome equivalence, admission closure, timeout/report failures, cancellation cleanup, no-effect WhatIf and actual concurrency/barrier mutants. Hosted elapsed time and peak memory still need measurement; configuration and local assertions do not establish a quantified CI speedup.
 
+The nine optional Git compiler-mutation cases are explicitly IsolatedProcess and are deferred together after shared-repository scenarios. The shared budget caps their independent catalogue workers at two; each child receives one internal worker. Each catalogue restores package assets once but resets sources and forces compilation for every mutant. Mutation scheduling does not move ordinary Git prerequisites or overlap exclusive measurement barriers. Scheduler properties and pristine-build process doubles accompany the real compiled campaigns.
+
 <!-- credits:begin -->
 ## Credits
 
