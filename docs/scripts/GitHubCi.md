@@ -1,5 +1,7 @@
 # GitHubCi.ps1
 
+`Assert-GitHubCiImagePreparationContext` is a pure guard for opt-in cache-only dispatches. It permits this mode only for `workflow_dispatch` on upstream `refs/heads/develop`. Normal qualification remains valid in its existing event contexts. Cache preparation emits no qualified revision receipt and grants no publication eligibility; 96 context combinations verify the boundary without network or container execution.
+
 Pure policy functions shared by GitHub matrix selection, the Linux aggregate gate and companion tests.
 
 `Get-GitHubCiExecutionMatrix -Images $rows` requires exactly the four native Linux targets. A record

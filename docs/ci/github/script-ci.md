@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: F95A633522EC9EF1E5172C8C19F9442F59CC15F94B66FC95E3005CB16411E781 -->
+<!-- workflow-source-sha256: D5997144689675C47117F6536102C474D89CE022F6CD25C349D26A18C50E49CA -->
 
 ## Purpose
 
@@ -19,6 +19,8 @@ Source changes preserve all ten product targets. RunProfiles functional/mutation
 ## Triggers
 
 Manual workflow_dispatch and reusable workflow_call. Suite, collect_performance and run_tooling are explicit inputs.
+
+Manual dispatch additionally exposes `images_only` (false by default). On the upstream `develop` ref, selecting it runs the existing native Linux image producer and its verified GHCR/BuildKit preparation without product tests, tooling mutation, performance aggregation or a qualification receipt. The shared context guard rejects forks, PR events and other refs. Existing trusted develop producers continue populating the same caches; PR fallback remains read-only for GHCR. This mode primes base-branch caches for later PRs instead of storing the only reusable layers under a PR merge ref. It never qualifies a package or emits `qualified_sha`.
 
 ## Scripts and effects
 
@@ -68,14 +70,14 @@ flowchart TD
 | --- | --- | --- | --- | --- |
 | linux | runner ${{ matrix.runner }}; container ${{ matrix.image }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_container == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 | linux-images | runner ${{ matrix.runner }} | linux-matrix | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiSuiteImage.ps1 |
-| linux-matrix | runner ubuntu-latest |  | default success condition | ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
-| linux-result | runner ubuntu-latest | linux-selection, linux, linux-test-driver | always() | ./scripts/GitHubCi.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
-| linux-selection | runner ubuntu-latest | linux-matrix, linux-images | ${{ always() && !cancelled() && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' &#124;&#124; needs.linux-images.result == 'skipped') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Select-GitHubCiMatrix.ps1 |
+| linux-matrix | runner ubuntu-latest |  | default success condition | ./scripts/GitHubCi.ps1, ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
+| linux-result | runner ubuntu-latest | linux-selection, linux, linux-test-driver | ${{ always() && !inputs.images_only }} | ./scripts/GitHubCi.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
+| linux-selection | runner ubuntu-latest | linux-matrix, linux-images | ${{ always() && !cancelled() && !inputs.images_only && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' &#124;&#124; needs.linux-images.result == 'skipped') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Select-GitHubCiMatrix.ps1 |
 | linux-test-driver | runner ${{ matrix.runner }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_docker_container_runtime == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CiSuiteImage.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
-| performance-results | runner ubuntu-latest | linux-matrix, windows, linux, linux-test-driver | ${{ always() && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CorePerformanceReport.ps1 |
-| qualification-gate | runner ubuntu-latest | linux-matrix, windows, linux-result, performance-results, tooling | ${{ always() }} | ./scripts/Assert-QualificationGate.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
-| tooling | reuses ./.github/workflows/tooling-ci.yml |  | inputs.run_tooling |  |
-| windows | runner ${{ matrix.image }} | linux-matrix | default success condition | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
+| performance-results | runner ubuntu-latest | linux-matrix, windows, linux, linux-test-driver | ${{ always() && !inputs.images_only && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CorePerformanceReport.ps1 |
+| qualification-gate | runner ubuntu-latest | linux-matrix, windows, linux-result, performance-results, tooling | ${{ always() && !inputs.images_only }} | ./scripts/Assert-QualificationGate.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
+| tooling | reuses ./.github/workflows/tooling-ci.yml |  | inputs.run_tooling && !inputs.images_only |  |
+| windows | runner ${{ matrix.image }} | linux-matrix | ${{ !inputs.images_only }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 
 <!-- workflow-generated:end -->
 

@@ -10,6 +10,21 @@ function Test-QuietCiScalability {
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImpact.psm1')
     . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+    . (Join-Path $WorkspaceRoot 'scripts/GitHubCi.ps1')
+    $cacheContextProperties=0
+    foreach($imagesOnly in @($false,$true)){foreach($event in @('workflow_dispatch','push','pull_request','')){foreach($ref in @('refs/heads/develop','refs/heads/feature/cache','refs/pull/3/merge','')){foreach($repository in @('FrenchExDev2/QuietCli.PoSh','fork/QuietCli.PoSh','')){
+        $accepted=$true
+        try{Assert-GitHubCiImagePreparationContext -ImagesOnly $imagesOnly -Event $event -Ref $ref -Repository $repository}catch{$accepted=$false}
+        $expected=!$imagesOnly -or ($event -ceq 'workflow_dispatch' -and $ref -ceq 'refs/heads/develop' -and $repository -ceq 'FrenchExDev2/QuietCli.PoSh')
+        Assert-QuietEqual $accepted $expected 'Cache-only context must not authorize a PR or fork'
+        $cacheContextProperties++
+    }}}}
+    $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
+    $cacheWorkflow=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build().Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/ci.yml'),[Text.Encoding]::UTF8))
+    if($cacheWorkflow['on']['workflow_dispatch']['inputs']['images_only']['default'] -cne 'false'){throw 'CacheOnlyMustBeOptIn'}
+    foreach($job in @('qualification-gate','windows','tooling','linux-selection','linux-result','performance-results')){
+        if([string]$cacheWorkflow['jobs'][$job]['if'] -notmatch '!inputs\.images_only'){throw ('CacheOnlyStartsQualification: '+$job)}
+    }
     $vectors=@(
         @{Path='FrenchExDev2.QuietCli.Git.PoSh/src/Commands.ps1';Suite='Git';Products=$true;Tooling=$false},
         @{Path='FrenchExDev2.QuietCli.Git.Tests.PoSh/Queries.Tests.ps1';Suite='Git';Products=$true;Tooling=$false},

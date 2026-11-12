@@ -43,3 +43,20 @@ function Assert-GitHubCiLinuxResults {
     if($SelectionResult -cne 'success' -or (!$HasContainer -and !$HasFallback)){throw 'GitHubCiLinuxSelectionFailed'}
     if($ContainerResult -cne $(if($HasContainer){'success'}else{'skipped'}) -or $FallbackResult -cne $(if($HasFallback){'success'}else{'skipped'})){throw 'GitHubCiLinuxMatrixFailed'}
 }
+function Assert-GitHubCiImagePreparationContext {
+    <#
+    .SYNOPSIS
+    Restricts cache-only preparation to explicit upstream develop dispatches.
+    .PARAMETER ImagesOnly
+    Selects preparation without qualification or a qualified revision receipt.
+    .PARAMETER Event
+    GitHub event name.
+    .PARAMETER Ref
+    Immutable event ref; never inferred from a caller checkout.
+    .PARAMETER Repository
+    GitHub repository identity.
+    #>
+    param([bool]$ImagesOnly,[string]$Event,[string]$Ref,[string]$Repository)
+    if($ImagesOnly -and ($Event -cne 'workflow_dispatch' -or $Ref -cne 'refs/heads/develop' -or $Repository -cne 'FrenchExDev2/QuietCli.PoSh')){throw 'CiImagesOnlyRequiresUpstreamDevelopDispatch'}
+}
+

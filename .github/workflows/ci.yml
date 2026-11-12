@@ -22,6 +22,11 @@ on:
         default: true
   workflow_dispatch:
     inputs:
+      images_only:
+        description: Warm verified Linux image caches on develop without product qualification
+        type: boolean
+        required: false
+        default: false
       run_tooling:
         description: Require repository automation and run-profile mutation independently of the product matrix
         type: boolean
@@ -45,7 +50,7 @@ jobs:
   qualification-gate:
     name: QuietCli2 qualification gate
     needs: [linux-matrix, windows, linux-result, performance-results, tooling]
-    if: ${{ always() }}
+    if: ${{ always() && !inputs.images_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -78,11 +83,12 @@ jobs:
           name: quietcli2-qualification-gate
           path: artifacts/qualification-gate
   tooling:
-    if: inputs.run_tooling
+    if: inputs.run_tooling && !inputs.images_only
     uses: ./.github/workflows/tooling-ci.yml
   windows:
     name: Windows (${{ matrix.rid }}, ${{ matrix.channel }}, ${{ matrix.mode }})
     needs: linux-matrix
+    if: ${{ !inputs.images_only }}
     env:
       QUIETCLI_SUITE_HAS_CORE: ${{ needs.linux-matrix.outputs.has_core }}
     strategy:
@@ -253,7 +259,10 @@ jobs:
         shell: pwsh
         env:
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+          QUIETCLI_IMAGES_ONLY: ${{ inputs.images_only }}
         run: |
+          . ./scripts/GitHubCi.ps1
+          Assert-GitHubCiImagePreparationContext -ImagesOnly:($env:QUIETCLI_IMAGES_ONLY -ceq 'true') -Event $env:GITHUB_EVENT_NAME -Ref $env:GITHUB_REF -Repository $env:GITHUB_REPOSITORY
           ./scripts/Initialize-CiCompanions.ps1 -Suite $env:QUIETCLI_SUITE -OutputPath $env:GITHUB_OUTPUT
           # Objective: single source of truth shared by image and execution jobs,
           # instead of three hand-duplicated YAML copies of the same four native targets.
@@ -323,7 +332,7 @@ jobs:
   linux-selection:
     name: Select verified Linux images and Docker fallback
     needs: [linux-matrix, linux-images]
-    if: ${{ always() && !cancelled() && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') }}
+    if: ${{ always() && !cancelled() && !inputs.images_only && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' || needs.linux-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -563,7 +572,7 @@ jobs:
   linux-result:
     name: Require every selected Linux execution path
     needs: [linux-selection, linux, linux-test-driver]
-    if: always()
+    if: ${{ always() && !inputs.images_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -587,7 +596,7 @@ jobs:
   performance-results:
     name: Readable performance evidence for the complete matrix
     needs: [linux-matrix, windows, linux, linux-test-driver]
-    if: ${{ always() && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }}
+    if: ${{ always() && !inputs.images_only && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
