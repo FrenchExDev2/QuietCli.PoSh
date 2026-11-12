@@ -26,6 +26,23 @@ Manual dispatch additionally exposes `images_only` (false by default). On the up
 
 Uses the shared scripts/ entry points, validated source lock, selected builds and private artifacts described above. Network access is limited to pinned dependency preparation, verified image caches and explicit GitHub evidence reads. No module publication occurs here.
 
+## Operational modes and acceptance
+
+```mermaid
+flowchart LR
+    INPUT[Manual or reusable inputs] --> MODE{images_only?}
+    MODE -- Yes --> CONTEXT[Require upstream develop dispatch]
+    CONTEXT --> CACHE[Four native Linux image producers]
+    MODE -- No --> PRODUCT[Six Windows and four Linux product targets]
+    PRODUCT --> EVIDENCE[Selected tests and declared Core profiles]
+    EVIDENCE --> GATE[Require platforms, profiling and requested tooling]
+    GATE --> RECEIPT[Revision, tree, run and attempt receipt]
+```
+
+Core evidence requires the combined ten-environment performance report. `always()` retains failure-report assembly; cache-only mode and scopes without Core evidence skip it. A collect_performance opt-out cannot qualify Core. Windows rows use checksum-pinned hosts and one tested RID; tooling owns the complete IL distribution checks outside the matrix. The [CI map](../README.md) explains script roles and source-change dates.
+
+The run-profile shard entry-point mismatch described in [tooling validation](script-tooling-ci.md#current-integration-gap) currently blocks required tooling completion. Configured job graphs describe routing, not a successful hosted qualification.
+
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
 

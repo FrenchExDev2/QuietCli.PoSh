@@ -1,77 +1,28 @@
 # New-CiModuleImage.ps1
 
-The verified parent is tagged using the resolved plan's `ParentReference`. The same reference is
-the generated recipe's valid CORE_IMAGE default and its explicit build argument. Neither the
-renderer nor the builder selects an unrelated fallback base when a parent is unavailable.
+## Purpose and usage
 
-For standalone registry reuse, a CacheOnly probe of the final module image precedes parent preparation. A verified hit returns directly; a miss retains the existing parent-build path. Supplied ParentPlan/ParentImage identities are still checked before use.
+Builds a declared companion overlay over a verified Core or explicit preceding image. Suite composition normally uses [New-CiSuiteImage](New-CiSuiteImage.md).
 
-`ParentPlan` and `ParentImage` compose this overlay over the preceding declared layer. PlanOnly
-requires only ParentPlan; preparation also requires its prepared image. The parent fingerprint
-participates in the child identity. Omitting both retains standalone Core-overlay behavior.
-Suite composition lives in `lib/CiCompanions.psm1`.
-
-Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
-
-`-ContainerRuntime podman|docker` is optional; empty reads checkout `.env`, then discovers Podman before Docker on Windows and Linux and forwards the resolved engine consistently to Core image
-preparation, the local Core tag and the derived build. GitHub selects `docker` explicitly. The
-ephemeral registry credential is retained in memory across the Core call, which removes it from
-the process environment, then restored for the derived builder and cleared from the temporary
-variable. This prevents a missing derived image from losing its publication credential between
-the two builds. No credential value is logged or placed in a build argument.
-
-## Purpose
-
-Builds a Core-consumer module's own derived Docker/Podman CI test image (for example, the `Git` module's image) layered on top of Core's already-verified, fingerprinted base image, without ever reading Core's internals beyond its resolved plan. This lets each consumer module (currently `Git`; more could follow the same contract) own its own `Containerfile` fragment, locks, and fetch script while still building `FROM` a trusted, reproducible Core image. It is invoked directly from `.github/workflows/ci.yml` (lines 256, 314) with `-Module Git`, and is the second half of the two-stage image pipeline whose first half is `New-CiImage.ps1` (called internally at line 40).
-
-## Usage
-
-Parameters:
-- `-Module [string]` (Mandatory) — Core-consumer module name, matching the `FrenchExDev2.QuietCli.<Module>.PoSh` directory (e.g. `'Git'`).
-- `-RuntimeIdentifier [string]` (Mandatory, `ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')`).
-- `-WorkspaceRoot [string]` (default: parent of `$PSScriptRoot`).
-- `-RegistryCache [switch]` — read the GHCR cache (for both Core and the module) with the optional `QUIETCLI_REGISTRY_TOKEN`.
-- `-PublishCache [switch]` — publish a missing *module* cache entry only; Core's own cache publication is explicitly stated to remain the exclusive responsibility of the `linux-images` job calling `New-CiImage.ps1` directly (doc comment, lines 24-25).
-- `-PlanOnly [switch]` — resolve inputs offline; returns the plan object before Core is built/pulled or engine discovery/invocation occurs.
-
-Example (from `ci.yml`):
 ```powershell
-./scripts/New-CiModuleImage.ps1 -Module Git -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -PublishCache
+./scripts/New-CiModuleImage.ps1 -Module Git -RuntimeIdentifier linux-x64 -PlanOnly
 ```
 
-## Dependencies
+The module owns `ci/Get-CiImageArguments.ps1`, recipe fragments, arguments and locks. CiImages renders the Containerfile; its input and parent fingerprints define the final identity. `Module` is the short declared name, such as Git; RuntimeIdentifier selects a native Linux target.
 
-- Dot-sources `Common.ps1` and `CiImages.ps1` (line 30).
-- Requires the module's own contract script to exist at the exact relative path `<moduleRoot>/ci/Get-CiImageArguments.ps1` (line 32-34; throws `CiModuleContractMissing` otherwise) — this script is *invoked directly*, not dot-sourced (per the `.DESCRIPTION`, lines 11-12), and must return an object with `.InputPaths`, `.Containerfile`, `.Arguments`.
-- Internally calls `New-CiImage.ps1` (line 40) to resolve/build Core's own image first — a script-to-script dependency within the same `scripts/` folder.
-- Shells out to the selected engine tag command via `Invoke-WorkspaceNative` (line 44) to create a local `FROM`-able tag keyed by Core's verified content fingerprint (`$core.Fingerprint`, line 43) — necessary because, per the inline comment (lines 41-42), "a bare image ID cannot be a Dockerfile FROM target."
-- Transitively depends on whatever `Invoke-QuietCiImageBuild` shells out to (Docker/Podman build/pull, GHCR network access when caching flags are set).
-- Filesystem assumption: `<WorkspaceRoot>/<moduleRoot>/.github/containers` exists as the build context for the module's own image (line 46).
+Without ParentPlan, registry reuse checks the final overlay before building Core. On a miss, the wrapper resolves Core, tags the verified parent under a fingerprint-bound local reference, then builds the overlay. With ParentPlan, a real build requires ParentImage and verifies its RID/fingerprint/identity. It never substitutes an unrelated parent.
 
-## Side effects
+## Dependencies and side effects
 
-- Builds/pulls Core's image as a side effect of calling `New-CiImage.ps1` (line 40) — i.e. this script can trigger a full Core image build even if the caller only wanted the module image, whenever Core's own image isn't already cached/present.
-- Tags a local image (selected engine tag command) under `localhost/quietcli2-ci-core-<platform>-<arch>:<fingerprint>` — a selected engine image-store mutation.
-- Invokes the module's own `ci/Get-CiImageArguments.ps1` script (line 36), which runs arbitrary PowerShell from the module's own repository tree — this is an intentional per-module extensibility point, not sandboxed.
-- Builds/pulls the module's own derived image, and with `-PublishCache`, pushes a module cache entry to GHCR.
+Loads Common and CiImages and invokes the selected module's image contract. PlanOnly resolves local metadata without native/network/credential access. WhatIf returns before effectful preparation. RegistryCache, PublishCache and ContainerRuntime use the shared [environment](../ci/environment.md) and [image policies](../ci/linux-images.md).
 
-## Findings
+Real preparation may pull/build/tag images and write receipts. The temporary credential survives the base call only in the owning process so the overlay can authenticate; it is redacted and cleaned up by the shared builder. Direct overlay preparation does not request base publication; suite preparation owns missing base/overlay publication in its producer job. No Gallery package is produced.
 
-- No bug found in the Core-fingerprint-to-tag flow: keying the local `FROM` tag on `$core.Fingerprint` (line 43) rather than a mutable tag like `:latest` is the right call for reproducibility — it guarantees the module's Containerfile builds against the exact Core image content it resolved, whether that arrived via a fresh local build or a GHCR pull-by-digest (per the inline comment).
-- DESIGN: `$moduleScript=Join-Path $WorkspaceRoot $moduleContractPath` (line 33) is invoked with `& $moduleScript -WorkspaceRoot $WorkspaceRoot -Platform $core.Platform` (line 36) — this executes a script that lives inside the *consumer module's own directory tree* with no integrity check (no hash pinning, no signature) before execution, unlike the Profiler/dotnet-trace packages in `RunToolCache.psm1` which are checksum-verified before use. Since `ci/Get-CiImageArguments.ps1` is part of the same monorepo (not a third-party download), this is a reasonable trust boundary for this specific codebase, but it is worth noting as a difference in trust model from the rest of the `scripts/lib/` tooling, which is otherwise careful about verifying anything executed.
-- CONVENTION: line 1's comment ("Objectif : Construire l'image CI d'un module consommateur de Core, par-dessus l'image Core deja verifiee.") is in French — same recurring violation of the English-only code/comments rule seen in `New-CiImage.ps1` and `Monitor.Time.ps1`.
-- No input-validation gap found: `-Module` has no `ValidateSet`/pattern restriction (unlike `-RuntimeIdentifier`), so a typo'd module name produces a late, clear `CiModuleContractMissing` throw (line 34) rather than a cryptic failure deeper in the build — acceptable, though a `ValidatePattern` matching the `FrenchExDev2.QuietCli.<Module>.PoSh` directory-name convention would surface a bad `-Module` value slightly earlier with a more specific message.
-- Testability: like `New-CiImage.ps1`, no dedicated invoke-and-assert Pester test for this script was found; `CiImages.Tests.ps1` references file paths including this script's module-specific counterparts (the Git module's own `ci/Get-CiImageArguments.ps1` and lock files) but does not appear to execute `New-CiModuleImage.ps1` end-to-end in the portion reviewed.
+## Critical review and verdict
 
-## Verdict
+`scripts/New-CiModuleImage.ps1:38` validates explicit parents, and `:48` checks the final cache before base preparation. Shared tests cover parent provenance, credential handoff, default FROM references and no-build cache misses. Cross-runner/cache behavior still requires hosted evidence.
 
-Architecturally sound (the fingerprint-keyed local tag is exactly the right trick for a reproducible two-stage container build), with the same minor English-comment fix needed as its sibling `New-CiImage.ps1`; the highest-priority improvement would be additional end-to-end execution beyond the existing mocked Docker/Podman adapter and credential-lifecycle tests asserting that a missing `ci/Get-CiImageArguments.ps1` fails with `CiModuleContractMissing` and that the Core tag is correctly keyed by fingerprint.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
-<!-- credits:end -->
 
 <!-- script-contract:begin -->
 ## Execution contract
@@ -82,3 +33,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

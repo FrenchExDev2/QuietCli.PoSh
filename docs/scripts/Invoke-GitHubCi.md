@@ -57,11 +57,17 @@ Local development uses `Invoke-WorkspaceCi.ps1` or `Invoke-ContainerCi.ps1`. The
 `Invoke-GitHubCiSmoke.ps1` supplies the normal local monitoring window while testing the GitHub entry
 inside an existing Docker toolchain image; it does not claim hosted Windows/ARM qualification.
 
-<!-- credits:begin -->
-## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
-<!-- credits:end -->
+
+## Current shard integration gap
+
+The unfiltered-summary guard in `scripts/Invoke-GitHubCi.ps1` rejects every suite summary carrying Partial or Incomplete. The RunProfilesMutation matrix sets shard controls, and `Invoke-RunProfileQualification.ps1` correctly marks those summaries Partial. Consequently successful shard execution is rejected by this entry point, and the dependent completion job cannot qualify the union.
+
+A future correction must distinguish validated shard execution from complete qualification without accepting filtered/incomplete product suites. Keep the shard report partial and require the source-bound completion job. Existing local mutation/aggregation tests do not cover this GitHub-entry interaction; it needs a targeted regression before claiming the sharded workflow operational.
+
+## Critical review and verdict
+
+`scripts/Invoke-GitHubCi.ps1:1` preserves exact host/direct-vs-container execution, path normalization and strict qualification completeness. Its generic completeness guard is appropriate for product qualification but currently incompatible with intermediate mutation shards. This is a confirmed source-level wiring gap, not an observed new hosted failure. See [the workflow contract](../ci/github/script-tooling-ci.md#current-integration-gap).
 
 <!-- script-contract:begin -->
 ## Execution contract
@@ -72,3 +78,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

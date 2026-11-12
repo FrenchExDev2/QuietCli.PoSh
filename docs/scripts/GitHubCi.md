@@ -1,32 +1,32 @@
 # GitHubCi.ps1
 
-`Assert-GitHubCiImagePreparationContext` is a pure guard for opt-in cache-only dispatches. It permits this mode only for `workflow_dispatch` on upstream `refs/heads/develop`. Normal qualification remains valid in its existing event contexts. Cache preparation emits no qualified revision receipt and grants no publication eligibility; 96 context combinations verify the boundary without network or container execution.
+## Purpose and usage
 
-Pure policy functions shared by GitHub matrix selection, the Linux aggregate gate and companion tests.
+Pure policy helpers shared by Linux matrix selection, aggregate gates and companion tests. Dot-sourcing declares functions; no product import, native process, network or publication occurs.
 
-`Get-GitHubCiExecutionMatrix -Images $rows` requires exactly the four native Linux targets. A record
-includes `Rid`, `Platform`, `Runner` and a verified immutable GHCR `Reference`, or null for a missing
-image. It rejects duplicate/missing targets, wrong native runners and mutable/foreign references.
-Accessible images select job containers; missing images select Docker fallback without publication.
-Alpine ARM64 always selects fallback because GitHub's JavaScript action host supports Alpine on x64
-only. Checkout/upload actions remain on Ubuntu ARM64 and the tests run inside the real musl container.
-Alpine job-container rows explicitly select `DOTNET_ROOT=/opt/pwsh-runtime`, the image's locked
-Microsoft .NET 10 musl runtime. Debian rows retain `/usr/share/dotnet`.
+| Function | Contract |
+| --- | --- |
+| Get-GitHubCiExecutionMatrix | Exactly four unique Linux targets, correct native runners and verified immutable source-owned GHCR references. Available compatible images use job containers; misses use Docker fallback. Alpine ARM64 always uses fallback. |
+| Assert-GitHubCiLinuxResults | Selection must succeed and every selected path must succeed. Only an unselected path may be skipped. |
+| Assert-GitHubCiImagePreparationContext | images_only is accepted exclusively for workflow_dispatch on upstream refs/heads/develop; normal qualification retains existing event contexts. |
 
-`Assert-GitHubCiLinuxResults` requires successful image selection and success for every selected
-matrix. Only an unselected path may be skipped. No required target can disappear behind a skipped job.
+```mermaid
+flowchart LR
+    I[Four validated native targets] --> M[Disjoint container and fallback matrices]
+    M --> RUN[Execute selected jobs]
+    RUN --> A[Aggregate selected paths only]
+    A --> G[Qualification gate]
+    W[Cache-only request] --> C[Validate repository, ref and event]
+    C --> P[Image producers only]
+```
 
-Both functions are offline: no native process, registry access or publication. Tests enumerate cache
-availability combinations, shuffled inputs, invalid references and terminal states, and use targeted
-policy mutants. This is orchestration-policy evidence, not hosted ARM qualification.
+Alpine job containers set DOTNET_ROOT to the locked Microsoft musl runtime at `/opt/pwsh-runtime`; Debian keeps `/usr/share/dotnet`. Alpine ARM64 checkout/upload actions stay on Ubuntu while tests run in the real musl guest. Cache-only mode has no qualified revision receipt or publication eligibility for modules.
 
-Source: [GitHub runner Alpine support](https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/StepHost.cs).
+## Critical review and verdict
 
-<!-- credits:begin -->
-## Credits
+`scripts/GitHubCi.ps1:1` centralizes policy without transport effects. Tests enumerate cache combinations, shuffled/invalid targets, references and terminal states, use targeted policy mutants, and cover 96 image-preparation contexts. This validates orchestration decisions, not hosted ARM execution or cache-transfer speed. See [Linux routing](../ci/execution-model.md#linux-selection).
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
-<!-- credits:end -->
+
 
 <!-- script-contract:begin -->
 ## Execution contract
@@ -37,3 +37,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

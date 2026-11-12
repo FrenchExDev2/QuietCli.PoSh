@@ -4,9 +4,9 @@
 
 ## Purpose
 
-Reusable private repository-automation qualification, run once independently of the product matrix. Tooling.Tests owns its .psm1 catalogue and metadata; Core.Tests retains private assertion helpers. The complete functional RunProfiles suite follows tooling tests. The single complete tooling build supplies the independently declared Distribution.Tests catalogue. Test-CoreIndependence -Suite Distribution -SkipBuild verifies/copies Core/Core.Tests libraries to an owned checkout without Git, then runs every distribution case once, without another build. An independent mutation job uses a green baseline and at most two isolated process/sandbox pairs, accepting only Killed outcomes. Measurements and product profiling occur on separate runners.
+Reusable private repository-automation qualification, run once independently of the product matrix. Tooling.Tests owns its .psm1 catalogue and metadata; Core.Tests retains private assertion helpers. The complete functional RunProfiles suite follows tooling tests. The single complete tooling build supplies the independently declared Distribution.Tests catalogue. Test-CoreIndependence -Suite Distribution -SkipBuild verifies/copies Core/Core.Tests libraries to an owned checkout without Git, then runs every distribution case once, without another build. The mutation matrix declares two shards, each with a green baseline and at most two isolated process/sandbox pairs, accepting only Killed outcomes. Measurements and product profiling occur on separate runners.
 
-A third job builds and runs complete Core qualification in a fresh source copy without the real Git module. Git remains an executable fixture dependency. It uses a short temporary path to avoid Windows native-library path limits. Saved evidence records the isolated source/binary identity and generated scripted companion regression.
+A separate job builds and runs complete Core qualification in a fresh source copy without the real Git module. Git remains an executable fixture dependency. It uses a short temporary path to avoid Windows native-library path limits. Saved evidence records the isolated source/binary identity and generated scripted companion regression.
 
 Mutation uses Ci.Process exclusively and performs no product build or import. Functional RunProfiles explicitly prepares both pinned profiler tools. New native build jobs reuse the common NuGet cache.
 
@@ -25,6 +25,28 @@ Reusable workflow_call from CI or the tooling-only entry point; no independent p
 ## Scripts and effects
 
 Uses the shared scripts/ entry points, validated source lock, selected builds and private artifacts described above. Network access is limited to pinned dependency preparation, verified image caches and explicit GitHub evidence reads. No module publication occurs here.
+
+## Mutation completion and artifact flow
+
+```mermaid
+flowchart TD
+    F[Tooling and RunProfiles functional runner] --> D[Distribution once with verified IL outputs]
+    I[Separate Core source copy without Git] --> IC[Build and run full Core]
+    A[Mutation shard 0 with baseline and two workers] --> AR[Partial SHA, shard and attempt artifact]
+    B[Mutation shard 1 with baseline and two workers] --> BR[Partial SHA, shard and attempt artifact]
+    AR --> V[Verify exact source-bound catalogue union]
+    BR --> V
+    V --> C[Complete mutation receipt]
+    D --> OK[Reusable workflow success requires all jobs]
+    IC --> OK
+    C --> OK
+```
+
+The mutation campaign can run four workers across two runners. Its 92 definitions, seed 61207, 120 iterations and Killed-only acceptance remain unchanged. Ordinary tooling/independence reports retain fourteen days; failed functional fixture trees have a separate seven-day diagnostic artifact. Mutation download matches the current SHA/attempt and requires both shard artifacts. See [script responsibilities and dates](../README.md).
+
+## Current integration gap
+
+`Invoke-RunProfileQualification` marks each shard summary `Partial=true`. `Invoke-GitHubCi.ps1` rejects every Partial summary, including this declared RunProfilesMutation scope. Therefore the present matrix steps fail before `mutation-complete` can accept their reports. The strict completion validator is implemented, but the GitHub entry point still needs a narrowly validated shard-execution contract. Local full/sharded mutation tests do not establish that missing boundary. See [the script review](../../scripts/Invoke-GitHubCi.md#current-shard-integration-gap).
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies

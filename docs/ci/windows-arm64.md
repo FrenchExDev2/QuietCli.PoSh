@@ -1,25 +1,49 @@
-# Windows 11 ARM64 CI
+# Windows x64 and ARM64 CI
 
-The PR workflow now runs two independent Windows jobs: `windows-latest` / `win-x64` and `windows-11-arm` / `win-arm64`. Both build with the pinned .NET SDK and then run the same Core and Git suites, without skipping scenarios on ARM64. Artifacts are separated by RID.
+The shared [ci.yml](../../.github/workflows/ci.yml) runs the selected product scope in **six native Windows combinations**. Each row builds Release ReadyToRun for its tested RID and executes tests. Setup or build success alone does not qualify the row.
 
-The `windows-11-arm` target is a GitHub-hosted virtual machine, not a local OCI image. See the [official runner list](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) and the [published Windows 11 ARM64 image contents](https://github.com/actions/runner-images/blob/main/images/windows/Windows11-Arm64-Readme.md). This label evolves; the report retains the version actually used. It does not provide a reproducible system-disk lock. Repository eligibility and runner billing terms must be checked before enabling it remotely.
+| Runner / RID | PowerShell host | Engine hosting / build |
+| --- | --- | --- |
+| `windows-latest` / `win-x64` | Stable, CLR 10 | Process, .NET 11 |
+| `windows-latest` / `win-x64` | Stable, CLR 10 | InProcess, .NET 10 |
+| `windows-latest` / `win-x64` | Preview, CLR 11 | InProcess, .NET 11 |
+| `windows-11-arm` / `win-arm64` | Stable, CLR 10 | Process, .NET 11 |
+| `windows-11-arm` / `win-arm64` | Stable, CLR 10 | InProcess, .NET 10 |
+| `windows-11-arm` / `win-arm64` | Preview, CLR 11 | InProcess, .NET 11 |
 
-`Build-Workspace.ps1` publishes the C# engine twice: `lib/engine/win-x64` with `PlatformTarget=x64`, then `lib/engine/win-arm64` with `PlatformTarget=ARM64`. Each distribution contains the assembly and its native Windows apphost. Publication is framework-dependent: the .NET 11 RC runtime for the corresponding architecture is still required. This is C# executed by the ARM64 JIT, not a NativeAOT publication.
+Exact host versions and archive SHA-256 values come from [powershell-hosts.lock.json](../../build/powershell-hosts.lock.json); the SDK comes from [global.json](../../global.json). These jobs use GitHub-hosted machines, not Windows containers or local ARM emulation. Reports retain the actual runner image version.
 
-The PE headers of the assembly and apphost are verified independently: `0x8664` for x64 and `0xAA64` for ARM64. Their hashes and compilation settings are recorded in the build manifests. Packaging requires both distributions and includes them in the Core module.
-
-`Invoke-WorkspaceCi.ps1 -ExpectedRuntimeIdentifier win-arm64` requires this architecture for PowerShell and the isolated engine process, as well as a `win-arm64` publication. The facade selects the directory for the current RID and starts its apphost. An emulated x64 execution fails. Reports record the RID, OS/process architectures, OS description, machine name, engine PID, engine assembly hash and build identity. SQLite is shipped under `resources/runtime/runtimes/win-arm64/native`. Windows PTY uses ConPTY.
-
-On a prepared Windows ARM64 host:
-
-```powershell
-# Goal: build and test locally on ARM64, with a visible monitoring window.
-./scripts/Invoke-WorkspaceCi.ps1 -ExpectedRuntimeIdentifier win-arm64
+```mermaid
+flowchart LR
+    R[Native x64 or ARM64 runner] --> H[Select checksum-pinned PowerShell host]
+    H --> B[Build tested RID and verify manifests]
+    B --> E{Engine mode}
+    E -- Process --> P[Matching architecture .NET 11 apphost]
+    E -- InProcess --> I[Assembly matching host CLR and RID]
+    P --> T[Run selected suites and verify actual identities]
+    I --> T
+    T --> A[RID and host-specific reports]
 ```
 
-An ISO alone cannot run CI: an installed guest with PowerShell 7.6+, .NET 11 RC and Git, an isolated working disk and a report transport are required. Do not relabel an x64 base as ARM64. This workflow does not modify any user disk or existing database.
+## Architecture checks
 
-The reference retrieved from GitHub is the documentation for the `windows-11-arm` runner, not a downloaded local disk. This job therefore uses the GitHub image directly. The workflow is configured; no ARM success is claimed until a report from that runner is available.
+[Build-Workspace](../scripts/Build-Workspace.md) prepares portable `lib/inprocess` (.NET 10) and `lib/engine` (.NET 11), plus requested RID slots. Matrix calls restrict distribution publication to their tested RID; release packaging separately prepares all six RIDs. Binary manifests bind source, hashes, target architecture and ReadyToRun settings.
+
+Windows PE checks require `0x8664` for x64 and `0xAA64` for ARM64 where applicable. The isolated apphost needs the pinned .NET 11 runtime of the same architecture; the integrated build must match the selected PowerShell CLR. These are framework-dependent distributions, not NativeAOT binaries.
+
+`-ExpectedRuntimeIdentifier win-arm64` requires the actual selected host/engine identity. An emulated x64 process is not ARM64 evidence. Reports retain OS/process architectures, host/engine runtimes and PIDs, RID, binary hashes and source identities. Native resources, including SQLite, must match that RID.
+
+## Local and hosted limits
+
+On an actual prepared Windows ARM64 host, the local launcher can build and run a selected suite with its visible monitor:
+
+```powershell
+./scripts/Invoke-WorkspaceCi.ps1 -Suite Core -ExpectedRuntimeIdentifier win-arm64
+```
+
+A Windows x64 workstation cannot establish this result. Investigate ARM64 failures through the individual hosted job's setup/build/test logs and artifacts. GitHub passes `-SkipTty` in every product row; terminal campaigns are excluded on both architectures. Run-profile tooling runs separately on Windows x64 and cannot replace an ARM64 row.
+
+See [qualification and evidence](../../README-qualification-when-where-how.md) and the [source-change landmarks](README.md#source-change-landmarks).
 
 <!-- credits:begin -->
 ## Credits

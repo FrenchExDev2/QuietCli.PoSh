@@ -20,6 +20,12 @@ Every pull request and develop push; the plan decides which campaigns are requir
 
 Uses the shared scripts/ entry points, validated source lock, selected builds and private artifacts described above. Network access is limited to pinned dependency preparation, verified image caches and explicit GitHub evidence reads. No module publication occurs here.
 
+## Plan and final status
+
+The reviewed tooling-only set is limited to New-RunProfile, Invoke-RunProfile, RunProfileStore and restricted lowercase profile-definition paths. Unknown scripts, shared encoding/profiler/report helpers and CI policy retain All. Mixed changes union product/tooling requirements, independently of path order. Documentation-only PRs can omit native tests while preserving the stable final check.
+
+Develop reuse checks a merged PR, successful originating workflow attempt and exact Git tree, not merely a similar commit message or branch. If verification fails, All runs. Reuse still requires integrity/Core integration smoke and native image resolution; it cannot authorize Gallery publication. See the [end-to-end diagram and source dates](../README.md).
+
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
 

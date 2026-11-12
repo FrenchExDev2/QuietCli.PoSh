@@ -1,245 +1,98 @@
 # CI execution model and local boundaries
 
+[CI map and source dates](README.md) · [Qualification guide](../../README-qualification-when-where-how.md) · [Workflow contracts](github/README.md)
+
 ## Execution paths
 
-The main workflow separates workstation supervision from GitHub execution. Its Linux matrix uses
-verified GitHub job containers where supported, or Docker fallback without PR image publication.
-Windows runs directly on its native GitHub runner. Local supervision remains a separate entry point.
-The workflow is implemented locally; hosted execution remains separate qualification evidence.
+One `companions-ci.yml` caller plans the complete diff. Companion paths select dependent suites; Core/shared/unknown changes require All and tooling. Reviewed tooling-only paths avoid product replay. Develop omits replay only with verified successful PR evidence for the identical Git tree, and still runs merged-source smoke and cache resolution. Missing proof falls back to All.
 
-Linux selection writes its JSON receipt atomically and creates missing parent directories on a
-clean checkout. The selected container and Docker jobs use an explicit `!cancelled()` condition,
-require successful selection and check their own flag. This prevents skipped image-publication
-jobs on PRs from implicitly skipping the downstream test matrices; cancellation and selection
-failure still block both paths. The dependency graph below keeps publication optional on PRs.
+The shared `ci.yml` selects six native Windows host/mode rows and four Linux targets. Tooling runs once outside this product matrix. All executes complete Core before bounded independent companions on the same prepared image/build.
 
 ```mermaid
 flowchart TD
-    A[Workstation] --> L[Local launchers]
-    L --> W[Background shared test worker]
-    L --> M[Visible read-only monitor]
-    W --> R[Temporary state and reports]
-    R --> M
-    A --> P[Local Docker or Podman container tests]
-    P --> VR{ContainerRuntime supplied?}
-    VR -- Yes --> VE[Use the selected engine]
-    VR -- No --> VK{Checkout .env runtime key?}
-    VK -- Absent --> VA[Get-Command: Podman before Docker on Windows and Linux]
-    VK -- Present --> VV{Exactly podman or docker?}
-    VV -- Yes --> VE
-    VV -- No --> VF[Configuration error]
-    VA --> VE
-    VE --> VC[Run the prepared image through the shared worker]
-    VC --> R
-    G[GitHub workflow matrix] --> GW[Native Windows runner]
-    G --> GL[Linux execution selection]
-    GW --> E[Invoke-GitHubCi.ps1]
-    GL --> C[GitHub job container]
-    GL --> D[Docker fallback on native Ubuntu runner]
-    C --> E
-    D --> S[Stage sources docs binaries and restored NuGet packages]
-    S --> DC[Networkless test container]
-    DC --> E
-    E --> T[Shared companion tests and assertions]
-    T --> B[Collect reports and record explicit gaps on failure]
-    B --> F[Revision-bound reports and failure diagnostics]
+    LOCAL[Local launcher] --> BUILD[Optional selected build]
+    BUILD --> LW[Background shared worker]
+    LW --> REPORT[External reports]
+    LOCAL --> MON[Visible read-only monitor]
+    REPORT --> MON
+    GH[GitHub product job] --> GB[Release build for tested RID]
+    GB --> ENTRY[Invoke-GitHubCi.ps1]
+    ENTRY --> MODE{Image supplied?}
+    MODE -- No --> WORK[Invoke-TestWorker in selected process]
+    MODE -- Yes --> TRANS[Invoke-ContainerWorker with Docker]
+    TRANS --> OFF[Stage sources, binaries and restored packages]
+    OFF --> GUEST[Networkless guest: same GitHub entry]
+    GUEST --> WORK
+    WORK --> RESULT[Terminal suite, identity and evidence reports]
 ```
 
+GitHub direct execution has no desktop monitor or extra local supervision process. Direct jobs use step/job deadlines; Docker fallback has an explicit guest deadline. `SkipBuild` reuses verified outputs and still executes tests. GitHub rejects partial/incomplete summaries and passes `SkipTty`; excluded terminal campaigns do not count as passed.
+
+## Linux selection
+
+[Select-GitHubCiMatrix](../scripts/Select-GitHubCiMatrix.md) saves selection atomically, creating missing parents. Its matrices are disjoint and cover four native targets. Selection failure/cancellation blocks execution; a skipped PR image producer does not implicitly skip tests.
+
 ```mermaid
 flowchart TD
-    T[One of four native Linux targets] --> V{Verified immutable image available?}
-    V -- No --> B[Build with Docker on the matching native runner]
-    B --> N[Run tests in Docker without publishing the PR image]
+    T[Native Debian or Alpine x64 or ARM64 target] --> V{Verified immutable final image available?}
+    V -- No --> D[Docker fallback on matching Ubuntu CPU]
     V -- Yes --> A{Alpine ARM64?}
-    A -- Yes --> U[Keep checkout and artifact actions on Ubuntu ARM64]
-    U --> N
-    A -- No --> C[Run directly in GitHub container using the verified digest]
-    C --> R[Require actual guest RID and successful tests]
-    N --> R
-    R --> Q[Aggregate both selected paths before qualification]
+    A -- Yes --> D
+    A -- No --> C[GitHub job container at verified digest]
+    D --> H[Host builds and stages current source and binaries]
+    H --> N[Tests in networkless guest]
+    C --> B[Build and test inside job container]
+    N --> R[Require actual guest RID and successful terminal reports]
+    B --> R
+    R --> G[Aggregate every selected execution path]
 ```
 
-The Alpine ARM64 branch preserves musl testing without pretending GitHub's JavaScript action host
-supports that environment. The [runner implementation](https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/StepHost.cs)
-rejects Alpine JavaScript actions outside x64. The native runner still matches the target CPU;
-Docker fallback is not architecture emulation.
+Alpine ARM64 keeps JavaScript checkout/upload actions on Ubuntu and tests real musl ARM64 in Docker. This is native execution, without architecture emulation. Job containers retain networking for checkout/setup; only fallback guest tests are described as networkless. [GitHubCi](../scripts/GitHubCi.md) owns routing and aggregate-result policy; [Linux images](linux-images.md) owns cache preparation.
 
-## Gallery publication and RID handling
-
-The current publication model prepares one selected business-module package per tag. Core embeds six engine RIDs; Git embeds its net10.0/net11.0 parser outputs and retains its separate Core dependency. Windows prepares the selected package after exact-source All qualification. Publication downloads and verifies those bytes without rebuilding or replacing a per-RID package. GHCR toolchain images remain separate from Gallery packages.
+## Qualification and artifacts
 
 ```mermaid
 flowchart TD
-    D[Explicit FrenchExDev2.QuietCli.Core.PoSh/v version tag push] --> Q[Qualify All for the tagged source revision]
-    Q --> W[Windows Release ReadyToRun build of all six RIDs for CLR 10 and 11]
-    W --> T[Validate the exact Windows packaging build]
-    T --> P[Prepare one QuietCli nupkg matching the manifest and tag]
-    P --> H[Record package SHA-256 and upload the prepared artifact]
-    H --> V[Publish job downloads and validates the same nupkg]
-    V --> C[Validate the prepared version and qualified checkpoint]
-    C --> K[Use PSGallery environment secret]
-    K --> G[Publish the prepared nupkg with Publish-PSResource]
+    W[Windows matrix success] --> G[Assert-QualificationGate]
+    L[Selected Linux paths succeed] --> G
+    P[Complete ten-environment profiles for Core scopes] --> G
+    T[Tooling workflow when required] --> G
+    S[Two mutation shards] --> U[Verified complete catalogue union]
+    U --> T
+    G --> R[Receipt: revision, Git tree, run and attempt]
+    R --> SHA[qualified_sha only on acceptance]
 ```
 
-The matrix qualifies a source revision. The Windows packaging job rebuilds its embedded binaries
-afterward; the current pipeline does not assemble the final package from per-RID binaries downloaded
-from the matrix. This distinction must remain visible when describing binary-level qualification.
-Develop merges run qualification/profiling and can publish missing GHCR toolchain cache entries,
-without publishing a module. Stable and prerelease Gallery publication both require a matching
-module tag push. Manual dispatch prepares artifacts only. See [release tags](github/script-release-tags.md)
-and [the Gallery workflow](../../.github/workflows/publish-psgallery.yml). Publication validates the
-tagged checkpoint and prepared bytes, never the current branch HEAD. Companion versions are
-independent; their reserved tag namespaces remain blocked until public packaging is available.
+Core evidence requires successful combined performance reporting. Git/Vagrant-only scopes expect profiling to be skipped. Required tooling includes functional, distribution, Core-independence and completed run-profile mutation work. The gate records TTY exclusion; it does not silently qualify native PTY campaigns.
 
-## ReadyToRun builds
+Product jobs retain functional reports and integrity-checked performance bundles. Failure-only `Export-CiFailureDiagnostics` writes an independently bounded/redacted bundle. Tooling artifacts select reports/logs instead of nested fixture trees; failed functional fixtures have a separate seven-day diagnostic artifact. A cache-only dispatch runs producers but emits no qualification receipt.
 
-Every main GitHub matrix row explicitly selects `Release`, `ReadyToRun` and its tested RID.
-Linux rows precompile their Linux target; they do not attempt Windows Crossgen2 from Linux.
-The Windows x64 packaging job precompiles all six RIDs for both supported CLR builds and uses
-`-RequireReadyToRun` before compression. One public nupkg contains all twelve RID/CLR publications.
-The package plan records ReadyToRun, and package validation reads the embedded native headers.
+## Gallery publication
 
 ```mermaid
 flowchart TD
-    H[Actual host CLR and RID] --> F{CLR major}
-    F -- 10 --> T[lib/inprocess]
-    F -- 11 or later --> E[lib/engine]
-    T --> R{Current manifest selects this RID?}
-    E --> R
-    R -- Yes --> V{Selected slot is valid and matches the RID?}
-    R -- No --> P[Verify and load portable IL]
-    V -- Yes --> L[Verify binary hashes and load matching RID child slot]
-    V -- No --> X[Reject missing or mismatched selected slots]
+    TAG[Explicit publishable module tag or annotated batch] --> PLAN[Validate owner, version and batch leader]
+    PLAN --> Q[Exact-revision All qualification]
+    Q --> B[Windows all-RID ReadyToRun packaging build]
+    B --> CHECK[Validate packaging outputs]
+    CHECK --> PKG[Prepare selected nupkg files and hashes]
+    PKG --> VERIFY[Download and verify the same prepared bytes]
+    VERIFY --> AUTH{Original repository and matching tag publication intent?}
+    AUTH -- Yes --> PUB[Protected PSGallery environment: publish in dependency order]
+    AUTH -- No --> ART[Artifacts only]
 ```
 
-Portable IL stays available for ordinary local builds; the loader never chooses an unrelated
-platform's R2R image. Old generated child directories cannot override a later portable build.
-ReadyToRun still contains IL and may use JIT at runtime; startup improvement requires measurement,
-as explained by the [.NET documentation](https://learn.microsoft.com/en-us/dotnet/core/deploying/ready-to-run).
-The separate manual A/B workflow compares an IL baseline with an R2R candidate. It has only
-`workflow_dispatch`, publishes no package/image, and is absent from qualification dependencies.
+Core packages embed six RIDs for CLR 10 and 11; Git packages contain their parser outputs and retain the Core dependency. Manifests declare package eligibility; tests are never public targets and Vagrant remains disabled. The packaging job rebuilds after source qualification, rather than assembling the final package from matrix binaries. Its build validation and package hashes remain distinct evidence.
 
-## Workflow dependencies
+Develop pushes, PRs, manual generated-preview preparation and image-cache publication do not publish Gallery modules. Publication requires current-run/current-attempt exact-source evidence and validates the tagged checkpoint, never mutable branch HEAD. See [release tags](github/script-release-tags.md) and [publication](github/script-publish-psgallery.md).
 
-| Workflow | Execution environment |
-| --- | --- |
-| `ci.yml` | Native Windows; verified Linux job containers; Docker image preparation/fallback on native Ubuntu runners. No Podman dependency in this workflow. |
-| `companions-ci.yml` | Reuses `ci.yml` with `suite=All` from the companion/suite YAML; wildcard paths cover future companions and integration test projects. |
-| `publish-psgallery.yml` | Reuses `ci.yml` with `suite=All`; packaging/publication jobs are Windows-native. |
-| `preview-psgallery.yml` | Reuses `publish-psgallery.yml` and its qualification gate. |
-| `quietcli2-readytorun.yml` | Separate manual profiling workflow: native Windows, Docker on native Linux runners, direct cold-start worker without a desktop launcher. Informational; never a develop gate. |
-| `qualification.yml` | Declares a self-hosted Linux/Podman/KVM runner, but its full Git qualification runner remains deliberately unimplemented and fails closed. |
-| Scripts-docs and credits workflows | No container dependency. |
+## Local execution and maintenance
 
-## GitHub execution
+[Invoke-WorkspaceCi](../scripts/Invoke-WorkspaceCi.md) and [Invoke-ContainerCi](../scripts/Invoke-ContainerCi.md) supervise local tests with the visible monitor and external temporary report roots. Container selection is explicit argument, checkout `.env`, then Podman-first discovery; [GitHub initialization](environment.md) selects Docker. Resolution starts no daemon. Full local campaigns are explicit operations.
 
-Core and Git path-filtered callers reuse `ci.yml`. It selects six Windows host/mode combinations
-(x64/ARM64, stable/preview integrated hosting and both isolated-host architectures) and four Linux
-targets (Debian/Alpine, x64/ARM64). Linux runners are native to the selected architecture.
+[Invoke-LocalWorkflow](../scripts/Invoke-LocalWorkflow.md) wraps pinned wrkflw 0.8.0 with monitoring/deadline/exit reporting. That parser cannot consume the real expression-valued image matrices; replacing them for an emulator would test another definition. Hosted host identities and token permissions require actual GitHub execution. The separate self-hosted `qualification.yml` capability runner remains unimplemented and fails closed. Manual ReadyToRun A/A–A/B is informational and never a qualification dependency.
 
-On upstream `develop` pushes/manual runs, the image jobs may publish missing fingerprinted GHCR
-images. Pull requests do not publish images: Linux test jobs resolve an accessible verified cache
-or build locally. Core declares its recipe under `FrenchExDev2.QuietCli.Core.PoSh/ci`; consumer
-modules declare derived-image inputs independently. `New-CiImage.ps1` and `New-CiModuleImage.ps1`
-return the inspected image ID after checking architecture, source and fingerprint labels.
-
-The image is a toolchain, not a baked copy of QuietCli. Native job containers build the checked-out
-source directly in `Release` with ReadyToRun for its RID. On Docker fallback, the host builds the
-selected Linux RID in `Release` with ReadyToRun and the shared
-transport stages current sources/binaries into a networkless container using `--pull=never` and the
-immutable image ID. Native GitHub job containers retain the networking needed by checkout/setup;
-the two network scopes must not be described as identical. Both paths record the actual guest/engine RID.
-
-The main Windows/Linux test jobs call `Invoke-GitHubCi.ps1` directly in the current PowerShell
-process. There is no desktop monitor or local supervision process. A dedicated `Release` build
-precedes `-SkipBuild` tests. Direct execution uses GitHub step/job deadlines; Docker fallback has an
-explicit guest deadline. Native PTY campaigns are excluded with `-SkipTty`.
-The performance report and qualification gate require results for the exact revision before Gallery
-packaging/publication. A failed test is not converted into a successful skipped qualification.
-
-Failure-only artifacts use `Export-CiFailureDiagnostics.ps1` before upload. The redacted, bounded
-bundle is independent of qualification-report assembly and retained for 14 days. Original reports
-and the existing qualification artifacts remain distinct from this diagnostic export.
-
-## Local execution
-
-Local tests use `Invoke-WorkspaceCi.ps1` and `Invoke-ContainerCi.ps1` with the shared visible monitor
-and temporary report roots. The same worker/test logic serves local and GitHub runs; duplicating
-assertions, image recipes or qualification policy would create conflicting sources of truth.
-
-`Invoke-LocalWorkflow.ps1` is a separate local entry point around a verified wrkflw 0.8.0 executable.
-It provides explicit job/runtime selection, `-WhatIf`, saved exit status, a deadline and the existing
-monitor. It never installs the binary, supplies credentials or launches a remote workflow.
-The pinned 0.8.0 parser rejects the expression-valued image matrices in `ci.yml`; a local wrapper
-cannot qualify the real workflow while that parser gap remains. Replacing those expressions only
-for the emulator would test a different definition. GitHub Windows/ARM host identity and ephemeral
-token permissions also require real GitHub execution.
-
-## Adaptation gaps to address separately
-
-- Workstation container tests accept an explicit Docker or Podman `-ContainerRuntime`. When empty,
-  `Resolve-QuietVirtEngine -Available -WorkspaceRoot $root` reads the checkout's `.env` runtime key
-  before discovering applications with `Get-Command`, preferring Podman before Docker on Windows and Linux. Invalid, empty or duplicate assignments fail; explicit selection always wins.
-  `Initialize-CiEnvironment.ps1 -Target Local` writes the deterministic workstation preset; GitHub
-  execution jobs initialize their Docker preset after checkout. See the [environment contract](environment.md).
-  Resolution does not start a daemon or prove its health; missing selected engines fail explicitly.
-  Native workstation tests require neither. Offline image `-PlanOnly` skips engine discovery. The main
-  GitHub path selects Docker and GitHub-managed job containers, with no Podman dependency on Windows.
-- Core image preparation removes `QUIETCLI_REGISTRY_TOKEN` from the child environment. The derived
-  builder preserves the credential in memory across that call and restores it for its own registry
-  operation; a focused fixture checks that handoff without real registry credentials.
-- The container worker retains its six-minute default for local callers and accepts an explicit
-  guest deadline. The GitHub entry supplies 1800 seconds for Docker fallback; direct job-container
-  execution is bounded by GitHub step/job timeouts.
-- Several comments still mention `main` while authorization checks use `develop`. Runtime checks
-  and recorded receipts determine actual behavior; documentation should follow the declared branch.
-
-## Automation contract checks
-
-Every workflow has a reviewed source receipt, generated job/dependency Mermaid and matching document
-under [docs/ci/github](github/README.md). The generator never refreshes authored source receipts;
-changing YAML requires reviewing its corresponding document. This check proves structural currency,
-not semantic completeness or successful hosted execution.
-
-`Invoke-WorkspaceChecks.ps1` is the common ordered registry for standalone validation, GitHub
-`scripts-docs-check.yml` and commit preparation. Explicit skips are reported as skipped.
-
-Resource preparation belongs to the consumer: workflow parsing calls Ensure-QuietResource to verify
-or selectively restore YamlDotNet, respecting WhatIf/Confirm. It needs no preceding workflow step.
-Selected jobs reuse archives through the shared optional resource cache; all payloads remain hash-verified.
-The generated [resource inventory](../resources/README.md) and [script preview review](../scripts/preview-support.md)
-are checked by this registry. See [Resources](../../README-resources.md).
-
-```mermaid
-flowchart TD
-    C[Commit-Workspace] --> N{NoAll?}
-    N -- Yes --> I[Export prepared index and verify its source lock]
-    N -- No --> W[Inspect working tree]
-    I --> P[Invoke-WorkspaceChecks registry]
-    W --> P
-    G[GitHub scripts-docs-check] --> P
-    P --> S[Script docs and index]
-    S --> F[Workflow source receipts and generated graphs/index]
-    F --> Q[New-script ShouldProcess policy]
-    Q --> U[Resource inventory and source dependencies]
-    U --> O[Script logging policy and full preview review]
-    O --> D[Documentation credits and aggregate credits]
-    D --> R[Successful checks returned]
-    R --> K{Called by Commit-Workspace?}
-    K -- Yes --> H[Commit writes remain guarded by ShouldProcess]
-    K -- No --> J[Return check results]
-```
-
-The WhatIf/Confirm rule applies to new executable PowerShell scripts. Function-only libraries
-delegate effects to their caller; read-only entry-point exceptions are justified and hash-bound.
-All scripts now have an explicit reviewed preview/effect classification; missing executable entry-point
-guards were added without replacing existing detailed guards. Whole-operation guards prevent starting
-the operation under WhatIf, but do not simulate native effects. The frozen legacy policy inventory is
-separate from this review and remains an explicit qualification gap. See [the RaC contract](../README-automation-contracts.md).
-
-Keep separate entry points for local supervision and GitHub orchestration, with shared workers,
-image builders, test companions and gates. A small CI prerequisite check and consistent deadline
-configuration are preferable to cloning the full test implementation into a second CI stack.
+Every workflow has a reviewed source SHA-256 receipt, generated graph and job/script table. `Sync-GitHubWorkflowsReadme -Apply` regenerates structure but does not author or refresh reviewed source receipts. The eight-check [workspace registry](../scripts/Invoke-WorkspaceChecks.md) also checks case metadata, script docs/safety/contracts, resources and credits. It runs locally, during commit preparation and in the documentation workflow. These checks establish structural alignment, not a successful hosted matrix.
 
 <!-- credits:begin -->
 ## Credits

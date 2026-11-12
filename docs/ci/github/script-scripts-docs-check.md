@@ -12,6 +12,10 @@ Shared automation-contract pipeline for complete Core test classifications, scri
 
 PR/develop path filters cover scripts, all Core test-project sources, docs/scripts, docs/ci/github, docs/resources, README-resources.md, Core resource declarations, the shared archive-cache action, the ShouldProcess policy and every .github/workflows file; manual dispatch is also available.
 
+## Checked scope
+
+Runs the shared eight-check registry: case metadata, scripts index, workflow receipts/graphs/index, ShouldProcess policy, resources, script contracts, documentation credits and aggregate credits. Checks are read-only apart from declared consumer preparation of verified resources. They execute no product companion campaign and cannot establish hosted functional or ARM64 qualification. See [the script map](../README.md#script-map).
+
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
 

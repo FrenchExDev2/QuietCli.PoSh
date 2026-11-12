@@ -14,7 +14,7 @@ Compiles `Quietly.slnx` once in Release by default, then prepares the portable d
 # Local portable build; all six net11.0 distributions remain embedded.
 ./scripts/Build-Workspace.ps1 -Configuration Release
 # GitHub matrix row: precompile the RID actually tested.
-./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier linux-musl-arm64
+./scripts/Build-Workspace.ps1 -Suite Core -Configuration Release -RuntimeIdentifier linux-musl-arm64 -ReadyToRun -ReadyToRunRuntimeIdentifier linux-musl-arm64
 # Windows x64 packaging runner: precompile every release RID.
 . ./scripts/RuntimeTargets.ps1
 ./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier @((Get-QuietRuntimeTargets $PWD.Path).Rid)
@@ -22,7 +22,7 @@ Compiles `Quietly.slnx` once in Release by default, then prepares the portable d
 
 `WorkspaceRoot` defaults to the repository root; `Configuration` accepts Release/Debug. `RuntimeIdentifier` selects embedded net11.0 distributions (all six by default). `ReadyToRun` enables Crossgen2 for `ReadyToRunRuntimeIdentifier`, defaulting to `LocalRuntimeIdentifier`, itself the actual host RID. A precompiled target must also be in `RuntimeIdentifier`. Supplying targets without the switch fails before compilation.
 
-`SolutionOnly` rebuilds all seven C# projects and every declared target framework through `Quietly.slnx` with incremental MSBuild reuse. The solution groups the three production packages under `src` and all `*.Tests.PoSh` companions under `test`; pure PowerShell packages appear as solution files. Repository-wide `Directory.Build.props` enables `TreatWarningsAsErrors=true` for direct project builds and solution builds alike. This mode requires no PTY publication receipts, does not update `lib/` distributions or their manifests, and rejects runtime-publication options. Standard `-WhatIf` returns before any build, restore or filesystem effect.
+`SolutionOnly` builds the selected solution and its declared target frameworks with incremental MSBuild reuse. The solution groups the three production packages under `src` and all `*.Tests.PoSh` companions under `test`; pure PowerShell packages appear as solution files. Repository-wide `Directory.Build.props` enables `TreatWarningsAsErrors=true` for direct project builds and solution builds alike. This mode requires no PTY publication receipts, does not update `lib/` distributions or their manifests, and rejects runtime-publication options. Standard `-WhatIf` returns before any build, restore or filesystem effect.
 
 ## Outputs and dependencies
 
@@ -45,11 +45,7 @@ RID/ReadyToRun engine publications remain separate compilations because their ar
 
 ReadyToRun is enabled explicitly by GitHub qualification and packaging. The manual A/B workflow keeps its IL baseline and separate candidate; its timings do not gate develop delivery.
 
-<!-- credits:begin -->
-## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
-<!-- credits:end -->
 
 <!-- script-contract:begin -->
 ## Execution contract
@@ -60,3 +56,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+<!-- credits:end -->

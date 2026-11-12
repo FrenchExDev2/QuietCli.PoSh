@@ -10,6 +10,12 @@ Prepare one selected package or annotated batch after exact-revision qualificati
 
 workflow_call accepts module (alias/full name), version, publication intent, qualified_sha and the legacy Core-only generated-preview artifact mode. workflow_dispatch accepts module/version for artifacts only. Independent tag refs have independent concurrency groups, so different module/version requests do not replace one another's pending runs.
 
+## Qualification, preparation and publication
+
+Current-run/current-attempt All evidence must match the exact source revision; otherwise the workflow runs All. Develop same-tree reuse cannot substitute for release evidence. Windows builds the required ReadyToRun RID/CLR distributions and validates packaging outputs before preparing the selected package or batch.
+
+Publication downloads those prepared nupkg files and verifies versions, hashes and the qualified checkpoint without rebuilding. Only a matching original-repository module-tag release with publication intent can use the protected PSGallery environment. Manual dispatch and generated-preview requests create artifacts. Batch members are validated first, then published in dependency order. Core/Git eligibility comes from manifests; tests and disabled Vagrant are excluded. See the [publication diagram](../execution-model.md#gallery-publication).
+
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
 

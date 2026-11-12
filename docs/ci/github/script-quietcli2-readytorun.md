@@ -15,6 +15,10 @@ Manual workflow_dispatch only. No push, schedule or reusable caller; no qualific
 
 The reviewed setup-dotnet steps read the checked-out global.json through global-json-file, so the CI, publication preparation and manual ReadyToRun jobs follow the selected SDK instead of embedding an old RC string. This source review does not establish hosted execution or full matrix qualification.
 
+## Measurement and artifacts
+
+Builds the IL baseline and ReadyToRun candidate from the same selected revision, rather than comparing PR head with develop. A/A noise control precedes paired A/B; instrumentation is separate from timed samples. Windows and native Linux paths save source-bound cold-start reports. A green informational run does not prove a speedup. See [the report/dispatch guide](../../README-readytorun_profiling.md).
+
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
 

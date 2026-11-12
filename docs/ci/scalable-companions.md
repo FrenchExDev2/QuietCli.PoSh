@@ -1,26 +1,62 @@
 # Scalable companion qualification
 
-Existing FrenchExDev PowerShell modules are applications. Each can consume QuietCli Core plus an independently generated and tested companion for its native executable. They are not automatically QuietCli companions.
+[Source-change landmarks](README.md#source-change-landmarks) identify the changes through 12 November 2026. The design reduces repeated preparation while retaining declared suites, targets and acceptance criteria. Elapsed-time and cache-transfer gains require hosted measurements.
 
-Localhost supports Podman (discovered first when no explicit adapter or dotenv selection exists) and Docker. GitHub CI explicitly selects Docker. The new BuildKit intermediate-cache path applies only to Docker CI jobs; it changes no local Podman behavior and starts no local daemon automatically.
+## Select only the required work
 
-Core.Tests requires Core only. Its scaffolding regression generates a scripted git-status companion and asserts clean/untracked Unicode fixtures without importing the real Git module. Git remains an executable test tool. Git reference-case and private artifact security regressions belong to Git.Tests. Tooling.Tests owns repository build, commit, packaging and source checks.
+[New-CiImpactPlan](../scripts/New-CiImpactPlan.md) uses the complete no-rename diff and transitive `build/companions.yml` requirements. A companion-only change selects its dependent suites; Core/shared/unknown paths require All plus tooling. Several affected companions share one matrix. Reviewed run-profile command/store/definition paths select tooling only; shared profiler, encoding, report and build changes still require All. Mixed paths union requirements.
 
-PR CI plans from the complete no-rename diff and transitive build/companions.yml requirements. A companion-only change qualifies that suite across supported environments; Core/shared/unknown changes conservatively select All. Several impacted companions share one matrix. Core runs first in All, then independent companions use bounded processes on the same image. Private test metadata remains owned by each test .psm1/manifest. Tests sharing engine state and timing samples keep ordered/exclusive barriers.
+Core.Tests depends only on Core. Its scaffolding fixture generates a scripted Git-status companion; Git remains an executable tool without importing the real Git module. Tooling.Tests owns repository automation. Distribution.Tests owns the architecture, installed-package and packaged-Recall checks executed once in tooling. Existing FrenchExDev application modules are consumers; membership does not qualify their CLI semantics.
 
-Build-Workspace -Suite selects test modules and transitive RequiredModules, then builds a scoped solution once. Undeclared cross-project references fail before compilation. Portable publication uses --no-build; matrix rows publish only their tested RID. The tooling job builds all required IL distributions once. Private Distribution.Tests owns the three architecture, Gallery installation and packaged Recall cases; the tooling job reuses verified Core/Core.Tests outputs in a Git-absent checkout without another build. Native Core qualification no longer packages all RIDs in every environment.
+[Build-Workspace](../scripts/Build-Workspace.md) compiles the selected dependency closure once, rejects undeclared project references and publishes portable outputs with `--no-build`. Product rows publish their tested RID. Tooling prepares all required IL distributions once and reuses verified Core/Core.Tests outputs for Distribution in an owned Git-absent checkout. Release packaging retains its separate all-RID ReadyToRun build.
 
-Docker caches verified final GHCR images by input fingerprint. On misses, GitHub also restores/exports BuildKit intermediate stages with mode=max, separate image/architecture scopes and stable recipe keys with fallback to earlier recipes. The builder for the active Docker context uses the containerd image store so a locally built Core parent remains available to companion overlays. Intermediate caches are saved immediately after image preparation, before tests. Rotation avoids accumulating obsolete blobs. Podman behavior and PR nonpublication remain intact. The cache contains toolchains, never workspace sources or credentials. See [Docker cache backends](https://docs.docker.com/build/cache/backends/).
+```mermaid
+flowchart TD
+    S[Selected product scope] --> B[One dependency-closure build per target]
+    B --> C{All selected?}
+    C -- Yes --> CORE[Complete Core suite]
+    CORE --> FAN[Bounded independent companion workers]
+    C -- No --> ONE[Selected companion runner]
+    TOOL[Separate tooling workflow] --> TB[Full IL build and automation tests]
+    TB --> DIST[Distribution once using verified outputs]
+    IND[Separate Git-absent checkout] --> CT[Core build and full suite]
+```
 
-Tooling runs once outside the ten product environments. RunProfiles functional checks and mutation run on separate runners from product profiling. Mutation requires its green baseline, then runs at most two isolated worker/sandbox pairs; only Killed is accepted. Per-environment PowerShell/CLR reports remain mandatory for Core qualification. The manual ReadyToRun A/A and A/B workflow keeps its existing explicit dispatch.
+## Bound mutation concurrency
 
-After a develop merge, successful PR evidence may replace matrix replay only when its Git tree exactly matches the merged commit and its authoritative workflow attempt succeeded. Missing, expired, old-format or mismatched evidence requires full All validation. Reuse still runs merged source-lock/Core integration smoke and resolves or updates native image caches. No Gallery publication occurs on develop.
+Tooling functional checks and mutation run on different runners from product measurements. The run-profile catalogue contains 92 mutants. Two matrix shards select entries by ordinal modulo two, with a green baseline and at most two isolated worker/sandbox pairs **per shard**. Thus this campaign can have four mutation workers across its two runners. Local defaults retain one full-catalogue campaign.
 
-Configure branch protection or a ruleset separately to require **QuietCli required CI**, the documentation checks, an up-to-date branch, and no direct develop pushes. The workflow does not change repository settings. Full module-tag release qualification and current-run exact-SHA publication receipts remain separate from develop reuse.
+```mermaid
+flowchart TD
+    CAT[Inert source-controlled catalogue] --> A[Shard 0: 46 mutants]
+    CAT --> B[Shard 1: 46 mutants]
+    A --> BA[Green baseline then at most two workers]
+    B --> BB[Green baseline then at most two workers]
+    BA --> RA[Partial shard report]
+    BB --> RB[Partial shard report]
+    RA --> JOIN[Same SHA and attempt artifact download]
+    RB --> JOIN
+    JOIN --> V[Verify source hashes, settings and exact disjoint union]
+    V --> OK[Complete: all 92 Killed]
+```
 
-## Evidence limits
+[Assert-RunProfileMutationShards](../scripts/Assert-RunProfileMutationShards.md) rejects missing/duplicate names, stale revisions, different inputs/settings, failed baselines and every outcome other than Killed. Shard success alone does not satisfy the tooling workflow. Fixed qualification settings remain seed 61207 and 120 iterations.
 
-Local focused tests are partial evidence. The complete Windows/ARM64/Linux matrix, hosted intermediate-cache transfers and same-tree GitHub reuse are established only by their resulting workflow artifacts. No download reduction or elapsed-time percentage is asserted before those runs.
+The configured shard path currently hits the [GitHub entry point's partial-summary rejection](../scripts/Invoke-GitHubCi.md#current-shard-integration-gap). Completion is an implemented acceptance contract; hosted execution remains blocked at that entry until corrected.
+
+Git's nine opt-in compiled mutation catalogues use independent processes, capped at two concurrent catalogues. Each owns a build tree, restores dependencies once, resets pristine sources for every mutant and forces compilation with `--no-incremental --no-restore` after its baseline restore. Each mutant executes the full assertion runner. Shared-repository cases and timing samples retain their ordered/exclusive barriers. See [classification and concurrency](../README-test-classification-and-concurrency.md).
+
+## Reuse images and qualification evidence
+
+Docker first probes the verified final GHCR fingerprint. A final-image hit avoids intermediate-cache transfer; a miss restores BuildKit `mode=max` cache by image/RID/fingerprint and prepares required parents in the same producer job. Cache save precedes tests. GitHub uses Docker; local resolution keeps explicit selection, checkout `.env`, then Podman-first discovery. See [Linux images](linux-images.md).
+
+On develop, replay may be omitted only after verifying a successful originating PR workflow attempt and an identical Git tree. Missing, expired, legacy or mismatched proof falls back to All. Reuse still requires source integrity/Core integration smoke and image resolution. Cache-only manual dispatch emits no qualification receipt. Develop never publishes Gallery modules.
+
+## Artifacts and acceptance
+
+Ordinary tooling/independence artifacts contain reports, receipts and diagnostic logs, including isolated case reports. They exclude nested workspaces, binaries and packages. A failed functional tooling run additionally uploads its existing fixture trees in a separate seven-day artifact. Mutation artifacts carry the SHA, shard and attempt; the completion job downloads only the current set.
+
+Core qualification still requires per-environment PowerShell/CLR evidence and a successful combined report. The manual ReadyToRun A/A–A/B workflow remains informational. Configure **QuietCli required CI**, documentation checks and branch restrictions separately in repository rules; workflow files do not modify those settings. Release/publication requires its own exact-revision, current-run evidence.
 
 <!-- credits:begin -->
 ## Credits

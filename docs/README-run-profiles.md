@@ -4,33 +4,24 @@ A **run profile** is a named, data-only file that binds a script to default argu
 campaign (for example "100 cold-start pairs" or "1000 cold-start pairs") is started with one short, reproducible
 command instead of a long argument list.
 
-Current results are recorded in [the qualification audit](audits/2026-11-08-run-profile-qualification.md), with the
+Historical results for their recorded revisions are retained in [the qualification audit](audits/2026-11-08-run-profile-qualification.md), with the
 [earlier campaigns](audits/2026-11-07-run-profiles.md) retained separately.
 
 ## Launch commands
 
-All commands run from the repository root (`FrenchExDev2.QuietCli.PoSh`) in PowerShell 7.6+.
+Run from the repository root in PowerShell Core 7.6+ with its normal profile.
 
 | Goal | Command |
-|---|---|
+| --- | --- |
 | List profiles | `./scripts/Invoke-RunProfile.ps1 -List` |
-| Run the 100-pair profile | `./scripts/Invoke-RunProfile.ps1 coldstart-100 -Arguments @{ CandidateModule = '<path to candidate .psd1>' }` |
-| Run the 1000-pair profile | `./scripts/Invoke-RunProfile.ps1 coldstart-1000 -Arguments @{ CandidateModule = '<path to candidate .psd1>' }` |
-| Preview without running | `./scripts/Invoke-RunProfile.ps1 coldstart-100 -WhatIf -Arguments @{ CandidateModule = '<.psd1>' }` |
-| Run with PSProfiler | `./scripts/Invoke-RunProfile.ps1 coldstart-100 -Profiler -Arguments @{ CandidateModule = '<.psd1>' }` |
-| Create a profile | `./scripts/New-RunProfile.ps1 -Name coldstart-500 -Script Measure-ColdStart.ps1 -Parameters @{ Runs = 500; Warmup = 5 } -Description 'Cold start, 500 pairs'` |
-| Install the pinned profiler | `./scripts/Initialize-Profilers.ps1 -OutputDirectory <cache>` |
-| Run the tests | `pwsh -NoProfile -File ./FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1` |
-| Run the mutation campaign | `pwsh -NoProfile -File ./FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1 -Mutation` |
-| Run all tooling tests with the shared visible monitor | `./scripts/Invoke-WorkspaceCi.ps1 -Suite RunProfiles -SkipBuild -TimeoutSeconds 600` |
-| Run every tooling mutant with the shared visible monitor | `./scripts/Invoke-WorkspaceCi.ps1 -Suite RunProfilesMutation -SkipBuild -TimeoutSeconds 3300` |
-| Run one mutant | `pwsh -NoProfile -File ./FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Mutation.ps1 -MutantName whatif-ignored` |
-| Mutation campaign with a JSON report | `pwsh -NoProfile -File ./FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Mutation.ps1 -OutputPath ./mutation.json` |
-| Use the benchmark directly | `./scripts/Measure-ColdStart.ps1 -BaselineModule <a.psd1> -CandidateModule <b.psd1> -Runs 100` |
+| Run 100 pairs | `./scripts/Invoke-RunProfile.ps1 coldstart-100 -Arguments @{ CandidateModule = '<candidate.psd1>' }` |
+| Preview a profile | `./scripts/Invoke-RunProfile.ps1 coldstart-100 -WhatIf -Arguments @{ CandidateModule = '<candidate.psd1>' }` |
+| Create a profile | `./scripts/New-RunProfile.ps1 -Name coldstart-500 -Script Measure-ColdStart.ps1 -Parameters @{ Runs = 500; Warmup = 5 }` |
+| Functional tooling tests | `./scripts/Invoke-WorkspaceCi.ps1 -Suite RunProfiles -SkipBuild -TimeoutSeconds 600` |
+| Full local mutation catalogue | `./scripts/Invoke-WorkspaceCi.ps1 -Suite RunProfilesMutation -SkipBuild -TimeoutSeconds 3300` |
+| Focused local mutant | `./scripts/Invoke-WorkspaceCi.ps1 -Suite RunProfilesMutation -SkipBuild -Case whatif-ignored -TimeoutSeconds 600` |
 
-Per the workspace rules, a test or mutation run started by an agent is also given a visible `pwsh` monitoring
-window (`Start-Process pwsh -WindowStyle Normal ...`). `-Mutation` of a single mutant takes about 35 s; the whole
-catalogue takes about 15 minutes.
+Local tests retain the shared visible monitor and external temporary report root. A Case filter is partial evidence. Full-campaign duration depends on the actual host; the configured deadline is a bound, not a measured runtime. CI orchestration uses the engine-independent Ci.Process helper.
 
 ## Profile file format
 
@@ -103,14 +94,7 @@ and never between unrelated modules.
 | Files on disk (profiles, logs, JSON reports) | Fixed: UTF-8, no BOM, LF, strict | Repository rule, and byte-identical rendering depends on it. Not configurable. |
 | Console of the tests and of the mutation runner | `-ConsoleEncoding utf-8` (default) or `oem` | `quiet` decodes the child's output as strict UTF-8. A child printing the box-drawing tables in the OEM code page makes `quiet` fail with `DecodeOrFramingFailed`. Choosing `oem` is allowed so that the failure can be reproduced and diagnosed; the mutation runner then reports the cause instead of an opaque failure. |
 
-```powershell
-pwsh -NoProfile -File ./FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1 -ConsoleEncoding utf-8
-pwsh -NoProfile -File ./FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Mutation.ps1 -ConsoleEncoding utf-8
-```
-
-Prefer the shared launcher: its CI process helper explicitly decodes both child streams as UTF-8 and the existing
-read-only monitor reads only the run's status files. No `Tee-Object` decoding boundary is involved. A custom monitor
-that tees native output must independently select UTF-8 before reading it.
+Use the shared launcher: its process helper explicitly decodes both streams as UTF-8, and the read-only monitor consumes existing status/report files. An explicit OEM probe is a diagnostic failure reproducer, not the normal test setup.
 
 ## Statistics: how noise is eliminated
 
@@ -159,89 +143,24 @@ Property, fuzz, example and integration cases live in `FrenchExDev2.QuietCli.Cor
   mutation runner skips only the live `profiler:`, `console:`, `coldstart-live:` and `tool-cache-live:` cases. Independent
   profiler, benchmark and cache assertions still run against every mutant in its disposable sandbox.
 
-`RunProfiles.Mutation.ps1` applies one source substitution at a time to a fresh sandbox copy of `scripts/` and the
-suite, then runs the suite through `quiet` and reads its `SUMMARY` line. Outcomes: **Killed** (a case failed),
-**Survived** (all passed: a missing assertion or an equivalent mutant that must be justified), **Crashed** (no
-summary, the mutant does not parse), **Timeout**, **Invalid** (the target text does not occur exactly once). The
-baseline must be green first. Survived, Crashed, Timeout and Invalid outcomes all fail the gate. The catalogue is
-the `$catalogue` array in that file: `{ Name; File; From; To }`.
+`RunProfiles.Mutation.ps1` applies one substitution to each disposable sandbox and runs the independent assertion suite through Ci.Process. Killed means assertions detected the change; Survived, Crashed, Timeout and Invalid all fail. A green baseline precedes mutations. The inert [catalogue](../FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Mutation.Catalogue.psd1) owns the 92 `{Name; File; From; To}` entries.
 
-The shared `ci.yml` runs the complete suite and catalogue on Windows x64 stable integrated hosting for Core/All,
-uploads reports even on failure and requires their success through the existing Windows qualification dependency.
-Git-only development retains its narrower scope. The full tooling suite rejects skipped required cases, so a missing
-pinned profiler cannot silently qualify a release. This CI scope does not qualify tooling on other platforms.
+The separate [tooling workflow](ci/github/script-tooling-ci.md) declares two shards, each with a green baseline and two isolated workers. Each is partial evidence. The completion job requires their exact source-identical union, fixed seed 61207/120 iterations and only Killed results. Default local execution remains the full catalogue; shared profiler/encoding/report helpers retain All impact, while reviewed command/store/profile-definition changes can select tooling only.
 
-## ReadyToRun candidate (local A/B)
+**Current integration gap:** Invoke-GitHubCi's generic partial-summary guard also rejects successful mutation shards. The workflow cannot reach successful completion until validated shard execution is distinguished from complete qualification. Local mutation/aggregation successes do not cover this entry-point mismatch. See the [entry-point review](scripts/Invoke-GitHubCi.md#current-shard-integration-gap).
 
-`scripts/Build-Workspace.ps1 -ReadyToRun` publishes the engine precompiled (Crossgen2) instead of a plain IL
-build. It must not overwrite the baseline you want to compare against, so build the candidate in a separate
-copy and point `-CandidateModule` at it, per `Measure-ColdStart.ps1`'s own example:
+Functional tooling requires both pinned profiler tools and rejects skipped required cases. These tests qualify tooling on their executed host only; they do not replace Core profiling on ten environments.
 
-```powershell
-# 1. Baseline already built normally (./scripts/Build-Workspace.ps1), left in place.
-# 2. Copy the module and global.json aside.
-$candidateRoot = 'C:\tmp\r2r'
-Remove-Item $candidateRoot -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path $candidateRoot | Out-Null
-Copy-Item .\global.json $candidateRoot
-Copy-Item .\FrenchExDev2.QuietCli.Core.PoSh (Join-Path $candidateRoot 'FrenchExDev2.QuietCli.Core.PoSh') -Recurse
+## ReadyToRun candidate and A/B
 
-# 3. Rebuild only that copy's lib/inprocess with ReadyToRun (do not run the full Build-Workspace.ps1
-#    orchestration against the copy: it is not a full workspace, only the module directory).
-. .\scripts\Common.ps1
-$project = 'FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj'
-$output  = 'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess'
-$inputs  = @(Get-QuietBinaryInputs $candidateRoot $project)
-dotnet publish (Join-Path $candidateRoot $project) -f net10.0 -c Release -r win-x64 --self-contained false `
-    -p:PublishReadyToRun=true -o (Join-Path $candidateRoot $output) --nologo
-Write-QuietBuildManifest $candidateRoot $project $output -Inputs $inputs -Configuration Release
+Use [New-ReadyToRunCandidate](scripts/New-ReadyToRunCandidate.md) to create a separately built candidate, then [Invoke-ColdStartGate](scripts/Invoke-ColdStartGate.md) for the cached/fresh A/A control and paired A/B. The gate refuses an unstable noise floor. A missing/stale control is remeasured explicitly by the gate; failed samples are counted, never retried.
 
-# 4. Compare with the 100-pair profile (seed fixed, 95% bootstrap interval), gated on a clean A/A control.
-./scripts/Invoke-ColdStartGate.ps1 `
-    -CandidateModule (Join-Path $candidateRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1') `
-    -CandidateLabel 'readytorun'
-```
-
-Use `-r linux-x64` (or the matching Linux RID) instead of `win-x64` on a Linux machine. A visible `pwsh`
-monitoring window is still required for the run, per the workspace test rules.
-
-### Why `Invoke-ColdStartGate.ps1` instead of calling the profile directly
-
-An A/B verdict is only meaningful once this machine's own measurement noise is known to be small enough that
-an A/A control (same module on both sides) comes back inconclusive on every phase — see "Statistics: how noise
-is eliminated" above. `scripts/Invoke-ColdStartGate.ps1` makes that check mandatory instead of a step a caller
-can forget:
-
-1. It keeps one cached A/A control per machine and run profile under `artifacts/coldstart/` (git-ignored; see
-   `.gitignore`'s `/artifacts/` rule — never commit this directory).
-2. On each run it reuses that cache only while it is fresh (`-MaxAgeDays`, default 14) and still all-inconclusive.
-   Otherwise it remeasures the A/A control first, into the same cache file.
-3. If the A/A control (cached or fresh) is **not** all-inconclusive, it throws `ColdStartNoiseFloorUnstable` and
-   never runs the A/B — a noisy machine cannot produce a trustworthy "faster"/"slower" verdict either.
-4. Only once the noise floor is confirmed clean does it run the actual A/B through `Invoke-RunProfile.ps1`,
-   writing the result to a timestamped file under the same `artifacts/coldstart/` directory.
-
-```powershell
-# First run on a machine (or after -Force / a stale cache): measures the A/A control, then the A/B.
-./scripts/Invoke-ColdStartGate.ps1 -CandidateModule 'C:\tmp\r2r\FrenchExDev2.QuietCli.Core.PoSh\FrenchExDev2.QuietCli.Core.PoSh.psd1' -CandidateLabel readytorun
-
-# Force a fresh A/A control even if a clean cache entry exists for this machine.
-./scripts/Invoke-ColdStartGate.ps1 -CandidateModule ... -CandidateLabel readytorun -Force
-```
-
-`-Arguments` forwards overrides (for example `@{ Runs = 1000 }`) to both the A/A and the A/B run; never set
-`CandidateModule`, `CandidateLabel` or `OutputPath` there, since the gate controls those. Calling
-`Measure-ColdStart.ps1` or `Invoke-RunProfile.ps1` directly, bypassing the gate, remains possible for one-off
-investigation but skips this enforcement — prefer the gate for any result you intend to act on or report.
-
-`-ReadyToRun` on `scripts/Build-Workspace.ps1` also adds `-p:PublishReadyToRun=true` to every `lib/engine/<rid>`
-publication (net11.0), for a later CLR-11-host comparison; this is unverified against the pinned .NET 11 RC
-SDK's Crossgen2 package availability per RID.
+The [ReadyToRun walkthrough](README-readytorun_profiling.md) owns the complete local commands, report paths and manual GitHub procedure. The manual workflow compares IL and R2R from the same revision; it is informational, separate from mandatory Core profiling and never a develop qualification dependency. Ordinary CI builds precompile only their tested RID; release packaging prepares all required RID/CLR slots.
 
 ## Known gaps
 
 - The false-positive rate of the verdict at 100 and 1000 pairs has not been measured with an A/A campaign yet.
-- The ReadyToRun A/B campaign has not been run with these profiles yet.
+- A ReadyToRun improvement requires an actual source-bound A/A–A/B report; workflow configuration or synthetic smoke tests cannot establish it.
 - Mutation coverage is the committed targeted catalogue, not exhaustive fault coverage. Actual HTTP connectivity is
   outside the offline tests; the pinned official archives and real profiler are exercised separately.
 
