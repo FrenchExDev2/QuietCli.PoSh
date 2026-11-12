@@ -42,7 +42,7 @@ flowchart TD
 
 [Assert-RunProfileMutationShards](../scripts/Assert-RunProfileMutationShards.md) rejects missing/duplicate names, stale revisions, different inputs/settings, failed baselines and every outcome other than Killed. Shard success alone does not satisfy the tooling workflow. Fixed qualification settings remain seed 61207 and 120 iterations.
 
-The configured shard path currently hits the [GitHub entry point's partial-summary rejection](../scripts/Invoke-GitHubCi.md#current-shard-integration-gap). Completion is an implemented acceptance contract; hosted execution remains blocked at that entry until corrected.
+The [GitHub entry boundary](../scripts/Invoke-GitHubCi.md#shard-execution-and-completion) validates each partition and retains Partial=true. It rejects incomplete/filtered product runs and cannot replace the completion job. Source-bound local entry regressions use synthetic worker reports; actual hosted scheduling remains separate evidence.
 
 Git's nine opt-in compiled mutation catalogues use independent processes, capped at two concurrent catalogues. Each owns a build tree, restores dependencies once, resets pristine sources for every mutant and forces compilation with `--no-incremental --no-restore` after its baseline restore. Each mutant executes the full assertion runner. Shared-repository cases and timing samples retain their ordered/exclusive barriers. See [classification and concurrency](../README-test-classification-and-concurrency.md).
 

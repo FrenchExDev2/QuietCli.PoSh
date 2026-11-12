@@ -147,7 +147,7 @@ Property, fuzz, example and integration cases live in `FrenchExDev2.QuietCli.Cor
 
 The separate [tooling workflow](ci/github/script-tooling-ci.md) declares two shards, each with a green baseline and two isolated workers. Each is partial evidence. The completion job requires their exact source-identical union, fixed seed 61207/120 iterations and only Killed results. Default local execution remains the full catalogue; shared profiler/encoding/report helpers retain All impact, while reviewed command/store/profile-definition changes can select tooling only.
 
-**Current integration gap:** Invoke-GitHubCi's generic partial-summary guard also rejects successful mutation shards. The workflow cannot reach successful completion until validated shard execution is distinguished from complete qualification. Local mutation/aggregation successes do not cover this entry-point mismatch. See the [entry-point review](scripts/Invoke-GitHubCi.md#current-shard-integration-gap).
+The [GitHub entry contract](scripts/Invoke-GitHubCi.md#shard-execution-and-completion) validates explicit shard controls, exact source/revision/partition, baseline/settings and consistent successful counters. It retains Partial=true for each shard while rejecting product partial/incomplete runs. Only the dependent aggregator can declare the catalogue complete. Real-entry process fixtures exercise this boundary with synthetic worker reports.
 
 Functional tooling requires both pinned profiler tools and rejects skipped required cases. These tests qualify tooling on their executed host only; they do not replace Core profiling on ten environments.
 

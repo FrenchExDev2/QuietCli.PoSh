@@ -2,9 +2,11 @@
 
 ## Purpose and usage
 
-Exports `Get-QuietMutationShard`, `Get-QuietRunProfileMutationIdentity` and `Assert-QuietMutationShards`. Import is inert and has no product-engine dependency. Ordered catalogue entries are partitioned by ordinal modulo shard count; defaults select the full catalogue.
+Exports `Get-QuietMutationShard`, `Get-QuietRunProfileMutationIdentity`, `Assert-QuietMutationShard` and `Assert-QuietMutationShards`. Import is inert and has no product-engine dependency. Ordered catalogue entries are partitioned by ordinal modulo shard count; defaults select the full catalogue.
 
 The aggregator requires exactly the expected shards, disjoint complete names, a green baseline for each, matching source hashes/revision and the qualification seed/iterations (61207/120). Only Killed is accepted; a score or successful process exit alone is insufficient. Source identity covers all copied libraries, subjects, tests and execution helpers.
+
+`Assert-QuietMutationShard` validates one independently expected index/count against the authoritative catalogue, source hash/revision, green baseline, seed/iterations and exact Killed-only names. The report must retain its real Partial flag. Both the GitHub intermediate entry and complete aggregator use this validator, so accepting a partition does not waive the complete-union gate. Real-entry child-process regressions use synthetic worker reports and reject stale/damaged receipts, partial products and guard mutants.
 
 ## Dependencies and side effects
 

@@ -4,7 +4,7 @@ Start with [qualification: when, where and how](../../README-qualification-when-
 
 ## Source-change landmarks
 
-Reviewed on **12 November 2026**, against checkout `b0154d1`. Dates below come from Git commits, not filesystem modification times, which change on checkout. These landmarks explain the current configuration; they do not assert a successful hosted run.
+Source review: **12 November 2026**. Dates below come from Git commits, not filesystem modification times, which change on checkout. These landmarks explain the current configuration; they do not assert a successful hosted run.
 
 | Date (Europe/Paris) | Source checkpoint | Documentation consequence |
 | --- | --- | --- |
@@ -15,6 +15,8 @@ Reviewed on **12 November 2026**, against checkout `b0154d1`. Dates below come f
 | 12 Nov., 15:51–15:59, `2eeb2c2` / `60d95d4` / `8f5b3b5` | Reviewed tooling-only paths, bounded artifacts and cache-only dispatch | Avoid unrelated product replay, retain failed fixtures separately, prime trusted develop caches without qualification. |
 | 12 Nov., 16:11, `d947f39` | Two run-profile mutation shards and strict completion | Each shard is partial; only their verified complete union satisfies tooling. |
 | 12 Nov., 16:48–16:57, `eac3f7d` / `b0154d1` | Isolated Git mutation batches and aggregation-condition regressions | Two catalogue workers, one restore per catalogue; cache-only mode cannot produce profiling/qualification evidence. |
+
+The shard-entry correction following these checkpoints validates intermediate reports without changing their Partial status; see [validated shard execution](#validated-shard-execution).
 
 Historical [audits](../README.md#dated-audits-and-evidence) retain their original revision and conclusions.
 
@@ -66,10 +68,9 @@ The stable final check rejects missing required campaigns. Documentation-only om
 
 Read [execution boundaries](execution-model.md), [scheduling](scalable-companions.md), [Linux caches](linux-images.md), [Windows ARM64](windows-arm64.md) and [environment resolution](environment.md) for the corresponding policies. Exact versions and hashes belong to checked-in locks, rather than copied version numbers in these guides.
 
-## Current integration gap
+## Validated shard execution
 
-The declared run-profile shards are partial intermediate reports, but Invoke-GitHubCi currently rejects them through its generic partial-summary guard. This blocks successful hosted tooling completion until a narrowly validated shard-execution boundary is implemented. See [the source-level review](../scripts/Invoke-GitHubCi.md#current-shard-integration-gap). Local campaign/aggregation results do not establish this missing integration.
-
+The GitHub entry distinguishes validated RunProfilesMutation partitions from complete qualification. Both shard controls, source/revision, exact catalogue partition, green baseline/settings and successful summary counters are checked; intermediate results retain Partial=true. Product partial/incomplete evidence stays rejected. Only the dependent completion job accepts the complete union. See [the entry contract and regression](../scripts/Invoke-GitHubCi.md#shard-execution-and-completion).
 ## Evidence and maintenance
 
 Ordinary tooling artifacts retain reports and logs; failed functional fixtures have a separate seven-day artifact. Product diagnostics, performance bundles and release packages have distinct contracts. A cache hit, successful build or partial test report cannot replace required qualification.

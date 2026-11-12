@@ -41,7 +41,7 @@ flowchart LR
 
 Core evidence requires the combined ten-environment performance report. `always()` retains failure-report assembly; cache-only mode and scopes without Core evidence skip it. A collect_performance opt-out cannot qualify Core. Windows rows use checksum-pinned hosts and one tested RID; tooling owns the complete IL distribution checks outside the matrix. The [CI map](../README.md) explains script roles and source-change dates.
 
-The run-profile shard entry-point mismatch described in [tooling validation](script-tooling-ci.md#current-integration-gap) currently blocks required tooling completion. Configured job graphs describe routing, not a successful hosted qualification.
+The [tooling shard boundary](script-tooling-ci.md#shard-execution-boundary) accepts validated intermediate partitions while retaining Partial=true. Only complete aggregation satisfies required tooling. Configured graphs describe routing, not a successful hosted qualification.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies

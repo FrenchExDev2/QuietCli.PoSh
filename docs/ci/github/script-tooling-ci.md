@@ -44,10 +44,9 @@ flowchart TD
 
 The mutation campaign can run four workers across two runners. Its 92 definitions, seed 61207, 120 iterations and Killed-only acceptance remain unchanged. Ordinary tooling/independence reports retain fourteen days; failed functional fixture trees have a separate seven-day diagnostic artifact. Mutation download matches the current SHA/attempt and requires both shard artifacts. See [script responsibilities and dates](../README.md).
 
-## Current integration gap
+## Shard execution boundary
 
-`Invoke-RunProfileQualification` marks each shard summary `Partial=true`. `Invoke-GitHubCi.ps1` rejects every Partial summary, including this declared RunProfilesMutation scope. Therefore the present matrix steps fail before `mutation-complete` can accept their reports. The strict completion validator is implemented, but the GitHub entry point still needs a narrowly validated shard-execution contract. Local full/sharded mutation tests do not establish that missing boundary. See [the script review](../../scripts/Invoke-GitHubCi.md#current-shard-integration-gap).
-
+The GitHub entry accepts only source-validated RunProfilesMutation partitions under explicit shard controls. Each summary and the entry result remain Partial=true; product partial/incomplete reports remain rejected. Bounded report reads, exact partition/source/SHA checks, green baselines, fixed settings and consistent successful counters precede intermediate acceptance. The completion job still requires both successful shard jobs and the exact complete union. See [the shared entry contract and regression](../../scripts/Invoke-GitHubCi.md#shard-execution-and-completion).
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
 

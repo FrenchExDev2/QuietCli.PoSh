@@ -33,6 +33,37 @@ function Get-QuietRunProfileMutationIdentity {
     [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes(($lines -join "`n")))).ToLowerInvariant()
 }
 
+function Assert-QuietMutationShard {
+    <#
+    .SYNOPSIS
+    Validates one complete partition while retaining its partial-catalogue evidence status.
+    .PARAMETER Report
+    Parsed mutation report from the selected worker.
+    .PARAMETER Catalogue
+    Authoritative complete mutation catalogue.
+    .PARAMETER SourceSHA256
+    Locally verified mutation input identity.
+    .PARAMETER Revision
+    Exact workflow revision.
+    .PARAMETER Index
+    Expected zero-based shard index, supplied independently of the report.
+    .PARAMETER Count
+    Expected shard count, supplied independently of the report.
+    #>
+    param($Report,[object[]]$Catalogue,[string]$SourceSHA256,[string]$Revision,[int]$Index,[int]$Count)
+    if($SourceSHA256 -cnotmatch '\A[a-f0-9]{64}\z' -or $Revision -cnotmatch '\A[a-f0-9]{40}\z'){throw 'MutationShardEvidenceMissing'}
+    $expected=@(Get-QuietMutationShard -Catalogue $Catalogue -Index $Index -Count $Count)
+    if(($Report.ShardIndex -isnot [int] -and $Report.ShardIndex -isnot [long]) -or ($Report.ShardCount -isnot [int] -and $Report.ShardCount -isnot [long])){throw 'MutationShardIndexInvalid'}
+    if($Report.ShardIndex -ne $Index -or $Report.ShardCount -ne $Count -or $Report.TotalCatalogue -ne $Catalogue.Count -or $Report.SourceSHA256 -cne $SourceSHA256 -or $Report.Revision -cne $Revision -or $Report.BaselinePassed -isnot [bool] -or !$Report.BaselinePassed -or $Report.Seed -ne 61207 -or $Report.Iterations -ne 120 -or $Report.Partial -isnot [bool] -or $Report.Partial -ne ($Count -gt 1)){throw 'MutationShardIdentityMismatch'}
+    if($Report.Results.Count -ne $expected.Count){throw 'MutationShardCoverageIncomplete'}
+    $names=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $expectedNames=@($expected|ForEach-Object Name)
+    foreach($result in $Report.Results){
+        if($result.Outcome -cne 'Killed' -or $result.Name -cnotin $expectedNames -or !$names.Add($result.Name)){throw 'MutationShardOutcomeOrCoverageInvalid'}
+    }
+    [pscustomobject]@{Partial=($Count -gt 1);ShardIndex=$Index;ShardCount=$Count;Selected=$expected.Count;Killed=$names.Count;Revision=$Revision;SourceSHA256=$SourceSHA256}
+}
+
 function Assert-QuietMutationShards {
     <#
     .SYNOPSIS
@@ -54,16 +85,14 @@ function Assert-QuietMutationShards {
     $names=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach($report in $Reports){
         if($report.ShardIndex -isnot [int] -and $report.ShardIndex -isnot [long]){throw 'MutationShardIndexInvalid'}
-        if($report.ShardCount -ne $Count -or !$indices.Add([int]$report.ShardIndex) -or $report.TotalCatalogue -ne $Catalogue.Count -or $report.SourceSHA256 -cne $SourceSHA256 -or $report.Revision -cne $Revision -or $report.BaselinePassed -isnot [bool] -or !$report.BaselinePassed -or $report.Seed -ne 61207 -or $report.Iterations -ne 120){throw 'MutationShardIdentityMismatch'}
-        $expected=@(Get-QuietMutationShard -Catalogue $Catalogue -Index $report.ShardIndex -Count $Count)
-        if($report.Results.Count -ne $expected.Count){throw 'MutationShardCoverageIncomplete'}
-        $expectedNames=@($expected|ForEach-Object Name)
+        if(!$indices.Add([int]$report.ShardIndex)){throw 'MutationShardIdentityMismatch'}
+        $null=Assert-QuietMutationShard -Report $report -Catalogue $Catalogue -SourceSHA256 $SourceSHA256 -Revision $Revision -Index $report.ShardIndex -Count $Count
         foreach($result in $report.Results){
-            if($result.Outcome -cne 'Killed' -or $result.Name -cnotin $expectedNames -or !$names.Add($result.Name)){throw 'MutationShardOutcomeOrCoverageInvalid'}
+            if(!$names.Add($result.Name)){throw 'MutationShardOutcomeOrCoverageInvalid'}
         }
     }
     if($names.Count -ne $Catalogue.Count){throw 'MutationCatalogueCoverageIncomplete'}
     [pscustomobject]@{Complete=$true;Shards=$Count;Selected=$Catalogue.Count;Killed=$names.Count;Revision=$Revision;SourceSHA256=$SourceSHA256}
 }
 
-Export-ModuleMember -Function Get-QuietMutationShard,Get-QuietRunProfileMutationIdentity,Assert-QuietMutationShards
+Export-ModuleMember -Function Get-QuietMutationShard,Get-QuietRunProfileMutationIdentity,Assert-QuietMutationShard,Assert-QuietMutationShards

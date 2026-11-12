@@ -59,16 +59,17 @@ inside an existing Docker toolchain image; it does not claim hosted Windows/ARM 
 
 
 
-## Current shard integration gap
+## Shard execution and completion
 
-The unfiltered-summary guard in `scripts/Invoke-GitHubCi.ps1` rejects every suite summary carrying Partial or Incomplete. The RunProfilesMutation matrix sets shard controls, and `Invoke-RunProfileQualification.ps1` correctly marks those summaries Partial. Consequently successful shard execution is rejected by this entry point, and the dependent completion job cannot qualify the union.
+Only an explicit RunProfilesMutation shard context may return intermediate partial evidence. Before worker effects, the entry validates both environment controls, index/count range, exact GITHUB_SHA and direct non-profiled execution. Afterward it reads bounded strict UTF-8 JSON and requires the expected source-controlled partition, green baseline, identical source hash/revision, fixed seed/iterations and Killed-only results.
 
-A future correction must distinguish validated shard execution from complete qualification without accepting filtered/incomplete product suites. Keep the shard report partial and require the source-bound completion job. Existing local mutation/aggregation tests do not cover this GitHub-entry interaction; it needs a targeted regression before claiming the sharded workflow operational.
+Exactly one successful RunProfiles mutation summary must match that report: Partial=true, Incomplete=false, no failures/skips and consistent counts. The returned entry result retains Partial=true. Product partial/incomplete summaries and a partial mutation run without valid shard controls remain rejected. The dependent completion job still requires both current-attempt artifacts and their exact complete union; no shard emits complete qualification.
+
+The real GitHub entry is tested in owned child processes with synthetic worker reports: both shards accepted, damaged/stale evidence and product partials rejected, complete product behavior preserved, WhatIf effect-free, and mutations reproducing the old rejection or removing the product guard detected. This validates the entry boundary without claiming a new hosted campaign.
 
 ## Critical review and verdict
 
-`scripts/Invoke-GitHubCi.ps1:1` preserves exact host/direct-vs-container execution, path normalization and strict qualification completeness. Its generic completeness guard is appropriate for product qualification but currently incompatible with intermediate mutation shards. This is a confirmed source-level wiring gap, not an observed new hosted failure. See [the workflow contract](../ci/github/script-tooling-ci.md#current-integration-gap).
-
+`scripts/Invoke-GitHubCi.ps1:49` validates the context before effects; the final shard branch reuses Assert-QuietMutationShard, also consumed by the complete aggregator. Partition acceptance therefore has one implementation. Existing host/RID, failure-state and full product qualification checks remain active. See [the workflow contract](../ci/github/script-tooling-ci.md#shard-execution-boundary).
 <!-- script-contract:begin -->
 ## Execution contract
 

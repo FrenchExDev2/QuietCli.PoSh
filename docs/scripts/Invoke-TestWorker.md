@@ -31,7 +31,7 @@ flowchart TD
 
 ## Focused tooling and evidence
 
-Tooling and Distribution load independent catalogues outside product All. Distribution reuses the complete tooling build for its three cases. RunProfilesMutation builds/imports no product engine and skips engine cleanup as well; its concurrency is capped at two. Shard controls are forwarded as a validated index/count pair, retaining Partial on intermediate summaries. The current [GitHub entry-point mismatch](Invoke-GitHubCi.md#current-shard-integration-gap) blocks this declared shard path.
+Tooling and Distribution load independent catalogues outside product All. Distribution reuses the complete tooling build for its three cases. RunProfilesMutation builds/imports no product engine and skips engine cleanup as well; its concurrency is capped at two. Shard controls are forwarded as a validated index/count pair, retaining Partial on intermediate summaries. The [GitHub entry boundary](Invoke-GitHubCi.md#shard-execution-and-completion) validates each shard report and keeps it partial; the dependent aggregator alone establishes full coverage.
 
 DotNet delegates to its selected readiness/provisioning/layout/locks scope without a product engine. Other focused suites keep their own helper contracts. Profiler supports Core/All/Integration and runs an instrumented pass separately from ordinary timing samples.
 
