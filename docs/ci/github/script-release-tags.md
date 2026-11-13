@@ -1,6 +1,6 @@
 # release-tags.yml
 
-<!-- workflow-source-sha256: 9BA057B7224A55E2B83C7FCEB7348DFCA5C6B92EC5949CF0A7DC69293B7FA761 -->
+<!-- workflow-source-sha256: 8B852700266BB22A04239FF3625C671B066BEAC8B558943706E14AA6F691087D -->
 
 ## Purpose
 
@@ -24,14 +24,18 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 ~~~mermaid
 flowchart TD
     event["Triggers: push"]
+    job_github_release["github-release"]
     job_plan["plan"]
     job_release["release"]
+    job_plan --> job_github_release
+    job_release --> job_github_release
     event --> job_plan
     job_plan --> job_release
 ~~~
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
+| github-release | runner ubuntu-latest | plan, release | needs.release.result == 'success' && needs.plan.outputs.is_leader == 'true' | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Publish-QuietGitHubRelease.ps1 |
 | plan | runner ubuntu-latest |  | github.repository == 'FrenchExDev2/QuietCli.PoSh' | ./scripts/Get-QuietReleasePlan.ps1 |
 | release | reuses ./.github/workflows/publish-psgallery.yml | plan | needs.plan.outputs.is_leader == 'true' |  |
 
@@ -41,7 +45,11 @@ flowchart TD
 
 Get-QuietReleasePlan derives module/component/version from existing workspace manifests and the script-module identity reader. Invalid, mismatching, disabled and test targets fail before qualification. The release job passes the exact module and version to publish-psgallery, which runs full All qualification with profiling, verifies the packaging build and publishes one selected immutable package after tag/package validation.
 
-Operator-created annotations declare one batch and exact commit. Every tag run verifies all remote members and their manifest versions, but only its dependency-ordered leader starts qualification and packaging. The leader publishes Core before selected companions through Invoke-QuietGalleryRelease. Followers stop after planning; standalone/manual tags without batch annotations retain independent runs. Collision checks and the no-force policy remain. Git still requires a publicly visible compatible Core dependency; indexing delay can reject Git. No GitHub Release object is created.
+Operator-created annotations declare one batch and exact commit. Every tag run verifies all remote members and their manifest versions, but only its dependency-ordered leader starts qualification and packaging. The leader publishes Core before selected companions through Invoke-QuietGalleryRelease. Followers stop after planning; standalone/manual tags without batch annotations retain independent runs. Collision checks and the no-force policy remain. Git still requires a publicly visible compatible Core dependency; indexing delay can reject Git.
+
+After the entire called Gallery workflow succeeds, github-release runs only for the batch leader. It downloads the exact package and publication-receipt artifact names exported by that workflow, retaining the publishing attempt's identity on a GitHub-only retry. Publish-QuietGitHubRelease checks all local packages and successful Gallery receipts, original repository/push/tag/SHA context and each remote tag's peeled commit. Drafts receive the unchanged nupkg, package-set.json and publication.json; uploaded sizes/SHA-256 are checked before publishing. Preview versions become prereleases and make_latest=false preserves the global latest pointer. Only this separate job requests contents:write with github.token; the called reusable workflow, packaging and Gallery jobs keep contents read-only. The Gallery key is unavailable here. Manual artifact workflows never invoke this tag-only path.
+
+Existing drafts/releases are refused without deletion or replacement. Interrupted uploads leave a draft for deliberate recovery. Partial batch GitHub success has no rollback; Gallery publication is already complete. Inspect remote state before retrying only this job, without repeating Gallery publication. Offline lifecycle/property/malformed-response/mutation fixtures do not establish actual hosted transport or artifact extraction.
 
 ## Validation and limits
 

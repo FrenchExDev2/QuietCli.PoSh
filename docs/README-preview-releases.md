@@ -46,7 +46,7 @@ $release.Tag
 
 For commit/tag/push orchestration, use New-QuietPreviewTag.ps1 with Version and one or more Module aliases. NextPreview computes preview1, preview2, etc. independently per module/base from exact local and remote tags; Preview accepts an explicit number or null. Example: `./scripts/New-QuietPreviewTag.ps1 -Module Core,Git -Version 0.3.0 -NextPreview -WhatIf`. Remove WhatIf to execute, or use NoPush for local commits/tags. NoCommit requires versions already committed. Existing local or remote tags are refused without force. See [all operator options and recovery rules](scripts/New-QuietPreviewTag.md).
 
-Namespaced tag pushes request publication through release-tags.yml: validate the selected manifest, qualify All with profiling, prepare one verified selected package and publish those bytes. Legacy local timestamp/exact-manifest tag modes without Version still never push. No GitHub Release is created automatically, and a published identity is never overwritten.
+Namespaced tag pushes request publication through release-tags.yml: validate the selected manifest, qualify All with profiling, prepare verified packages and publish those bytes on PowerShell Gallery. After the complete selected Gallery publication succeeds, a separate job creates one GitHub Release per module tag with the identical nupkg, package-set.json and successful publication.json. Preview versions become GitHub prereleases. Releases do not change the repository-wide latest pointer. Legacy local timestamp/exact-manifest tag modes without Version still never push, and a published identity is never overwritten.
 
 Publish a compatible Core version before a companion that depends on it. Git CI publication now preserves its existing script-module/package name and RequiredModules dependency, validates net10.0/net11.0 parser payloads and exercises isolated installation plus a Git handler. Versions advance independently; a Core release does not imply republishing every companion. Partial command/version and real-provider qualification remains explicit.
 
@@ -127,6 +127,7 @@ version. Neither manual dispatch publishes. PRs, forks and branch pushes do not 
   already confirmed. A published version is never overwritten or retried automatically. After a partial publication,
   inspect the receipt and use a fresh packaging attempt; rerunning only the failed publication job reuses the old artifact
   and deliberately fails if that identity already exists.
+- GitHub Release creation uses only the ephemeral GITHUB_TOKEN with contents:write; the Gallery key remains in the protected publication job. The GitHub job verifies each remote tag's exact peeled commit, creates a draft, uploads and checks asset sizes/SHA-256 digests, then publishes it. Existing drafts/releases are refused without replacement. A failed upload leaves an unpublished draft for deliberate recovery. A GitHub job failure does not undo Gallery publication; inspect and recover that job separately instead of repeating Gallery publication. No rollback or automatic retry is provided.
 - A full workflow rerun increments the attempt and prepares a new preview identity. `GITHUB_RUN_NUMBER` does not increase
   for a rerun, which is why the attempt is part of the suffix.
 
