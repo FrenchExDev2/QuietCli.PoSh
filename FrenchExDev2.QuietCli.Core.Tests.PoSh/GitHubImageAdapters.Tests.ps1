@@ -1,3 +1,101 @@
+function Test-QuietDockerRegistryDaemon {
+    <#
+    .SYNOPSIS
+    Exercises image publication across isolated Docker credentials using the actual setup action inputs.
+    .PARAMETER WorkspaceRoot
+    Checkout providing the Docker setup action and image builder.
+    .PARAMETER RunDirectory
+    Owned fixture directory; no daemon or registry is contacted.
+    #>
+    param([string]$WorkspaceRoot,[string]$RunDirectory)
+    $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
+    $yaml=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build()
+    $action=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/actions/cache-ci-layers/action.yml'),[Text.Encoding]::UTF8))
+    $setup=@($action['runs']['steps']|Where-Object {$_['uses'] -like 'docker/setup-docker-action@*'})
+    if($setup.Count -ne 1){throw 'DockerSetupActionRequired'}
+    $setHost=[string]$setup[0]['with']['set-host'] -ieq 'true'
+    foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){foreach($cached in @($false,$true)){
+        & {
+            param($WorkspaceRoot,$RunDirectory,$rid,$cached,$setHost)
+            . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+            $plan=Get-QuietCiImagePlan $WorkspaceRoot $rid
+            $fixture=Join-Path $RunDirectory ('docker-publication-'+$rid+'-'+$cached)
+            $names=@('DOCKER_CONFIG','DOCKER_HOST','DOCKER_CONTEXT','QUIETCLI_REGISTRY_TOKEN','QUIETCLI_BUILDKIT_CACHE_DIR','GITHUB_ACTIONS','GITHUB_REPOSITORY','GITHUB_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR')
+            $previous=@{};foreach($name in $names){$previous[$name]=[Environment]::GetEnvironmentVariable($name)}
+            $originalConfig=Join-Path $fixture 'original-docker-config'
+            $expectedHost='unix:///fixture/setup-docker-action.sock'
+            $observed=@{BuildHost=$null;Pushed=$false;AuthDirectory=$null;DigestReads=0}
+            function Get-QuietFixtureDockerHost {
+                <# .SYNOPSIS
+                Models Docker's environment override and config-owned current-context resolution.
+                #>
+                if($env:DOCKER_HOST){return $env:DOCKER_HOST}
+                if($env:DOCKER_CONFIG -ceq $originalConfig){return $expectedHost}
+                'unix:///var/run/docker.sock'
+            }
+            function Get-QuietCiRegistryDigest {
+                <# .SYNOPSIS
+                Returns a cache miss until the fixture has actually published its built image.
+                #>
+                $observed.DigestReads++
+                if($observed.Pushed){'sha256:'+('2'*64)}
+            }
+            function Invoke-CiProcess {
+                <# .SYNOPSIS
+                Supplies daemon identity, image metadata and credential login without native effects.
+                #>
+                param($FilePath,$ArgumentList,$TimeoutSeconds,$State,$OnOutput,$InputText)
+                $architecture=if($rid.EndsWith('arm64')){'arm64'}else{'amd64'}
+                switch($ArgumentList[0]){
+                    info {$metadata=@{OSType='linux';Architecture=$architecture}}
+                    login {
+                        $observed.AuthDirectory=$env:DOCKER_CONFIG
+                        if($InputText -cne 'synthetic-credential' -or $env:QUIETCLI_REGISTRY_TOKEN){throw 'DockerCredentialBoundaryChanged'}
+                        [IO.File]::WriteAllText((Join-Path $env:DOCKER_CONFIG 'config.json'),'{}',[Text.UTF8Encoding]::new($false))
+                        return [pscustomobject]@{Outcome='Success';ExitCode=0;ElapsedMs=1}
+                    }
+                    context {$null=& $OnOutput ([pscustomobject]@{Stream='stdout';Text='setup-docker-action'}) $State;return [pscustomobject]@{Outcome='Success'}}
+                    image {$metadata=@{Id=('sha256:'+('1'*64));Architecture=$architecture;Os='linux';Config=@{Labels=@{'org.frenchexdev.quietcli2.inputs'=$plan.Fingerprint;'org.opencontainers.image.source'=$plan.Source}}}}
+                    default {throw 'UnexpectedDockerPublicationProbe'}
+                }
+                $null=& $OnOutput ([pscustomobject]@{Stream='stdout';Text=($metadata|ConvertTo-Json -Depth 5 -Compress)}) $State
+                [pscustomobject]@{Outcome='Success';ExitCode=0;ElapsedMs=1}
+            }
+            function Invoke-WorkspaceNative {
+                <# .SYNOPSIS
+                Requires publication to find the exact built tag on the same daemon with private credentials.
+                #>
+                param($FilePath,$Arguments,$WorkingDirectory,$TimeoutSeconds,$LogPath)
+                if($Arguments[0] -in @('build','buildx')){
+                    $observed.BuildHost=Get-QuietFixtureDockerHost
+                    $observed.Tag=$Arguments[[array]::IndexOf($Arguments,'-t')+1]
+                    if($cached){
+                        $option=$Arguments[[array]::IndexOf($Arguments,'--cache-to')+1]
+                        $destination=($option -split ','|Where-Object { $_.StartsWith('dest=') }).Substring(5)
+                        [void][IO.Directory]::CreateDirectory($destination)
+                        [IO.File]::WriteAllText((Join-Path $destination 'index.json'),'{}',[Text.UTF8Encoding]::new($false))
+                    }
+                }elseif($Arguments[0] -ceq 'push'){
+                    if((Get-QuietFixtureDockerHost) -cne $observed.BuildHost){throw 'DockerPublicationChangedDaemon'}
+                    if($Arguments[1] -cne $observed.Tag -or $env:DOCKER_CONFIG -cne $observed.AuthDirectory){throw 'DockerPublicationLostTagOrCredential'}
+                    $observed.Pushed=$true
+                }elseif($Arguments[0] -cne 'pull'){throw 'UnexpectedDockerPublicationOperation'}
+            }
+            try{
+                $env:DOCKER_CONFIG=$originalConfig;$env:DOCKER_CONTEXT=$null
+                $env:DOCKER_HOST=if($setHost){$expectedHost}else{$null}
+                $env:QUIETCLI_REGISTRY_TOKEN='synthetic-credential';$env:GITHUB_ACTIONS='true'
+                $env:GITHUB_REPOSITORY='FrenchExDev2/QuietCli.PoSh';$env:GITHUB_REF='refs/heads/develop';$env:GITHUB_EVENT_NAME='push';$env:GITHUB_ACTOR='fixture'
+                $env:QUIETCLI_BUILDKIT_CACHE_DIR=if($cached){Join-Path $fixture '.cache/ci-buildkit'}else{$null}
+                $receipt=Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory (Join-Path $WorkspaceRoot '.github/containers') -WorkspaceRoot $fixture -ArtifactPrefix $rid -ContainerRuntime docker -RegistryCache -PublishCache
+                if(!$observed.Pushed -or !$receipt.Published -or $observed.BuildHost -cne $expectedHost -or $observed.DigestReads -ne 2){throw 'DockerPublicationIncomplete'}
+                if($env:DOCKER_CONFIG -cne $originalConfig -or (Test-Path -LiteralPath $observed.AuthDirectory)){throw 'DockerPublicationConfigurationNotRestored'}
+            }finally{foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$previous[$name])}}
+        } $WorkspaceRoot $RunDirectory $rid $cached $setHost
+    }}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'docker-publication-regression.json') @{RuntimeIdentifiers=4;CachedAndUncachedPublicationCases=8;IsolatedCredentials=$true;NativeDockerExecuted=$false;RegistryContacted=$false}
+}
+
 function Test-QuietGitHubImageAdapters {
     <#
     .SYNOPSIS
@@ -8,6 +106,7 @@ function Test-QuietGitHubImageAdapters {
     Private fixture root for generated recipes and receipts.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
+    Test-QuietDockerRegistryDaemon -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
     foreach($runtime in @('podman','docker')){foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){foreach($cached in @($false,$true)){
         & {
             param($WorkspaceRoot,$RunDirectory,$runtime,$rid,$cached)

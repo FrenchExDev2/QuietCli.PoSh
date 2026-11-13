@@ -32,6 +32,8 @@ Preparation can pull/build/tag/push images and create recipe/image/cache/login r
 
 Credentials are removed from child environments, held only as needed in the owner, supplied through BOM-free UTF-8 stdin and private temporary Docker configuration/Podman authfiles, then cleaned up. Login diagnostics record exit/duration/encoding and bounded redacted records; tokens, Basic credentials and authfile contents are excluded. PSGallery credentials are unrelated.
 
+The shared GitHub cache action exports its Docker setup socket with `set-host: true`. `DOCKER_HOST` preserves daemon selection across the temporary `DOCKER_CONFIG` used for registry credentials, so publication can find the image built with the original configuration. Offline publication regressions exercise all four Linux RIDs with and without BuildKit caching, requiring the same daemon, exact tag, private credential directory and restoration after publication. They do not execute Docker or contact GHCR.
+
 ## Critical review and verdict
 
 `scripts/CiImages.ps1:214` owns registry identity checks, `:286`/`:314` the cache/build policy and `:333` effectful preparation. The function library intentionally requires Common to be loaded by its entry-point caller. Adapter/recipe properties and targeted mutations cover cache-only misses, verified final reuse, parent defaults/provenance, argument vectors and credential handoff. Hosted GHCR/BuildKit transfers and ARM execution need actual runner evidence; local tests do not establish speedup. See [Linux images](../ci/linux-images.md).

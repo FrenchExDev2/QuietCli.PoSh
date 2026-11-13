@@ -9,6 +9,7 @@ Distribution.Tests separately owns the three complete Core distribution cases. T
 
 `./scripts/Invoke-WorkspaceCi.ps1 -Suite Tooling -SkipBuild` runs the complete tooling catalogue with the visible local monitor.
 Use `-Case '<wildcard>'` for an explicitly partial development run.
+The `GitHub CI separates native containers, Docker fallback and workstation launchers` case includes an offline publication regression derived from the shared Docker setup action. Eight scenarios cover the four Linux RIDs with and without BuildKit caching, checking daemon identity across private registry credentials, exact image tags, digest receipts and credential cleanup. Omitting `set-host: true` reproduces `DockerPublicationChangedDaemon`. This evidence does not execute a Docker daemon or publish an image.
 Product `All` discovers Core, Git and Vagrant; the CI gate separately requires the tooling workflow when shared sources change.
 Private assertion helpers remain in Core.Tests and are invoked in that module's scope; ownership of the literal catalogue belongs here.
 
