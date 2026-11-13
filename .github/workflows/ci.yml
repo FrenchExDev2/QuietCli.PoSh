@@ -379,7 +379,9 @@ jobs:
         shell: pwsh
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
       - uses: ./.github/actions/cache-resources
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      - name: Restore NuGet packages before build and tests
+        id: nuget-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-${{ runner.arch }}-quietcli-nuget-${{ hashFiles('**/*.csproj', 'Directory.Packages.props', 'Directory.Build.props', 'global.json') }}
@@ -433,6 +435,12 @@ jobs:
           path: artifacts/failure-diagnostics
           if-no-files-found: warn
           retention-days: 14
+      - name: Save NuGet packages using the resolved restore key
+        if: ${{ success() && steps.nuget-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.nuget/packages
+          key: ${{ steps.nuget-cache.outputs.cache-primary-key }}
   linux-test-driver:
     name: Linux test driver (${{ matrix.rid }})
     needs: linux-selection

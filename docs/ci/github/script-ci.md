@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 19C1C68A10FE204EE462E5C44DA61A2ED7F011ABF415DBF71A140ABF41DE2F2C -->
+<!-- workflow-source-sha256: 796872F954C46352C73C9BF80418BD0B7FC809E80FFC32CFD3F8285D38F5F642 -->
 
 ## Purpose
 
@@ -11,6 +11,8 @@ run_tooling defaults true for manual/release callers; PR planning may disable it
 Core requires only the base toolchain image. All runs Core completely before bounded independent companion workers consume the same image. Build-Workspace compiles only the selected dependency closure and publishes the tested RID. Full IL distributions and their three private Distribution.Tests checks run once in tooling-ci.yml. Public release packaging retains its separate all-RID ReadyToRun requirement.
 
 Linux resolves verified final GHCR images before building parents. Missing images use Docker BuildKit mode=max intermediate caches via cache-ci-layers. The active-context builder uses the containerd image store so local parent images remain visible. Cache save follows image preparation and precedes tests. PRs never publish images. Native architecture, fingerprints, parent provenance and labels remain mandatory.
+
+Linux job containers restore NuGet packages with the pinned restore-only cache action before builds and tests. A final explicit save uses its resolved `cache-primary-key`, after successful tests and report uploads and only without an exact cache hit. The project/package/build/SDK input hash is evaluated during restore, never during save or post-job cleanup: generated fixtures can change the checkout tree and make a later recursive hash fail. Cache paths and OS/architecture/dependency partitioning are preserved. The focused `CI scales by affected suites with verified merge reuse and intermediate caches` tooling case checks ordering, the frozen key, the success/cache-hit decisions and damaged workflow variants. Local contract checks do not reproduce GitHub's container post-job evaluator.
 
 ## Validation and limits
 
