@@ -31,7 +31,7 @@ flowchart TD
 
 Final-image identity includes rendered recipes, declared inputs, lock/script changes and parent provenance. Registry configuration and local inspection verify digests, Linux architecture, source and fingerprint labels. Execution uses an immutable digest/local image ID. Missing or inaccessible private cache entries may be built locally; unexpected registry/network errors remain explicit failures, without automatic retries.
 
-The Docker-only intermediate path uses the active context's containerd image store, keeping freshly built parent images visible. Cache scopes separate image and RID and use fingerprint keys with an older-recipe fallback. Exports rotate owned caches to avoid obsolete blobs. A verified final hit needs neither intermediate transfer nor parent preparation. Sources, `.env` and credentials never enter toolchain images. Local Podman behavior is unchanged.
+The Docker-only intermediate path uses the active context's containerd image store, keeping freshly built parent images visible. The shared cache action sets `set-host: true` on Docker setup, exporting the owned daemon socket through `DOCKER_HOST`. Builds, authenticated pulls and pushes therefore keep the same daemon when registry authentication temporarily selects a private `DOCKER_CONFIG`; the temporary configuration does not contain the original current-context selection. Cache scopes separate image and RID and use fingerprint keys with an older-recipe fallback. Exports rotate owned caches to avoid obsolete blobs. A verified final hit needs neither intermediate transfer nor parent preparation. Sources, `.env` and credentials never enter toolchain images. Local Podman behavior is unchanged.
 
 ## Trusted cache-only preparation
 

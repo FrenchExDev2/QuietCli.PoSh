@@ -16,6 +16,7 @@ runs:
     - uses: docker/setup-docker-action@3f1ab1ab0e29231562e4db4ca600c1a49653bac6 # v5
       if: inputs.mode == 'restore'
       with:
+        set-host: true
         daemon-config: |
           {"features":{"containerd-snapshotter":true}}
     - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
