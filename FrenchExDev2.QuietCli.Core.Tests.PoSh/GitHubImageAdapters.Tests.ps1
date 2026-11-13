@@ -106,6 +106,8 @@ function Test-QuietGitHubImageAdapters {
     Private fixture root for generated recipes and receipts.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
+    . (Join-Path $PSScriptRoot 'CiRegistry.Tests.ps1')
+    Test-QuietCiRegistryProtocol -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
     Test-QuietDockerRegistryDaemon -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
     foreach($runtime in @('podman','docker')){foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){foreach($cached in @($false,$true)){
         & {
