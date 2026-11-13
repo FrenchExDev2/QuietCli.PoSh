@@ -1,10 +1,12 @@
 # qualification.yml
 
-<!-- workflow-source-sha256: 0AA9397C93847960C24D0FA5D776F38B587D29F5BF4C78AF9CB24021CA3BE4FA -->
+<!-- workflow-source-sha256: FB9EE06CB5B1425B2CA90F98DC7B9FE6D76C267DF072AD420F8D4C62578BC362 -->
 
 ## Purpose
 
 Explicit full Git capability qualification on a separately provisioned self-hosted runner.
+
+Native orchestration and test/smoke steps select checksum-pinned GA PowerShell through the local setup-powershell action. Linux guest images retain their own reviewed lock (Debian 7.7.0; accepted Alpine 7.6.9-r0 exception). The setup changes only the job PATH; it does not install a machine-wide host or enable optional Preview.
 
 ## Triggers
 
@@ -12,7 +14,7 @@ Manual workflow_dispatch only; no develop or publication dependency.
 
 ## Execution and limits
 
-This manual path declares a separately provisioned self-hosted Linux/Podman/KVM runner. Its full capability runner remains deliberately unimplemented and fails closed; it cannot currently establish exhaustive Git qualification. It is independent of the hosted ten-target product matrix and has no release/develop dependency. See [execution boundaries](../execution-model.md).
+This manual path declares a separately provisioned self-hosted Linux/Podman/KVM runner. Its full capability runner remains deliberately unimplemented and fails closed; it cannot currently establish exhaustive Git qualification. It is independent of the hosted production matrix with optional Preview and has no release/develop dependency. See [execution boundaries](../execution-model.md).
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies

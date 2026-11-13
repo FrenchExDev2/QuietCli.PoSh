@@ -1,17 +1,17 @@
 # Windows x64 and ARM64 CI
 
-The shared [ci.yml](../../.github/workflows/ci.yml) runs the selected product scope in **six native Windows combinations**. Each row builds Release ReadyToRun for its tested RID and executes tests. Setup or build success alone does not qualify the row.
+The shared [ci.yml](../../.github/workflows/ci.yml) runs the selected product scope in **four required GA combinations**; `run_preview=true` explicitly adds two next-version Preview rows. Each row builds Release ReadyToRun for its tested RID and executes tests. Setup or build success alone does not qualify the row.
 
 | Runner / RID | PowerShell host | Engine hosting / build |
 | --- | --- | --- |
-| `windows-latest` / `win-x64` | Stable, CLR 10 | Process, .NET 11 |
-| `windows-latest` / `win-x64` | Stable, CLR 10 | InProcess, .NET 10 |
-| `windows-latest` / `win-x64` | Preview, CLR 11 | InProcess, .NET 11 |
-| `windows-11-arm` / `win-arm64` | Stable, CLR 10 | Process, .NET 11 |
-| `windows-11-arm` / `win-arm64` | Stable, CLR 10 | InProcess, .NET 10 |
-| `windows-11-arm` / `win-arm64` | Preview, CLR 11 | InProcess, .NET 11 |
+| `windows-latest` / `win-x64` | GA 7.7.0, CLR 11 | Process, .NET 11 |
+| `windows-latest` / `win-x64` | GA 7.7.0, CLR 11 | InProcess, .NET 11 |
+| `windows-latest` / `win-x64` | Optional next-version Preview | InProcess, .NET 11 |
+| `windows-11-arm` / `win-arm64` | GA 7.7.0, CLR 11 | Process, .NET 11 |
+| `windows-11-arm` / `win-arm64` | GA 7.7.0, CLR 11 | InProcess, .NET 11 |
+| `windows-11-arm` / `win-arm64` | Optional next-version Preview | InProcess, .NET 11 |
 
-Exact host versions and archive SHA-256 values come from [powershell-hosts.lock.json](../../build/powershell-hosts.lock.json); the SDK comes from [global.json](../../global.json). These jobs use GitHub-hosted machines, not Windows containers or local ARM emulation. Reports retain the actual runner image version.
+Preview defaults false. The announced 7.8.0-preview.1 is not published; selecting it fails explicitly before downloading or executing a host. Refresh the lock after publication. Exact host versions and archive SHA-256 values come from [powershell-hosts.lock.json](../../build/powershell-hosts.lock.json); the SDK comes from [global.json](../../global.json). These jobs use GitHub-hosted machines, not Windows containers or local ARM emulation. Reports retain the actual runner image version.
 
 ```mermaid
 flowchart LR

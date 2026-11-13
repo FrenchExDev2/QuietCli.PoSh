@@ -8,11 +8,11 @@ Verifies one or more evidence bundles and writes standalone HTML, Markdown and J
 ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/matrix-evidence -OutputDirectory ./artifacts/performance-results -Revision $env:GITHUB_SHA -ExpectedReports 10 -Suite All
 ```
 
-EvidenceRoot contains a bundle or downloaded bundle directories. Revision must match every manifest. ExpectedReports defaults to zero (count check disabled); combined Core matrix reporting supplies ten. Suite accepts Core/All/Git/Integration and defaults to All. Core scopes require functional integration/profiling; Git labels those observations outside scope.
+EvidenceRoot contains a bundle or downloaded bundle directories. Revision must match every manifest. ExpectedReports defaults to zero (count check disabled); combined Core matrix reporting supplies eight for production or ten when Preview is explicitly selected. Suite accepts Core/All/Git/Integration and defaults to All. Core scopes require functional integration/profiling; Git labels those observations outside scope.
 
 ## Validation and outputs
 
-Rechecks referenced literal-path files and SHA-256, rejects duplicate environment identities and reports missing/modified evidence. A count of ten alone cannot establish ten distinct complete environments. Failed functional runs can still produce readable partial output; absent Core profiles are shown as Missing (phase not reached), then the step fails qualification.
+Rechecks referenced literal-path files and SHA-256, rejects duplicate environment identities and reports missing/modified evidence. A matching count alone cannot establish distinct complete environments. Failed functional runs can still produce readable partial output; absent Core profiles are shown as Missing (phase not reached), then the step fails qualification.
 
 Outputs are `PERFORMANCES_RESULTS.html`, `.md` and `.json`, plus an updated/new checksum/provenance manifest. HTML uses installed ConvertFrom-Markdown, embedded CSS/UTF-8 and a restrictive content-security policy, without external scripts/styles/network. Download `quietcli-performance-results-<revision>` and open the HTML locally; raw traces stay in per-environment bundles.
 

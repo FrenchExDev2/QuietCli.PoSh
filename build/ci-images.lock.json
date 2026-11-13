@@ -10,8 +10,8 @@
       "Architecture": "x64",
       "Base": "docker.io/library/debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc",
       "SDK_SHA512": "1bec9cca2ec689b1e80245b84f2b53c9441d1aa6daccf2ceb27490768bffa95954fa585bd275def31069d874d543d9ba9e6591fe9ade2dbd9f34ec5c0fd0050c",
-      "PowerShell": "7.6.7",
-      "PowerShell_SHA256": "6896f9e3a6b0a354bf470835a96da76d2f801cd50dcf047ad7c4563bf93bf431"
+      "PowerShell": "7.7.0",
+      "PowerShell_SHA256": "c89d9c682d2c403dfe726f3df948e359675235a5bd6fab535776de69729ca0cb"
     },
     {
       "Rid": "linux-arm64",
@@ -19,8 +19,8 @@
       "Architecture": "arm64",
       "Base": "docker.io/library/debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc",
       "SDK_SHA512": "cfa248bb1377606e868602fb5b4d66fa16b7546156593937d1982f7f2142e6ded76d71c4a26efdab99f87c46ab40c3c672ab1b57ef7fa25449efe5b140a55af4",
-      "PowerShell": "7.6.7",
-      "PowerShell_SHA256": "ba465efdfb0984c1c5dc5ed9eb0b79a7e91a1b52c45f99377058c0659b84d3f1"
+      "PowerShell": "7.7.0",
+      "PowerShell_SHA256": "e59c89776eaa59790d44b3edd14277435225ab08b6e7603763101b89de83d935"
     },
     {
       "Rid": "linux-musl-x64",
@@ -38,5 +38,11 @@
       "SDK_SHA512": "ffe8df27a87ad1abe39333ae9625d53bfd41b1933df64d96e79572dc9e74176379ac2419f989e32b54117bf84db1ec13a88f757bad8787dc112501b3a6314db3",
       "Runtime_SHA512": "08f19dd39dfe705e1333c3ee63c37be027e0627768f5048be6be7767c239aca0f83a0ed34ac0445cd2f63bbf5edd9483a6ac184e263923284f294e06b0f6692a"
     }
-  ]
+  ],
+  "PowerShellException": {
+    "Requested": "7.7.0",
+    "Platform": "alpine",
+    "Retained": "7.6.9-r0",
+    "Reason": "Official musl ARM64 archive and native GA APK are not published; retain the available native package explicitly."
+  }
 }

@@ -6,6 +6,11 @@ on:
         description: Exact revision accepted by all required qualification jobs
         value: ${{ jobs.qualification-gate.outputs.qualified_sha }}
     inputs:
+      run_preview:
+        description: Explicitly add the published next-version Windows preview (optional; production defaults to GA only)
+        type: boolean
+        required: false
+        default: false
       run_tooling:
         description: Require repository automation and run-profile mutation independently of the product matrix
         type: boolean
@@ -24,6 +29,11 @@ on:
     inputs:
       images_only:
         description: Warm verified Linux image caches on develop without product qualification
+        type: boolean
+        required: false
+        default: false
+      run_preview:
+        description: Explicitly add the published next-version Windows preview (optional; production defaults to GA only)
         type: boolean
         required: false
         default: false
@@ -93,44 +103,7 @@ jobs:
       QUIETCLI_SUITE_HAS_CORE: ${{ needs.linux-matrix.outputs.has_core }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - image: windows-latest
-            rid: win-x64
-            channel: stable
-            mode: Process
-            host_version: 7.6.7
-            runtime_major: 10
-          - image: windows-11-arm
-            rid: win-arm64
-            channel: stable
-            mode: Process
-            host_version: 7.6.7
-            runtime_major: 10
-          - image: windows-latest
-            rid: win-x64
-            channel: stable
-            mode: InProcess
-            host_version: 7.6.7
-            runtime_major: 10
-          - image: windows-11-arm
-            rid: win-arm64
-            channel: stable
-            mode: InProcess
-            host_version: 7.6.7
-            runtime_major: 10
-          - image: windows-latest
-            rid: win-x64
-            channel: preview
-            mode: InProcess
-            host_version: 7.7.0-preview.5
-            runtime_major: 11
-          - image: windows-11-arm
-            rid: win-arm64
-            channel: preview
-            mode: InProcess
-            host_version: 7.7.0-preview.5
-            runtime_major: 11
+      matrix: ${{ fromJson(needs.linux-matrix.outputs.windows_matrix) }}
     runs-on: ${{ matrix.image }}
     timeout-minutes: 60
     steps:
@@ -247,6 +220,8 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       has_core: ${{ steps.matrix.outputs.has_core }}
+      windows_matrix: ${{ steps.windows_matrix.outputs.windows_matrix }}
+      expected_reports: ${{ steps.windows_matrix.outputs.expected_reports }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -254,6 +229,13 @@ jobs:
       - name: Initialize deterministic GitHub environment
         shell: pwsh
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+      - name: Select locked production hosts and optional next-version preview
+        id: windows_matrix
+        if: ${{ !inputs.images_only }}
+        shell: pwsh
+        env:
+          INCLUDE_PREVIEW: ${{ inputs.run_preview }}
+        run: ./scripts/Select-PowerShellCiMatrix.ps1 -IncludePreview:($env:INCLUDE_PREVIEW -ceq 'true') -OutputPath $env:GITHUB_OUTPUT
       - name: Define the native Linux platform/RID/runner matrix once for every consumer job
         id: matrix
         shell: pwsh
@@ -296,6 +278,7 @@ jobs:
       - name: Initialize deterministic GitHub environment
         shell: pwsh
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+      - uses: ./.github/actions/setup-powershell
       - name: Probe final image before restoring intermediate layers
         id: image_probe
         shell: pwsh
@@ -471,6 +454,7 @@ jobs:
       - name: Initialize deterministic GitHub environment
         shell: pwsh
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+      - uses: ./.github/actions/setup-powershell
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
@@ -617,9 +601,10 @@ jobs:
         shell: pwsh
         env:
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
+          EXPECTED_REPORTS: ${{ needs.linux-matrix.outputs.expected_reports }}
         run: |
           try {
-            ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/matrix-evidence -OutputDirectory ./artifacts/performance-results -Revision $env:GITHUB_SHA -ExpectedReports 10 -Suite $env:QUIETCLI_SUITE
+            ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/matrix-evidence -OutputDirectory ./artifacts/performance-results -Revision $env:GITHUB_SHA -ExpectedReports ([int]$env:EXPECTED_REPORTS) -Suite $env:QUIETCLI_SUITE
           } finally {
             $report='./artifacts/performance-results/PERFORMANCES_RESULTS.md'
             if(Test-Path $report){

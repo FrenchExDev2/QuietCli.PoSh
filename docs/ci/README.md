@@ -29,7 +29,7 @@ flowchart TD
     R -- No --> ALL[Full All scope and tooling]
     R -- Yes --> SM[Integrity and Core integration smoke plus image resolution]
     P --> S{Selected scope}
-    S -- Product --> C[Shared ci.yml: one ten-target matrix]
+    S -- Product --> C[Shared ci.yml: eight production targets; optional Preview adds two]
     S -- Tooling only --> T[tooling-ci.yml]
     S -- Documentation only --> OMIT[Intentional native-test omission]
     ALL --> C
@@ -47,6 +47,21 @@ flowchart TD
 
 The stable final check rejects missing required campaigns. Documentation-only omissions apply to PR planning; develop requires verified reuse before omitting product replay. A release tag follows its separate [release/publication flow](execution-model.md#gallery-publication).
 
+## PowerShell resource policy
+
+Production selects locked GA 7.7.0 on Windows and Debian. Alpine keeps the explicitly accepted native 7.6.9-r0 / CLR 10 exception until both native architectures can advance. Next-version Windows Preview is optional (`run_preview=false`); the announced 7.8.0-preview.1 is currently unavailable. Explicit opt-in requires verified published archives. Matrix planning and profile aggregation agree on eight production targets or ten with Preview.
+
+```mermaid
+flowchart LR
+    LOCK[Reviewed official host lock] --> GA[Four Windows GA rows]
+    LOCK --> OPT{run_preview?}
+    OPT -- false --> BASE[Eight production reports]
+    OPT -- true --> CHECK[Require published next-version archives]
+    CHECK --> ADD[Add two Preview rows: ten reports]
+    LINUX[Two Debian GA and two accepted Alpine rows] --> BASE
+    LINUX --> ADD
+```
+
 ## Script map
 
 | Responsibility | Shared implementation |
@@ -59,6 +74,7 @@ The stable final check rejects missing required campaigns. Documentation-only om
 | Desktop worker and visible monitor | [Invoke-WorkspaceCi](../scripts/Invoke-WorkspaceCi.md), [Invoke-ContainerCi](../scripts/Invoke-ContainerCi.md) |
 | Networkless Docker/Podman transport | [Invoke-ContainerWorker](../scripts/Invoke-ContainerWorker.md) |
 | Final image, base and overlays | [New-CiSuiteImage](../scripts/New-CiSuiteImage.md), [New-CiImage](../scripts/New-CiImage.md), [New-CiModuleImage](../scripts/New-CiModuleImage.md), [CiImages](../scripts/CiImages.md) |
+| GA resources, native hosts and optional Preview | [Availability audit](../scripts/Test-PowerShellReleaseAvailability.md), [lock updater](../scripts/Update-PowerShellCiLock.md), [host preparation](../scripts/Initialize-PowerShellHost.md), [Windows selection](../scripts/Select-PowerShellCiMatrix.md) |
 | Linux routing and result policy | [Select-GitHubCiMatrix](../scripts/Select-GitHubCiMatrix.md), [GitHubCi](../scripts/GitHubCi.md) |
 | Core without the Git module | [Test-CoreIndependence](../scripts/Test-CoreIndependence.md) |
 | Mutation partition and completion | [MutationShards](../scripts/lib/MutationShards.md), [Assert-RunProfileMutationShards](../scripts/Assert-RunProfileMutationShards.md) |

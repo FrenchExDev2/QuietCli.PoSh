@@ -59,3 +59,31 @@ function Assert-GitHubCiImagePreparationContext {
     param([bool]$ImagesOnly,[string]$Event,[string]$Ref,[string]$Repository)
     if($ImagesOnly -and ($Event -cne 'workflow_dispatch' -or $Ref -cne 'refs/heads/develop' -or $Repository -cne 'FrenchExDev2/QuietCli.PoSh')){throw 'CiImagesOnlyRequiresUpstreamDevelopDispatch'}
 }
+
+function Get-GitHubCiWindowsMatrix {
+    <#
+    .SYNOPSIS
+    Selects all native production rows and only explicitly requested next-version preview rows.
+    .PARAMETER HostLock
+    Reviewed host document with exact versions, hashes and availability.
+    .PARAMETER IncludePreview
+    Explicit opt-in; an unpublished requested preview fails before execution.
+    #>
+    param($HostLock,[bool]$IncludePreview=$false)
+    if($HostLock.SchemaVersion -ne 1 -or $HostLock.StableVersion -cnotmatch '\A7\.\d+\.\d+\z'){throw 'PowerShellCiHostLockInvalid'}
+    if($IncludePreview -and !$HostLock.Preview.Available){throw ('PowerShellPreviewNotPublished: '+$HostLock.Preview.Version)}
+    $rows=[Collections.Generic.List[object]]::new()
+    foreach($channel in @('stable')+@('preview'|Where-Object {$IncludePreview})){
+        foreach($rid in @('win-x64','win-arm64')){
+            $spec=@($HostLock.Hosts|Where-Object {$_.Channel -ceq $channel -and $_.Rid -ceq $rid})
+            if($spec.Count -ne 1 -or $spec[0].SHA256 -cnotmatch '\A[A-F0-9]{64}\z' -or $spec[0].RuntimeMajor -lt 10){throw 'PowerShellCiHostIdentityInvalid'}
+            $spec=$spec[0]
+            if($channel -ceq 'stable' -and $spec.Version -cne $HostLock.StableVersion){throw 'PowerShellCiStableVersionMismatch'}
+            if($channel -ceq 'preview' -and ($spec.Version -cne $HostLock.Preview.Version -or $spec.Version -cnotmatch '\A7\.\d+\.\d+-(?:preview|rc)\.\d+\z' -or [Management.Automation.SemanticVersion]$spec.Version -le [Management.Automation.SemanticVersion]$HostLock.StableVersion)){throw 'PowerShellCiPreviewVersionInvalid'}
+            foreach($mode in $(if($channel -ceq 'stable'){@('Process','InProcess')}else{@('InProcess')})){
+                $rows.Add(@{image=$(if($rid -ceq 'win-arm64'){'windows-11-arm'}else{'windows-latest'});rid=$rid;channel=$channel;mode=$mode;host_version=$spec.Version;runtime_major=$spec.RuntimeMajor})
+            }
+        }
+    }
+    [pscustomobject]@{Matrix=@{include=$rows.ToArray()};WindowsTargets=$rows.Count;ExpectedReports=($rows.Count+4);PreviewRequested=$IncludePreview}
+}

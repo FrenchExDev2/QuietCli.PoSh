@@ -6,6 +6,7 @@ Pure policy helpers shared by Linux matrix selection, aggregate gates and compan
 
 | Function | Contract |
 | --- | --- |
+| Get-GitHubCiWindowsMatrix | Four locked GA rows by default; explicit Preview opt-in requires a newer published host on both architectures and adds two rows. Returns the corresponding eight/ten-report requirement. |
 | Get-GitHubCiExecutionMatrix | Exactly four unique Linux targets, correct native runners and verified immutable source-owned GHCR references. Available compatible images use job containers; misses use Docker fallback. Alpine ARM64 always uses fallback. |
 | Assert-GitHubCiLinuxResults | Selection must succeed and every selected path must succeed. Only an unselected path may be skipped. |
 | Assert-GitHubCiImagePreparationContext | images_only is accepted exclusively for workflow_dispatch on upstream refs/heads/develop; normal qualification retains existing event contexts. |

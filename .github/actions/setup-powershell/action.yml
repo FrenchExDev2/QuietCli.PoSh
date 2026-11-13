@@ -1,0 +1,11 @@
+name: Select checksum-pinned production PowerShell
+description: Prepare the exact stable native host without changing profiles or machine installation.
+runs:
+  using: composite
+  steps:
+    - name: Prepare the selected stable host
+      shell: pwsh
+      run: |
+        $rid=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+        $hostInfo=./scripts/Initialize-PowerShellHost.ps1 -Channel stable -RuntimeIdentifier $rid -OutputDirectory (Join-Path $env:RUNNER_TEMP ('quietcli-stable-'+[guid]::NewGuid().ToString('N'))) -Confirm:$false
+        [IO.File]::AppendAllText($env:GITHUB_PATH,$hostInfo.Directory+"`n",[Text.UTF8Encoding]::new($false))

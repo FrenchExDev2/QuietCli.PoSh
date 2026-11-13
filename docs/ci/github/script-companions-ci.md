@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: 6C9707EF3AEEE6F69A39F21F5D30747EDF53F8D8FB4C78F21E6889DF3A9ECB2A -->
+<!-- workflow-source-sha256: BF7BC5CB837FC1DD335077C5787AA87614DD8730D17F42312D69AE87DBD1DED3 -->
 
 ## Purpose
 
@@ -11,6 +11,8 @@ Develop reuses successful merged-PR evidence only when its bounded artifact, aut
 ## Validation and limits
 
 The unconditional final check rejects failed/cancelled planning and required campaigns, including incorrectly skipped product/tooling jobs. Configure required checks, up-to-date branches and direct-push restrictions separately in repository rules. No repository settings are changed by this workflow. Publication requires its own exact revision/current-run evidence and explicit module tags.
+
+Native orchestration and test/smoke steps select checksum-pinned GA PowerShell through the local setup-powershell action. Linux guest images retain their own reviewed lock (Debian 7.7.0; accepted Alpine 7.6.9-r0 exception). The setup changes only the job PATH; it does not install a machine-wide host or enable optional Preview.
 
 ## Triggers
 

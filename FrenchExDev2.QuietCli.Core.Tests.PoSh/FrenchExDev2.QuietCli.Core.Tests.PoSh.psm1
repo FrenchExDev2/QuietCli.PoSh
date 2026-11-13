@@ -39,6 +39,7 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'Integration.Gate.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Evidence.Tests.ps1')
 . (Join-Path $PSScriptRoot 'HostMatrix.Tests.ps1')
+. (Join-Path $PSScriptRoot 'PowerShellReleases.Tests.ps1')
 . (Join-Path $PSScriptRoot 'SecondPass.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Control.Tests.ps1')
 . (Join-Path $PSScriptRoot 'CoreMigration.Tests.ps1')
