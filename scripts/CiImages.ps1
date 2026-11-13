@@ -223,9 +223,13 @@ function Get-QuietCiRegistryDigest {
     Workflow actor used for registry authentication.
     .PARAMETER IncludeConfiguration
     Returns a digest and verified image configuration for GitHub job-container selection.
+    .PARAMETER HttpClient
+    Optional caller-owned transport for offline protocol tests; omitted creates and disposes a private client.
     #>
-    param($Plan,[AllowEmptyString()][string]$Token,[string]$Actor,[switch]$IncludeConfiguration)
-    $client=[Net.Http.HttpClient]::new();$client.Timeout=[TimeSpan]::FromSeconds(45)
+    param($Plan,[AllowEmptyString()][string]$Token,[string]$Actor,[switch]$IncludeConfiguration,[Net.Http.HttpClient]$HttpClient)
+    $ownsClient=$null -eq $HttpClient
+    $client=if($ownsClient){[Net.Http.HttpClient]::new()}else{$HttpClient}
+    if($ownsClient){$client.Timeout=[TimeSpan]::FromSeconds(45);$client.MaxResponseContentBufferSize=1MB}
     try{
         if($Token){$basic=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Actor+':'+$Token));$client.DefaultRequestHeaders.Authorization=[Net.Http.Headers.AuthenticationHeaderValue]::new('Basic',$basic)}
         $response=$client.GetAsync('https://ghcr.io/token?service=ghcr.io&scope=repository:'+$Plan.RegistryPath+':pull').GetAwaiter().GetResult()
@@ -235,7 +239,7 @@ function Get-QuietCiRegistryDigest {
             $access=($response.Content.ReadAsStringAsync().GetAwaiter().GetResult()|ConvertFrom-Json).token
         }finally{$response.Dispose()}
         $client.DefaultRequestHeaders.Authorization=[Net.Http.Headers.AuthenticationHeaderValue]::new('Bearer',$access)
-        $client.DefaultRequestHeaders.Accept.ParseAdd('application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json')
+        $client.DefaultRequestHeaders.Accept.ParseAdd('application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json')
         $response=$client.GetAsync('https://ghcr.io/v2/'+$Plan.RegistryPath+'/manifests/'+$Plan.Fingerprint,[Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
         try{
             if([int]$response.StatusCode -in @(401,403,404)){return $null}
@@ -243,23 +247,58 @@ function Get-QuietCiRegistryDigest {
             $digest=($response.Headers.GetValues('Docker-Content-Digest') -join '')
             if($digest -cnotmatch '^sha256:[a-f0-9]{64}$'){throw 'CiRegistryDigestInvalid'}
             if($IncludeConfiguration){
-                $manifest=$response.Content.ReadAsStringAsync().GetAwaiter().GetResult()|ConvertFrom-Json
-                $configDigest=$manifest.config.digest
+                $arch=if($Plan.Architecture -eq 'x64'){'amd64'}else{'arm64'}
+                $manifest=Read-QuietCiRegistryDocument -Response $response -Digest $digest
+                $indexTypes=@('application/vnd.oci.image.index.v1+json','application/vnd.docker.distribution.manifest.list.v2+json')
+                $manifestTypes=@('application/vnd.oci.image.manifest.v1+json','application/vnd.docker.distribution.manifest.v2+json')
+                $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+                [void]$seen.Add($digest)
+                while($manifest['mediaType'] -cin $indexTypes){
+                    if($seen.Count -gt 4){throw 'CiRegistryIndexDepthExceeded'}
+                    $matches=@($manifest['manifests']|Where-Object {$_ -is [Collections.IDictionary] -and $_['platform'] -is [Collections.IDictionary] -and $_['platform']['os'] -ceq 'linux' -and $_['platform']['architecture'] -ceq $arch -and $_['mediaType'] -cin ($indexTypes+$manifestTypes)})
+                    if($matches.Count -ne 1){throw 'CiRegistryPlatformManifestAmbiguousOrMissing'}
+                    $selected=$matches[0];$selectedDigest=$selected['digest']
+                    if($selectedDigest -cnotmatch '^sha256:[a-f0-9]{64}$' -or !$seen.Add($selectedDigest)){throw 'CiRegistryPlatformManifestDigestInvalid'}
+                    $child=$client.GetAsync('https://ghcr.io/v2/'+$Plan.RegistryPath+'/manifests/'+$selectedDigest,[Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
+                    try{
+                        if(!$child.IsSuccessStatusCode){throw 'CiRegistryPlatformManifestUnavailable'}
+                        $manifest=Read-QuietCiRegistryDocument -Response $child -Digest $selectedDigest
+                        if($manifest['mediaType'] -cne $selected['mediaType']){throw 'CiRegistryPlatformManifestTypeMismatch'}
+                    }finally{$child.Dispose()}
+                }
+                if($manifest['mediaType'] -cnotin $manifestTypes -or $manifest['config'] -isnot [Collections.IDictionary]){throw 'CiRegistryImageManifestInvalid'}
+                $configDigest=$manifest['config']['digest']
                 if($configDigest -cnotmatch '^sha256:[a-f0-9]{64}$'){throw 'CiRegistryConfigurationDigestInvalid'}
                 $configuration=$client.GetAsync('https://ghcr.io/v2/'+$Plan.RegistryPath+'/blobs/'+$configDigest).GetAwaiter().GetResult()
                 try{
                     if(!$configuration.IsSuccessStatusCode){throw 'CiRegistryConfigurationUnavailable'}
-                    $bytes=$configuration.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
-                    if($bytes.Length -gt 1048576 -or ('sha256:'+([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()) -cne $configDigest){throw 'CiRegistryConfigurationIdentityInvalid'}
-                    $config=[Text.Encoding]::UTF8.GetString($bytes)|ConvertFrom-Json
-                    $arch=if($Plan.Architecture -eq 'x64'){'amd64'}else{'arm64'}
+                    $config=Read-QuietCiRegistryDocument -Response $configuration -Digest $configDigest -Configuration
                     if($config.architecture -cne $arch -or $config.os -cne 'linux' -or $config.config.Labels.'org.frenchexdev.quietcli2.inputs' -cne $Plan.Fingerprint -or $config.config.Labels.'org.opencontainers.image.source' -cne $Plan.Source){throw 'CiRegistryImageIdentityMismatch'}
                     return [pscustomobject]@{Digest=$digest;Reference=('ghcr.io/'+$Plan.RegistryPath+'@'+$digest);Architecture=$config.architecture;OS=$config.os;Fingerprint=$Plan.Fingerprint}
                 }finally{$configuration.Dispose()}
             }
             return $digest
         }finally{$response.Dispose()}
-    }finally{$client.Dispose()}
+    }finally{if($ownsClient){$client.Dispose()}}
+}
+function Read-QuietCiRegistryDocument {
+    <#
+    .SYNOPSIS
+    Reads bounded UTF-8 registry JSON and verifies its exact content digest before following references.
+    .PARAMETER Response
+    Successful response owned and disposed by the caller.
+    .PARAMETER Digest
+    Expected SHA-256 from the registry header or a verified descriptor.
+    .PARAMETER Configuration
+    Configuration blobs do not declare a manifest schema version.
+    #>
+    param([Net.Http.HttpResponseMessage]$Response,[string]$Digest,[switch]$Configuration)
+    [void]$Response.Content.LoadIntoBufferAsync(1MB).GetAwaiter().GetResult()
+    $bytes=$Response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
+    if($bytes.Length -gt 1MB -or ('sha256:'+([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()) -cne $Digest){throw 'CiRegistryDocumentIdentityInvalid'}
+    $document=[Text.UTF8Encoding]::new($false,$true).GetString($bytes)|ConvertFrom-Json -AsHashtable -Depth 32
+    if($document -isnot [Collections.IDictionary] -or (!$Configuration -and $document['schemaVersion'] -ne 2)){throw 'CiRegistryDocumentInvalid'}
+    return $document
 }
 function ConvertTo-QuietCiRegistryDiagnostic {
     <#

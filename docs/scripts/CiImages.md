@@ -8,7 +8,7 @@ Function library for native image plans, recipe rendering, verified GHCR lookup 
 | --- | --- |
 | `Get-QuietCiFingerprint`, `Get-QuietCiImagePlan` | Hash declared inputs/rendered recipes and select Core's pinned native image. |
 | `Get-QuietModuleContainerfile`, `Get-QuietCiModuleImagePlan` | Render declared overlays and bind parent fingerprints/references. |
-| `Get-QuietCiRegistryDigest` | Optional configuration-digest verification, architecture/OS/source/fingerprint checks; return immutable registry identity. |
+| `Get-QuietCiRegistryDigest`, `Read-QuietCiRegistryDocument` | Negotiate image/index formats, follow one matching Linux platform and verify bounded JSON digests and image identity. |
 | `Get-QuietCiVerifiedImage`, `Get-QuietCiLocalImageArchitecture` | Inspect actual local identity and architecture. |
 | `Get-QuietCiBuildCacheOptions`, `Get-QuietCiBuildCommand` | Plan Docker-only intermediate caches and exact build arguments. |
 | `ConvertTo-QuietCiRegistryDiagnostic` | Redact credentials and bound retained diagnostics. |
@@ -19,6 +19,10 @@ Use the guarded [base](New-CiImage.md), [overlay](New-CiModuleImage.md) or [suit
 ## Cache and parent boundaries
 
 RegistryCache checks the final image before unused parents are prepared. CacheOnly never builds on a missing digest; the caller decides whether to prepare parents. Suite ProbeOnly verifies registry metadata without a daemon/pull; ResolveOnly can return an immutable reference without downloading layers. Image execution resolves/pulls that identity separately.
+
+Registry requests accept OCI image indexes and Docker manifest lists as well as their single-image formats. BuildKit can publish an index containing the image and a separate attestation even for one target platform. Digest-only lookup returns that root digest. `IncludeConfiguration` follows exactly one Linux descriptor matching the requested architecture, including bounded nested indexes, and returns the original immutable root reference after verifying the selected configuration's architecture, OS, source and fingerprint. Attestations and unrelated platforms are not followed. Missing or ambiguous platform matches, invalid schema/types, repeated digests, excess nesting, altered bytes and unavailable referenced documents fail explicitly. Only a 401/403/404 at the initial token/tag lookup is a cache miss.
+
+`Read-QuietCiRegistryDocument` bounds each document to 1 MiB, checks SHA-256 against the received bytes and parses strict UTF-8 JSON. The optional caller-owned `HttpClient` on `Get-QuietCiRegistryDigest` permits offline transport tests; the default private client retains its deadline and is disposed by the reader. Tests negotiate the real request headers against synthetic HTTP responses, rather than replacing registry resolution with a preselected digest.
 
 Docker uses the active-context builder/containerd image store, `--load`, optional local import and `mode=max` export. Cache keys bind final fingerprint and RID with an earlier-recipe fallback. Successful exports rotate the owned scope; workflow save occurs after image preparation and before tests. Podman does not use this Docker-specific BuildKit path.
 
