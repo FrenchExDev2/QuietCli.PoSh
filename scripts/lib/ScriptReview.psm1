@@ -8,7 +8,7 @@ function Get-QuietScriptReview {
     #>
     param([string]$WorkspaceRoot)
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'ScriptShouldProcess.psm1')) -DisableNameChecking -ErrorAction Stop
-    $readOnly=@('Assert-CoreIntegrationEvidence','Assert-GalleryCheckpoint','Assert-PtyQualification','Show-ColdStartMatrixReport','Show-ColdStartReport','Test-GitHubWorkflowDocs','Test-Resources','Test-ScriptShouldProcess','Test-ScriptContracts','Test-ScriptLayout','Test-TestCaseMetadata','Watch-Tests','Watch-DotNetTests','Invoke-WorkspaceChecks')
+    $readOnly=@('Assert-CoreIntegrationEvidence','Assert-GalleryCheckpoint','Assert-PtyQualification','Show-ColdStartMatrixReport','Show-ColdStartReport','Test-GitHubWorkflowDocs','Test-Resources','Test-ScriptShouldProcess','Test-ScriptContracts','Test-ScriptLayout','Test-TestCaseMetadata','Test-PowerShellSources','Watch-Tests','Watch-DotNetTests','Invoke-WorkspaceChecks')
     foreach($file in Get-ChildItem ([IO.Path]::Combine($WorkspaceRoot,'scripts')) -Recurse -File|Where-Object Extension -In @('.ps1','.psm1')|Sort-Object FullName){
         $tokens=$null;$errors=$null;$ast=[Management.Automation.Language.Parser]::ParseFile($file.FullName,[ref]$tokens,[ref]$errors)
         if($errors.Count){throw ('ScriptReviewParseFailed: '+$file.Name)}

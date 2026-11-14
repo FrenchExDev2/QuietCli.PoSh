@@ -3,6 +3,15 @@
 Performance aggregation scope is checked as a restricted boolean condition over cache-only mode, explicit profiling and the selected Core scope. Sixteen combinations and four removed-guard mutants replace an exact-text assertion, retaining profiling for Core qualification and `always()` for failure diagnostics while rejecting cache warm-up as qualification evidence. No workflow expression is evaluated before token validation.
 
 This private test companion owns repository automation qualification, independently of the Core product matrix.
+
+The existing release-gate case verifies separate functional, mutation-shard,
+catalogue-completeness and overall-workflow results: 625 status combinations,
+malformed needs objects, no-write preview, 24 gate cases and three targeted mutants.
+The existing PowerShell help/syntax case shares its inert source assertion with
+the local registry and early required CI job. It also checks generated Unicode
+sources, nested/filter help, malformed syntax/encoding, three mutants and an
+unstaged repair that must not conceal a staged defect. Original LF and JSON-writer
+properties remain in that owning case. Filtered runs remain partial evidence.
 It is never published to PowerShell Gallery. Its own manifest declares its runner, complete test metadata and execution policy.
 
 Distribution.Tests separately owns the three complete Core distribution cases. The same tooling job runs them once in an owned Git-absent checkout with verified reused binaries; product matrix rows keep their native RID.
