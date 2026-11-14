@@ -10,6 +10,17 @@ concurrency:
   group: quietcli-companions-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  source-checks:
+    name: Check PowerShell sources before expensive campaigns
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check syntax and function help without importing product modules
+        shell: pwsh
+        run: ./scripts/Invoke-WorkspaceChecks.ps1 -Check PowerShellSources
   plan:
     name: Determine affected suites and qualified merge reuse
     runs-on: ubuntu-latest
@@ -146,7 +157,7 @@ jobs:
           fingerprint: ${{ steps.image_probe.outputs.fingerprint }}
   ci-status:
     name: QuietCli required CI
-    needs: [plan, companions, tooling-only, develop-smoke, develop-images]
+    needs: [plan, source-checks, companions, tooling-only, develop-smoke, develop-images]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -159,6 +170,7 @@ jobs:
         run: |
           $jobs=$env:RESULTS|ConvertFrom-Json -AsHashtable
           if($jobs.plan.result -cne 'success'){throw 'CiPlanRequired'}
+          if($jobs['source-checks'].result -cne 'success'){throw 'PowerShellSourcesRequired'}
           foreach($name in $jobs.Keys){if($jobs[$name].result -cnotin @('success','skipped')){throw ('CiPrerequisiteFailed: '+$name)}}
           if($jobs.plan.outputs.run_products -ceq 'true' -and $jobs.companions.result -cne 'success'){throw 'ProductQualificationRequired'}
           if($jobs.plan.outputs.run_products -ceq 'false' -and $jobs.plan.outputs.run_tooling -ceq 'true' -and $jobs['tooling-only'].result -cne 'success'){throw 'ToolingQualificationRequired'}

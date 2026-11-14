@@ -1,8 +1,14 @@
 # ci.yml
 
-<!-- workflow-source-sha256: EDFD7952A42D771CFD9B2A20123F6F3522F85502250899EEDA58A319D95DCEA5 -->
+<!-- workflow-source-sha256: 4321531AE1DC945B063E6ABA4B762C08C4E898E5525C407C9EEEBC737AD98936 -->
 
 ## Purpose
+
+Tooling qualification consumes separate functional, mutation-execution and catalogue
+completion outputs from the reusable tooling workflow. The gate also checks the
+overall reusable result, preserving failures in setup, uploads and reporting.
+Disabled tooling supplies explicit skipped statuses; missing enabled outputs fail
+closed. Its decision receipt preserves the independent results after rejection.
 
 Shared manual/reusable qualification. Four required GA Windows host/mode rows and four Linux glibc/musl architecture rows run the selected product suite. Core/All keeps mandatory per-environment import, controlled Git-status and PowerShell/CLR profiling evidence. Git/Vagrant-only selections do not claim Core qualification.
 
