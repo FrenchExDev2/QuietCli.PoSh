@@ -21,6 +21,16 @@ Uses [ModulePackage](lib/ModulePackage.md) and PowerShell's parser. No product m
 
 `scripts/Get-ModulePackageName.ps1` guards its operation with ShouldProcess. The shared helper parses UTF-8 source and reads only a literal manifest hashtable. Contradictory names, malformed source, invalid UTF-8 and executable manifests fail explicitly. The Gallery identity tests cover Core/Git/Vagrant and an unrelated module name, standalone reads, full metadata, dependency preservation, no-write preview and a module-body execution sentinel. This validates identity inference, not module qualification or remote Gallery availability.
 
+<!-- script-library-boundary:begin -->
+## Automation library boundary
+
+This entry point contains no function definitions. Automation helpers are imported from `scripts/lib` with `-DisableNameChecking`; path composition uses `System.IO.Path`. Public parameters and the documented operation remain unchanged.
+
+Direct library contracts: [ModulePackage.psm1](lib/ModulePackage.md).
+
+See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-automation-contracts.md) for dependency, preview and source-layout obligations.
+<!-- script-library-boundary:end -->
+
 <!-- script-contract:begin -->
 ## Execution contract
 

@@ -1,14 +1,14 @@
 #Objective: Returns the per-user module tool/cache directory without creating it.
 #requires -Version 7.6
-Import-Module (Join-Path $PSScriptRoot 'DevelopmentWorkstation.psm1') -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'DevelopmentWorkstation.psm1')) -ErrorAction Stop -DisableNameChecking
 $script:ModuleWorkspaceRoot=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 
 function Get-ModuleWorkstationCacheRoot {
     <# .SYNOPSIS
     Returns the per-user module tool/cache directory without creating it.
     #>
-    if($IsWindows){return (Join-Path $env:LOCALAPPDATA 'QuietCli2/modules')}
-    Join-Path $HOME '.local/share/QuietCli2/modules'
+    if($IsWindows){return ([IO.Path]::Combine($env:LOCALAPPDATA,'QuietCli2/modules'))}
+    [IO.Path]::Combine($HOME,'.local/share/QuietCli2/modules')
 }
 
 function Get-ModuleWorkstationStatus {
@@ -21,9 +21,9 @@ function Get-ModuleWorkstationStatus {
     Validated development host.
     #>
     param([ValidateSet('Git','Vagrant')][string]$Name,$Target)
-    $cache=Join-Path (Get-ModuleWorkstationCacheRoot) $Name
+    $cache=[IO.Path]::Combine((Get-ModuleWorkstationCacheRoot),$Name)
     $preferred=if($Name -eq 'Git'){
-        Join-Path $cache $(if($Target.Id -eq 'windows'){'git/cmd/git.exe'}else{'git/bin/git'})
+        [IO.Path]::Combine($cache,$(if($Target.Id -eq 'windows'){'git/cmd/git.exe'}else{'git/bin/git'}))
     }elseif($Target.Id -eq 'windows'){'C:/HashiCorp/Vagrant/bin/vagrant.exe'}else{$null}
     $application=Find-DevelopmentApplication $Name.ToLowerInvariant() $preferred
     $version=$null;$toolReady=$false
@@ -58,7 +58,7 @@ function Get-ModuleWorkstationArtifact {
         $file=if($Target.Id -eq 'windows'){"git-$($spec.GitVersion)-$($Target.Architecture).zip"}else{"git-$($spec.GitVersion).tar.gz"}
         return [pscustomobject]@{Url=$entry.Url;SHA256=$entry.SHA256;File=$file;Specification=$spec}
     }
-    $lock=Get-Content -LiteralPath (Join-Path $script:ModuleWorkspaceRoot 'build/vagrant-installers.lock.json') -Raw -Encoding utf8 | ConvertFrom-Json
+    $lock=Get-Content -LiteralPath ([IO.Path]::Combine($script:ModuleWorkspaceRoot,'build/vagrant-installers.lock.json')) -Raw -Encoding utf8 | ConvertFrom-Json
     $platform=switch($Target.Id){'windows'{'windows'} 'debian'{'deb'} 'ubuntu'{'deb'} 'fedora'{'rpm'} default{throw 'UnsupportedVagrantInstallerTarget'}}
     $entries=@($lock.Artifacts | Where-Object {$_.Platform -ceq $platform -and $_.Architecture -ceq $Target.Architecture})
     if($lock.SchemaVersion -ne 1 -or $lock.Version -cnotmatch '^2\.[34]\.\d+$' -or $entries.Count -ne 1){throw 'UnsupportedVagrantInstallerTarget'}
@@ -78,7 +78,7 @@ function Save-ModuleWorkstationDownload {
     #>
     param([ValidateSet('Git','Vagrant')][string]$Name,$Target)
     $artifact=Get-ModuleWorkstationArtifact $Name $Target
-    $destination=Join-Path (Get-ModuleWorkstationCacheRoot) "$Name/downloads/$($artifact.File)"
+    $destination=[IO.Path]::Combine((Get-ModuleWorkstationCacheRoot),"$Name/downloads/$($artifact.File)")
     $development=Get-Module DevelopmentWorkstation
     & $development {param($artifact,$destination) Get-DevelopmentArchive $artifact.Url $artifact.SHA256 $destination} $artifact $destination
 }
@@ -95,7 +95,7 @@ function Install-ModuleWorkstationTool {
     param([ValidateSet('Git','Vagrant')][string]$Name,$Target)
     if($Name -eq 'Git'){
         $artifact=Get-ModuleWorkstationArtifact $Name $Target
-        $plan=[pscustomobject]@{Target=$Target;InstallRoot=(Join-Path (Get-ModuleWorkstationCacheRoot) $Name);Specification=$artifact.Specification}
+        $plan=[pscustomobject]@{Target=$Target;InstallRoot=([IO.Path]::Combine((Get-ModuleWorkstationCacheRoot),$Name));Specification=$artifact.Specification}
         & (Get-Module DevelopmentWorkstation) {param($plan) Install-DevelopmentGit $plan} $plan
         return $false
     }

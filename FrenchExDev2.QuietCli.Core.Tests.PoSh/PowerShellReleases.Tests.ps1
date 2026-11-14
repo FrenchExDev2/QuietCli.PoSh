@@ -9,7 +9,7 @@ function Test-QuietPowerShellReleasePolicy {
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/PowerShellReleases.psm1') -Force
-    . (Join-Path $WorkspaceRoot 'scripts/GitHubCi.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/GitHubCi.psm1') -DisableNameChecking -ErrorAction Stop
     $base=Get-Content (Join-Path $WorkspaceRoot 'build/ci-images.lock.json') -Raw -Encoding utf8|ConvertFrom-Json
     $evidence=[pscustomobject]@{Stable='7.7.0';RuntimeMajor=11;AutomationPackage=@{Version='7.7.0';Available=$true;Status=200};Assets=@(foreach($rid in @('win-x64','win-arm64','linux-x64','linux-arm64')){
         $name=if($rid.StartsWith('win-')){"PowerShell-7.7.0-$rid.zip"}else{"powershell-7.7.0-$rid.tar.gz"}

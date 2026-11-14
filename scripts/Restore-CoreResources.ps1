@@ -15,8 +15,8 @@ Optional package IDs from the pinned manifest; omitted restores all resource pac
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Force,[string[]]$IncludePackage=@())
 $ErrorActionPreference='Stop'
-$moduleRoot=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh'
-$lockPath=Join-Path $moduleRoot 'resources/dependencies.lock.json'
+$moduleRoot=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')
+$lockPath=[IO.Path]::Combine($moduleRoot,'resources/dependencies.lock.json')
 if(!(Test-Path -LiteralPath $lockPath)){throw 'DependencyManifestMissing'}
 $lock=Get-Content -LiteralPath $lockPath -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable
 $packagesById=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -25,7 +25,7 @@ $downloadable=@($lock.Files|Where-Object{$_.Package -ne 'quietcli-pty'})
 foreach($selection in $IncludePackage){if(!$packagesById.ContainsKey($selection)){throw ('ResourcePackageUnknown: '+$selection)}}
 if($IncludePackage.Count){$downloadable=@($downloadable|Where-Object {$_.Package -in $IncludePackage})}
 if(!$PSCmdlet.ShouldProcess($moduleRoot,('Restore pinned resources: '+$(if($IncludePackage.Count){$IncludePackage -join ', '}else{'all'})))){return}
-$cacheRoot=Join-Path $WorkspaceRoot '.cache/nuget-resources'
+$cacheRoot=[IO.Path]::Combine($WorkspaceRoot,'.cache/nuget-resources')
 [void][IO.Directory]::CreateDirectory($cacheRoot)
 $restored=0;$reused=0
 foreach($group in ($downloadable|Group-Object Package)){
@@ -34,12 +34,12 @@ foreach($group in ($downloadable|Group-Object Package)){
     if(!$package -or !$package.Source){throw ('ResourcePackageSourceMissing: '+$packageId)}
     $pending=[Collections.Generic.List[object]]::new()
     foreach($file in $group.Group){
-        $destination=Join-Path $moduleRoot $file.Path
+        $destination=[IO.Path]::Combine($moduleRoot,$file.Path)
         $current=if(!$Force -and (Test-Path -LiteralPath $destination)){(Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash}else{$null}
         if($current -ceq $file.SHA256){$reused++}else{[void]$pending.Add($file)}
     }
     if($pending.Count -eq 0){continue}
-    $nupkgPath=Join-Path $cacheRoot ($packageId+'.'+$package.Version+'.nupkg')
+    $nupkgPath=[IO.Path]::Combine($cacheRoot,($packageId+'.'+$package.Version+'.nupkg'))
     if($Force -or !(Test-Path -LiteralPath $nupkgPath)){
         $client=[Net.Http.HttpClient]::new();$client.Timeout=[TimeSpan]::FromMinutes(5)
         $deadline=[Threading.CancellationTokenSource]::new([TimeSpan]::FromMinutes(5))
@@ -64,7 +64,7 @@ foreach($group in ($downloadable|Group-Object Package)){
                 if($hash -ceq $file.SHA256){$match=$entry;break}
             }
             if(!$match){throw ('ResourceNotFoundInPackage: '+$file.Path+' ('+$packageId+')')}
-            $destination=Join-Path $moduleRoot $file.Path
+            $destination=[IO.Path]::Combine($moduleRoot,$file.Path)
             [void][IO.Directory]::CreateDirectory((Split-Path $destination -Parent))
             $entryStream=$match.Open()
             try{

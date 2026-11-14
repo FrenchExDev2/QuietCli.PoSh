@@ -18,7 +18,7 @@ try{
     $runtime=[pscustomobject]@{Data=@{WorkspaceRoot=$WorkspaceRoot;RunDirectory=$RunDirectory;CandidatePath=$CandidatePath};State=@{}}
     $null=& (Join-Path $WorkspaceRoot 'scripts/Invoke-Quiet.ps1') -Companion Git -Runtime $runtime -Code {
         param($context)
-        . (Join-Path $context.Data.WorkspaceRoot 'scripts/Common.ps1')
+        Import-Module (Join-Path $context.Data.WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
         . (Join-Path $context.Data.WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/CommitWorkspace.Tests.ps1')
         Test-QuietCommitWorkspace -WorkspaceRoot $context.Data.WorkspaceRoot -RunDirectory $context.Data.RunDirectory -CandidatePath $context.Data.CandidatePath
     }

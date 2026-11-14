@@ -14,10 +14,13 @@ function Test-QuietDockerRegistryDaemon {
     $setup=@($action['runs']['steps']|Where-Object {$_['uses'] -like 'docker/setup-docker-action@*'})
     if($setup.Count -ne 1){throw 'DockerSetupActionRequired'}
     $setHost=[string]$setup[0]['with']['set-host'] -ieq 'true'
+    $imageModule=Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/CiImages.psm1')) -PassThru -DisableNameChecking -ErrorAction Stop
+    $adapters=& $imageModule {$saved=@{};foreach($name in @('Get-QuietCiRegistryDigest','Invoke-CiProcess','Invoke-WorkspaceNative')){$saved[$name]=(Get-Command $name).ScriptBlock};$saved}
+    try {
     foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){foreach($cached in @($false,$true)){
-        & {
+        & $imageModule {
             param($WorkspaceRoot,$RunDirectory,$rid,$cached,$setHost)
-            . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+            Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
             $plan=Get-QuietCiImagePlan $WorkspaceRoot $rid
             $fixture=Join-Path $RunDirectory ('docker-publication-'+$rid+'-'+$cached)
             $names=@('DOCKER_CONFIG','DOCKER_HOST','DOCKER_CONTEXT','QUIETCLI_REGISTRY_TOKEN','QUIETCLI_BUILDKIT_CACHE_DIR','GITHUB_ACTIONS','GITHUB_REPOSITORY','GITHUB_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR')
@@ -25,7 +28,7 @@ function Test-QuietDockerRegistryDaemon {
             $originalConfig=Join-Path $fixture 'original-docker-config'
             $expectedHost='unix:///fixture/setup-docker-action.sock'
             $observed=@{BuildHost=$null;Pushed=$false;AuthDirectory=$null;DigestReads=0}
-            function Get-QuietFixtureDockerHost {
+            function script:Get-QuietFixtureDockerHost {
                 <# .SYNOPSIS
                 Models Docker's environment override and config-owned current-context resolution.
                 #>
@@ -33,14 +36,14 @@ function Test-QuietDockerRegistryDaemon {
                 if($env:DOCKER_CONFIG -ceq $originalConfig){return $expectedHost}
                 'unix:///var/run/docker.sock'
             }
-            function Get-QuietCiRegistryDigest {
+            function script:Get-QuietCiRegistryDigest {
                 <# .SYNOPSIS
                 Returns a cache miss until the fixture has actually published its built image.
                 #>
                 $observed.DigestReads++
                 if($observed.Pushed){'sha256:'+('2'*64)}
             }
-            function Invoke-CiProcess {
+            function script:Invoke-CiProcess {
                 <# .SYNOPSIS
                 Supplies daemon identity, image metadata and credential login without native effects.
                 #>
@@ -61,7 +64,7 @@ function Test-QuietDockerRegistryDaemon {
                 $null=& $OnOutput ([pscustomobject]@{Stream='stdout';Text=($metadata|ConvertTo-Json -Depth 5 -Compress)}) $State
                 [pscustomobject]@{Outcome='Success';ExitCode=0;ElapsedMs=1}
             }
-            function Invoke-WorkspaceNative {
+            function script:Invoke-WorkspaceNative {
                 <# .SYNOPSIS
                 Requires publication to find the exact built tag on the same daemon with private credentials.
                 #>
@@ -93,6 +96,7 @@ function Test-QuietDockerRegistryDaemon {
             }finally{foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$previous[$name])}}
         } $WorkspaceRoot $RunDirectory $rid $cached $setHost
     }}
+    }finally{& $imageModule {param($saved) foreach($name in $saved.Keys){Set-Item ('Function:script:'+$name) $saved[$name]};Remove-Item Function:script:Get-QuietFixtureDockerHost -ErrorAction SilentlyContinue} $adapters}
     Write-WorkspaceJson (Join-Path $RunDirectory 'docker-publication-regression.json') @{RuntimeIdentifiers=4;CachedAndUncachedPublicationCases=8;IsolatedCredentials=$true;NativeDockerExecuted=$false;RegistryContacted=$false}
 }
 
@@ -109,13 +113,16 @@ function Test-QuietGitHubImageAdapters {
     . (Join-Path $PSScriptRoot 'CiRegistry.Tests.ps1')
     Test-QuietCiRegistryProtocol -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
     Test-QuietDockerRegistryDaemon -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+    $imageModule=Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/CiImages.psm1')) -PassThru -DisableNameChecking -ErrorAction Stop
+    $adapters=& $imageModule {$saved=@{};foreach($name in @('Invoke-CiProcess','Invoke-WorkspaceNative')){$saved[$name]=(Get-Command $name).ScriptBlock};$saved}
+    try {
     foreach($runtime in @('podman','docker')){foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){foreach($cached in @($false,$true)){
-        & {
+        & $imageModule {
             param($WorkspaceRoot,$RunDirectory,$runtime,$rid,$cached)
-            . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+            Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
             $plan=Get-QuietCiImagePlan $WorkspaceRoot $rid
             $calls=[Collections.Generic.List[object]]::new()
-            function Invoke-CiProcess {
+            function script:Invoke-CiProcess {
                 <# .SYNOPSIS
                 Supplies independently predicted daemon/image metadata without starting a binary.
                 .PARAMETER FilePath
@@ -146,7 +153,7 @@ function Test-QuietGitHubImageAdapters {
                 $null=& $OnOutput ([pscustomobject]@{Stream='stdout';Text=($metadata|ConvertTo-Json -Depth 5 -Compress)}) $State
                 [pscustomobject]@{Outcome='Success';ExitCode=0;ElapsedMs=1}
             }
-            function Invoke-WorkspaceNative {
+            function script:Invoke-WorkspaceNative {
                 <# .SYNOPSIS
                 Records tool selection and argument vectors without building or pulling an image.
                 .PARAMETER FilePath
@@ -182,12 +189,14 @@ function Test-QuietGitHubImageAdapters {
             if($runtime -ceq 'docker' -and $cached -and ($build[0].Arguments[0..4] -join ',') -cne 'buildx,build,--builder,setup-docker-action,--load'){throw 'DockerBuildUsedForeignContext'}
         } $WorkspaceRoot $RunDirectory $runtime $rid $cached
     }}}
+    }finally{& $imageModule {param($saved) foreach($name in $saved.Keys){Set-Item ('Function:script:'+$name) $saved[$name]}} $adapters}
     $fixture=Join-Path $RunDirectory 'derived-image-credential';[void][IO.Directory]::CreateDirectory($fixture)
     Copy-Item -LiteralPath (Join-Path $WorkspaceRoot 'scripts/New-CiModuleImage.ps1') -Destination $fixture
     $common='function Invoke-WorkspaceNative { param($FilePath,$Arguments,$WorkingDirectory,$TimeoutSeconds); if($FilePath -ne "docker" -or $Arguments[0] -ne "tag"){throw "UnexpectedFixtureNativeOperation"} }'
     $images='function Get-QuietCiImagePlan { param($WorkspaceRoot,$RuntimeIdentifier); @{Platform="debian";Architecture="x64";Fingerprint=("a"*64)} }; function Get-QuietCiModuleImagePlan { param($WorkspaceRoot,$RuntimeIdentifier,$Module,$ContainerfileFragment,$ModuleArguments,$ModuleInputPaths); @{Arguments=@{};ParentReference=("localhost/quietcli2-ci-core-debian-x64:"+("a"*64))} }; function Invoke-QuietCiImageBuild { param($Plan,$ContextDirectory,$WorkspaceRoot,$ArtifactPrefix,[switch]$RegistryCache,[switch]$PublishCache,[switch]$CacheOnly,$ContainerRuntime); if($CacheOnly){return}; [pscustomobject]@{CredentialPreserved=($env:QUIETCLI_REGISTRY_TOKEN -ceq "synthetic-ephemeral-credential");Runtime=$ContainerRuntime} }'
     $core='$env:QUIETCLI_REGISTRY_TOKEN=$null; [pscustomobject]@{Image=("sha256:"+("1"*64))}'
-    foreach($entry in @{ 'Common.ps1'=$common;'CiImages.ps1'=$images;'New-CiImage.ps1'=$core }.GetEnumerator()){[void][IO.File]::WriteAllTextAsync((Join-Path $fixture $entry.Key),$entry.Value,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}
+    [void][IO.Directory]::CreateDirectory([IO.Path]::Combine($fixture,'lib'))
+    foreach($entry in @{ 'lib/Common.psm1'=$common;'lib/CiImages.psm1'=$images;'New-CiImage.ps1'=$core }.GetEnumerator()){[void][IO.File]::WriteAllTextAsync((Join-Path $fixture $entry.Key),$entry.Value,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}
     $previous=$env:QUIETCLI_REGISTRY_TOKEN
     try{
         $env:QUIETCLI_REGISTRY_TOKEN='synthetic-ephemeral-credential'

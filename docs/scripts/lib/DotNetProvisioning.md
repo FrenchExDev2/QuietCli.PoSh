@@ -60,3 +60,5 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 
 This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+Read-only property projections use script blocks so metadata remains available during WhatIf; mutating operations retain their existing operation guards.

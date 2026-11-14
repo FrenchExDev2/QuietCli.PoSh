@@ -15,20 +15,20 @@ param([string]$WorkspaceRoot,[string]$RunDirectory,[string]$ProfilerModulePath,[
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-CoreProfiling')){return}
 $ErrorActionPreference='Stop'
 $env:DOTNET_ROLL_FORWARD_TO_PRERELEASE='1'
-. (Join-Path $PSScriptRoot 'Common.ps1')
-$directory=Join-Path $RunDirectory 'profiling';[void][IO.Directory]::CreateDirectory($directory)
-$repository=Join-Path $RunDirectory 'controlled-status/fixtures/bulk'
-if(!(Test-Path (Join-Path $repository '.git')) -or !(Test-Path $ProfilerModulePath) -or !(Test-Path $ClrProfilerPath)){throw 'ProfilingPrerequisiteMissing'}
-$runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+$directory=[IO.Path]::Combine($RunDirectory,'profiling');[void][IO.Directory]::CreateDirectory($directory)
+$repository=[IO.Path]::Combine($RunDirectory,'controlled-status/fixtures/bulk')
+if(!(Test-Path ([IO.Path]::Combine($repository,'.git'))) -or !(Test-Path $ProfilerModulePath) -or !(Test-Path $ClrProfilerPath)){throw 'ProfilingPrerequisiteMissing'}
+$runner=[IO.Path]::Combine($PSHOME,$(if($IsWindows){'pwsh.exe'}else{'pwsh'}))
 $owned=[Collections.Generic.List[Diagnostics.Process]]::new();$collectors=[Collections.Generic.List[object]]::new()
 $report=@{State='Running';ProfilerVersion='4.3.0';ClrProfilerVersion='10.0.750501';Instrumented=$true;PowerShellLineReport='powershell-lines.json';Collectors=@();Error=$null}
 try{
-    $arguments=@('-NoProfile','-File',(ConvertTo-CiArgument ((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Profiler.Target.ps1'))),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($directory)),'-RepositoryPath',(ConvertTo-CiArgument ($repository)),'-ProfilerModulePath',(ConvertTo-CiArgument ($ProfilerModulePath)))
-    $options=@{FilePath=$runner;ArgumentList=$arguments;PassThru=$true;RedirectStandardOutput=(Join-Path $directory 'target.stdout.log');RedirectStandardError=(Join-Path $directory 'target.stderr.log')}
+    $arguments=@('-NoProfile','-File',(ConvertTo-CiArgument (([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/Profiler.Target.ps1')))),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($directory)),'-RepositoryPath',(ConvertTo-CiArgument ($repository)),'-ProfilerModulePath',(ConvertTo-CiArgument ($ProfilerModulePath)))
+    $options=@{FilePath=$runner;ArgumentList=$arguments;PassThru=$true;RedirectStandardOutput=([IO.Path]::Combine($directory,'target.stdout.log'));RedirectStandardError=([IO.Path]::Combine($directory,'target.stderr.log'))}
     if($IsWindows){$options.WindowStyle='Hidden'}
     $target=Start-Process @options;$owned.Add($target)
     $deadline=[DateTimeOffset]::UtcNow.AddSeconds(120)
-    $ready=Join-Path $directory 'target-ready.json'
+    $ready=[IO.Path]::Combine($directory,'target-ready.json')
     while(!(Test-Path $ready)){
         if($target.HasExited -or [DateTimeOffset]::UtcNow -gt $deadline){throw 'ProfilerTargetStartupFailed'}
         [Threading.Tasks.Task]::Delay(50).GetAwaiter().GetResult()
@@ -37,9 +37,9 @@ try{
     if($identity.PowerShellProcessId -ne $target.Id){throw 'ProfilerTargetIdentityMismatch'}
     $report.TargetIdentity=$identity
     foreach($processId in @($identity.PowerShellProcessId,$identity.EngineProcessId)|Select-Object -Unique){
-        $path=Join-Path $directory ("clr-$processId.nettrace")
-        $signal=Join-Path $directory ("clr-$processId.ready")
-        $collectorArguments=@('-File',(ConvertTo-CiArgument ((Join-Path $PSScriptRoot 'Invoke-ClrCollector.ps1'))),'-ClrProfilerPath',(ConvertTo-CiArgument ($ClrProfilerPath)),'-TargetProcessId',[string]$processId,'-OutputPath',(ConvertTo-CiArgument ($path)),'-ReadyPath',(ConvertTo-CiArgument ($signal)))
+        $path=[IO.Path]::Combine($directory,("clr-$processId.nettrace"))
+        $signal=[IO.Path]::Combine($directory,("clr-$processId.ready"))
+        $collectorArguments=@('-File',(ConvertTo-CiArgument (([IO.Path]::Combine($PSScriptRoot,'Invoke-ClrCollector.ps1')))),'-ClrProfilerPath',(ConvertTo-CiArgument ($ClrProfilerPath)),'-TargetProcessId',[string]$processId,'-OutputPath',(ConvertTo-CiArgument ($path)),'-ReadyPath',(ConvertTo-CiArgument ($signal)))
         $options=@{FilePath=$runner;ArgumentList=$collectorArguments;PassThru=$true;RedirectStandardOutput=($path+'.stdout.log');RedirectStandardError=($path+'.stderr.log')}
         if($IsWindows){$options.WindowStyle='Hidden'}
         $process=Start-Process @options;$owned.Add($process)
@@ -52,12 +52,12 @@ try{
         }
         if($collector.Process.HasExited){throw 'ClrCollectorEndedBeforeWorkload'}
     }
-    [void][IO.File]::WriteAllTextAsync((Join-Path $directory 'release'),'recording',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    [void][IO.File]::WriteAllTextAsync(([IO.Path]::Combine($directory,'release')),'recording',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     foreach($process in $owned){
         while(!$process.HasExited){if([DateTimeOffset]::UtcNow -gt $deadline){throw 'ProfilingDeadlineExceeded'};[Threading.Tasks.Task]::Delay(100).GetAwaiter().GetResult()}
         if($process.ExitCode -ne 0){throw 'ProfilingOwnedProcessFailed'}
     }
-    $targetResult=Get-Content (Join-Path $directory 'target-result.json') -Raw -Encoding utf8|ConvertFrom-Json
+    $targetResult=Get-Content ([IO.Path]::Combine($directory,'target-result.json')) -Raw -Encoding utf8|ConvertFrom-Json
     if($targetResult.State -cne 'Success' -or $targetResult.GitModuleLoaded){throw 'ProfiledTargetFailed'}
     $reports=@(foreach($collector in $collectors){
         $execution=Get-Content ($collector.Trace+'.collector.json') -Raw -Encoding utf8|ConvertFrom-Json
@@ -86,6 +86,6 @@ try{
     throw
 }finally{
     foreach($process in $owned){if(!$process.HasExited){try{$process.Kill($true)}catch{}}}
-    Write-WorkspaceJson (Join-Path $directory 'summary.json') $report
+    Write-WorkspaceJson ([IO.Path]::Combine($directory,'summary.json')) $report
 }
 [pscustomobject]$report

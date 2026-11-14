@@ -67,12 +67,12 @@
     @{ Name = 'sample-nonfinite-accepted'; File = 'lib/RunColdStart.psm1'; From = '-not [double]::IsFinite($value)'; To = '$false' }
     @{ Name = 'sample-negative-accepted'; File = 'lib/RunColdStart.psm1'; From = '$value -lt 0'; To = '$false' }
     @{ Name = 'sample-first-swapped'; File = 'lib/RunColdStart.psm1'; From = 'First = $values[1]'; To = 'First = $values[0]' }
-    @{ Name = 'benchmark-warmup-included'; File = 'Measure-ColdStart.ps1'; From = '$pair -gt $Warmup'; To = '$pair -ge $Warmup' }
-    @{ Name = 'benchmark-failure-budget-exclusive'; File = 'Measure-ColdStart.ps1'; From = "Get('pair.discarded') -gt"; To = "Get('pair.discarded') -ge" }
-    @{ Name = 'benchmark-difference-reversed'; File = 'Measure-ColdStart.ps1'; From = '$cand[$i] - $base[$i]'; To = '$base[$i] - $cand[$i]' }
-    @{ Name = 'benchmark-duplicate-marker-accepted'; File = 'Measure-ColdStart.ps1'; From = '-or $result.Data.Matches -ne 1'; To = '' }
-    @{ Name = 'benchmark-failed-child-accepted'; File = 'Measure-ColdStart.ps1'; From = '$result.Outcome -ne ''Success'' -or'; To = '$false -or' }
-    @{ Name = 'benchmark-profile-path-split'; File = 'Measure-ColdStart.ps1'; From = '($fields -join '' '')'; To = '$fields[0]' }
+    @{ Name = 'benchmark-warmup-included'; File = 'lib/Measure-ColdStart.psm1'; From = '$pair -gt $Warmup'; To = '$pair -ge $Warmup' }
+    @{ Name = 'benchmark-failure-budget-exclusive'; File = 'lib/Measure-ColdStart.psm1'; From = "Get('pair.discarded') -gt"; To = "Get('pair.discarded') -ge" }
+    @{ Name = 'benchmark-difference-reversed'; File = 'lib/Measure-ColdStart.psm1'; From = '$cand[$i] - $base[$i]'; To = '$base[$i] - $cand[$i]' }
+    @{ Name = 'benchmark-duplicate-marker-accepted'; File = 'lib/Measure-ColdStart.psm1'; From = '-or $result.Data.Matches -ne 1'; To = '' }
+    @{ Name = 'benchmark-failed-child-accepted'; File = 'lib/Measure-ColdStart.psm1'; From = '$result.Outcome -ne ''Success'' -or'; To = '$false -or' }
+    @{ Name = 'benchmark-profile-path-split'; File = 'lib/Measure-ColdStart.psm1'; From = '($fields -join '' '')'; To = '$fields[0]' }
     @{ Name = 'profiler-version-ignored'; File = 'lib/RunProfiler.psm1'; From = '$manifest.ModuleVersion -ne $script:PinnedVersion'; To = '$false' }
     @{ Name = 'profiler-explicit-path-ignored'; File = 'lib/RunProfiler.psm1'; From = 'if ($Path) { $candidates += $Path }'; To = 'if ($false) { $candidates += $Path }' }
     @{ Name = 'profiler-environment-ignored'; File = 'lib/RunProfiler.psm1'; From = '$candidates += $env:QUIETCLI_PROFILER_MODULE'; To = '$candidates += "absent-profiler.psd1"' }

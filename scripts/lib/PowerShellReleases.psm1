@@ -163,8 +163,8 @@ function Update-QuietPowerShellCiLock {
     [CmdletBinding(SupportsShouldProcess)]
     param([string]$WorkspaceRoot,[switch]$AllowAlpineVersionLag,[switch]$PlanOnly)
     if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Verify published PowerShell resources and update selected locks')){return}
-    $imagePath=Join-Path $WorkspaceRoot 'build/ci-images.lock.json'
-    $hostPath=Join-Path $WorkspaceRoot 'build/powershell-hosts.lock.json'
+    $imagePath=[IO.Path]::Combine($WorkspaceRoot,'build/ci-images.lock.json')
+    $hostPath=[IO.Path]::Combine($WorkspaceRoot,'build/powershell-hosts.lock.json')
     $image=Get-Content -LiteralPath $imagePath -Raw -Encoding utf8|ConvertFrom-Json
     $availability=Get-QuietPowerShellReleaseResources -Confirm:$false
     $plan=New-QuietPowerShellResourcePlan -Availability $availability -ImageLock $image -AllowAlpineVersionLag:$AllowAlpineVersionLag

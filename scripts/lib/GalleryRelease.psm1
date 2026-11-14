@@ -10,10 +10,10 @@ function Get-QuietGalleryReleaseTargets {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[switch]$IncludeDisabled)
-    . (Join-Path $PSScriptRoot '../WorkspaceProjects.ps1')
-    Import-Module (Join-Path $PSScriptRoot 'ModulePackage.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'ModulePackage.psm1')) -DisableNameChecking
     foreach($project in Get-QuietWorkspaceProjects $WorkspaceRoot | Where-Object {!$_.IsTest}){
-        $identity=Get-QuietModulePackageIdentity -Path (Join-Path $project.Directory ($project.Name+'.psm1')) -RequireManifest
+        $identity=Get-QuietModulePackageIdentity -Path ([IO.Path]::Combine($project.Directory,($project.Name+'.psm1'))) -RequireManifest
         if($identity.Publishable -isnot [bool] -and $null -ne $identity.Publishable){throw 'GalleryPublicationPolicyMustBeBoolean'}
         if(!$IncludeDisabled -and !$identity.Publishable){continue}
         [pscustomobject]@{Component=$project.Suite;Module=$identity.Name;Project=$project.Name;Version=$identity.Version;ManifestPath=$identity.ManifestPath;ModulePath=$identity.ModulePath;Publishable=($identity.Publishable -is [bool] -and $identity.Publishable);Dependencies=$identity.Dependencies;Manifest=$project.Manifest}

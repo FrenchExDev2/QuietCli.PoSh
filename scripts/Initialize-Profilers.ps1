@@ -12,5 +12,5 @@ Tools to prepare: profiler, dottrace, or both (default). Unselected tools are no
 param([Parameter(Mandatory)][string]$OutputDirectory,[switch]$Offline,[ValidateNotNullOrEmpty()][ValidateCount(1,2)][ValidateSet('profiler','dottrace')][string[]]$Module=@('profiler','dottrace'))
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Initialize-Profilers')){return}
 $ErrorActionPreference='Stop'
-Import-Module (Join-Path $PSScriptRoot 'lib/RunToolCache.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/RunToolCache.psm1')) -DisableNameChecking
 Initialize-RunToolCache -OutputDirectory $OutputDirectory -Packages (Get-RunProfilerPackages -Module $Module) -Offline:$Offline

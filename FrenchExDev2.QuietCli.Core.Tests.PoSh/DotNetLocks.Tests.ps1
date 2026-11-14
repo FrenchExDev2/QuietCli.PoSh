@@ -154,7 +154,7 @@ try {
         Assert-LockRejection {Get-DotNetRuntimeFrameworkPlan -WorkspaceRoot $root -Path $project -Version 11.0.0} "Generated malformed XML seed 110105 case $case."
     }
     # A portable SDK must never become a source/build identity input.
-    . (Join-Path $PSScriptRoot '../scripts/SourceIdentity.ps1')
+    Import-Module (Join-Path $PSScriptRoot '../scripts/lib/SourceIdentity.psm1') -DisableNameChecking -ErrorAction Stop
     $ignored=Join-Path $root '.dotnet';$null=[IO.Directory]::CreateDirectory($ignored)
     [IO.File]::WriteAllText((Join-Path $ignored 'sdk-marker'),'ignored',[Text.UTF8Encoding]::new($false))
     Assert-DotNetLocks (@(Get-QuietSourceFiles $root|Where-Object Path -Like '.dotnet/*').Count -eq 0) 'Portable SDK payloads are pruned before source hashing.'
@@ -168,7 +168,7 @@ function Get-QuietWorkspaceIdentity { param($WorkspaceRoot) @{Projects=@();Repos
 function Get-QuietWorkspaceProjects { param($WorkspaceRoot) }
 function Write-WorkspaceJson { param($Path,$Value) [IO.File]::WriteAllText($Path,($Value|ConvertTo-Json -Depth 10),[Text.UTF8Encoding]::new($false)) }
 '@
-    [IO.File]::WriteAllText((Join-Path $metadataRoot 'scripts/Common.ps1'),$common,[Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $metadataRoot 'scripts/lib/Common.psm1'),$common,[Text.UTF8Encoding]::new($false))
     foreach($case in 1..60){
         $sdkVersion='11.0.'+$random.Next(100,900);$runtimeVersion='11.0.'+$random.Next(0,99)
         Write-LockFixture (Join-Path $metadataRoot 'global.json') @{sdk=@{version=$sdkVersion}}

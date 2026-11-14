@@ -64,7 +64,7 @@ The inputs come from:
   and checksums.
 - [Core's image declaration](../FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1): build
   arguments, final-stage packages, environment and entry point.
-- [`CiImages.ps1`](../scripts/CiImages.ps1) and [the build context](../.github/containers/): shared rendering,
+- [`CiImages.ps1`](../scripts/lib/CiImages.psm1) and [the build context](../.github/containers/): shared rendering,
   downloads and orchestration.
 
 The generated final stage must contain a working PowerShell host, its runtime dependencies and the

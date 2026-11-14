@@ -19,7 +19,7 @@ Internal background entry point. Use the normal launcher for local visible monit
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),
     [ValidateSet('linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier='linux-musl-x64',[string]$RunDirectory,[switch]$Worker)
 $ErrorActionPreference='Stop'
-. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$Worker){
     if(!$IsWindows){throw 'Launch the visible Alpine smoke monitor from Windows.'}
     if(!$RunDirectory){$RunDirectory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'alpine-image') ([guid]::NewGuid().ToString('N'))}

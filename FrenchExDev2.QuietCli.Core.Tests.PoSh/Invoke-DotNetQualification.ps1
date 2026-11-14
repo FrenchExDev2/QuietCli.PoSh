@@ -28,7 +28,7 @@ function Invoke-QuietDotNetQualification {
         & $OnProgress "DotNet$name completed" $passed 0
     }
     $hashes=@{}
-    foreach($file in @('scripts/lib/DotNetReadiness.psm1','scripts/lib/DotNetProvisioning.psm1','scripts/lib/DotNetLocks.psm1','scripts/ScriptShouldProcess.ps1','scripts/SourceIdentity.ps1','scripts/Update-WorkspaceLock.ps1')+@($selected|ForEach-Object {"FrenchExDev2.QuietCli.Core.Tests.PoSh/DotNet$_.Tests.ps1"})){
+    foreach($file in @('scripts/lib/DotNetReadiness.psm1','scripts/lib/DotNetProvisioning.psm1','scripts/lib/DotNetLocks.psm1','scripts/lib/ScriptShouldProcess.psm1','scripts/lib/SourceIdentity.psm1','scripts/Update-WorkspaceLock.ps1')+@($selected|ForEach-Object {"FrenchExDev2.QuietCli.Core.Tests.PoSh/DotNet$_.Tests.ps1"})){
         $hashes[$file]=(Get-FileHash -LiteralPath (Join-Path $WorkspaceRoot $file) -Algorithm SHA256).Hash
     }
     $result=[pscustomobject]@{Suite='DotNet';Passed=$passed;Failed=0;Assertions=$passed;PropertyCases=($summaries|Measure-Object PropertyCases -Sum).Sum;FuzzCases=($summaries|Measure-Object FuzzCases -Sum).Sum;MutantsKilled=($summaries|Measure-Object MutantsKilled -Sum).Sum;SourceHashes=$hashes;Campaigns=$summaries.ToArray()}

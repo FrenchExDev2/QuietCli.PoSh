@@ -10,7 +10,7 @@ function Invoke-QuietRecallMutation {
     Existing visible monitor callback.
     #>
     [CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[scriptblock]$OnProgress)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     $mutants=@(
         @{Name='iec-factor';File='RecallOptions.cs';From='"KIB" => 1024L';To='"KIB" => 1000L'},
         @{Name='head-byte-loss';File='RecallCapture.cs';From='options.MaximumBytes ?? long.MaxValue';To='(options.MaximumBytes ?? long.MaxValue) - 1'},

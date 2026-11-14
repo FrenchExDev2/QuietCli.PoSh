@@ -8,7 +8,7 @@ function Test-QuietReadyToRun {
     Owned evidence and fixture directory.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/src/Protocol.ps1')
     $rids=@((Get-QuietRuntimeTargets $WorkspaceRoot).Rid)
     $fixture=Join-Path $RunDirectory 'readytorun-policy'
@@ -53,7 +53,11 @@ function Test-QuietReadyToRun {
         if($actual.Directory -ceq 'lib/inprocess/win-x64'){throw 'ReadyToRunRoutingMutantSurvived'}
     }
     $scripts=Join-Path $fixture scripts;[void][IO.Directory]::CreateDirectory($scripts)
-    Copy-Item -LiteralPath (Join-Path $WorkspaceRoot scripts/Build-Workspace.ps1) -Destination $scripts
+    # Replace only the dependency boundary with a lexical fixture; the assertions own its state.
+    $buildSource=[IO.File]::ReadAllText([IO.Path]::Combine($WorkspaceRoot,'scripts/Build-Workspace.ps1'),[Text.Encoding]::UTF8)
+    if(!$buildSource.Contains("Import-Module ([IO.Path]::Combine(`$PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop")){throw 'BuildFixtureDependencyAnchorMissing'}
+    $buildSource=$buildSource.Replace("Import-Module ([IO.Path]::Combine(`$PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop",". ([IO.Path]::Combine(`$PSScriptRoot,'Common.fixture.ps1'))")
+    [IO.File]::WriteAllText([IO.Path]::Combine($scripts,'Build-Workspace.ps1'),$buildSource,[Text.UTF8Encoding]::new($false))
     Copy-Item -LiteralPath (Join-Path $WorkspaceRoot Quietly.slnx) -Destination $fixture
     $buildDistributions=@(Get-QuietWorkspaceBuildProjects $WorkspaceRoot)
     $FailBuild=$false
@@ -67,7 +71,7 @@ function Get-QuietRuntimeTargets { param($WorkspaceRoot) foreach($rid in @('win-
 function Invoke-WorkspaceNative { param($FilePath,$Arguments,$WorkingDirectory) $Commands.Add(@($Arguments));if($FailBuild -and $Arguments[0] -ceq 'build'){throw 'FixtureSolutionBuildFailed'} }
 function Write-QuietBuildManifest { param($WorkspaceRoot,$Project,$Output,$Inputs,$Configuration,$RuntimeIdentifier,$PlatformTarget,[switch]$ReadyToRun,$ReadyToRunTargets) }
 '@
-    [void][IO.File]::WriteAllTextAsync((Join-Path $scripts Common.ps1),$mock,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    [void][IO.File]::WriteAllTextAsync(([IO.Path]::Combine($scripts,'Common.fixture.ps1')),$mock,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     foreach($mask in 0..63){
         $selected=@(for($i=0;$i -lt 6;$i++){if($mask -band (1 -shl $i)){$rids[$i]}})
         $Commands=[Collections.Generic.List[object]]::new()
@@ -77,7 +81,7 @@ function Write-QuietBuildManifest { param($WorkspaceRoot,$Project,$Output,$Input
         $portablePublications=@($Commands | Where-Object {$_ -contains '--no-build'})
         if($portablePublications.Count -ne $buildDistributions.Count){throw 'WorkspacePortablePublicationCountChanged'}
         foreach($distribution in $buildDistributions){
-            $matches=@($portablePublications | Where-Object {$_[1] -ceq (Join-Path $fixture $distribution.Project) -and $_[[Array]::IndexOf($_,'-f')+1] -ceq $distribution.TargetFramework -and $_[[Array]::IndexOf($_,'-o')+1] -ceq (Join-Path $fixture $distribution.Output)})
+            $matches=@($portablePublications | Where-Object {[IO.Path]::GetFullPath($_[1]) -ceq [IO.Path]::GetFullPath([IO.Path]::Combine($fixture,$distribution.Project)) -and $_[[Array]::IndexOf($_,'-f')+1] -ceq $distribution.TargetFramework -and [IO.Path]::GetFullPath($_[[Array]::IndexOf($_,'-o')+1]) -ceq [IO.Path]::GetFullPath([IO.Path]::Combine($fixture,$distribution.Output))})
             if($matches.Count -ne 1){throw 'WorkspaceDeclaredDistributionNotPreparedExactlyOnce'}
         }
         $precompiled=@($Commands|Where-Object {$_ -contains '-p:PublishReadyToRun=true'})

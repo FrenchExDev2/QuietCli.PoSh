@@ -33,15 +33,15 @@ function Test-QuietWorkspaceBuildProjects {
     Owned fixture and evidence directory.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot scripts/Common.ps1)
-    $sourcePath=Join-Path $WorkspaceRoot scripts/WorkspaceProjects.ps1
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/Common.psm1) -DisableNameChecking -ErrorAction Stop
+    $sourcePath=Join-Path $WorkspaceRoot scripts/lib/WorkspaceProjects.psm1
     $source=Get-Content -LiteralPath $sourcePath -Raw -Encoding utf8
     $counts=@{Properties=0;Malformed=0;Seed=20261110;MutantsKilled=0}
     $verify={
         param($candidate,$fixture,$counts)
         & {
             param($candidate,$fixture,$counts)
-            . $candidate
+            Import-Module $candidate -DisableNameChecking -ErrorAction Stop
             $name='FrenchExDev2.QuietCli.Packer.PoSh'
             $metadata="@{BuildProjects=@(@{Project='engine/Packer.csproj';Outputs=@{'net10.0'='lib/parser/net10.0';'net11.0'='lib/parser/net11.0'}})}"
             New-QuietWorkspaceFixtureProject $fixture $name -Metadata $metadata
@@ -108,7 +108,7 @@ function Test-QuietWorkspaceBuildProjects {
     )
     foreach($index in 0..($mutants.Count-1)){
         if($mutants[$index] -ceq $source){throw 'BuildCatalogueMutationAnchorMissing'}
-        $candidate=Join-Path $RunDirectory ("build-mutant-$index.ps1")
+        $candidate=Join-Path $RunDirectory ("build-mutant-$index.psm1")
         [IO.File]::WriteAllText($candidate,$mutants[$index],[Text.UTF8Encoding]::new($false))
         $killed=$false;try{& $verify $candidate (Join-Path $RunDirectory "build-mutant-$index") @{Properties=0;Malformed=0;Seed=$counts.Seed}}catch{$killed=$true}
         if(!$killed){throw 'BuildCatalogueMutantSurvived'};$counts.MutantsKilled++
@@ -126,14 +126,14 @@ function Test-QuietWorkspaceProjects {
     Owned reports and disposable manifest fixtures.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    $sourcePath=Join-Path $WorkspaceRoot 'scripts/WorkspaceProjects.ps1'
+    $sourcePath=Join-Path $WorkspaceRoot 'scripts/lib/WorkspaceProjects.psm1'
     $source=[IO.File]::ReadAllTextAsync($sourcePath,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
     $counts=@{Properties=0;FuzzInputs=0;Seed=44183}
     $verify={
         param($candidate,$root,$counts)
         & {
             param($candidate,$root,$counts)
-            . $candidate
+            Import-Module $candidate -DisableNameChecking -ErrorAction Stop
             $core='FrenchExDev2.QuietCli.Core.PoSh';$coreTests='FrenchExDev2.QuietCli.Core.Tests.PoSh'
             $alpha='FrenchExDev2.QuietCli.Alpha.PoSh';$alphaTests='FrenchExDev2.QuietCli.Alpha.Tests.PoSh'
             $zulu='FrenchExDev2.QuietCli.Zulu.PoSh';$zuluTests='FrenchExDev2.QuietCli.Zulu.Tests.PoSh'
@@ -159,7 +159,7 @@ function Test-QuietWorkspaceProjects {
             New-QuietWorkspaceFixtureProject $root $nimbusTests @($nimbus,$coreTests) -Command Invoke-QuietNimbusTests
             if(@(Get-QuietWorkspaceProjects $root).Count -ne 8 -or (Get-QuietWorkspaceSuiteNames $root -Scope Container) -cnotcontains 'Nimbus'){throw 'NewCompanionWasNotDiscoveredDynamically'}
             $binding=Join-Path $root 'Bind-Suite.ps1'
-            $bindingSource="[CmdletBinding()]param([string]`$WorkspaceRoot)`ndynamicparam { . '$candidate'; New-QuietWorkspaceSuiteParameter -WorkspaceRoot `$WorkspaceRoot -Scope Container }`nend { `$PSBoundParameters['Suite'] }`n"
+            $bindingSource="[CmdletBinding()]param([string]`$WorkspaceRoot)`ndynamicparam { Import-Module '$candidate' -DisableNameChecking -ErrorAction Stop; New-QuietWorkspaceSuiteParameter -WorkspaceRoot `$WorkspaceRoot -Scope Container }`nend { `$PSBoundParameters['Suite'] }`n"
             [void][IO.File]::WriteAllTextAsync($binding,$bindingSource,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
             if((& $binding -WorkspaceRoot $root -Suite Nimbus) -cne 'Nimbus'){throw 'DynamicSuiteBindingRejectedNewCompanion'}
             $rejected=$false;try{$null=& $binding -WorkspaceRoot $root -Suite Unknown}catch{$rejected=$true};if(!$rejected){throw 'DynamicSuiteBindingAcceptedUnknownValue'}
@@ -206,9 +206,12 @@ function Test-QuietWorkspaceProjects {
         @{Name='remove-suite-validation';From='$attributes.Add([Management.Automation.ValidateSetAttribute]::new([string[]]@(Get-QuietWorkspaceSuiteNames $WorkspaceRoot -Scope $Scope)))';To=''}
     )
     $results=[Collections.Generic.List[object]]::new()
+    $libraries=[IO.Path]::Combine($directory,'lib')
+    [void][IO.Directory]::CreateDirectory($libraries)
+    Get-ChildItem -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) -File -Filter *.psm1 | Copy-Item -Destination $libraries
     foreach($mutation in $mutations){
         if(([regex]::Matches($source,[regex]::Escape($mutation.From))).Count -ne 1){throw ('WorkspaceProjectsMutationAnchorInvalid: '+$mutation.Name)}
-        $candidate=Join-Path $directory ($mutation.Name+'.ps1')
+        $candidate=Join-Path $libraries ($mutation.Name+'.psm1')
         [void][IO.File]::WriteAllTextAsync($candidate,$source.Replace($mutation.From,$mutation.To),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         $tokens=$null;$errors=$null;$null=[Management.Automation.Language.Parser]::ParseFile($candidate,[ref]$tokens,[ref]$errors)
         if($errors.Count){throw ('WorkspaceProjectsMutantInvalid: '+$mutation.Name)}

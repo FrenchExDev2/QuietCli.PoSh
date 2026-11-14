@@ -28,7 +28,7 @@ on disk are the only inputs, so staleness cannot silently compound across reruns
 ### [`scripts/Sync-Credits.ps1`](../scripts/Sync-Credits.ps1)
 
 Discovers every business module via `Get-QuietWorkspaceProjects` (from
-[`scripts/WorkspaceProjects.ps1`](../scripts/WorkspaceProjects.ps1)), reads each one's
+[`scripts/lib/WorkspaceProjects.psm1`](../scripts/lib/WorkspaceProjects.psm1)), reads each one's
 `LICENSE_CREDITS.md`, and rebuilds the root `CREDITS.md`: a short mandatory preamble, a
 table of contents (so the file stays navigable as more modules ship their own credits), then each
 module's content wrapped in its own regex-identifiable marker:

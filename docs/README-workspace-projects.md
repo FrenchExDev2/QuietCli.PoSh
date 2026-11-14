@@ -1,11 +1,11 @@
 # Workspace projects, suites and package eligibility
 
-[`scripts/WorkspaceProjects.ps1`](../scripts/WorkspaceProjects.ps1) is an engine-independent, reusable
+[`scripts/lib/WorkspaceProjects.psm1`](../scripts/lib/WorkspaceProjects.psm1) is an engine-independent, reusable
 PowerShell script. Dot-source it to inspect the selected source workspace without importing business
 modules, starting native tools or publishing anything:
 
 ```powershell
-. ./scripts/WorkspaceProjects.ps1
+. ./scripts/lib/WorkspaceProjects.psm1
 
 Get-QuietWorkspaceProjects -WorkspaceRoot $PWD.Path
 Get-QuietWorkspaceSuiteNames -WorkspaceRoot $PWD.Path -Scope Container

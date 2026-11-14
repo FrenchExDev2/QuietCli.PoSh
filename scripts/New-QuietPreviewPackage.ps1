@@ -26,17 +26,17 @@ param(
 )
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-QuietPreviewPackage')){return}
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'Common.ps1')
-Import-Module (Join-Path $PSScriptRoot 'lib/Gallery.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Gallery.psm1')) -DisableNameChecking
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 # This list only forbids writing generated artifacts inside source modules. It never selects public packages;
 # New-QuietGalleryPackage.ps1 stages only Core under the existing name inferred from its .psm1 and manifest.
 foreach($name in (Get-QuietWorkspaceProjects $WorkspaceRoot).Name){
-    $moduleRoot=(Join-Path $WorkspaceRoot $name)+[IO.Path]::DirectorySeparatorChar
+    $moduleRoot=([IO.Path]::Combine($WorkspaceRoot,$name))+[IO.Path]::DirectorySeparatorChar
     if($OutputDirectory.StartsWith($moduleRoot,[StringComparison]::OrdinalIgnoreCase)){throw 'GalleryPreviewOutputInsideModule'}
 }
-$manifest=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'
+$manifest=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
 $base=[string](Import-PowerShellDataFile -LiteralPath $manifest).ModuleVersion
 $version=New-QuietGalleryPreviewVersion -BaseVersion $base -BuildNumber $BuildNumber -Attempt $Attempt
 $info=Get-QuietGalleryVersion $version
@@ -46,7 +46,7 @@ if($QualifiedRevision){
     $dirty=Read-QuietRepositoryValue $WorkspaceRoot @('status','--porcelain=v1','--untracked-files=normal')
     if($dirty){throw 'GalleryPreviewQualifiedCheckoutDirty'}
 }
-$prepared=& (Join-Path $PSScriptRoot 'New-QuietGalleryPackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $OutputDirectory -Version $version -Prerelease $info.Prerelease -RequireReadyToRun:$RequireReadyToRun
-$null=& (Join-Path $PSScriptRoot 'Publish-QuietGallery.ps1') -PackageDirectory $OutputDirectory -Version $version -ValidateOnly
-Write-WorkspaceJson (Join-Path $OutputDirectory 'preview.json') @{Version=$version;BaseVersion=$base;BuildNumber=$BuildNumber;Attempt=$Attempt;SourceRevision=$revision;QualifiedRevision=$QualifiedRevision;Published=$false}
+$prepared=& ([IO.Path]::Combine($PSScriptRoot,'New-QuietGalleryPackage.ps1')) -WorkspaceRoot $WorkspaceRoot -OutputDirectory $OutputDirectory -Version $version -Prerelease $info.Prerelease -RequireReadyToRun:$RequireReadyToRun
+$null=& ([IO.Path]::Combine($PSScriptRoot,'Publish-QuietGallery.ps1')) -PackageDirectory $OutputDirectory -Version $version -ValidateOnly
+Write-WorkspaceJson ([IO.Path]::Combine($OutputDirectory,'preview.json')) @{Version=$version;BaseVersion=$base;BuildNumber=$BuildNumber;Attempt=$Attempt;SourceRevision=$revision;QualifiedRevision=$QualifiedRevision;Published=$false}
 $prepared

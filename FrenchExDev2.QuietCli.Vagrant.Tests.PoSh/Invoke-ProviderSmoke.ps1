@@ -17,7 +17,7 @@ Internal background entry point. Use the normal entry point to retain the visibl
 [CmdletBinding()]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[switch]$Worker)
 $ErrorActionPreference='Stop'
-. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$Worker){
     if(!$IsWindows){throw 'Launch the visible provider smoke monitor from Windows.'}
     if(!$RunDirectory){$RunDirectory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'vagrant-provider') ([guid]::NewGuid().ToString('N'))}

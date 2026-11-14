@@ -88,8 +88,8 @@ param(
 )
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ColdStartMatrix')){return}
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'Common.ps1')
-foreach ($module in 'RunEncoding', 'RunFormat') { Import-Module (Join-Path $PSScriptRoot "lib/$module.psm1") -Force }
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+foreach ($module in 'RunEncoding', 'RunFormat') { Import-Module ([IO.Path]::Combine($PSScriptRoot,"lib/$module.psm1")) -Force -DisableNameChecking }
 
 $linuxTargetMap = @{
     'debian-x64'    = @{ Platform = 'debian'; Rid = 'linux-x64' }
@@ -108,14 +108,14 @@ elseif (-not $Targets) {
     $Targets = @('windows', 'debian-x64', 'alpine-x64', 'debian-arm64', 'alpine-arm64')
 }
 
-$candidateRoot = Join-Path ([IO.Path]::GetTempPath()) ('quietcli-coldstart-matrix-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+$candidateRoot = [IO.Path]::Combine(([IO.Path]::GetTempPath()),('quietcli-coldstart-matrix-' + [guid]::NewGuid().ToString('N').Substring(0, 8)))
 [void][IO.Directory]::CreateDirectory($candidateRoot)
 $results = [Collections.Generic.List[object]]::new()
 
 try {
     if (-not $SkipBuild) {
         Write-Host "Building the baseline (every distribution) ..."
-        & (Join-Path $PSScriptRoot 'Build-Workspace.ps1')
+        & ([IO.Path]::Combine($PSScriptRoot,'Build-Workspace.ps1'))
     }
 
     if ($Targets -contains 'windows') {
@@ -126,8 +126,8 @@ try {
         else {
             Write-Host "windows: building the ReadyToRun candidate and running the gate locally ..."
             try {
-                $candidate = & (Join-Path $PSScriptRoot 'New-ReadyToRunCandidate.ps1') -CandidateRoot (Join-Path $candidateRoot 'windows') -WorkspaceRoot $WorkspaceRoot
-                & (Join-Path $PSScriptRoot 'Invoke-ColdStartGate.ps1') -CandidateModule $candidate -CandidateLabel $CandidateLabel -MeasurePackageSize | Out-Host
+                $candidate = & ([IO.Path]::Combine($PSScriptRoot,'New-ReadyToRunCandidate.ps1')) -CandidateRoot ([IO.Path]::Combine($candidateRoot,'windows')) -WorkspaceRoot $WorkspaceRoot
+                & ([IO.Path]::Combine($PSScriptRoot,'Invoke-ColdStartGate.ps1')) -CandidateModule $candidate -CandidateLabel $CandidateLabel -MeasurePackageSize | Out-Host
                 $results.Add([pscustomobject]@{ Target = 'windows'; State = 'Ran'; Detail = $null; ReportFile = $null })
             }
             catch {
@@ -150,16 +150,16 @@ try {
             $headless = $using:Headless
             $registryToken = $using:RegistryToken
             $localBuild = $using:LocalBuild
-            $candidateRootPerTarget = Join-Path $using:candidateRoot $key
+            $candidateRootPerTarget = [IO.Path]::Combine($using:candidateRoot,$key)
             try {
-                $candidate = & (Join-Path $scriptRoot 'New-ReadyToRunCandidate.ps1') -CandidateRoot $candidateRootPerTarget -WorkspaceRoot $workspaceRoot -RuntimeIdentifier $target.Rid
+                $candidate = & ([IO.Path]::Combine($scriptRoot,'New-ReadyToRunCandidate.ps1')) -CandidateRoot $candidateRootPerTarget -WorkspaceRoot $workspaceRoot -RuntimeIdentifier $target.Rid
                 $image = if ($localBuild) {
-                    & (Join-Path $scriptRoot 'New-CiImage.ps1') -RuntimeIdentifier $target.Rid -WorkspaceRoot $workspaceRoot
+                    & ([IO.Path]::Combine($scriptRoot,'New-CiImage.ps1')) -RuntimeIdentifier $target.Rid -WorkspaceRoot $workspaceRoot
                 }
                 else {
-                    & (Join-Path $scriptRoot 'Get-CiImageForDevelopment.ps1') -RuntimeIdentifier $target.Rid -WorkspaceRoot $workspaceRoot -RegistryToken $registryToken
+                    & ([IO.Path]::Combine($scriptRoot,'Get-CiImageForDevelopment.ps1')) -RuntimeIdentifier $target.Rid -WorkspaceRoot $workspaceRoot -RegistryToken $registryToken
                 }
-                $outcome = & (Join-Path $scriptRoot 'Invoke-ContainerColdStart.ps1') -WorkspaceRoot $workspaceRoot -Image $image.Image -Platform $target.Platform -CandidateModule $candidate -CandidateLabel $candidateLabel -ExpectedRuntimeIdentifier $target.Rid -Headless:$headless
+                $outcome = & ([IO.Path]::Combine($scriptRoot,'Invoke-ContainerColdStart.ps1')) -WorkspaceRoot $workspaceRoot -Image $image.Image -Platform $target.Platform -CandidateModule $candidate -CandidateLabel $candidateLabel -ExpectedRuntimeIdentifier $target.Rid -Headless:$headless
                 [pscustomobject]@{ Target = $key; State = $outcome.State; Detail = $null; ReportFile = $outcome.ReportFile; RunDirectory = $outcome.RunDirectory }
             }
             catch {
@@ -177,9 +177,9 @@ finally {
     Remove-Item -LiteralPath $candidateRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-$matrixDirectory = Join-Path $WorkspaceRoot 'artifacts/coldstart-matrix'
+$matrixDirectory = [IO.Path]::Combine($WorkspaceRoot,'artifacts/coldstart-matrix')
 [void][IO.Directory]::CreateDirectory($matrixDirectory)
-$matrixPath = Join-Path $matrixDirectory ([DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ') + '.json')
+$matrixPath = [IO.Path]::Combine($matrixDirectory,([DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ') + '.json'))
 Write-WorkspaceJson $matrixPath @{ Targets = $Targets; Results = @($results) }
 
 ''

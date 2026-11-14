@@ -18,6 +18,16 @@ Uses GalleryRelease/Gallery libraries and existing New-QuietGalleryPackage/Publi
 
 GalleryPreview fixtures prepare and validate actual Core/Git packages, reject a damaged second package before any publication, and observe dependency-ordered mock publishing without credentials/network requests. Tag fixtures reject foreign commits, duplicate/disabled members and elect a unique leader. An indexing delay after Core publication may still reject a newly dependent Git publication; no dependency bypass or automatic retry is used. Partial success retains per-module receipts for deliberate recovery. There is no rollback of an already published package.
 
+<!-- script-library-boundary:begin -->
+## Automation library boundary
+
+This entry point contains no function definitions. Automation helpers are imported from `scripts/lib` with `-DisableNameChecking`; path composition uses `System.IO.Path`. Public parameters and the documented operation remain unchanged.
+
+Direct library contracts: [Gallery.psm1](lib/Gallery.md), [GalleryRelease.psm1](lib/GalleryRelease.md).
+
+See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-automation-contracts.md) for dependency, preview and source-layout obligations.
+<!-- script-library-boundary:end -->
+
 <!-- script-contract:begin -->
 ## Execution contract
 

@@ -23,6 +23,6 @@ param([string]$WorkspaceRoot=$PSScriptRoot+'/..',[string]$Version,[string[]]$Pat
     [switch]$AllowDowngrade,[switch]$PlanOnly)
 $ErrorActionPreference='Stop'
 if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Update the selected target framework runtime pins with backups')){return}
-Import-Module (Join-Path $PSScriptRoot 'lib/DotNetLocks.psm1') -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/DotNetLocks.psm1')) -ErrorAction Stop -DisableNameChecking
 $options=@{}+$PSBoundParameters;$options.Confirm=$false
 Update-DotNetRuntimeFrameworkVersion @options

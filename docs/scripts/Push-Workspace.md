@@ -7,7 +7,7 @@
 After a successful `feature/*` or `fix/*` push, RAC-PR-001 adds an update to the existing open PR
 on the selected GitHub remote. `-PrCommentBodyFile <utf8.md>` supplies a reviewed summary of changes
 and actual validation; without it, the comment lists the PR's current commits and leaves qualification
-to GitHub checks. The shared [PR update helper](PullRequestUpdates.md) verifies the checkpoint and
+to GitHub checks. The shared [PR update helper](lib/PullRequestUpdates.md) verifies the checkpoint and
 suppresses duplicate checkpoint comments. No PR is created implicitly. Non-GitHub remotes and other
 branch families keep ordinary push behavior. A comment failure prints a warning after the
 successful push, so it cannot disguise a push as failed or automatically retry it.

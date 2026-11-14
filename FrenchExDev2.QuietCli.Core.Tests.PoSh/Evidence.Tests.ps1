@@ -8,7 +8,7 @@ function Test-QuietEvidenceBundle {
     Owned run directory retaining explicitly labeled synthetic integrity fixtures.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     $builder=Join-Path $WorkspaceRoot 'scripts/New-CoreEvidenceBundle.ps1'
     $workflow=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/ci.yml'),[Text.Encoding]::UTF8)
     $uploads=@([regex]::Matches($workflow,'(?ms)^          name: quietcli-core-evidence-.*?(?=^      -|^  [a-z]|\z)'))
@@ -84,8 +84,8 @@ function Test-QuietEvidenceBundle {
     $source=[IO.File]::ReadAllTextAsync($builder,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
     $anchor='(Get-FileHash $trace -Algorithm SHA256).Hash -cne $collector.SHA256'
     if(!$source.Contains($anchor)){throw 'EvidenceIntegrityMutantInvalid'}
-    $common=(Join-Path $WorkspaceRoot 'scripts/Common.ps1').Replace("'","''")
-    $mutantSource=$source.Replace($anchor,'$false').Replace(". (Join-Path `$PSScriptRoot 'Common.ps1')",(". '"+$common+"'"))
+    $common=(Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1').Replace("'","''")
+    $mutantSource=$source.Replace($anchor,'$false').Replace("Import-Module ([IO.Path]::Combine(`$PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop",("Import-Module '"+$common+"' -DisableNameChecking -ErrorAction Stop"))
     $mutant=[scriptblock]::Create($mutantSource)
     $survived=$true
     try{$null=& $mutant -ReportRoot $inputRoot -OutputDirectory (Join-Path $root 'mutant') -Revision ('a'*40) -RequireProfiling}catch{$survived=$false}

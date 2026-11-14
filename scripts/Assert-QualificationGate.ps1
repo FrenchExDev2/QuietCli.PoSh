@@ -44,8 +44,8 @@ Checkout whose suite declarations decide whether Core native evidence is require
 )
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Assert-QualificationGate')){return}
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'Common.ps1')
-Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanions.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiCompanions.psm1')) -DisableNameChecking
 $selection=Resolve-QuietCiCompanions (Read-QuietCiCompanions $WorkspaceRoot) -Suite $Suite
 $mutationRequired=!$SkipTty -and $selection.HasCoreEvidence
 $mutationExpected=if($mutationRequired){'success'}else{'skipped'}

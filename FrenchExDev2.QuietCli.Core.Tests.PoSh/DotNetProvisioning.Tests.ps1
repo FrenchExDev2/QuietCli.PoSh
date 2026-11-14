@@ -98,7 +98,7 @@ try {
             #>
             param($ContainerRuntime,$WorkspaceRoot)
             $script:RuntimeResolveCalls++
-            . $script:CommonPath
+            Import-Module $script:CommonPath -DisableNameChecking -ErrorAction Stop
             function Get-Command {
             <#
             .SYNOPSIS
@@ -109,7 +109,7 @@ try {
             }
             Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -Available -WorkspaceRoot $script:FixtureRoot
         }
-    } $fixtureZip $fixtureHash $root (Join-Path $PSScriptRoot '../scripts/Common.ps1')
+    } $fixtureZip $fixtureHash $root (Join-Path $PSScriptRoot '../scripts/lib/Common.psm1')
     $pin=Join-Path $root 'global.json'
     $original=@'
 {

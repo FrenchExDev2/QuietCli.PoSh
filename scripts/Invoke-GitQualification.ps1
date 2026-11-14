@@ -9,16 +9,16 @@ QuietCli2 workspace.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$ConfigurationPath,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-GitQualification')){return}
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
-$directory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'qualification') ([DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss'))
+$ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+$directory=[IO.Path]::Combine((Get-QuietReportRoot $WorkspaceRoot 'qualification'),([DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')))
 [void][IO.Directory]::CreateDirectory($directory)
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
-Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1') -Force
+Import-Module ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1')) -Force -DisableNameChecking
 $coverage=@(Get-QuietGitCoverage)
 $missing=@($coverage|Where-Object{$_.Qualification -ne 'Qualified'})
 $configurationAvailable=$ConfigurationPath -and (Test-Path -LiteralPath $ConfigurationPath)
 $report=@{SchemaVersion=1;EntireInventoryQualified=$false;State='Incomplete';Commands=$coverage.Count;Unqualified=$missing.Count;ConfigurationAvailable=[bool]$configurationAvailable;Missing=@($missing);RequiredPlatforms=@('windows-dockur','debian-glibc','alpine-musl');Versions=@(40..56|ForEach-Object{"2.$_.0"});Reason='Full semantic handlers and per-option/platform evidence are not yet complete. Smoke suites are not a substitute for full qualification.'}
-Write-WorkspaceJson (Join-Path $directory 'qualification.json') $report
+Write-WorkspaceJson ([IO.Path]::Combine($directory,'qualification.json')) $report
 if(!$configurationAvailable){throw "QualificationConfigurationMissing: see $directory/qualification.json"}
 if($missing.Count){throw "QualificationIncomplete: $($missing.Count) inventoried commands still lack full qualification. See $directory/qualification.json"}
 throw 'QualificationRunnerNotImplemented: refusing to certify unexecuted version/platform scenarios.'

@@ -8,5 +8,5 @@ Repository with build/script-shouldprocess.json and the PowerShell sources to ch
 [CmdletBinding()]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'ScriptShouldProcess.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/ScriptShouldProcess.psm1')) -DisableNameChecking -ErrorAction Stop
 Test-QuietScriptShouldProcessPolicy $WorkspaceRoot

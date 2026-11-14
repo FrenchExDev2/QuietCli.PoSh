@@ -47,16 +47,16 @@ param(
     [switch]$SkipProfilers,
     [switch]$SkipWorkflows,
     [switch]$CheckOnly,
-    [string]$ExtensionManifest=(Join-Path $WorkspaceRoot 'build/vscode-extensions.json')
+    [string]$ExtensionManifest=([IO.Path]::Combine($WorkspaceRoot,'build/vscode-extensions.json'))
 )
 $ErrorActionPreference='Stop'
-Import-Module (Join-Path $PSScriptRoot 'lib/DevelopmentWorkstation.psm1')
-Import-Module (Join-Path $PSScriptRoot 'lib/EditorExtensions.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/DevelopmentWorkstation.psm1')) -DisableNameChecking
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/EditorExtensions.psm1')) -DisableNameChecking
 $target=Get-DevelopmentHost
-if(!$InstallRoot){$InstallRoot=if($target.Id -ceq 'windows'){Join-Path $env:LOCALAPPDATA 'QuietCli2/development'}else{Join-Path $HOME '.local/share/QuietCli2/development'}}
+if(!$InstallRoot){$InstallRoot=if($target.Id -ceq 'windows'){[IO.Path]::Combine($env:LOCALAPPDATA,'QuietCli2/development')}else{[IO.Path]::Combine($HOME,'.local/share/QuietCli2/development')}}
 $skipped=@(if($SkipEditor){'Editor'};if($SkipContainers){'Containers'};if($SkipNativeTools){'Native'};if($SkipProfilers){'Profilers'};if($SkipWorkflows){'Workflows'})
 $specification=Get-DevelopmentSpecification $WorkspaceRoot $target
-$extensionIds=@(if(!$SkipEditor){Read-EditorExtensionManifest $ExtensionManifest|ForEach-Object Id})
+$extensionIds=@(if(!$SkipEditor){Read-EditorExtensionManifest $ExtensionManifest|ForEach-Object {$_.Id}})
 $plan=New-DevelopmentPlan $target $WorkspaceRoot $InstallRoot $specification -Insiders ([bool]$Insiders) -Skipped $skipped -PodmanMachineName $PodmanMachineName -Extensions $extensionIds -ExtensionManifest $ExtensionManifest
 $inventory=Get-DevelopmentInventory $plan
 $installerCmdlet=$PSCmdlet

@@ -1,6 +1,6 @@
 #Objective: Returns the two checksum-pinned diagnostic packages and their required entrypoints.
 #requires -Version 7.6
-Import-Module (Join-Path $PSScriptRoot 'RunEncoding.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'RunEncoding.psm1')) -DisableNameChecking
 
 function Get-RunProfilerPackages {
     <#
@@ -41,9 +41,9 @@ function Initialize-RunToolCache {
     $client = $null
     try {
         foreach ($package in $Packages) {
-            $directory = Join-Path $OutputDirectory $package.Name
+            $directory = [IO.Path]::Combine($OutputDirectory,$package.Name)
             [void][IO.Directory]::CreateDirectory($directory)
-            $archive = Join-Path $directory ($package.Name + '.' + $package.Version + '.nupkg')
+            $archive = [IO.Path]::Combine($directory,($package.Name + '.' + $package.Version + '.nupkg'))
             if (-not [IO.File]::Exists($archive)) {
                 if ($Offline) { throw 'ProfilerOfflineCacheMiss' }
                 if ($DownloadBytes) { $bytes = [byte[]](& $DownloadBytes $package.Url) }
@@ -56,14 +56,14 @@ function Initialize-RunToolCache {
             }
             $cached = [IO.File]::ReadAllBytesAsync($archive).GetAwaiter().GetResult()
             if ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($cached)) -cne $package.SHA256) { throw 'ProfilerCacheDigestMismatch' }
-            $entrypoint = Join-Path $directory $package.Entrypoint
+            $entrypoint = [IO.Path]::Combine($directory,$package.Entrypoint)
             if (-not [IO.File]::Exists($entrypoint)) { [void][IO.Compression.ZipFile]::ExtractToDirectoryAsync($archive, $directory, $true, [Threading.CancellationToken]::None).GetAwaiter().GetResult() }
             if (-not [IO.File]::Exists($entrypoint)) { throw 'ProfilerPackageLayoutMismatch' }
             $paths[$package.Name] = [IO.Path]::GetFullPath($entrypoint)
         }
     }
     finally { if ($null -ne $client) { $client.Dispose() } }
-    $receipt = Join-Path $OutputDirectory 'tool-receipt.json'
+    $receipt = [IO.Path]::Combine($OutputDirectory,'tool-receipt.json')
     $result = [ordered]@{ ProfilerModulePath = $paths['Profiler']; ClrProfilerPath = $paths['dotnet-trace']; Receipt = $receipt; Directory = $OutputDirectory }
     Write-RunTextFile -Path $receipt -Text ((ConvertTo-Json -InputObject @{ Packages = $Packages; ProfilerModulePath = $result.ProfilerModulePath; ClrProfilerPath = $result.ClrProfilerPath; GlobalInstallation = $false } -Depth 8) + "`n")
     return [pscustomobject]$result

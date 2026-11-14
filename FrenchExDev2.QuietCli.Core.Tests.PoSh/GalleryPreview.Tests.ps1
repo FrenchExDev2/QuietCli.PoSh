@@ -50,7 +50,7 @@ function Invoke-QuietGalleryPreviewTests {
     Existing visible-monitor progress callback.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory,[switch]$Mutation,[scriptblock]$OnProgress)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Gallery.psm1')
     $previewRoot=Join-Path $RunDirectory 'gallery-preview';[void][IO.Directory]::CreateDirectory($previewRoot)
     $cases=[ordered]@{};$results=[Collections.Generic.List[object]]::new();$mutants=[Collections.Generic.List[object]]::new()

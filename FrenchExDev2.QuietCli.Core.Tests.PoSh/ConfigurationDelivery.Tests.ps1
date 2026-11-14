@@ -12,8 +12,8 @@ function Invoke-QuietConfigurationDeliveryTests {
     Includes owned C# source mutations after the functional baseline.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory,[scriptblock]$OnProgress,[switch]$Mutation)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
-    . (Join-Path $WorkspaceRoot 'scripts/TestConfiguration.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/TestConfiguration.psm1') -DisableNameChecking -ErrorAction Stop
     $core=Get-Module FrenchExDev2.QuietCli.Core.PoSh
     $cases=[Collections.Generic.List[object]]::new();$passed=0;$failed=0
     $directory=Join-Path $RunDirectory 'configuration-delivery';[void][IO.Directory]::CreateDirectory($directory)

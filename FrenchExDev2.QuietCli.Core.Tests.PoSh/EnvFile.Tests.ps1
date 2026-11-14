@@ -8,7 +8,7 @@ function Test-QuietEnvFiles {
     Owned temporary fixtures; no real credentials are read or printed.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot scripts/EnvFile.ps1)
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/EnvFile.psm1) -DisableNameChecking -ErrorAction Stop
     $fixture=Join-Path $RunDirectory 'dotenv-fixture';$path=Join-Path $fixture '.env'
     if($null -ne (Get-QuietEnvValue -Path $path -Key KEY)){throw 'MissingEnvFileReturnedValue'}
     $null=Set-QuietEnvValue -Path $path -Key KEY -Value value -WhatIf

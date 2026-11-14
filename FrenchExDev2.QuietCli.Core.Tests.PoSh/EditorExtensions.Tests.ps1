@@ -9,7 +9,7 @@ function Test-QuietEditorExtensions {
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     $path=Join-Path $WorkspaceRoot 'scripts/lib/EditorExtensions.psm1'
-    $source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult().Replace(". (Join-Path `$PSScriptRoot '../Ci.Process.ps1')",'# Independent native executor fixture.')
+    $source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult().Replace("Import-Module ([IO.Path]::Combine(`$PSScriptRoot,'Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop",'# Independent native executor fixture.')
     $verify={param($candidate,$output)
         $tokens=$null;$errors=$null;$null=[Management.Automation.Language.Parser]::ParseInput($candidate,[ref]$tokens,[ref]$errors)
         if($errors.Count){throw 'InvalidEditorCandidateSyntax'}

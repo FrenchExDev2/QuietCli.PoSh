@@ -132,7 +132,7 @@ jobs:
       - name: Build all embedded engine distributions
         shell: pwsh
         run: |
-          . ./scripts/RuntimeTargets.ps1
+          Import-Module ./scripts/lib/RuntimeTargets.psm1 -DisableNameChecking -ErrorAction Stop
           ./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier @((Get-QuietRuntimeTargets $PWD.Path).Rid)
       - name: Verify the exact build being packaged
         shell: pwsh

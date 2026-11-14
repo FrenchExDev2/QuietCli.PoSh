@@ -8,7 +8,7 @@ function Assert-QuietHostMatrix {
     param([string]$WorkspaceRoot)
     $lock=Get-Content (Join-Path $WorkspaceRoot 'build/powershell-hosts.lock.json') -Raw -Encoding utf8|ConvertFrom-Json
     $workflow=Get-Content (Join-Path $WorkspaceRoot '.github/workflows/ci.yml') -Raw -Encoding utf8
-    . (Join-Path $WorkspaceRoot 'scripts/GitHubCi.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/GitHubCi.psm1') -DisableNameChecking -ErrorAction Stop
     $selection=Get-GitHubCiWindowsMatrix $lock
     $rows=@($selection.Matrix.include)
     if($rows.Count -ne 4 -or $selection.ExpectedReports -ne 8){throw 'WindowsHostMatrixCardinalityMismatch'}

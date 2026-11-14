@@ -80,6 +80,10 @@ wrkflw follows the existing toolchain pattern: reviewed native artifacts, bounde
 explicit exclusions and ShouldProcess-aware provisioning followed by independent verification.
 The missing native ARM64 artifacts and workflow-semantic qualification remain explicit gaps.
 
+## Dependency and regression contract
+
+The wrkflw download cache composes the installation root, downloads directory and pinned archive filename as separate System.IO.Path components. Offline installer assertions verify the exact cache path and extraction destination.
+
 <!-- credits:begin -->
 ## Credits
 
@@ -91,7 +95,7 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 
 Purpose: Detects a native Windows/Linux target without evaluating os-release as executable code.
 
-Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 0.
+Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->

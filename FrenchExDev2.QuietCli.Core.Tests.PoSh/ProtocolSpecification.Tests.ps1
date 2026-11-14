@@ -6,7 +6,7 @@ function Test-QuietProtocolSpecification {
     Local monorepo used to resolve the isolated temporary report root.
     #>
     param([string]$WorkspaceRoot)
-    . (Join-Path $WorkspaceRoot 'scripts/ReportPaths.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/ReportPaths.psm1') -DisableNameChecking -ErrorAction Stop
     $directory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'protocol-specification') ([guid]::NewGuid().ToString('N'))
     [void][IO.Directory]::CreateDirectory($directory)
     $path=Join-Path $directory 'protocol.json'

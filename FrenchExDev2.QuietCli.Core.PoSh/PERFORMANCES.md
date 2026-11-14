@@ -89,7 +89,7 @@ The original local metadata report is `dotnet-import-real-status-20261106.json`,
 
 ## Mandatory controlled integration in CI
 
-Import measurements, all ten diagnostic controls, and **eight owned repository states** run inside Core/All. `-Suite Integration` runs this focused subset. Existing LLVM/VS Code checkouts are not CI prerequisites. Fixture setup and human-output references use the independent `scripts/Ci.Process.ps1` runner; measured subject commands always use Core `quiet` callbacks. A fresh child imports the explicit Core only, asserts the exported alias path, an empty handler registry and absence of the Git companion before and after every scenario.
+Import measurements, all ten diagnostic controls, and **eight owned repository states** run inside Core/All. `-Suite Integration` runs this focused subset. Existing LLVM/VS Code checkouts are not CI prerequisites. Fixture setup and human-output references use the independent `scripts/lib/Ci.Process.psm1` runner; measured subject commands always use Core `quiet` callbacks. A fresh child imports the explicit Core only, asserts the exported alias path, an empty handler registry and absence of the Git companion before and after every scenario.
 
 ```text
 ┌──────────────────┬─────────────────────────────────────────────────────────┐

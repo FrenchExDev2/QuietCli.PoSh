@@ -13,8 +13,8 @@ GitHub owner/repository; token is read only from GH_TOKEN.
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][ValidatePattern('\A[a-f0-9]{40}\z')][string]$Revision,[string]$Repository='FrenchExDev2/QuietCli.PoSh')
 if(!$PSCmdlet.ShouldProcess($Revision,'Read successful merged PR receipts from GitHub')){return}
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'Common.ps1')
-Import-Module (Join-Path $PSScriptRoot 'lib/CiImpact.psm1') -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiImpact.psm1')) -ErrorAction Stop -DisableNameChecking
 $miss=[pscustomobject]@{Reused=$false;Revision=$Revision;Reason='No matching successful PR receipt';RunId=$null}
 if(!$env:GH_TOKEN -or $Repository -cne 'FrenchExDev2/QuietCli.PoSh'){return $miss}
 $headers=@{Authorization=('Bearer '+$env:GH_TOKEN);Accept='application/vnd.github+json';'X-GitHub-Api-Version'='2022-11-28'}

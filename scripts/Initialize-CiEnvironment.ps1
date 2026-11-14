@@ -14,8 +14,8 @@ param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Lo
     [ValidateSet('podman','docker')][string]$ContainerRuntime)
 $ErrorActionPreference='Stop'
 $selected=if($ContainerRuntime){$ContainerRuntime.ToLowerInvariant()}elseif($Target -eq 'GitHub'){'docker'}else{'podman'}
-$path=Join-Path ([IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)) '.env'
+$path=[IO.Path]::Combine(([IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)),'.env')
 if(!$PSCmdlet.ShouldProcess($path,('Initialize '+$Target+' container runtime '+$selected))){return}
-. (Join-Path $PSScriptRoot 'EnvFile.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/EnvFile.psm1')) -DisableNameChecking -ErrorAction Stop
 $result=Set-QuietEnvValue -Path $path -Key QUIET_CONTAINER_RUNTIME -Value $selected -Confirm:$false
 [pscustomobject]@{Target=$Target;ContainerRuntime=$selected;Path=$result.Path;Changed=$result.Changed}

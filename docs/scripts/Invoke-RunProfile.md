@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Provides a named, reusable "run profile" mechanism so that a repeatable measurement/benchmark scenario (e.g. a cold-start workload against a specific candidate module) can be invoked by a short name instead of re-typing a long parameter set every time. It solves the problem of ad hoc, hand-typed invocations of measurement/diagnostic scripts drifting out of sync between developers and CI: a profile file (`<Name>.profile.ps1`, data only) captures the target script and its default parameters once, and this launcher loads it, lets the caller override specific arguments, validates the merged set against the target script's actual declared parameters, and executes it (optionally under PSProfiler). It is invoked by `Invoke-ColdStartMatrix.ps1`/`Measure-ColdStart.ps1`-style tooling and by developers directly; the `RunProfiles/coldstart-100.profile.ps1` and `coldstart-1000.profile.ps1` files under `scripts/RunProfiles/` are its concrete data targets, and `Invoke-ColdStartGate.ps1` is a known caller in the same scripts folder.
+Provides a named, reusable "run profile" mechanism so that a repeatable measurement/benchmark scenario (e.g. a cold-start workload against a specific candidate module) can be invoked by a short name instead of re-typing a long parameter set every time. It solves the problem of ad hoc, hand-typed invocations of measurement/diagnostic scripts drifting out of sync between developers and CI: a profile file (`<Name>.profile.psd1`, data only) captures the target script and its default parameters once, and this launcher loads it, lets the caller override specific arguments, validates the merged set against the target script's actual declared parameters, and executes it (optionally under PSProfiler). It is invoked by `Invoke-ColdStartMatrix.ps1`/`Measure-ColdStart.ps1`-style tooling and by developers directly; the `RunProfiles/coldstart-100.profile.psd1` and `coldstart-1000.profile.psd1` files under `scripts/RunProfiles/` are its concrete data targets, and `Invoke-ColdStartGate.ps1` is a known caller in the same scripts folder.
 
 ## Usage
 
@@ -52,6 +52,10 @@ Example (from its own `.EXAMPLE`, line 42):
 ## Verdict
 
 This is a well-factored orchestrator that correctly delegates parsing/validation/execution concerns to sibling `lib/` modules and already has meaningful test coverage (regular, mutation, and benchmark suites) — fit for purpose as-is. The one worth fixing is the `$profile` variable-name shadowing (line 81), which should be renamed (e.g. `$runProfile`) to avoid confusion with the PowerShell automatic variable.
+
+## Dependency and regression contract
+
+Runtime helper imports reuse loaded modules. Invoking profiles repeatedly must preserve the caller's existing formatting and profile commands; dependency loading does not force a module reload.
 
 <!-- credits:begin -->
 ## Credits

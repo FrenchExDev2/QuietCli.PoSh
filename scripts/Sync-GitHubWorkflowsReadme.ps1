@@ -10,11 +10,11 @@ Regenerates graph blocks and README after all authored documents match their sou
 [CmdletBinding(SupportsShouldProcess)]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Apply)
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'WorkflowDocumentation.ps1')
-$entries=@(Get-QuietWorkflowDocumentation $WorkspaceRoot)
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkflowDocumentation.psm1')) -DisableNameChecking -ErrorAction Stop
+$entries=@(Get-QuietWorkflowDocumentation $WorkspaceRoot -WhatIf:$WhatIfPreference)
 $updates=[Collections.Generic.List[object]]::new()
 foreach($entry in $entries){
-    $path=Join-Path $WorkspaceRoot $entry.DocRelativePath
+    $path=[IO.Path]::Combine($WorkspaceRoot,$entry.DocRelativePath)
     if(!(Test-Path -LiteralPath $path -PathType Leaf)){throw ('WorkflowDocumentationMissing: '+$entry.RelativePath)}
     $text=[IO.File]::ReadAllTextAsync($path,[Text.UTF8Encoding]::new($false,$true)).GetAwaiter().GetResult().Replace("`r`n","`n")
     $receipt=[regex]::Match($text,'(?m)^<!-- workflow-source-sha256: ([A-F0-9]{64}) -->$')
@@ -27,10 +27,10 @@ foreach($entry in $entries){
     $expected=[regex]::Replace($text,$pattern,[Text.RegularExpressions.MatchEvaluator]{param($m)$entry.Generated})
     if($expected -cne $text){$updates.Add(@{Path=$path;Content=$expected})}
 }
-$readme=Join-Path $WorkspaceRoot 'docs/ci/github/README.md'
+$readme=[IO.Path]::Combine($WorkspaceRoot,'docs/ci/github/README.md')
 $expected=Get-QuietWorkflowReadme $entries
 # Credits are shared with the existing documentation generator, and remain part of the index contract.
-$relative=[IO.Path]::GetRelativePath((Split-Path $readme -Parent),(Join-Path $WorkspaceRoot CREDITS.md)).Replace('\','/')
+$relative=[IO.Path]::GetRelativePath((Split-Path $readme -Parent),([IO.Path]::Combine($WorkspaceRoot,'CREDITS.md'))).Replace('\','/')
 $credits=@('<!-- credits:begin -->','## Credits','',"This document is covered by the mandatory [CREDITS.md]($relative), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).",'<!-- credits:end -->') -join "`n"
 $expected+="`n"+$credits+"`n"
 $current=if(Test-Path -LiteralPath $readme){[IO.File]::ReadAllTextAsync($readme,[Text.Encoding]::UTF8).GetAwaiter().GetResult().Replace("`r`n","`n")}else{$null}

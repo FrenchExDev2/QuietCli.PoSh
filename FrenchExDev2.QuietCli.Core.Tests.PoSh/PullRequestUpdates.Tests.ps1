@@ -8,7 +8,10 @@ function Test-QuietPullRequestUpdates {
     Owned report directory; native commands and GitHub mutations are replaced by a scoped adapter.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot scripts/PullRequestUpdates.ps1)
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/PullRequestUpdates.psm1) -DisableNameChecking -ErrorAction Stop
+    & (Get-Module PullRequestUpdates) {
+    param($WorkspaceRoot,$RunDirectory)
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/WorkspaceJson.psm1')) -DisableNameChecking -ErrorAction Stop
     $fixture=@{Calls=0;Comments=0;Edits=0;Description=$null;Url='git@github.com:FrenchExDev2/QuietCli.PoSh.git';Branch='fix/fixture';Head=('a'*40);Local=('a'*40);Duplicate=$false;Body=$null;Missing=$false;Ambiguous=$false;Fail=$false}
     function Invoke-CiProcess {
         <#
@@ -94,4 +97,5 @@ function Test-QuietPullRequestUpdates {
     try{$null=Invoke-QuietPullRequestTool $WorkspaceRoot gh @('pr','list')}catch{$rejected=$_.Exception.Message -like 'PullRequestMetadataUnavailable:*'}
     if(!$rejected){throw 'FailedPrMetadataAccepted'}
     Write-WorkspaceJson (Join-Path $RunDirectory pr-update-campaign.json) @{Seed=$seed;Properties=16;KilledMutants=1;Preview='No native commands';RemoteMutations=0;CheckpointRace='Rejected';Duplicate='Skipped'}
+    } $WorkspaceRoot $RunDirectory
 }

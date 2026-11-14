@@ -10,7 +10,7 @@ Required exact tag or manually requested version.
 Performs local validation without using a key or contacting PSGallery.
 #>
 [CmdletBinding(SupportsShouldProcess,ConfirmImpact='Medium')]param([Parameter(Mandatory)][string]$PackageDirectory,[Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+(?:-[A-Za-z][A-Za-z0-9-]*)?$')][string]$Version,[switch]$ValidateOnly)
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1');Import-Module (Join-Path $PSScriptRoot 'lib/Gallery.psm1')
+$ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop;Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Gallery.psm1')) -DisableNameChecking
 $directory=[IO.Path]::GetFullPath($PackageDirectory,$PWD.Path)
 $plan=Test-QuietGalleryPackageSet $directory -Version $Version
 if($ValidateOnly){[pscustomobject]@{State='Validated';Version=$Version;Modules=$plan.Packages.Module;Published=$false};return}
@@ -20,13 +20,13 @@ $repository=Get-PSResourceRepository -Name PSGallery -ErrorAction Stop
 if($repository.Uri.AbsoluteUri.TrimEnd('/') -cne 'https://www.powershellgallery.com/api/v2'){throw 'PSGalleryRepositoryUriMismatch'}
 foreach($package in $plan.Packages){if(Get-QuietGalleryRemoteIdentity $package.Module $Version){throw ('GalleryVersionAlreadyExists: '+$package.Module+' '+$Version+'; no overwrite or automatic retry is performed.')}}
 $receipt=@{SchemaVersion=1;Version=$Version;Repository='PSGallery';State='Prepared';Modules=@();StartedUtc=[DateTimeOffset]::UtcNow.ToString('o')}
-$receiptPath=Join-Path $directory publication.json
+$receiptPath=[IO.Path]::Combine($directory,'publication.json')
 try{
     foreach($name in $plan.Packages.Module){
         $package=$plan.Packages|Where-Object Module -CEQ $name
         if($PSCmdlet.ShouldProcess(('PSGallery/'+$name+'/'+$Version),'Publish verified PowerShell module')){
             $receipt.State='Publishing';$receipt.PendingModule=$name;Write-WorkspaceJson $receiptPath $receipt
-            $publishOptions=@{NupkgPath=(Join-Path $directory $package.File);Repository='PSGallery';ApiKey=$env:PSGALLERY_API_KEY;ErrorAction='Stop'}
+            $publishOptions=@{NupkgPath=([IO.Path]::Combine($directory,$package.File));Repository='PSGallery';ApiKey=$env:PSGALLERY_API_KEY;ErrorAction='Stop'}
             Publish-PSResource @publishOptions
             $receipt.Modules+=@(@{Module=$name;SHA256=$package.SHA256;State='Published'})
             $receipt.PendingModule=$null

@@ -15,8 +15,8 @@ function Test-QuietCiScalability {
     . (Join-Path $PSScriptRoot 'MutationShards.Tests.ps1')
     Test-QuietMutationShardContracts -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImpact.psm1')
-    . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
-    . (Join-Path $WorkspaceRoot 'scripts/GitHubCi.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/GitHubCi.psm1') -DisableNameChecking -ErrorAction Stop
     $cacheContextProperties=0
     foreach($imagesOnly in @($false,$true)){foreach($event in @('workflow_dispatch','push','pull_request','')){foreach($ref in @('refs/heads/develop','refs/heads/feature/cache','refs/pull/3/merge','')){foreach($repository in @('FrenchExDev2/QuietCli.PoSh','fork/QuietCli.PoSh','')){
         $accepted=$true
@@ -53,7 +53,7 @@ function Test-QuietCiScalability {
     Assert-QuietEqual $combined.SelectedSuites.Count 3
     # Independent boundary oracle: siblings and mixed shared changes cannot
     # inherit the reviewed entry points' tooling-only qualification scope.
-    $toolingPaths=@('scripts/New-RunProfile.ps1','scripts/Invoke-RunProfile.ps1','scripts/lib/RunProfileStore.psm1','scripts/RunProfiles/coldstart-100.profile.ps1')
+    $toolingPaths=@('scripts/New-RunProfile.ps1','scripts/Invoke-RunProfile.ps1','scripts/lib/RunProfileStore.psm1','scripts/RunProfiles/coldstart-100.profile.psd1')
     $sharedPaths=@('scripts/lib/RunProfiler.psm1','scripts/lib/RunEncoding.psm1','scripts/New-CorePerformanceReport.ps1','scripts/lib/CiImpact.psm1','scripts/RunProfiles/unknown.ps1')
     $impactProperties=0;$impactSeed=20261112;$impactRandom=[Random]::new($impactSeed)
     foreach($path in $toolingPaths){
@@ -73,7 +73,7 @@ function Test-QuietCiScalability {
         }
     }
     foreach($iteration in 1..64){
-        $plan=Get-QuietCiImpact $WorkspaceRoot @('scripts/RunProfiles/profile-'+$impactRandom.Next(100000)+'.profile.ps1')
+        $plan=Get-QuietCiImpact $WorkspaceRoot @('scripts/RunProfiles/profile-'+$impactRandom.Next(100000)+'.profile.psd1')
         Assert-QuietEqual $plan.RunProducts $false
         Assert-QuietEqual $plan.RunTooling $true
         $impactProperties++
@@ -82,7 +82,7 @@ function Test-QuietCiScalability {
     $impactSource=(Get-Command Get-QuietCiImpact).ScriptBlock.ToString()
     $impactAnchor='if($path -cin $toolingOnly -or $path -cmatch'
     if(!$impactSource.Contains($impactAnchor)){throw 'CiImpactMutationAnchorMissing'}
-    $impactSource=$impactSource.Replace("(Join-Path `$PSScriptRoot 'CiCompanions.psm1')","(Join-Path `$WorkspaceRoot 'scripts/lib/CiCompanions.psm1')")
+    $impactSource=$impactSource.Replace("[IO.Path]::Combine(`$PSScriptRoot,'CiCompanions.psm1')","[IO.Path]::Combine(`$WorkspaceRoot,'scripts/lib/CiCompanions.psm1')")
     $impactMutant=[scriptblock]::Create($impactSource.Replace($impactAnchor,'if($false -and $path -cmatch'))
     $mutantPlan=& $impactModule {param($body,$root,$path) & $body -WorkspaceRoot $root -ChangedPaths @($path)} $impactMutant $WorkspaceRoot $toolingPaths[0]
     Assert-QuietEqual $mutantPlan.RunProducts $true 'Removing the reviewed boundary must be observable'

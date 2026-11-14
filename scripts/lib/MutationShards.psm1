@@ -26,10 +26,10 @@ function Get-QuietRunProfileMutationIdentity {
     Source checkout supplying the catalogue and its copied sandbox inputs.
     #>
     param([string]$WorkspaceRoot)
-    $paths=@('scripts/New-RunProfile.ps1','scripts/Invoke-RunProfile.ps1','scripts/Measure-ColdStart.ps1','scripts/Initialize-Profilers.ps1','scripts/Ci.Process.ps1')
-    $paths+=@(Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot 'scripts/lib') -File -Recurse | ForEach-Object {[IO.Path]::GetRelativePath($WorkspaceRoot,$_.FullName).Replace('\','/')})
+    $paths=@('scripts/New-RunProfile.ps1','scripts/Invoke-RunProfile.ps1','scripts/Measure-ColdStart.ps1','scripts/Initialize-Profilers.ps1','scripts/lib/Ci.Process.psm1')
+    $paths+=@(Get-ChildItem -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) -File -Recurse | ForEach-Object {[IO.Path]::GetRelativePath($WorkspaceRoot,$_.FullName).Replace('\','/')})
     $paths+=@('RunProfiles.Tests.ps1','RunProfiles.Benchmark.Tests.ps1','RunProfiles.Profiler.Tests.ps1','RunProfiles.Mutation.ps1','RunProfiles.MutationWorker.ps1','RunProfiles.Mutation.Catalogue.psd1')|ForEach-Object {'FrenchExDev2.QuietCli.Core.Tests.PoSh/'+$_}
-    $lines=@($paths|Sort-Object -Unique|ForEach-Object {$_+' '+(Get-FileHash -LiteralPath (Join-Path $WorkspaceRoot $_) -Algorithm SHA256).Hash})
+    $lines=@($paths|Sort-Object -Unique|ForEach-Object {$_+' '+(Get-FileHash -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$_)) -Algorithm SHA256).Hash})
     [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes(($lines -join "`n")))).ToLowerInvariant()
 }
 
@@ -57,7 +57,7 @@ function Assert-QuietMutationShard {
     if($Report.ShardIndex -ne $Index -or $Report.ShardCount -ne $Count -or $Report.TotalCatalogue -ne $Catalogue.Count -or $Report.SourceSHA256 -cne $SourceSHA256 -or $Report.Revision -cne $Revision -or $Report.BaselinePassed -isnot [bool] -or !$Report.BaselinePassed -or $Report.Seed -ne 61207 -or $Report.Iterations -ne 120 -or $Report.Partial -isnot [bool] -or $Report.Partial -ne ($Count -gt 1)){throw 'MutationShardIdentityMismatch'}
     if($Report.Results.Count -ne $expected.Count){throw 'MutationShardCoverageIncomplete'}
     $names=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    $expectedNames=@($expected|ForEach-Object Name)
+    $expectedNames=@($expected|ForEach-Object {$_.Name})
     foreach($result in $Report.Results){
         if($result.Outcome -cne 'Killed' -or $result.Name -cnotin $expectedNames -or !$names.Add($result.Name)){throw 'MutationShardOutcomeOrCoverageInvalid'}
     }

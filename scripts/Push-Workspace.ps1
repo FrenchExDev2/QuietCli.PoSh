@@ -17,8 +17,8 @@ Optional reviewed UTF-8 Markdown replacing the existing PR description through G
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidatePattern('^[A-Za-z0-9._-]+$')][string]$Remote='origin',[ValidatePattern('^[A-Za-z0-9._/-]+$')][string]$Branch='main',[ValidateSet('Workspace')][string]$Repository='Workspace',[string]$PrCommentBodyFile,[string]$PrDescriptionBodyFile)
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Push-Workspace')){return}
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot Common.ps1)
-. (Join-Path $PSScriptRoot PullRequestUpdates.ps1)
+$ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/PullRequestUpdates.psm1')) -DisableNameChecking -ErrorAction Stop
 $documents=@{Comment=$null;Description=$null}
 foreach($entry in @(@{Name='Comment';Path=$PrCommentBodyFile},@{Name='Description';Path=$PrDescriptionBodyFile})){
     if(!$entry.Path){continue}

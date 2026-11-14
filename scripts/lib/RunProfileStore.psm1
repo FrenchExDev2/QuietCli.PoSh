@@ -5,12 +5,12 @@
 Standard for run profiles: named, data-only PowerShell files that bind a script to a set of default arguments.
 
 .DESCRIPTION
-A profile is `<Name>.profile.ps1` holding one hashtable literal (SchemaVersion, Name, Description, Script, Parameters).
+A profile is `<Name>.profile.psd1` holding one hashtable literal (SchemaVersion, Name, Description, Script, Parameters).
 Files are parsed in restricted language mode (no commands, no variables other than $true/$false/$null), so a profile
 can never run code. Creating a profile means writing that file; running one means merging caller arguments over its
 parameters and invoking the target script.
 #>
-Import-Module (Join-Path $PSScriptRoot 'RunFormat.psm1'), (Join-Path $PSScriptRoot 'RunEncoding.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'RunFormat.psm1')), ([IO.Path]::Combine($PSScriptRoot,'RunEncoding.psm1')) -DisableNameChecking
 
 $script:SchemaVersion = 1
 $script:NamePattern = '^[a-z0-9][a-z0-9-]{0,63}\z'
@@ -27,7 +27,7 @@ function Get-RunProfileDirectory {
     #>
     param([string]$Directory)
     if ($Directory) { return [IO.Path]::GetFullPath($Directory) }
-    return [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../RunProfiles'))
+    return [IO.Path]::GetFullPath(([IO.Path]::Combine($PSScriptRoot,'../RunProfiles')))
 }
 
 function Get-RunScriptDirectory {
@@ -39,7 +39,7 @@ function Get-RunScriptDirectory {
     #>
     param([string]$Directory)
     if ($Directory) { return [IO.Path]::GetFullPath($Directory) }
-    return [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+    return [IO.Path]::GetFullPath(([IO.Path]::Combine($PSScriptRoot,'..')))
 }
 
 function Test-RunProfileName {
@@ -64,7 +64,7 @@ function Get-RunProfilePath {
     #>
     param([Parameter(Mandatory)][string]$Name, [string]$Directory)
     if (-not (Test-RunProfileName $Name)) { throw "RunProfileInvalidName: '$Name'" }
-    return Join-Path (Get-RunProfileDirectory $Directory) "$Name.profile.ps1"
+    return [IO.Path]::Combine((Get-RunProfileDirectory $Directory),"$Name.profile.psd1")
 }
 
 function Get-RunProfileNames {
@@ -77,8 +77,8 @@ function Get-RunProfileNames {
     param([string]$Directory)
     $root = Get-RunProfileDirectory $Directory
     if (-not (Test-Path -LiteralPath $root -PathType Container)) { return @() }
-    $names = foreach ($file in [IO.Directory]::EnumerateFiles($root, '*.profile.ps1')) {
-        $name = [IO.Path]::GetFileName($file).Substring(0, [IO.Path]::GetFileName($file).Length - '.profile.ps1'.Length)
+    $names = foreach ($file in [IO.Directory]::EnumerateFiles($root, '*.profile.psd1')) {
+        $name = [IO.Path]::GetFileName($file).Substring(0, [IO.Path]::GetFileName($file).Length - '.profile.psd1'.Length)
         if (Test-RunProfileName $name) { $name }
     }
     return @($names | Sort-Object -CaseSensitive)
@@ -129,13 +129,13 @@ function Read-RunProfile {
     .SYNOPSIS
     Loads and validates a profile file without ever executing code from it.
     .PARAMETER Path
-    Profile file path; its file name must be `<Name>.profile.ps1`.
+    Profile file path; its file name must be `<Name>.profile.psd1`.
     #>
     param([Parameter(Mandatory)][string]$Path)
     $text = Read-RunTextFile -Path $Path
     $expected = [IO.Path]::GetFileName($Path)
-    if (-not $expected.EndsWith('.profile.ps1', [StringComparison]::Ordinal)) { throw "RunProfileInvalidFileName: $expected" }
-    $expected = $expected.Substring(0, $expected.Length - '.profile.ps1'.Length)
+    if (-not $expected.EndsWith('.profile.psd1', [StringComparison]::Ordinal)) { throw "RunProfileInvalidFileName: $expected" }
+    $expected = $expected.Substring(0, $expected.Length - '.profile.psd1'.Length)
     try {
         $block = [scriptblock]::Create($text)
         $block.CheckRestrictedLanguage([string[]]@(), [string[]]@('true', 'false', 'null'), $false)
@@ -235,7 +235,7 @@ function Resolve-RunProfileTarget {
     Script directory override.
     #>
     param([Parameter(Mandatory)][hashtable]$Profile, [string]$ScriptDirectory)
-    $path = Join-Path (Get-RunScriptDirectory $ScriptDirectory) $Profile.Script
+    $path = [IO.Path]::Combine((Get-RunScriptDirectory $ScriptDirectory),$Profile.Script)
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "RunProfileTargetNotFound: $($Profile.Script)" }
     return $path
 }

@@ -39,80 +39,11 @@ Writes the missing or stale credits block into every non-compliant file.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$DocsPath = (Join-Path (Split-Path $PSScriptRoot -Parent) 'docs'),
+    [string]$DocsPath = ([IO.Path]::Combine((Split-Path $PSScriptRoot -Parent),'docs')),
     [string]$RootPath = (Split-Path $PSScriptRoot -Parent),
-    [string]$CreditsPath = (Join-Path (Split-Path $PSScriptRoot -Parent) 'CREDITS.md'),
+    [string]$CreditsPath = ([IO.Path]::Combine((Split-Path $PSScriptRoot -Parent),'CREDITS.md')),
     [switch]$NoRecurse,
     [switch]$Apply
 )
-$ErrorActionPreference = 'Stop'
-
-$beginMarker = '<!-- credits:begin -->'
-$endMarker = '<!-- credits:end -->'
-$blockRegex = [System.Text.RegularExpressions.Regex]::new(
-    [regex]::Escape($beginMarker) + '.*?' + [regex]::Escape($endMarker),
-    [System.Text.RegularExpressions.RegexOptions]::Singleline)
-
-if (-not (Test-Path -LiteralPath $DocsPath)) { throw "DocsPathMissing: $DocsPath" }
-if (-not (Test-Path -LiteralPath $RootPath)) { throw "RootPathMissing: $RootPath" }
-if (-not (Test-Path -LiteralPath $CreditsPath)) { throw "CreditsFileMissing: $CreditsPath" }
-$creditsFullPath = (Resolve-Path -LiteralPath $CreditsPath).Path
-$creditsName = Split-Path -Leaf $CreditsPath
-
-function New-CreditsBlock {
-    <#
-    .SYNOPSIS
-    Builds the regex-identifiable credits block for one docs/*.md file.
-    .PARAMETER RelativePath
-    Relative credits path, or the public absolute URL for distributed agent documents.
-    #>
-    param([Parameter(Mandatory)][string]$RelativePath)
-    $lines = @(
-        $beginMarker,
-        '## Credits',
-        '',
-        "This document is covered by the mandatory [CREDITS.md]($RelativePath), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).",
-        $endMarker
-    )
-    return ($lines -join "`n")
-}
-
-$files = @(
-    Get-ChildItem -LiteralPath $DocsPath -Filter '*.md' -File -Recurse:(-not $NoRecurse)
-    Get-ChildItem -LiteralPath $RootPath -Filter 'README*.md' -File
-) | Where-Object { $_.FullName -ne $creditsFullPath } | Sort-Object FullName -Unique
-
-$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-$portableAgentDocs = @('agents/AGENTS.md', 'agents/SKILL.md') | ForEach-Object { [IO.Path]::GetFullPath((Join-Path $DocsPath $_)) }
-$report = foreach ($file in $files) {
-    $relativeDir = [System.IO.Path]::GetRelativePath($file.DirectoryName, (Split-Path -Parent $creditsFullPath)) -replace '\\', '/'
-    $creditsRelative = if ($relativeDir -eq '.') { $creditsName } else { $relativeDir.TrimEnd('/') + '/' + $creditsName }
-    $creditsTarget = if ($file.FullName -in $portableAgentDocs) {
-        'https://github.com/FrenchExDev2/QuietCli.PoSh/blob/HEAD/CREDITS.md'
-    } else { $creditsRelative }
-    $expectedBlock = New-CreditsBlock -RelativePath $creditsTarget
-
-    $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
-    $match = $blockRegex.Match($content)
-    $state = if (-not $match.Success) { 'Missing' }
-             elseif ($match.Value.Trim() -ne $expectedBlock.Trim()) { 'Stale' }
-             else { 'UpToDate' }
-
-    if ($state -ne 'UpToDate' -and $Apply -and $PSCmdlet.ShouldProcess($file.FullName, "Write credits block ($state)")) {
-        $newContent = if ($match.Success) {
-            $content.Substring(0, $match.Index) + $expectedBlock + $content.Substring($match.Index + $match.Length)
-        } else {
-            $content.TrimEnd("`r", "`n") + "`n`n" + $expectedBlock + "`n"
-        }
-        [void][System.IO.File]::WriteAllTextAsync($file.FullName, $newContent, $utf8NoBom).GetAwaiter().GetResult()
-        $state = "$state (Applied)"
-    }
-
-    [pscustomobject]@{ Path = $file.FullName; State = $state }
-}
-
-$report
-$nonCompliant = $report | Where-Object { $_.State -notin 'UpToDate' -and $_.State -notlike '* (Applied)' }
-if ($nonCompliant) {
-    throw ('DocsCreditsNonCompliant: ' + (($nonCompliant | ForEach-Object { "$($_.Path) ($($_.State))" }) -join '; '))
-}
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Sync-DocsCredits.psm1')) -DisableNameChecking -ErrorAction Stop
+Invoke-QuietScriptSyncDocsCredits @PSBoundParameters

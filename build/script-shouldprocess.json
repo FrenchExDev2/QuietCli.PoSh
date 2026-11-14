@@ -4,42 +4,47 @@
     {
       "Path": "scripts/Assert-GalleryCheckpoint.ps1",
       "Reason": "Reviewed read-only entry point: validates repository metadata and invokes only read-only gates; no apply, build, publication or repository mutation.",
-      "SHA256": "4B1D73F850DB4C8623B8D9FB3D131AEDC205023BEF78D146D9DF516558954A6F"
+      "SHA256": "4FA26401BC787B91A9EC42F6D524E7F192D05911A115819B2C6BE9E113A09835"
     },
     {
       "Path": "scripts/Test-GitHubWorkflowDocs.ps1",
       "Reason": "Check-only workflow documentation; guarded Ensure-QuietResource can prepare a missing parser, never Apply documentation, build, stage, publish or mutate Git metadata. WhatIf propagates.",
-      "SHA256": "02766B8D95EC585E0F82F5977CF381ACDA52EE35118D5E3A6A7E2B87F4A407D2"
+      "SHA256": "33843C1C7345897C60ABE1CF1975243A43BB3451AF0AF28659ABFD7EDD848883"
     },
     {
       "Path": "scripts/Test-ScriptShouldProcess.ps1",
       "Reason": "Reviewed read-only entry point: validates repository metadata and invokes only read-only gates; no apply, build, publication or repository mutation.",
-      "SHA256": "8BAFA2DB4B7042725A2FDAEEA13EACCCBB552E280877B2335158E89F10B3DFB3"
+      "SHA256": "64536C0136CFE54B8BEC36A1F233B8EBBEDD670E4C45582F8FC6E2CC0544BD56"
     },
     {
       "Path": "scripts/Invoke-WorkspaceChecks.ps1",
       "Reason": "Check-only ordered registry; guarded parser preparation may write prerequisite resource/cache files. No documentation Apply, build, staging, commit or publication; WhatIf propagates.",
-      "SHA256": "09ECB26480AE6E93B5A025A22DC1F78A918E18BDAD45988A9F17A82AF32B120A"
+      "SHA256": "4B1B95D45892A98CAB9B8BFAAF2AC8E648A136194BD2C06BF363D9DEA4CC42D8"
     },
     {
       "Path": "scripts/Test-Resources.ps1",
       "Reason": "Read-only resource documentation comparison; never restores payloads, downloads, builds, applies documentation or changes repository metadata.",
-      "SHA256": "7D28BBA9285FE37676974E7827E2C4C69D5AE3C4D5B82AA44363B5DC8CEA116D"
+      "SHA256": "FF93F47E78D5083387F833213D2551583FB5EB2D7903D686C02A4B9FF4CEAB63"
     },
     {
       "Path": "scripts/Test-ScriptContracts.ps1",
       "Reason": "Read-only script contract comparison; parses sources without executing them and never applies headers, guards or generated documentation.",
-      "SHA256": "F754310D5D3149013F980FD502F6F24D99BFB47A95EB33A5EF26E0079BED92B3"
+      "SHA256": "43228BDDA6693378F7A165098E16E1968B868E75666838E9587E8275F6E4C33D"
     },
     {
       "Path": "scripts/Watch-DotNetTests.ps1",
-      "SHA256": "B3293C0D13D480FDC523271F37A960DB8871D356253E3D0D59554242B2C43B7D",
+      "SHA256": "1AE5470CBD1A2762719F343C5C6D340C86766CBE3915076EAD3C03B008264A35",
       "Reason": "Reviewed read-only observer: delegates solely to the shared Watch-Tests monitor, reading saved run reports and drawing terminal output; no source/report writes or test execution."
     },
     {
       "Path": "scripts/Test-TestCaseMetadata.ps1",
       "Reason": "Reviewed read-only gate: parses UTF-8 case sources and inert manifest scheduling declarations without importing the product engine, executing tests, downloading, building or writing files.",
-      "SHA256": "BFB130D4FCE578A30A8853F6C62F94F34038B7119588EB76A59B76081001F01B"
+      "SHA256": "854F09EA3A64EB4BB89995966EBFBD6F3B910293AC7F3AD69B836E7FF949DE46"
+    },
+    {
+      "Path": "scripts/Test-ScriptLayout.ps1",
+      "Reason": "Read-only structural gate: parses automation sources and reads filesystem metadata without importing inspected subjects, executing tools, network calls or writes.",
+      "SHA256": "FDB58732FDDC0F41CFE3B487288722DA7508CE3CE07BFA377B09136D1CFDDAAD"
     }
   ],
   "LegacyPaths": [

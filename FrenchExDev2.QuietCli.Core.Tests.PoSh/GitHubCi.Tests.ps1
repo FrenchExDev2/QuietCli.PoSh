@@ -8,7 +8,7 @@ function Test-QuietContainerInputs {
     Owned staging/property fixtures, never a real container or registry.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot scripts/ContainerInputs.ps1)
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/ContainerInputs.psm1) -DisableNameChecking -ErrorAction Stop
     $fixture=Join-Path $RunDirectory container-input-fixture
     foreach($name in @('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh')){
         $directory=Join-Path $fixture $name;[void][IO.Directory]::CreateDirectory($directory)
@@ -57,7 +57,7 @@ function Test-QuietCompanionHelperScope {
     Owned report directory for the isolated module probe.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     $script={
             param($root,$run)
             $ErrorActionPreference='Stop'
@@ -76,7 +76,7 @@ function Test-QuietCompanionHelperScope {
                 param($root,$run,$helpers)
                 foreach($name in $helpers){
                     $command=Get-Command $name -ListImported -ErrorAction Stop
-                    $expected=Join-Path $root ('scripts/'+$(if($name -eq 'Invoke-CiProcess'){'Ci.Process.ps1'}elseif($name -eq 'Get-QuietWorkspaceProjects'){'WorkspaceProjects.ps1'}else{'Common.ps1'}))
+                    $expected=[IO.Path]::Combine($root,('scripts/lib/'+$(if($name -eq 'Invoke-CiProcess'){'Ci.Process.psm1'}elseif($name -eq 'Get-QuietWorkspaceProjects'){'WorkspaceProjects.psm1'}elseif($name -eq 'Write-WorkspaceJson'){'WorkspaceJson.psm1'}else{'Common.psm1'})))
                     if([IO.Path]::GetFullPath($command.ScriptBlock.File) -cne [IO.Path]::GetFullPath($expected)){throw ('UnexpectedCompanionHelperSource: '+$name)}
                 }
                 if((ConvertTo-QuietByteCount '1 KiB') -ne 1024){throw 'CompanionByteCountHelperChanged'}
@@ -159,7 +159,7 @@ function Test-QuietGitHubCiJsonReceipts {
     Owned fixture directory; no registry access or real container execution is performed.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     $fixture=Join-Path $RunDirectory 'github-json-receipts'
     $receipt=Join-Path $fixture 'clean/artifacts/github-matrix/selection.json'
     if(Test-Path -LiteralPath (Split-Path $receipt -Parent)){throw 'GitHubJsonRegressionRequiresAbsentParent'}
@@ -193,11 +193,12 @@ function Test-QuietGitHubCiJsonReceipts {
     if(!$killed){throw 'WorkspaceJsonMissingParentMutantSurvived'}
     $scripts=Join-Path $fixture 'selector/scripts'
     [void][IO.Directory]::CreateDirectory($scripts)
-    foreach($name in @('Select-GitHubCiMatrix.ps1','Common.ps1','EnvFile.ps1','Ci.Process.ps1','SourceIdentity.ps1','RuntimeTargets.ps1','ReportPaths.ps1','WorkspaceProjects.ps1','GitHubCi.ps1')){
+    Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) -Destination ([IO.Path]::Combine($scripts,'lib')) -Recurse
+    foreach($name in @('Select-GitHubCiMatrix.ps1')){
         Copy-Item -LiteralPath (Join-Path $WorkspaceRoot "scripts/$name") -Destination $scripts
     }
     $adapter='function Get-QuietCiRegistryDigest { param($Plan,$Token,$Actor,[switch]$IncludeConfiguration); return $null }'
-    [void][IO.File]::WriteAllTextAsync((Join-Path $scripts CiImages.ps1),$adapter,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    [void][IO.File]::WriteAllTextAsync(([IO.Path]::Combine($scripts,'lib/CiImages.psm1')),$adapter,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     $plan='param($WorkspaceRoot,$RuntimeIdentifier,$Suite,[switch]$PlanOnly); if($Suite -notin @("Core","Git","Vagrant","All")){throw "SuiteNotForwarded"}; [pscustomobject]@{Platform=$(if($RuntimeIdentifier.Contains("-musl-")){"alpine"}else{"debian"})}'
     foreach($name in @('New-CiSuiteImage.ps1')){[void][IO.File]::WriteAllTextAsync((Join-Path $scripts $name),$plan,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}
     foreach($suite in @('Core','Git','Vagrant','All')){
@@ -225,8 +226,8 @@ function Test-QuietGitHubCi {
     Owned fixture and property campaign directory.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
-    . (Join-Path $WorkspaceRoot 'scripts/GitHubCi.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/GitHubCi.psm1') -DisableNameChecking -ErrorAction Stop
     . (Join-Path $PSScriptRoot 'GitHubImageAdapters.Tests.ps1')
     Test-QuietGitHubImageAdapters -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
     $seed=20261110;$random=[Random]::new($seed);$properties=0;$gateCases=0
@@ -281,8 +282,9 @@ function Test-QuietGitHubCi {
             Copy-Item -LiteralPath $manifest -Destination $target
         }
     }
-    foreach($name in @('Invoke-GitHubCi.ps1','Common.ps1','EnvFile.ps1','Ci.Process.ps1','SourceIdentity.ps1','RuntimeTargets.ps1','ReportPaths.ps1','WorkspaceProjects.ps1')){Copy-Item -LiteralPath (Join-Path $WorkspaceRoot "scripts/$name") -Destination $scripts}
-    $worker='param($WorkspaceRoot,$RunDirectory,$Suite,$ExpectedRuntimeIdentifier,[switch]$SkipTty); . (Join-Path $PSScriptRoot Common.ps1); if(![IO.Path]::IsPathFullyQualified($WorkspaceRoot) -or ![IO.Path]::IsPathFullyQualified($RunDirectory)){throw "GitHubWorkerPathsMustBeAbsolute"}; Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State="Success";Passed=3;Failed=0};WorkerPid=$PID;Suite=$Suite;SkipTty=[bool]$SkipTty}'
+    Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) -Destination ([IO.Path]::Combine($scripts,'lib')) -Recurse
+    Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/Invoke-GitHubCi.ps1')) -Destination $scripts
+    $worker='param($WorkspaceRoot,$RunDirectory,$Suite,$ExpectedRuntimeIdentifier,[switch]$SkipTty); Import-Module ([IO.Path]::Combine($PSScriptRoot,"lib/Common.psm1")) -DisableNameChecking -ErrorAction Stop; if(![IO.Path]::IsPathFullyQualified($WorkspaceRoot) -or ![IO.Path]::IsPathFullyQualified($RunDirectory)){throw "GitHubWorkerPathsMustBeAbsolute"}; Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,"summary.json")) @{State=@{State="Success";Passed=3;Failed=0};WorkerPid=$PID;Suite=$Suite;SkipTty=[bool]$SkipTty}'
     [void][IO.File]::WriteAllTextAsync((Join-Path $scripts 'Invoke-TestWorker.ps1'),$worker,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     $previous=$env:GITHUB_ACTIONS
     try{

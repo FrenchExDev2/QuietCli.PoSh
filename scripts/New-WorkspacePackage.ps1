@@ -13,12 +13,12 @@ Optional exact source project names to package; omitted packages are not archive
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputDirectory,[switch]$RequireReadyToRun,[string[]]$Module=@())
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-WorkspacePackage')){return}
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
-. (Join-Path $PSScriptRoot 'AgentDocuments.ps1')
+$ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/AgentDocuments.psm1')) -DisableNameChecking -ErrorAction Stop
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 Assert-QuietPtyPublications $WorkspaceRoot
-$lock=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'repositories.lock.json') -Encoding utf8 -Raw|ConvertFrom-Json
+$lock=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'repositories.lock.json')) -Encoding utf8 -Raw|ConvertFrom-Json
 foreach($name in $Module){if($name -cnotin @($lock.Projects.Name)){throw ('PackageProjectUnknown: '+$name)}}
 $roots=if($Module.Count){$Module}else{@($lock.Projects.Name)}
 $selected=@(Get-QuietWorkspaceBuildSelection -WorkspaceRoot $WorkspaceRoot -Module $roots)
@@ -39,17 +39,17 @@ foreach($rid in @(if($selected -ccontains 'FrenchExDev2.QuietCli.Core.PoSh'){(Ge
 if(Test-Path -LiteralPath $OutputDirectory){throw 'PackageOutputAlreadyExists'}
 [void][IO.Directory]::CreateDirectory($OutputDirectory)
 foreach($repository in $lock.Projects | Where-Object {!$Module.Count -or $_.Name -cin $Module}){
-    $source=Join-Path $WorkspaceRoot $repository.Path;$stage=Join-Path $OutputDirectory $repository.Name
+    $source=[IO.Path]::Combine($WorkspaceRoot,$repository.Path);$stage=[IO.Path]::Combine($OutputDirectory,$repository.Name)
     [void][IO.Directory]::CreateDirectory($stage)
     foreach($item in Get-ChildItem -LiteralPath $source -Force){
         if($item.Name -in @('.git','.gitignore','bin','obj','artifacts','engine','fixture','engine-tests','parser-tests','tools','recall-tools','global.json')){continue}
         Copy-Item -LiteralPath $item.FullName -Destination $stage -Recurse
     }
-    if(!(Test-Path -LiteralPath (Join-Path $stage ($repository.Name+'.psd1')))){throw 'PackageManifestMissing'}
+    if(!(Test-Path -LiteralPath ([IO.Path]::Combine($stage,($repository.Name+'.psd1'))))){throw 'PackageManifestMissing'}
     if($repository.Name -eq 'FrenchExDev2.QuietCli.Core.PoSh'){Copy-QuietProductionAgentDocuments -WorkspaceRoot $WorkspaceRoot -ModuleDirectory $stage}
     $files=foreach($file in Get-ChildItem -LiteralPath $stage -Recurse -File|Sort-Object FullName){@{Path=[IO.Path]::GetRelativePath($stage,$file.FullName).Replace('\','/');SHA256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash;Bytes=$file.Length}}
-    Write-WorkspaceJson (Join-Path $OutputDirectory ($repository.Name+'.manifest.json')) @{Module=$repository.Name;Revision=(Read-QuietRepositoryValue $WorkspaceRoot @('rev-parse','--verify','HEAD'));SourceSHA256=$repository.SourceSHA256;Files=@($files)}
-    $archive=Join-Path $OutputDirectory ($repository.Name+'.zip')
+    Write-WorkspaceJson ([IO.Path]::Combine($OutputDirectory,($repository.Name+'.manifest.json'))) @{Module=$repository.Name;Revision=(Read-QuietRepositoryValue $WorkspaceRoot @('rev-parse','--verify','HEAD'));SourceSHA256=$repository.SourceSHA256;Files=@($files)}
+    $archive=[IO.Path]::Combine($OutputDirectory,($repository.Name+'.zip'))
     $output=[IO.FileStream]::new($archive,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None,32768,$true)
     $zip=[IO.Compression.ZipArchive]::new($output,[IO.Compression.ZipArchiveMode]::Create,$false,[Text.Encoding]::UTF8)
     try{

@@ -132,7 +132,7 @@ try {
         if ($dbBefore -cne $dbAfter) { throw 'ScriptGenerationWroteMeasurements' }
     }
     $cases['CI argument quoting round-trips hostile values through a child process'] = {
-        . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
+        Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Ci.Process.psm1') -DisableNameChecking -ErrorAction Stop
         $echo = Join-Path $root 'echo-args.ps1'
         [IO.File]::WriteAllText($echo, '[Console]::Out.Write(($args | ConvertTo-Json -Compress))', [Text.UTF8Encoding]::new($false))
         $pwsh = (Get-Command pwsh -CommandType Application | Select-Object -First 1).Source

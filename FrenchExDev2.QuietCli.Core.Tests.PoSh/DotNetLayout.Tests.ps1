@@ -71,7 +71,7 @@ function Test-DotNetNativeBoundary {
     }finally{Remove-Module $module -Force -ErrorAction SilentlyContinue}
 }
 try {
-    . (Join-Path $workspace 'scripts/ScriptShouldProcess.ps1')
+    Import-Module (Join-Path $workspace 'scripts/lib/ScriptShouldProcess.psm1') -DisableNameChecking -ErrorAction Stop
     $fixture=Join-Path $root 'policy'
     $null=[IO.Directory]::CreateDirectory((Join-Path $fixture 'scripts/lib'))
     $null=[IO.Directory]::CreateDirectory((Join-Path $fixture 'build'))
@@ -125,7 +125,7 @@ try {
     Assert-DotNetLayout ((Get-Content $maintained -Raw -Encoding utf8) -eq '# maintained copy') 'A subsequent import preserves repository-specific integrations.'
     Test-DotNetNativeBoundary -ModulePath (Join-Path $workspace 'scripts/lib/DotNetReadiness.psm1')
     $baselineAssertions=$assertions
-    $policySource=Get-Content (Join-Path $workspace 'scripts/ScriptShouldProcess.ps1') -Raw -Encoding utf8
+    $policySource=Get-Content (Join-Path $workspace 'scripts/lib/ScriptShouldProcess.psm1') -Raw -Encoding utf8
     $changed=$policySource.Replace("`$relative -notlike 'scripts/lib/*'",'$false')
     if($changed -ceq $policySource){throw 'LayoutMutationAnchorMissing'}
     $policyMutant=Join-Path $root 'PolicyMutant.ps1'

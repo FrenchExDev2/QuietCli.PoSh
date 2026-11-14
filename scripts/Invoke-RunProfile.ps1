@@ -4,7 +4,7 @@
 Runs a named run profile, or lists the available ones.
 
 .DESCRIPTION
-Loads `<Name>.profile.ps1` (data only), overlays the caller arguments on its parameters, validates them against the
+Loads `<Name>.profile.psd1` (data only), overlays the caller arguments on its parameters, validates them against the
 target script, forwards LogLevel/LogPath when the target accepts them, then runs the target. With -Profiler the target
 runs under the pinned PSProfiler and a top-50 JSON report is written. Counters and a leveled log describe every step.
 
@@ -56,7 +56,7 @@ param(
     [Parameter(ParameterSetName = 'Run')][string]$ProfilerOutputDirectory
 )
 $ErrorActionPreference = 'Stop'
-foreach ($module in 'RunFormat', 'RunProfileStore', 'RunProfiler') { Import-Module (Join-Path $PSScriptRoot "lib/$module.psm1") -Force }
+foreach ($module in 'RunFormat', 'RunProfileStore', 'RunProfiler') { Import-Module ([IO.Path]::Combine($PSScriptRoot,"lib/$module.psm1")) -DisableNameChecking -ErrorAction Stop }
 
 $logger = New-RunLogger -Level $LogLevel -Component 'run-profile' -LogPath $LogPath
 $clock = [Diagnostics.Stopwatch]::StartNew()
@@ -96,7 +96,7 @@ try {
 
     $logger.Increment('profile.run.started')
     if ($Profiler) {
-        if (-not $ProfilerOutputDirectory) { $ProfilerOutputDirectory = Join-Path ([IO.Path]::GetTempPath()) ("QuietCli2-run-profiles/$Name-" + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')) }
+        if (-not $ProfilerOutputDirectory) { $ProfilerOutputDirectory = [IO.Path]::Combine(([IO.Path]::GetTempPath()),("QuietCli2-run-profiles/$Name-" + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ'))) }
         $captured = [Collections.Generic.List[object]]::new()
         $report = Invoke-RunProfiled -ScriptBlock { foreach ($item in (& $target @parameters)) { $captured.Add($item) } } `
             -OutputDirectory $ProfilerOutputDirectory -Label $Name -ProfilerModulePath $ProfilerModulePath -Logger $logger

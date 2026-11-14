@@ -14,7 +14,7 @@ on:
       - 'CREDITS.md'
       - 'scripts/Sync-Credits.ps1'
       - 'scripts/Sync-DocsCredits.ps1'
-      - 'scripts/WorkspaceProjects.ps1'
+      - 'scripts/lib/WorkspaceProjects.psm1'
       - '.github/workflows/sync-credits-check.yml'
       - '.github/workflows/sync-credits-apply.yml'
   push:

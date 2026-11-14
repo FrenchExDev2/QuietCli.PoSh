@@ -8,8 +8,8 @@ function Test-QuietCiDiagnostics {
     Owned directory for synthetic evidence and campaign results.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
-    . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
     $seed=20261110;$random=[Random]::new($seed)
     for($i=0;$i -lt 128;$i++){
         $token='synthetic-'+[Convert]::ToHexString([byte[]]@(1..24|ForEach-Object {$random.Next(0,256)}))

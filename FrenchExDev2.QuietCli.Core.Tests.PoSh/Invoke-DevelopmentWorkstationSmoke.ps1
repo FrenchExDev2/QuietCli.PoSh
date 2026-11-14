@@ -14,7 +14,7 @@ Internal background worker; use the ordinary entry point to retain the visible m
 [CmdletBinding()]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[ValidateSet('Windows','Debian','Ubuntu','Alpine','Fedora')][string[]]$Targets=@('Windows','Debian','Ubuntu','Alpine','Fedora'),[switch]$Worker)
 $ErrorActionPreference='Stop'
-. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$Worker){
     if(!$IsWindows){throw 'Launch the visible smoke monitor from Windows.'}
     if(!$RunDirectory){$RunDirectory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'workstation') ([guid]::NewGuid().ToString('N'))}
@@ -115,13 +115,13 @@ $first=./scripts/Install-DevelopmentWorkstation.ps1 @options
 if($first.State -ne 'Ready'){throw 'GuestFirstInstallationIncomplete'}
 . $first.ActivationScript
 # Activation must also preserve a framework-dependent PowerShell host on Alpine.
-. ./scripts/Ci.Process.ps1
+. ./scripts/lib/Ci.Process.psm1
 if((Invoke-CiProcess (Join-Path $PSHOME 'pwsh') @('-Command','[Environment]::Version.ToString()')).Outcome -ne 'Success'){throw 'GuestActivatedPowerShellFailed'}
 $check=./scripts/Install-DevelopmentWorkstation.ps1 @options -CheckOnly
 if($check.State -ne 'Ready' -or $check.Actions.Count){throw 'GuestInstalledInventoryIncomplete'}
 $second=./scripts/Install-DevelopmentWorkstation.ps1 @options
 if($second.State -ne 'Ready' -or $second.Actions.Count){throw 'GuestIdempotenceFailed'}
-. ./scripts/Ci.Process.ps1
+. ./scripts/lib/Ci.Process.psm1
 if((Invoke-CiProcess dotnet @('--version') -WorkingDirectory /workspace).Outcome -ne 'Success'){throw 'GuestActivatedSdkFailed'}
 $source='/evidence/fuzz-smoke-'+$name+'.c'
 $binary='/evidence/fuzz-smoke-'+$name

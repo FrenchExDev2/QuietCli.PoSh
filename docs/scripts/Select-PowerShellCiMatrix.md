@@ -15,7 +15,7 @@ OutputPath is the existing GitHub output file. It receives `windows_matrix` and 
 
 ## Dependencies and effects
 
-Uses the pure policy in [GitHubCi](GitHubCi.md), local UTF-8 JSON and bounded matrix output. No product import, native execution, network, host installation or qualification receipt is produced.
+Uses the pure policy in [GitHubCi](lib/GitHubCi.md), local UTF-8 JSON and bounded matrix output. No product import, native execution, network, host installation or qualification receipt is produced.
 
 ## Critical review and verdict
 

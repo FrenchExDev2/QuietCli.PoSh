@@ -47,7 +47,7 @@ flowchart TD
     R --> G[Aggregate every selected execution path]
 ```
 
-Alpine ARM64 keeps JavaScript checkout/upload actions on Ubuntu and tests real musl ARM64 in Docker. This is native execution, without architecture emulation. Job containers retain networking for checkout/setup; only fallback guest tests are described as networkless. [GitHubCi](../scripts/GitHubCi.md) owns routing and aggregate-result policy; [Linux images](linux-images.md) owns cache preparation.
+Alpine ARM64 keeps JavaScript checkout/upload actions on Ubuntu and tests real musl ARM64 in Docker. This is native execution, without architecture emulation. Job containers retain networking for checkout/setup; only fallback guest tests are described as networkless. [GitHubCi](../scripts/lib/GitHubCi.md) owns routing and aggregate-result policy; [Linux images](linux-images.md) owns cache preparation.
 
 ## Qualification and artifacts
 

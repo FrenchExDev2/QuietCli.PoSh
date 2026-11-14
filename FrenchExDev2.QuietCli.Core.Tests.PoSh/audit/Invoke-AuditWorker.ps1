@@ -9,12 +9,12 @@ QuietCli2 workspace.
 Dedicated evidence directory; no real secret or user repository is read.
 #>
 [CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory)
-$ErrorActionPreference='Stop';. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+$ErrorActionPreference='Stop';Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 [void][IO.Directory]::CreateDirectory($RunDirectory)
 $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Régressions sécurité et logiciel';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;ProcessId=$PID;StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null;State='Running';Passed=0;Failed=0;Case='Starting independent security checks';Error=$null}
 $checks=[Collections.Generic.List[object]]::new();Write-WorkspaceJson (Join-Path $RunDirectory 'status.json') $state
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
-. (Join-Path $WorkspaceRoot 'scripts/TestConfiguration.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/TestConfiguration.psm1') -DisableNameChecking -ErrorAction Stop
 Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory 'audit.sqlite')
 function Add-AuditEvidence {
     <#

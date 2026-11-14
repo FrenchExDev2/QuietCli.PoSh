@@ -1,5 +1,9 @@
 # Run profiles
 
+Profiles use the data-only `.profile.psd1` extension. To reuse a legacy literal `.profile.ps1`
+file, rename it to `.profile.psd1` without changing its contents; the old extension is no
+longer discovered. Executable `.ps1` files under scripts follow the Verb-Noun entry-point convention.
+
 A **run profile** is a named, data-only file that binds a script to default arguments, so that a measurement
 campaign (for example "100 cold-start pairs" or "1000 cold-start pairs") is started with one short, reproducible
 command instead of a long argument list.
@@ -25,7 +29,7 @@ Local tests retain the shared visible monitor and external temporary report root
 
 ## Profile file format
 
-`scripts/RunProfiles/<name>.profile.ps1` holds exactly one hashtable literal:
+`scripts/RunProfiles/<name>.profile.psd1` holds exactly one hashtable literal:
 
 ```powershell
 @{

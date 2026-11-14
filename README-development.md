@@ -1,5 +1,7 @@
 # Development
 
+Automation entry points use `Verb-Noun` names and contain no functions. Put functions in `scripts/lib/*.psm1`, import with `-DisableNameChecking -ErrorAction Stop` and compose paths with `System.IO.Path`. Document the entry point and its library separately. Data profiles use `.profile.psd1`. `Test-ScriptLayout.ps1` enforces these rules through the shared local, commit and CI registry; see [the automation contract](docs/README-automation-contracts.md).
+
 [Back to the QuietCli overview](README.md) · [Tests and qualification](README-qualification.md) · [Qualification: when, where and how](README-qualification-when-where-how.md) · [Repository and distribution](README-distribution.md)
 
 Prepare a new machine with the [development workstation guide](README-development-workstation.md):

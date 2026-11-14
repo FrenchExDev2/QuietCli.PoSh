@@ -11,7 +11,7 @@ Private SQLite file for this baseline or mutant.
 #>
 [CmdletBinding()]param([Parameter(Mandatory)][string]$ModulePath,[Parameter(Mandatory)][string]$Fixture,[Parameter(Mandatory)][string]$DatabasePath)
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot '../../scripts/TestConfiguration.ps1')
+Import-Module (Join-Path $PSScriptRoot '../../scripts/lib/TestConfiguration.psm1') -DisableNameChecking -ErrorAction Stop
 Initialize-QuietTestConfiguration -DatabasePath $DatabasePath -Hosting InProcess
 Import-Module $ModulePath -Force
 $dotnet=(Get-Command dotnet -CommandType Application|Select-Object -First 1).Source

@@ -1,0 +1,85 @@
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'BinaryHeaders.psm1')) -DisableNameChecking -ErrorAction Stop
+function Get-QuietRuntimeTargets {
+    <#
+    .SYNOPSIS
+    Reads the explicit release platform catalogue without running a binary.
+    .PARAMETER WorkspaceRoot
+    QuietCli2 workspace.
+    #>
+    param([string]$WorkspaceRoot)
+    $catalogue=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh/runtime-targets.json')) -Encoding utf8 -Raw|ConvertFrom-Json
+    return $catalogue.Targets
+}
+function Get-QuietElfHeader {
+    <#
+    .SYNOPSIS
+    Reads a bounded ELF64 little-endian header and determines whether it requests an interpreter.
+    .PARAMETER Path
+    Native Linux executable; never loaded into PowerShell.
+    #>
+    param([string]$Path)
+    $stream=[IO.File]::OpenRead($Path);$reader=[IO.BinaryReader]::new($stream)
+    try{
+        $header=$reader.ReadBytes(64)
+        if($header.Length -ne 64 -or $header[0] -ne 127 -or $header[1] -ne 69 -or $header[2] -ne 76 -or $header[3] -ne 70 -or $header[4] -ne 2 -or $header[5] -ne 1){throw 'InvalidElf64Header'}
+        $offset=[BitConverter]::ToUInt64($header,32);$size=[BitConverter]::ToUInt16($header,54);$count=[BitConverter]::ToUInt16($header,56)
+        if($size -lt 56 -or $count -gt 1024 -or $offset -gt $stream.Length -or $offset+[long]$count*$size -gt $stream.Length){throw 'InvalidElfProgramHeaders'}
+        $interpreter=$false
+        for($index=0;$index -lt $count;$index++){$stream.Position=$offset+[long]$index*$size;if($reader.ReadUInt32() -eq 3){$interpreter=$true}}
+        return [pscustomobject]@{Machine=[BitConverter]::ToUInt16($header,18);HasInterpreter=$interpreter}
+    }finally{$reader.Dispose();$stream.Dispose()}
+}
+function Test-QuietReadyToRunImage {
+    <#
+    .SYNOPSIS
+    Checks the CLR native-header directory and ReadyToRun signature without loading the assembly.
+    .PARAMETER Path
+    Managed PE file to inspect.
+    #>
+    param([string]$Path)
+    $stream=[IO.File]::OpenRead($Path);$pe=[Reflection.PortableExecutable.PEReader]::new($stream)
+    try{
+        $header=$pe.PEHeaders.CorHeader
+        if(!$header -or $header.ManagedNativeHeaderDirectory.Size -lt 16){return $false}
+        $reader=$pe.GetSectionData($header.ManagedNativeHeaderDirectory.RelativeVirtualAddress).GetReader()
+        return $reader.ReadUInt32() -eq 0x00525452
+    }finally{$pe.Dispose();$stream.Dispose()}
+}
+function Assert-QuietRuntimePublication {
+    <#
+    .SYNOPSIS
+    Checks both managed assembly and apphost architectures against the release catalogue.
+    .PARAMETER Directory
+    One RID publication directory.
+    .PARAMETER Target
+    Explicit catalogue entry.
+    #>
+    param([string]$Directory,$Target)
+    $assembly=[IO.Path]::Combine($Directory,'QuietCli.Engine.dll')
+    $machine=Get-QuietPeMachine $assembly
+    # ReadyToRun encodes Linux in the PE machine using the runtime's native OS override.
+    $expected=if($Target.NativeFormat -eq 'ELF' -and (Test-QuietReadyToRunImage $assembly)){$Target.ManagedMachine -bxor 0x7B79}else{$Target.ManagedMachine}
+    if($machine -ne $expected){throw ('ManagedArchitectureMismatch: '+$Target.Rid)}
+    $apphost=[IO.Path]::Combine($Directory,$Target.Apphost)
+    $machine=if($Target.NativeFormat -eq 'PE'){Get-QuietPeMachine $apphost}else{(Get-QuietElfHeader $apphost).Machine}
+    if($machine -ne $Target.NativeMachine){throw ('ApphostArchitectureMismatch: '+$Target.Rid)}
+}
+function Assert-QuietPtyPublications {
+    <#
+    .SYNOPSIS
+    Checks that each shipped Linux bridge is static, has the expected machine and matches its source receipt.
+    .PARAMETER WorkspaceRoot
+    QuietCli2 workspace.
+    #>
+    param([string]$WorkspaceRoot)
+    $module=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')
+    $source=(Get-FileHash ([IO.Path]::Combine($module,'native/quietcli-pty.c')) -Algorithm SHA256).Hash
+    foreach($target in Get-QuietRuntimeTargets $WorkspaceRoot|Where-Object Pty){
+        $directory=[IO.Path]::Combine($module,('resources/transport/'+$target.Rid));$path=[IO.Path]::Combine($directory,'quietcli-pty')
+        $header=Get-QuietElfHeader $path
+        $receipt=Get-Content ([IO.Path]::Combine($directory,'build.json')) -Encoding utf8 -Raw|ConvertFrom-Json
+        if($header.Machine -ne $target.NativeMachine -or $header.HasInterpreter -or $receipt.SourceSHA256 -cne $source -or $receipt.ExecutableSHA256 -cne (Get-FileHash $path -Algorithm SHA256).Hash){throw ('PtyPublicationInvalid: '+$target.Rid)}
+    }
+}
+
+Export-ModuleMember -Function 'Get-QuietRuntimeTargets','Get-QuietElfHeader','Test-QuietReadyToRunImage','Assert-QuietRuntimePublication','Assert-QuietPtyPublications'

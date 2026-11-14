@@ -30,10 +30,10 @@ function Invoke-QuietCiCompanionWorkers {
     param([string]$WorkspaceRoot,[string]$RunDirectory,[object[]]$Selections,[Parameter(Mandatory)]$CoreSummary,
         [string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,
         [ValidateRange(1,32)][int]$MaxConcurrency=2,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,
-        [scriptblock]$OnProgress,[string]$WorkerPath=(Join-Path $PSScriptRoot '../Invoke-TestWorker.ps1'),[ValidateRange(0,32)][int]$WorkerBudget=0)
+        [scriptblock]$OnProgress,[string]$WorkerPath=([IO.Path]::Combine($PSScriptRoot,'../Invoke-TestWorker.ps1')),[ValidateRange(0,32)][int]$WorkerBudget=0)
     if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Run isolated companion suites after Core')){return}
     if($null -eq $CoreSummary -or !$CoreSummary.PSObject.Properties['Failed'] -or $CoreSummary.Failed -ne 0 -or $CoreSummary.Partial -or $CoreSummary.Incomplete){throw 'CompanionFanoutRequiresSuccessfulCompleteCore'}
-    . (Join-Path $PSScriptRoot '../Ci.Process.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop
     $names=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach($selection in $Selections){
         if($selection.Name -cnotmatch '\A[A-Z][A-Za-z0-9]*\z' -or $selection.Name -ieq 'Core' -or !$names.Add($selection.Name)){throw 'CompanionWorkerSelectionInvalid'}
@@ -46,12 +46,12 @@ function Invoke-QuietCiCompanionWorkers {
     foreach($selection in $Selections){$pending.Enqueue($selection)}
     $active=[Collections.Generic.List[object]]::new()
     $completed=[Collections.Generic.List[object]]::new()
-    $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
+    $runner=[IO.Path]::Combine($PSHOME,$(if($IsWindows){'pwsh.exe'}else{'pwsh'}))
     try{
         while($pending.Count -or $active.Count){
             while($pending.Count -and $active.Count -lt $MaxConcurrency){
                 $selection=$pending.Dequeue()
-                $directory=Join-Path $RunDirectory ('companions/'+$selection.Name)
+                $directory=[IO.Path]::Combine($RunDirectory,('companions/'+$selection.Name))
                 if(Test-Path -LiteralPath $directory){throw 'CompanionWorkerDirectoryExists'}
                 [void][IO.Directory]::CreateDirectory($directory)
                 # Streams remain inherited: no automatic capture, spool or business-output history.
@@ -64,7 +64,7 @@ function Invoke-QuietCiCompanionWorkers {
             foreach($worker in @($active.ToArray())){
                 if(([DateTimeOffset]::UtcNow-$worker.Started).TotalSeconds -gt $TimeoutSeconds){throw ('CompanionWorkerTimeout: '+$worker.Name)}
                 if(!$worker.Process.HasExited){continue}
-                $path=Join-Path $worker.Directory 'summary.json'
+                $path=[IO.Path]::Combine($worker.Directory,'summary.json')
                 if(!(Test-Path -LiteralPath $path)){throw ('CompanionWorkerSummaryMissing: '+$worker.Name)}
                 $summary=Get-Content -LiteralPath $path -Encoding utf8 -Raw|ConvertFrom-Json
                 if($worker.Process.ExitCode -ne 0 -or $summary.State.State -cne 'Success' -or $summary.State.Failed -ne 0 -or @($summary.Suites).Count -ne 1){throw ('CompanionWorkerFailed: '+$worker.Name)}
@@ -75,7 +75,7 @@ function Invoke-QuietCiCompanionWorkers {
                 $passed=0;$failed=0
                 foreach($entry in $completed){$passed+=$entry.Summary.State.Passed;$failed+=$entry.Summary.State.Failed}
                 foreach($worker in $active){
-                    $path=Join-Path $worker.Directory 'status.json'
+                    $path=[IO.Path]::Combine($worker.Directory,'status.json')
                     if(Test-Path -LiteralPath $path){$progress=Get-Content -LiteralPath $path -Encoding utf8 -Raw|ConvertFrom-Json;$passed+=$progress.Passed;$failed+=$progress.Failed}
                 }
                 $null=& $OnProgress $passed $failed

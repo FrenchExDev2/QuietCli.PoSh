@@ -9,7 +9,7 @@ function Test-QuietWorkstationResources {
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     $path=Join-Path $WorkspaceRoot 'scripts/lib/WorkstationResources.psm1'
-    $source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult().Replace(". (Join-Path `$PSScriptRoot '../Ci.Process.ps1')",'# Independent native boundary fixture.')
+    $source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult().Replace("Import-Module ([IO.Path]::Combine(`$PSScriptRoot,'Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop",'# Independent native boundary fixture.')
     $verify={param($candidate,$output)
         $module=New-Module -Name ('ResourceFixture'+[guid]::NewGuid().ToString('N')) -ScriptBlock ([scriptblock]::Create($candidate))
         try{& $module {
@@ -78,7 +78,7 @@ function Test-QuietWorkstationResources {
     foreach($mutation in $mutations){$candidate=$source.Replace($mutation.Find,$mutation.Replace);if($candidate -ceq $source){throw ('InvalidResourceMutant: '+$mutation.Id)};$killed=$false;try{& $verify $candidate (Join-Path $RunDirectory ('resource-'+$mutation.Id))}catch{$killed=$true};if(!$killed){throw ('ResourceMutantSurvived: '+$mutation.Id)}}
     # Real filesystem cleanup stays inside an independently named disposable workspace/report root.
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/WorkstationResources.psm1')
-    . (Join-Path $WorkspaceRoot 'scripts/ReportPaths.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/ReportPaths.psm1') -DisableNameChecking -ErrorAction Stop
     $fixtureWorkspace=Join-Path $RunDirectory ('cleanup-workspace-'+[guid]::NewGuid().ToString('N'))
     $fixtureRoot=Get-QuietReportRoot $fixtureWorkspace workstation -ContinuousIntegration $false
     $fixtureRun=Join-Path $fixtureRoot 'owned-cleanup-fixture'
@@ -91,7 +91,7 @@ function Test-QuietWorkstationResources {
     $leaseWorker=Join-Path $RunDirectory lease-worker.ps1
     $leaseSource='param($Path,$Ready,$Release); $lease=[IO.FileStream]::new($Path,[IO.FileMode]::CreateNew,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Read); try{$lease.Lock(0,1); [IO.File]::WriteAllText($Ready,"ready",[Text.UTF8Encoding]::new($false)); $deadline=[DateTimeOffset]::UtcNow.AddSeconds(30); while(![IO.File]::Exists($Release) -and [DateTimeOffset]::UtcNow -lt $deadline){[void][Threading.Tasks.Task]::Delay(100).GetAwaiter().GetResult()}}finally{$lease.Dispose()}'
     [void][IO.File]::WriteAllTextAsync($leaseWorker,$leaseSource,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-    . (Join-Path $WorkspaceRoot scripts/Ci.Process.ps1)
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/Ci.Process.psm1) -DisableNameChecking -ErrorAction Stop
     $options=@{FilePath=(Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'}));ArgumentList=@('-File',(ConvertTo-CiArgument $leaseWorker),(ConvertTo-CiArgument $leasePath),(ConvertTo-CiArgument $ready),(ConvertTo-CiArgument $release));PassThru=$true;RedirectStandardOutput=(Join-Path $RunDirectory lease-worker.stdout.log);RedirectStandardError=(Join-Path $RunDirectory lease-worker.stderr.log)}
     if($IsWindows){$options.WindowStyle='Hidden'}
     $lease=Start-Process @options

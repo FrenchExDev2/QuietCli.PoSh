@@ -75,8 +75,8 @@ function Test-QuietCiFailureRegression {
     Owned evidence directory.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
-    . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
     $assertRecipe={
         param($text,$parent)
         $default=[regex]::Match($text,'(?m)^ARG CORE_IMAGE=(\S+)$')
@@ -205,7 +205,7 @@ function Test-QuietCiOptimization {
     Owned output tree for fixtures and receipts.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     $fixture=Join-Path $RunDirectory 'ci-optimization'
     [void][IO.Directory]::CreateDirectory($fixture)
     $revision='a'*40
@@ -236,7 +236,7 @@ function Test-QuietCiOptimization {
     $worker=Join-Path $fixture 'parallel-worker.ps1'
     $workerText=@'
 param($WorkspaceRoot,$RunDirectory,$Suite,$MaxConcurrency,$ExpectedRuntimeIdentifier,[switch]$SkipTty)
-. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/WorkspaceJson.psm1')) -DisableNameChecking -ErrorAction Stop
 $started=[DateTimeOffset]::UtcNow.ToString('o')
 $parent=Split-Path $RunDirectory -Parent
 Write-WorkspaceJson (Join-Path $RunDirectory started.json) @{PID=$PID;Started=$started}
@@ -287,11 +287,15 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
     $rejected=$false
     try{$null=& (Join-Path $WorkspaceRoot scripts/Initialize-PowerShellHost.ps1) -WorkspaceRoot $hostRoot -Channel stable -RuntimeIdentifier win-x64 -OutputDirectory (Join-Path $hostRoot damaged)}catch{$rejected=$_.Exception.Message -ceq 'PowerShellHostCacheChecksumMismatch'}
     if(!$rejected){throw 'DamagedHostCacheAccepted'}
-    $cacheChecks=& {
-        . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+    $cacheModule=Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/CiImages.psm1')) -PassThru -DisableNameChecking -ErrorAction Stop
+    $cacheAdapters=& $cacheModule { $saved=@{};foreach($name in @('Resolve-QuietVirtEngine','Get-QuietCiRegistryDigest','Invoke-CiProcess','Invoke-WorkspaceNative')){$saved[$name]=(Get-Command $name).ScriptBlock};$saved }
+    try {
+    $cacheChecks=& $cacheModule {
+        param($WorkspaceRoot,$fixture)
+        Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
         $script:ciCacheCalls=[Collections.Generic.List[string]]::new()
         $plan=[pscustomobject]@{Rid='linux-x64';Architecture='x64';Fingerprint=('a'*64);RegistryPath='fixture/image';Source='https://example.invalid/source';Base=$null;Dockerfile='fixture';Arguments=@{}}
-        function Resolve-QuietVirtEngine {
+        function script:Resolve-QuietVirtEngine {
             <#
             .SYNOPSIS
             Selects the owned Docker adapter without inspecting the host.
@@ -303,7 +307,7 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
             param($ContainerRuntime,$WorkspaceRoot)
             'docker'
         }
-        function Get-QuietCiRegistryDigest {
+        function script:Get-QuietCiRegistryDigest {
             <#
             .SYNOPSIS
             Supplies a synthetic immutable digest or an explicit cache miss without HTTP.
@@ -317,7 +321,7 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
             param($Plan,$Token,$Actor)
             if($script:ciCacheHit){'sha256:'+('b'*64)}
         }
-        function Invoke-CiProcess {
+        function script:Invoke-CiProcess {
             <#
             .SYNOPSIS
             Supplies synthetic daemon and image metadata to the actual validation callback.
@@ -340,7 +344,7 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
             $null=& $OnOutput ([pscustomobject]@{Stream='stdout';Text=$json}) $State
             [pscustomobject]@{Outcome='Success';ExitCode=0;ElapsedMs=1}
         }
-        function Invoke-WorkspaceNative {
+        function script:Invoke-WorkspaceNative {
             <#
             .SYNOPSIS
             Records requested image operations without pulling or building an image.
@@ -374,7 +378,8 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
             if('build' -cnotin $script:ciCacheCalls){throw 'CacheOnlyMutantNotDetected'}
         }finally{$env:QUIETCLI_REGISTRY_TOKEN=$previous}
         2
-    }
+    } $WorkspaceRoot $fixture
+    }finally{& $cacheModule {param($saved) foreach($name in $saved.Keys){Set-Item ('Function:script:'+$name) $saved[$name]}} $cacheAdapters}
     Write-WorkspaceJson $path $receipt
     $source=[IO.File]::ReadAllText($validator,[Text.Encoding]::UTF8)
     $mutant=[scriptblock]::Create($source.Replace('$receipt.Revision -cne $Revision','$false'))
@@ -388,7 +393,7 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
     $common='function Write-WorkspaceJson {param($Path,$Value); [void][IO.Directory]::CreateDirectory((Split-Path $Path -Parent));[IO.File]::WriteAllText($Path,($Value|ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))}'
     $images='function Get-QuietCiRegistryDigest {param($Plan,$Token,$Actor,[switch]$IncludeConfiguration); if(!$IncludeConfiguration){throw "ConfigurationNotVerified"}; [pscustomobject]@{Digest=("sha256:"+("b"*64));Reference=("ghcr.io/fixture@sha256:"+("b"*64))}}; function Invoke-QuietCiImageBuild {param($Plan,$ContextDirectory,$WorkspaceRoot,$ArtifactPrefix,[switch]$RegistryCache,[switch]$CacheOnly,$ContainerRuntime);if(!$CacheOnly){throw "UnexpectedBuild"};[pscustomobject]@{Image="verified-final-local";CacheHit=$true}}'
     $plan='param($WorkspaceRoot,$RuntimeIdentifier,$Module,$ParentPlan,[switch]$PlanOnly);if(!$PlanOnly){throw "ParentPreparedOnFinalHit"};[pscustomobject]@{Fingerprint=("a"*64);Rid=$RuntimeIdentifier}'
-    foreach($entry in @{'Common.ps1'=$common;'CiImages.ps1'=$images;'New-CiImage.ps1'=$plan;'New-CiModuleImage.ps1'=$plan}.GetEnumerator()){[IO.File]::WriteAllText((Join-Path $warmScripts $entry.Key),$entry.Value,[Text.UTF8Encoding]::new($false))}
+    foreach($entry in @{'lib/Common.psm1'=$common;'lib/CiImages.psm1'=$images;'New-CiImage.ps1'=$plan;'New-CiModuleImage.ps1'=$plan}.GetEnumerator()){[IO.File]::WriteAllText((Join-Path $warmScripts $entry.Key),$entry.Value,[Text.UTF8Encoding]::new($false))}
     $module=Import-Module (Join-Path $warmScripts lib/CiCompanions.psm1) -PassThru -Force
     try{
         $selection=[pscustomobject]@{Images=@('Core','Git')}
@@ -398,7 +403,8 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
         if(!$resolved.RegistryOnly -or !$resolved.CacheHit -or $pulled.Image -cne 'verified-final-local'){throw 'WarmFinalImagePreparedParents'}
         if(!$probed.RegistryOnly -or !$probed.CacheHit){throw 'ProbePreparedWarmImage'}
         $missSource=$images.Replace('if(!$IncludeConfiguration)', 'if($true){return};if(!$IncludeConfiguration)')
-        [IO.File]::WriteAllText((Join-Path $warmScripts CiImages.ps1),$missSource,[Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText(([IO.Path]::Combine($warmScripts,'lib/CiImages.psm1')),$missSource,[Text.UTF8Encoding]::new($false))
+        & $module {param($path) Get-Module CiImages -All | Where-Object Path -EQ $path | Remove-Module -Force} ([IO.Path]::GetFullPath([IO.Path]::Combine($warmScripts,'lib/CiImages.psm1')))
         $miss=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ProbeOnly -ContainerRuntime docker} $warmRoot $selection
         if(!$miss.RegistryOnly -or $miss.CacheHit){throw 'ProbePreparedMissingImage'}
     }finally{Remove-Module -ModuleInfo $module -Force}

@@ -125,7 +125,7 @@ function Get-QuietCompanionTestInventory {
     $sources=[Collections.Generic.List[string]]::new();$seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach($relative in @($manifest['RootModule'])+@($declaration.Sources)){
         if($relative -isnot [string] -or $relative -cnotmatch '\A[A-Za-z0-9_.-]+\.ps(?:1|m1)\z' -or !$seen.Add($relative)){throw 'TestCaseMetadataSourceInvalid'}
-        $file=Get-Item -LiteralPath (Join-Path $directory $relative) -Force -ErrorAction Stop
+        $file=Get-Item -LiteralPath ([IO.Path]::Combine($directory,$relative)) -Force -ErrorAction Stop
         if($file.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'TestCaseMetadataSourceLinkRejected'}
         $sources.Add($file.FullName)
     }

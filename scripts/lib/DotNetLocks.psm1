@@ -1,6 +1,6 @@
 #requires -Version 7.6
 Set-StrictMode -Version Latest
-Import-Module (Join-Path $PSScriptRoot 'DotNetReadiness.psm1') -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'DotNetReadiness.psm1')) -ErrorAction Stop -DisableNameChecking
 
 function Invoke-DotNetRegistryHttp {
     <# .SYNOPSIS Reads bounded official Docker metadata; anonymous bearer tokens never leave caller memory. #>
@@ -147,19 +147,19 @@ function Update-DotNetCiLock {
     Performs metadata queries and returns plans without writing files.
     #>
     [CmdletBinding(SupportsShouldProcess)]
-    param([string]$WorkspaceRoot=(Join-Path $PSScriptRoot '../..'),[switch]$IncludeDevelopmentLock,
+    param([string]$WorkspaceRoot=([IO.Path]::Combine($PSScriptRoot,'../..')),[switch]$IncludeDevelopmentLock,
         [switch]$RefreshBaseImages,[ValidatePattern('^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$')][string]$DebianTag,
         [ValidatePattern('^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$')][string]$AlpineTag,
         [ValidatePattern('^10\.0\.\d+$')][string]$AlpineRuntimeVersion,
         [Alias('Prerelease','Prereleases')][switch]$Preleases,[switch]$PlanOnly)
     $root=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($WorkspaceRoot)
     if(!$PSCmdlet.ShouldProcess($root,'Resolve official SDK/runtime metadata and requested base digests; update selected locks with backups')){return}
-    $global=(Read-DotNetLockJson (Join-Path $root 'global.json')).Data
+    $global=(Read-DotNetLockJson ([IO.Path]::Combine($root,'global.json'))).Data
     $version=[string]$global.sdk.version
     $semantic=[System.Management.Automation.SemanticVersion]$version
     $release=Get-DotNetSdkRelease -Channel "$($semantic.Major).$($semantic.Minor)" -Version $version -Preleases:$Preleases -Confirm:$false
     if($release.Version -cne $version){throw 'SDK metadata did not resolve the exact global.json pin.'}
-    $ciPath=Join-Path $root 'build/ci-images.lock.json'
+    $ciPath=[IO.Path]::Combine($root,'build/ci-images.lock.json')
     $original=Read-DotNetLockJson $ciPath;$ci=$original.Data
     if($ci.SchemaVersion -ne 2 -or $ci.Platforms -isnot [array]){throw 'Invalid CI image lock schema.'}
     $before=$ci|ConvertTo-Json -Depth 64 -Compress
@@ -191,7 +191,7 @@ function Update-DotNetCiLock {
     $plans=[Collections.Generic.List[object]]::new()
     $plans.Add([pscustomobject]@{Path=$ciPath;Hash=$original.Hash;Changed=($before -cne ($ci|ConvertTo-Json -Depth 64 -Compress));Text=($ci|ConvertTo-Json -Depth 64)+"`n"})
     if($IncludeDevelopmentLock){
-        $path=Join-Path $root 'build/development-workstation.lock.json';$old=Read-DotNetLockJson $path;$dev=$old.Data
+        $path=[IO.Path]::Combine($root,'build/development-workstation.lock.json');$old=Read-DotNetLockJson $path;$dev=$old.Data
         if($dev.SchemaVersion -ne 1 -or $dev.WindowsSdks -isnot [array]){throw 'Invalid development lock schema.'}
         $before=$dev|ConvertTo-Json -Depth 64 -Compress
         $seenWindows=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -225,7 +225,7 @@ function Get-DotNetRuntimeFrameworkPlan {
     Explicitly permits lowering an existing runtime version.
     #>
     [CmdletBinding()]
-    param([string]$WorkspaceRoot=(Join-Path $PSScriptRoot '../..'),[Parameter(Mandatory)][string]$Version,
+    param([string]$WorkspaceRoot=([IO.Path]::Combine($PSScriptRoot,'../..')),[Parameter(Mandatory)][string]$Version,
         [string[]]$Path,[ValidatePattern('^net\d+\.\d+$')][string]$Framework='net11.0',
         [switch]$Preleases,[switch]$AllowDowngrade)
     $semantic=[System.Management.Automation.SemanticVersion]$Version
@@ -302,13 +302,13 @@ function Update-DotNetRuntimeFrameworkVersion {
     Return validated plans without writing.
     #>
     [CmdletBinding(SupportsShouldProcess)]
-    param([string]$WorkspaceRoot=(Join-Path $PSScriptRoot '../..'),[string]$Version,[string[]]$Path,
+    param([string]$WorkspaceRoot=([IO.Path]::Combine($PSScriptRoot,'../..')),[string]$Version,[string[]]$Path,
         [ValidatePattern('^net\d+\.\d+$')][string]$Framework='net11.0',
         [Alias('Prerelease','Prereleases')][switch]$Preleases,[switch]$AllowDowngrade,[switch]$PlanOnly)
     $WorkspaceRoot=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($WorkspaceRoot)
     if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,"Resolve and update $Framework runtime properties with backups")){return}
     if(!$Version){
-        $global=(Read-DotNetLockJson (Join-Path $WorkspaceRoot 'global.json')).Data
+        $global=(Read-DotNetLockJson ([IO.Path]::Combine($WorkspaceRoot,'global.json'))).Data
         $sdk=[System.Management.Automation.SemanticVersion]$global.sdk.version
         $Version=(Get-DotNetSdkRelease -Channel "$($sdk.Major).$($sdk.Minor)" -Version $sdk.ToString() -Preleases:$Preleases -Confirm:$false).RuntimeVersion
     }else{

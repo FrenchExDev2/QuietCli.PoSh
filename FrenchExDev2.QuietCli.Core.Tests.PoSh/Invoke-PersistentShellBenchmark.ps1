@@ -37,7 +37,7 @@ $manifest=Join-Path $workspace 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.Qui
 $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
 $self=$PSCommandPath
 . (Join-Path $PSScriptRoot 'PersistentShell.Support.ps1')
-. (Join-Path $workspace 'scripts/Common.ps1')
+Import-Module (Join-Path $workspace 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 $counts=@($CommandCounts.Split(',')|ForEach-Object {[int]$_})
 if(@($counts|Where-Object {$_ -gt 100}).Count){throw 'PersistentCommandCountExceeds100'}
 

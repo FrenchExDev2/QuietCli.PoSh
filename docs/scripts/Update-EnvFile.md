@@ -1,6 +1,6 @@
 # Update-EnvFile.ps1
 
-Reads or edits one key through [EnvFile.ps1](EnvFile.md). `-Path` defaults to the checkout's `.env`;
+Reads or edits one key through [EnvFile.ps1](lib/EnvFile.md). `-Path` defaults to the checkout's `.env`;
 `-Key` is mandatory and case-sensitive. Supplying `-Value` selects write mode; otherwise `-Read`
 reads only the selected value. Read mode is explicit value output, so choose which key to display.
 Write results contain metadata without values.

@@ -11,7 +11,7 @@ function Test-QuietDevelopmentWorkstation {
     $path=Join-Path $WorkspaceRoot 'scripts/lib/DevelopmentWorkstation.psm1'
     $source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
     # Isolated test modules never load a native executor. Every reachable side effect is trapped.
-    $source=$source.Replace(". (Join-Path `$PSScriptRoot '../Ci.Process.ps1')",'# Process boundary replaced by independent test fixtures.')
+    $source=$source.Replace("Import-Module ([IO.Path]::Combine(`$PSScriptRoot,'Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop",'# Process boundary replaced by independent test fixtures.')
     $counts=@{Examples=0;Properties=0;FuzzInputs=0;MutantsKilled=0;Seed=914227}
     $verify={
         param($candidate,$output,$counts)

@@ -1,6 +1,6 @@
 # scripts-docs-check.yml
 
-<!-- workflow-source-sha256: E142564B348F176C864F09CAB7B3690C0CCF2A9620408C5CC1E3AD0446D863A8 -->
+<!-- workflow-source-sha256: 76F3925DB488AF46072D6DEDE289320B79096E51447F9D974AC243DDD25F26A0 -->
 
 ## Purpose
 
@@ -37,6 +37,8 @@ flowchart TD
 ## Scripts and effects
 
 After checkout the optional shared cache action reuses NuGet resource archives, keyed by OS and resource-lock hash. Invoke-WorkspaceChecks first runs TestCaseMetadata, then ScriptsReadme, GitHubWorkflowDocs, ScriptShouldProcess, Resources, ScriptContracts, DocsCredits and Credits. The classification gate parses every Core case/metadata declaration without importing Core or running tests; omissions and malformed classifications fail, including cases excluded by a runtime filter. Workflow parsing independently calls Ensure-QuietResource to verify/prepare the pinned YamlDotNet payload; there is no required preceding restore step. Preparation can write only the selected resource and download cache through ShouldProcess. Checks do not Apply documentation, build, stage, commit, push or access Gallery secrets; permissions are contents:read.
+
+The shared registry also enforces RAC-PS-004: Verb-Noun entry points, no functions in scripts, libraries under scripts/lib, explicit quiet imports and System.IO.Path composition. AGENTS.md and the automation contract are included in the workflow path filters.
 
 ## Validation and limits
 

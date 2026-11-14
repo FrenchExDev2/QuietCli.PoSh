@@ -24,5 +24,5 @@ param(
 if ($CheckOnly -and $Download) { throw 'CheckOnlyAndDownloadAreMutuallyExclusive' }
 $root = Split-Path $PSScriptRoot -Parent
 foreach ($module in $Modules) {
-    & (Join-Path $root "FrenchExDev2.QuietCli.$module.PoSh/scripts/Install-Workstation.ps1") -CheckOnly:$CheckOnly -Download:$Download -WhatIf:$WhatIfPreference
+    & ([IO.Path]::Combine($root,"FrenchExDev2.QuietCli.$module.PoSh/scripts/Install-Workstation.ps1")) -CheckOnly:$CheckOnly -Download:$Download -WhatIf:$WhatIfPreference
 }

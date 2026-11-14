@@ -17,7 +17,7 @@ function Invoke-QuietVagrantTests {
     Receives name, state, passed and failed counters.
     #>
     [CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[scriptblock]$OnProgress,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     if (!$RunDirectory) { $RunDirectory = Join-Path (Get-QuietReportRoot $WorkspaceRoot 'tests') ([guid]::NewGuid().ToString('N')) }
     $root = Join-Path $RunDirectory 'vagrant-fixtures'
     [void][IO.Directory]::CreateDirectory($root)

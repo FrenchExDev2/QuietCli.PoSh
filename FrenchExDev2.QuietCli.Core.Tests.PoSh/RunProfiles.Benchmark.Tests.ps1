@@ -162,9 +162,24 @@ function Invoke-BenchmarkFixture {
         & $Complete $runtime
         return [pscustomobject]@{ Outcome = $outcome; Data = $Data }
     }
-    Set-Alias -Name quiet -Value Invoke-FixtureNative -Scope Local
+    $module=Import-Module ([IO.Path]::Combine($scripts,'lib/Measure-ColdStart.psm1')) -PassThru -DisableNameChecking -ErrorAction Stop
+    $adapter=(Get-Command Invoke-FixtureNative).ScriptBlock.GetNewClosure()
+    $savedAlias=& $module {Get-Alias quiet -Scope Script -ErrorAction SilentlyContinue}
+    $savedAdapter=& $module {Get-Item Function:script:Invoke-FixtureNative -ErrorAction SilentlyContinue}
     $path = Join-Path $fixture 'result.json'
-    $null = & (Join-Path $scripts 'Measure-ColdStart.ps1') -BaselineModule $baseline -CandidateModule $candidate -Runs 3 -Warmup $Warmup -Seed 61207 -BootstrapResamples 100 -OutputPath $path -MaxFailedPairs $MaxFailedPairs -LogLevel Off -ProfileImport:$ProfileImport
+    try {
+        # The executable boundary belongs to the extracted library's session state.
+        & $module {param($body) Set-Item Function:script:Invoke-FixtureNative $body;Set-Alias quiet Invoke-FixtureNative -Scope Script} $adapter
+        $null = & (Join-Path $scripts 'Measure-ColdStart.ps1') -BaselineModule $baseline -CandidateModule $candidate -Runs 3 -Warmup $Warmup -Seed 61207 -BootstrapResamples 100 -OutputPath $path -MaxFailedPairs $MaxFailedPairs -LogLevel Off -ProfileImport:$ProfileImport
+    }finally{
+        & $module {
+            param($alias,$adapter)
+            Remove-Item Alias:script:quiet -ErrorAction SilentlyContinue
+            Remove-Item Function:script:Invoke-FixtureNative -ErrorAction SilentlyContinue
+            if($alias){Set-Alias quiet $alias.Definition -Scope Script}
+            if($adapter){Set-Item Function:script:Invoke-FixtureNative $adapter.ScriptBlock}
+        } $savedAlias $savedAdapter
+    }
     [pscustomobject]@{ Report = (Read-RunTextFile $path | ConvertFrom-Json); Calls = $state.Calls.ToArray(); Path = $path }
 }
 

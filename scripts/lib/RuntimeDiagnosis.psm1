@@ -1,4 +1,3 @@
-#Objective: Reads optional diagnostic data without treating malformed input as established evidence.
 #requires -Version 7.6
 function Get-QuietDiagnosisValue {
     <# .SYNOPSIS
@@ -117,4 +116,25 @@ function Get-QuietRuntimeDiagnosis {
         RecreateUnchangedContainerFixesIssue=if($decision -in @('BootstrapAndAssetSelection','AssetSelection','BootstrapConfiguration','ArchitectureMismatch')){$false}else{$null};
         WholeProductCompatibilityProven=$false;Qualification='DiagnosticOnly'}
 }
-Export-ModuleMember -Function Get-QuietRuntimeDiagnosis
+function Copy-QuietRuntimeProbeInputs {
+    <#
+    .SYNOPSIS
+    Stages the engine-independent probe and its exact library dependencies while preserving their relative paths.
+    .PARAMETER ScriptsRoot
+    Source scripts directory containing the entry point and lib directory.
+    .PARAMETER Destination
+    Owned diagnostic input directory; no product binaries or configuration are copied.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param([Parameter(Mandatory)][string]$ScriptsRoot,[Parameter(Mandatory)][string]$Destination)
+    if(!$PSCmdlet.ShouldProcess($Destination,'Stage the runtime probe and its library dependencies')){return}
+    $files=@('Probe-ContainerRuntime.ps1','lib/Probe-ContainerRuntime.psm1','lib/Ci.Process.psm1','lib/RuntimeTargets.psm1','lib/BinaryHeaders.psm1','lib/RuntimeDiagnosis.psm1')
+    foreach($relative in $files){if(!(Test-Path -LiteralPath ([IO.Path]::Combine($ScriptsRoot,$relative)) -PathType Leaf)){throw ('RuntimeProbeInputMissing: '+$relative)}}
+    foreach($relative in $files){
+        $target=[IO.Path]::Combine($Destination,$relative)
+        [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
+        Copy-Item -LiteralPath ([IO.Path]::Combine($ScriptsRoot,$relative)) -Destination $target -ErrorAction Stop
+    }
+    [pscustomobject]@{Destination=$Destination;Files=$files.Count}
+}
+Export-ModuleMember -Function Get-QuietRuntimeDiagnosis,Copy-QuietRuntimeProbeInputs

@@ -14,7 +14,7 @@ Records missing successful profiling as an explicit evidence gap.
 param([string]$ReportRoot,[string]$OutputDirectory,[string]$Revision,[switch]$RequireProfiling)
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-CoreEvidenceBundle')){return}
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'Common.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 $source=[IO.Path]::GetFullPath($ReportRoot,$PWD.Path)
 $destination=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 $relativeDestination=[IO.Path]::GetRelativePath($source,$destination)
@@ -31,7 +31,7 @@ if(Test-Path -LiteralPath $source){
             if($item.PSIsContainer){if($item.Name -notin @('workspace','.git','.profilers','bin','obj','lib')){$pending.Push($item.FullName)};continue}
             if($item.Extension -notin @('.json','.nettrace','.log','.txt','.xml','.csv')){continue}
             $relative=[IO.Path]::GetRelativePath($source,$item.FullName)
-            $target=Join-Path $destination $relative
+            $target=[IO.Path]::Combine($destination,$relative)
             [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
             try{
                 $evidenceInputStream=[IO.FileStream]::new($item.FullName,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
@@ -52,10 +52,10 @@ foreach($path in $profileReports){
     if($profileEvidence.State -ne 'Success'){continue}
     $base=Split-Path $path -Parent
     $valid=$profileEvidence.ProfilerVersion -eq '4.3.0' -and $profileEvidence.ClrProfilerVersion -eq '10.0.750501'
-    $valid=$valid -and (Test-Path (Join-Path $base 'powershell-lines.json')) -and (Test-Path (Join-Path $base 'powershell.speedscope.json'))
+    $valid=$valid -and (Test-Path ([IO.Path]::Combine($base,'powershell-lines.json'))) -and (Test-Path ([IO.Path]::Combine($base,'powershell.speedscope.json')))
     foreach($collector in $profileEvidence.Collectors){
-        $trace=Join-Path $base $collector.Trace
-        if(!(Test-Path $trace) -or !(Test-Path (Join-Path $base $collector.Speedscope))){$valid=$false;continue}
+        $trace=[IO.Path]::Combine($base,$collector.Trace)
+        if(!(Test-Path $trace) -or !(Test-Path ([IO.Path]::Combine($base,$collector.Speedscope)))){$valid=$false;continue}
         if((Get-FileHash $trace -Algorithm SHA256).Hash -cne $collector.SHA256){$valid=$false}
     }
     $expected=if($profileEvidence.TargetIdentity.EngineMode -eq 'Process'){2}else{1}
@@ -63,7 +63,7 @@ foreach($path in $profileReports){
     if($valid){$profileSuccess++}else{$gaps.Add('Incomplete or modified profiling artifacts: '+[IO.Path]::GetRelativePath($destination,$path))}
 }
 if($RequireProfiling -and !$profileSuccess){$gaps.Add('No successful mandatory PowerShell/CLR profiling report.')}
-Write-WorkspaceJson (Join-Path $destination 'evidence-manifest.json') @{
+Write-WorkspaceJson ([IO.Path]::Combine($destination,'evidence-manifest.json')) @{
     SchemaVersion=1;Revision=$Revision;Repository=$env:GITHUB_REPOSITORY;RunId=$env:GITHUB_RUN_ID;RunAttempt=$env:GITHUB_RUN_ATTEMPT
     CreatedUtc=[DateTimeOffset]::UtcNow.ToString('o');RunnerOS=$env:RUNNER_OS;RunnerArchitecture=$env:RUNNER_ARCH
     SuccessfulProfilingReports=$profileSuccess;EvidenceGaps=$gaps.ToArray();Files=@($files|Sort-Object Path)

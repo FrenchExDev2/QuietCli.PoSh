@@ -51,12 +51,12 @@ function Get-RunModuleHostedPathBytes {
     #>
     param([Parameter(Mandatory)][string]$ManifestPath, [string]$RuntimeIdentifier = [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)
     $root = Split-Path -Parent ([IO.Path]::GetFullPath($ManifestPath))
-    $protocol=Join-Path $root 'src/Protocol.ps1'
+    $protocol=[IO.Path]::Combine($root,'src/Protocol.ps1')
     if(Test-Path -LiteralPath $protocol){
         . $protocol
         $target=Resolve-QuietManagedTarget -ModuleRoot $root -RuntimeIdentifier $RuntimeIdentifier
-        $hosted=Join-Path $root $target.Directory
-    }else{$hosted=Join-Path $root $(if([Environment]::Version.Major -ge 11){'lib/engine'}else{'lib/inprocess'})}
+        $hosted=[IO.Path]::Combine($root,$target.Directory)
+    }else{$hosted=[IO.Path]::Combine($root,$(if([Environment]::Version.Major -ge 11){'lib/engine'}else{'lib/inprocess'}))}
     if (-not (Test-Path -LiteralPath $hosted -PathType Container)) { throw "RunModuleHostedPathMissing: $hosted" }
     $total = 0L
     foreach ($file in [IO.Directory]::EnumerateFiles($hosted, '*', [IO.SearchOption]::AllDirectories)) {
@@ -81,7 +81,7 @@ function Get-RunModulePackageBytes {
     #>
     param([Parameter(Mandatory)][string]$ManifestPath)
     $root = Split-Path -Parent ([IO.Path]::GetFullPath($ManifestPath))
-    $scratch = Join-Path ([IO.Path]::GetTempPath()) ('quietcli-coldstart-pkg-' + [guid]::NewGuid().ToString('N'))
+    $scratch = [IO.Path]::Combine(([IO.Path]::GetTempPath()),('quietcli-coldstart-pkg-' + [guid]::NewGuid().ToString('N')))
     [void][IO.Directory]::CreateDirectory($scratch)
     try {
         $compressed = Compress-PSResource -Path $root -DestinationPath $scratch -PassThru -ErrorAction Stop

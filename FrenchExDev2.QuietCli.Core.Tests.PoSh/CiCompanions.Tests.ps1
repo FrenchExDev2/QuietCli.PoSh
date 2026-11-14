@@ -51,7 +51,7 @@ function Test-QuietCiCompanions {
     $generated=Read-QuietCiCompanions $source
     $selection=Resolve-QuietCiCompanions $generated -Suite CoreVagrantIntegration
     if($generated.Companions['Core'].requires.Count -or $selection.Dependencies.Count -ne 102 -or ($selection.Images -join ',') -cne 'Core'){throw 'IntegrationSuiteCreatedReverseProductDependency'}
-    . (Join-Path $WorkspaceRoot 'scripts/WorkspaceProjects.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/WorkspaceProjects.psm1') -DisableNameChecking -ErrorAction Stop
     $runner=@(Get-QuietWorkspaceSuiteSelection $source CoreVagrantIntegration)
     if($runner.Count -ne 1 -or $runner[0].TestsModule -cne $testProject -or $runner[0].Command -cne 'Invoke-QuietPairTests'){throw 'DedicatedIntegrationRunnerNotSelected'}
     $all=Resolve-QuietCiCompanions $generated -Suite All
@@ -96,7 +96,7 @@ function Test-QuietCiCompanions {
     $mutant=[scriptblock]::Create($resolverSource.Replace($anchor,'@($suites[$name].Requires)[0]'))
     $mutated=& $module {param($candidate,$configuration)& $candidate -Configuration $configuration -Suite CoreVagrantIntegration} $mutant $generated
     if($mutated.Dependencies -ccontains 'Vagrant'){throw 'CompanionSuiteRequirementMutantSurvived'}
-    . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
     $base=Get-QuietCiImagePlan $WorkspaceRoot linux-x64
     $fragment=[pscustomobject]@{Platform='debian';Objective='Synthetic independent layer';Stages=@([pscustomobject]@{Name='ci';Run=@('true')})}
     $inputPaths=@('build/companions.yml')
@@ -112,10 +112,13 @@ function Test-QuietCiCompanions {
     $bad1=& $mutant $WorkspaceRoot linux-x64 Second $fragment @{} $inputPaths -ParentPlan $first
     $bad2=& $mutant $WorkspaceRoot linux-x64 Second $fragment @{} $inputPaths -ParentPlan $changed
     if($bad1.Fingerprint -cne $bad2.Fingerprint){throw 'CompanionParentFingerprintMutantNotExercised'}
-    $imageChecks=& {
+    $imageModule=(Get-Command Get-QuietCiVerifiedImage).Module
+    $nativeAdapter=& $imageModule {(Get-Command Invoke-CiProcess).ScriptBlock}
+    try {
+    $imageChecks=& $imageModule {
         param($WorkspaceRoot)
-        . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
-        function Invoke-CiProcess {
+        Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
+        function script:Invoke-CiProcess {
             <#
             .SYNOPSIS
             Supplies owned parent-image metadata without starting a container process.
@@ -169,6 +172,7 @@ function Test-QuietCiCompanions {
         if($accepted.Id -cne ('sha256:'+('1'*64))){throw 'ParentLabelMutantNotExercised'}
         $checks
     } $WorkspaceRoot
+    }finally{& $imageModule {param($body) Set-Item Function:script:Invoke-CiProcess $body} $nativeAdapter}
     foreach($script in @('Initialize-CiCompanions.ps1','New-CiSuiteImage.ps1')){
         $missing=Join-Path $fixture 'absent-checkout'
         if($script -ceq 'Initialize-CiCompanions.ps1'){$null=& (Join-Path $WorkspaceRoot ('scripts/'+$script)) -WorkspaceRoot $missing -OutputPath (Join-Path $missing 'output.txt') -WhatIf}

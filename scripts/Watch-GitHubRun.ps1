@@ -11,13 +11,13 @@ GitHub owner/repository to observe.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][long]$RunId,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidatePattern('^[\w.-]+/[\w.-]+$')][string]$Repository='FrenchExDev2/QuietCli.PoSh')
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Watch-GitHubRun')){return}
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot Common.ps1)
+$ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 if(!$IsWindows){throw 'Use the Windows visible-monitor host launcher'}
-$run=Join-Path $WorkspaceRoot ('artifacts/github/'+$RunId+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))
+$run=[IO.Path]::Combine($WorkspaceRoot,('artifacts/github/'+$RunId+'-'+[guid]::NewGuid().ToString('N').Substring(0,6)))
 [void][IO.Directory]::CreateDirectory($run)
 $runner=(Get-Command pwsh -CommandType Application|Select-Object -First 1).Source
-$worker=Start-Process -FilePath $runner -WindowStyle Hidden -ArgumentList @('-File',(ConvertTo-CiArgument ((Join-Path $PSScriptRoot Invoke-GitHubRunWorker.ps1))),'-RunId',$RunId,'-Repository',$Repository,'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($run))) -PassThru -RedirectStandardOutput (Join-Path $run worker.stdout.log) -RedirectStandardError (Join-Path $run worker.stderr.log)
-$monitorPath=Join-Path $PSScriptRoot Watch-Tests.ps1
+$worker=Start-Process -FilePath $runner -WindowStyle Hidden -ArgumentList @('-File',(ConvertTo-CiArgument (([IO.Path]::Combine($PSScriptRoot,'Invoke-GitHubRunWorker.ps1')))),'-RunId',$RunId,'-Repository',$Repository,'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($run))) -PassThru -RedirectStandardOutput ([IO.Path]::Combine($run,'worker.stdout.log')) -RedirectStandardError ([IO.Path]::Combine($run,'worker.stderr.log'))
+$monitorPath=[IO.Path]::Combine($PSScriptRoot,'Watch-Tests.ps1')
 $monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($run))) -PassThru
 "Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$run`""
 $summary=Wait-WorkspaceWorker -Worker $worker -RunDirectory $run -WorkspaceRoot $WorkspaceRoot -Runner $runner -Monitor $monitor -TimeoutSeconds 3600

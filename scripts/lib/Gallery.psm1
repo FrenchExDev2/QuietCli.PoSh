@@ -6,7 +6,7 @@ function Get-QuietGalleryModuleIdentity {
     Existing .psm1; package preparation requires its matching manifest.
     #>
     param([Parameter(Mandatory)][string]$ModulePath)
-    Import-Module (Join-Path $PSScriptRoot 'ModulePackage.psm1')
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'ModulePackage.psm1')) -DisableNameChecking
     Get-QuietModulePackageIdentity -Path $ModulePath -RequireManifest
 }
 
@@ -26,7 +26,7 @@ function Copy-QuietGalleryCoreModule {
     if([IO.Path]::GetFileName([IO.Path]::TrimEndingDirectorySeparator($ModuleDirectory)) -cne $before.Name){throw 'GalleryStagingNameInvalid'}
     if(Test-Path -LiteralPath $ModuleDirectory){throw 'GalleryStagingAlreadyExists'}
     Copy-Item -LiteralPath $SourceDirectory -Destination $ModuleDirectory -Recurse
-    $after=Get-QuietGalleryModuleIdentity (Join-Path $ModuleDirectory ($before.Name+'.psm1'))
+    $after=Get-QuietGalleryModuleIdentity ([IO.Path]::Combine($ModuleDirectory,($before.Name+'.psm1')))
     if($after.Name -cne $before.Name -or $after.GUID -cne $before.GUID -or $after.Version -cne $before.Version){throw 'GalleryStagedIdentityChanged'}
 }
 
@@ -143,15 +143,15 @@ function Test-QuietGalleryPackageSet {
     Optional release version required by the tag or manual workflow.
     #>
     param([string]$PackageDirectory,[string]$Version)
-    . (Join-Path $PSScriptRoot '../RuntimeTargets.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'RuntimeTargets.psm1')) -DisableNameChecking -ErrorAction Stop
     $directory=[IO.Path]::GetFullPath($PackageDirectory,$PWD.Path)
-    $planPath=Join-Path $directory package-set.json
+    $planPath=[IO.Path]::Combine($directory,'package-set.json')
     if((Get-Item -LiteralPath $planPath).Length -gt 1MB){throw 'GalleryPlanTooLarge'}
     $plan=Get-Content $planPath -Encoding utf8 -Raw|ConvertFrom-Json
     $release=Get-QuietGalleryVersion $plan.Version
     if($plan.SchemaVersion -ne 1 -or ($Version -and $plan.Version -cne $Version) -or $plan.BaseVersion -cne $release.BaseVersion){throw 'GalleryReleaseVersionMismatch'}
-    Import-Module (Join-Path $PSScriptRoot 'GalleryRelease.psm1')
-    $workspace=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'GalleryRelease.psm1')) -DisableNameChecking
+    $workspace=[IO.Path]::GetFullPath(([IO.Path]::Combine($PSScriptRoot,'../..')))
     $selector=if($plan.PSObject.Properties['Module']){[string]$plan.Module}else{'Core'}
     $packageTarget=@(Select-QuietGalleryReleaseTargets -WorkspaceRoot $workspace -Module $selector)
     if($packageTarget.Count -ne 1){throw 'GallerySinglePackageRequired'}
@@ -164,7 +164,7 @@ function Test-QuietGalleryPackageSet {
     $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach($package in $plan.Packages){
         if($package.Module -cnotin $expected -or !$seen.Add($package.Module) -or $package.File -cne ($package.Module+'.'+$plan.Version+'.nupkg')){throw 'GalleryPackageIdentityInvalid'}
-        $path=Join-Path $directory $package.File
+        $path=[IO.Path]::Combine($directory,$package.File)
         if((Get-FileHash $path -Algorithm SHA256).Hash -cne $package.SHA256){throw 'GalleryPackageIntegrityFailed'}
         $zip=[IO.Compression.ZipFile]::OpenRead($path)
         try{
@@ -278,8 +278,8 @@ function Get-QuietGalleryRemoteIdentity {
     Validated release version.
     #>
     param([string]$Module,[string]$Version)
-    Import-Module (Join-Path $PSScriptRoot 'GalleryRelease.psm1')
-    $allowed=@(Get-QuietGalleryReleaseTargets ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..')))).Module
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'GalleryRelease.psm1')) -DisableNameChecking
+    $allowed=@(Get-QuietGalleryReleaseTargets ([IO.Path]::GetFullPath(([IO.Path]::Combine($PSScriptRoot,'../..'))))).Module
     if($Module -cnotin $allowed){throw 'InvalidGalleryRemoteIdentity'}
     $null=Get-QuietGalleryVersion $Version
     $client=[Net.Http.HttpClient]::new();$client.Timeout=[TimeSpan]::FromSeconds(30)

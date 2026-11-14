@@ -37,7 +37,7 @@ if($CompanionPackageDirectory){
     }
 }
 $env:PSModulePath=$root+[IO.Path]::PathSeparator+(Join-Path $PSHOME Modules)
-. (Join-Path $PSScriptRoot '../../scripts/TestConfiguration.ps1')
+Import-Module (Join-Path $PSScriptRoot '../../scripts/lib/TestConfiguration.psm1') -DisableNameChecking -ErrorAction Stop
 Initialize-QuietTestConfiguration -DatabasePath (Join-Path $root measurements.sqlite)
 Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
 try{

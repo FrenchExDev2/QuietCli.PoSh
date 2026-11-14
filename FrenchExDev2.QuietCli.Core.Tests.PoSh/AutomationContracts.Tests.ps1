@@ -8,9 +8,9 @@ function Test-QuietAutomationContracts {
     Owned fixtures, seeds and campaign evidence.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot scripts/Common.ps1)
-    . (Join-Path $WorkspaceRoot scripts/ScriptShouldProcess.ps1)
-    . (Join-Path $WorkspaceRoot scripts/WorkflowDocumentation.ps1)
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/Common.psm1) -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/ScriptShouldProcess.psm1) -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/WorkflowDocumentation.psm1) -DisableNameChecking -ErrorAction Stop
     $resolverSource=(Get-Command Resolve-QuietVirtEngine).ScriptBlock.ToString()
     $engineAvailability=@{}
     function Get-Command {
@@ -44,7 +44,7 @@ function Test-QuietAutomationContracts {
     }}
     $engineAvailability=@{docker=$true;podman=$true}
     $preferred='podman'
-    if((Resolve-QuietVirtEngine -Available -WorkspaceRoot $runtimeFixture) -cne $preferred){throw 'ActualHostContainerPreferenceChanged'}
+    if((& $platformResolver -Available -WorkspaceRoot $runtimeFixture) -cne $preferred){throw 'ActualHostContainerPreferenceChanged'}
     if(!$resolverSource.Contains("@('podman','docker')")){throw 'ContainerRuntimePreferenceMutationAnchorMissing'}
     $mutant=[scriptblock]::Create($resolverSource.Replace("@('podman','docker')","@('docker','podman')"))
     if((& $mutant -Available -WorkspaceRoot $runtimeFixture) -ceq $preferred){throw 'ContainerRuntimePreferenceMutantSurvived'}
@@ -56,14 +56,14 @@ function Test-QuietAutomationContracts {
     }
     foreach($invalid in @('invalid','','Docker')){
         $null=Set-QuietEnvValue -Path (Join-Path $runtimeFixture '.env') -Key QUIET_CONTAINER_RUNTIME -Value $invalid -Confirm:$false
-        $rejected=$false;try{$null=Resolve-QuietVirtEngine -WorkspaceRoot $runtimeFixture}catch{$rejected=$_.Exception.Message -like 'QuietVirtEngineConfigurationInvalid:*'}
+        $rejected=$false;try{$null=& $platformResolver -WorkspaceRoot $runtimeFixture}catch{$rejected=$_.Exception.Message -like 'QuietVirtEngineConfigurationInvalid:*'}
         if(!$rejected){throw 'ContainerRuntimeInvalidConfigurationFellBackSilently'}
-        if((Resolve-QuietVirtEngine -WorkspaceRoot $runtimeFixture -ContainerRuntime docker -Available) -cne 'docker'){throw 'ExplicitRuntimeDidNotOverrideInvalidEnv'}
+        if((& $platformResolver -WorkspaceRoot $runtimeFixture -ContainerRuntime docker -Available) -cne 'docker'){throw 'ExplicitRuntimeDidNotOverrideInvalidEnv'}
     }
     $null=Set-QuietEnvValue -Path (Join-Path $runtimeFixture '.env') -Key QUIET_CONTAINER_RUNTIME -Value podman -Confirm:$false
     $engineAvailability=@{docker=$true;podman=$false}
-    $rejected=$false;try{$null=Resolve-QuietVirtEngine -WorkspaceRoot $runtimeFixture -Available}catch{$rejected=$_.Exception.Message -eq 'QuietVirtEngineUnavailable: podman'}
-    if(!$rejected -or (Resolve-QuietVirtEngine -WorkspaceRoot $runtimeFixture) -cne 'podman'){throw 'ConfiguredUnavailableRuntimeFellBackSilently'}
+    $rejected=$false;try{$null=& $platformResolver -WorkspaceRoot $runtimeFixture -Available}catch{$rejected=$_.Exception.Message -eq 'QuietVirtEngineUnavailable: podman'}
+    if(!$rejected -or (& $platformResolver -WorkspaceRoot $runtimeFixture) -cne 'podman'){throw 'ConfiguredUnavailableRuntimeFellBackSilently'}
     [void][IO.File]::WriteAllTextAsync((Join-Path $runtimeFixture '.env'),"QUIET_CONTAINER_RUNTIME=podman`nQUIET_CONTAINER_RUNTIME=docker`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     $rejected=$false;try{$null=Resolve-QuietVirtEngine -WorkspaceRoot $runtimeFixture}catch{$rejected=$_.Exception.Message -like 'EnvKeyDuplicate:*'}
     if(!$rejected){throw 'DuplicateRuntimeConfigurationAccepted'}
@@ -151,14 +151,16 @@ function Test-QuietAutomationContracts {
     if(!$rejected){throw 'WorkspacePipelineUnknownCheckAccepted'}
     $isolatedScripts=Join-Path $fixture tooling/scripts
     [void][IO.Directory]::CreateDirectory($isolatedScripts)
-    foreach($helper in @('WorkflowDocumentation','Resources')){Copy-Item -LiteralPath (Join-Path $WorkspaceRoot ('scripts/'+$helper+'.ps1')) -Destination $isolatedScripts}
+    $isolatedLibrary=[IO.Path]::Combine($isolatedScripts,'lib')
+    [void][IO.Directory]::CreateDirectory($isolatedLibrary)
+    foreach($helper in @('WorkflowDocumentation','Resources')){Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib',($helper+'.psm1'))) -Destination $isolatedLibrary}
     $isolatedResources=Join-Path $fixture tooling/FrenchExDev2.QuietCli.Core.PoSh/resources
     [void][IO.Directory]::CreateDirectory((Join-Path $isolatedResources yaml))
     Copy-Item -LiteralPath (Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json) -Destination $isolatedResources
     foreach($variant in @('missing','tampered')){
         if($variant -eq 'tampered'){[IO.File]::WriteAllBytes((Join-Path $isolatedResources yaml/YamlDotNet.dll),[byte[]]@(1,2,3))}
         $rejected=$false
-        try{$null=& {param($helper,$root) $WhatIfPreference=$true; . $helper; Get-QuietWorkflowDocumentation $root} (Join-Path $isolatedScripts WorkflowDocumentation.ps1) $fixture}catch{$rejected=$_.Exception.Message -like 'WorkflowYamlResource*'}
+        try{$null=& {param($helper,$root) Import-Module $helper -DisableNameChecking -ErrorAction Stop; Get-QuietWorkflowDocumentation $root -WhatIf} ([IO.Path]::Combine($isolatedLibrary,'WorkflowDocumentation.psm1')) $fixture}catch{$rejected=$_.Exception.Message -like 'WorkflowYamlResource*'}
         if(!$rejected){throw 'WorkflowParserResourceFailureAccepted'}
         if(Test-Path (Join-Path $fixture tooling/.cache)){throw 'WorkflowParserPreviewPreparedResources'}
     }
@@ -195,7 +197,7 @@ function Test-QuietAutomationContracts {
     try{$entry=$zip.CreateEntry('lib/YamlDotNet.dll');$stream=$entry.Open();try{[void]$stream.WriteAsync($payload).GetAwaiter().GetResult()}finally{$stream.Dispose()}}finally{$zip.Dispose()}
     $restored=& (Join-Path $WorkspaceRoot scripts/Restore-CoreResources.ps1) -WorkspaceRoot $resourceFixture -IncludePackage YAMLDOTNET -Confirm:$false
     if($restored.Restored -ne 1 -or $restored.Total -ne 1 -or (Get-FileHash (Join-Path $resourceFixture FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll)).Hash -cne $digest -or (Test-Path (Join-Path $resourceFixture FrenchExDev2.QuietCli.Core.PoSh/resources/forbidden.dll))){throw 'SelectiveResourceRestoreContractFailed'}
-    . (Join-Path $WorkspaceRoot scripts/Resources.ps1)
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/Resources.psm1) -DisableNameChecking -ErrorAction Stop
     $ensured=Ensure-QuietResource -WorkspaceRoot $resourceFixture -RelativePath resources/yaml/YamlDotNet.dll
     if($ensured.State -cne 'Ready' -or $ensured.Restored){throw 'VerifiedResourceNotReused'}
     [IO.File]::WriteAllBytes($ensured.Path,[byte[]]@(0))
@@ -215,7 +217,7 @@ function Test-QuietAutomationCommitChecks {
     Owned fixture directory.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot scripts/Common.ps1)
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/Common.psm1) -DisableNameChecking -ErrorAction Stop
     $scripts=Join-Path $WorkspaceRoot scripts
     $root=Join-Path $RunDirectory automation-commit
     [void][IO.Directory]::CreateDirectory($root)
@@ -234,11 +236,11 @@ function Test-QuietAutomationCommitChecks {
             $null=& (Join-Path $scripts Sync-GitHubWorkflowsReadme.ps1) -WorkspaceRoot $fixture -Apply
             [void][IO.File]::WriteAllTextAsync($fixPath,($good+"# Unreviewed staged change`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         }else{
-            $fixPath=Join-Path $fixture scripts/Unsafe.ps1
+            $fixPath=Join-Path $fixture scripts/Test-Unsafe.ps1
             $bad='[IO.File]::WriteAllText(''forbidden'',''bad'')'
             $good='[CmdletBinding(SupportsShouldProcess)]param(); if($PSCmdlet.ShouldProcess(''owned'',''write'')){[IO.File]::WriteAllText(''owned'',''safe'')}'
             [void][IO.File]::WriteAllTextAsync($fixPath,$bad,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-            [void][IO.File]::WriteAllTextAsync((Join-Path $fixture docs/scripts/Unsafe.md),"# Owned unsafe fixture`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+            [void][IO.File]::WriteAllTextAsync((Join-Path $fixture docs/scripts/Test-Unsafe.md),"# Owned unsafe fixture`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
             $null=& (Join-Path $scripts Sync-ScriptsReadme.ps1) -ScriptsPath (Join-Path $fixture scripts) -DocsPath (Join-Path $fixture docs/scripts) -Apply
         }
         $null=& (Join-Path $scripts Sync-DocsCredits.ps1) -DocsPath (Join-Path $fixture docs) -RootPath $fixture -CreditsPath (Join-Path $fixture CREDITS.md) -Apply
@@ -270,8 +272,8 @@ function Test-QuietReportStreaming {
     Owned deterministic corpus and mutation evidence.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot scripts/Common.ps1)
-    . (Join-Path $WorkspaceRoot scripts/ReportStreaming.ps1)
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/Common.psm1) -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/ReportStreaming.psm1) -DisableNameChecking -ErrorAction Stop
     $directory=Join-Path $RunDirectory report-streaming;[void][IO.Directory]::CreateDirectory($directory)
     $random=[Random]::new(20261111);$utf8=[Text.UTF8Encoding]::new($false,$true)
     $path=Join-Path $directory owned.log
@@ -319,12 +321,12 @@ function Test-QuietResourceCommitChecks {
     Owned disposable repositories and evidence.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot scripts/Common.ps1)
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/Common.psm1) -DisableNameChecking -ErrorAction Stop
     $scripts=Join-Path $WorkspaceRoot scripts
     $root=Join-Path $RunDirectory resource-commit;[void][IO.Directory]::CreateDirectory($root)
     foreach($kind in @('Resources','ScriptContracts')){
         $fixture=New-QuietCommitWorkspaceFixture -Root $root -RealScriptsPath $scripts
-        $path=Join-Path $fixture $(if($kind -eq 'Resources'){'docs/resources/README.md'}else{'scripts/Tracked.ps1'})
+        $path=Join-Path $fixture $(if($kind -eq 'Resources'){'docs/resources/README.md'}else{'scripts/Get-Tracked.ps1'})
         $good=Get-Content $path -Raw -Encoding utf8
         $bad=if($kind -eq 'Resources'){$good+"`nStale owned fixture.`n"}else{"#Objective: Unwanted script header.`n"+$good}
         [void][IO.File]::WriteAllTextAsync($path,$bad,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
@@ -354,9 +356,11 @@ function Test-QuietObjectiveOutput {
     Owned baseline and generated-comment evidence.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot scripts/Common.ps1)
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/Common.psm1) -DisableNameChecking -ErrorAction Stop
     $directory=Join-Path $RunDirectory objective-output;[void][IO.Directory]::CreateDirectory($directory)
-    foreach($name in @('Invoke-WorkspaceChecks','Sync-Credits','WorkspaceProjects')){Copy-Item (Join-Path $WorkspaceRoot ('scripts/'+$name+'.ps1')) $directory}
+    Copy-Item ([IO.Path]::Combine($WorkspaceRoot,'scripts/Invoke-WorkspaceChecks.ps1')) $directory
+    Copy-Item ([IO.Path]::Combine($WorkspaceRoot,'scripts/Sync-Credits.ps1')) $directory
+    Copy-Item ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) ([IO.Path]::Combine($directory,'lib')) -Recurse
     $path=Join-Path $directory Invoke-WorkspaceChecks.ps1
     $text=Get-Content $path -Raw -Encoding utf8
     $before=@(& $path -WorkspaceRoot $WorkspaceRoot -Check Credits 6>&1|ForEach-Object {if($_ -is [Management.Automation.InformationRecord]){[string]$_.MessageData}else{$_.Check+'='+$_.State}})
@@ -364,7 +368,7 @@ function Test-QuietObjectiveOutput {
     [void][IO.File]::WriteAllTextAsync($path,$stripped,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     $after=@(& $path -WorkspaceRoot $WorkspaceRoot -Check Credits 6>&1|ForEach-Object {if($_ -is [Management.Automation.InformationRecord]){[string]$_.MessageData}else{$_.Check+'='+$_.State}})
     if(($before -join "`n") -cne ($after -join "`n")){throw 'RemovingCommentsChangedRealScriptOutput'}
-    $loaded=@(& {. (Join-Path $WorkspaceRoot scripts/Resources.ps1);. (Join-Path $WorkspaceRoot scripts/ReportStreaming.ps1)} *>&1)
+    $loaded=@(& {Import-Module (Join-Path $WorkspaceRoot scripts/lib/Resources.psm1) -DisableNameChecking -ErrorAction Stop;Import-Module (Join-Path $WorkspaceRoot scripts/lib/ReportStreaming.psm1) -DisableNameChecking -ErrorAction Stop} *>&1)
     if($loaded.Count){throw 'FunctionLibraryLoadProducedOutput'}
     $random=[Random]::new(20261112)
     foreach($index in 0..63){

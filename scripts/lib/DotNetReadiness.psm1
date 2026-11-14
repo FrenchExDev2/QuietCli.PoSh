@@ -143,13 +143,13 @@ function Import-DotNetProcessHelper {
     <# .SYNOPSIS Loads the engine-independent process helper into the dot-sourcing caller. #>
     param([string]$QuietCliRoot)
     $QuietCliRoot=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($QuietCliRoot)
-    . (Join-Path $QuietCliRoot 'scripts/Ci.Process.ps1')
+    Import-Module ([IO.Path]::Combine($QuietCliRoot,'scripts/lib/Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop
 }
 
 function Get-DotNetReadinessLocal {
     <#
     .SYNOPSIS
-    Reads SDK/runtime inventories and actual SDK resolution through Ci.Process.ps1.
+    Reads SDK/runtime inventories and actual SDK resolution through Ci.Process.psm1.
     .PARAMETER ProjectPath
     Existing directory used for actual dotnet --version and global.json resolution.
     .PARAMETER QuietCliRoot
@@ -215,10 +215,10 @@ function Get-DotNetReadiness {
         [ValidateNotNullOrEmpty()][ValidatePattern('^(win|linux|linux-musl|osx)-(x64|x86|arm64|arm)$')][string[]]$Rid = @([Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier),
         [ValidateNotNullOrEmpty()][ValidateSet('linux/amd64','linux/arm64','windows/amd64','windows/arm64')][string[]]$Platform = @('linux/amd64','linux/arm64'),
         [ValidatePattern('^$|^[a-z0-9][a-z0-9.-]*$')][string]$ImageVariant = '',
-        [string]$ProjectPath = (Join-Path $PSScriptRoot '../..'),
+        [string]$ProjectPath = ([IO.Path]::Combine($PSScriptRoot,'../..')),
         [switch]$SkipLocal, [string]$ReportPath,
         [ValidateRange(1,120)][int]$TimeoutSeconds = 20,
-        [string]$QuietCliRoot = (Join-Path $PSScriptRoot '../..')
+        [string]$QuietCliRoot = ([IO.Path]::Combine($PSScriptRoot,'../..'))
     )
     $ProjectPath=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ProjectPath)
     if($ReportPath){$ReportPath=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ReportPath)}
@@ -272,7 +272,7 @@ function Get-DotNetReadiness {
     if (!$SkipLocal -and $PSCmdlet.ShouldProcess($ProjectPath, 'Read local dotnet SDK/runtime inventories and resolve the selected SDK')) {
         $directory = Get-Item -LiteralPath $ProjectPath
         while ($directory) {
-            $pin = Join-Path $directory.FullName 'global.json'
+            $pin = [IO.Path]::Combine($directory.FullName,'global.json')
             if (Test-Path -LiteralPath $pin -PathType Leaf) { $globalJson = $pin; break }
             $directory = $directory.Parent
         }
@@ -362,7 +362,7 @@ function Get-DotNetInstallation {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param([string]$DotNetPath = 'dotnet', [string]$ProjectPath = (Get-Location).Path,
-        [string]$QuietCliRoot = (Join-Path $PSScriptRoot '../..'))
+        [string]$QuietCliRoot = ([IO.Path]::Combine($PSScriptRoot,'../..')))
     $ProjectPath=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ProjectPath)
     if($DotNetPath -ne 'dotnet'){$DotNetPath=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($DotNetPath)}
     if ($PSCmdlet.ShouldProcess($DotNetPath,'Read complete installed SDK and runtime inventories')) {
@@ -387,7 +387,7 @@ function Invoke-DotNetContainerPull {
     param([Parameter(Mandatory)][ValidateSet('docker','podman')][string]$ContainerRuntime,
         [Parameter(Mandatory)][ValidatePattern('^mcr\.microsoft\.com/dotnet/(sdk|runtime|aspnet|runtime-deps):[A-Za-z0-9_.-]+$')][string]$Image,
         [ValidateSet('linux/amd64','linux/arm64','windows/amd64','windows/arm64')][string]$Platform = 'linux/amd64',
-        [string]$QuietCliRoot = (Join-Path $PSScriptRoot '../..'))
+        [string]$QuietCliRoot = ([IO.Path]::Combine($PSScriptRoot,'../..')))
     if (!$PSCmdlet.ShouldProcess("$Image ($Platform)","Pull image using $ContainerRuntime")) { return }
     . Import-DotNetProcessHelper -QuietCliRoot $QuietCliRoot
     $arguments = @('pull','--quiet','--platform',$Platform)

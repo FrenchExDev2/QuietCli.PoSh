@@ -28,12 +28,12 @@ param(
     [switch]$Insiders,
     [Parameter(Mandatory,ParameterSetName='Export')][switch]$Export,
     [Parameter(ParameterSetName='Sync')][switch]$Update,
-    [string]$Path=(Join-Path (Split-Path $PSScriptRoot -Parent) 'build/vscode-extensions.json'),
+    [string]$Path=([IO.Path]::Combine((Split-Path $PSScriptRoot -Parent),'build/vscode-extensions.json')),
     [string]$EditorPath,
     [Parameter(ParameterSetName='Sync')][string[]]$AdditionalExtension=@()
 )
 $ErrorActionPreference='Stop'
-Import-Module (Join-Path $PSScriptRoot 'lib/EditorExtensions.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/EditorExtensions.psm1')) -DisableNameChecking
 $cli=if($WhatIfPreference){[pscustomobject]@{Channel=$(if($Insiders){'Insiders'}else{'Stable'})}}else{Resolve-DevelopmentEditorCli -Insiders:$Insiders -EditorPath $EditorPath}
 $caller=$PSCmdlet
 $apply={param($target,$action)$caller.ShouldProcess($target,$action)}.GetNewClosure()

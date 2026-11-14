@@ -31,7 +31,7 @@ Explicit selection overrides the checkout dotenv key; absent configuration uses 
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$Image,[ValidateSet('alpine','debian')][string]$Platform,[switch]$Headless,[ValidateRange(1,7200)][int]$TimeoutSeconds=900,[ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime,[string]$Case)
 dynamicparam {
-    . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
     New-QuietWorkspaceSuiteParameter -WorkspaceRoot $selectedRoot -Scope Container
 }
@@ -39,19 +39,19 @@ end {
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ContainerCi')){return}
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 if($Case -and $Suite -ne 'Core'){throw 'ContainerCaseRequiresCoreSuite'}
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
+$ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 if($Profiler){
     if($Suite -notin @('Core','All','Integration')){throw 'ProfilerRequiresCoreIntegration'}
     if(!$ProfilerModulePath -or !$ClrProfilerPath){
-        $tools=& (Join-Path $PSScriptRoot 'Initialize-Profilers.ps1') -OutputDirectory (Join-Path (Get-QuietReportRoot $WorkspaceRoot 'profilers') 'pinned')
+        $tools=& ([IO.Path]::Combine($PSScriptRoot,'Initialize-Profilers.ps1')) -OutputDirectory ([IO.Path]::Combine((Get-QuietReportRoot $WorkspaceRoot 'profilers'),'pinned'))
         $ProfilerModulePath=$tools.ProfilerModulePath;$ClrProfilerPath=$tools.ClrProfilerPath
     }
 }
-$run=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'containers') ($Platform+'-'+[DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))
+$run=[IO.Path]::Combine((Get-QuietReportRoot $WorkspaceRoot 'containers'),($Platform+'-'+[DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6)))
 [void][IO.Directory]::CreateDirectory($run)
 $runner=(Get-Command pwsh -CommandType Application|Select-Object -First 1).Source
-$arguments=@('-File',(ConvertTo-CiArgument ((Join-Path $PSScriptRoot 'Invoke-ContainerWorker.ps1'))),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($run)),'-Image',(ConvertTo-CiArgument ($Image)),'-Platform',$Platform)
+$arguments=@('-File',(ConvertTo-CiArgument (([IO.Path]::Combine($PSScriptRoot,'Invoke-ContainerWorker.ps1')))),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($run)),'-Image',(ConvertTo-CiArgument ($Image)),'-Platform',$Platform)
 if($ExpectedRuntimeIdentifier){$arguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
 if($Profiler){$arguments+=@('-Profiler','-ProfilerModulePath',(ConvertTo-CiArgument ($ProfilerModulePath)),'-ClrProfilerPath',(ConvertTo-CiArgument ($ClrProfilerPath)))}
 if($SkipTty){if($Suite -eq 'Mutation'){throw 'TtyMutationCannotRunWithSkipTty'};$arguments+='-SkipTty'}
@@ -59,11 +59,11 @@ $arguments+=@('-Suite',$Suite)
 $arguments+=@('-TimeoutSeconds',$TimeoutSeconds)
 if($Case){$arguments+=@('-Case',(ConvertTo-CiArgument $Case))}
 $arguments+=@('-ContainerRuntime',$ContainerRuntime)
-$options=@{FilePath=$runner;ArgumentList=$arguments;PassThru=$true;RedirectStandardOutput=(Join-Path $run 'worker.stdout.log');RedirectStandardError=(Join-Path $run 'worker.stderr.log')};if($IsWindows){$options.WindowStyle='Hidden'}
+$options=@{FilePath=$runner;ArgumentList=$arguments;PassThru=$true;RedirectStandardOutput=([IO.Path]::Combine($run,'worker.stdout.log'));RedirectStandardError=([IO.Path]::Combine($run,'worker.stderr.log'))};if($IsWindows){$options.WindowStyle='Hidden'}
 if(!$Headless -and !$IsWindows){throw 'A local visible monitor requires the Windows host launcher.'}
 $worker=Start-Process @options
 $monitor=$null
-if(!$Headless){$monitorPath=Join-Path $PSScriptRoot 'Watch-Tests.ps1';$monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($run))) -PassThru;"Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$run`""}
+if(!$Headless){$monitorPath=[IO.Path]::Combine($PSScriptRoot,'Watch-Tests.ps1');$monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($run))) -PassThru;"Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$run`""}
 $summary=Wait-WorkspaceWorker -Worker $worker -RunDirectory $run -WorkspaceRoot $WorkspaceRoot -Runner $runner -Monitor $monitor -TimeoutSeconds $TimeoutSeconds
 [pscustomobject]@{State=$summary.State.State;Platform=$summary.State.Platform;Passed=$summary.State.Passed;Failed=$summary.State.Failed;RunDirectory=$run}
 if($summary.State.State -ne 'Success'){throw "Container tests failed: $run"}

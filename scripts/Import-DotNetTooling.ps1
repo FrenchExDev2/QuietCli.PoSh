@@ -31,13 +31,13 @@ $mapping=[ordered]@{
     'Doc/Net/DotNetProvisioning.md'='docs/README-dotnet-provisioning.md'
 }
 foreach($entry in $mapping.GetEnumerator()) {
-    if(!(Test-Path -LiteralPath (Join-Path $source $entry.Key) -PathType Leaf)){throw "Missing source: $($entry.Key)"}
+    if(!(Test-Path -LiteralPath ([IO.Path]::Combine($source,$entry.Key)) -PathType Leaf)){throw "Missing source: $($entry.Key)"}
 }
 foreach($entry in $mapping.GetEnumerator()) {
-    $target=Join-Path $destination $entry.Value
+    $target=[IO.Path]::Combine($destination,$entry.Value)
     if(Test-Path -LiteralPath $target){[pscustomobject]@{Path=$target;Status='Preserved'};continue}
     if(!$PSCmdlet.ShouldProcess($target,'Copy initial .NET tooling source into its repository layout')){continue}
-    $text=Get-Content -LiteralPath (Join-Path $source $entry.Key) -Raw -Encoding utf8
+    $text=Get-Content -LiteralPath ([IO.Path]::Combine($source,$entry.Key)) -Raw -Encoding utf8
     if($entry.Value -like 'scripts/*.ps1' -and $entry.Value -notlike 'scripts/lib/*') {
         $text=$text.Replace("'DotNetReadiness.psm1'","'lib/DotNetReadiness.psm1'").Replace("'DotNetProvisioning.psm1'","'lib/DotNetProvisioning.psm1'")
     }
