@@ -14,6 +14,16 @@ function Test-QuietWorkspacePublication {
         $original=Get-Command Invoke-WorkspaceNative
         try{
             function script:Invoke-WorkspaceNative {
+                <#
+                .SYNOPSIS
+                Simulates native publication into the staging directory with controlled payloads and failures.
+                .PARAMETER FilePath
+                Executable supplied by the publication helper; no process is started.
+                .PARAMETER Arguments
+                Publish arguments whose output directory receives the fixture payload.
+                .PARAMETER WorkingDirectory
+                Workspace supplied by the publication helper.
+                #>
                 param($FilePath,$Arguments,$WorkingDirectory)
                 $script:PublicationCalls++
                 $target=$Arguments[[Array]::IndexOf($Arguments,'-o')+1]
