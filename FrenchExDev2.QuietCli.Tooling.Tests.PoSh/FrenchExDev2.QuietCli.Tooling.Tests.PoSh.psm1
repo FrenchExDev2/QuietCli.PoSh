@@ -26,7 +26,12 @@ function Invoke-QuietToolingTests {
         $cases['CI scales by affected suites with verified merge reuse and intermediate caches']={Test-QuietCiScalability -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['test case classifications are complete explicit and fail closed before filtering']={Test-QuietCaseMetadata -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['test execution declarations preserve barriers and bounded isolated workers']={Test-QuietCaseScheduling -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
-        $cases['CI optimization preserves Core prerequisites, parallel isolation and qualified checkpoints']={Test-QuietCiOptimization -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+        $cases['CI optimization preserves Core prerequisites, parallel isolation and qualified checkpoints']={
+            . ([IO.Path]::Combine($toolingRoot,'CompanionReports.Tests.ps1'))
+            $receipts=Test-QuietCompanionReportAggregation -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+            Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'companion-reports-campaign.json')) $receipts
+            Test-QuietCiOptimization -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+        }
         $cases['CI failure regressions reject empty Docker parents and skipped profiling uploads']={Test-QuietCiFailureRegression -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['unit byte-count parsing validates sizes without filesystem or process effects']={Test-QuietByteCountParsing}
         $cases['workspace project discovery keeps suite modes and package publication policy separate']={Test-QuietWorkspaceProjects -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
