@@ -17,7 +17,7 @@ Exact workflow commit required with ReadBatch. WhatIf makes no Git or remote pro
 [CmdletBinding(SupportsShouldProcess)]
 param([Parameter(Mandatory)][string]$Tag,[string]$WorkspaceRoot=(Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),[string]$OutputPath,[switch]$ReadBatch,[string]$Revision)
 $ErrorActionPreference='Stop'
-Import-Module ([IO.Path]::Combine($PSScriptRoot,'GalleryRelease.psm1')) -Force -DisableNameChecking
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'GalleryRelease.psm1')) -DisableNameChecking -ErrorAction Stop
 $plan=Resolve-QuietGalleryReleaseTag -WorkspaceRoot $WorkspaceRoot -Tag $Tag
 $batchOutputs=''
 if($ReadBatch){

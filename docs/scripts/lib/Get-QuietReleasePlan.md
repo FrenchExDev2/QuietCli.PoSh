@@ -27,6 +27,8 @@ Imports [GalleryRelease](../lib/GalleryRelease.md), which reads only the selecte
 
 
 
+Shared helper imports reuse loaded modules and preserve caller command visibility across repeated invocations.
+
 <!-- credits:begin -->
 ## Credits
 

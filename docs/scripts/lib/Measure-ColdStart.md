@@ -72,6 +72,10 @@ Direct invocation:
 
 Functionally solid and methodologically careful (randomized pairing, whole-pair discard, seeded bootstrap verdicts), but needs two small fixes: correct the off-by-one in the `-MaxFailedPairs` abort comparison (line 245, use `-ge` instead of `-gt`, or document the intended off-by-one), and add a script-level Pester test for the pairing/abort logic since none currently exists.
 
+## Dependency and regression contract
+
+Shared run-format, statistics, encoding and profiler libraries load without forced reloads. Repeated measurements preserve commands already imported by the caller; the run-profile benchmark suite asserts this in a shared session.
+
 <!-- credits:begin -->
 ## Credits
 

@@ -128,7 +128,7 @@ if($failed){exit 1}
     Assert-QuietEqual (Test-Path -LiteralPath $preview) $false
     # Mutate the actual library in a complete owned dependency layout, then assert independent invariants.
     $mutantRoot=Join-Path $root mutant;[void][IO.Directory]::CreateDirectory((Join-Path $mutantRoot lib))
-    Copy-Item (Join-Path $WorkspaceRoot scripts/lib/Ci.Process.psm1) $mutantRoot
+    Copy-Item (Join-Path $WorkspaceRoot scripts/lib/Ci.Process.psm1) (Join-Path $mutantRoot lib)
     $library=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot scripts/lib/TestCaseScheduling.psm1),[Text.Encoding]::UTF8)
     $limitAnchor='$active.Count -lt $MaxConcurrency'
     $barrierAnchor='$entry.Mode -ceq ''IsolatedProcess'' -and $stages.Count'

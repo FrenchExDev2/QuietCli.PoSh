@@ -50,6 +50,8 @@ Renders one existing `Measure-ColdStart.ps1`/`Invoke-ColdStartGate.ps1` JSON col
 
 Fit for purpose; the fail-fast "no report found" error and its clear phase/footprint tables make this a solid interactive/CI tool. The highest-priority improvement, shared with its sibling script, is adding a Pester test against a fixed synthetic `ab-*.json` fixture to lock in the rendered table contents and catch future formatting regressions, since none currently exists.
 
+Shared helper imports reuse loaded modules and preserve caller command visibility across repeated invocations.
+
 <!-- credits:begin -->
 ## Credits
 

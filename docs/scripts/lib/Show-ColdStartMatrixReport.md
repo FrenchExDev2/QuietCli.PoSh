@@ -46,6 +46,8 @@ Renders every cold-start A/B measurement found on disk — both local Windows ru
 
 Fit for purpose and resilient to malformed individual reports, but has a small cleanliness gap (unused `RunLog` import) and a real test-coverage gap. The highest-priority improvement is adding a focused Pester test that feeds this script a mix of well-formed, schema-drifted, and malformed `ab-*.json` fixtures and asserts the resulting table/row-count behavior, since none currently exists.
 
+Shared helper imports reuse loaded modules and preserve caller command visibility across repeated invocations.
+
 <!-- credits:begin -->
 ## Credits
 

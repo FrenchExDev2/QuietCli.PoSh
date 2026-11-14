@@ -108,8 +108,7 @@ function Test-QuietScriptLayoutContract {
     $inputs=@(Get-QuietBinaryInputs -WorkspaceRoot $build -Project 'Product/Fixture.csproj')
     Write-QuietBuildManifest -WorkspaceRoot $build -Project 'Product/Fixture.csproj' -Output 'Product/lib' -Inputs $inputs
     $null=Test-QuietBuildManifest -WorkspaceRoot $build -Output 'Product/lib'
-    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/CiImages.psm1')) -DisableNameChecking -ErrorAction Stop
-    $imageModule=Get-Module CiImages
+    $imageModule=Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/CiImages.psm1')) -PassThru -DisableNameChecking -ErrorAction Stop
     $resolved=& $imageModule { (Get-Command Resolve-QuietVirtEngine -ErrorAction Stop).Name }
     if($resolved -ne 'Resolve-QuietVirtEngine'){throw 'ImageModuleDependencyMissing'}
     Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/RuntimeDiagnosis.psm1')) -DisableNameChecking -ErrorAction Stop

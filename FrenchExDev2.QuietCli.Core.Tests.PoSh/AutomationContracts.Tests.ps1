@@ -236,11 +236,11 @@ function Test-QuietAutomationCommitChecks {
             $null=& (Join-Path $scripts Sync-GitHubWorkflowsReadme.ps1) -WorkspaceRoot $fixture -Apply
             [void][IO.File]::WriteAllTextAsync($fixPath,($good+"# Unreviewed staged change`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         }else{
-            $fixPath=Join-Path $fixture scripts/Unsafe.ps1
+            $fixPath=Join-Path $fixture scripts/Test-Unsafe.ps1
             $bad='[IO.File]::WriteAllText(''forbidden'',''bad'')'
             $good='[CmdletBinding(SupportsShouldProcess)]param(); if($PSCmdlet.ShouldProcess(''owned'',''write'')){[IO.File]::WriteAllText(''owned'',''safe'')}'
             [void][IO.File]::WriteAllTextAsync($fixPath,$bad,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-            [void][IO.File]::WriteAllTextAsync((Join-Path $fixture docs/scripts/Unsafe.md),"# Owned unsafe fixture`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+            [void][IO.File]::WriteAllTextAsync((Join-Path $fixture docs/scripts/Test-Unsafe.md),"# Owned unsafe fixture`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
             $null=& (Join-Path $scripts Sync-ScriptsReadme.ps1) -ScriptsPath (Join-Path $fixture scripts) -DocsPath (Join-Path $fixture docs/scripts) -Apply
         }
         $null=& (Join-Path $scripts Sync-DocsCredits.ps1) -DocsPath (Join-Path $fixture docs) -RootPath $fixture -CreditsPath (Join-Path $fixture CREDITS.md) -Apply
@@ -326,7 +326,7 @@ function Test-QuietResourceCommitChecks {
     $root=Join-Path $RunDirectory resource-commit;[void][IO.Directory]::CreateDirectory($root)
     foreach($kind in @('Resources','ScriptContracts')){
         $fixture=New-QuietCommitWorkspaceFixture -Root $root -RealScriptsPath $scripts
-        $path=Join-Path $fixture $(if($kind -eq 'Resources'){'docs/resources/README.md'}else{'scripts/Tracked.ps1'})
+        $path=Join-Path $fixture $(if($kind -eq 'Resources'){'docs/resources/README.md'}else{'scripts/Get-Tracked.ps1'})
         $good=Get-Content $path -Raw -Encoding utf8
         $bad=if($kind -eq 'Resources'){$good+"`nStale owned fixture.`n"}else{"#Objective: Unwanted script header.`n"+$good}
         [void][IO.File]::WriteAllTextAsync($path,$bad,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()

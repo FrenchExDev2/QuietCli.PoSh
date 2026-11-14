@@ -111,7 +111,7 @@ param(
 )
 if(!$PSCmdlet.ShouldProcess(([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../Measure-ColdStart.ps1'))),'Execute automation: Measure-ColdStart')){return}
 $ErrorActionPreference = 'Stop'
-foreach ($module in 'RunFormat', 'RunStatistics', 'RunProfiler', 'RunEncoding', 'RunColdStart') { Import-Module ([IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),"lib/$module.psm1")) -Force -DisableNameChecking }
+foreach ($module in 'RunFormat', 'RunStatistics', 'RunProfiler', 'RunEncoding', 'RunColdStart') { Import-Module ([IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),"lib/$module.psm1")) -DisableNameChecking -ErrorAction Stop }
 $logger = New-RunLogger -Level $LogLevel -Component 'coldstart' -LogPath $LogPath
 $clock = [Diagnostics.Stopwatch]::StartNew()
 

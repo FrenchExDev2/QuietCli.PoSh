@@ -236,7 +236,7 @@ function Test-QuietCiOptimization {
     $worker=Join-Path $fixture 'parallel-worker.ps1'
     $workerText=@'
 param($WorkspaceRoot,$RunDirectory,$Suite,$MaxConcurrency,$ExpectedRuntimeIdentifier,[switch]$SkipTty)
-. (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1')
+Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/WorkspaceJson.psm1')) -DisableNameChecking -ErrorAction Stop
 $started=[DateTimeOffset]::UtcNow.ToString('o')
 $parent=Split-Path $RunDirectory -Parent
 Write-WorkspaceJson (Join-Path $RunDirectory started.json) @{PID=$PID;Started=$started}
@@ -287,11 +287,15 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
     $rejected=$false
     try{$null=& (Join-Path $WorkspaceRoot scripts/Initialize-PowerShellHost.ps1) -WorkspaceRoot $hostRoot -Channel stable -RuntimeIdentifier win-x64 -OutputDirectory (Join-Path $hostRoot damaged)}catch{$rejected=$_.Exception.Message -ceq 'PowerShellHostCacheChecksumMismatch'}
     if(!$rejected){throw 'DamagedHostCacheAccepted'}
-    $cacheChecks=& {
+    $cacheModule=Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/CiImages.psm1')) -PassThru -DisableNameChecking -ErrorAction Stop
+    $cacheAdapters=& $cacheModule { $saved=@{};foreach($name in @('Resolve-QuietVirtEngine','Get-QuietCiRegistryDigest','Invoke-CiProcess','Invoke-WorkspaceNative')){$saved[$name]=(Get-Command $name).ScriptBlock};$saved }
+    try {
+    $cacheChecks=& $cacheModule {
+        param($WorkspaceRoot,$fixture)
         Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
         $script:ciCacheCalls=[Collections.Generic.List[string]]::new()
         $plan=[pscustomobject]@{Rid='linux-x64';Architecture='x64';Fingerprint=('a'*64);RegistryPath='fixture/image';Source='https://example.invalid/source';Base=$null;Dockerfile='fixture';Arguments=@{}}
-        function Resolve-QuietVirtEngine {
+        function script:Resolve-QuietVirtEngine {
             <#
             .SYNOPSIS
             Selects the owned Docker adapter without inspecting the host.
@@ -303,7 +307,7 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
             param($ContainerRuntime,$WorkspaceRoot)
             'docker'
         }
-        function Get-QuietCiRegistryDigest {
+        function script:Get-QuietCiRegistryDigest {
             <#
             .SYNOPSIS
             Supplies a synthetic immutable digest or an explicit cache miss without HTTP.
@@ -317,7 +321,7 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
             param($Plan,$Token,$Actor)
             if($script:ciCacheHit){'sha256:'+('b'*64)}
         }
-        function Invoke-CiProcess {
+        function script:Invoke-CiProcess {
             <#
             .SYNOPSIS
             Supplies synthetic daemon and image metadata to the actual validation callback.
@@ -340,7 +344,7 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
             $null=& $OnOutput ([pscustomobject]@{Stream='stdout';Text=$json}) $State
             [pscustomobject]@{Outcome='Success';ExitCode=0;ElapsedMs=1}
         }
-        function Invoke-WorkspaceNative {
+        function script:Invoke-WorkspaceNative {
             <#
             .SYNOPSIS
             Records requested image operations without pulling or building an image.
@@ -374,7 +378,8 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
             if('build' -cnotin $script:ciCacheCalls){throw 'CacheOnlyMutantNotDetected'}
         }finally{$env:QUIETCLI_REGISTRY_TOKEN=$previous}
         2
-    }
+    } $WorkspaceRoot $fixture
+    }finally{& $cacheModule {param($saved) foreach($name in $saved.Keys){Set-Item ('Function:script:'+$name) $saved[$name]}} $cacheAdapters}
     Write-WorkspaceJson $path $receipt
     $source=[IO.File]::ReadAllText($validator,[Text.Encoding]::UTF8)
     $mutant=[scriptblock]::Create($source.Replace('$receipt.Revision -cne $Revision','$false'))

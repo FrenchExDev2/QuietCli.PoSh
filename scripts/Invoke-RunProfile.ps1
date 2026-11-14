@@ -56,7 +56,7 @@ param(
     [Parameter(ParameterSetName = 'Run')][string]$ProfilerOutputDirectory
 )
 $ErrorActionPreference = 'Stop'
-foreach ($module in 'RunFormat', 'RunProfileStore', 'RunProfiler') { Import-Module ([IO.Path]::Combine($PSScriptRoot,"lib/$module.psm1")) -Force -DisableNameChecking }
+foreach ($module in 'RunFormat', 'RunProfileStore', 'RunProfiler') { Import-Module ([IO.Path]::Combine($PSScriptRoot,"lib/$module.psm1")) -DisableNameChecking -ErrorAction Stop }
 
 $logger = New-RunLogger -Level $LogLevel -Component 'run-profile' -LogPath $LogPath
 $clock = [Diagnostics.Stopwatch]::StartNew()

@@ -30,7 +30,7 @@ function Test-QuietReportPaths {
         } $source
     }
     if(!(& $verify $source)){throw 'Report path generated property or malformed category failed: seed 78051'}
-    foreach($mutant in @($source.Replace('if($ContinuousIntegration)','if(!$ContinuousIntegration)'),$source.Replace("'QuietCli2/'+`$hash+'/'","'QuietCli2/shared/'"))){if($mutant -ceq $source){throw 'Report mutation did not change source'};if(& $verify $mutant){throw 'Report path policy mutant survived'}}
+    foreach($mutant in @($source.Replace('if($ContinuousIntegration)','if(!$ContinuousIntegration)'),$source.Replace("'QuietCli2',`$hash,","'QuietCli2','shared',"))){if($mutant -ceq $source){throw 'Report mutation did not change source'};if(& $verify $mutant){throw 'Report path policy mutant survived'}}
     Test-QuietHeadlessMonitorContract -WorkspaceRoot $WorkspaceRoot
 }
 

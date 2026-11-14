@@ -408,7 +408,11 @@ function Test-QuietCommitWorkspace {
             Get-ChildItem -LiteralPath $workerScripts -Force|Copy-Item -Destination $candidateDirectory -Recurse -Force
             $candidatePath=Join-Path $candidateDirectory 'Commit-Workspace.ps1'
             $candidateLibrary=[IO.Path]::Combine($candidateDirectory,'lib/Commit-Workspace.psm1')
-            [void][IO.File]::WriteAllTextAsync($candidateLibrary,$workerSource.Replace($mutant.Find,$mutant.Replace),$workerUtf8).GetAwaiter().GetResult()
+            # The candidate owns automation sources; its informational sniffer uses the real built modules.
+            # Bind that dependency explicitly rather than pretending the sandbox is a product distribution.
+            $candidateSource=$workerSource.Replace($mutant.Find,$mutant.Replace)
+            $candidateSource=$candidateSource.Replace('$moduleRoot = Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent',('$moduleRoot = '+"'"+$workerWorkspaceRoot.Replace("'","''")+"'"))
+            [void][IO.File]::WriteAllTextAsync($candidateLibrary,$candidateSource,$workerUtf8).GetAwaiter().GetResult()
             $tokens=$null;$errors=$null;$null=[Management.Automation.Language.Parser]::ParseFile($candidateLibrary,[ref]$tokens,[ref]$errors)
             if($errors.Count){throw ('CommitWorkspaceMutantInvalid: '+$mutant.Id)}
             $resultPath=Join-Path $candidateDirectory 'result.json'

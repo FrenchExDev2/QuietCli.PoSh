@@ -53,7 +53,7 @@ $ErrorActionPreference = 'Stop'
 $sourceRoot = Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent
 foreach ($component in @('Core', 'Git')) {
     $name = "FrenchExDev2.QuietCli.$component.PoSh"
-    $path = [IO.Path]::Combine($sourceRoot,"$name/$name.psm1")
+    $path = [IO.Path]::Combine($sourceRoot,$name,($name+'.psm1'))
     $loaded = Get-Module -Name $name
     if ($loaded -and @($loaded | Where-Object { ![StringComparer]::OrdinalIgnoreCase.Equals($_.Path, $path) }).Count) {
         throw "PreviewTagUnexpectedModulePath: $name; start a fresh PowerShell session."
@@ -63,7 +63,7 @@ foreach ($component in @('Core', 'Git')) {
         throw "PreviewTagUnexpectedModulePath: $name"
     }
 }
-Import-Module ([IO.Path]::Combine($PSScriptRoot,'PreviewTag.psm1')) -Force -DisableNameChecking
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'PreviewTag.psm1')) -DisableNameChecking -ErrorAction Stop
 $WorkspaceRoot = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($WorkspaceRoot, $PWD.Path))
 
 function Invoke-QuietPreviewGit {
@@ -102,7 +102,7 @@ if (!$WorkspaceRoot.Equals([IO.Path]::TrimEndingDirectorySeparator([IO.Path]::Ge
     throw 'PreviewTagWorkspaceMustBeRepositoryRoot'
 }
 if($PSCmdlet.ParameterSetName -ceq 'Publish'){
-    Import-Module ([IO.Path]::Combine($PSScriptRoot,'ReleaseTags.psm1')) -Force -DisableNameChecking
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'ReleaseTags.psm1')) -DisableNameChecking -ErrorAction Stop
     $scriptDirectory=([IO.Path]::GetDirectoryName($PSScriptRoot))
     $invokeGit={param($arguments) Invoke-QuietPreviewGit -Arguments $arguments}
     $commit={
@@ -132,7 +132,7 @@ if($Release){
     $identity=Get-QuietModulePackageIdentity -Path ([IO.Path]::Combine($WorkspaceRoot,"$project/$project.psm1")) -RequireManifest
     $version=$identity.Version
     $publicName=$identity.Name
-    Import-Module ([IO.Path]::Combine($PSScriptRoot,'GalleryRelease.psm1')) -Force -DisableNameChecking
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'GalleryRelease.psm1')) -DisableNameChecking -ErrorAction Stop
     $plan=Resolve-QuietGalleryReleaseTag -WorkspaceRoot $WorkspaceRoot -Tag "$publicName/v$version"
     $tag=$plan.Tag
 }else{$tag = New-QuietPreviewTagName -Version $version -Timestamp $Timestamp}

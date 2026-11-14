@@ -64,6 +64,8 @@ Example (from the file's own help, line 50):
 
 Fit for purpose and carefully reasoned about the A/A-before-A/B trustworthiness problem; no bugs found. The one worth tracking is the `'inconclusive'`-as-healthy-for-A/A naming overload (DESIGN), which is well-explained in comments but would benefit from a distinct verdict value in the underlying data model.
 
+Shared helper imports reuse loaded modules and preserve caller command visibility across repeated invocations.
+
 <!-- credits:begin -->
 ## Credits
 

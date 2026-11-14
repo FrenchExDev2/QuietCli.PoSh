@@ -538,7 +538,7 @@ function Install-DevelopmentWrkflw {
     $tool=$Plan.Specification.Wrkflw.Artifact
     if(!$tool){throw "WorkstationWrkflwArtifactUnavailable: $($Plan.Target.Rid)"}
     $fileName='wrkflw-'+$Plan.Specification.Wrkflw.Version+'-'+[IO.Path]::GetFileName(([uri]$tool.Url).AbsolutePath)
-    $archive=Get-DevelopmentArchive $tool.Url $tool.SHA256 ([IO.Path]::Combine($Plan.InstallRoot,('downloads/'+$fileName)))
+    $archive=Get-DevelopmentArchive $tool.Url $tool.SHA256 ([IO.Path]::Combine($Plan.InstallRoot,'downloads',$fileName))
     Expand-DevelopmentArchive $archive ([IO.Path]::Combine($Plan.InstallRoot,'wrkflw'))
 }
 

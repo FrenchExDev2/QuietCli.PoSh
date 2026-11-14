@@ -101,14 +101,18 @@ function Invoke-SandboxSuite {
     #>
     param([string]$Root)
     $logger.Increment('suite.started')
-    $capture=@{Summary=$null}
+    $capture=@{Summary=$null;Diagnostics=[Collections.Generic.Queue[string]]::new()}
     $result=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -ArgumentList @('-File',(Join-Path $Root 'FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1'),'-Seed',"$Seed",'-Iterations',"$Iterations",'-ConsoleEncoding',$ConsoleEncoding,'-Skip','profiler:,console:,coldstart-live:,tool-cache-live:') -WorkingDirectory $Root -TimeoutSeconds $MutantTimeoutSeconds -State $capture -OnOutput {
         param($record,$state)
         if($record.Stream -eq 'stdout' -and $record.Text -match '^SUMMARY Passed=(\d+) Failed=(\d+) Skipped=(\d+)$'){
             $state.Summary=[pscustomobject]@{Passed=[int]$Matches[1];Failed=[int]$Matches[2];Skipped=[int]$Matches[3]}
         }
+        if($record.Stream -eq 'stderr' -or $record.Text -match 'FAILED:'){
+            if($state.Diagnostics.Count -ge 8){[void]$state.Diagnostics.Dequeue()}
+            $state.Diagnostics.Enqueue($record.Text.Substring(0,[Math]::Min(1000,$record.Text.Length)))
+        }
     }
-    [pscustomobject]@{Outcome=$result.Outcome;Summary=$capture.Summary;ErrorCode=$(if($result.Outcome -ne 'Success'){'SuiteProcessFailed'}else{''})}
+    [pscustomobject]@{Outcome=$result.Outcome;Summary=$capture.Summary;Diagnostics=$capture.Diagnostics.ToArray();ErrorCode=$(if($result.Outcome -ne 'Success'){'SuiteProcessFailed'}else{''})}
 }
 
 function Remove-MutationSandbox {
@@ -131,6 +135,7 @@ try {
     if ($baseline.Outcome -ne 'Success' -or $null -eq $baseline.Summary -or $baseline.Summary.Failed -ne 0) {
         $hint = if ($baseline.ErrorCode -eq 'DecodeOrFramingFailed') { " (the suite output is not valid UTF-8 for quiet: console encoding '$ConsoleEncoding' does not match its strict UTF-8 decoding; use -ConsoleEncoding utf-8)" } else { '' }
         $logger.Error("baseline is not green: outcome $($baseline.Outcome), error '$($baseline.ErrorCode)'$hint")
+        foreach($diagnostic in $baseline.Diagnostics){$logger.Error('baseline: '+$diagnostic)}
         throw 'MutationBaselineFailed'
     }
     $logger.Info("baseline green: $($baseline.Summary.Passed) cases passed, $($baseline.Summary.Skipped) skipped")

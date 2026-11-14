@@ -128,6 +128,10 @@ AutomationContracts.Tests.ps1 checks Docker/Podman availability combinations, ge
 
 [Workflow index](ci/github/README.md) · [Execution model](ci/execution-model.md) · [Script index](scripts/README.md).
 
+## Dependency and regression contract
+
+Fixture copies must preserve the imported library graph under scripts/lib. Module-bound adapters and mutants execute in the owning module and restore their original implementation in finally; caller-scope replacements do not establish coverage. Run-profile baseline failures retain at most eight bounded diagnostic lines before rejecting the campaign. Full Tooling execution checks interactions between cases in addition to focused development runs.
+
 <!-- credits:begin -->
 ## Credits
 

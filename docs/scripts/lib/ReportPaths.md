@@ -54,6 +54,10 @@ $root = Get-QuietReportRoot -WorkspaceRoot $WorkspaceRoot -Category 'coldstart'
 
 Fit for purpose as-is; this is a small, correct, well-isolated utility with its own dedicated test file. No functional rework is needed — the only improvement worth considering is centralizing the hardcoded `artifacts/` segment (line 15) so it cannot silently drift from the same literal used elsewhere.
 
+## Dependency and regression contract
+
+Path components are passed separately to System.IO.Path.Combine, including the temporary QuietCli2/workspace/category and CI artifacts/category segments. Returned paths use native separators and remain stable across trailing-separator variants.
+
 <!-- credits:begin -->
 ## Credits
 

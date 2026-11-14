@@ -46,6 +46,12 @@ Owned-repository tests cover seeded numeric counters, manifest-driven discovery,
 
 
 
+## Dependency and regression contract
+
+Local module identity compares native paths composed from separate root, module-directory and filename components. Equivalent Windows separators must not reject the selected checkout as a different module.
+
+Shared helper imports reuse loaded modules and preserve caller command visibility across repeated invocations.
+
 <!-- credits:begin -->
 ## Credits
 

@@ -80,6 +80,10 @@ wrkflw follows the existing toolchain pattern: reviewed native artifacts, bounde
 explicit exclusions and ShouldProcess-aware provisioning followed by independent verification.
 The missing native ARM64 artifacts and workflow-semantic qualification remain explicit gaps.
 
+## Dependency and regression contract
+
+The wrkflw download cache composes the installation root, downloads directory and pinned archive filename as separate System.IO.Path components. Offline installer assertions verify the exact cache path and extraction destination.
+
 <!-- credits:begin -->
 ## Credits
 

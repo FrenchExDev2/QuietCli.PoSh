@@ -53,6 +53,10 @@ Example (from its own `.EXAMPLE`, line 42):
 
 This is a well-factored orchestrator that correctly delegates parsing/validation/execution concerns to sibling `lib/` modules and already has meaningful test coverage (regular, mutation, and benchmark suites) — fit for purpose as-is. The one worth fixing is the `$profile` variable-name shadowing (line 81), which should be renamed (e.g. `$runProfile`) to avoid confusion with the PowerShell automatic variable.
 
+## Dependency and regression contract
+
+Runtime helper imports reuse loaded modules. Invoking profiles repeatedly must preserve the caller's existing formatting and profile commands; dependency loading does not force a module reload.
+
 <!-- credits:begin -->
 ## Credits
 

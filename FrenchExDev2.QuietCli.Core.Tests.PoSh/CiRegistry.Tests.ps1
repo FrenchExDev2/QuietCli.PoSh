@@ -159,11 +159,12 @@ namespace QuietCiRegistryFixture {
     $readerSource=$reader.ToString();$anchor='-cne $Digest'
     if(!$readerSource.Contains($anchor)){throw 'RegistryDigestMutationAnchorMissing'}
     try{
-        Set-Item Function:Read-QuietCiRegistryDocument ([scriptblock]::Create($readerSource.Replace($anchor,'-cne $Digest -and $false')))
+        # Mutate the reader in the resolver's owning module, not the calling test scope.
+        & $reader.Module {param($body) Set-Item Function:script:Read-QuietCiRegistryDocument $body} ([scriptblock]::Create($readerSource.Replace($anchor,'-cne $Digest -and $false')))
         $detected=$false
         try{& $assertRejected 'config bytes'}catch{$detected=$_.Exception.Message -ceq 'RegistryMalformedInputAccepted: config bytes'}
         if(!$detected){throw 'RegistryDigestMutantSurvived'}
         $killed++
-    }finally{Set-Item Function:Read-QuietCiRegistryDocument $reader}
+    }finally{& $reader.Module {param($body) Set-Item Function:script:Read-QuietCiRegistryDocument $body} $reader}
     Write-WorkspaceJson (Join-Path $RunDirectory 'ci-registry-protocol.json') @{Seed=$seed;ValidProperties=$properties;MalformedCases=$damages.Count;CacheMissStatuses=3;MutantsKilled=$killed;RealNetwork=$false;ImageLayersDownloaded=$false}
 }

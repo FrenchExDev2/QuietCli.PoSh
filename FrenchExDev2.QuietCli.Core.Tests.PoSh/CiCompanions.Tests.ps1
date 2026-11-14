@@ -112,10 +112,13 @@ function Test-QuietCiCompanions {
     $bad1=& $mutant $WorkspaceRoot linux-x64 Second $fragment @{} $inputPaths -ParentPlan $first
     $bad2=& $mutant $WorkspaceRoot linux-x64 Second $fragment @{} $inputPaths -ParentPlan $changed
     if($bad1.Fingerprint -cne $bad2.Fingerprint){throw 'CompanionParentFingerprintMutantNotExercised'}
-    $imageChecks=& {
+    $imageModule=(Get-Command Get-QuietCiVerifiedImage).Module
+    $nativeAdapter=& $imageModule {(Get-Command Invoke-CiProcess).ScriptBlock}
+    try {
+    $imageChecks=& $imageModule {
         param($WorkspaceRoot)
         Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
-        function Invoke-CiProcess {
+        function script:Invoke-CiProcess {
             <#
             .SYNOPSIS
             Supplies owned parent-image metadata without starting a container process.
@@ -169,6 +172,7 @@ function Test-QuietCiCompanions {
         if($accepted.Id -cne ('sha256:'+('1'*64))){throw 'ParentLabelMutantNotExercised'}
         $checks
     } $WorkspaceRoot
+    }finally{& $imageModule {param($body) Set-Item Function:script:Invoke-CiProcess $body} $nativeAdapter}
     foreach($script in @('Initialize-CiCompanions.ps1','New-CiSuiteImage.ps1')){
         $missing=Join-Path $fixture 'absent-checkout'
         if($script -ceq 'Initialize-CiCompanions.ps1'){$null=& (Join-Path $WorkspaceRoot ('scripts/'+$script)) -WorkspaceRoot $missing -OutputPath (Join-Path $missing 'output.txt') -WhatIf}

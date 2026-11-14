@@ -67,7 +67,7 @@ param(
 )
 if(!$PSCmdlet.ShouldProcess(([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../Invoke-ColdStartGate.ps1'))),'Execute automation: Invoke-ColdStartGate')){return}
 $ErrorActionPreference = 'Stop'
-foreach ($module in 'RunEncoding', 'RunFormat') { Import-Module ([IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),"lib/$module.psm1")) -Force -DisableNameChecking }
+foreach ($module in 'RunEncoding', 'RunFormat') { Import-Module ([IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),"lib/$module.psm1")) -DisableNameChecking -ErrorAction Stop }
 $logger = New-RunLogger -Level $LogLevel -Component 'coldstart-gate' -LogPath $LogPath
 $runProfileScript = [IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),'Invoke-RunProfile.ps1')
 

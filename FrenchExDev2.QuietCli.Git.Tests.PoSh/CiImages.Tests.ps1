@@ -27,6 +27,9 @@ function Get-QuietGitCiImageCases {
             $copy=Join-Path $root ('artifacts/git-ci-image-contract/'+[guid]::NewGuid().ToString('N'))
             $files=@('global.json','build/ci-images.lock.json','scripts/lib/CiImages.psm1','scripts/New-CiImage.ps1','FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1','FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/ci-image.lock.json','FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/UpstreamSources.json',$contractPath,'FrenchExDev2.QuietCli.Git.PoSh/.github/containers/fetch-git-tools.sh')
             $files+=@(Get-ChildItem (Join-Path $root '.github/containers') -File -Force|ForEach-Object {'.github/containers/'+$_.Name})
+            # Preserve the imported library graph as well as the image entry point.
+            $files+=@(Get-ChildItem ([IO.Path]::Combine($root,'scripts/lib')) -File -Filter *.psm1 | ForEach-Object {'scripts/lib/'+$_.Name})
+            $files=@($files | Select-Object -Unique)
             foreach($file in $files){$destination=Join-Path $copy $file;[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination));Copy-Item -LiteralPath (Join-Path $root $file) -Destination $destination}
 
             & {
