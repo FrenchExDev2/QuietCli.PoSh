@@ -45,32 +45,32 @@ Explicit selection overrides the checkout dotenv key; absent configuration uses 
     [AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime
 )
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ContainerColdStartWorker')){return}
-$ErrorActionPreference = 'Stop'; . (Join-Path $PSScriptRoot 'Common.ps1')
+$ErrorActionPreference = 'Stop'; Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 $owner = [guid]::NewGuid().ToString('N'); $name = 'quietcli2-coldstart-' + $owner.Substring(0, 12)
-$state = @{ Project = 'FrenchExDev2.QuietCli.Core.PoSh'; Task = 'ReadyToRun cold-start report'; Workspace = $WorkspaceRoot; ProjectDirectory = (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh'); Platform = $Platform; State = 'Preparing'; StartedUtc = [DateTimeOffset]::UtcNow.ToString('o'); ProcessId = $PID; ContainerId = $name; Passed = $null; Failed = $null; Case = 'Staging baseline and candidate modules'; FinishedUtc = $null; Error = $null; Image = $Image; Owner = $owner }
-$status = Join-Path $RunDirectory 'status.json'
+$state = @{ Project = 'FrenchExDev2.QuietCli.Core.PoSh'; Task = 'ReadyToRun cold-start report'; Workspace = $WorkspaceRoot; ProjectDirectory = ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')); Platform = $Platform; State = 'Preparing'; StartedUtc = [DateTimeOffset]::UtcNow.ToString('o'); ProcessId = $PID; ContainerId = $name; Passed = $null; Failed = $null; Case = 'Staging baseline and candidate modules'; FinishedUtc = $null; Error = $null; Image = $Image; Owner = $owner }
+$status = [IO.Path]::Combine($RunDirectory,'status.json')
 Write-WorkspaceJson $status $state
 $created = $false
 try {
-    $stage = Join-Path $RunDirectory 'workspace'; [void][IO.Directory]::CreateDirectory($stage)
-    foreach ($file in Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot 'scripts') -Recurse -File -Force) {
-        $relative = [IO.Path]::GetRelativePath((Join-Path $WorkspaceRoot 'scripts'), $file.FullName)
-        $destination = Join-Path (Join-Path $stage 'scripts') $relative
+    $stage = [IO.Path]::Combine($RunDirectory,'workspace'); [void][IO.Directory]::CreateDirectory($stage)
+    foreach ($file in Get-ChildItem -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts')) -Recurse -File -Force) {
+        $relative = [IO.Path]::GetRelativePath(([IO.Path]::Combine($WorkspaceRoot,'scripts')), $file.FullName)
+        $destination = [IO.Path]::Combine(([IO.Path]::Combine($stage,'scripts')),$relative)
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
         Copy-Item -LiteralPath $file.FullName -Destination $destination
     }
-    foreach ($file in Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh') -Recurse -File -Force) {
-        $relative = [IO.Path]::GetRelativePath((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh'), $file.FullName)
+    foreach ($file in Get-ChildItem -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')) -Recurse -File -Force) {
+        $relative = [IO.Path]::GetRelativePath(([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')), $file.FullName)
         if ($relative -match '(^|[\\/])(\.git|bin|obj)[\\/]') { continue }
-        $destination = Join-Path (Join-Path $stage 'FrenchExDev2.QuietCli.Core.PoSh') $relative
+        $destination = [IO.Path]::Combine(([IO.Path]::Combine($stage,'FrenchExDev2.QuietCli.Core.PoSh')),$relative)
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
         Copy-Item -LiteralPath $file.FullName -Destination $destination
     }
     $candidateRoot = Split-Path -Parent ([IO.Path]::GetFullPath($CandidateModule))
     foreach ($file in Get-ChildItem -LiteralPath $candidateRoot -Recurse -File -Force) {
         $relative = [IO.Path]::GetRelativePath($candidateRoot, $file.FullName)
-        $destination = Join-Path (Join-Path $stage 'candidate') $relative
+        $destination = [IO.Path]::Combine(([IO.Path]::Combine($stage,'candidate')),$relative)
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
         Copy-Item -LiteralPath $file.FullName -Destination $destination
     }
@@ -103,12 +103,12 @@ try {
         Write-WorkspaceJson $status $state
         [void][Threading.Tasks.Task]::Delay(2000).GetAwaiter().GetResult()
     } while ($true)
-    $null = Invoke-WorkspaceNative $ContainerRuntime @('cp', ($name + ':/workspace/artifacts/coldstart'), (Join-Path $RunDirectory 'guest')) $WorkspaceRoot -TimeoutSeconds 60
+    $null = Invoke-WorkspaceNative $ContainerRuntime @('cp', ($name + ':/workspace/artifacts/coldstart'), ([IO.Path]::Combine($RunDirectory,'guest'))) $WorkspaceRoot -TimeoutSeconds 60
     $exit = @{ Value = '' }
     $exitInspection = Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('inspect', '--format', '{{.State.ExitCode}}', $name) -TimeoutSeconds 15 -State $exit -OnOutput { param($e, $s) if ($e.Stream -eq 'stdout') { $s.Value = $e.Text.Trim() } }
     if ($exitInspection.Outcome -ne 'Success' -or $exit.Value -notmatch '^-?\d+$') { throw 'GuestExitCodeUnconfirmed' }
     $state.GuestExitCode = [int]$exit.Value
-    $guestFiles = @(Get-ChildItem -LiteralPath (Join-Path $RunDirectory 'guest') -Filter 'ab-*.json' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTimeUtc -Descending)
+    $guestFiles = @(Get-ChildItem -LiteralPath ([IO.Path]::Combine($RunDirectory,'guest')) -Filter 'ab-*.json' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTimeUtc -Descending)
     if ($guestFiles.Count -eq 0) {
         # An unstable A/A noise floor aborts the gate before writing an A/B result; this is a report, not a crash.
         if ($state.GuestExitCode -eq 0) { throw 'GuestColdStartReportMissingAfterCleanExit' }
@@ -129,16 +129,16 @@ catch {
         $diagnostics = @{ Lines = [Collections.Generic.Queue[object]]::new() }
         try {
             $logs = Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('logs', $name) -TimeoutSeconds 20 -State $diagnostics -OnOutput { param($e, $s) if ($s.Lines.Count -ge 80) { $null = $s.Lines.Dequeue() }; $s.Lines.Enqueue(@{ Stream = $e.Stream; Text = $e.Text }) }
-            Write-WorkspaceJson (Join-Path $RunDirectory 'guest-diagnostics.json') @{ Outcome = $logs.Outcome; ExitCode = $logs.ExitCode; Lines = @($diagnostics.Lines) }
+            Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'guest-diagnostics.json')) @{ Outcome = $logs.Outcome; ExitCode = $logs.ExitCode; Lines = @($diagnostics.Lines) }
         }
-        catch { Write-WorkspaceJson (Join-Path $RunDirectory 'guest-diagnostics.json') @{ Outcome = 'Unavailable'; Error = $_.ToString() } }
+        catch { Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'guest-diagnostics.json')) @{ Outcome = 'Unavailable'; Error = $_.ToString() } }
     }
 }
 finally {
     $state.Cleanup = 'NotCreated'
     if ($created) { try { $null = Invoke-WorkspaceNative $ContainerRuntime @('rm', '--force', $name) $WorkspaceRoot -TimeoutSeconds 20; $state.Cleanup = 'RemovedOwnedContainer' } catch { $state.Cleanup = 'Unconfirmed: owned container ' + $name } }
     $state.FinishedUtc = [DateTimeOffset]::UtcNow.ToString('o')
-    Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{ State = $state }
+    Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'summary.json')) @{ State = $state }
     Write-WorkspaceJson $status $state
 }
 if ($state.State -eq 'Crash') { exit 1 }

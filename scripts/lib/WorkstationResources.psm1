@@ -1,6 +1,6 @@
 #Objective: Track owned temporary workstations and release only their inactive resources.
 #requires -Version 7.6
-. (Join-Path $PSScriptRoot '../Ci.Process.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop
 
 function Write-WorkstationOwnership {
     <#
@@ -12,7 +12,7 @@ function Write-WorkstationOwnership {
     Closed ownership metadata, never credentials or native business output.
     #>
     param([string]$RunDirectory,$Receipt)
-    $path=Join-Path $RunDirectory 'ownership.json';$temporary=$path+'.'+[guid]::NewGuid().ToString('N')
+    $path=[IO.Path]::Combine($RunDirectory,'ownership.json');$temporary=$path+'.'+[guid]::NewGuid().ToString('N')
     [void][IO.File]::WriteAllTextAsync($temporary,($Receipt|ConvertTo-Json -Depth 12)+"`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     [IO.File]::Move($temporary,$path,$true)
 }
@@ -47,7 +47,7 @@ function Add-WorkstationResource {
     Exact owned resource name.
     #>
     param([string]$RunDirectory,[ValidateSet('Container','Image')][string]$Kind,[string]$Name)
-    $receipt=Get-Content -LiteralPath (Join-Path $RunDirectory 'ownership.json') -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable -DateKind String
+    $receipt=Get-Content -LiteralPath ([IO.Path]::Combine($RunDirectory,'ownership.json')) -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable -DateKind String
     if($Name -cnotmatch '^(localhost/)?quietcli-workstation-[a-z0-9-]+$'){throw 'WorkstationResourceNameInvalid'}
     $receipt.Resources+=@{Kind=$Kind;Name=$Name;Label=$receipt.RunId;State='Registered'}
     Write-WorkstationOwnership $RunDirectory $receipt
@@ -105,7 +105,7 @@ function Get-WorkstationCleanupDecision {
     Expected owning workspace.
     #>
     param([string]$RunDirectory,[string]$WorkspaceRoot)
-    $path=Join-Path $RunDirectory 'ownership.json'
+    $path=[IO.Path]::Combine($RunDirectory,'ownership.json')
     if(!(Test-Path -LiteralPath $path)){return [pscustomobject]@{State='Unmanaged';Reason='No ownership receipt; preserved';Receipt=$null}}
     try{$receipt=Get-Content -LiteralPath $path -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable -DateKind String}catch{return [pscustomobject]@{State='Protected';Reason='Unreadable ownership receipt';Receipt=$null}}
     if($receipt -isnot [Collections.IDictionary]){return [pscustomobject]@{State='Protected';Reason='Ownership receipt must be an object';Receipt=$null}}
@@ -195,7 +195,7 @@ function Complete-WorkstationRun {
     Terminal worker outcome.
     #>
     param([string]$RunDirectory,[string]$State)
-    $receipt=Get-Content -LiteralPath (Join-Path $RunDirectory 'ownership.json') -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable -DateKind String
+    $receipt=Get-Content -LiteralPath ([IO.Path]::Combine($RunDirectory,'ownership.json')) -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable -DateKind String
     $sameEngine=if($receipt.Resources.Count){Test-WorkstationPodmanIdentity $receipt.PodmanIdentity}else{$true}
     foreach($resource in @($receipt.Resources|Sort-Object Kind)){
         try{$resource.State=if($sameEngine){Remove-WorkstationOwnedResource $resource}else{'UnverifiedEngine'}}catch{$resource.State='Unverified';$resource.Error=$_.Exception.Message}

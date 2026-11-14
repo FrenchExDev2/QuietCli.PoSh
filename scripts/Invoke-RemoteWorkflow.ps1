@@ -15,6 +15,6 @@ QuietCli2 root.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][ValidatePattern('^[\w.-]+/[\w.-]+$')][string]$Repository,[string]$Workflow='ci.yml',[string]$Ref,[switch]$Status,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-RemoteWorkflow')){return}
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
+$ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 if($Status){Invoke-WorkspaceNative gh @('run','list','--repo',$Repository,'--workflow',$Workflow,'--limit','10') $WorkspaceRoot}
 else{if(!$Ref){throw 'ExplicitRefRequired'};Invoke-WorkspaceNative gh @('workflow','run',$Workflow,'--repo',$Repository,'--ref',$Ref) $WorkspaceRoot}

@@ -15,9 +15,9 @@ $ErrorActionPreference='Stop'
 $utf8=[Text.UTF8Encoding]::new($false)
 [Console]::InputEncoding=$utf8;[Console]::OutputEncoding=$utf8;$OutputEncoding=$utf8
 if(Get-Module FrenchExDev2.QuietCli.*){throw 'ContaminatedStatusProbe'}
-. (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Ci.Process.psm1') -DisableNameChecking -ErrorAction Stop
 . (Join-Path $PSScriptRoot 'Status.Aggregation.ps1')
-. (Join-Path $WorkspaceRoot 'scripts/TestConfiguration.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/TestConfiguration.psm1') -DisableNameChecking -ErrorAction Stop
 Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory 'real-status.sqlite') -Hosting $(if($env:QUIETCLI_EXPECT_ENGINE_MODE){$env:QUIETCLI_EXPECT_ENGINE_MODE}else{'Auto'})
 $env:GIT_OPTIONAL_LOCKS='0'
 $env:GIT_TERMINAL_PROMPT='0'

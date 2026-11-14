@@ -9,8 +9,8 @@ function Invoke-QuietGitParserMutation {
     #>
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Push','Repository','Query','Attribution','PathQuery','Revision','Invocation','Schema','ArgumentFilter')][string]$Catalogue='Push')
     $ErrorActionPreference='Stop'
-    . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
-    . (Join-Path $WorkspaceRoot 'scripts/ReportPaths.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Ci.Process.psm1') -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/ReportPaths.psm1') -DisableNameChecking -ErrorAction Stop
     $run=Join-Path (Get-QuietReportRoot $WorkspaceRoot ('git-'+$Catalogue.ToLowerInvariant()+'-mutation')) ([guid]::NewGuid().ToString('N'))
     [void][IO.Directory]::CreateDirectory($run)
     $staging=Join-Path ([IO.Path]::GetTempPath()) ('qgpm-'+[guid]::NewGuid().ToString('N').Substring(0,8))

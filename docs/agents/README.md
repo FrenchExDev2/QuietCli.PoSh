@@ -39,7 +39,7 @@ This directory holds the documents that tell AI agents how to use QuietCli. They
   set is a change to that test.
 - Repository-only guides may link anywhere in the repository.
 
-`scripts/AgentDocuments.ps1` stages `AGENTS.md`, `SKILL.md` and `openai.yaml` byte for byte into
+`scripts/lib/AgentDocuments.psm1` stages `AGENTS.md`, `SKILL.md` and `openai.yaml` byte for byte into
 the Core package (`resources/agents`). `Add-QuietAgentInstruction` copies only `AGENTS.md` and
 `SKILL.md` into a project (`.skills` by default).
 

@@ -47,7 +47,7 @@ param(
     [switch]$FailIfNotReady
 )
 $ErrorActionPreference = 'Stop'
-Import-Module (Join-Path $PSScriptRoot 'lib/DotNetReadiness.psm1') -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/DotNetReadiness.psm1')) -ErrorAction Stop -DisableNameChecking
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Check .NET publication and local readiness and optionally write a report')){return}
 $options = @{} + $PSBoundParameters
 $null = $options.Remove('FailIfNotReady')

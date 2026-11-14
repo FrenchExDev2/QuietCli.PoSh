@@ -19,7 +19,7 @@ Encoding selected by the parent campaign.
 param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$Sandbox,[int]$Seed,[int]$Iterations,[int]$TimeoutSeconds,[string]$ConsoleEncoding='utf-8')
 if(!$PSCmdlet.ShouldProcess($Sandbox,'Run one owned mutation suite and save its bounded result')){return}
 $ErrorActionPreference='Stop'
-. (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Ci.Process.psm1') -DisableNameChecking -ErrorAction Stop
 $capture=@{Summary=$null}
 $result=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -ArgumentList @('-File',(Join-Path $Sandbox 'FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1'),'-Seed',"$Seed",'-Iterations',"$Iterations",'-ConsoleEncoding',$ConsoleEncoding,'-Skip','profiler:,console:,coldstart-live:,tool-cache-live:') -WorkingDirectory $Sandbox -TimeoutSeconds $TimeoutSeconds -State $capture -OnOutput {
     param($record,$state)

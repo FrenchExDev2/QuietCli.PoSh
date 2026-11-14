@@ -9,7 +9,7 @@ Only the checksum-pinned Profiler 4.3.0 installed by scripts/Initialize-Profiler
 PowerShell code only; native child processes appear as the PowerShell line that waits for them.
 #>
 
-Import-Module (Join-Path $PSScriptRoot 'RunEncoding.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'RunEncoding.psm1')) -DisableNameChecking
 
 $script:PinnedVersion = '4.3.0'
 
@@ -25,7 +25,7 @@ function Resolve-RunProfilerModule {
     if ($Path) { $candidates += $Path }
     elseif ($env:QUIETCLI_PROFILER_MODULE) { $candidates += $env:QUIETCLI_PROFILER_MODULE }
     else {
-        $cache = Join-Path ([IO.Path]::GetTempPath()) 'QuietCli2'
+        $cache = [IO.Path]::Combine(([IO.Path]::GetTempPath()),'QuietCli2')
         if (Test-Path -LiteralPath $cache) {
             $candidates += @(Get-ChildItem -LiteralPath $cache -Recurse -Filter Profiler.psd1 -File -ErrorAction SilentlyContinue |
                     Where-Object { $_.FullName -match '[\\/]profilers[\\/]pinned[\\/]Profiler[\\/]' } | Sort-Object LastWriteTimeUtc -Descending | ForEach-Object FullName)
@@ -87,7 +87,7 @@ function Invoke-RunProfiled {
         $Logger
     )
     $manifest = Resolve-RunProfilerModule $ProfilerModulePath
-    Import-Module $manifest -Force
+    Import-Module $manifest -Force -DisableNameChecking
     if ($Logger) { $Logger.Info("profiling '$Label' with Profiler $script:PinnedVersion"); $Logger.Increment('profiler.runs') }
     $output = Trace-Script -ScriptBlock $ScriptBlock -DisableWarning 6>$null
     $trace = @($output | Where-Object { $_.GetType().FullName -eq 'Profiler.Trace' }) | Select-Object -Last 1
@@ -101,7 +101,7 @@ function Invoke-RunProfiled {
         TopFunctionsBySelfDuration = @(Convert-RunTraceRows $trace.Top50FunctionSelfDuration)
     }
     [void][IO.Directory]::CreateDirectory($OutputDirectory)
-    $path = Join-Path ([IO.Path]::GetFullPath($OutputDirectory)) "$Label.profile.json"
+    $path = [IO.Path]::Combine(([IO.Path]::GetFullPath($OutputDirectory)),"$Label.profile.json")
     Write-RunTextFile -Path $path -Text ((ConvertTo-Json -InputObject $report -Depth 6) + "`n")
     if ($Logger) { $Logger.Increment('profiler.exported'); $Logger.Info("profile written to $path") }
     return $path

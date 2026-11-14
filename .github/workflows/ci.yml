@@ -243,7 +243,7 @@ jobs:
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
           QUIETCLI_IMAGES_ONLY: ${{ inputs.images_only }}
         run: |
-          . ./scripts/GitHubCi.ps1
+          Import-Module ./scripts/lib/GitHubCi.psm1 -DisableNameChecking -ErrorAction Stop
           Assert-GitHubCiImagePreparationContext -ImagesOnly:($env:QUIETCLI_IMAGES_ONLY -ceq 'true') -Event $env:GITHUB_EVENT_NAME -Ref $env:GITHUB_REF -Repository $env:GITHUB_REPOSITORY
           ./scripts/Initialize-CiCompanions.ps1 -Suite $env:QUIETCLI_SUITE -OutputPath $env:GITHUB_OUTPUT
           # Objective: single source of truth shared by image and execution jobs,
@@ -583,7 +583,7 @@ jobs:
           HAS_CONTAINER: ${{ needs.linux-selection.outputs.has_container }}
           HAS_DOCKER_CONTAINER_RUNTIME: ${{ needs.linux-selection.outputs.has_docker_container_runtime }}
         run: |
-          . ./scripts/GitHubCi.ps1
+          Import-Module ./scripts/lib/GitHubCi.psm1 -DisableNameChecking -ErrorAction Stop
           Assert-GitHubCiLinuxResults -SelectionResult $env:SELECTION_RESULT -ContainerResult $env:CONTAINER_RESULT -FallbackResult $env:FALLBACK_RESULT -HasContainer:($env:HAS_CONTAINER -ceq 'true') -HasFallback:($env:HAS_DOCKER_CONTAINER_RUNTIME -ceq 'true')
   performance-results:
     name: Readable performance evidence for the complete matrix

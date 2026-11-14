@@ -1,5 +1,7 @@
 # Every script has a doc
 
+Automation entry points use `Verb-Noun` names and contain no functions. Put functions in `scripts/lib/*.psm1`, import with `-DisableNameChecking -ErrorAction Stop` and compose paths with `System.IO.Path`. Document the entry point and its library separately. Data profiles use `.profile.psd1`. `Test-ScriptLayout.ps1` enforces these rules through the shared local, commit and CI registry; see [the automation contract](README-automation-contracts.md).
+
 Why every file under `scripts/` must have a matching Markdown doc under `docs/scripts/`, how
 [`scripts/Sync-ScriptsReadme.ps1`](../scripts/Sync-ScriptsReadme.ps1) gates that and generates the
 navigable index at [`docs/scripts/README.md`](scripts/README.md), and how its two companion GitHub
@@ -15,7 +17,7 @@ dependencies and known gaps live only in its author's head. The rule is simple a
 - Every `scripts/*.ps1`, `scripts/*.psm1`, and every file under a `scripts/` subdirectory (`lib/`,
   `RunProfiles/`, and any future one), must have a Markdown doc under `docs/scripts/`, mirroring its
   subdirectory: `scripts/lib/Foo.psm1` is documented at `docs/scripts/lib/Foo.md`,
-  `scripts/RunProfiles/bar.profile.ps1` at `docs/scripts/RunProfiles/bar.profile.md`, and a root
+  `scripts/RunProfiles/bar.profile.psd1` at `docs/scripts/RunProfiles/bar.profile.md`, and a root
   `scripts/Baz.ps1` at `docs/scripts/Baz.md`.
 - That doc must be reachable from [`docs/scripts/README.md`](scripts/README.md) - the single table of
   contents a reader starts from. A doc nobody can find from the index does not count as documented.

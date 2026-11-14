@@ -51,7 +51,7 @@ Alpine additionally copies only PSResourceGet from the checksum-verified same-ar
 
 GitHub selects Docker explicitly. Producers use an ephemeral `GITHUB_TOKEN` with package write permission only under trusted conditions; test jobs have read access. Private temporary Docker configuration/Podman authfiles receive login via UTF-8 stdin and are deleted on exit. Tokens are redacted from diagnostics and never passed as build arguments. A fork unable to read private GHCR entries can still build its own image. Package visibility is configured separately in GitHub.
 
-Image receipts live under `artifacts/ci-images` in CI and identify fingerprint, architecture, image ID/digest and cache state. See [CiImages](../scripts/CiImages.md) and [container diagnosis](../README-container-runtime-diagnosis.md).
+Image receipts live under `artifacts/ci-images` in CI and identify fingerprint, architecture, image ID/digest and cache state. See [CiImages](../scripts/lib/CiImages.md) and [container diagnosis](../README-container-runtime-diagnosis.md).
 
 ## Separate terminal campaign
 

@@ -62,7 +62,7 @@ actual Containerfile text.
 
 ## What stays generic in Core
 
-`scripts/CiImages.ps1` provides the reusable, module-agnostic side of the contract:
+`scripts/lib/CiImages.psm1` provides the reusable, module-agnostic side of the contract:
 
 - `Get-QuietModuleContainerfile -Platform -Objective -Stages` renders Containerfile text from a module's own ordered
    `Stages`, on top of Core's only shared boilerplate (`ARG CORE_IMAGE=<verified-parent-reference>`), using the right `apt`/`apk`

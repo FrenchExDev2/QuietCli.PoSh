@@ -1,7 +1,7 @@
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Creates a run profile: a data-only `<Name>.profile.ps1` binding a script to default arguments.
+Creates a run profile: a data-only `<Name>.profile.psd1` binding a script to default arguments.
 
 .PARAMETER Name
 Profile name: lowercase letters, digits and hyphens.
@@ -47,7 +47,7 @@ param(
     [string]$LogPath
 )
 $ErrorActionPreference = 'Stop'
-Import-Module (Join-Path $PSScriptRoot 'lib/RunProfileStore.psm1'), (Join-Path $PSScriptRoot 'lib/RunFormat.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/RunProfileStore.psm1')), ([IO.Path]::Combine($PSScriptRoot,'lib/RunFormat.psm1')) -DisableNameChecking
 
 $logger = New-RunLogger -Level $LogLevel -Component 'new-profile' -LogPath $LogPath
 try {

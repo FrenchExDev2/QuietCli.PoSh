@@ -16,7 +16,7 @@ Compiles `Quietly.slnx` once in Release by default, then prepares the portable d
 # GitHub matrix row: precompile the RID actually tested.
 ./scripts/Build-Workspace.ps1 -Suite Core -Configuration Release -RuntimeIdentifier linux-musl-arm64 -ReadyToRun -ReadyToRunRuntimeIdentifier linux-musl-arm64
 # Windows x64 packaging runner: precompile every release RID.
-. ./scripts/RuntimeTargets.ps1
+. ./scripts/lib/RuntimeTargets.psm1
 ./scripts/Build-Workspace.ps1 -Configuration Release -ReadyToRun -ReadyToRunRuntimeIdentifier @((Get-QuietRuntimeTargets $PWD.Path).Rid)
 ```
 

@@ -1,6 +1,6 @@
 #Objective: Detect, plan and provision an independently bootstrappable development workstation.
 #requires -Version 7.6
-. (Join-Path $PSScriptRoot '../Ci.Process.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop
 
 function Get-DevelopmentHost {
     <#
@@ -168,12 +168,12 @@ function Get-DevelopmentSpecification {
     Validated host description.
     #>
     param([string]$WorkspaceRoot,$Target)
-    $global=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'global.json') -Raw -Encoding utf8|ConvertFrom-Json
-    $lock=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'build/development-workstation.lock.json') -Raw -Encoding utf8|ConvertFrom-Json
-    $ci=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'build/ci-images.lock.json') -Raw -Encoding utf8|ConvertFrom-Json
-    $zig=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'build/zig.lock.json') -Raw -Encoding utf8|ConvertFrom-Json
-    $git=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/ci-image.lock.json') -Raw -Encoding utf8|ConvertFrom-Json
-    $sources=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/UpstreamSources.json') -Raw -Encoding utf8|ConvertFrom-Json
+    $global=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'global.json')) -Raw -Encoding utf8|ConvertFrom-Json
+    $lock=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/development-workstation.lock.json')) -Raw -Encoding utf8|ConvertFrom-Json
+    $ci=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/ci-images.lock.json')) -Raw -Encoding utf8|ConvertFrom-Json
+    $zig=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/zig.lock.json')) -Raw -Encoding utf8|ConvertFrom-Json
+    $git=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/ci-image.lock.json')) -Raw -Encoding utf8|ConvertFrom-Json
+    $sources=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/UpstreamSources.json')) -Raw -Encoding utf8|ConvertFrom-Json
     $sdk=[string]$global.sdk.version
     if($lock.SchemaVersion -ne 1 -or $sdk -cnotmatch '^[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.]+)?$' -or $lock.SdkVersion -cne $sdk -or $ci.SDK -cne $sdk){throw 'WorkstationSdkLockMismatch'}
     if($lock.ZigVersion -cne $zig.Version -or $lock.GitVersion -cne $git.GitVersion){throw 'WorkstationToolLockMismatch'}
@@ -187,7 +187,7 @@ function Get-DevelopmentSpecification {
     $gitSource=@($sources.Sources|Where-Object Version -CEQ $git.GitVersion)
     if($compiler.Count -ne 1 -or $gitSource.Count -ne 1){throw 'WorkstationToolArtifactNotUnique'}
     $powerShellFramework=$null
-    $hostConfiguration=Join-Path $PSHOME 'pwsh.runtimeconfig.json'
+    $hostConfiguration=[IO.Path]::Combine($PSHOME,'pwsh.runtimeconfig.json')
     if(Test-Path -LiteralPath $hostConfiguration){
         $runtimeOptions=(Get-Content -LiteralPath $hostConfiguration -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable).runtimeOptions
         if($runtimeOptions.ContainsKey('framework')){
@@ -280,7 +280,7 @@ function Get-DevelopmentInventory {
         $inventory.System.State=if(!$missing.Count){'Ready'}else{'Missing'};$inventory.System.Detail=$missing -join ', '
     }
     $exe=if($target.Id -ceq 'windows'){'dotnet.exe'}else{'dotnet'}
-    $dotnet=Find-DevelopmentApplication dotnet @((Join-Path $root "dotnet/$exe"))
+    $dotnet=Find-DevelopmentApplication dotnet @(([IO.Path]::Combine($root,"dotnet/$exe")))
     if($dotnet){
         $query=Invoke-DevelopmentCommand $dotnet @('--version') $Plan.WorkspaceRoot -Capture -AllowFailure
         $inventory.Sdk.Path=$dotnet;$inventory.Sdk.Version=($query.Lines -join '').Trim()
@@ -293,7 +293,7 @@ function Get-DevelopmentInventory {
             }
         }
     }
-    $git=Find-DevelopmentApplication git @((Join-Path $root $(if($target.Id -ceq 'windows'){'git/cmd/git.exe'}else{'git/bin/git'})))
+    $git=Find-DevelopmentApplication git @(([IO.Path]::Combine($root,$(if($target.Id -ceq 'windows'){'git/cmd/git.exe'}else{'git/bin/git'}))))
     if($git){$query=Invoke-DevelopmentCommand $git @('--version') -Capture -AllowFailure;$inventory.Git.Path=$git;$inventory.Git.Version=($query.Lines -join '').Trim();if($query.Outcome -eq 'Success' -and (Test-DevelopmentGitVersion $inventory.Git.Version)){$inventory.Git.State='Ready'}}
     if($inventory.Workflows.State -ne 'Excluded'){
         if(!$spec.Wrkflw.Artifact){
@@ -301,7 +301,7 @@ function Get-DevelopmentInventory {
             $inventory.Workflows.Detail="No reviewed native wrkflw $($spec.Wrkflw.Version) artifact for $($target.Rid). Use -SkipWorkflows; no emulation or source build is implicit."
         }else{
             $binary=if($target.Id -ceq 'windows'){'wrkflw.exe'}else{'wrkflw'}
-            $workflowTool=Find-DevelopmentApplication wrkflw @((Join-Path $root "wrkflw/$binary"))
+            $workflowTool=Find-DevelopmentApplication wrkflw @(([IO.Path]::Combine($root,"wrkflw/$binary")))
             if($workflowTool){
                 $query=Invoke-DevelopmentCommand $workflowTool @('--version') -Capture -AllowFailure -TimeoutSeconds 30
                 $inventory.Workflows.Path=$workflowTool
@@ -314,14 +314,14 @@ function Get-DevelopmentInventory {
         if($target.EditorMode -ceq 'Remote'){$inventory.Editor.State='RemoteRequired';$inventory.Editor.Detail='Use VS Code on a glibc/Windows desktop with WSL or Dev Containers; native extension support varies.'}
         elseif($target.Id -ceq 'windows'){
             $folder=if($Plan.Insiders){'Microsoft VS Code Insiders'}else{'Microsoft VS Code'};$binary=if($Plan.Insiders){'Code - Insiders.exe'}else{'Code.exe'}
-            $editor=Find-DevelopmentApplication $binary @((Join-Path $env:LOCALAPPDATA "Programs/$folder/$binary"),(Join-Path $env:ProgramFiles "$folder/$binary"))
+            $editor=Find-DevelopmentApplication $binary @(([IO.Path]::Combine($env:LOCALAPPDATA,"Programs/$folder/$binary")),([IO.Path]::Combine($env:ProgramFiles,"$folder/$binary")))
             if($editor){$inventory.Editor.State='Ready';$inventory.Editor.Path=$editor;$inventory.Editor.Version=(Get-Item -LiteralPath $editor).VersionInfo.ProductVersion}
         }else{
             $editor=Find-DevelopmentApplication $(if($Plan.Insiders){'code-insiders'}else{'code'})
             if($editor){$inventory.Editor.State='Ready';$inventory.Editor.Path=$editor;$query=Invoke-DevelopmentCommand $editor @('--version','--no-sandbox') -Capture -AllowFailure;if($query.Outcome -ne 'Success'){$inventory.Editor.State='Missing'}else{$inventory.Editor.Version=$query.Lines|Select-Object -First 1}}
         }
         if($inventory.Editor.State -eq 'Ready'){
-            $extensionDirectory=Join-Path $HOME $(if($Plan.Insiders){'.vscode-insiders/extensions/extensions.json'}else{'.vscode/extensions/extensions.json'})
+            $extensionDirectory=[IO.Path]::Combine($HOME,$(if($Plan.Insiders){'.vscode-insiders/extensions/extensions.json'}else{'.vscode/extensions/extensions.json'}))
             $installed=@()
             if(Test-Path -LiteralPath $extensionDirectory){try{$installed=@(Get-Content -LiteralPath $extensionDirectory -Raw -Encoding utf8|ConvertFrom-Json|ForEach-Object {$_.identifier.id})}catch{}}
             $missingExtensions=@($Plan.Extensions|Where-Object {$installed -inotcontains $_})
@@ -329,22 +329,22 @@ function Get-DevelopmentInventory {
         }
     }
     if($inventory.Native.State -ne 'Excluded'){
-        $zig=Find-DevelopmentApplication zig @((Join-Path $root $(if($target.Id -ceq 'windows'){'zig/zig.exe'}else{'zig/zig'})))
+        $zig=Find-DevelopmentApplication zig @(([IO.Path]::Combine($root,$(if($target.Id -ceq 'windows'){'zig/zig.exe'}else{'zig/zig'}))))
         if($zig){$query=Invoke-DevelopmentCommand $zig @('version') -Capture -AllowFailure;$inventory.Native.Path=$zig;$inventory.Native.Version=($query.Lines -join '').Trim();if($query.Outcome -eq 'Success' -and $inventory.Native.Version -ceq $spec.ZigVersion -and ($target.Id -ceq 'windows' -or ((Find-DevelopmentApplication gcc) -and (Find-DevelopmentApplication clang)))){$inventory.Native.State='Ready'}}
     }
     if($inventory.Profilers.State -ne 'Excluded'){
-        Import-Module (Join-Path $PSScriptRoot 'RunToolCache.psm1')
+        Import-Module ([IO.Path]::Combine($PSScriptRoot,'RunToolCache.psm1')) -DisableNameChecking
         $valid=$true
         foreach($package in Get-RunProfilerPackages){
-            $directory=Join-Path $root ('profilers/'+$package.Name)
-            $archive=Join-Path $directory ($package.Name+'.'+$package.Version+'.nupkg')
-            if(!(Test-Path -LiteralPath $archive) -or !(Test-Path -LiteralPath (Join-Path $directory $package.Entrypoint))){$valid=$false;continue}
+            $directory=[IO.Path]::Combine($root,('profilers/'+$package.Name))
+            $archive=[IO.Path]::Combine($directory,($package.Name+'.'+$package.Version+'.nupkg'))
+            if(!(Test-Path -LiteralPath $archive) -or !(Test-Path -LiteralPath ([IO.Path]::Combine($directory,$package.Entrypoint)))){$valid=$false;continue}
             if((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -cne $package.SHA256){$valid=$false}
         }
-        if($valid){$inventory.Profilers.State='Ready';$inventory.Profilers.Path=Join-Path $root 'profilers';$inventory.Profilers.Version='Profiler 4.3.0; dotnet-trace 10.0.750501'}
+        if($valid){$inventory.Profilers.State='Ready';$inventory.Profilers.Path=[IO.Path]::Combine($root,'profilers');$inventory.Profilers.Version='Profiler 4.3.0; dotnet-trace 10.0.750501'}
     }
     if($inventory.Containers.State -ne 'Excluded'){
-        $podman=Find-DevelopmentApplication podman @($(if($target.Id -ceq 'windows'){Join-Path $env:LOCALAPPDATA 'Programs/Podman/podman.exe'}),$(if($target.Id -ceq 'windows'){Join-Path $env:ProgramFiles 'RedHat/Podman/podman.exe'}))
+        $podman=Find-DevelopmentApplication podman @($(if($target.Id -ceq 'windows'){[IO.Path]::Combine($env:LOCALAPPDATA,'Programs/Podman/podman.exe')}),$(if($target.Id -ceq 'windows'){[IO.Path]::Combine($env:ProgramFiles,'RedHat/Podman/podman.exe')}))
         if($podman){
             $inventory.Containers.Path=$podman
             $connection=if($Plan.PSObject.Properties['PodmanConnection']){$Plan.PodmanConnection}else{$Plan.PodmanMachineName}
@@ -473,13 +473,13 @@ function Install-DevelopmentSdk {
     #>
     param($Plan)
     $spec=$Plan.Specification;$suffix=if($Plan.Target.Id -ceq 'windows'){'zip'}else{'tar.gz'}
-    $archive=Get-DevelopmentArchive $spec.SdkUrl $spec.SdkHash (Join-Path $Plan.InstallRoot "downloads/sdk-$($spec.SdkVersion)-$($Plan.Target.Rid).$suffix") SHA512
-    Expand-DevelopmentArchive $archive (Join-Path $Plan.InstallRoot 'dotnet')
+    $archive=Get-DevelopmentArchive $spec.SdkUrl $spec.SdkHash ([IO.Path]::Combine($Plan.InstallRoot,"downloads/sdk-$($spec.SdkVersion)-$($Plan.Target.Rid).$suffix")) SHA512
+    Expand-DevelopmentArchive $archive ([IO.Path]::Combine($Plan.InstallRoot,'dotnet'))
     if($spec.PowerShellFramework){
         # Alpine's distribution PowerShell is framework-dependent. Selecting an SDK-only DOTNET_ROOT
         # would otherwise hide its existing .NET 10 runtime when starting the next pwsh process.
         $framework=$spec.PowerShellFramework
-        $destination=Join-Path $Plan.InstallRoot ('dotnet/shared/'+$framework.Name+'/'+$framework.Version)
+        $destination=[IO.Path]::Combine($Plan.InstallRoot,('dotnet/shared/'+$framework.Name+'/'+$framework.Version))
         [void][IO.Directory]::CreateDirectory($destination)
         Get-ChildItem -LiteralPath $framework.Directory -Force|Copy-Item -Destination $destination -Recurse -Force
     }
@@ -495,15 +495,15 @@ function Install-DevelopmentGit {
     param($Plan)
     $spec=$Plan.Specification;$root=$Plan.InstallRoot
     if($Plan.Target.Id -ceq 'windows'){
-        $archive=Get-DevelopmentArchive $spec.WindowsGit.Url $spec.WindowsGit.SHA256 (Join-Path $root "downloads/git-$($spec.GitVersion)-$($Plan.Target.Architecture).zip")
-        Expand-DevelopmentArchive $archive (Join-Path $root 'git')
+        $archive=Get-DevelopmentArchive $spec.WindowsGit.Url $spec.WindowsGit.SHA256 ([IO.Path]::Combine($root,"downloads/git-$($spec.GitVersion)-$($Plan.Target.Architecture).zip"))
+        Expand-DevelopmentArchive $archive ([IO.Path]::Combine($root,'git'))
         return
     }
     Install-DevelopmentPackages $Plan.Target @(Get-DevelopmentPackages $Plan.Target Native)
-    $archive=Get-DevelopmentArchive $spec.GitSource.URL $spec.GitSource.SHA256 (Join-Path $root "downloads/git-$($spec.GitVersion).tar.gz")
-    $source=Join-Path $root ('sources/git-'+$spec.GitVersion)
+    $archive=Get-DevelopmentArchive $spec.GitSource.URL $spec.GitSource.SHA256 ([IO.Path]::Combine($root,"downloads/git-$($spec.GitVersion).tar.gz"))
+    $source=[IO.Path]::Combine($root,('sources/git-'+$spec.GitVersion))
     Expand-DevelopmentArchive $archive $source 1
-    $null=Invoke-DevelopmentCommand make @('-C',$source,'-j2',('prefix='+(Join-Path $root 'git')),'NO_RUST=YesPlease','NO_TCLTK=YesPlease','NO_GETTEXT=YesPlease','NO_INSTALL_HARDLINKS=YesPlease','NO_REGEX=NeedsStartEnd','CFLAGS=-std=gnu11 -O2','all','install') -TimeoutSeconds 3600
+    $null=Invoke-DevelopmentCommand make @('-C',$source,'-j2',('prefix='+([IO.Path]::Combine($root,'git'))),'NO_RUST=YesPlease','NO_TCLTK=YesPlease','NO_GETTEXT=YesPlease','NO_INSTALL_HARDLINKS=YesPlease','NO_REGEX=NeedsStartEnd','CFLAGS=-std=gnu11 -O2','all','install') -TimeoutSeconds 3600
 }
 
 function Install-DevelopmentNativeTools {
@@ -515,13 +515,13 @@ function Install-DevelopmentNativeTools {
     #>
     param($Plan)
     $tool=$Plan.Specification.Zig
-    $archive=Get-DevelopmentArchive $tool.Url $tool.SHA256 (Join-Path $Plan.InstallRoot ('downloads/'+[IO.Path]::GetFileName(([uri]$tool.Url).AbsolutePath)))
-    $destination=Join-Path $Plan.InstallRoot 'zig'
+    $archive=Get-DevelopmentArchive $tool.Url $tool.SHA256 ([IO.Path]::Combine($Plan.InstallRoot,('downloads/'+[IO.Path]::GetFileName(([uri]$tool.Url).AbsolutePath))))
+    $destination=[IO.Path]::Combine($Plan.InstallRoot,'zig')
     if($Plan.Target.Id -ceq 'windows'){
-        $staging=Join-Path $Plan.InstallRoot ('extract/zig-'+[guid]::NewGuid().ToString('N'))
+        $staging=[IO.Path]::Combine($Plan.InstallRoot,('extract/zig-'+[guid]::NewGuid().ToString('N')))
         Expand-DevelopmentArchive $archive $staging
         $directories=@(Get-ChildItem -LiteralPath $staging -Directory)
-        if($directories.Count -ne 1 -or !(Test-Path -LiteralPath (Join-Path $directories[0].FullName 'zig.exe'))){throw 'WorkstationZigArchiveLayoutInvalid'}
+        if($directories.Count -ne 1 -or !(Test-Path -LiteralPath ([IO.Path]::Combine($directories[0].FullName,'zig.exe')))){throw 'WorkstationZigArchiveLayoutInvalid'}
         [void][IO.Directory]::CreateDirectory($destination)
         Get-ChildItem -LiteralPath $directories[0].FullName -Force|Copy-Item -Destination $destination -Recurse -Force
     }else{Expand-DevelopmentArchive $archive $destination 1}
@@ -538,8 +538,8 @@ function Install-DevelopmentWrkflw {
     $tool=$Plan.Specification.Wrkflw.Artifact
     if(!$tool){throw "WorkstationWrkflwArtifactUnavailable: $($Plan.Target.Rid)"}
     $fileName='wrkflw-'+$Plan.Specification.Wrkflw.Version+'-'+[IO.Path]::GetFileName(([uri]$tool.Url).AbsolutePath)
-    $archive=Get-DevelopmentArchive $tool.Url $tool.SHA256 (Join-Path $Plan.InstallRoot ('downloads/'+$fileName))
-    Expand-DevelopmentArchive $archive (Join-Path $Plan.InstallRoot 'wrkflw')
+    $archive=Get-DevelopmentArchive $tool.Url $tool.SHA256 ([IO.Path]::Combine($Plan.InstallRoot,('downloads/'+$fileName)))
+    Expand-DevelopmentArchive $archive ([IO.Path]::Combine($Plan.InstallRoot,'wrkflw'))
 }
 
 function Install-DevelopmentEditor {
@@ -557,7 +557,7 @@ function Install-DevelopmentEditor {
     }
     $kind=if($Plan.Target.Manager -ceq 'dnf'){'rpm'}else{'deb'}
     $architecture=if($kind -ceq 'deb' -and $Plan.Target.Architecture -ceq 'x64'){'x64'}else{$Plan.Target.Architecture}
-    $file=Join-Path $Plan.InstallRoot "downloads/vscode-$channel-$architecture.$kind"
+    $file=[IO.Path]::Combine($Plan.InstallRoot,"downloads/vscode-$channel-$architecture.$kind")
     [void][IO.Directory]::CreateDirectory((Split-Path $file -Parent))
     # VS Code publishes a moving channel URL. Distro package resolution verifies dependencies;
     # unlike SDK/Git/Zig, this latest editor channel is deliberately not a reproducible toolchain pin.
@@ -575,7 +575,7 @@ function Install-DevelopmentExtensions {
     Resolved native editor executable or Linux CLI.
     #>
     param($Plan,[string]$EditorPath)
-    $null=& (Join-Path $Plan.WorkspaceRoot 'scripts/Sync-DevelopmentEditorExtensions.ps1') -Insiders:$Plan.Insiders -EditorPath $EditorPath -Path $Plan.ExtensionManifest -AdditionalExtension $Plan.Extensions -Update
+    $null=& ([IO.Path]::Combine($Plan.WorkspaceRoot,'scripts/Sync-DevelopmentEditorExtensions.ps1')) -Insiders:$Plan.Insiders -EditorPath $EditorPath -Path $Plan.ExtensionManifest -AdditionalExtension $Plan.Extensions -Update
 }
 
 function Select-DevelopmentPodmanMachine {
@@ -606,8 +606,8 @@ function Initialize-DevelopmentPodman {
     param($Plan)
     if($Plan.Target.Id -cne 'windows'){return $false}
     if([Environment]::OSVersion.Version.Build -lt 22000){throw 'WorkstationPodmanRequiresWindows11'}
-    $podman=Find-DevelopmentApplication podman @((Join-Path $env:LOCALAPPDATA 'Programs/Podman/podman.exe'),(Join-Path $env:ProgramFiles 'RedHat/Podman/podman.exe'))
-    if(!$podman){$null=Invoke-DevelopmentCommand winget @('install','--exact','--id','RedHat.Podman','--source','winget','--silent','--accept-package-agreements','--accept-source-agreements','--disable-interactivity');$podman=Find-DevelopmentApplication podman @((Join-Path $env:ProgramFiles 'RedHat/Podman/podman.exe'),(Join-Path $env:LOCALAPPDATA 'Programs/Podman/podman.exe'))}
+    $podman=Find-DevelopmentApplication podman @(([IO.Path]::Combine($env:LOCALAPPDATA,'Programs/Podman/podman.exe')),([IO.Path]::Combine($env:ProgramFiles,'RedHat/Podman/podman.exe')))
+    if(!$podman){$null=Invoke-DevelopmentCommand winget @('install','--exact','--id','RedHat.Podman','--source','winget','--silent','--accept-package-agreements','--accept-source-agreements','--disable-interactivity');$podman=Find-DevelopmentApplication podman @(([IO.Path]::Combine($env:ProgramFiles,'RedHat/Podman/podman.exe')),([IO.Path]::Combine($env:LOCALAPPDATA,'Programs/Podman/podman.exe')))}
     if(!$podman){throw 'WorkstationPodmanExecutableMissing: reopen PowerShell and rerun.'}
     $wsl=Find-DevelopmentApplication wsl.exe
     $status=if($wsl){Invoke-DevelopmentCommand $wsl @('--status') -Capture -AllowFailure}else{$null}
@@ -651,7 +651,7 @@ function Write-DevelopmentActivation {
     foreach($component in @('Sdk','Git','Native','Editor','Workflows')){
         if($Inventory[$component].Path){
             $directory=Split-Path $Inventory[$component].Path -Parent
-            if($component -ceq 'Editor' -and $Plan.Target.Id -ceq 'windows'){$directory=Join-Path $directory 'bin'}
+            if($component -ceq 'Editor' -and $Plan.Target.Id -ceq 'windows'){$directory=[IO.Path]::Combine($directory,'bin')}
             [void]$paths.Add($directory)
         }
     }
@@ -664,7 +664,7 @@ function Write-DevelopmentActivation {
     foreach($path in $uniquePaths){[void]$lines.Add('$env:PATH = '+(& $quote $path)+' + [IO.Path]::PathSeparator + (($env:PATH -split [regex]::Escape([string][IO.Path]::PathSeparator) | Where-Object { $_ -ne '+(& $quote $path)+' }) -join [IO.Path]::PathSeparator)')}
     if($Plan.PSObject.Properties['PodmanConnection']){[void]$lines.Add('$env:CONTAINER_CONNECTION = '+(& $quote $Plan.PodmanConnection))}
     if($Inventory.Native.State -eq 'Ready'){[void]$lines.Add('$env:QUIETCLI_DEVELOPMENT_ZIG = '+(& $quote $Inventory.Native.Path))}
-    $path=Join-Path $Plan.InstallRoot 'Activate-DevelopmentEnvironment.ps1'
+    $path=[IO.Path]::Combine($Plan.InstallRoot,'Activate-DevelopmentEnvironment.ps1')
     [void][IO.File]::WriteAllTextAsync($path,($lines -join "`n")+"`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     $path
 }
@@ -705,7 +705,7 @@ function Invoke-DevelopmentProvisioning {
         if($actions -contains 'Native'){Install-DevelopmentNativeTools $Plan}
         if($actions -contains 'Workflows'){Install-DevelopmentWrkflw $Plan}
         if($actions -contains 'Editor'){Install-DevelopmentEditor $Plan}
-        if($actions -contains 'Profilers'){$null=& (Join-Path $Plan.WorkspaceRoot 'scripts/Initialize-Profilers.ps1') -OutputDirectory (Join-Path $Plan.InstallRoot 'profilers')}
+        if($actions -contains 'Profilers'){$null=& ([IO.Path]::Combine($Plan.WorkspaceRoot,'scripts/Initialize-Profilers.ps1')) -OutputDirectory ([IO.Path]::Combine($Plan.InstallRoot,'profilers'))}
         if($Plan.Skipped -notcontains 'Containers' -and ($actions -contains 'Containers' -or $Plan.PodmanMachineName)){$report.RestartRequired=Initialize-DevelopmentPodman $Plan}
         $current=Get-DevelopmentInventory $Plan
         if($current.Editor.State -eq 'Ready'){Install-DevelopmentExtensions $Plan $current.Editor.Path}

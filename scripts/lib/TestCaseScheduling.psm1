@@ -94,16 +94,16 @@ function Invoke-QuietTestCaseWorkers {
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][object[]]$Cases,
         [ValidateRange(1,32)][int]$MaxConcurrency=2,[switch]$StopOnFirstFailure,[switch]$SkipTty,[string]$ExpectedRuntimeIdentifier,
         [scriptblock]$OnCase,[Threading.CancellationToken]$CancellationToken=[Threading.CancellationToken]::None,
-        [string]$WorkerPath=(Join-Path $PSScriptRoot '../Invoke-TestWorker.ps1'),[ValidatePattern('\A[A-Z][A-Za-z0-9]*\z')][string]$SuiteName='Core')
+        [string]$WorkerPath=([IO.Path]::Combine($PSScriptRoot,'../Invoke-TestWorker.ps1')),[ValidatePattern('\A[A-Z][A-Za-z0-9]*\z')][string]$SuiteName='Core')
     if(!$PSCmdlet.ShouldProcess($RunDirectory,'Run explicitly isolated test cases with bounded child workers')){return}
-    . (Join-Path $PSScriptRoot '../Ci.Process.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop
     $pending=[Collections.Generic.Queue[object]]::new();$names=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach($case in $Cases){
         if($case.Mode -cne 'IsolatedProcess' -or !$names.Add($case.Name) -or $case.TimeoutSeconds -lt 1 -or $case.TimeoutSeconds -gt 7200 -or $case.Index -lt 0){throw 'TestCaseWorkerSelectionInvalid'}
         $pending.Enqueue($case)
     }
     $active=[Collections.Generic.List[object]]::new();$completed=@{};$stop=$false;$peak=0
-    $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
+    $runner=[IO.Path]::Combine($PSHOME,$(if($IsWindows){'pwsh.exe'}else{'pwsh'}))
     try{
         while($pending.Count -or $active.Count){
             $CancellationToken.ThrowIfCancellationRequested()
@@ -115,7 +115,7 @@ function Invoke-QuietTestCaseWorkers {
                     $worker.Process.Kill($true);$worker.Process.WaitForExit();$errorText='TestCaseWorkerTimeout'
                 }else{
                     try{
-                        $path=Join-Path $worker.Directory 'summary.json'
+                        $path=[IO.Path]::Combine($worker.Directory,'summary.json')
                         if(!(Test-Path -LiteralPath $path) -or (Get-Item -LiteralPath $path).Length -gt 4194304){throw 'TestCaseWorkerSummaryMissingOrOversized'}
                         $report=Get-Content -LiteralPath $path -Raw -Encoding utf8|ConvertFrom-Json
                         if(@($report.Suites).Count -ne 1){throw 'TestCaseWorkerSuiteCountInvalid'}
@@ -129,7 +129,7 @@ function Invoke-QuietTestCaseWorkers {
                 }
                 $result=[pscustomobject]@{Name=$worker.Case.Name;State=if($errorText){'Failed'}else{$caseResult.State};Error=if($errorText){$errorText}else{$caseResult.Error};ExecutionMode='IsolatedProcess';WorkerProcessId=$worker.Process.Id;RunDirectory=$worker.Directory;InternalConcurrency=1;StartedUtc=$worker.StartedUtc;FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o')}
                 $completed[$worker.Case.Name]=$result
-                $receiptPath=Join-Path $worker.Directory 'case-result.json'
+                $receiptPath=[IO.Path]::Combine($worker.Directory,'case-result.json')
                 [IO.File]::WriteAllText(($receiptPath+'.tmp'),(($result|ConvertTo-Json -Depth 6)+"`n"),[Text.UTF8Encoding]::new($false))
                 [IO.File]::Move(($receiptPath+'.tmp'),$receiptPath)
                 if($OnCase){$null=& $OnCase $result.Name $result.State $result}
@@ -140,7 +140,7 @@ function Invoke-QuietTestCaseWorkers {
                 $CancellationToken.ThrowIfCancellationRequested()
                 $case=$pending.Dequeue()
                 $digest=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($case.Name))).Substring(0,12).ToLowerInvariant()
-                $directory=Join-Path $RunDirectory ('core-cases/{0:D4}-{1}' -f $case.Index,$digest)
+                $directory=[IO.Path]::Combine($RunDirectory,('core-cases/{0:D4}-{1}' -f $case.Index,$digest))
                 if(Test-Path -LiteralPath $directory){throw 'TestCaseWorkerDirectoryExists'}
                 [void][IO.Directory]::CreateDirectory($directory)
                 $arguments=@('-File',$WorkerPath,'-WorkspaceRoot',$WorkspaceRoot,'-RunDirectory',$directory,'-Suite',$SuiteName,'-Case',([Management.Automation.WildcardPattern]::Escape($case.Name)),'-CaseWorker','-MaxConcurrency','1')

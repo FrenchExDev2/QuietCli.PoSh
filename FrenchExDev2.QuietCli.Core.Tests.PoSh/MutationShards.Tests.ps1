@@ -84,8 +84,8 @@ function Test-QuietGitHubMutationShardEntry {
     [void][IO.Directory]::CreateDirectory((Join-Path $scripts 'lib'))
     $testRoot=Join-Path $root 'FrenchExDev2.QuietCli.Core.Tests.PoSh'
     [void][IO.Directory]::CreateDirectory($testRoot)
-    foreach($name in @('New-RunProfile.ps1','Invoke-RunProfile.ps1','Measure-ColdStart.ps1','Initialize-Profilers.ps1','Ci.Process.ps1')){Copy-Item -LiteralPath (Join-Path $WorkspaceRoot ('scripts/'+$name)) -Destination (Join-Path $scripts $name)}
-    Copy-Item -LiteralPath (Join-Path $WorkspaceRoot 'scripts/lib/MutationShards.psm1') -Destination (Join-Path $scripts 'lib/MutationShards.psm1')
+    foreach($name in @('New-RunProfile.ps1','Invoke-RunProfile.ps1','Measure-ColdStart.ps1','Initialize-Profilers.ps1')){Copy-Item -LiteralPath (Join-Path $WorkspaceRoot ('scripts/'+$name)) -Destination (Join-Path $scripts $name)}
+    Get-ChildItem -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) -File | Copy-Item -Destination ([IO.Path]::Combine($scripts,'lib'))
     foreach($name in @('RunProfiles.Tests.ps1','RunProfiles.Benchmark.Tests.ps1','RunProfiles.Profiler.Tests.ps1','RunProfiles.Mutation.ps1','RunProfiles.MutationWorker.ps1','RunProfiles.Mutation.Catalogue.psd1')){Copy-Item -LiteralPath (Join-Path $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.Tests.PoSh/'+$name)) -Destination (Join-Path $testRoot $name)}
     $entryPath=Join-Path $scripts 'Invoke-GitHubCi.ps1'
     $entrySource=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot 'scripts/Invoke-GitHubCi.ps1'),[Text.Encoding]::UTF8)
@@ -119,7 +119,7 @@ $env:QUIETCLI_MUTATION_SHARD_INDEX=$Index;$env:QUIETCLI_MUTATION_SHARD_COUNT=$Co
 $result=& (Join-Path $Root 'scripts/Invoke-GitHubCi.ps1') -WorkspaceRoot $Root -Suite $Suite -SkipBuild -RunDirectory $Run -WhatIf:$Preview
 if(!$Preview){[IO.File]::WriteAllText((Join-Path $Run 'entry-result.json'),($result|ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))}
 '@
-    foreach($item in @(@('WorkspaceProjects.ps1',$workspaceStub),@('Common.ps1',$commonStub),@('Invoke-TestWorker.ps1',$workerStub))){[IO.File]::WriteAllText((Join-Path $scripts $item[0]),$item[1],[Text.UTF8Encoding]::new($false))}
+    foreach($item in @(@('lib/WorkspaceProjects.psm1',$workspaceStub),@('lib/Common.psm1',$commonStub),@('Invoke-TestWorker.ps1',$workerStub))){[IO.File]::WriteAllText((Join-Path $scripts $item[0]),$item[1],[Text.UTF8Encoding]::new($false))}
     $harnessPath=Join-Path $root 'entry-harness.ps1'
     [IO.File]::WriteAllText($harnessPath,$harness,[Text.UTF8Encoding]::new($false))
     $catalogue=@((Import-PowerShellDataFile (Join-Path $testRoot 'RunProfiles.Mutation.Catalogue.psd1')).Mutants)

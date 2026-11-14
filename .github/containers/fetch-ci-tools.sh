@@ -1,6 +1,6 @@
 #!/bin/sh
 # Objectif : Télécharger (avec cache Podman) les archives verrouillées du banc CI, sans compilation.
-# All URLs and digests are supplied by scripts/CiImages.ps1 from the reviewed lock.
+# All URLs and digests are supplied by scripts/lib/CiImages.psm1 from the reviewed lock.
 set -eu
 # Retries absorb a transient CDN edge failure (e.g. GitHub releases returning 503); the SHA check right
 # after each download still rejects anything a retry brought back corrupted or substituted.

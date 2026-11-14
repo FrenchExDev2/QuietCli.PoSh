@@ -40,7 +40,7 @@ Tests independently prepared repositories, hook counts and local bare push targe
     Owned evidence directory; defaults to the shared temporary report root.
     #>
     [CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[scriptblock]$OnProgress,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     if(!$RunDirectory){$RunDirectory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'tests') ([guid]::NewGuid().ToString('N'))}
     $root=Join-Path $RunDirectory 'git-fixtures'
     $repo=Join-Path $root 'working';$bare=Join-Path $root 'remote.git'

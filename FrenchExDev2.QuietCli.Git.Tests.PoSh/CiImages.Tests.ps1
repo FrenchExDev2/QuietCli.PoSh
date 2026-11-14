@@ -11,7 +11,7 @@ function Get-QuietGitCiImageCases {
     $cases['Git module CI image plan derives from its own files and from Core, never the reverse']={
         & {
             param($root)
-            . (Join-Path $root 'scripts/CiImages.ps1')
+            Import-Module (Join-Path $root 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
             $contractPath='FrenchExDev2.QuietCli.Git.PoSh/ci/Get-CiImageArguments.ps1'
             $core=Get-QuietCiImagePlan $root linux-x64
             $moduleInputs=& (Join-Path $root $contractPath) -WorkspaceRoot $root -Platform $core.Platform
@@ -25,13 +25,13 @@ function Get-QuietGitCiImageCases {
             if($plan.ContainerfileText.Contains('FROM docker.io')){throw 'Module Containerfile must never name a floating base image directly'}
 
             $copy=Join-Path $root ('artifacts/git-ci-image-contract/'+[guid]::NewGuid().ToString('N'))
-            $files=@('global.json','build/ci-images.lock.json','scripts/CiImages.ps1','scripts/New-CiImage.ps1','FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1','FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/ci-image.lock.json','FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/UpstreamSources.json',$contractPath,'FrenchExDev2.QuietCli.Git.PoSh/.github/containers/fetch-git-tools.sh')
+            $files=@('global.json','build/ci-images.lock.json','scripts/lib/CiImages.psm1','scripts/New-CiImage.ps1','FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1','FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/ci-image.lock.json','FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/UpstreamSources.json',$contractPath,'FrenchExDev2.QuietCli.Git.PoSh/.github/containers/fetch-git-tools.sh')
             $files+=@(Get-ChildItem (Join-Path $root '.github/containers') -File -Force|ForEach-Object {'.github/containers/'+$_.Name})
             foreach($file in $files){$destination=Join-Path $copy $file;[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination));Copy-Item -LiteralPath (Join-Path $root $file) -Destination $destination}
 
             & {
                 param($copy,$contractPath)
-                . (Join-Path $copy 'scripts/CiImages.ps1')
+                Import-Module (Join-Path $copy 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
                 $before=Get-QuietCiImagePlan $copy linux-x64
                 $beforeModuleInputs=& (Join-Path $copy $contractPath) -WorkspaceRoot $copy -Platform $before.Platform
                 $beforeModulePlan=Get-QuietCiModuleImagePlan $copy linux-x64 Git $beforeModuleInputs.Containerfile $beforeModuleInputs.Arguments (@($beforeModuleInputs.InputPaths)+@($contractPath))

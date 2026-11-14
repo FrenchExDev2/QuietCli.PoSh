@@ -86,7 +86,7 @@ function Invoke-QuietAgentInstructionTests {
     Existing monitored launcher progress callback.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory,[scriptblock]$OnProgress)
-    . (Join-Path $WorkspaceRoot 'scripts/AgentDocuments.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/AgentDocuments.psm1') -DisableNameChecking -ErrorAction Stop
     $core=Get-Module FrenchExDev2.QuietCli.Core.PoSh
     $root=Join-Path $RunDirectory 'agent-instructions';[void][IO.Directory]::CreateDirectory($root)
     $utf8=[Text.UTF8Encoding]::new($false,$true)

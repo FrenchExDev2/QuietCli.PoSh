@@ -33,8 +33,8 @@ function Test-QuietWorkspaceBuildProjects {
     Owned fixture and evidence directory.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot scripts/Common.ps1)
-    $sourcePath=Join-Path $WorkspaceRoot scripts/WorkspaceProjects.ps1
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/Common.psm1) -DisableNameChecking -ErrorAction Stop
+    $sourcePath=Join-Path $WorkspaceRoot scripts/lib/WorkspaceProjects.psm1
     $source=Get-Content -LiteralPath $sourcePath -Raw -Encoding utf8
     $counts=@{Properties=0;Malformed=0;Seed=20261110;MutantsKilled=0}
     $verify={
@@ -126,7 +126,7 @@ function Test-QuietWorkspaceProjects {
     Owned reports and disposable manifest fixtures.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    $sourcePath=Join-Path $WorkspaceRoot 'scripts/WorkspaceProjects.ps1'
+    $sourcePath=Join-Path $WorkspaceRoot 'scripts/lib/WorkspaceProjects.psm1'
     $source=[IO.File]::ReadAllTextAsync($sourcePath,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
     $counts=@{Properties=0;FuzzInputs=0;Seed=44183}
     $verify={

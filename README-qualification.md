@@ -105,7 +105,7 @@ For the local Windows plus Debian/Alpine x64/ARM64 matrix:
 ```powershell
 ./scripts/Invoke-ColdStartMatrix.ps1 -MaxConcurrency 2
 # Container reports use the shared temporary report root locally.
-. ./scripts/ReportPaths.ps1
+. ./scripts/lib/ReportPaths.psm1
 $containerReports = Get-QuietReportRoot -WorkspaceRoot (Get-Location).Path -Category coldstart-containers
 ./scripts/Show-ColdStartMatrixReport.ps1 -ContainersDirectory $containerReports
 ```
@@ -137,7 +137,7 @@ For explicit remote use, [Invoke-RemoteWorkflow.ps1](scripts/Invoke-RemoteWorkfl
 
 ## Native campaigns, evidence and limits
 
-Local suites include TTY by default; `-SkipTty` reproduces the reduced GitHub scope. The separate [native PTY campaign](FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests/Invoke-PtyMutation.ps1) and `Invoke-ContainerCi.ps1 -Suite Mutation -ExpectedRuntimeIdentifier <RID>` remain available with visible monitoring. Full Linux native C qualification requires the 43-assertion baseline (including six generated property groups), 20,000 libFuzzer executions with ASan/UBSan and detection of all 31 targeted mutants. Windows ConPTY uses the separate C# implementation. [Assert-PtyQualification.ps1](scripts/Assert-PtyQualification.ps1) rejects missing/incomplete phases. Catalogue mutation coverage is bounded; survivors, invalid mutants, crashes and timeouts are distinct failures, never kills. See [native findings and reproduction](docs/README-native-pty-and-llvm-fuzzing.md).
+Local suites include TTY by default; `-SkipTty` reproduces the reduced GitHub scope. The separate [native PTY campaign](FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests/Invoke-PtyMutation.ps1) and `Invoke-ContainerCi.ps1 -Suite Mutation -ExpectedRuntimeIdentifier <RID>` remain available with visible monitoring. Full Linux native C qualification requires the 43-assertion baseline (including six generated property groups), 20,000 libFuzzer executions with ASan/UBSan and detection of all 31 targeted mutants. Windows ConPTY uses the separate C# implementation. [Assert-PtyQualification.ps1](scripts/lib/Assert-PtyQualification.psm1) rejects missing/incomplete phases. Catalogue mutation coverage is bounded; survivors, invalid mutants, crashes and timeouts are distinct failures, never kills. See [native findings and reproduction](docs/README-native-pty-and-llvm-fuzzing.md).
 
 [Invoke-GitQualification.ps1](scripts/Invoke-GitQualification.ps1) reports inventory gaps and currently ends with `QualificationRunnerNotImplemented` even after prerequisites pass. The full-Git workflow is therefore an incomplete entry point, not evidence of exhaustive command/option/version/platform coverage. Keep it separate from passing companion scenarios.
 

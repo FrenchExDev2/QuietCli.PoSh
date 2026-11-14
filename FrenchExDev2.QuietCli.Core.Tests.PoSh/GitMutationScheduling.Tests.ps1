@@ -23,7 +23,7 @@ function Test-QuietGitMutationScheduling {
     $engine='FrenchExDev2.QuietCli.Git.PoSh/engine';$tests='FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests'
     foreach($path in @('scripts',$engine,$tests)){[void][IO.Directory]::CreateDirectory((Join-Path $fixture $path))}
     foreach($name in @('global.json','Directory.Build.props','Directory.Packages.props')){Copy-Item (Join-Path $WorkspaceRoot $name) $fixture}
-    Copy-Item (Join-Path $WorkspaceRoot 'scripts/ReportPaths.ps1') (Join-Path $fixture 'scripts')
+    Copy-Item (Join-Path $WorkspaceRoot 'scripts/lib/ReportPaths.psm1') (Join-Path $fixture 'scripts')
     Copy-Item (Join-Path $WorkspaceRoot ($engine+'/*')) (Join-Path $fixture $engine) -Include *.cs,*.csproj
     [IO.File]::WriteAllText((Join-Path $fixture ($tests+'/QuietCli.Git.Parser.Tests.csproj')),'<Project />',[Text.UTF8Encoding]::new($false))
     $definitions=Get-Content (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.Tests.PoSh/mutation/catalogues.json') -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable
@@ -52,7 +52,7 @@ function Invoke-CiProcess {
     [pscustomobject]@{Outcome=$(if($failed){'Failed'}else{'Success'});ExitCode=$failed}
 }
 '@
-    [IO.File]::WriteAllText((Join-Path $fixture 'scripts/Ci.Process.ps1'),$mock+"`n",[Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $fixture 'scripts/lib/Ci.Process.psm1'),$mock+"`n",[Text.UTF8Encoding]::new($false))
     . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.Tests.PoSh/Parser.Mutation.ps1')
     $reportRoot=Invoke-QuietGitParserMutation -WorkspaceRoot $fixture -Catalogue Query
     $report=Get-Content (Join-Path $reportRoot summary.json) -Raw -Encoding utf8|ConvertFrom-Json

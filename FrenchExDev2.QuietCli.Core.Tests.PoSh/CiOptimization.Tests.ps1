@@ -75,8 +75,8 @@ function Test-QuietCiFailureRegression {
     Owned evidence directory.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
-    . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
     $assertRecipe={
         param($text,$parent)
         $default=[regex]::Match($text,'(?m)^ARG CORE_IMAGE=(\S+)$')
@@ -205,7 +205,7 @@ function Test-QuietCiOptimization {
     Owned output tree for fixtures and receipts.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     $fixture=Join-Path $RunDirectory 'ci-optimization'
     [void][IO.Directory]::CreateDirectory($fixture)
     $revision='a'*40
@@ -236,7 +236,7 @@ function Test-QuietCiOptimization {
     $worker=Join-Path $fixture 'parallel-worker.ps1'
     $workerText=@'
 param($WorkspaceRoot,$RunDirectory,$Suite,$MaxConcurrency,$ExpectedRuntimeIdentifier,[switch]$SkipTty)
-. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+. (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1')
 $started=[DateTimeOffset]::UtcNow.ToString('o')
 $parent=Split-Path $RunDirectory -Parent
 Write-WorkspaceJson (Join-Path $RunDirectory started.json) @{PID=$PID;Started=$started}
@@ -288,7 +288,7 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
     try{$null=& (Join-Path $WorkspaceRoot scripts/Initialize-PowerShellHost.ps1) -WorkspaceRoot $hostRoot -Channel stable -RuntimeIdentifier win-x64 -OutputDirectory (Join-Path $hostRoot damaged)}catch{$rejected=$_.Exception.Message -ceq 'PowerShellHostCacheChecksumMismatch'}
     if(!$rejected){throw 'DamagedHostCacheAccepted'}
     $cacheChecks=& {
-        . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+        Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
         $script:ciCacheCalls=[Collections.Generic.List[string]]::new()
         $plan=[pscustomobject]@{Rid='linux-x64';Architecture='x64';Fingerprint=('a'*64);RegistryPath='fixture/image';Source='https://example.invalid/source';Base=$null;Dockerfile='fixture';Arguments=@{}}
         function Resolve-QuietVirtEngine {
@@ -388,7 +388,7 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
     $common='function Write-WorkspaceJson {param($Path,$Value); [void][IO.Directory]::CreateDirectory((Split-Path $Path -Parent));[IO.File]::WriteAllText($Path,($Value|ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))}'
     $images='function Get-QuietCiRegistryDigest {param($Plan,$Token,$Actor,[switch]$IncludeConfiguration); if(!$IncludeConfiguration){throw "ConfigurationNotVerified"}; [pscustomobject]@{Digest=("sha256:"+("b"*64));Reference=("ghcr.io/fixture@sha256:"+("b"*64))}}; function Invoke-QuietCiImageBuild {param($Plan,$ContextDirectory,$WorkspaceRoot,$ArtifactPrefix,[switch]$RegistryCache,[switch]$CacheOnly,$ContainerRuntime);if(!$CacheOnly){throw "UnexpectedBuild"};[pscustomobject]@{Image="verified-final-local";CacheHit=$true}}'
     $plan='param($WorkspaceRoot,$RuntimeIdentifier,$Module,$ParentPlan,[switch]$PlanOnly);if(!$PlanOnly){throw "ParentPreparedOnFinalHit"};[pscustomobject]@{Fingerprint=("a"*64);Rid=$RuntimeIdentifier}'
-    foreach($entry in @{'Common.ps1'=$common;'CiImages.ps1'=$images;'New-CiImage.ps1'=$plan;'New-CiModuleImage.ps1'=$plan}.GetEnumerator()){[IO.File]::WriteAllText((Join-Path $warmScripts $entry.Key),$entry.Value,[Text.UTF8Encoding]::new($false))}
+    foreach($entry in @{'lib/Common.psm1'=$common;'lib/CiImages.psm1'=$images;'New-CiImage.ps1'=$plan;'New-CiModuleImage.ps1'=$plan}.GetEnumerator()){[IO.File]::WriteAllText((Join-Path $warmScripts $entry.Key),$entry.Value,[Text.UTF8Encoding]::new($false))}
     $module=Import-Module (Join-Path $warmScripts lib/CiCompanions.psm1) -PassThru -Force
     try{
         $selection=[pscustomobject]@{Images=@('Core','Git')}
@@ -398,7 +398,8 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
         if(!$resolved.RegistryOnly -or !$resolved.CacheHit -or $pulled.Image -cne 'verified-final-local'){throw 'WarmFinalImagePreparedParents'}
         if(!$probed.RegistryOnly -or !$probed.CacheHit){throw 'ProbePreparedWarmImage'}
         $missSource=$images.Replace('if(!$IncludeConfiguration)', 'if($true){return};if(!$IncludeConfiguration)')
-        [IO.File]::WriteAllText((Join-Path $warmScripts CiImages.ps1),$missSource,[Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText(([IO.Path]::Combine($warmScripts,'lib/CiImages.psm1')),$missSource,[Text.UTF8Encoding]::new($false))
+        & $module {param($path) Get-Module CiImages -All | Where-Object Path -EQ $path | Remove-Module -Force} ([IO.Path]::GetFullPath([IO.Path]::Combine($warmScripts,'lib/CiImages.psm1')))
         $miss=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ProbeOnly -ContainerRuntime docker} $warmRoot $selection
         if(!$miss.RegistryOnly -or $miss.CacheHit){throw 'ProbePreparedMissingImage'}
     }finally{Remove-Module -ModuleInfo $module -Force}

@@ -56,7 +56,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $workspace = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $scripts = Join-Path $workspace 'scripts'
-. (Join-Path $scripts 'Ci.Process.ps1')
+Import-Module ([IO.Path]::Combine($scripts,'lib/Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop
 foreach ($module in 'RunEncoding', 'RunFormat') { Import-Module (Join-Path $scripts "lib/$module.psm1") -Force }
 [void](Set-RunConsoleEncoding -Name $ConsoleEncoding)
 $logger = New-RunLogger -Level $LogLevel -Component 'mutation'
@@ -138,7 +138,7 @@ try {
 finally { Remove-MutationSandbox $baselineRoot }
 
 $results = [Collections.Generic.List[object]]::new()
-. (Join-Path $workspace 'scripts/Ci.Process.ps1')
+Import-Module (Join-Path $workspace 'scripts/lib/Ci.Process.psm1') -DisableNameChecking -ErrorAction Stop
 $workerPath=Join-Path $PSScriptRoot 'RunProfiles.MutationWorker.ps1'
 $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
 $active=[Collections.Generic.List[object]]::new()

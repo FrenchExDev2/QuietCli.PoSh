@@ -20,7 +20,7 @@ Core mixes pure logic with real filesystem, Git, process and package integration
 
 See [Qualification: when, where and how](../README-qualification-when-where-how.md) for PR triggers, the six Windows and four Linux environments, build versus test execution, local launchers and qualification exclusions.
 
-In a source checkout, the companion loads `scripts/Common.ps1` into its own private module scope, including the CI process,
+In a source checkout, the companion loads `scripts/lib/Common.psm1` into its own private module scope, including the CI process,
 JSON, source-identity and project-discovery helpers. Test functions do not depend on a caller script
 or workstation profile having loaded those functions. The focused case `GitHub CI companion helpers
 load privately without caller profile dependencies` verifies exact helper source paths and no export

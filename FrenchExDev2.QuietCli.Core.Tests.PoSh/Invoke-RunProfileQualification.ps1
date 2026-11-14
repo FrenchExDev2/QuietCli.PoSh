@@ -14,7 +14,7 @@ function Invoke-RunProfileQualification {
     Maximum isolated mutation workers; measurements in the functional campaign remain ordered.
     #>
     param([string]$WorkspaceRoot, [string]$RunDirectory, [switch]$Mutation, [scriptblock]$OnProgress,[ValidateRange(1,32)][int]$MaxConcurrency=2)
-    . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Ci.Process.psm1') -DisableNameChecking -ErrorAction Stop
     $tests = Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh'
     $report = Join-Path $RunDirectory 'run-profiles-mutation.json'
     $scriptName = if ($Mutation) { 'RunProfiles.Mutation.ps1' } else { 'RunProfiles.Tests.ps1' }

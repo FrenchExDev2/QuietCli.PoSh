@@ -13,7 +13,7 @@ Internal background entry point; the parent owns its timeout and visible monitor
 #>
 [CmdletBinding()]param([string]$WorkspaceRoot=([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))),[string]$RunDirectory,[switch]$Mutation,[switch]$Worker)
 $ErrorActionPreference='Stop'
-. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$Worker){
     if(!$IsWindows){throw 'Local qualification requires the Windows visible monitor.'}
     if(!$RunDirectory){$RunDirectory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'telemetry') ([guid]::NewGuid().ToString('N'))}
@@ -86,7 +86,7 @@ try{
     if($baseline.Execution.Outcome -ne 'Success' -or $baseline.Report.Failed -ne 0){throw 'TelemetryBaselineFailed'}
     $state.Passed+=$baseline.Report.Passed
     $state.Case='PowerShell Complete objects and SQLite in integrated and isolated hosting';Write-WorkspaceJson $statusPath $state
-    . (Join-Path $WorkspaceRoot 'scripts/TestConfiguration.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/TestConfiguration.psm1') -DisableNameChecking -ErrorAction Stop
     Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory 'measurements.sqlite')
     Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1') -Force
     Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -Force

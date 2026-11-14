@@ -38,7 +38,7 @@ Required libFuzzer execution count for the original source.
     [switch]$Worker
 )
 $ErrorActionPreference='Stop'
-. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$Worker){
     if(!$Headless -and !$IsWindows){throw 'Use the Windows host launcher for a visible local monitor.'}
     if(!$RunDirectory){$RunDirectory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'pty-mutation') ([guid]::NewGuid().ToString('N'))}

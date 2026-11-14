@@ -80,7 +80,7 @@ The workflow then calls [Invoke-GitHubCi.ps1](scripts/Invoke-GitHubCi.ps1) with 
 
 Without a fallback image argument, the GitHub entry calls [Invoke-TestWorker.ps1](scripts/Invoke-TestWorker.ps1) in the current runner/job-container PowerShell process. For Docker fallback, it calls [Invoke-ContainerWorker.ps1](scripts/Invoke-ContainerWorker.ps1), which stages the prepared workspace and invokes the same GitHub entry inside the guest.
 
-The worker resolves the suite through [WorkspaceProjects.ps1](scripts/WorkspaceProjects.ps1), imports its test companion with `-DisableNameChecking`, and invokes the declared runner. It records case progress, passed/failed counts and a terminal summary. Importing a companion or compiling its projects is not equivalent to executing that runner.
+The worker resolves the suite through [WorkspaceProjects.ps1](scripts/lib/WorkspaceProjects.psm1), imports its test companion with `-DisableNameChecking`, and invokes the declared runner. It records case progress, passed/failed counts and a terminal summary. Importing a companion or compiling its projects is not equivalent to executing that runner.
 
 ## Where Windows tests run
 
@@ -105,7 +105,7 @@ Each selected suite has four native Linux targets:
 
 The runner is the Ubuntu machine providing the CPU and Docker host. Debian/Alpine is the **guest environment where the tests execute**. ARM64 rows use ARM64 runners; an x64 execution is not accepted as ARM64 qualification. Debian uses GA 7.7.0 / CLR 11; Alpine temporarily retains native 7.6.9-r0 / CLR 10 because its GA package and Microsoft musl ARM64 archive are unavailable; Linux does not repeat the Windows Stable/Preview/Process matrix. Image and host pins are in [build/ci-images.lock.json](build/ci-images.lock.json).
 
-[Select-GitHubCiMatrix.ps1](scripts/Select-GitHubCiMatrix.ps1) and [GitHubCi.ps1](scripts/GitHubCi.ps1) partition these four targets between two paths. Each target belongs to exactly one path:
+[Select-GitHubCiMatrix.ps1](scripts/Select-GitHubCiMatrix.ps1) and [GitHubCi.ps1](scripts/lib/GitHubCi.psm1) partition these four targets between two paths. Each target belongs to exactly one path:
 
 - **GitHub job container:** when a compatible image is available at a verified immutable digest, both the source build and selected tests run inside that job container.
 - **Docker fallback:** when that image is unavailable, build preparation runs on the Ubuntu runner. The selected image is prepared or reused, then sources, distributions, build policy and restored package inputs are copied into an owned container. The selected tests run inside it with `--network none`. The worker checks the guest's terminal report, real exit code and RID before accepting success.
@@ -172,7 +172,7 @@ Open the PR's checks and expand the relevant workflow:
 4. Read case progress and the saved `summary.json` / suite reports. Inspect the uploaded evidence and, on failure, bounded diagnostic artifacts. The fallback worker preserves guest status, exit and identity evidence.
 5. Check `linux-result` and the final qualification gate. An in-progress, skipped, cancelled or failed required path is not qualified.
 
-Local reports are stored outside the checkout under the shared temporary report root resolved by [ReportPaths.ps1](scripts/ReportPaths.ps1). GitHub jobs retain reports under `artifacts/` with workflow-specific retention. Ordinary tooling artifacts select JSON/logs and case-worker reports, excluding nested workspaces/binaries/packages. Failed functional fixtures are uploaded separately for seven days; mutation artifacts are bound to SHA/shard/attempt. The launchers print the actual paths. Neither this guide nor the presence of a workflow proves that a particular revision has passed; use that revision's saved reports and GitHub check results.
+Local reports are stored outside the checkout under the shared temporary report root resolved by [ReportPaths.ps1](scripts/lib/ReportPaths.psm1). GitHub jobs retain reports under `artifacts/` with workflow-specific retention. Ordinary tooling artifacts select JSON/logs and case-worker reports, excluding nested workspaces/binaries/packages. Failed functional fixtures are uploaded separately for seven days; mutation artifacts are bound to SHA/shard/attempt. The launchers print the actual paths. Neither this guide nor the presence of a workflow proves that a particular revision has passed; use that revision's saved reports and GitHub check results.
 
 <!-- credits:begin -->
 ## Credits

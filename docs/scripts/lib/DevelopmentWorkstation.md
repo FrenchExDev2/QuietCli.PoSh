@@ -91,7 +91,7 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 
 Purpose: Detects a native Windows/Linux target without evaluating os-release as executable code.
 
-Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 0.
+Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->

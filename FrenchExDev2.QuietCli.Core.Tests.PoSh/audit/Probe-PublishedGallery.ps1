@@ -11,7 +11,7 @@ Owned report and installation directory.
 Published Core version to download.
 #>
 [CmdletBinding()]param([string]$WorkspaceRoot,[string]$RunDirectory,[string]$Version)
-$ErrorActionPreference='Stop';. (Join-Path $WorkspaceRoot scripts/Common.ps1)
+$ErrorActionPreference='Stop';Import-Module (Join-Path $WorkspaceRoot scripts/lib/Common.psm1) -DisableNameChecking -ErrorAction Stop
 $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Installation réelle PSGallery';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.PoSh);Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;ProcessId=$PID;State='Running';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null;Passed=0;Failed=0;Case='Downloading the public Core package from PSGallery';Error=$null}
 $status=Join-Path $RunDirectory status.json;Write-WorkspaceJson $status $state
 $proof=$null
@@ -28,7 +28,7 @@ try{
     }
     $state.Passed=1;$state.Case='Executing only the modules downloaded from PSGallery';Write-WorkspaceJson $status $state
     Import-Module (Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1) -Force
-    . (Join-Path $WorkspaceRoot 'scripts/TestConfiguration.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/TestConfiguration.psm1') -DisableNameChecking -ErrorAction Stop
     Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory transport.sqlite)
     $probe=Join-Path $PSScriptRoot Probe-GalleryInstall.ps1
     $r=quiet -AsObject -Role Infrastructure -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} pwsh -NoProfile -File $probe -InstallationDirectory $installation -ExistingInstallation

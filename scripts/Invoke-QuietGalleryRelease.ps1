@@ -23,20 +23,20 @@ param([Parameter(Mandatory)][string]$ReleaseTagsJson,[Parameter(Mandatory)][stri
     [Parameter(Mandatory)][string]$PackageDirectory,[ValidateSet('Prepare','Validate','Publish')][string]$Operation='Validate',
     [string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$RequireReadyToRun)
 $ErrorActionPreference='Stop'
-Import-Module (Join-Path $PSScriptRoot 'lib/GalleryRelease.psm1')
-Import-Module (Join-Path $PSScriptRoot 'lib/Gallery.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/GalleryRelease.psm1')) -DisableNameChecking
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Gallery.psm1')) -DisableNameChecking
 if($ReleaseTagsJson.Length -gt 32768 -or !$ReleaseTagsJson.TrimStart().StartsWith('[')){throw 'GalleryReleaseBatchInvalid'}
 $tags=@($ReleaseTagsJson|ConvertFrom-Json)
 $batch=Resolve-QuietGalleryReleaseBatch -WorkspaceRoot $WorkspaceRoot -Tag $TriggerTag -Revision $Revision -Tags $tags
 if(!$batch.IsLeader){throw 'GalleryReleaseBatchLeaderRequired'}
 $directory=[IO.Path]::GetFullPath($PackageDirectory,$PWD.Path)
 if(!$PSCmdlet.ShouldProcess($directory,($Operation+' Gallery release batch '+($batch.Tags -join ', ')))){return}
-$receiptPath=Join-Path $directory release-set.json
+$receiptPath=[IO.Path]::Combine($directory,'release-set.json')
 if($Operation -ceq 'Prepare'){
     if(Test-Path -LiteralPath $directory){throw 'GalleryOutputAlreadyExists'}
     [void][IO.Directory]::CreateDirectory($directory)
     foreach($release in $batch.Releases){
-        $null=& (Join-Path $PSScriptRoot 'New-QuietGalleryPackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory (Join-Path $directory $release.Module) -Module $release.Module -Version $release.Version -RequireReadyToRun:$RequireReadyToRun -Confirm:$false
+        $null=& ([IO.Path]::Combine($PSScriptRoot,'New-QuietGalleryPackage.ps1')) -WorkspaceRoot $WorkspaceRoot -OutputDirectory ([IO.Path]::Combine($directory,$release.Module)) -Module $release.Module -Version $release.Version -RequireReadyToRun:$RequireReadyToRun -Confirm:$false
     }
     $receipt=@{SchemaVersion=1;Revision=$Revision;LeaderTag=$batch.LeaderTag;Tags=$batch.Tags;State='Prepared'}
     [IO.File]::WriteAllText($receiptPath,($receipt|ConvertTo-Json -Depth 5)+"`n",[Text.UTF8Encoding]::new($false))
@@ -47,12 +47,12 @@ $receipt=[IO.File]::ReadAllText($receiptPath,[Text.UTF8Encoding]::new($false,$tr
 if($receipt.SchemaVersion -ne 1 -or $receipt.Revision -cne $Revision -or $receipt.LeaderTag -cne $batch.LeaderTag -or ($receipt.Tags -join "`n") -cne ($batch.Tags -join "`n")){throw 'GalleryReleaseSetMismatch'}
 # Reject every damaged/mismatching package before publishing the first module.
 foreach($release in $batch.Releases){
-    $plan=Test-QuietGalleryPackageSet (Join-Path $directory $release.Module) -Version $release.Version
+    $plan=Test-QuietGalleryPackageSet ([IO.Path]::Combine($directory,$release.Module)) -Version $release.Version
     if($plan.Module -cne $release.Module){throw 'GalleryReleaseTagPackageMismatch'}
 }
 if($Operation -ceq 'Publish'){
     foreach($release in $batch.Releases){
-        $null=& (Join-Path $PSScriptRoot 'Publish-QuietGallery.ps1') -PackageDirectory (Join-Path $directory $release.Module) -Version $release.Version -Confirm:$false
+        $null=& ([IO.Path]::Combine($PSScriptRoot,'Publish-QuietGallery.ps1')) -PackageDirectory ([IO.Path]::Combine($directory,$release.Module)) -Version $release.Version -Confirm:$false
     }
 }
 [pscustomobject]@{State=$Operation;Revision=$Revision;Tags=$batch.Tags;Modules=@($batch.Releases.Module);Published=($Operation -ceq 'Publish')}

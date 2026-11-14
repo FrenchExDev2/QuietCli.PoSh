@@ -9,11 +9,11 @@ QuietCli2 workspace.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$ReferenceRoot,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Update-QuietDependencies')){return}
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
-$source=Get-Content (Join-Path $ReferenceRoot 'resources/dependencies.json') -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable
-$moduleRoot=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh'
+$ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+$source=Get-Content ([IO.Path]::Combine($ReferenceRoot,'resources/dependencies.json')) -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable
+$moduleRoot=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')
 $files=[Collections.Generic.List[object]]::new();$packages=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
-foreach($file in Get-ChildItem (Join-Path $moduleRoot 'resources') -Recurse -File|Where-Object Name -NE 'dependencies.lock.json'){
+foreach($file in Get-ChildItem ([IO.Path]::Combine($moduleRoot,'resources')) -Recurse -File|Where-Object Name -NE 'dependencies.lock.json'){
     $relative=[IO.Path]::GetRelativePath($moduleRoot,$file.FullName).Replace('\','/')
     $original=$relative.Replace('resources/tokenizers/','resources/runtime/')
     $hash=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
@@ -34,18 +34,18 @@ foreach($file in Get-ChildItem (Join-Path $moduleRoot 'resources') -Recurse -Fil
     $version=if($package -eq 'quietcli-pty'){'source-build'}else{$source.Packages[$package]}
     $files.Add(@{Path=$relative;SHA256=$hash;Bytes=$file.Length;Package=$package;Version=$version;AssemblyVersion=$assemblyVersion;ReferencePath=$original})
     if(!$packages.ContainsKey($package)){
-        $licenseSource=Join-Path $ReferenceRoot ('third_party/'+$(if($package -eq 'quietcli-pty'){'transport'}else{$package}))
-        $licenseDestination=Join-Path $moduleRoot ('third_party/'+$package)
+        $licenseSource=[IO.Path]::Combine($ReferenceRoot,('third_party/'+$(if($package -eq 'quietcli-pty'){'transport'}else{$package})))
+        $licenseDestination=[IO.Path]::Combine($moduleRoot,('third_party/'+$package))
         [void][IO.Directory]::CreateDirectory($licenseDestination)
         foreach($license in Get-ChildItem -LiteralPath $licenseSource -File){
             $text=[IO.File]::ReadAllTextAsync($license.FullName,[Text.Encoding]::UTF8).GetAwaiter().GetResult().Replace("`r`n","`n").Replace("`r","`n")
-            [void][IO.File]::WriteAllTextAsync((Join-Path $licenseDestination $license.Name),$text,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+            [void][IO.File]::WriteAllTextAsync(([IO.Path]::Combine($licenseDestination,$license.Name)),$text,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         }
         $licenseFiles=@(Get-ChildItem -LiteralPath $licenseDestination -File|ForEach-Object{
-            @{Path=[IO.Path]::GetRelativePath($moduleRoot,$_.FullName).Replace('\','/');SHA256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;OriginalSHA256=(Get-FileHash -LiteralPath (Join-Path $licenseSource $_.Name) -Algorithm SHA256).Hash;Normalization='UTF-8 LF'}
+            @{Path=[IO.Path]::GetRelativePath($moduleRoot,$_.FullName).Replace('\','/');SHA256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;OriginalSHA256=(Get-FileHash -LiteralPath ([IO.Path]::Combine($licenseSource,$_.Name)) -Algorithm SHA256).Hash;Normalization='UTF-8 LF'}
         })
         $packages.Add($package,@{Id=$package;Version=$version;Source=$(if($package -eq 'quietcli-pty'){'resources/transport/*/build.json'}else{"https://api.nuget.org/v3-flatcontainer/$package/$version/$package.$version.nupkg"});LicenseEvidence=$licenseFiles;Provenance='Content matches the inspected local source manifest; package author authenticity is not inferred from a checksum.'})
     }
 }
-Write-WorkspaceJson (Join-Path $moduleRoot 'resources/dependencies.lock.json') @{SchemaVersion=1;Files=$files.ToArray();Packages=@($packages.Values);Policy='Verify pinned content before native or managed loading. Updates and advisory review are explicit maintenance operations.'}
+Write-WorkspaceJson ([IO.Path]::Combine($moduleRoot,'resources/dependencies.lock.json')) @{SchemaVersion=1;Files=$files.ToArray();Packages=@($packages.Values);Policy='Verify pinned content before native or managed loading. Updates and advisory review are explicit maintenance operations.'}
 [pscustomobject]@{Resources=$files.Count;Packages=$packages.Count;Downloaded=$false}

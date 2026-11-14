@@ -10,11 +10,11 @@ Removes objective headers/announcements, applies missing guards and regenerates 
 [CmdletBinding(SupportsShouldProcess)]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Apply)
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot ScriptReview.ps1)
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/ScriptReview.psm1')) -DisableNameChecking -ErrorAction Stop
 $entries=@(Get-QuietScriptReview $WorkspaceRoot)
 $changes=0
 foreach($entry in $entries){
-    $path=Join-Path $WorkspaceRoot $entry.Path
+    $path=[IO.Path]::Combine($WorkspaceRoot,$entry.Path)
     $before=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
     $text=$before.Replace("`r`n","`n");$name=[IO.Path]::GetFileNameWithoutExtension($path)
     if([IO.Path]::GetExtension($path) -eq '.ps1'){
@@ -50,11 +50,11 @@ foreach($entry in $entries){
 }
 $reviewed=@(Get-QuietScriptReview $WorkspaceRoot)
 foreach($entry in $reviewed){
-    $document=Join-Path $WorkspaceRoot ('docs/'+($entry.Path -replace '\.ps(?:m)?1$','.md'))
+    $document=[IO.Path]::Combine($WorkspaceRoot,('docs/'+($entry.Path -replace '\.ps(?:m)?1$','.md')))
     if(!(Test-Path -LiteralPath $document)){throw ('ScriptContractDocMissing: '+$entry.Path)}
     $text=[IO.File]::ReadAllTextAsync($document,[Text.Encoding]::UTF8).GetAwaiter().GetResult().Replace("`r`n","`n")
     $block=@('<!-- script-contract:begin -->','## Execution contract','',('Purpose: '+$entry.Purpose),'',('Boundary: **'+$entry.Mode+'**. Preview API: **'+$entry.PreviewContract+'**. Guarded functions: '+$entry.GuardedFunctions+'.'),'','See [the complete review](~/preview-support.md) for orchestration guards, delegated effects and static-analysis limits.','<!-- script-contract:end -->') -join "`n"
-    $relative=[IO.Path]::GetRelativePath((Split-Path $document -Parent),(Join-Path $WorkspaceRoot docs/scripts/preview-support.md)).Replace('\','/')
+    $relative=[IO.Path]::GetRelativePath((Split-Path $document -Parent),([IO.Path]::Combine($WorkspaceRoot,'docs/scripts/preview-support.md'))).Replace('\','/')
     $block=$block.Replace('~/preview-support.md',$relative)
     $pattern='(?s)<!-- script-contract:begin -->.*?<!-- script-contract:end -->'
     $expected=if($text -match $pattern){[regex]::Replace($text,$pattern,[Text.RegularExpressions.MatchEvaluator]{param($match)$block})}else{$text.TrimEnd()+"`n`n"+$block+"`n"}
@@ -64,7 +64,7 @@ foreach($entry in $reviewed){
     }
 }
 $review=Get-QuietScriptReviewReadme $WorkspaceRoot
-$path=Join-Path $WorkspaceRoot docs/scripts/preview-support.md
+$path=[IO.Path]::Combine($WorkspaceRoot,'docs/scripts/preview-support.md')
 $footer=@('<!-- credits:begin -->','## Credits','',"This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).",'<!-- credits:end -->') -join "`n"
 $review+="`n"+$footer+"`n"
 $current=if(Test-Path $path){Get-Content $path -Raw -Encoding utf8}else{$null}

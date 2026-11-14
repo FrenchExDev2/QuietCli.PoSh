@@ -45,7 +45,7 @@ param([string]$Channel='11.0',[string]$Version,[Alias('Prerelease','Prereleases'
     [string[]]$Platform,[string]$ImageVariant,[switch]$ActivateSession,[switch]$AllowDowngrade,
     [int]$DownloadTimeoutSeconds=900,[string]$QuietCliRoot)
 $ErrorActionPreference='Stop'
-Import-Module (Join-Path $PSScriptRoot 'lib/DotNetProvisioning.psm1') -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/DotNetProvisioning.psm1')) -ErrorAction Stop -DisableNameChecking
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Install the selected SDK and explicitly requested optional effects')){return}
 $invocation=@{}+$PSBoundParameters
 $invocation.Confirm=$false

@@ -12,7 +12,7 @@ Uses already verified compiled fixtures.
 #>
 [CmdletBinding()]param([string]$WorkspaceRoot=(Split-Path (Split-Path $PSScriptRoot -Parent) -Parent),[string]$RunDirectory,[switch]$SkipBuild)
 $ErrorActionPreference='Stop'
-. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$SkipBuild){$null=& (Join-Path $WorkspaceRoot 'scripts/Build-Workspace.ps1') -WorkspaceRoot $WorkspaceRoot}
 if(!$RunDirectory){$RunDirectory=Join-Path $WorkspaceRoot ('artifacts/audit/'+[DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))}
 if(Test-Path -LiteralPath $RunDirectory){throw 'AuditRunDirectoryExists'}

@@ -24,7 +24,7 @@ Checks final registry configuration without pulling, building or contacting a co
 param([string]$Suite='All',[Parameter(Mandatory)][ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$PlanOnly,[switch]$RegistryCache,[switch]$PublishCache,[switch]$ResolveOnly,[switch]$ProbeOnly,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime)
 $ErrorActionPreference='Stop'
 if(!$PlanOnly -and !$PSCmdlet.ShouldProcess($WorkspaceRoot,('Prepare declared image layers for '+$Suite))){return}
-Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanions.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiCompanions.psm1')) -DisableNameChecking
 $configuration=Read-QuietCiCompanions $WorkspaceRoot
 $selection=Resolve-QuietCiCompanions $configuration -Suite $Suite
 if($PlanOnly){return Get-QuietCiSuiteImagePlan $WorkspaceRoot $selection $RuntimeIdentifier}

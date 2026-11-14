@@ -13,6 +13,6 @@ Requires a literal sibling manifest with a matching RootModule and optional Pack
 param([Parameter(Mandatory)][string]$Path,[switch]$AsObject,[switch]$RequireManifest)
 if(!$PSCmdlet.ShouldProcess($Path,'Read module package identity without executing module code')){return}
 $ErrorActionPreference='Stop'
-Import-Module (Join-Path $PSScriptRoot 'lib/ModulePackage.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/ModulePackage.psm1')) -DisableNameChecking
 $identity=Get-QuietModulePackageIdentity -Path $Path -RequireManifest:$RequireManifest
 if($AsObject){$identity}else{$identity.Name}

@@ -11,10 +11,10 @@ QuietCli monorepo root; defaults to the parent of this script directory.
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Sync-SkillDocument')){return}
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'AgentDocuments.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/AgentDocuments.psm1')) -DisableNameChecking -ErrorAction Stop
 $utf8=[Text.UTF8Encoding]::new($false,$true)
-$directory=Join-Path $WorkspaceRoot 'docs/agents'
-$agents=[IO.File]::ReadAllTextAsync((Join-Path $directory 'AGENTS.md'),$utf8).GetAwaiter().GetResult()
+$directory=[IO.Path]::Combine($WorkspaceRoot,'docs/agents')
+$agents=[IO.File]::ReadAllTextAsync(([IO.Path]::Combine($directory,'AGENTS.md')),$utf8).GetAwaiter().GetResult()
 if(!$agents.Length -or $agents.Contains("`r")){throw 'AgentsDocumentMustBeNonemptyUtf8Lf'}
 $skill=New-QuietSkillDocumentText -AgentsText $agents
-[void][IO.File]::WriteAllTextAsync((Join-Path $directory 'SKILL.md'),$skill,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+[void][IO.File]::WriteAllTextAsync(([IO.Path]::Combine($directory,'SKILL.md')),$skill,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()

@@ -14,6 +14,6 @@ param([ValidateSet('debian','alpine')][string]$Image='debian',[string]$Name,
     [ValidateRange(1,100)][int]$Limit=20)
 $ErrorActionPreference='Stop'
 if(!$PSCmdlet.ShouldProcess("docker.io/library/$Image",'List official registry tags and reported platforms')){return}
-Import-Module (Join-Path $PSScriptRoot 'lib/DotNetLocks.psm1') -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/DotNetLocks.psm1')) -ErrorAction Stop -DisableNameChecking
 $options=@{}+$PSBoundParameters;$options.Confirm=$false
 Get-DotNetBaseImageTags @options

@@ -40,7 +40,7 @@ function Invoke-QuietToolingTests {
         $cases['workstation resources preserve active owners and reject foreign cleanup']={Test-QuietWorkstationResources -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['editor extension inventories preserve update and WhatIf contracts']={Test-QuietEditorExtensions -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['source identity includes profile helpers and excludes generated libraries']={
-        . (Join-Path $WorkspaceRoot 'scripts/SourceIdentity.ps1')
+        Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/SourceIdentity.psm1') -DisableNameChecking -ErrorAction Stop
         $directory=Join-Path $RunDirectory 'source-library-fixture'
         $expected=[Collections.Generic.List[string]]::new()
         foreach($index in 1..16){
@@ -66,10 +66,10 @@ function Invoke-QuietToolingTests {
             [void][IO.File]::AppendAllTextAsync((Join-Path $directory $relative),"# changed`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
             if((Get-QuietManifestDigest @(Get-QuietSourceFiles $directory)) -ceq $before){throw 'HelperChangeMissingFromSourceIdentity'}
         }
-        $source=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'scripts/SourceIdentity.ps1') -Raw -Encoding utf8
+        $source=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'scripts/lib/SourceIdentity.psm1') -Raw -Encoding utf8
         $tokens=$null;$errors=$null;$ast=[Management.Automation.Language.Parser]::ParseInput($source,[ref]$tokens,[ref]$errors)
         $function=$ast.Find({param($node)$node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -ceq 'Get-QuietSourceFiles'},$true).Extent.Text
-        $anchor="if(`$item.Name -eq 'lib' -and `$item.FullName -ne (Join-Path `$rootPath 'scripts/lib')){continue}"
+        $anchor="if(`$item.Name -eq 'lib' -and `$item.FullName -ne [IO.Path]::GetFullPath([IO.Path]::Combine(`$rootPath,'scripts/lib'))){continue}"
         if(!$function.Contains($anchor)){throw 'SourceIdentityMutationAnchorMissing'}
         foreach($replacement in @("if(`$item.Name -eq 'lib'){continue}",'')){
             $killed=$false
@@ -80,7 +80,8 @@ function Invoke-QuietToolingTests {
         $cases['Gallery preserves prerelease labels and keeps numeric manifest versions separate']={
         & {
             param($scripts)
-            . (Join-Path $scripts Common.ps1);Import-Module (Join-Path $scripts lib/Gallery.psm1)
+            Import-Module ([IO.Path]::Combine($scripts,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+            Import-Module ([IO.Path]::Combine($scripts,'lib/Gallery.psm1')) -DisableNameChecking -ErrorAction Stop
             foreach($label in @('preview','preview1','beta2')){
                 $manifest=@{ModuleVersion='2.3.4';PrivateData=@{PSData=@{Prerelease=$label}}}
                 if((Get-QuietGalleryModuleVersion $manifest) -cne ('2.3.4-'+$label)){throw 'GalleryPrereleaseSuffixLost'}
@@ -106,6 +107,10 @@ function Invoke-QuietToolingTests {
         $cases['GitHub CI container inputs include docs and restored packages without secrets or path escapes']={Test-QuietContainerInputs -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['solution build catalogue discovers new consumers and rejects malformed distributions']={Test-QuietWorkspaceBuildProjects -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['ReadyToRun builds and loads the matching RID and CLR with portable fallbacks']={Test-QuietReadyToRun -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+        $cases['script layout enforces entry points libraries imports and IO paths']={
+            . ([IO.Path]::Combine($toolingRoot,'ScriptLayout.Tests.ps1'))
+            $null=Test-QuietScriptLayoutContract -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+        }
         $cases['automation contracts require available runtimes accurate workflow graphs and safe previews']={Test-QuietAutomationContracts -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['configuration dotenv preserves literals and deterministic local GitHub presets']={Test-QuietEnvFiles -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['GitHub PR push updates preserve previews remote routing and checkpoint identity']={Test-QuietPullRequestUpdates -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
@@ -114,7 +119,7 @@ function Invoke-QuietToolingTests {
         $cases['automation resource and script review gates inspect the prepared index']={Test-QuietResourceCommitChecks -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['automation commit pipeline checks staged workflow and preview contracts']={Test-QuietAutomationCommitChecks -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['CI process execution is independent and preserves streams failures stdin and deadlines']={
-        . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
+        Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Ci.Process.psm1') -DisableNameChecking -ErrorAction Stop
         $state=@{stdout='';stderr=''}
         $r=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-Command','[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); [Console]::Out.Write("sortie-é"); [Console]::Error.Write("diagnostic-λ"); exit 7') -State $state -OnOutput {param($e,$s)$s[$e.Stream]+=$e.Text}
         if($state.stdout -cne 'sortie-é' -or $state.stderr -cne 'diagnostic-λ'){
@@ -141,7 +146,7 @@ function Invoke-QuietToolingTests {
         Assert-QuietEqual $r.Outcome Timeout
     }
         $cases['every native property fuzz and mutation phase is mandatory for delivery']={
-        . (Join-Path $WorkspaceRoot 'scripts/Assert-PtyQualification.ps1')
+        Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Assert-PtyQualification.psm1') -DisableNameChecking -ErrorAction Stop
         $good=@{State=@{State='Success'};Baseline=@{State='Success';Assertions=43;PropertyGroups=6;Failed=0};Fuzz=@{State='Success';RequestedRuns=20000;ExecutedRuns=20000};Mutation=@{Selected=31;Killed=31;Survived=0;Invalid=0;Timeout=0;Error=0}}
         Assert-PtyQualification $good
         foreach($change in @(
@@ -174,7 +179,7 @@ function Invoke-QuietToolingTests {
         $actual=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
         $wrong=if($actual -ceq 'linux-arm64'){'linux-x64'}else{'linux-arm64'}
         $script=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests/Invoke-PtyMutation.ps1'
-        . (Join-Path $WorkspaceRoot 'scripts/Ci.Process.ps1')
+        Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Ci.Process.psm1') -DisableNameChecking -ErrorAction Stop
         $r=Invoke-CiProcess -FilePath pwsh -ArgumentList @('-File',$script,'-WorkspaceRoot',$WorkspaceRoot,'-RunDirectory',$directory,'-CompilerPath','missing-compiler-must-not-run','-ExpectedRuntimeIdentifier',$wrong,'-Worker') -TimeoutSeconds 60 -OnOutput {param($e,$s)}
         Assert-QuietEqual $r.Outcome Failed
         $summary=Get-Content (Join-Path $directory 'summary.json') -Raw -Encoding utf8|ConvertFrom-Json
@@ -286,7 +291,7 @@ function Invoke-QuietToolingTests {
         $cases['CI images cover four native Linux targets and invalidate the cache on recipe changes']={
         & {
             param($root)
-            . (Join-Path $root 'scripts/CiImages.ps1')
+            Import-Module (Join-Path $root 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
             $expected=@{
                 'linux-x64'=@('debian','x64');'linux-arm64'=@('debian','arm64')
                 'linux-musl-x64'=@('alpine','x64');'linux-musl-arm64'=@('alpine','arm64')
@@ -298,7 +303,7 @@ function Invoke-QuietToolingTests {
                 if($plan.Fingerprint -cnotmatch '^[a-f0-9]{64}$'){throw 'Cache identity missing'}
             }
             $copy=Join-Path $root ('artifacts/ci-image-contract/'+[guid]::NewGuid().ToString('N'))
-            $files=@('global.json','build/ci-images.lock.json','scripts/CiImages.ps1','scripts/New-CiImage.ps1','FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1')
+            $files=@('global.json','build/ci-images.lock.json','scripts/lib/CiImages.psm1','scripts/New-CiImage.ps1','FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1')
             $files+=@(Get-ChildItem (Join-Path $root '.github/containers') -File -Force|ForEach-Object {'.github/containers/'+$_.Name})
             foreach($file in $files){$destination=Join-Path $copy $file;[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination));Copy-Item -LiteralPath (Join-Path $root $file) -Destination $destination}
             $before=Get-QuietCiImagePlan $copy linux-arm64
@@ -322,7 +327,7 @@ function Invoke-QuietToolingTests {
         foreach($entry in $files.GetEnumerator()){[void][IO.File]::WriteAllTextAsync((Join-Path $directory $entry.Key),$entry.Value,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}
         & {
             param($scripts,$directory,$project)
-            . (Join-Path $scripts 'Common.ps1')
+            Import-Module ([IO.Path]::Combine($scripts,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
             $inputs=@(Get-QuietBinaryInputs $directory $project)
             Write-QuietBuildManifest $directory $project output -Inputs $inputs
             $null=Test-QuietBuildManifest $directory output
@@ -345,7 +350,7 @@ function Invoke-QuietToolingTests {
         } (Join-Path $WorkspaceRoot 'scripts') $directory $project
     }
         $cases['monitor duration preserves November timestamps in French and English cultures']={
-        . (Join-Path $WorkspaceRoot 'scripts/Monitor.Time.ps1')
+        Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Monitor.Time.psm1') -DisableNameChecking -ErrorAction Stop
         $culture=[Globalization.CultureInfo]::CurrentCulture
         try{
             foreach($name in @('fr-FR','en-US')){
@@ -362,7 +367,7 @@ function Invoke-QuietToolingTests {
         }finally{[Globalization.CultureInfo]::CurrentCulture=$culture}
     }
         $cases['PowerShell functions have readable help and sources parse without errors']={
-        . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+        Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
         $paths=@(@(Get-QuietSourceFiles $WorkspaceRoot)|ForEach-Object {Join-Path $WorkspaceRoot $_.Path})+@(Join-Path $WorkspaceRoot 'repositories.lock.json')
         foreach($path in $paths){
             $bytes=[IO.File]::ReadAllBytesAsync($path).GetAwaiter().GetResult()
@@ -429,6 +434,7 @@ if (!$invalidCompanionRejected) { throw 'LauncherInvalidCompanionAccepted' }
         Assert-QuietEqual $r.Outcome Success 'Local companion launcher qualification failed'
     }
     $caseMetadata=@{
+        'script layout enforces entry points libraries imports and IO paths'=@{TestKind='Integration';Dependencies=@('FileSystem')}
         'CI scales by affected suites with verified merge reuse and intermediate caches'=@{TestKind='Integration';Dependencies=@('FileSystem')}
         'local launcher imports exact business companions and restores their lifecycle'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
         'test case classifications are complete explicit and fail closed before filtering'=@{TestKind='Integration';Dependencies=@('FileSystem','ProcessEnvironment')}

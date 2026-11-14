@@ -11,7 +11,7 @@ function Test-QuietEmbeddedDistributions {
 
         & {
             param($root)
-            . (Join-Path $root 'scripts/Common.ps1')
+            Import-Module (Join-Path $root 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
             $targets=@(Get-QuietRuntimeTargets $root)
             $expected=@('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')
             if($targets.Count -ne 6 -or @($expected|Where-Object {$_ -cnotin $targets.Rid}).Count){throw 'Release target set incomplete'}

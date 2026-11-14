@@ -36,7 +36,7 @@ flowchart LR
 
 ## Dependencies and side effects
 
-Uses Common, WorkspaceProjects, Build-Workspace, Invoke-TestWorker, Watch-Tests and shared waiting/diagnostic helpers. Starts child PowerShell processes; writes progress, summaries and worker/monitor logs under the external [report root](ReportPaths.md), or an explicit RunDirectory. WhatIf returns before build, profiler preparation, worker/report creation or monitor launch. Nothing is committed or published.
+Uses Common, WorkspaceProjects, Build-Workspace, Invoke-TestWorker, Watch-Tests and shared waiting/diagnostic helpers. Starts child PowerShell processes; writes progress, summaries and worker/monitor logs under the external [report root](lib/ReportPaths.md), or an explicit RunDirectory. WhatIf returns before build, profiler preparation, worker/report creation or monitor launch. Nothing is committed or published.
 
 The monitor tails existing diagnostics and closes after a saved terminal report. Failure prints bounded failed cases and throws with the report path. A filtered successful run is development evidence, not full qualification.
 

@@ -35,8 +35,8 @@ $image = ./scripts/Get-CiImageForDevelopment.ps1 -RuntimeIdentifier linux-x64
 )
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Get-CiImageForDevelopment')){return}
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'Common.ps1')
-. (Join-Path $PSScriptRoot 'CiImages.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiImages.psm1')) -DisableNameChecking -ErrorAction Stop
 
 $plan = Get-QuietCiImagePlan $WorkspaceRoot $RuntimeIdentifier
 $digest = Get-QuietCiRegistryDigest $plan $RegistryToken 'quietcli2-developer'

@@ -12,7 +12,7 @@ Optional inert JSON array of explicit comparison cases.
 #>
 param([string]$WorkspaceRoot,[string]$RunDirectory,[string]$RtkPath,[string]$CasesPath)
 $ErrorActionPreference='Stop'
-. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
 . (Join-Path $PSScriptRoot 'Status.Fixtures.ps1')
 $collect={param($e,$r) $r.Data[$e.Stream]+=$e.ByteCount;if($e.Stream -eq 'stdout'){[void]$r.Data.Text.Append($e.Text)}}

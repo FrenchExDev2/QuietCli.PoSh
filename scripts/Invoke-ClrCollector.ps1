@@ -15,7 +15,7 @@ param([string]$ClrProfilerPath,[int]$TargetProcessId,[string]$OutputPath,[string
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ClrCollector')){return}
 $ErrorActionPreference='Stop'
 $env:DOTNET_ROLL_FORWARD_TO_PRERELEASE='1'
-. (Join-Path $PSScriptRoot 'Common.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 $state=@{Ready=$false;Path=$ReadyPath;Log=[Collections.Generic.List[string]]::new()}
 $result=Invoke-CiProcess -FilePath dotnet -ArgumentList @('--roll-forward','LatestMajor',$ClrProfilerPath,'collect','--process-id',[string]$TargetProcessId,'--profile','dotnet-sampled-thread-time','--buffersize','64','--duration','00:00:00:30','--output',$OutputPath) -TimeoutSeconds 90 -State $state -OnOutput {
     param($event,$state)

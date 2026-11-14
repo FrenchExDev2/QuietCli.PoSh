@@ -35,7 +35,7 @@ Development-only Core case wildcard; unavailable for the unfiltered GitHub entry
 #>
 [CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime,[switch]$GitHubActions,[ValidateRange(1,7200)][int]$TimeoutSeconds=360,[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)),[string]$Case)
 dynamicparam {
-    . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
     New-QuietWorkspaceSuiteParameter -WorkspaceRoot $selectedRoot -Scope Container
 }
@@ -43,13 +43,13 @@ end {
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ContainerWorker')){return}
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 if($Case -and ($Suite -ne 'Core' -or $GitHubActions)){throw 'ContainerCaseRequiresLocalCoreSuite'}
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
-. (Join-Path $PSScriptRoot 'ContainerInputs.ps1')
+$ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/ContainerInputs.psm1')) -DisableNameChecking -ErrorAction Stop
 $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 $owner=[guid]::NewGuid().ToString('N');$name='quietcli2-'+$owner.Substring(0,12)
-$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Tests Podman';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=$Platform;State='Preparing';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;ContainerId=$name;Passed=$null;Failed=$null;Case='Staging explicit source files';FinishedUtc=$null;Error=$null;Image=$Image;Owner=$owner}
+$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Tests Podman';Workspace=$WorkspaceRoot;ProjectDirectory=([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh'));Platform=$Platform;State='Preparing';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;ContainerId=$name;Passed=$null;Failed=$null;Case='Staging explicit source files';FinishedUtc=$null;Error=$null;Image=$Image;Owner=$owner}
 $state.Task='Tests '+$ContainerRuntime;$state.ContainerRuntime=$ContainerRuntime
-$status=Join-Path $RunDirectory 'status.json'
+$status=[IO.Path]::Combine($RunDirectory,'status.json')
 $companionSelection=@(Get-QuietWorkspaceTestSuites $WorkspaceRoot | Where-Object {$Suite -eq 'All' -or $_.Name -eq $Suite})
 if($companionSelection.Count){$state.Project=$companionSelection.Project -join ' + ';$state.ProjectDirectory=$companionSelection.ProjectDirectory -join ' | '}
 if($Suite -eq 'Import'){$state.Project='FrenchExDev2.QuietCli.Core.PoSh';$state.Task='Core import cost in fresh pwsh sessions'}
@@ -58,17 +58,17 @@ Write-WorkspaceJson $status $state
 $created=$false
 $guestSuites=@()
 try{
-    $stage=Join-Path $RunDirectory 'workspace';[void][IO.Directory]::CreateDirectory($stage)
+    $stage=[IO.Path]::Combine($RunDirectory,'workspace');[void][IO.Directory]::CreateDirectory($stage)
     Copy-QuietContainerInputs -WorkspaceRoot $WorkspaceRoot -Destination $stage -NativeOnly:($Suite -eq 'Mutation') -ContainerRuntime $ContainerRuntime -Confirm:$false
     if($Suite -eq 'Mutation'){
-        [void][IO.Directory]::CreateDirectory((Join-Path $stage scripts))
-        foreach($file in @('ReportPaths.ps1','Ci.Process.ps1','Common.ps1','EnvFile.ps1','SourceIdentity.ps1','WorkspaceProjects.ps1','RuntimeTargets.ps1','Assert-PtyQualification.ps1','Watch-Tests.ps1','Monitor.Time.ps1','ReportStreaming.ps1')){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $stage ('scripts/'+$file))}
+        [void][IO.Directory]::CreateDirectory(([IO.Path]::Combine($stage,'scripts')))
+        foreach($file in @('lib/ReportPaths.psm1','lib/Ci.Process.psm1','lib/Common.psm1','lib/EnvFile.psm1','lib/SourceIdentity.psm1','lib/WorkspaceProjects.psm1','lib/RuntimeTargets.psm1','lib/Assert-PtyQualification.psm1','Watch-Tests.ps1','lib/Monitor.Time.psm1','lib/ReportStreaming.psm1')){Copy-Item -LiteralPath ([IO.Path]::Combine($PSScriptRoot,$file)) -Destination ([IO.Path]::Combine($stage,('scripts/'+$file)))}
         $productFiles=@(Get-ChildItem $stage -Recurse -File|Where-Object Extension -In @('.dll','.csproj','.psd1','.psm1'))
         if($productFiles.Count){throw 'NativeStageMustNotContainProductBuildsOrModules'}
-        Write-WorkspaceJson (Join-Path $RunDirectory 'bootstrap.json') @{Mode='Direct CI processes';ProductBuildFiles=0;NativeSourceSHA256=(Get-FileHash (Join-Path $stage 'FrenchExDev2.QuietCli.Core.PoSh/native/quietcli-pty.c') -Algorithm SHA256).Hash}
+        Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'bootstrap.json')) @{Mode='Direct CI processes';ProductBuildFiles=0;NativeSourceSHA256=(Get-FileHash ([IO.Path]::Combine($stage,'FrenchExDev2.QuietCli.Core.PoSh/native/quietcli-pty.c')) -Algorithm SHA256).Hash}
     }else{
-        foreach($file in @('global.json','Directory.Packages.props','repositories.lock.json')){if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot $file)){Copy-Item -LiteralPath (Join-Path $WorkspaceRoot $file) -Destination $stage}}
-        Write-WorkspaceJson (Join-Path $stage 'transport-origin.json') (Get-QuietWorkspaceIdentity $WorkspaceRoot -IncludeBinaries)
+        foreach($file in @('global.json','Directory.Packages.props','repositories.lock.json')){if(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$file))){Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$file)) -Destination $stage}}
+        Write-WorkspaceJson ([IO.Path]::Combine($stage,'transport-origin.json')) (Get-QuietWorkspaceIdentity $WorkspaceRoot -IncludeBinaries)
     }
     $imageState=@{Id=$null}
     $inspect=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('image','inspect','--format','{{.Id}}',$Image) -TimeoutSeconds 20 -State $imageState -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){$s.Id=$e.Text.Trim()}}
@@ -85,13 +85,13 @@ try{
     if($Suite -ne 'Mutation'){$guestArguments+=@('-Suite',$Suite)}
     if($Case){$guestArguments+=@('-Case',$Case)}
     if($Profiler){
-        $toolRoot=Join-Path $stage '.profilers'
+        $toolRoot=[IO.Path]::Combine($stage,'.profilers')
         [void][IO.Directory]::CreateDirectory($toolRoot)
-        Copy-Item -LiteralPath (Split-Path $ProfilerModulePath -Parent) -Destination (Join-Path $toolRoot 'Profiler') -Recurse
-        Copy-Item -LiteralPath (Split-Path $ClrProfilerPath -Parent) -Destination (Join-Path $toolRoot 'clr') -Recurse
+        Copy-Item -LiteralPath (Split-Path $ProfilerModulePath -Parent) -Destination ([IO.Path]::Combine($toolRoot,'Profiler')) -Recurse
+        Copy-Item -LiteralPath (Split-Path $ClrProfilerPath -Parent) -Destination ([IO.Path]::Combine($toolRoot,'clr')) -Recurse
         $guestArguments+=@('-Profiler','-ProfilerModulePath','/workspace/.profilers/Profiler/Profiler.psd1','-ClrProfilerPath','/workspace/.profilers/clr/dotnet-trace.dll')
-        $receipt=Join-Path (Split-Path (Split-Path $ProfilerModulePath -Parent) -Parent) 'tool-receipt.json'
-        if(Test-Path $receipt){Copy-Item -LiteralPath $receipt -Destination (Join-Path $RunDirectory 'tool-receipt.json')}
+        $receipt=[IO.Path]::Combine((Split-Path (Split-Path $ProfilerModulePath -Parent) -Parent),'tool-receipt.json')
+        if(Test-Path $receipt){Copy-Item -LiteralPath $receipt -Destination ([IO.Path]::Combine($RunDirectory,'tool-receipt.json'))}
     }
     $memoryLimits=if($Suite -eq 'Mutation'){@('--memory','1g','--memory-swap','1g')}else{@()}
     # Alpine's framework-dependent PowerShell uses the distribution .NET 10 runtime; the SDK has its own .NET 11 root.
@@ -106,7 +106,7 @@ try{
     $deadline=[DateTimeOffset]::UtcNow.AddSeconds($TimeoutSeconds)
     do{
         if([DateTimeOffset]::UtcNow -gt $deadline){throw [TimeoutException]::new('GuestTestDeadlineExceeded')}
-        $progressPath=Join-Path $RunDirectory guest-progress.json
+        $progressPath=[IO.Path]::Combine($RunDirectory,'guest-progress.json')
         $observation=@{Lines=0}
         $progress=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('cp',($name+':/workspace/artifacts/tests/container-run/status.json'),$progressPath) -TimeoutSeconds 15 -State $observation -OnOutput {param($e,$s)$s.Lines++}
         if($progress.Outcome -eq 'Success'){
@@ -120,8 +120,8 @@ try{
         if($inspection.Outcome -ne 'Success' -or $containerState.Value -in @('exited','stopped')){break}
         [void][Threading.Tasks.Task]::Delay(2000).GetAwaiter().GetResult()
     }while($true)
-    $null=Invoke-WorkspaceNative $ContainerRuntime @('cp',($name+':/workspace/artifacts/tests/container-run'),(Join-Path $RunDirectory 'guest')) $WorkspaceRoot -TimeoutSeconds $TimeoutSeconds
-    $summary=Get-Content -LiteralPath (Join-Path $RunDirectory 'guest/summary.json') -Encoding utf8 -Raw|ConvertFrom-Json
+    $null=Invoke-WorkspaceNative $ContainerRuntime @('cp',($name+':/workspace/artifacts/tests/container-run'),([IO.Path]::Combine($RunDirectory,'guest'))) $WorkspaceRoot -TimeoutSeconds $TimeoutSeconds
+    $summary=Get-Content -LiteralPath ([IO.Path]::Combine($RunDirectory,'guest/summary.json')) -Encoding utf8 -Raw|ConvertFrom-Json
     if($summary.PSObject.Properties['Suites']){$guestSuites=@($summary.Suites)}
     $exit=@{Value=''}
     $exitInspection=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('inspect','--format','{{.State.ExitCode}}',$name) -TimeoutSeconds 15 -State $exit -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){$s.Value=$e.Text.Trim()}}
@@ -135,9 +135,9 @@ try{
     $state.GuestIdentity=@{HostRuntime=$summary.HostRuntime;OSArchitecture=$summary.OSArchitecture;ProcessArchitecture=$summary.ProcessArchitecture;OSDescription=$summary.OSDescription;MachineName=$summary.MachineName;Engine=$(if($engineIdentity){$engineIdentity.Engine}else{$null})}
     $state.Platform=$summary.State.Platform;$state.Passed=$summary.State.Passed;$state.Failed=$summary.State.Failed;$state.State=$summary.State.State;$state.Error=$summary.State.Error
     if($Suite -eq 'Mutation'){
-        . (Join-Path $PSScriptRoot 'Assert-PtyQualification.ps1')
+        Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Assert-PtyQualification.psm1')) -DisableNameChecking -ErrorAction Stop
         Assert-PtyQualification $summary
-        $independence=Get-Content (Join-Path $RunDirectory 'guest/independence.json') -Raw -Encoding utf8|ConvertFrom-Json
+        $independence=Get-Content ([IO.Path]::Combine($RunDirectory,'guest/independence.json')) -Raw -Encoding utf8|ConvertFrom-Json
         if($independence.ProductBuildFiles -ne 0 -or $independence.LoadedProductModules -ne 0 -or $independence.ForbiddenAICommandCalls -ne 0){throw 'NativeIndependenceUnconfirmed'}
         $state.Independence=$independence
         $state.Baseline=$summary.Baseline;$state.Mutation=$summary.Mutation;$state.Fuzz=$summary.Fuzz
@@ -151,13 +151,13 @@ finally{
         $diagnostics=@{Lines=[Collections.Generic.Queue[object]]::new()}
         try{
             $logs=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('logs',$name) -TimeoutSeconds 20 -State $diagnostics -OnOutput {param($e,$s)if($s.Lines.Count -ge 80){$null=$s.Lines.Dequeue()};$s.Lines.Enqueue(@{Stream=$e.Stream;Text=$e.Text})}
-            Write-WorkspaceJson (Join-Path $RunDirectory 'guest-diagnostics.json') @{Outcome=$logs.Outcome;ExitCode=$logs.ExitCode;Lines=@($diagnostics.Lines)}
-        }catch{Write-WorkspaceJson (Join-Path $RunDirectory 'guest-diagnostics.json') @{Outcome='Unavailable';Error=$_.ToString()}}
+            Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'guest-diagnostics.json')) @{Outcome=$logs.Outcome;ExitCode=$logs.ExitCode;Lines=@($diagnostics.Lines)}
+        }catch{Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'guest-diagnostics.json')) @{Outcome='Unavailable';Error=$_.ToString()}}
     }
     $state.Cleanup='NotCreated'
     if($created){try{$null=Invoke-WorkspaceNative $ContainerRuntime @('rm','--force',$name) $WorkspaceRoot -TimeoutSeconds 20;$state.Cleanup='RemovedOwnedContainer'}catch{$state.Cleanup='Unconfirmed: owned container '+$name}}
     $state.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o')
-    Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$state;Suites=$guestSuites}
+    Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'summary.json')) @{State=$state;Suites=$guestSuites}
     Write-WorkspaceJson $status $state
 }
 if($state.State -ne 'Success'){exit 1}

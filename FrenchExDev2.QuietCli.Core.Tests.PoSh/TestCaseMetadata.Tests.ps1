@@ -82,7 +82,7 @@ function Invoke-QuietCoreTests {
     Assert-QuietEqual $check.Cases $inventory.Count
     $preview=& { $WhatIfPreference=$true; & (Join-Path $WorkspaceRoot 'scripts/Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot -Suite Core }
     Assert-QuietEqual $preview.Cases $inventory.Count 'Read-only checks still run under inherited WhatIf'
-    . (Join-Path $WorkspaceRoot 'scripts/ScriptReview.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/ScriptReview.psm1') -DisableNameChecking -ErrorAction Stop
     $review=@(Get-QuietScriptReview -WorkspaceRoot $WorkspaceRoot|Where-Object Path -CEQ 'scripts/Test-TestCaseMetadata.ps1')
     Assert-QuietEqual $review.Count 1
     Assert-QuietEqual $review[0].Mode ReadOnly

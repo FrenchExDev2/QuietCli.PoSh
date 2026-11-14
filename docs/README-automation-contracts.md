@@ -11,7 +11,7 @@ Shared workers import companion modules with `-DisableNameChecking`; the isolate
 ## RAC-PR-001: feature/fix push reporting
 
 After authorized feature/fix pushes to GitHub, the [push script](scripts/Push-Workspace.md) uses the
-[shared reporting helper](scripts/PullRequestUpdates.md) to read the PR, verify its checkpoint and
+[shared reporting helper](scripts/lib/PullRequestUpdates.md) to read the PR, verify its checkpoint and
 comment via GitHub CLI. Pass a reviewed Markdown body to document implementation details and actual
 validation; the default lists current PR commits without claiming qualification. WhatIf performs
 neither push nor comment, missing PRs are not created, duplicate checkpoints are skipped, and comment
@@ -71,17 +71,43 @@ RAC-PS-002 removes objective comment headers and automatic objective announcemen
 
 Comments alone produce no console output. A monitored before/after experiment removes only the header from a real Credits registry check and asserts identical output; 64 generated Unicode comments are also inert, and loading the resource/report libraries is silent. The earlier visible tags came from explicit Write-Host calls. Generic entry-point announcements are removed; useful operation progress and terminal summaries remain without that tag. Long tests stream bounded tails of existing reports in both the visible monitor and waiting launcher; bytes/lines are activity, not test counts. Reports survive monitor closure. This never enables raw product-output capture or event retention, which requires explicit -CollectEvents.
 
+## RAC-PS-003 / RAC-PS-004: entry points and imported libraries
+
+Every executable `scripts/**/*.ps1` uses `Verb-Noun`: a capitalized alphabetic verb and
+an alphanumeric noun. Custom verbs such as `Commit` remain valid; the gate checks syntax,
+not the approved PowerShell verb catalogue. Inert profiles use `.profile.psd1`.
+Entry points contain no functions or filters, including inside nested script blocks.
+Functions live in `scripts/lib/**/*.psm1`, with explicit exports and dependencies.
+Import using `-DisableNameChecking -ErrorAction Stop`; imports define commands without
+running business operations. Compose paths using `System.IO.Path`, never `Join-Path`.
+
+The [layout gate](scripts/Test-ScriptLayout.md) statically parses the supplied checkout or
+prepared index snapshot. It rejects invalid names, function placement, misplaced modules,
+module dot sourcing, imports without enabled name-check suppression, `Join-Path`, syntax
+errors and links. Legacy preview exceptions never waive this structural policy. The
+shared registry runs it first for local checks, `Commit-Workspace` and GitHub CI;
+`-NoSyncChecks` keeps it active and `-SkipCheck ScriptLayout` reports an omission.
+
+Moved entry points keep their public parameters and defaults and forward explicitly bound
+options to one exported library operation. Keeping that orchestration with its nested
+helpers preserves variable scope and delegated preview guards. The preview checker resolves
+only a literal local library and matching forwarded command; it does not import the subject.
+Static checks cannot establish runtime side-effect safety or resolve arbitrary dynamic aliases.
+The Tooling companion checks generated valid names, malformed sources, nested functions,
+imports, qualified commands and targeted policy mutations. Focused runs remain development
+evidence; GitHub qualification remains separate.
+
 ## Shared check pipeline
 
 The TestCaseMetadata gate also validates the test manifest's inert `PrivateData.QuietCli.TestExecution` declarations. Only explicitly isolated Core cases can share a bounded batch; Ordered defaults and Exclusive measurement/source-lock barriers preserve their order. `-Plan` exposes the prepared stages without execution; every actual Core run saves the resolved plan. Child workers receive one internal slot, private configuration/database/reports, exact case selection and the same host/RID expectations. Failure, timeout, cancellation and receipt mismatches cannot yield qualification. See [classification and concurrency](README-test-classification-and-concurrency.md).
 
-Invoke-WorkspaceChecks.ps1 is the ordered registry: TestCaseMetadata, ScriptsReadme, GitHubWorkflowDocs, ScriptShouldProcess, Resources, ScriptContracts, DocsCredits and Credits. Check selects names; SkipCheck explicitly reports omissions. TestCaseMetadata reads the complete Core case catalogue without executing it; missing or invalid metadata fails before costly tests. Core's runtime guard also precedes selection and TTY exclusion. See [classification and concurrency](README-test-classification-and-concurrency.md). Add a gate once in that registry. scripts-docs-check.yml invokes it on applicable PR/develop/manual events, including Core test-source changes; only guarded parser preparation can write prerequisite resource/cache files, never generated documentation or repository metadata.
+Invoke-WorkspaceChecks.ps1 is the ordered registry: ScriptLayout, TestCaseMetadata, ScriptsReadme, GitHubWorkflowDocs, ScriptShouldProcess, Resources, ScriptContracts, DocsCredits and Credits. Check selects names; SkipCheck explicitly reports omissions. TestCaseMetadata reads the complete Core case catalogue without executing it; missing or invalid metadata fails before costly tests. Core's runtime guard also precedes selection and TTY exclusion. See [classification and concurrency](README-test-classification-and-concurrency.md). Add a gate once in that registry. scripts-docs-check.yml invokes it on applicable PR/develop/manual events, including Core test-source changes; only guarded parser preparation can write prerequisite resource/cache files, never generated documentation or repository metadata.
 
 Commit-Workspace uses the same registry. Its default mode checks the working tree before guarded lock refresh/staging/commit. NoAll exports the prepared index, verifies that snapshot's source lock, then checks that snapshot's documentation and policy; unstaged repairs cannot qualify a bad index. WhatIf still runs checks, but performs no repository mutation. Temporary index exports are retained only for the duration of validation and removed from their checked owned root.
 
 This local pipeline does not run companions. Feature/fix commits and pushes do not require a full local campaign; ask before starting one unless explicitly requested. Applicable GitHub workflows retain their qualification gates. [The commit-suite review](testing/commit-workspace.md) distinguishes pure logic, real Git/filesystem integration and optional local execution.
 
-Compatibility switches include NoGitHubWorkflowDocsCheck, NoScriptShouldProcessCheck, NoResourcesCheck and NoScriptContractsCheck. Generic SkipCheck supports later registry additions. NoSyncChecks skips documentation checks and retains the independent ScriptShouldProcess gate. A skipped check is not evidence of compliance.
+Compatibility switches include NoGitHubWorkflowDocsCheck, NoScriptShouldProcessCheck, NoResourcesCheck and NoScriptContractsCheck. Generic SkipCheck supports later registry additions. NoSyncChecks skips documentation checks and retains the independent ScriptLayout and ScriptShouldProcess gates. A skipped check is not evidence of compliance.
 
 ```mermaid
 flowchart LR

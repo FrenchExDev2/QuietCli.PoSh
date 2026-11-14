@@ -17,7 +17,7 @@ function Test-QuietDockerRegistryDaemon {
     foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){foreach($cached in @($false,$true)){
         & {
             param($WorkspaceRoot,$RunDirectory,$rid,$cached,$setHost)
-            . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+            Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
             $plan=Get-QuietCiImagePlan $WorkspaceRoot $rid
             $fixture=Join-Path $RunDirectory ('docker-publication-'+$rid+'-'+$cached)
             $names=@('DOCKER_CONFIG','DOCKER_HOST','DOCKER_CONTEXT','QUIETCLI_REGISTRY_TOKEN','QUIETCLI_BUILDKIT_CACHE_DIR','GITHUB_ACTIONS','GITHUB_REPOSITORY','GITHUB_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR')
@@ -112,7 +112,7 @@ function Test-QuietGitHubImageAdapters {
     foreach($runtime in @('podman','docker')){foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){foreach($cached in @($false,$true)){
         & {
             param($WorkspaceRoot,$RunDirectory,$runtime,$rid,$cached)
-            . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+            Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
             $plan=Get-QuietCiImagePlan $WorkspaceRoot $rid
             $calls=[Collections.Generic.List[object]]::new()
             function Invoke-CiProcess {
@@ -187,7 +187,8 @@ function Test-QuietGitHubImageAdapters {
     $common='function Invoke-WorkspaceNative { param($FilePath,$Arguments,$WorkingDirectory,$TimeoutSeconds); if($FilePath -ne "docker" -or $Arguments[0] -ne "tag"){throw "UnexpectedFixtureNativeOperation"} }'
     $images='function Get-QuietCiImagePlan { param($WorkspaceRoot,$RuntimeIdentifier); @{Platform="debian";Architecture="x64";Fingerprint=("a"*64)} }; function Get-QuietCiModuleImagePlan { param($WorkspaceRoot,$RuntimeIdentifier,$Module,$ContainerfileFragment,$ModuleArguments,$ModuleInputPaths); @{Arguments=@{};ParentReference=("localhost/quietcli2-ci-core-debian-x64:"+("a"*64))} }; function Invoke-QuietCiImageBuild { param($Plan,$ContextDirectory,$WorkspaceRoot,$ArtifactPrefix,[switch]$RegistryCache,[switch]$PublishCache,[switch]$CacheOnly,$ContainerRuntime); if($CacheOnly){return}; [pscustomobject]@{CredentialPreserved=($env:QUIETCLI_REGISTRY_TOKEN -ceq "synthetic-ephemeral-credential");Runtime=$ContainerRuntime} }'
     $core='$env:QUIETCLI_REGISTRY_TOKEN=$null; [pscustomobject]@{Image=("sha256:"+("1"*64))}'
-    foreach($entry in @{ 'Common.ps1'=$common;'CiImages.ps1'=$images;'New-CiImage.ps1'=$core }.GetEnumerator()){[void][IO.File]::WriteAllTextAsync((Join-Path $fixture $entry.Key),$entry.Value,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}
+    [void][IO.Directory]::CreateDirectory([IO.Path]::Combine($fixture,'lib'))
+    foreach($entry in @{ 'lib/Common.psm1'=$common;'lib/CiImages.psm1'=$images;'New-CiImage.ps1'=$core }.GetEnumerator()){[void][IO.File]::WriteAllTextAsync((Join-Path $fixture $entry.Key),$entry.Value,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}
     $previous=$env:QUIETCLI_REGISTRY_TOKEN
     try{
         $env:QUIETCLI_REGISTRY_TOKEN='synthetic-ephemeral-credential'

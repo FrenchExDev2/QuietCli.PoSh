@@ -8,7 +8,7 @@ function Test-QuietCiRegistryProtocol {
     Owned protocol evidence directory.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
     if(!('QuietCiRegistryFixture.Handler' -as [type])){
         Add-Type -TypeDefinition @'
 using System;

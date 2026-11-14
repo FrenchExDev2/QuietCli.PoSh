@@ -11,14 +11,14 @@ Explicitly downloads the checksum-pinned Windows Zig archive into workspace arti
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$CompilerPath,[switch]$DownloadCompiler)
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Build-PtyBridge')){return}
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot 'Common.ps1')
+$ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
-$lock=Get-Content (Join-Path $WorkspaceRoot 'build/zig.lock.json') -Encoding utf8 -Raw|ConvertFrom-Json
+$lock=Get-Content ([IO.Path]::Combine($WorkspaceRoot,'build/zig.lock.json')) -Encoding utf8 -Raw|ConvertFrom-Json
 if(!$CompilerPath){
     if(!$IsWindows){throw 'Supply CompilerPath on Linux; no host installation is performed.'}
     $hostName=if([Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString() -eq 'Arm64'){'aarch64-windows'}else{'x86_64-windows'}
     $tool=$lock.Hosts|Where-Object Host -CEQ $hostName
-    $directory=Join-Path $WorkspaceRoot ('artifacts/toolchains/zig-'+$lock.Version+'-'+$hostName)
+    $directory=[IO.Path]::Combine($WorkspaceRoot,('artifacts/toolchains/zig-'+$lock.Version+'-'+$hostName))
     if(!(Test-Path -LiteralPath $directory)){
         if(!$DownloadCompiler){throw 'Pinned compiler missing; use DownloadCompiler explicitly.'}
         $archive=$directory+'.zip';[void][IO.Directory]::CreateDirectory((Split-Path $directory -Parent))
@@ -34,31 +34,31 @@ if(!$CompilerPath){
 $version=@{Text=''}
 $r=Invoke-CiProcess -FilePath $CompilerPath -ArgumentList @('version') -State $version -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){$s.Text=$e.Text.Trim()}}
 if($r.Outcome -ne 'Success' -or $version.Text -cne $lock.Version){throw 'CompilerVersionMismatch'}
-$module=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh'
-$source=Join-Path $module 'native/quietcli-pty.c';$sourceHash=(Get-FileHash $source -Algorithm SHA256).Hash
-$toolRoot=Split-Path $CompilerPath -Parent;$licenses=Join-Path $module 'third_party/quietcli-pty'
+$module=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')
+$source=[IO.Path]::Combine($module,'native/quietcli-pty.c');$sourceHash=(Get-FileHash $source -Algorithm SHA256).Hash
+$toolRoot=Split-Path $CompilerPath -Parent;$licenses=[IO.Path]::Combine($module,'third_party/quietcli-pty')
 foreach($item in @(@{Source='LICENSE';Name='ZIG-LICENSE'},@{Source='lib/libc/musl/COPYRIGHT';Name='MUSL-COPYRIGHT'})){
-    Copy-Item -LiteralPath (Join-Path $toolRoot $item.Source) -Destination (Join-Path $licenses $item.Name)
+    Copy-Item -LiteralPath ([IO.Path]::Combine($toolRoot,$item.Source)) -Destination ([IO.Path]::Combine($licenses,$item.Name))
 }
 foreach($arch in @('x64','arm64')){
     $triple=if($arch -eq 'arm64'){'aarch64-linux-musl'}else{'x86_64-linux-musl'}
-    $staging=Join-Path $WorkspaceRoot ('artifacts/pty-build/'+$arch);[void][IO.Directory]::CreateDirectory($staging)
-    $binary=Join-Path $staging quietcli-pty
+    $staging=[IO.Path]::Combine($WorkspaceRoot,('artifacts/pty-build/'+$arch));[void][IO.Directory]::CreateDirectory($staging)
+    $binary=[IO.Path]::Combine($staging,'quietcli-pty')
     $arguments=@('cc','-target',$triple,'-std=c11','-O2','-s','-Wall','-Wextra','-Werror','-fstack-protector-strong','-D_FORTIFY_SOURCE=2','-fPIE','-static','-pie','-Wl,-z,relro,-z,now','-pthread','-lutil',$source,'-o',$binary)
     $null=Invoke-WorkspaceNative $CompilerPath $arguments $WorkspaceRoot -TimeoutSeconds 600
     if((Get-FileHash $source -Algorithm SHA256).Hash -cne $sourceHash){throw 'BridgeSourcesChangedDuringBuild'}
     $hash=(Get-FileHash $binary -Algorithm SHA256).Hash
     foreach($rid in @(('linux-'+$arch),('linux-musl-'+$arch))){
-        $directory=Join-Path $module ('resources/transport/'+$rid);[void][IO.Directory]::CreateDirectory($directory)
-        Copy-Item $binary (Join-Path $directory quietcli-pty) -Force
-        [void][IO.File]::WriteAllTextAsync((Join-Path $directory quietcli-pty.sha256),$hash,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-        Write-WorkspaceJson (Join-Path $directory build.json) @{SchemaVersion=2;Runtime=$rid;Target=$triple;Compiler=('Zig '+$version.Text);ToolchainLockSHA256=(Get-FileHash (Join-Path $WorkspaceRoot 'build/zig.lock.json') -Algorithm SHA256).Hash;Arguments=@('cc','-target',$triple,'-std=c11','-O2','-s','-Wall','-Wextra','-Werror','-fstack-protector-strong','-D_FORTIFY_SOURCE=2','-fPIE','-static','-pie','-Wl,-z,relro,-z,now','-pthread','-lutil','native/quietcli-pty.c','-o','quietcli-pty');SourceSHA256=$sourceHash;ExecutableSHA256=$hash;Static=$true}
+        $directory=[IO.Path]::Combine($module,('resources/transport/'+$rid));[void][IO.Directory]::CreateDirectory($directory)
+        Copy-Item $binary ([IO.Path]::Combine($directory,'quietcli-pty')) -Force
+        [void][IO.File]::WriteAllTextAsync(([IO.Path]::Combine($directory,'quietcli-pty.sha256')),$hash,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+        Write-WorkspaceJson ([IO.Path]::Combine($directory,'build.json')) @{SchemaVersion=2;Runtime=$rid;Target=$triple;Compiler=('Zig '+$version.Text);ToolchainLockSHA256=(Get-FileHash ([IO.Path]::Combine($WorkspaceRoot,'build/zig.lock.json')) -Algorithm SHA256).Hash;Arguments=@('cc','-target',$triple,'-std=c11','-O2','-s','-Wall','-Wextra','-Werror','-fstack-protector-strong','-D_FORTIFY_SOURCE=2','-fPIE','-static','-pie','-Wl,-z,relro,-z,now','-pthread','-lutil','native/quietcli-pty.c','-o','quietcli-pty');SourceSHA256=$sourceHash;ExecutableSHA256=$hash;Static=$true}
     }
 }
-$inventoryPath=Join-Path $module resources/dependencies.lock.json
+$inventoryPath=[IO.Path]::Combine($module,'resources/dependencies.lock.json')
 $inventory=Get-Content $inventoryPath -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable
 $retained=@($inventory.Files|Where-Object Path -NotLike 'resources/transport/*')
-$transport=@(Get-ChildItem (Join-Path $module resources/transport) -Recurse -File|ForEach-Object {@{Path=[IO.Path]::GetRelativePath($module,$_.FullName).Replace('\','/');SHA256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;Bytes=$_.Length;Package='quietcli-pty';Version='source-build';ReferencePath='native/quietcli-pty.c';AssemblyVersion=$null}})
+$transport=@(Get-ChildItem ([IO.Path]::Combine($module,'resources/transport')) -Recurse -File|ForEach-Object {@{Path=[IO.Path]::GetRelativePath($module,$_.FullName).Replace('\','/');SHA256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;Bytes=$_.Length;Package='quietcli-pty';Version='source-build';ReferencePath='native/quietcli-pty.c';AssemblyVersion=$null}})
 $inventory.Files=$retained+$transport
 $entry=$inventory.Packages|Where-Object Id -CEQ quietcli-pty
 $entry.LicenseEvidence=@(Get-ChildItem $licenses -File|ForEach-Object {@{Path=[IO.Path]::GetRelativePath($module,$_.FullName).Replace('\','/');SHA256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})

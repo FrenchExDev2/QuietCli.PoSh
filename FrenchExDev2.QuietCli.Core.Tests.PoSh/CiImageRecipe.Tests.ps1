@@ -8,7 +8,7 @@ function Test-QuietCiImageRecipe {
     Owned property/fuzz/mutation evidence directory.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
-    . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
     $sourcePath=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1'
     $source=[IO.File]::ReadAllTextAsync($sourcePath,[Text.UTF8Encoding]::new($false,$true)).GetAwaiter().GetResult()
     $fixture=Join-Path $RunDirectory 'ci-image-recipe'

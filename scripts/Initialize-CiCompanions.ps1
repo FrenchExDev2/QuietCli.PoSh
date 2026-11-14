@@ -18,7 +18,7 @@ Optional GitHub environment file for subsequent steps.
 param([string]$Suite='All',[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RuntimeIdentifier=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier,[int]$RuntimeMajor=[Environment]::Version.Major,[string]$OutputPath,[string]$EnvironmentPath)
 $ErrorActionPreference='Stop'
 if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,('Resolve companion requirements for '+$Suite))){return}
-Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanions.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiCompanions.psm1')) -DisableNameChecking
 $configuration=Read-QuietCiCompanions $WorkspaceRoot
 $selection=Resolve-QuietCiCompanions $configuration -Suite $Suite -RuntimeIdentifier $RuntimeIdentifier -RuntimeMajor $RuntimeMajor
 $flag=$selection.HasCoreEvidence.ToString().ToLowerInvariant()

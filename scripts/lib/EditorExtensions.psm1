@@ -1,6 +1,6 @@
 #Objective: Export and synchronize an explicit extension inventory through the selected editor CLI.
 #requires -Version 7.6
-. (Join-Path $PSScriptRoot '../Ci.Process.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop
 
 function Resolve-DevelopmentEditorCli {
     <#
@@ -19,7 +19,7 @@ function Resolve-DevelopmentEditorCli {
             $name=if($Insiders){'Code - Insiders.exe'}else{'Code.exe'}
             foreach($base in @($env:LOCALAPPDATA,$env:ProgramFiles)){
                 if(!$base){continue}
-                $candidate=Join-Path $base $(if($base -eq $env:LOCALAPPDATA){"Programs/$folder/$name"}else{"$folder/$name"})
+                $candidate=[IO.Path]::Combine($base,$(if($base -eq $env:LOCALAPPDATA){"Programs/$folder/$name"}else{"$folder/$name"}))
                 if(Test-Path -LiteralPath $candidate){$EditorPath=$candidate;break}
             }
         }else{$command=Get-Command $(if($Insiders){'code-insiders'}else{'code'}) -CommandType Application -ErrorAction SilentlyContinue|Select-Object -First 1;if($command){$EditorPath=$command.Source}}
@@ -30,17 +30,17 @@ function Resolve-DevelopmentEditorCli {
     if($IsWindows){
         if([IO.Path]::GetExtension($EditorPath) -ine '.exe'){throw 'EditorNativeExecutableRequired: supply Code.exe or Code - Insiders.exe.'}
         $base=Split-Path $EditorPath -Parent
-        $cli=Join-Path $base 'resources/app/out/cli.js'
+        $cli=[IO.Path]::Combine($base,'resources/app/out/cli.js')
         if(!(Test-Path -LiteralPath $cli)){
-            $wrapper=Join-Path $base $(if($Insiders){'bin/code-insiders.cmd'}else{'bin/code.cmd'})
+            $wrapper=[IO.Path]::Combine($base,$(if($Insiders){'bin/code-insiders.cmd'}else{'bin/code.cmd'}))
             $cli=$null
             if(Test-Path -LiteralPath $wrapper){
                 $text=[IO.File]::ReadAllTextAsync($wrapper,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
                 $match=[regex]::Match($text,'"%~dp0\.\.[\\/]((?:[a-zA-Z0-9._-]+[\\/])?resources[\\/]app[\\/]out[\\/]cli\.js)"')
-                if($match.Success){$candidate=[IO.Path]::GetFullPath((Join-Path $base $match.Groups[1].Value));if($candidate.StartsWith($base+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $candidate)){$cli=$candidate}}
+                if($match.Success){$candidate=[IO.Path]::GetFullPath(([IO.Path]::Combine($base,$match.Groups[1].Value)));if($candidate.StartsWith($base+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $candidate)){$cli=$candidate}}
             }
             if(!$cli){
-                $candidates=@(Get-ChildItem -LiteralPath $base -Directory|ForEach-Object {Join-Path $_.FullName 'resources/app/out/cli.js'}|Where-Object {Test-Path -LiteralPath $_})
+                $candidates=@(Get-ChildItem -LiteralPath $base -Directory|ForEach-Object {[IO.Path]::Combine($_.FullName,'resources/app/out/cli.js')}|Where-Object {Test-Path -LiteralPath $_})
                 if($candidates.Count -ne 1){throw 'EditorCliLayoutAmbiguous: cannot select the current versioned CLI.'}
                 $cli=$candidates[0]
             }
@@ -133,7 +133,7 @@ function Export-EditorExtensionManifest {
     $listed=Invoke-DevelopmentEditorCli $Cli @('--list-extensions','--show-versions')
     $entries=@(ConvertFrom-EditorExtensionList $listed.Lines)
     if(!$entries.Count){throw 'EditorExtensionExportEmpty: refusing to replace the saved inventory.'}
-    $registry=Join-Path $HOME $(if($Cli.Channel -ceq 'Insiders'){'.vscode-insiders/extensions/extensions.json'}else{'.vscode/extensions/extensions.json'})
+    $registry=[IO.Path]::Combine($HOME,$(if($Cli.Channel -ceq 'Insiders'){'.vscode-insiders/extensions/extensions.json'}else{'.vscode/extensions/extensions.json'}))
     if(Test-Path -LiteralPath $registry){
         $metadata=@(Get-Content -LiteralPath $registry -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable -DateKind String)
         foreach($entry in $entries){

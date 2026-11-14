@@ -14,7 +14,7 @@ param([Parameter(Mandatory)][string]$PackageDirectory,
     [Parameter(Mandatory)][ValidatePattern('^[a-fA-F0-9]{40}\z')][string]$QualifiedRevision,
     [Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+-[A-Za-z][A-Za-z0-9-]*\z')][string]$Version)
 $ErrorActionPreference='Stop'
-$previewPath=Join-Path $PackageDirectory 'preview.json';$planPath=Join-Path $PackageDirectory 'package-set.json'
+$previewPath=[IO.Path]::Combine($PackageDirectory,'preview.json');$planPath=[IO.Path]::Combine($PackageDirectory,'package-set.json')
 foreach($path in @($previewPath,$planPath)){if(!(Test-Path -LiteralPath $path -PathType Leaf) -or (Get-Item -LiteralPath $path).Length -gt 131072){throw 'GalleryCheckpointMetadataMissingOrOversized'}}
 $preview=Get-Content -LiteralPath $previewPath -Raw -Encoding utf8|ConvertFrom-Json
 $plan=Get-Content -LiteralPath $planPath -Raw -Encoding utf8|ConvertFrom-Json

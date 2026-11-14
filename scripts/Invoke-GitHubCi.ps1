@@ -35,7 +35,7 @@ param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDire
     [string]$Image,[ValidateSet('debian','alpine')][string]$Platform,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,
     [ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)))
 dynamicparam {
-    . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
     New-QuietWorkspaceSuiteParameter -WorkspaceRoot $selectedRoot -Scope Host
 }
@@ -44,7 +44,7 @@ $ErrorActionPreference='Stop'
 if($env:GITHUB_ACTIONS -cne 'true'){throw 'GitHubCiRequiresGitHubActionsContext; use Invoke-WorkspaceCi.ps1 locally.'}
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,('Build and run GitHub suite '+$Suite))){return}
-. (Join-Path $PSScriptRoot 'Common.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 if($RunDirectory){$RunDirectory=[IO.Path]::GetFullPath($RunDirectory,$PWD.Path)}
 $mutationShard=$false;$shardIndex=0;$shardCount=0
@@ -52,14 +52,14 @@ if($Suite -ceq 'RunProfilesMutation' -and ($env:QUIETCLI_MUTATION_SHARD_INDEX -o
     if(![int]::TryParse($env:QUIETCLI_MUTATION_SHARD_INDEX,[ref]$shardIndex) -or ![int]::TryParse($env:QUIETCLI_MUTATION_SHARD_COUNT,[ref]$shardCount) -or $shardCount -lt 2 -or $shardCount -gt 32 -or $shardIndex -lt 0 -or $shardIndex -ge $shardCount -or $env:GITHUB_SHA -cnotmatch '\A[a-f0-9]{40}\z' -or $Image -or $Profiler){throw 'GitHubMutationShardContextInvalid'}
     $mutationShard=$true
 }
-if($Suite -ceq 'All' -or $Suite -cin @(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object {!$_.IsTest}|ForEach-Object Suite)){$null=& (Join-Path $PSScriptRoot 'Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot}
+if($Suite -ceq 'All' -or $Suite -cin @(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object {!$_.IsTest}|ForEach-Object Suite)){$null=& ([IO.Path]::Combine($PSScriptRoot,'Test-TestCaseMetadata.ps1')) -WorkspaceRoot $WorkspaceRoot}
 if(!$SkipBuild -and $Suite -ne 'RunProfilesMutation'){
     $buildRid=if($ExpectedRuntimeIdentifier){$ExpectedRuntimeIdentifier}else{[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier}
     $build=@{WorkspaceRoot=$WorkspaceRoot;Suite=$Suite;Configuration='Release';ReadyToRun=$true;ReadyToRunRuntimeIdentifier=@($buildRid)}
     if($Suite -notin @('Tooling','Distribution','GalleryPreview')){$build.RuntimeIdentifier=@($buildRid)}
-    & (Join-Path $PSScriptRoot 'Build-Workspace.ps1') @build
+    & ([IO.Path]::Combine($PSScriptRoot,'Build-Workspace.ps1')) @build
 }
-if(!$RunDirectory){$RunDirectory=Join-Path $WorkspaceRoot ('artifacts/tests/github-'+[guid]::NewGuid().ToString('N').Substring(0,8))}
+if(!$RunDirectory){$RunDirectory=[IO.Path]::Combine($WorkspaceRoot,('artifacts/tests/github-'+[guid]::NewGuid().ToString('N').Substring(0,8)))}
 if(Test-Path -LiteralPath $RunDirectory){throw 'GitHubCiRunDirectoryExists'}
 [void][IO.Directory]::CreateDirectory($RunDirectory)
 $parameters=@{WorkspaceRoot=$WorkspaceRoot;RunDirectory=$RunDirectory;Suite=$Suite;SkipTty=[bool]$SkipTty;MaxConcurrency=$MaxConcurrency}
@@ -69,18 +69,18 @@ Write-Host ('GitHub CI entry: '+(@{Suite=$Suite;ProcessId=$PID;Runtime=[Environm
 if($Image){
     if(!$Platform){throw 'GitHubDockerFallbackPlatformRequired'}
     $parameters.Image=$Image;$parameters.Platform=$Platform;$parameters.ContainerRuntime='docker';$parameters.GitHubActions=$true;$parameters.TimeoutSeconds=$TimeoutSeconds
-    & (Join-Path $PSScriptRoot 'Invoke-ContainerWorker.ps1') @parameters
+    & ([IO.Path]::Combine($PSScriptRoot,'Invoke-ContainerWorker.ps1')) @parameters
 }else{
-    & (Join-Path $PSScriptRoot 'Invoke-TestWorker.ps1') @parameters
+    & ([IO.Path]::Combine($PSScriptRoot,'Invoke-TestWorker.ps1')) @parameters
 }
-$summary=Get-Content -LiteralPath (Join-Path $RunDirectory 'summary.json') -Raw -Encoding utf8|ConvertFrom-Json
+$summary=Get-Content -LiteralPath ([IO.Path]::Combine($RunDirectory,'summary.json')) -Raw -Encoding utf8|ConvertFrom-Json
 $suiteSummaries=if($summary.PSObject.Properties['Suites']){@($summary.Suites)}else{@()}
 if($mutationShard){
-    Import-Module (Join-Path $PSScriptRoot 'lib/MutationShards.psm1') -ErrorAction Stop
-    $reportFile=Get-Item -LiteralPath (Join-Path $RunDirectory 'run-profiles-mutation.json') -ErrorAction Stop
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/MutationShards.psm1')) -ErrorAction Stop -DisableNameChecking
+    $reportFile=Get-Item -LiteralPath ([IO.Path]::Combine($RunDirectory,'run-profiles-mutation.json')) -ErrorAction Stop
     if($reportFile.Length -gt 2097152 -or $reportFile.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'MutationShardReportInvalid'}
     $report=[IO.File]::ReadAllText($reportFile.FullName,[Text.UTF8Encoding]::new($false,$true))|ConvertFrom-Json
-    $catalogue=@((Import-PowerShellDataFile -LiteralPath (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Mutation.Catalogue.psd1')).Mutants)
+    $catalogue=@((Import-PowerShellDataFile -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Mutation.Catalogue.psd1'))).Mutants)
     $shard=Assert-QuietMutationShard -Report $report -Catalogue $catalogue -SourceSHA256 (Get-QuietRunProfileMutationIdentity $WorkspaceRoot) -Revision $env:GITHUB_SHA -Index $shardIndex -Count $shardCount
     if($suiteSummaries.Count -ne 1){throw 'GitHubMutationShardSummaryInvalid'}
     $mutationSummary=$suiteSummaries[0]

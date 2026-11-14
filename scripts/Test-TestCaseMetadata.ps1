@@ -14,9 +14,9 @@ Shared worker budget used when resolving the optional plan.
 [CmdletBinding()]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$Suite='All',[switch]$Plan,[ValidateRange(1,32)][int]$MaxConcurrency=4)
 $ErrorActionPreference='Stop'
-Import-Module (Join-Path $PSScriptRoot 'lib/TestCaseMetadata.psm1') -ErrorAction Stop
-Import-Module (Join-Path $PSScriptRoot 'lib/TestCaseScheduling.psm1') -ErrorAction Stop
-. (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/TestCaseMetadata.psm1')) -ErrorAction Stop -DisableNameChecking
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/TestCaseScheduling.psm1')) -ErrorAction Stop -DisableNameChecking
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
 $matched=0
 foreach($project in @(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object IsTest)){
     if($Suite -cne 'All' -and $project.Name -cne ('FrenchExDev2.QuietCli.'+$Suite+'.Tests.PoSh')){continue}

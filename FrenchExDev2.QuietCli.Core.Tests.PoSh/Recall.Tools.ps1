@@ -7,8 +7,8 @@ function Import-QuietRecallDevelopment {
     $framework=if([Environment]::Version.Major -ge 11){'net11.0'}else{'net10.0'}
     $output='FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/recall-tools/'+$framework
     $directory=Join-Path $PSScriptRoot ('lib/recall-tools/'+$framework)
-    if(Test-Path -LiteralPath (Join-Path $workspace 'scripts/Common.ps1')){
-        . (Join-Path $workspace 'scripts/Common.ps1')
+    if(Test-Path -LiteralPath (Join-Path $workspace 'scripts/lib/Common.psm1')){
+        Import-Module (Join-Path $workspace 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
         $null=Test-QuietBuildManifest -WorkspaceRoot $workspace -Output $output
     }else{
         $manifest=[IO.File]::ReadAllTextAsync((Join-Path $directory 'build-manifest.json')).GetAwaiter().GetResult()|ConvertFrom-Json

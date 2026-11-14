@@ -6,7 +6,7 @@ function Test-QuietReportPaths {
     Monorepo containing the independently loaded path policy.
     #>
     param([string]$WorkspaceRoot)
-    $source=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot 'scripts/ReportPaths.ps1'),[Text.Encoding]::UTF8)
+    $source=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot 'scripts/lib/ReportPaths.psm1'),[Text.Encoding]::UTF8)
     $verify={param($source)
         & {
             param($source)

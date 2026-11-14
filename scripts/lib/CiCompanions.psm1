@@ -32,10 +32,10 @@ function Read-QuietCiCompanions {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[string]$ConfigurationPath)
-    if(!$ConfigurationPath){$ConfigurationPath=Join-Path $WorkspaceRoot 'build/companions.yml'}
+    if(!$ConfigurationPath){$ConfigurationPath=[IO.Path]::Combine($WorkspaceRoot,'build/companions.yml')}
     $file=Get-Item -LiteralPath $ConfigurationPath -Force -ErrorAction Stop
     if($file.Length -gt 262144 -or $file.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'CiCompanionsFileInvalid'}
-    . (Join-Path $PSScriptRoot '../Resources.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'Resources.psm1')) -DisableNameChecking -ErrorAction Stop
     $null=Ensure-QuietResource -WorkspaceRoot $WorkspaceRoot -RelativePath resources/yaml/YamlDotNet.dll -AssemblyType YamlDotNet.Serialization.DeserializerBuilder
     $text=[IO.File]::ReadAllText($file.FullName,[Text.UTF8Encoding]::new($false,$true))
     $builder=[YamlDotNet.Serialization.DeserializerBuilder]::new().WithDuplicateKeyChecking().WithMaximumRecursion(32).WithAttemptingUnquotedStringTypeDeserialization()
@@ -66,7 +66,7 @@ function Read-QuietCiCompanions {
         if($entry -isnot [Collections.IDictionary]){throw 'CiSuiteDeclarationInvalid'}
         foreach($key in $entry.Keys){if($key -cnotin @('test_project','command','requires','core_evidence','qualification')){throw ('CiSuiteFieldUnknown: '+$key)}}
         if($entry['test_project'] -cnotmatch '\AFrenchExDev2\.QuietCli\.[A-Za-z0-9.]+\.Tests\.PoSh\z' -or $entry['command'] -cnotmatch '\AInvoke-Quiet[A-Za-z0-9]+Tests\z' -or $entry['requires'] -isnot [Collections.IList] -or !$entry['requires'].Count -or $entry['core_evidence'] -isnot [bool]){throw 'CiSuiteDeclarationInvalid'}
-        $manifestPath=Join-Path $WorkspaceRoot ($entry['test_project']+'/'+$entry['test_project']+'.psd1')
+        $manifestPath=[IO.Path]::Combine($WorkspaceRoot,($entry['test_project']+'/'+$entry['test_project']+'.psd1'))
         if(!(Test-Path -LiteralPath $manifestPath -PathType Leaf) -or (Get-Item -LiteralPath $manifestPath -Force).Attributes -band [IO.FileAttributes]::ReparsePoint){throw ('CiSuiteTestProjectMissing: '+$name)}
         $null=[IO.File]::ReadAllText($manifestPath,[Text.UTF8Encoding]::new($false,$true))
         $manifest=Import-PowerShellDataFile -LiteralPath $manifestPath
@@ -128,9 +128,9 @@ function Get-QuietCiSuiteImagePlan {
     Native Linux target.
     #>
     param([string]$WorkspaceRoot,$Selection,[string]$RuntimeIdentifier)
-    $plan=& (Join-Path $PSScriptRoot '../New-CiImage.ps1') -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -PlanOnly
+    $plan=& ([IO.Path]::Combine($PSScriptRoot,'../New-CiImage.ps1')) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -PlanOnly
     foreach($name in @($Selection.Images|Select-Object -Skip 1)){
-        $plan=& (Join-Path $PSScriptRoot '../New-CiModuleImage.ps1') -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -Module $name -ParentPlan $plan -PlanOnly
+        $plan=& ([IO.Path]::Combine($PSScriptRoot,'../New-CiModuleImage.ps1')) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -Module $name -ParentPlan $plan -PlanOnly
     }
     $plan
 }
@@ -163,28 +163,28 @@ function Invoke-QuietCiSuiteImage {
     $credential=$env:QUIETCLI_REGISTRY_TOKEN
     try{
         if($RegistryCache){
-            . (Join-Path $PSScriptRoot '../Common.ps1')
-            . (Join-Path $PSScriptRoot '../CiImages.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'Common.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'CiImages.psm1')) -DisableNameChecking -ErrorAction Stop
             $finalPlan=Get-QuietCiSuiteImagePlan $WorkspaceRoot $Selection $RuntimeIdentifier
             if($ResolveOnly -or $ProbeOnly){
                 $identity=Get-QuietCiRegistryDigest $finalPlan $credential $env:GITHUB_ACTOR -IncludeConfiguration
                 if($identity){
                     $receipt=[pscustomobject]@{Image=$identity.Reference;RuntimeIdentifier=$RuntimeIdentifier;Fingerprint=$finalPlan.Fingerprint;RegistryDigest=$identity.Digest;CacheHit=$true;Published=$false;RegistryOnly=$true}
-                    Write-WorkspaceJson (Join-Path $WorkspaceRoot ('artifacts/ci-images/resolved-'+$RuntimeIdentifier+'/image.json')) $receipt
+                    Write-WorkspaceJson ([IO.Path]::Combine($WorkspaceRoot,('artifacts/ci-images/resolved-'+$RuntimeIdentifier+'/image.json'))) $receipt
                     return $receipt
                 }
             }
             if($ProbeOnly){return [pscustomobject]@{RuntimeIdentifier=$RuntimeIdentifier;Fingerprint=$finalPlan.Fingerprint;CacheHit=$false;Published=$false;RegistryOnly=$true}}
-            $cached=Invoke-QuietCiImageBuild -Plan $finalPlan -ContextDirectory (Join-Path $WorkspaceRoot '.github/containers') -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ('suite-'+$RuntimeIdentifier) -RegistryCache -CacheOnly -ContainerRuntime $ContainerRuntime
+            $cached=Invoke-QuietCiImageBuild -Plan $finalPlan -ContextDirectory ([IO.Path]::Combine($WorkspaceRoot,'.github/containers')) -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ('suite-'+$RuntimeIdentifier) -RegistryCache -CacheOnly -ContainerRuntime $ContainerRuntime
             $env:QUIETCLI_REGISTRY_TOKEN=$credential
             if($cached){return $cached}
         }
-        $plan=& (Join-Path $PSScriptRoot '../New-CiImage.ps1') -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -PlanOnly
-        $image=& (Join-Path $PSScriptRoot '../New-CiImage.ps1') -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
+        $plan=& ([IO.Path]::Combine($PSScriptRoot,'../New-CiImage.ps1')) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -PlanOnly
+        $image=& ([IO.Path]::Combine($PSScriptRoot,'../New-CiImage.ps1')) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
         foreach($name in @($Selection.Images|Select-Object -Skip 1)){
             $env:QUIETCLI_REGISTRY_TOKEN=$credential
-            $image=& (Join-Path $PSScriptRoot '../New-CiModuleImage.ps1') -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -Module $name -ParentPlan $plan -ParentImage $image.Image -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
-            $plan=& (Join-Path $PSScriptRoot '../New-CiModuleImage.ps1') -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -Module $name -ParentPlan $plan -PlanOnly
+            $image=& ([IO.Path]::Combine($PSScriptRoot,'../New-CiModuleImage.ps1')) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -Module $name -ParentPlan $plan -ParentImage $image.Image -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
+            $plan=& ([IO.Path]::Combine($PSScriptRoot,'../New-CiModuleImage.ps1')) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -Module $name -ParentPlan $plan -PlanOnly
         }
         $image
     }finally{$credential=$null;$env:QUIETCLI_REGISTRY_TOKEN=$null}

@@ -19,8 +19,8 @@ Additional recency protection beyond worker identity and the live lease.
 [CmdletBinding(SupportsShouldProcess,ConfirmImpact='High')]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateRange(0,3650)][int]$RetentionDays=7,[ValidateRange(0,1000)][int]$KeepLatest=3,[ValidateRange(0,1440)][int]$ActiveGraceMinutes=15)
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'ReportPaths.ps1')
-Import-Module (Join-Path $PSScriptRoot 'lib/WorkstationResources.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/ReportPaths.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkstationResources.psm1')) -DisableNameChecking
 $root=Get-QuietReportRoot $WorkspaceRoot workstation -ContinuousIntegration $false
 if(!(Test-Path -LiteralPath $root)){return}
 $directories=@(Get-ChildItem -LiteralPath $root -Directory -Force|Sort-Object LastWriteTimeUtc -Descending)
@@ -36,7 +36,7 @@ for($index=0;$index -lt $directories.Count;$index++){
     try{
         # Producers hold the byte-range lock until disposal. File sharing alone does not
         # reject a competing writer on Unix. FileShare.Delete permits owned Windows cleanup.
-        $leasePath=Join-Path $directory.FullName 'run.lease'
+        $leasePath=[IO.Path]::Combine($directory.FullName,'run.lease')
         if(Test-Path -LiteralPath $leasePath){$lease=[IO.FileStream]::new($leasePath,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Delete);$lease.Lock(0,1)}
         elseif($decision.Receipt.Resources.Count){$result.State='Protected';$result.Reason='Resource lease missing';[pscustomobject]$result;continue}
         if($decision.Receipt.Resources.Count -and !(Test-WorkstationPodmanIdentity $decision.Receipt.PodmanIdentity)){$result.State='Protected';$result.Reason='Original Podman engine/store cannot be verified';[pscustomobject]$result;continue}

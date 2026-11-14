@@ -29,7 +29,7 @@ Internal single-case child: requires an ordinary declared companion and a case f
 #>
 [CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure,[ValidateSet('Readiness','Provisioning','Layout','Locks','All')][string]$DotNetSuite='All',[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)),[switch]$CaseWorker)
 dynamicparam {
-    . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
     New-QuietWorkspaceSuiteParameter -WorkspaceRoot $selectedRoot -Scope Host
 }
@@ -41,7 +41,7 @@ if($CaseWorker -and ($Suite -cnotin @(Get-QuietWorkspaceTestSuites $WorkspaceRoo
 $env:QUIETCLI_TEST_CASE_WORKER=if($CaseWorker){'1'}else{'0'}
 $env:QUIETCLI_TEST_EXPECT_RID=$ExpectedRuntimeIdentifier
 if($CaseWorker){$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE='0'}
-. (Join-Path $PSScriptRoot 'Common.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 $previousTestPath=$env:PATH;$previousTestDotNetRoot=$env:DOTNET_ROOT
 $testDotNet=Get-QuietWorkspaceDotNetHost $WorkspaceRoot
 if($testDotNet){$env:PATH=$testDotNet.Directory+[IO.Path]::PathSeparator+$env:PATH;$env:DOTNET_ROOT=$testDotNet.Directory}
@@ -51,12 +51,12 @@ $env:QUIETCLI_TEST_MAX_CONCURRENCY=[string]$MaxConcurrency
 if($Case){$env:QUIETCLI_TEST_CASE=$Case}
 if($StopOnFirstFailure){$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE='1'}
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
-. (Join-Path $PSScriptRoot 'TestConfiguration.ps1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/TestConfiguration.psm1')) -DisableNameChecking -ErrorAction Stop
 $testHosting=if($env:QUIETCLI_EXPECT_ENGINE_MODE){$env:QUIETCLI_EXPECT_ENGINE_MODE}else{'Auto'}
-Initialize-QuietTestConfiguration -DatabasePath (Join-Path $RunDirectory 'measurements.sqlite') -Hosting $testHosting
-$env:QUIETCLI_RECALL_TEST_ROOT=Join-Path $RunDirectory 'recall-csharp'
-$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Tests compagnons';Workspace=$WorkspaceRoot;ProjectDirectory=(Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh');Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;State='Running';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;Passed=0;Failed=0;TtyExcluded=[bool]$SkipTty;Case='Starting';FinishedUtc=$null;Error=$null}
-$statusPath=Join-Path $RunDirectory 'status.json'
+Initialize-QuietTestConfiguration -DatabasePath ([IO.Path]::Combine($RunDirectory,'measurements.sqlite')) -Hosting $testHosting
+$env:QUIETCLI_RECALL_TEST_ROOT=[IO.Path]::Combine($RunDirectory,'recall-csharp')
+$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Tests compagnons';Workspace=$WorkspaceRoot;ProjectDirectory=([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh'));Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;State='Running';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;Passed=0;Failed=0;TtyExcluded=[bool]$SkipTty;Case='Starting';FinishedUtc=$null;Error=$null}
+$statusPath=[IO.Path]::Combine($RunDirectory,'status.json')
 Write-WorkspaceJson $statusPath $state
 $summaries=[Collections.Generic.List[object]]::new()
 $sourceIdentity=$null;$engineIdentity=$null;$profiling=$null
@@ -65,26 +65,26 @@ try{
     if($env:QUIETCLI_EXPECT_HOST_VERSION -and $PSVersionTable.PSVersion.ToString() -cne $env:QUIETCLI_EXPECT_HOST_VERSION){throw 'PowerShellVersionMismatch'}
     if($ExpectedRuntimeIdentifier -and $state.Platform -cne $ExpectedRuntimeIdentifier){throw "HostRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($state.Platform)"}
     $sourceIdentity=Get-QuietWorkspaceIdentity $WorkspaceRoot -Suite $Suite -IncludeBinaries:($Suite -notin @('AgentInstructions','DotNet','RunProfilesMutation'))
-    Write-WorkspaceJson (Join-Path $RunDirectory 'source-identity.json') $sourceIdentity
+    Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'source-identity.json')) $sourceIdentity
     if($Suite -notin @('DotNet','RunProfilesMutation')){
-    Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1') -Force
-    $expectedCorePath=[IO.Path]::GetFullPath((Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psm1'))
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')) -Force -DisableNameChecking
+    $expectedCorePath=[IO.Path]::GetFullPath(([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psm1')))
     $actualCorePath=(Get-Command FrenchExDev2.QuietCli.Core.PoSh\Invoke-QuietCli -ErrorAction Stop).Module.Path
     if(![StringComparer]::OrdinalIgnoreCase.Equals($actualCorePath,$expectedCorePath)){throw 'UnexpectedCoreModulePath'}
     $localAlias=Get-Alias quiet -ErrorAction Stop
     if(!$localAlias.ResolvedCommand -or ![StringComparer]::OrdinalIgnoreCase.Equals($localAlias.ResolvedCommand.Module.Path,$expectedCorePath)){throw 'UnexpectedQuietAliasTarget'}
     }
     if($Suite -eq 'DotNet'){
-        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-DotNetQualification.ps1')
-        $state.Project='FrenchExDev2.QuietCli.Core.Tests.PoSh';$state.ProjectDirectory=Join-Path $WorkspaceRoot $state.Project;$state.Task='Offline .NET toolchain automation'
+        . ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-DotNetQualification.ps1'))
+        $state.Project='FrenchExDev2.QuietCli.Core.Tests.PoSh';$state.ProjectDirectory=[IO.Path]::Combine($WorkspaceRoot,$state.Project);$state.Task='Offline .NET toolchain automation'
         $dotnetWorkerState=$state
         $summary=Invoke-QuietDotNetQualification -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Suite $DotNetSuite -OnProgress {param($name,$passed,$failed)$dotnetWorkerState.Case=$name;$dotnetWorkerState.Passed=$passed;$dotnetWorkerState.Failed=$failed;Write-WorkspaceJson $statusPath $dotnetWorkerState}
         $state.Passed=$summary.Passed;$state.Failed=$summary.Failed;$summaries.Add($summary)
     }elseif($Suite -in @('Tooling','Distribution')){
         # RequiredModules do not inherit the importing companion's DisableNameChecking option.
-        Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -DisableNameChecking -ErrorAction Stop
+        Import-Module ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1')) -DisableNameChecking -ErrorAction Stop
         $testModule='FrenchExDev2.QuietCli.'+$Suite+'.Tests.PoSh'
-        $testManifest=Join-Path $WorkspaceRoot ($testModule+'/'+$testModule+'.psd1')
+        $testManifest=[IO.Path]::Combine($WorkspaceRoot,($testModule+'/'+$testModule+'.psd1'))
         Import-Module $testManifest -DisableNameChecking -ErrorAction Stop
         $runnerName=(Import-PowerShellDataFile -LiteralPath $testManifest).PrivateData.QuietCli.TestCatalogue.Runner
         $state.Project=$testModule;$state.Task=$Suite+' qualification'
@@ -96,57 +96,57 @@ try{
         }
         $state.Passed=$summary.Passed;$state.Failed=$summary.Failed;$summaries.Add($summary)
     }elseif($Suite -in @('RunProfiles','RunProfilesMutation')){
-        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-RunProfileQualification.ps1')
-        $state.Project='FrenchExDev2.QuietCli.Core.Tests.PoSh';$state.ProjectDirectory=Join-Path $WorkspaceRoot $state.Project;$state.Task=$Suite
+        . ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-RunProfileQualification.ps1'))
+        $state.Project='FrenchExDev2.QuietCli.Core.Tests.PoSh';$state.ProjectDirectory=[IO.Path]::Combine($WorkspaceRoot,$state.Project);$state.Task=$Suite
         $runProfileState=$state
         $summary=Invoke-RunProfileQualification -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Mutation:($Suite -eq 'RunProfilesMutation') -MaxConcurrency ([Math]::Min(2,$MaxConcurrency)) -OnProgress {param($name,$passed,$failed)$runProfileState.Case=$name;$runProfileState.Passed=$passed;$runProfileState.Failed=$failed;Write-WorkspaceJson $statusPath $runProfileState}
         $state.Passed=$summary.Passed;$state.Failed=$summary.Failed;$summaries.Add($summary)
     }elseif($Suite -eq 'GalleryPreview'){
-        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/GalleryPreview.Tests.ps1')
+        . ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/GalleryPreview.Tests.ps1'))
         $galleryWorkerState=$state
-        $state.Project='FrenchExDev2.QuietCli.Core.Tests.PoSh';$state.ProjectDirectory=Join-Path $WorkspaceRoot $state.Project;$state.Task='Preview packages, properties, fuzz corpus and mutations'
+        $state.Project='FrenchExDev2.QuietCli.Core.Tests.PoSh';$state.ProjectDirectory=[IO.Path]::Combine($WorkspaceRoot,$state.Project);$state.Task='Preview packages, properties, fuzz corpus and mutations'
         $summary=Invoke-QuietGalleryPreviewTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Mutation -OnProgress {param($name,$caseState,$passed,$failed)$galleryWorkerState.Case=$name;$galleryWorkerState.Passed=$passed;$galleryWorkerState.Failed=$failed;Write-WorkspaceJson $statusPath $galleryWorkerState}
         $state.Passed=$summary.Passed;$state.Failed=$summary.Failed;$summaries.Add($summary)
     }elseif($Suite -eq 'Script'){
-        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Script.Tests.ps1')
+        . ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/Script.Tests.ps1'))
         $state.Task='Reusable scripts, factories, property corpus and mutations'
         $summary=Invoke-QuietScriptTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
         $summaries.Add($summary)
     }elseif($Suite -eq 'AgentInstructions'){
-        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/AgentInstructions.Tests.ps1')
+        . ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/AgentInstructions.Tests.ps1'))
         $state.Task='Production agent instructions and installed resource qualification'
         $summary=Invoke-QuietAgentInstructionTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
         $summaries.Add($summary)
     }elseif($Suite -eq 'ConfigurationDelivery'){
-        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/ConfigurationDelivery.Tests.ps1')
+        . ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/ConfigurationDelivery.Tests.ps1'))
         $state.Task='Configuration, tokenization and unique delivery qualification'
         $summary=Invoke-QuietConfigurationDeliveryTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Mutation -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
         $state.Passed=$summary.Passed;$state.Failed=$summary.Failed;$summaries.Add($summary)
     }elseif($Suite -in @('Recall','RecallMutation','RecallLarge')){
-        Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -DisableNameChecking
+        Import-Module ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1')) -DisableNameChecking
         $state.Task=$Suite+' capture and analyzer qualification'
         if($Suite -eq 'Recall'){
             $summary=Invoke-QuietRecallTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
         }elseif($Suite -eq 'RecallLarge'){
             $summary=Invoke-QuietRecallLargeTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
         }else{
-            . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Recall.Mutation.ps1')
+            . ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/Recall.Mutation.ps1'))
             $summary=Invoke-QuietRecallMutation -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
         }
         $summaries.Add($summary)
     }elseif($Suite -eq 'Integration'){
         $state.Task='Core integration: import and controlled Git states'
-        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Integration.Tests.ps1')
+        . ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/Integration.Tests.ps1'))
         $summary=Invoke-QuietCoreIntegrationTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
         $summaries.Add($summary)
     }elseif($Suite -eq 'RealStatus'){
         $state.Task='Real repository git status with Core callbacks only'
-        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Status.Real.Tests.ps1')
+        . ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/Status.Real.Tests.ps1'))
         $summary=Invoke-QuietRealStatusIntegration -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -RepositoryConfig $RepositoryConfig -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
         $summaries.Add($summary)
     }elseif($Suite -eq 'Import'){
         $state.Task='Core import cost in fresh pwsh sessions'
-        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/Import.Tests.ps1')
+        . ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/Import.Tests.ps1'))
         $summary=Invoke-QuietImportIntegration -WorkspaceRoot $WorkspaceRoot -OnProgress {param($name,$caseState,$passed,$failed)$state.Case=$name;$state.Passed=$passed;$state.Failed=$failed;Write-WorkspaceJson $statusPath $state}
         $summaries.Add($summary)
     }else{
@@ -160,7 +160,7 @@ try{
         if($ExpectedRuntimeIdentifier -and $engineIdentity.Engine.RuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw "EngineRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($engineIdentity.Engine.RuntimeIdentifier)"}
         if($ExpectedRuntimeIdentifier -and $engineIdentity.Mode -ne 'InProcess' -and $engineIdentity.Engine.BuildRuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw 'EnginePublicationRuntimeMismatch'}
         # RequiredModules imports do not inherit DisableNameChecking from the importing companion.
-        Import-Module (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -DisableNameChecking -ErrorAction Stop
+        Import-Module ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1')) -DisableNameChecking -ErrorAction Stop
         # Parser/handler qualification uses the owned process fixture; it never installs Vagrant or a provider.
         $selections=@(Get-QuietWorkspaceSuiteSelection -WorkspaceRoot $WorkspaceRoot -Suite $Suite)
         $parallelCompanions=$Suite -eq 'All' -and @($selections|Where-Object Name -CEQ Core).Count -eq 1
@@ -169,7 +169,7 @@ try{
             if($parallelCompanions -and $selection.Name -cne 'Core'){continue}
             $selected=$selection.Name
             $project=$selection.Project
-            $state.Project=$project;$state.ProjectDirectory=Join-Path $WorkspaceRoot $project
+            $state.Project=$project;$state.ProjectDirectory=[IO.Path]::Combine($WorkspaceRoot,$project)
             Import-Module $selection.TestsManifest -Force -DisableNameChecking
             $basePassed=$state.Passed;$baseFailed=$state.Failed
             $progress={
@@ -185,16 +185,16 @@ try{
             if($outputs.Count -ne 1){throw ('CompanionRunnerMustReturnOneSummary: '+$selection.Name)}
             $summary=$outputs[0]
             $summaries.Add($summary)
-            Write-WorkspaceJson (Join-Path $RunDirectory ($selected.ToLowerInvariant()+'-suite.json')) $summary
+            Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,($selected.ToLowerInvariant()+'-suite.json'))) $summary
             if($summary.PSObject.Properties['Partial'] -and ($summary.Partial -or $summary.Incomplete)){
                 # Filtered or stopped development run: not qualification evidence, so the full-run evidence assertion is skipped.
                 $state.Task+=if($summary.Incomplete){" [INCOMPLETE: $($summary.StoppedAt)]"}else{' [PARTIAL: case filter]'}
                 Write-WorkspaceJson $statusPath $state
-            }elseif($selected -eq 'Core' -and !$summary.Failed){& (Join-Path $PSScriptRoot 'Assert-CoreIntegrationEvidence.ps1') -Summary $summary}
+            }elseif($selected -eq 'Core' -and !$summary.Failed){& ([IO.Path]::Combine($PSScriptRoot,'Assert-CoreIntegrationEvidence.ps1')) -Summary $summary}
             if($parallelCompanions -and ($summary.Failed -or $summary.Partial -or $summary.Incomplete)){throw 'CompanionFanoutRequiresSuccessfulCompleteCore'}
         }
         if($parallelCompanions){
-            Import-Module (Join-Path $PSScriptRoot 'lib/CiCompanionWorkers.psm1')
+            Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiCompanionWorkers.psm1')) -DisableNameChecking
             $corePassed=$state.Passed;$coreFailed=$state.Failed
             $children=@(Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -CoreSummary $summary -Selections @($selections|Where-Object Name -CNE Core) -SkipTty:$SkipTty -ExpectedRuntimeIdentifier $ExpectedRuntimeIdentifier -MaxConcurrency ([Math]::Min(2,$MaxConcurrency)) -WorkerBudget $MaxConcurrency -OnProgress {
                 param($passed,$failed)
@@ -207,25 +207,25 @@ try{
     if(@($summaries|Where-Object {$_.PSObject.Properties['Partial'] -and $_.Partial}).Count -and $state.Task -notlike '*PARTIAL*'){$state.Task+=' [PARTIAL: case filter]'}
     if($Profiler){
         if($Suite -notin @('Core','All','Integration')){throw 'ProfilerRequiresCoreIntegration'}
-        $state.Project='FrenchExDev2.QuietCli.Core.PoSh';$state.ProjectDirectory=Join-Path $WorkspaceRoot $state.Project;$state.Task='Core PowerShell and CLR profiling';$state.Case='Attaching profilers to owned targets';Write-WorkspaceJson $statusPath $state
-        $profiling=& (Join-Path $PSScriptRoot 'Invoke-CoreProfiling.ps1') -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -ProfilerModulePath $ProfilerModulePath -ClrProfilerPath $ClrProfilerPath
+        $state.Project='FrenchExDev2.QuietCli.Core.PoSh';$state.ProjectDirectory=[IO.Path]::Combine($WorkspaceRoot,$state.Project);$state.Task='Core PowerShell and CLR profiling';$state.Case='Attaching profilers to owned targets';Write-WorkspaceJson $statusPath $state
+        $profiling=& ([IO.Path]::Combine($PSScriptRoot,'Invoke-CoreProfiling.ps1')) -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -ProfilerModulePath $ProfilerModulePath -ClrProfilerPath $ClrProfilerPath
     }
     $state.State=if($state.Failed){'Failed'}else{'Success'}
-}catch{$state.State='Crash';$state.Error=$_.ToString();$state.Failed++;Write-WorkspaceJson (Join-Path $RunDirectory 'worker-failure.json') @{Message=$_.Exception.Message;Stack=$_.ScriptStackTrace;Position=$_.InvocationInfo.PositionMessage}}
+}catch{$state.State='Crash';$state.Error=$_.ToString();$state.Failed++;Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'worker-failure.json')) @{Message=$_.Exception.Message;Stack=$_.ScriptStackTrace;Position=$_.InvocationInfo.PositionMessage}}
 finally{
     if($sourceIdentity){
         try{
             $after=Get-QuietWorkspaceIdentity $WorkspaceRoot -Suite $Suite -IncludeBinaries:($Suite -notin @('AgentInstructions','DotNet','RunProfilesMutation'))
             $drift=@(foreach($before in $sourceIdentity.Projects){$current=@($after.Projects|Where-Object Name -CEQ $before.Name)[0];if($current.SourceSHA256 -cne $before.SourceSHA256){$before.Name}};if($sourceIdentity.Repository.SourceSHA256 -cne $after.Repository.SourceSHA256){'Monorepo'})
             if($drift.Count){$state.State='Failed';$state.Failed++;$state.Case='Sources changed during the run';$state.Error=$drift -join ', '}
-            Write-WorkspaceJson (Join-Path $RunDirectory 'source-identity-final.json') $after
+            Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'source-identity-final.json')) $after
             if($Suite -notin @('Import','DotNet','RunProfilesMutation')){$engineIdentity=Get-QuietEngine}
             if($Suite -notin @('Import','DotNet','RunProfilesMutation') -and $ExpectedRuntimeIdentifier -and $engineIdentity.Engine.RuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw 'FinalEngineRuntimeMismatch'}
         }catch{$state.State='Failed';$state.Failed++;$state.Error='Build/source identity verification failed: '+$_.Exception.Message}
     }
     if($Suite -notin @('DotNet','RunProfilesMutation')){try{Stop-QuietEngine}catch{}}
     $state.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o')
-    Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$state;Suites=$summaries.ToArray();Profiling=$profiling;EngineIdentity=$engineIdentity;HostRuntime=[Runtime.InteropServices.RuntimeInformation]::FrameworkDescription;PowerShellVersion=$PSVersionTable.PSVersion.ToString();OSArchitecture=[Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString();ProcessArchitecture=[Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString();OSDescription=[Runtime.InteropServices.RuntimeInformation]::OSDescription;MachineName=[Environment]::MachineName;ExpectedRuntimeIdentifier=$ExpectedRuntimeIdentifier;RunnerImage=$env:ImageOS;RunnerImageVersion=$env:ImageVersion}
+    Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'summary.json')) @{State=$state;Suites=$summaries.ToArray();Profiling=$profiling;EngineIdentity=$engineIdentity;HostRuntime=[Runtime.InteropServices.RuntimeInformation]::FrameworkDescription;PowerShellVersion=$PSVersionTable.PSVersion.ToString();OSArchitecture=[Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString();ProcessArchitecture=[Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString();OSDescription=[Runtime.InteropServices.RuntimeInformation]::OSDescription;MachineName=[Environment]::MachineName;ExpectedRuntimeIdentifier=$ExpectedRuntimeIdentifier;RunnerImage=$env:ImageOS;RunnerImageVersion=$env:ImageVersion}
     Write-WorkspaceJson $statusPath $state
     $env:PATH=$previousTestPath;$env:DOTNET_ROOT=$previousTestDotNetRoot
 }

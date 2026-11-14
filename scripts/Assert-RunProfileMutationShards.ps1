@@ -15,8 +15,8 @@ New completion receipt destination.
 param([Parameter(Mandatory)][string]$ReportRoot,[Parameter(Mandatory)][string]$Revision,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputPath)
 if(!$PSCmdlet.ShouldProcess($OutputPath,'Verify every mutation shard and save a complete-catalogue receipt')){return}
 $ErrorActionPreference='Stop'
-Import-Module (Join-Path $PSScriptRoot 'lib/MutationShards.psm1') -ErrorAction Stop
-$catalogue=@((Import-PowerShellDataFile -LiteralPath (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Mutation.Catalogue.psd1')).Mutants)
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/MutationShards.psm1')) -ErrorAction Stop -DisableNameChecking
+$catalogue=@((Import-PowerShellDataFile -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Mutation.Catalogue.psd1'))).Mutants)
 $reports=@(Get-ChildItem -LiteralPath $ReportRoot -Recurse -File -Filter run-profiles-mutation.json | ForEach-Object {
     if($_.Length -gt 2097152 -or $_.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'MutationShardReportInvalid'}
     [IO.File]::ReadAllText($_.FullName,[Text.UTF8Encoding]::new($false,$true))|ConvertFrom-Json

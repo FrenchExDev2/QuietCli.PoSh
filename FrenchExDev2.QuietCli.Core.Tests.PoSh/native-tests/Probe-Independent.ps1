@@ -12,7 +12,7 @@ Required native Linux architecture and libc.
 #>
 [CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$ExpectedRuntimeIdentifier)
 $ErrorActionPreference='Stop'
-. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 [void][IO.Directory]::CreateDirectory($RunDirectory)
 $productFiles=@(Get-ChildItem $WorkspaceRoot -Recurse -File|Where-Object Extension -In @('.dll','.csproj','.psd1','.psm1'))
 if($productFiles.Count){throw 'IndependentNativeProbeContainsProductBuildsOrModules'}
@@ -36,7 +36,7 @@ $loaded=@(Get-Module -Name 'FrenchExDev2.QuietCli.*')
 if($loaded.Count){throw 'ProductModuleLoadedBeforeIndependentNativeProbe'}
 & (Join-Path $PSScriptRoot 'Invoke-PtyMutation.ps1') -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -CompilerPath gcc -RequireFuzz -ExpectedRuntimeIdentifier $ExpectedRuntimeIdentifier -Worker
 $summary=Get-Content (Join-Path $RunDirectory 'summary.json') -Raw -Encoding utf8|ConvertFrom-Json
-. (Join-Path $WorkspaceRoot 'scripts/Assert-PtyQualification.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Assert-PtyQualification.psm1') -DisableNameChecking -ErrorAction Stop
 Assert-PtyQualification $summary
 $loaded=@(Get-Module -Name 'FrenchExDev2.QuietCli.*')
 Write-WorkspaceJson (Join-Path $RunDirectory 'independence.json') @{ProductBuildFiles=$productFiles.Count;LoadedProductModules=$loaded.Count;ForbiddenAICommandCalls=$script:forbiddenCalls;Runtime=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier}

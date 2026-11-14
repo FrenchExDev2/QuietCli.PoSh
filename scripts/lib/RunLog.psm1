@@ -10,7 +10,7 @@ Every emitted event increments a per-level counter even when the level filter su
 what the code did independently of how verbose the run was.
 #>
 
-Import-Module (Join-Path $PSScriptRoot 'RunEncoding.psm1')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'RunEncoding.psm1')) -DisableNameChecking
 
 enum RunLogLevel { Trace = 0; Debug = 1; Info = 2; Warn = 3; Error = 4; Off = 5 }
 

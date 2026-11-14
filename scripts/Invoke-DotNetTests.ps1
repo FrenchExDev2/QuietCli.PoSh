@@ -16,4 +16,4 @@ $ErrorActionPreference='Stop'
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,"Run focused offline .NET $Suite campaign with the shared monitor")){return}
 $arguments=@{Suite='DotNet';DotNetSuite=$Suite;SkipBuild=$true;TimeoutSeconds=$TimeoutSeconds;Confirm=$false}
 if($RunDirectory){$arguments.RunDirectory=$RunDirectory}
-& (Join-Path $PSScriptRoot 'Invoke-WorkspaceCi.ps1') @arguments
+& ([IO.Path]::Combine($PSScriptRoot,'Invoke-WorkspaceCi.ps1')) @arguments

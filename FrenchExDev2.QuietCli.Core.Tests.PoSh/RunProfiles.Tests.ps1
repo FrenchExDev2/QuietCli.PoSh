@@ -212,7 +212,7 @@ try {
         $index = 0
         foreach ($payload in $payloads) {
             $index++
-            $file = Join-Path $directory "x.profile.ps1"
+            $file = Join-Path $directory "x.profile.psd1"
             [IO.File]::WriteAllText($file, $payload)
             Assert-Throws { Read-RunProfile -Path $file } 'RunProfile'
         }
@@ -461,7 +461,7 @@ if ($Fail) { throw 'FixtureFailed' }
         $marker = [Array]::IndexOf($sourceBytes, [byte]0x3F)
         Assert-That ($marker -ge 0) 'fixture marker not found'
         $sourceBytes[$marker] = 0xFF
-        $profilePath = Join-Path $work 'bad.profile.ps1'
+        $profilePath = Join-Path $work 'bad.profile.psd1'
         [IO.File]::WriteAllBytes($profilePath, $sourceBytes)
         $failure = $null
         try { Read-RunProfile -Path $profilePath | Out-Null } catch { $failure = $_.Exception.GetBaseException() }

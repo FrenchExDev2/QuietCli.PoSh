@@ -8,4 +8,4 @@ Repository whose workflow documents and generated index must match.
 [CmdletBinding()]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
 $ErrorActionPreference='Stop'
-& (Join-Path $PSScriptRoot 'Sync-GitHubWorkflowsReadme.ps1') -WorkspaceRoot $WorkspaceRoot
+& ([IO.Path]::Combine($PSScriptRoot,'Sync-GitHubWorkflowsReadme.ps1')) -WorkspaceRoot $WorkspaceRoot

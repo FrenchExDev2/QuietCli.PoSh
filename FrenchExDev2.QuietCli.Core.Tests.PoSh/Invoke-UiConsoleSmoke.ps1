@@ -13,7 +13,7 @@ param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDire
 $ErrorActionPreference='Stop'
 $root=$WorkspaceRoot
 $run=$RunDirectory
-. (Join-Path $root 'scripts/Common.ps1')
+Import-Module (Join-Path $root 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$Worker){
     if(!$IsWindows){throw 'The interactive console probe requires a Windows desktop.'}
     if(!$run){$run=Join-Path (Get-QuietReportRoot $root 'ui-console') ([guid]::NewGuid().ToString('N'))}

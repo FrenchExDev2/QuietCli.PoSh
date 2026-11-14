@@ -51,7 +51,7 @@ function Test-QuietCiCompanions {
     $generated=Read-QuietCiCompanions $source
     $selection=Resolve-QuietCiCompanions $generated -Suite CoreVagrantIntegration
     if($generated.Companions['Core'].requires.Count -or $selection.Dependencies.Count -ne 102 -or ($selection.Images -join ',') -cne 'Core'){throw 'IntegrationSuiteCreatedReverseProductDependency'}
-    . (Join-Path $WorkspaceRoot 'scripts/WorkspaceProjects.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/WorkspaceProjects.psm1') -DisableNameChecking -ErrorAction Stop
     $runner=@(Get-QuietWorkspaceSuiteSelection $source CoreVagrantIntegration)
     if($runner.Count -ne 1 -or $runner[0].TestsModule -cne $testProject -or $runner[0].Command -cne 'Invoke-QuietPairTests'){throw 'DedicatedIntegrationRunnerNotSelected'}
     $all=Resolve-QuietCiCompanions $generated -Suite All
@@ -96,7 +96,7 @@ function Test-QuietCiCompanions {
     $mutant=[scriptblock]::Create($resolverSource.Replace($anchor,'@($suites[$name].Requires)[0]'))
     $mutated=& $module {param($candidate,$configuration)& $candidate -Configuration $configuration -Suite CoreVagrantIntegration} $mutant $generated
     if($mutated.Dependencies -ccontains 'Vagrant'){throw 'CompanionSuiteRequirementMutantSurvived'}
-    . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
     $base=Get-QuietCiImagePlan $WorkspaceRoot linux-x64
     $fragment=[pscustomobject]@{Platform='debian';Objective='Synthetic independent layer';Stages=@([pscustomobject]@{Name='ci';Run=@('true')})}
     $inputPaths=@('build/companions.yml')
@@ -114,7 +114,7 @@ function Test-QuietCiCompanions {
     if($bad1.Fingerprint -cne $bad2.Fingerprint){throw 'CompanionParentFingerprintMutantNotExercised'}
     $imageChecks=& {
         param($WorkspaceRoot)
-        . (Join-Path $WorkspaceRoot 'scripts/CiImages.ps1')
+        Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
         function Invoke-CiProcess {
             <#
             .SYNOPSIS

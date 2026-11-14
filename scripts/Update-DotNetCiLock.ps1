@@ -25,6 +25,6 @@ param([string]$WorkspaceRoot=$PSScriptRoot+'/..',[switch]$IncludeDevelopmentLock
     [Alias('Prerelease','Prereleases')][switch]$Preleases,[switch]$PlanOnly)
 $ErrorActionPreference='Stop'
 if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Synchronize selected .NET archive and container base locks')){return}
-Import-Module (Join-Path $PSScriptRoot 'lib/DotNetLocks.psm1') -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/DotNetLocks.psm1')) -ErrorAction Stop -DisableNameChecking
 $options=@{}+$PSBoundParameters;$options.Confirm=$false
 Update-DotNetCiLock @options

@@ -52,7 +52,11 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 
 Purpose: Reads optional diagnostic data without treating malformed input as established evidence.
 
-Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
+Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+## Explicit library dependencies
+
+Copy-QuietRuntimeProbeInputs -ScriptsRoot <scripts> -Destination <owned directory> stages exactly the probe entry point and five library files under their original lib paths. It supports standard WhatIf/Confirm, validates all source files before copying, and includes BinaryHeaders without staging product assemblies or private configuration. The orchestration library uses this helper; the Tooling regression checks no-write preview, exact membership and hashes.

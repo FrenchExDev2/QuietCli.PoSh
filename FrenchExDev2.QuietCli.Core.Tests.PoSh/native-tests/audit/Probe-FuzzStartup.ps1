@@ -1,7 +1,7 @@
 # Objectif : Comparer des démarrages indépendants du fuzzer sauvegardé et de programmes témoins ASan.
 param([string]$ExpectedRuntimeIdentifier='linux-x64')
 $ErrorActionPreference='Stop'
-. /source/scripts/Ci.Process.ps1
+. /source/scripts/lib/Ci.Process.psm1
 $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='ASan startup comparison';Workspace='/source';ProjectDirectory='/source';Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;ContainerId=$env:QUIETCLI_MUTATION_CONTAINER;ProcessId=$PID;State='Running';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');Passed=0;Failed=0;Case='Preparing controls';Error=$null}
 function Save-ProbeJson {
     <#

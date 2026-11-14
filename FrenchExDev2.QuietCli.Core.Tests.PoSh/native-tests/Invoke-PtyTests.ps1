@@ -19,7 +19,7 @@ Internal background worker mode used by this launcher.
     [switch]$Worker
 )
 $ErrorActionPreference='Stop'
-. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$Worker){
     if(!$IsWindows){throw 'Launch from Windows for the required visible monitor.'}
     $RunDirectory=Join-Path $WorkspaceRoot ('artifacts/pty-tests/'+[guid]::NewGuid().ToString('N'))

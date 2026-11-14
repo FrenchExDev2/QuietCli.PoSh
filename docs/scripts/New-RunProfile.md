@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Creates a named, data-only "run profile" — a `<Name>.profile.ps1` file under `scripts/RunProfiles/` that binds a target script to a fixed set of default arguments (e.g. `coldstart-100` binds `Measure-ColdStart.ps1` to `Runs = 100`, `Warmup = 5`, etc.). This solves the problem of repeatable, named measurement/benchmark configurations without requiring every caller to remember and retype long argument lists. The resulting profile is later read and executed by `Invoke-RunProfile.ps1` (confirmed by `coldstart-100.profile.ps1`'s and `coldstart-1000.profile.ps1`'s own header comment: "Data only: parsed in restricted language mode, never executed", and by `Invoke-RunProfile.ps1` existing alongside it in `scripts/`). It is itself exercised by `FrenchExDev2.QuietCli.Core.Tests.PoSh\RunProfiles.Tests.ps1` and `RunProfiles.Mutation.ps1`.
+Creates a named, data-only "run profile" — a `<Name>.profile.psd1` file under `scripts/RunProfiles/` that binds a target script to a fixed set of default arguments (e.g. `coldstart-100` binds `Measure-ColdStart.ps1` to `Runs = 100`, `Warmup = 5`, etc.). This solves the problem of repeatable, named measurement/benchmark configurations without requiring every caller to remember and retype long argument lists. The resulting profile is later read and executed by `Invoke-RunProfile.ps1` (confirmed by `coldstart-100.profile.psd1`'s and `coldstart-1000.profile.psd1`'s own header comment: "Data only: parsed in restricted language mode, never executed", and by `Invoke-RunProfile.ps1` existing alongside it in `scripts/`). It is itself exercised by `FrenchExDev2.QuietCli.Core.Tests.PoSh\RunProfiles.Tests.ps1` and `RunProfiles.Mutation.ps1`.
 
 ## Usage
 
@@ -33,7 +33,7 @@ Supports `-WhatIf`/`-Confirm` (`SupportsShouldProcess`).
 
 ## Side effects
 
-- Writes one new (or, with `-Force`, replaced) `<Name>.profile.ps1` file under the resolved profile directory (`Write-RunProfile`, line 63), gated by `$PSCmdlet.ShouldProcess` (line 62) — this correctly supports `-WhatIf`.
+- Writes one new (or, with `-Force`, replaced) `<Name>.profile.psd1` file under the resolved profile directory (`Write-RunProfile`, line 63), gated by `$PSCmdlet.ShouldProcess` (line 62) — this correctly supports `-WhatIf`.
 - No git, network, or process side effects.
 - Logs structured counters/messages via `$logger`, optionally to `-LogPath` if supplied.
 
@@ -59,7 +59,7 @@ This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which 
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Creates a run profile: a data-only `<Name>.profile.ps1` binding a script to default arguments.
+Purpose: Creates a run profile: a data-only `<Name>.profile.psd1` binding a script to default arguments.
 
 Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 

@@ -37,7 +37,7 @@ Maximum number of internal test workers used by parallel-safe campaigns.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure,[ValidateSet('Readiness','Provisioning','Layout','Locks','All')][string]$DotNetSuite='All',[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)))
 dynamicparam {
-    . (Join-Path $PSScriptRoot 'WorkspaceProjects.ps1')
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
     New-QuietWorkspaceSuiteParameter -WorkspaceRoot $selectedRoot -Scope Host
 }
@@ -45,22 +45,22 @@ end {
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-WorkspaceCi')){return}
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'Common.ps1')
-if($Suite -ceq 'All' -or $Suite -cin @(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object {!$_.IsTest}|ForEach-Object Suite)){$null=& (Join-Path $PSScriptRoot 'Test-TestCaseMetadata.ps1') -WorkspaceRoot $WorkspaceRoot}
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+if($Suite -ceq 'All' -or $Suite -cin @(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object {!$_.IsTest}|ForEach-Object Suite)){$null=& ([IO.Path]::Combine($PSScriptRoot,'Test-TestCaseMetadata.ps1')) -WorkspaceRoot $WorkspaceRoot}
 if($Profiler){
     if($Suite -notin @('Core','All','Integration')){throw 'ProfilerRequiresCoreIntegration'}
     if(!$ProfilerModulePath -or !$ClrProfilerPath){
-        $tools=& (Join-Path $PSScriptRoot 'Initialize-Profilers.ps1') -OutputDirectory (Join-Path (Get-QuietReportRoot $WorkspaceRoot 'profilers') 'pinned')
+        $tools=& ([IO.Path]::Combine($PSScriptRoot,'Initialize-Profilers.ps1')) -OutputDirectory ([IO.Path]::Combine((Get-QuietReportRoot $WorkspaceRoot 'profilers'),'pinned'))
         $ProfilerModulePath=$tools.ProfilerModulePath;$ClrProfilerPath=$tools.ClrProfilerPath
     }
 }
-if(!$SkipBuild -and $Suite -notin @('DotNet','RunProfilesMutation')){& (Join-Path $PSScriptRoot 'Build-Workspace.ps1') -WorkspaceRoot $WorkspaceRoot -Suite $Suite}
-if(!$RunDirectory){$RunDirectory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'tests') ([DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6))}
+if(!$SkipBuild -and $Suite -notin @('DotNet','RunProfilesMutation')){& ([IO.Path]::Combine($PSScriptRoot,'Build-Workspace.ps1')) -WorkspaceRoot $WorkspaceRoot -Suite $Suite}
+if(!$RunDirectory){$RunDirectory=[IO.Path]::Combine((Get-QuietReportRoot $WorkspaceRoot 'tests'),([DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6)))}
 if(Test-Path -LiteralPath $RunDirectory){throw 'TestRunDirectoryExists'}
 [void][IO.Directory]::CreateDirectory($RunDirectory)
-$runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
-$workerPath=Join-Path $PSScriptRoot 'Invoke-TestWorker.ps1'
-$monitorPath=Join-Path $PSScriptRoot 'Watch-Tests.ps1'
+$runner=[IO.Path]::Combine($PSHOME,$(if($IsWindows){'pwsh.exe'}else{'pwsh'}))
+$workerPath=[IO.Path]::Combine($PSScriptRoot,'Invoke-TestWorker.ps1')
+$monitorPath=[IO.Path]::Combine($PSScriptRoot,'Watch-Tests.ps1')
 $workerArguments=@('-File',(ConvertTo-CiArgument ($workerPath)),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory)),'-Suite',$Suite,'-MaxConcurrency',$MaxConcurrency)
 if($Suite -eq 'DotNet'){$workerArguments+=@('-DotNetSuite',$DotNetSuite)}
 if($Suite -eq 'RealStatus' -and !$RepositoryConfig){throw 'RealStatusRequiresRepositoryConfig'}
@@ -70,13 +70,13 @@ if($Case){$workerArguments+=@('-Case',(ConvertTo-CiArgument ($Case)))}
 if($SkipTty){$workerArguments+='-SkipTty'}
 if($StopOnFirstFailure){$workerArguments+='-StopOnFirstFailure'}
 if($ExpectedRuntimeIdentifier){$workerArguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
-$options=@{FilePath=$runner;ArgumentList=$workerArguments;PassThru=$true;RedirectStandardOutput=(Join-Path $RunDirectory 'worker.stdout.log');RedirectStandardError=(Join-Path $RunDirectory 'worker.stderr.log')}
+$options=@{FilePath=$runner;ArgumentList=$workerArguments;PassThru=$true;RedirectStandardOutput=([IO.Path]::Combine($RunDirectory,'worker.stdout.log'));RedirectStandardError=([IO.Path]::Combine($RunDirectory,'worker.stderr.log'))}
 if($IsWindows){$options.WindowStyle='Hidden'}
 $worker=Start-Process @options
 $monitor=$null
 if(!$Headless){
     if(!$IsWindows){$worker.Kill($true);throw 'Use the Windows host launcher for a visible local monitor; Headless is reserved for CI.'}
-    $monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory))) -RedirectStandardError (Join-Path $RunDirectory 'monitor.stderr.log') -PassThru
+    $monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-File',(ConvertTo-CiArgument ($monitorPath)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory))) -RedirectStandardError ([IO.Path]::Combine($RunDirectory,'monitor.stderr.log')) -PassThru
     "Monitor: pwsh -File `"$monitorPath`" -RunDirectory `"$RunDirectory`""
 }
 $summary=Wait-WorkspaceWorker -Worker $worker -RunDirectory $RunDirectory -WorkspaceRoot $WorkspaceRoot -Runner $runner -Monitor $monitor -TimeoutSeconds $TimeoutSeconds

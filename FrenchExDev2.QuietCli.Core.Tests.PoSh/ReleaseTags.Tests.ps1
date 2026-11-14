@@ -136,16 +136,15 @@ function Test-QuietReleaseTags {
     try{$null=& $planScript -WorkspaceRoot $fixture -Tag $next.Created[0] -Revision $next.Revision -ReadBatch}catch{$rejected=$_.Exception.Message -like 'ReleaseBatchRemoteTagMismatch:*'}
     if(!$rejected){throw 'ForeignRevisionBatchMemberAccepted'}
     # Removing the remote revision guard accepts this same independent counterexample.
-    $source=[IO.File]::ReadAllText($planScript,[Text.Encoding]::UTF8)
+    $source=[IO.File]::ReadAllText([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/Get-QuietReleasePlan.psm1'),[Text.Encoding]::UTF8)
     $anchor='if($actual -cne $Revision)'
     if(!$source.Contains($anchor)){throw 'ReleaseRevisionMutantAnchorInvalid'}
-    foreach($dependency in @('lib/GalleryRelease.psm1','Ci.Process.ps1')){
-        $relative="(Join-Path `$PSScriptRoot '$dependency')"
-        $absolute="'"+(Join-Path $WorkspaceRoot ('scripts/'+$dependency)).Replace("'","''")+"'"
-        $source=$source.Replace($relative,$absolute)
-    }
-    $mutant=Join-Path $RunDirectory release-plan-mutant.ps1
-    [IO.File]::WriteAllText($mutant,$source.Replace($anchor,'if($false)'),[Text.UTF8Encoding]::new($false))
+    $mutantScripts=[IO.Path]::Combine($RunDirectory,'release-plan-mutant/scripts')
+    [void][IO.Directory]::CreateDirectory($mutantScripts)
+    Copy-Item ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) ([IO.Path]::Combine($mutantScripts,'lib')) -Recurse
+    $mutant=[IO.Path]::Combine($mutantScripts,'Get-QuietReleasePlan.ps1')
+    Copy-Item $planScript $mutant
+    [IO.File]::WriteAllText([IO.Path]::Combine($mutantScripts,'lib/Get-QuietReleasePlan.psm1'),$source.Replace($anchor,'if($false)'),[Text.UTF8Encoding]::new($false))
     $accepted=& $mutant -WorkspaceRoot $fixture -Tag $next.Created[0] -Revision $next.Revision -ReadBatch
     if(!$accepted.Batch.IsLeader){throw 'ReleaseRevisionMutantInvalid'}
     $published=Invoke-QuietModuleRelease -WorkspaceRoot $fixture -Module Core -Version 2.3.4 -Preview 4 -PreviewSpecified -GitCommand $git -CommitCommand $commit -PushCommand $push -Confirm:$false

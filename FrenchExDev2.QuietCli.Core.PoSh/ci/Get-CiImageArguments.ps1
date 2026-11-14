@@ -10,7 +10,7 @@ That decision belongs to Core alone: it exists only because Core's own test suit
 (FrenchExDev2.QuietCli.Core.Tests.PoSh/Status.ControlledProbe.ps1) resolves `git` from PATH independent
 of the Git module, never because the Git module needs it -- the Git module makes its own independent
 decision in its own declaration, and Core never reads it to make this one. Invoked directly as a script
-by scripts/CiImages.ps1's Get-QuietCiImagePlan, at this exact relative path: this file IS Core's own
+by scripts/lib/CiImages.psm1's Get-QuietCiImagePlan, at this exact relative path: this file IS Core's own
 declared contract, symmetric with every module's.
 .PARAMETER WorkspaceRoot
 Monorepo containing the reviewed image and upstream source locks.
@@ -86,6 +86,6 @@ $containerfile=[pscustomobject]@{
         $ciStage
     )
 }
-$paths=@('build/ci-images.lock.json','global.json','scripts/CiImages.ps1','scripts/New-CiImage.ps1')
+$paths=@('build/ci-images.lock.json','global.json','scripts/lib/CiImages.psm1','scripts/New-CiImage.ps1')
 $paths+=@(Get-ChildItem (Join-Path $WorkspaceRoot '.github/containers') -File -Force|ForEach-Object {'.github/containers/'+$_.Name})
 [pscustomobject]@{Arguments=$arguments;InputPaths=$paths;Containerfile=$containerfile;Base=$target.Base;Architecture=$architecture;Platform=$platform}

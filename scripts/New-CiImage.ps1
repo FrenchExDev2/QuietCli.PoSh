@@ -16,10 +16,10 @@ Resolve inputs offline without executing a binary or reading credentials.
 Explicit selection overrides the checkout dotenv key; absent configuration uses Podman-first application discovery on Windows and Linux.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$RegistryCache,[switch]$PublishCache,[switch]$PlanOnly,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime)
-$ErrorActionPreference='Stop';. (Join-Path $PSScriptRoot Common.ps1);. (Join-Path $PSScriptRoot CiImages.ps1)
+$ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop;Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiImages.psm1')) -DisableNameChecking -ErrorAction Stop
 $plan=Get-QuietCiImagePlan $WorkspaceRoot $RuntimeIdentifier
 if($PlanOnly){return $plan}
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-CiImage')){return}
 
 $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
-Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory (Join-Path $WorkspaceRoot '.github/containers') -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix $RuntimeIdentifier -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
+Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory ([IO.Path]::Combine($WorkspaceRoot,'.github/containers')) -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix $RuntimeIdentifier -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime

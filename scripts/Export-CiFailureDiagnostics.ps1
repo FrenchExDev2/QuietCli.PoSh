@@ -13,9 +13,9 @@ Maximum source-file size accepted before parsing and redaction.
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$OutputDirectory,
     [ValidateRange(1024,2097152)][int]$MaxFileBytes=1048576)
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'Common.ps1')
-if(!$OutputDirectory){$OutputDirectory=Join-Path $WorkspaceRoot 'artifacts/failure-diagnostics'}
-$source=[IO.Path]::GetFullPath((Join-Path $WorkspaceRoot 'artifacts'))
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+if(!$OutputDirectory){$OutputDirectory=[IO.Path]::Combine($WorkspaceRoot,'artifacts/failure-diagnostics')}
+$source=[IO.Path]::GetFullPath(([IO.Path]::Combine($WorkspaceRoot,'artifacts')))
 $destination=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 if((Test-Path -LiteralPath $source) -and ((Get-Item -LiteralPath $source).Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'FailureDiagnosticSourceLinkRejected'}
 if(Test-Path -LiteralPath $destination){throw 'FailureDiagnosticDestinationExists'}
@@ -68,12 +68,12 @@ while($pending.Count -and $records.Count -lt 64){
         $truncated=$lines.Count -gt 120 -or $text.Length -gt 32768 -or @($lines|Where-Object Length -GT 2048).Count -gt 0
         $tail=@($lines|Select-Object -Last 120|ForEach-Object {if($_.Length -gt 2048){$_.Substring(0,2048)+'…'}else{$_}}) -join "`n"
         if($tail.Length -gt 32768){$tail=$tail.Substring($tail.Length-32768)}
-        $target=Join-Path $destination ($relative+'.redacted.log')
+        $target=[IO.Path]::Combine($destination,($relative+'.redacted.log'))
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
         [void][IO.File]::WriteAllTextAsync($target,$tail+"`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         $records.Add(@{Source=$relative;State='Redacted';SourceBytes=$item.Length;RetainedBytes=(Get-Item -LiteralPath $target).Length;Truncated=$truncated})
         if($records.Count -ge 64){break}
     }
 }
-Write-WorkspaceJson (Join-Path $destination 'manifest.json') @{SchemaVersion=1;Records=$records.ToArray();LimitFiles=64;LimitLines=120;LimitCharacters=32768;TraversalIncomplete=($pending.Count -gt 0 -or $records.Count -ge 64);RawFilesCopied=$false;CredentialFilesIncluded=$false;Redaction='Known credential environment values and Base64 forms, GitHub token patterns, Authorization/password assignments and PEM private keys.'}
+Write-WorkspaceJson ([IO.Path]::Combine($destination,'manifest.json')) @{SchemaVersion=1;Records=$records.ToArray();LimitFiles=64;LimitLines=120;LimitCharacters=32768;TraversalIncomplete=($pending.Count -gt 0 -or $records.Count -ge 64);RawFilesCopied=$false;CredentialFilesIncluded=$false;Redaction='Known credential environment values and Base64 forms, GitHub token patterns, Authorization/password assignments and PEM private keys.'}
 [pscustomobject]@{Directory=$destination;Files=$records.Count;RawFilesCopied=$false}

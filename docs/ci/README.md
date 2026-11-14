@@ -73,9 +73,9 @@ flowchart LR
 | Runner/job-container execution | [Invoke-GitHubCi](../scripts/Invoke-GitHubCi.md) |
 | Desktop worker and visible monitor | [Invoke-WorkspaceCi](../scripts/Invoke-WorkspaceCi.md), [Invoke-ContainerCi](../scripts/Invoke-ContainerCi.md) |
 | Networkless Docker/Podman transport | [Invoke-ContainerWorker](../scripts/Invoke-ContainerWorker.md) |
-| Final image, base and overlays | [New-CiSuiteImage](../scripts/New-CiSuiteImage.md), [New-CiImage](../scripts/New-CiImage.md), [New-CiModuleImage](../scripts/New-CiModuleImage.md), [CiImages](../scripts/CiImages.md) |
+| Final image, base and overlays | [New-CiSuiteImage](../scripts/New-CiSuiteImage.md), [New-CiImage](../scripts/New-CiImage.md), [New-CiModuleImage](../scripts/New-CiModuleImage.md), [CiImages](../scripts/lib/CiImages.md) |
 | GA resources, native hosts and optional Preview | [Availability audit](../scripts/Test-PowerShellReleaseAvailability.md), [lock updater](../scripts/Update-PowerShellCiLock.md), [host preparation](../scripts/Initialize-PowerShellHost.md), [Windows selection](../scripts/Select-PowerShellCiMatrix.md) |
-| Linux routing and result policy | [Select-GitHubCiMatrix](../scripts/Select-GitHubCiMatrix.md), [GitHubCi](../scripts/GitHubCi.md) |
+| Linux routing and result policy | [Select-GitHubCiMatrix](../scripts/Select-GitHubCiMatrix.md), [GitHubCi](../scripts/lib/GitHubCi.md) |
 | Core without the Git module | [Test-CoreIndependence](../scripts/Test-CoreIndependence.md) |
 | Mutation partition and completion | [MutationShards](../scripts/lib/MutationShards.md), [Assert-RunProfileMutationShards](../scripts/Assert-RunProfileMutationShards.md) |
 | Profiles and combined evidence | [New-CoreEvidenceBundle](../scripts/New-CoreEvidenceBundle.md), [New-CorePerformanceReport](../scripts/New-CorePerformanceReport.md) |

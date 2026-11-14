@@ -1,5 +1,5 @@
-$workspaceHelpers=Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts/Common.ps1'
-if(Test-Path -LiteralPath $workspaceHelpers){. $workspaceHelpers}
+$workspaceHelpers=Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts/lib/Common.psm1'
+if(Test-Path -LiteralPath $workspaceHelpers){Import-Module $workspaceHelpers -DisableNameChecking -ErrorAction Stop}
 . (Join-Path $PSScriptRoot 'Script.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Configuration.TestSupport.ps1')
 . (Join-Path $PSScriptRoot 'Recall.Large.Tests.ps1')
@@ -86,7 +86,7 @@ Executes independent native byte and object invariants in a companion module.
     #>
     [CmdletBinding()]param([Parameter(Mandatory)][string]$WorkspaceRoot,[scriptblock]$OnProgress,[string]$RunDirectory)
     if(!$RunDirectory){
-        . (Join-Path $WorkspaceRoot 'scripts/ReportPaths.ps1')
+        Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/ReportPaths.psm1') -DisableNameChecking -ErrorAction Stop
         $RunDirectory=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'integration') ([guid]::NewGuid().ToString('N'))
         [void][IO.Directory]::CreateDirectory($RunDirectory)
     }

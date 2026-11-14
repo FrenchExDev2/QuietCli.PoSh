@@ -1,6 +1,6 @@
 #Requires -Version 7.6
 Set-StrictMode -Version Latest
-Import-Module (Join-Path $PSScriptRoot 'DotNetReadiness.psm1') -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'DotNetReadiness.psm1')) -ErrorAction Stop -DisableNameChecking
 
 function Assert-DotNetSdkVersion {
     <# .SYNOPSIS Rejects incomplete SDK versions, wrong channels and unapproved prereleases. #>
@@ -154,12 +154,12 @@ function Update-DotNetGlobalJson {
     Selected checkout providing engine-independent process infrastructure.
     #>
     [CmdletBinding(SupportsShouldProcess,ConfirmImpact='Medium')]
-    param([ValidateNotNullOrEmpty()][string[]]$Path=@((Join-Path $PSScriptRoot '../../global.json')),
+    param([ValidateNotNullOrEmpty()][string[]]$Path=@(([IO.Path]::Combine($PSScriptRoot,'../../global.json'))),
         [string]$Version,[ValidatePattern('^[1-9][0-9]*\.[0-9]+$')][string]$Channel='11.0',
         [Alias('Prerelease','Prereleases')][switch]$Preleases,
         [ValidateSet('patch','feature','minor','major','latestPatch','latestFeature','latestMinor','latestMajor','disable')][string]$RollForward,
         [string]$SdkDirectory,[string]$DotNetPath='dotnet',[switch]$SkipInstalledCheck,[switch]$Create,[switch]$AllowDowngrade,
-        [string]$QuietCliRoot=(Join-Path $PSScriptRoot '../..'))
+        [string]$QuietCliRoot=([IO.Path]::Combine($PSScriptRoot,'../..')))
     $planOptions=@{Path=$Path;Channel=$Channel;Preleases=$Preleases;Create=$Create;AllowDowngrade=$AllowDowngrade}
     if($SdkDirectory){$planOptions.SdkDirectory=$SdkDirectory}
     if($RollForward){$planOptions.RollForward=$RollForward}
@@ -229,11 +229,11 @@ function Resolve-DotNetContainerRuntime {
     .PARAMETER ContainerRuntime
     Optional explicit docker/podman override.
     .PARAMETER WorkspaceRoot
-    Checkout owning Common.ps1 and the runtime dotenv setting.
+    Checkout owning Common.psm1 and the runtime dotenv setting.
     #>
     param([AllowEmptyString()][string]$ContainerRuntime,[string]$WorkspaceRoot)
     $WorkspaceRoot=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($WorkspaceRoot)
-    . (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
     Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -Available -WorkspaceRoot $WorkspaceRoot
 }
 
@@ -277,14 +277,14 @@ function Install-DotNetEnvironment {
     [CmdletBinding(SupportsShouldProcess,ConfirmImpact='Medium')]
     param([ValidatePattern('^[1-9][0-9]*\.[0-9]+$')][string]$Channel='11.0',[string]$Version,
         [Alias('Prerelease','Prereleases')][switch]$Preleases,
-        [string]$InstallRoot=(Join-Path $PSScriptRoot '../../.dotnet'),
-        [switch]$UpdateGlobalJson,[string[]]$GlobalJsonPath=@((Join-Path $PSScriptRoot '../../global.json')),
+        [string]$InstallRoot=([IO.Path]::Combine($PSScriptRoot,'../../.dotnet')),
+        [switch]$UpdateGlobalJson,[string[]]$GlobalJsonPath=@(([IO.Path]::Combine($PSScriptRoot,'../../global.json'))),
         [switch]$PullImages,[ValidateSet('docker','podman')][string]$ContainerRuntime,
         [ValidateNotNullOrEmpty()][ValidateSet('linux/amd64','linux/arm64','windows/amd64','windows/arm64')][string[]]$Platform=@('linux/amd64'),
         [ValidatePattern('^$|^[a-z0-9][a-z0-9.-]*$')][string]$ImageVariant='',
         [switch]$ActivateSession,[switch]$AllowDowngrade,
         [ValidateRange(30,7200)][int]$DownloadTimeoutSeconds=900,
-        [string]$QuietCliRoot=(Join-Path $PSScriptRoot '../..'))
+        [string]$QuietCliRoot=([IO.Path]::Combine($PSScriptRoot,'../..')))
     if($Version){Assert-DotNetSdkVersion -Version $Version -Channel $Channel -Preleases:$Preleases}
     $root=[IO.Path]::TrimEndingDirectorySeparator($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($InstallRoot))
     $requested=if($Version){$Version}else{"latest eligible $Channel"}
@@ -303,9 +303,9 @@ function Install-DotNetEnvironment {
     if($archiveInfo.Count -ne 1){throw "No unique SDK archive for this PowerShell host RID: $rid"}
     $archiveInfo=$archiveInfo[0]
     if($archiveInfo.hash -notmatch '^[a-fA-F0-9]{128}$'){throw 'No valid published SDK SHA-512.'}
-    $target=Join-Path $root $Version
+    $target=[IO.Path]::Combine($root,$Version)
     $hostName=if($IsWindows){'dotnet.exe'}else{'dotnet'}
-    $dotnet=Join-Path $target $hostName
+    $dotnet=[IO.Path]::Combine($target,$hostName)
     if($UpdateGlobalJson) {
         # Validate the entire batch before installation or any source modification.
         $null=@(Get-DotNetGlobalJsonPlan -Path $GlobalJsonPath -Version $Version -Channel $Channel -Preleases:$Preleases -SdkDirectory $target -AllowDowngrade:$AllowDowngrade)
@@ -316,20 +316,20 @@ function Install-DotNetEnvironment {
     }
     else {
         $null=[IO.Directory]::CreateDirectory($root)
-        $staging=Join-Path $root ('.staging-'+[guid]::NewGuid().ToString('N'))
+        $staging=[IO.Path]::Combine($root,('.staging-'+[guid]::NewGuid().ToString('N')))
         $null=[IO.Directory]::CreateDirectory($staging)
         try {
-            $archive=Join-Path $staging ('sdk'+$extension)
+            $archive=[IO.Path]::Combine($staging,('sdk'+$extension))
             Write-Progress -Activity '.NET SDK installation' -Status "Downloading SDK $Version ($rid)"
             Save-DotNetSdkArchive -Uri $archiveInfo.url -Destination $archive -TimeoutSeconds $DownloadTimeoutSeconds
             if((Get-FileHash -LiteralPath $archive -Algorithm SHA512).Hash -ine $archiveInfo.hash){throw 'SDK archive SHA-512 mismatch; nothing was extracted or promoted.'}
-            $payload=Join-Path $staging 'payload'
+            $payload=[IO.Path]::Combine($staging,'payload')
             $null=[IO.Directory]::CreateDirectory($payload)
             Write-Progress -Activity '.NET SDK installation' -Status 'Extracting verified archive and checking SDK/runtimes'
             Expand-DotNetSdkArchive -Archive $archive -Destination $payload
-            Assert-DotNetInstalledPayload -DotNetPath (Join-Path $payload $hostName) -Version $Version -RuntimeVersion $release.RuntimeVersion -QuietCliRoot $QuietCliRoot
+            Assert-DotNetInstalledPayload -DotNetPath ([IO.Path]::Combine($payload,$hostName)) -Version $Version -RuntimeVersion $release.RuntimeVersion -QuietCliRoot $QuietCliRoot
             $receipt=@{SdkVersion=$Version;RuntimeVersion=$release.RuntimeVersion;Rid=$rid;ArchiveUrl=$archiveInfo.url;Sha512=$archiveInfo.hash;InstalledUtc=[DateTimeOffset]::UtcNow.ToString('O')}
-            $null=[IO.File]::WriteAllTextAsync((Join-Path $payload 'frenchexdev-install.json'),($receipt|ConvertTo-Json).Replace("`r`n","`n")+"`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+            $null=[IO.File]::WriteAllTextAsync(([IO.Path]::Combine($payload,'frenchexdev-install.json')),($receipt|ConvertTo-Json).Replace("`r`n","`n")+"`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
             [IO.Directory]::Move($payload,$target)
             $installationState='Installed'
         }

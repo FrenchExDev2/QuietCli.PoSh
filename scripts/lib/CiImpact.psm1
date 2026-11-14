@@ -10,7 +10,7 @@ function Get-QuietCiImpact {
     #>
     [CmdletBinding()]
     param([string]$WorkspaceRoot,[AllowEmptyCollection()][string[]]$ChangedPaths)
-    Import-Module (Join-Path $PSScriptRoot 'CiCompanions.psm1') -ErrorAction Stop
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'CiCompanions.psm1')) -ErrorAction Stop -DisableNameChecking
     $configuration=Read-QuietCiCompanions $WorkspaceRoot
     $selected=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     # Shared profiling/encoding helpers, evidence renderers and unknown scripts
@@ -21,7 +21,7 @@ function Get-QuietCiImpact {
     foreach($path in $ChangedPaths){
         if(!$path -or $path.Contains([char]0) -or $path.StartsWith('/') -or $path.Split('/') -contains '..'){throw 'CiImpactPathInvalid'}
         if($path -match '\A(?:docs/|README[^/]*\.md\z|CREDITS\.md\z|icons/)'){continue}
-        if($path -cin $toolingOnly -or $path -cmatch '\Ascripts/RunProfiles/[a-z0-9][a-z0-9-]{0,63}\.profile\.ps1\z'){$tooling=$true;continue}
+        if($path -cin $toolingOnly -or $path -cmatch '\Ascripts/RunProfiles/[a-z0-9][a-z0-9-]{0,63}\.profile\.psd1\z'){$tooling=$true;continue}
         if($path.StartsWith('FrenchExDev2.QuietCli.Tooling.Tests.PoSh/',[StringComparison]::Ordinal)){$tooling=$true;continue}
         $matched=$false
         foreach($name in $configuration.Companions.Keys){

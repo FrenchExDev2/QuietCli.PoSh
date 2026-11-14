@@ -36,7 +36,7 @@ param([string[]]$Path,[string]$Version,[string]$Channel='11.0',
     [string]$SdkDirectory,[string]$DotNetPath='dotnet',[switch]$SkipInstalledCheck,
     [switch]$Create,[switch]$AllowDowngrade,[string]$QuietCliRoot)
 $ErrorActionPreference='Stop'
-Import-Module (Join-Path $PSScriptRoot 'lib/DotNetProvisioning.psm1') -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/DotNetProvisioning.psm1')) -ErrorAction Stop -DisableNameChecking
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Verify the selected SDK and update exact global.json targets')){return}
 $invocation=@{}+$PSBoundParameters
 $invocation.Confirm=$false

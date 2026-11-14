@@ -101,7 +101,7 @@ function Invoke-QuietModuleRelease {
         [Nullable[int]]$Preview,[switch]$PreviewSpecified,[switch]$NextPreview,[switch]$NoCommit,[switch]$NoPush,
         [ValidatePattern('\A[A-Za-z0-9][A-Za-z0-9._-]*\z')][string]$Remote='origin',[string]$Message,
         [Parameter(Mandatory)][scriptblock]$GitCommand,[Parameter(Mandatory)][scriptblock]$CommitCommand,[Parameter(Mandatory)][scriptblock]$PushCommand)
-    Import-Module (Join-Path $PSScriptRoot 'GalleryRelease.psm1')
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'GalleryRelease.psm1')) -DisableNameChecking
     $targets=@(Select-QuietGalleryReleaseTargets $WorkspaceRoot -Module $Module)
     if($Version -cnotmatch '\A((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))(?:-([A-Za-z][A-Za-z0-9-]*))?\z'){throw 'ReleaseVersionInvalid'}
     $base=$Matches[1];$hasSuffix=$Matches.ContainsKey(2)
@@ -136,9 +136,9 @@ function Invoke-QuietModuleRelease {
     $result=[pscustomobject]@{Revision=$revision;Branch=$branch;Remote=$Remote;RemoteChecked=$remoteChecked;Committed=$false;Created=@();Pushed=$false;BranchPushed=$false;BranchPushState='NotRequested';TagPushState='NotRequested';Releases=@($releases|Select-Object Module,Component,Version,Preview,Tag,VersionChanged);Receipt=$null}
     $description=($result.Releases|ForEach-Object {$_.Tag}) -join ', '
     if(!$PSCmdlet.ShouldProcess(($WorkspaceRoot+' @ '+$revision),('Release '+$description+'; commit='+(!$NoCommit)+'; push='+(!$NoPush)))){return $result}
-    $reportDirectory=Join-Path $WorkspaceRoot ('artifacts/releases/'+[guid]::NewGuid().ToString('N'))
+    $reportDirectory=[IO.Path]::Combine($WorkspaceRoot,('artifacts/releases/'+[guid]::NewGuid().ToString('N')))
     [void][IO.Directory]::CreateDirectory($reportDirectory)
-    $result.Receipt=Join-Path $reportDirectory 'release.json'
+    $result.Receipt=[IO.Path]::Combine($reportDirectory,'release.json')
     try{
         $changed=@($releases|Where-Object VersionChanged)
         if(!$NoCommit -and $changed.Count){

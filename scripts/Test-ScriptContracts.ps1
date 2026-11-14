@@ -8,4 +8,4 @@ Repository to inspect.
 [CmdletBinding()]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
 $ErrorActionPreference='Stop'
-& (Join-Path $PSScriptRoot Sync-ScriptContracts.ps1) -WorkspaceRoot $WorkspaceRoot
+& ([IO.Path]::Combine($PSScriptRoot,'Sync-ScriptContracts.ps1')) -WorkspaceRoot $WorkspaceRoot

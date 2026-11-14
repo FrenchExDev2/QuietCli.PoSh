@@ -58,7 +58,7 @@ this integration selects wrkflw only.
 
 1. Resolve the activated/owned native executable and verify its exact supported version before
    interpreting tool-specific output. No install, download, update or runtime fallback during use.
-2. These scripts are repository CI orchestration: use engine-independent `scripts/Ci.Process.ps1`,
+2. These scripts are repository CI orchestration: use engine-independent `scripts/lib/Ci.Process.psm1`,
    `Common.ps1`, `ReportPaths.ps1` and the existing run/monitor helpers. Do not introduce an engine
    dependency into bootstrap or CI. Agent-native analysis still uses `quiet` with explicit callbacks.
    A later reusable QuietCli business handler belongs in its own companion module with independent

@@ -14,7 +14,7 @@ Internal background entry point.
 [CmdletBinding(SupportsShouldProcess)]
 param([Parameter(Mandatory)][string]$Image,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[switch]$Worker)
 $ErrorActionPreference='Stop'
-. (Join-Path $WorkspaceRoot 'scripts/Common.ps1')
+Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Run the owned Docker GitHub entry smoke with a visible local monitor')){return}
 if(!$Worker){
     if(!$IsWindows){throw 'Use the Windows visible-monitor launcher.'}

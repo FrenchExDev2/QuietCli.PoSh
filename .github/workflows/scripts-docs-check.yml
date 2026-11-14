@@ -1,7 +1,8 @@
 name: QuietCli2 Scripts docs check
 
 # Shared registry: script documentation, workflow source receipts/graphs/index,
-# test classifications, preview contracts, resource dependencies and credits. Parser preparation is self-contained;
+# script layout (Verb-Noun, library functions, imports and IO paths), test classifications,
+# preview contracts, resource dependencies and credits. Parser preparation is self-contained;
 # the checks never regenerate documentation, build or commit; see
 # docs/README-scripts-have-docs.md for the why/how and scripts-docs-apply.yml for the companion
 # workflow that writes the fix.
@@ -17,6 +18,8 @@ on:
       - 'FrenchExDev2.QuietCli.Core.PoSh/resources/**'
       - '.github/actions/**'
       - 'build/script-shouldprocess.json'
+      - 'AGENTS.md'
+      - 'docs/README-automation-contracts.md'
       - '.github/workflows/**'
   push:
     branches: [develop]
