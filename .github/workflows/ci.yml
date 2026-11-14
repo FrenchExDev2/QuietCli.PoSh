@@ -81,12 +81,14 @@ jobs:
           WINDOWS_RESULT: ${{ needs.windows.result }}
           LINUX_RESULT: ${{ needs.linux-result.result }}
           PERFORMANCE_RESULT: ${{ needs.performance-results.result }}
-          TOOLING_RESULT: ${{ needs.tooling.result }}
-          TOOLING_MUTATION_RESULT: ${{ needs.tooling.result }}
+          TOOLING_WORKFLOW_RESULT: ${{ needs.tooling.result }}
+          TOOLING_RESULT: ${{ !inputs.run_tooling && 'skipped' || needs.tooling.outputs.functional_result }}
+          TOOLING_MUTATION_RESULT: ${{ !inputs.run_tooling && 'skipped' || needs.tooling.outputs.mutation_result }}
+          TOOLING_COMPLETION_RESULT: ${{ !inputs.run_tooling && 'skipped' || needs.tooling.outputs.completion_result }}
           REQUIRE_TOOLING: ${{ inputs.run_tooling }}
         run: |
           # Objective: Fail closed and emit a commit-bound receipt only after every required check succeeds.
-          ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -PerformanceResult $env:PERFORMANCE_RESULT -MutationResult skipped -ToolingResult $env:TOOLING_RESULT -ToolingMutationResult $env:TOOLING_MUTATION_RESULT -RequireTooling:($env:REQUIRE_TOOLING -ceq 'true') -SkipTty -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
+          ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -PerformanceResult $env:PERFORMANCE_RESULT -MutationResult skipped -ToolingWorkflowResult $env:TOOLING_WORKFLOW_RESULT -ToolingResult $env:TOOLING_RESULT -ToolingMutationResult $env:TOOLING_MUTATION_RESULT -ToolingCompletionResult $env:TOOLING_COMPLETION_RESULT -RequireTooling:($env:REQUIRE_TOOLING -ceq 'true') -SkipTty -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

@@ -15,6 +15,7 @@ $ErrorActionPreference='Stop'
 # This registry is the single extension point for a new repository check.
 $registry=@(
     @{Name='ScriptLayout';Script='Test-ScriptLayout.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
+    @{Name='PowerShellSources';Script='Test-PowerShellSources.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
     @{Name='TestCaseMetadata';Script='Test-TestCaseMetadata.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
     @{Name='ScriptsReadme';Script='Sync-ScriptsReadme.ps1';Arguments=@{ScriptsPath=([IO.Path]::Combine($WorkspaceRoot,'scripts'));DocsPath=([IO.Path]::Combine($WorkspaceRoot,'docs/scripts'))}},
     @{Name='GitHubWorkflowDocs';Script='Test-GitHubWorkflowDocs.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},

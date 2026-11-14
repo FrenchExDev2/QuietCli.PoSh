@@ -1,4 +1,25 @@
 #requires -Version 7.6
+function Read-QuietCiCompanionProgress {
+    <#
+    .SYNOPSIS
+    Counts each published terminal case receipt once without opening mutable worker status files.
+    .PARAMETER Worker
+    Owned worker directory and its per-process receipt/name caches.
+    #>
+    param([Parameter(Mandatory)]$Worker)
+    $directory=[IO.Path]::Combine($Worker.Directory,'core-cases')
+    if(Test-Path -LiteralPath $directory){
+        foreach($case in Get-ChildItem -LiteralPath $directory -Directory -ErrorAction Stop){
+            $path=[IO.Path]::Combine($case.FullName,'case-result.json')
+            if($Worker.Receipts.Contains($path) -or !(Test-Path -LiteralPath $path)){continue}
+            $receipt=Get-Content -LiteralPath $path -Encoding utf8 -Raw -ErrorAction Stop|ConvertFrom-Json -ErrorAction Stop
+            if($receipt.Name -isnot [string] -or [string]::IsNullOrWhiteSpace($receipt.Name) -or $receipt.State -cnotin @('Passed','Failed') -or $Worker.CaseStates.ContainsKey($receipt.Name)){throw ('CompanionCaseReceiptInvalid: '+$Worker.Name)}
+            $Worker.CaseStates.Add($receipt.Name,[string]$receipt.State)
+            [void]$Worker.Receipts.Add($path)
+        }
+    }
+    [pscustomobject]@{Passed=@($Worker.CaseStates.Values|Where-Object {$_ -ceq 'Passed'}).Count;Failed=@($Worker.CaseStates.Values|Where-Object {$_ -ceq 'Failed'}).Count}
+}
 function Invoke-QuietCiCompanionWorkers {
     <#
     .SYNOPSIS
@@ -20,7 +41,7 @@ function Invoke-QuietCiCompanionWorkers {
     .PARAMETER TimeoutSeconds
     Deadline for each owned process tree.
     .PARAMETER OnProgress
-    Receives cumulative child pass/failure counters from saved reports.
+    Receives counters from immutable terminal case receipts and exited-worker summaries.
     .PARAMETER WorkerPath
     Explicit worker for owned process fixtures; defaults to Invoke-TestWorker.ps1.
     .PARAMETER WorkerBudget
@@ -59,7 +80,7 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'Ci.Process.psm1')) -DisableName
                 if($SkipTty){$arguments+='-SkipTty'}
                 if($ExpectedRuntimeIdentifier){$arguments+=@('-ExpectedRuntimeIdentifier',$ExpectedRuntimeIdentifier)}
                 $process=Start-CiProcess -FilePath $runner -ArgumentList $arguments -WorkingDirectory $WorkspaceRoot -Confirm:$false
-                $active.Add([pscustomobject]@{Name=$selection.Name;Directory=$directory;Process=$process;Started=[DateTimeOffset]::UtcNow})
+                $active.Add([pscustomobject]@{Name=$selection.Name;Directory=$directory;Process=$process;Started=[DateTimeOffset]::UtcNow;Receipts=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal);CaseStates=[Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)})
             }
             foreach($worker in @($active.ToArray())){
                 if(([DateTimeOffset]::UtcNow-$worker.Started).TotalSeconds -gt $TimeoutSeconds){throw ('CompanionWorkerTimeout: '+$worker.Name)}
@@ -75,8 +96,8 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'Ci.Process.psm1')) -DisableName
                 $passed=0;$failed=0
                 foreach($entry in $completed){$passed+=$entry.Summary.State.Passed;$failed+=$entry.Summary.State.Failed}
                 foreach($worker in $active){
-                    $path=[IO.Path]::Combine($worker.Directory,'status.json')
-                    if(Test-Path -LiteralPath $path){$progress=Get-Content -LiteralPath $path -Encoding utf8 -Raw|ConvertFrom-Json;$passed+=$progress.Passed;$failed+=$progress.Failed}
+                    $progress=Read-QuietCiCompanionProgress -Worker $worker
+                    $passed+=$progress.Passed;$failed+=$progress.Failed
                 }
                 $null=& $OnProgress $passed $failed
             }

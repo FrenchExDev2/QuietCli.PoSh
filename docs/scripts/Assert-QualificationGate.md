@@ -14,12 +14,12 @@ Writes a revision-bound decision and emits `qualified_sha` only when every decla
 | WindowsResult, LinuxResult | Both exactly success. LinuxResult represents every selected container/fallback path. |
 | PerformanceResult | success for scopes declaring Core evidence; skipped otherwise. |
 | MutationResult | success for native Core qualification without SkipTty; skipped when TTY is excluded or outside scope. |
-| RequireTooling, ToolingResult, ToolingMutationResult | Both success when requested; both skipped otherwise. |
+| RequireTooling, ToolingWorkflowResult, ToolingResult, ToolingMutationResult, ToolingCompletionResult | All exactly success when requested; all skipped otherwise. Missing outputs reject qualification. |
 | Revision | Exact 40-character SHA. |
 | WorkspaceRoot | Selects the validated suite catalogue; default script checkout. |
 | ReceiptPath, OutputPath | Decision JSON and GitHub step output file. |
 
-`Suite` defaults to All. Tool-only dependencies do not enable Core performance requirements. SkipTty is recorded as Excluded, never passed. The tooling reusable workflow includes its functional/distribution/independence checks and mutation-completion dependency.
+`Suite` defaults to All. Tool-only dependencies do not enable Core performance requirements. SkipTty is recorded as Excluded, never passed. Tooling functional/distribution/independence, mutation execution and catalogue completeness have separate results. Overall reusable-workflow success is required independently, including setup and artifact uploads. The saved receipt retains all four fields even after rejection; a failed functional check cannot mislabel successful mutations.
 
 ## Dependencies and side effects
 

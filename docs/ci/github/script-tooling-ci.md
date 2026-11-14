@@ -1,6 +1,6 @@
 # tooling-ci.yml
 
-<!-- workflow-source-sha256: 95396B5FB9006A2AF84EE9E9D2EA6746DAD16B6839751C7B794CD400AAE8B767 -->
+<!-- workflow-source-sha256: 99ACCE95FB09C8A44409CAD3783B00443EF4F9AFF838ECE5E278B3E63AED7A79 -->
 
 ## Purpose
 
@@ -13,6 +13,15 @@ Mutation uses Ci.Process exclusively and performs no product build or import. Fu
 Run-profile mutation uses two independent matrix shards, each with two isolated workers and its own successful baseline. `QUIETCLI_MUTATION_SHARD_INDEX`/`QUIETCLI_MUTATION_SHARD_COUNT` configure only the mutation test launcher; local defaults still execute the entire catalogue. Each shard is partial evidence. A dependent completion job downloads only this SHA/attempt's artifacts and requires the exact union of the source-controlled catalogue, matching input hashes and fixed qualification settings. A missing, duplicate, stale, invalid or surviving result blocks the reusable workflow. Sharding changes scheduling, not the catalogue, seeds, iterations or acceptance criteria.
 
 ## Validation and limits
+
+An always-running result job observes core-independence, tooling, mutation shards
+and mutation-complete. It exports functional_result, mutation_result and
+completion_result through workflow_call. Functional results aggregate independence
+and tooling; mutation execution and exact catalogue verification remain distinct.
+The job writes only closed result strings through Write-ToolingResults.ps1.
+Unknown or absent prerequisite fields become failure. A missing result job/output
+also blocks the caller, which separately requires overall workflow success.
+Cancellation may prevent hosted output delivery; missing evidence never qualifies.
 
 Failures in any job fail this reusable workflow and its calling gate. Artifact uploads require started test campaigns; skipped run-profile steps cannot create empty-artifact failures. Local partial tests do not establish the complete hosted catalogue or a measured speedup. This workflow never publishes packages.
 
@@ -59,10 +68,15 @@ flowchart TD
     event["Triggers: workflow_call"]
     job_core_independence["core-independence"]
     job_mutation_complete["mutation-complete"]
+    job_results["results"]
     job_run_profiles_mutation["run-profiles-mutation"]
     job_tooling["tooling"]
     event --> job_core_independence
     job_run_profiles_mutation --> job_mutation_complete
+    job_core_independence --> job_results
+    job_tooling --> job_results
+    job_run_profiles_mutation --> job_results
+    job_mutation_complete --> job_results
     event --> job_run_profiles_mutation
     event --> job_tooling
 ~~~
@@ -71,6 +85,7 @@ flowchart TD
 | --- | --- | --- | --- | --- |
 | core-independence | runner windows-latest |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Test-CoreIndependence.ps1 |
 | mutation-complete | runner ubuntu-latest | run-profiles-mutation | ${{ always() && !cancelled() }} | ./scripts/Assert-RunProfileMutationShards.ps1 |
+| results | runner ubuntu-latest | core-independence, tooling, run-profiles-mutation, mutation-complete | ${{ always() }} | ./scripts/Write-ToolingResults.ps1 |
 | run-profiles-mutation | runner windows-latest |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1 |
 | tooling | runner windows-latest |  | default success condition | ./scripts/Build-Workspace.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/Test-CoreIndependence.ps1 |
 

@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: BF7BC5CB837FC1DD335077C5787AA87614DD8730D17F42312D69AE87DBD1DED3 -->
+<!-- workflow-source-sha256: 2EB61F76AC575B654B863307FBFC6151BF2E9855A5B6572F2AF9E306B6CA4BF0 -->
 
 ## Purpose
 
@@ -9,6 +9,13 @@ One stable pull-request/develop entry point for discovered companions. The compl
 Develop reuses successful merged-PR evidence only when its bounded artifact, authoritative workflow run/attempt and exact Git tree match. Legacy/missing/expired/mismatched receipts fall back to complete All qualification. Reuse still verifies the merged source lock, Core integration and native image caches. No module publication occurs on develop.
 
 ## Validation and limits
+
+An unconditional source-checks job runs the shared PowerShellSources check alongside
+plan, without importing product modules or starting companion tests. It does not add
+a dependency before planning or matrix execution. The final required status explicitly
+requires source-checks success, including documentation-only plans; skipped, cancelled,
+missing and failed source checks cannot qualify the PR. Local commits use the same
+function through Invoke-WorkspaceChecks, including prepared-index snapshots.
 
 The unconditional final check rejects failed/cancelled planning and required campaigns, including incorrectly skipped product/tooling jobs. Configure required checks, up-to-date branches and direct-push restrictions separately in repository rules. No repository settings are changed by this workflow. Publication requires its own exact revision/current-run evidence and explicit module tags.
 
@@ -41,8 +48,10 @@ flowchart TD
     job_develop_images["develop-images"]
     job_develop_smoke["develop-smoke"]
     job_plan["plan"]
+    job_source_checks["source-checks"]
     job_tooling_only["tooling-only"]
     job_plan --> job_ci_status
+    job_source_checks --> job_ci_status
     job_companions --> job_ci_status
     job_tooling_only --> job_ci_status
     job_develop_smoke --> job_ci_status
@@ -51,16 +60,18 @@ flowchart TD
     job_plan --> job_develop_images
     job_plan --> job_develop_smoke
     event --> job_plan
+    event --> job_source_checks
     job_plan --> job_tooling_only
 ~~~
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| ci-status | runner ubuntu-latest | plan, companions, tooling-only, develop-smoke, develop-images | ${{ always() }} |  |
+| ci-status | runner ubuntu-latest | plan, source-checks, companions, tooling-only, develop-smoke, develop-images | ${{ always() }} |  |
 | companions | reuses ./.github/workflows/ci.yml | plan | needs.plan.outputs.run_products == 'true' |  |
 | develop-images | runner ${{ matrix.runner }} | plan | github.event_name == 'push' && needs.plan.outputs.run_products == 'false' && github.repository == 'FrenchExDev2/QuietCli.PoSh' | ./scripts/New-CiSuiteImage.ps1 |
 | develop-smoke | runner windows-latest | plan | github.event_name == 'push' && needs.plan.outputs.run_products == 'false' | ./scripts/Build-Workspace.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1 |
 | plan | runner ubuntu-latest |  | default success condition | ./scripts/New-CiImpactPlan.ps1 |
+| source-checks | runner ubuntu-latest |  | default success condition | ./scripts/Invoke-WorkspaceChecks.ps1 |
 | tooling-only | reuses ./.github/workflows/tooling-ci.yml | plan | needs.plan.outputs.run_products == 'false' && needs.plan.outputs.run_tooling == 'true' |  |
 
 <!-- workflow-generated:end -->

@@ -26,7 +26,12 @@ function Invoke-QuietToolingTests {
         $cases['CI scales by affected suites with verified merge reuse and intermediate caches']={Test-QuietCiScalability -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['test case classifications are complete explicit and fail closed before filtering']={Test-QuietCaseMetadata -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['test execution declarations preserve barriers and bounded isolated workers']={Test-QuietCaseScheduling -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
-        $cases['CI optimization preserves Core prerequisites, parallel isolation and qualified checkpoints']={Test-QuietCiOptimization -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+        $cases['CI optimization preserves Core prerequisites, parallel isolation and qualified checkpoints']={
+            . ([IO.Path]::Combine($toolingRoot,'CompanionReports.Tests.ps1'))
+            $receipts=Test-QuietCompanionReportAggregation -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+            Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'companion-reports-campaign.json')) $receipts
+            Test-QuietCiOptimization -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+        }
         $cases['CI failure regressions reject empty Docker parents and skipped profiling uploads']={Test-QuietCiFailureRegression -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
         $cases['unit byte-count parsing validates sizes without filesystem or process effects']={Test-QuietByteCountParsing}
         $cases['workspace project discovery keeps suite modes and package publication policy separate']={Test-QuietWorkspaceProjects -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
@@ -188,6 +193,9 @@ function Invoke-QuietToolingTests {
         Assert-QuietEqual (Test-Path (Join-Path $directory 'inputs.json')) $false
     }
         $cases['release gate rejects failed skipped cancelled or incomplete required jobs']={
+        . ([IO.Path]::Combine($toolingRoot,'ToolingResults.Tests.ps1'))
+        $result=Test-QuietToolingResults -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+        Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'tooling-results-campaign.json')) $result
         $directory=Join-Path $WorkspaceRoot ('artifacts/gate-tests/'+[guid]::NewGuid().ToString('N'))
         [void][IO.Directory]::CreateDirectory($directory)
         $script=Join-Path $WorkspaceRoot 'scripts/Assert-QualificationGate.ps1'
@@ -367,6 +375,9 @@ function Invoke-QuietToolingTests {
         }finally{[Globalization.CultureInfo]::CurrentCulture=$culture}
     }
         $cases['PowerShell functions have readable help and sources parse without errors']={
+        . ([IO.Path]::Combine($toolingRoot,'PowerShellSources.Tests.ps1'))
+        $policy=Test-QuietPowerShellSourcePolicy -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+        Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'powershell-sources-campaign.json')) $policy
         Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
         $paths=@(@(Get-QuietSourceFiles $WorkspaceRoot)|ForEach-Object {Join-Path $WorkspaceRoot $_.Path})+@(Join-Path $WorkspaceRoot 'repositories.lock.json')
         foreach($path in $paths){
@@ -384,18 +395,7 @@ function Invoke-QuietToolingTests {
             $written=[IO.File]::ReadAllTextAsync($jsonPath,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
             if($written.Contains("`r") -or ($written|ConvertFrom-Json).Value -cne $value){throw 'JsonWriterLineEndingsOrValueChanged: seed 72055'}
         }
-        $directories=@((Get-QuietWorkspaceProjects $WorkspaceRoot).Path)+@('scripts')
-        foreach($directory in $directories){
-            foreach($file in Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot $directory) -Recurse -File -Include *.ps1,*.psm1 | Where-Object FullName -NotMatch '[\\/](bin|obj|lib|artifacts|\.git)[\\/]'){
-                $tokens=$null;$errors=$null
-                $ast=[Management.Automation.Language.Parser]::ParseFile($file.FullName,[ref]$tokens,[ref]$errors)
-                if($errors.Count){throw ('PowerShell syntax: '+$file.Name+': '+$errors[0].Message)}
-                foreach($function in $ast.FindAll({param($n)$n -is [Management.Automation.Language.FunctionDefinitionAst]},$true)){
-                    $help=$function.GetHelpContent()
-                    if(!$help -or [string]::IsNullOrWhiteSpace($help.Synopsis)){throw ('Unreadable function help: '+$file.Name+' / '+$function.Name)}
-                }
-            }
-        }
+        $null=& ([IO.Path]::Combine($WorkspaceRoot,'scripts/Test-PowerShellSources.ps1')) -WorkspaceRoot $WorkspaceRoot
     }
         $cases['packaged modules verify and import outside source checkouts']={
         $packageRoot=Join-Path $WorkspaceRoot ('artifacts/package-tests/'+[guid]::NewGuid().ToString('N'))

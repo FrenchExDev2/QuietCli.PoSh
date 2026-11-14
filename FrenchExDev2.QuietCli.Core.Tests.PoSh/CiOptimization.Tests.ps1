@@ -247,13 +247,31 @@ while(!(Test-Path (Join-Path $parent "$other/started.json"))){
     [void][Threading.Tasks.Task]::Delay(25).GetAwaiter().GetResult()
 }
 if(Test-Path (Join-Path (Split-Path $parent -Parent) fail.txt)){exit 3}
-Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Success';Passed=1;Failed=0};Suites=@(@{Name=$Suite;PID=$PID;MaxConcurrency=$MaxConcurrency;SkipTty=[bool]$SkipTty;Rid=$ExpectedRuntimeIdentifier});Started=$started}
+$status=[IO.File]::Open(([IO.Path]::Combine($RunDirectory,'status.json')),[IO.FileMode]::Create,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+try{
+    # A supervisor that opens mutable status must fail deterministically under this lease.
+    Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'core-cases/fixture/case-result.json')) @{Name='fixture';State='Passed'}
+    $aggregateRoot=Split-Path $parent -Parent
+    if(Test-Path ([IO.Path]::Combine($aggregateRoot,'expect-progress.txt'))){
+        $deadline=[DateTimeOffset]::UtcNow.AddSeconds(15)
+        while(!(Test-Path ([IO.Path]::Combine($aggregateRoot,'observed-progress.txt')))){
+            if([DateTimeOffset]::UtcNow -gt $deadline){throw 'ParentDidNotObserveCompletedCaseReports'}
+            [void][Threading.Tasks.Task]::Delay(25).GetAwaiter().GetResult()
+        }
+    }
+    Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Success';Passed=1;Failed=0};Suites=@(@{Name=$Suite;PID=$PID;MaxConcurrency=$MaxConcurrency;SkipTty=[bool]$SkipTty;Rid=$ExpectedRuntimeIdentifier});Started=$started}
+}finally{$status.Dispose()}
 '@
     [IO.File]::WriteAllText($worker,$workerText,[Text.UTF8Encoding]::new($false))
     $selections=@([pscustomobject]@{Name='Git'},[pscustomobject]@{Name='Vagrant'})
     $core=[pscustomobject]@{Failed=0;Partial=$false;Incomplete=$false}
     $runs=Join-Path $fixture parallel
-    $children=@(Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory $runs -CoreSummary $core -Selections $selections -WorkerPath $worker -MaxConcurrency 2 -SkipTty -ExpectedRuntimeIdentifier fixture-rid)
+    [void][IO.Directory]::CreateDirectory($runs)
+    [IO.File]::WriteAllText(([IO.Path]::Combine($runs,'expect-progress.txt')),'owned fixture',[Text.UTF8Encoding]::new($false))
+    $progress=@{Samples=0;Observed=[IO.Path]::Combine($runs,'observed-progress.txt')}
+    $observer={param($passed,$failed) $progress.Samples++;if($failed -ne 0 -or $passed -lt 0 -or $passed -gt 2){throw 'CompanionProgressCountersInvalid'};if($passed -eq 2){[IO.File]::WriteAllText($progress.Observed,'both immutable case reports observed',[Text.UTF8Encoding]::new($false))}}.GetNewClosure()
+    $children=@(Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory $runs -CoreSummary $core -Selections $selections -WorkerPath $worker -MaxConcurrency 2 -SkipTty -ExpectedRuntimeIdentifier fixture-rid -OnProgress $observer)
+    if($progress.Samples -lt 2 -or !(Test-Path -LiteralPath $progress.Observed)){throw 'CompanionProgressWasNotObserved'}
     if($children.Count -ne 2 -or @($children.Suites.PID|Select-Object -Unique).Count -ne 2 -or @($children.Suites|Where-Object {$_.PID -eq $PID -or $_.MaxConcurrency -ne 1 -or !$_.SkipTty -or $_.Rid -cne 'fixture-rid'}).Count){throw 'CompanionProcessIsolationChanged'}
     $budgeted=@(Invoke-QuietCiCompanionWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory (Join-Path $fixture budgeted) -CoreSummary $core -Selections $selections -WorkerPath $worker -MaxConcurrency 2 -WorkerBudget 4)
     if($budgeted.Count -ne 2 -or @($budgeted.Suites|Where-Object MaxConcurrency -NE 2).Count -or ($budgeted.Suites.MaxConcurrency|Measure-Object -Sum).Sum -gt 4){throw 'CompanionSharedBudgetNotDistributed'}
@@ -483,5 +501,5 @@ Write-WorkspaceJson (Join-Path $RunDirectory summary.json) @{State=@{State='Succ
         $packages=@($declaration.Containerfile.Stages|Where-Object Name -CEQ ci)[0].Packages.Split(' ')
         if('tar' -cnotin $packages -or 'zstd' -cnotin $packages){throw 'ContainerCacheArchiveToolsMissing'}
     }
-    Write-WorkspaceJson (Join-Path $fixture campaign.json) @{QualificationRejections=$rejections;RealParallelProcesses=2;CorePrerequisiteRejections=3;ChildFailureRejected=$true;HostCacheHits=2;DamagedCacheRejected=$true;CacheOnlyCases=$cacheChecks;WarmFinalImageCases=2;MutantsKilled=2;NetworkRequests=0;ExternalPublication=$false}
+    Write-WorkspaceJson (Join-Path $fixture campaign.json) @{QualificationRejections=$rejections;RealParallelProcesses=2;MutableStatusesExclusivelyLocked=$true;ImmutableCaseReportsObserved=$true;ProgressObservations=$progress.Samples;CorePrerequisiteRejections=3;ChildFailureRejected=$true;HostCacheHits=2;DamagedCacheRejected=$true;CacheOnlyCases=$cacheChecks;WarmFinalImageCases=2;MutantsKilled=2;NetworkRequests=0;ExternalPublication=$false}
 }

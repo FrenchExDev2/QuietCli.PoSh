@@ -31,6 +31,12 @@ The read-only observer list in scripts/ScriptReview.psm1 includes Watch-DotNetTe
 
 `Test-TestCaseMetadata` is also explicitly read-only. Its checks must execute under inherited WhatIf, including commit previews. The generator must not insert a whole-operation guard that silently skips validation; `TestCaseMetadata.Tests.ps1` verifies the review classification and rejects damaged catalogues in normal and preview contexts. Its hash-bound policy exception is reviewed separately from this effect inventory.
 
+`Test-PowerShellSources` has the same read-only boundary. Its shared syntax/help
+validation must run against the prepared index even during commit WhatIf. The
+PowerShellSources regression verifies this classification and proves that an
+unstaged repair cannot conceal a staged defect. The generator never inserts an
+operation guard into that observer; its hash-bound exception remains separate.
+
 <!-- script-contract:begin -->
 ## Execution contract
 

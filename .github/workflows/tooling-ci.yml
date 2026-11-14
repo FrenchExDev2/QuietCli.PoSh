@@ -1,9 +1,39 @@
 name: QuietCli repository tooling
 on:
   workflow_call:
+    outputs:
+      functional_result:
+        description: Aggregate Core independence and functional tooling job result
+        value: ${{ jobs.results.outputs.functional_result }}
+      mutation_result:
+        description: Mutation shard execution result
+        value: ${{ jobs.results.outputs.mutation_result }}
+      completion_result:
+        description: Exact mutation catalogue completeness result
+        value: ${{ jobs.results.outputs.completion_result }}
 permissions:
   contents: read
 jobs:
+  results:
+    name: Report separate tooling qualification results
+    needs: [core-independence, tooling, run-profiles-mutation, mutation-complete]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      functional_result: ${{ steps.results.outputs.functional_result }}
+      mutation_result: ${{ steps.results.outputs.mutation_result }}
+      completion_result: ${{ steps.results.outputs.completion_result }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Export authoritative prerequisite results even after failure
+        id: results
+        shell: pwsh
+        env:
+          TOOLING_NEEDS: ${{ toJson(needs) }}
+        run: ./scripts/Write-ToolingResults.ps1 -NeedsJson $env:TOOLING_NEEDS -OutputPath $env:GITHUB_OUTPUT
   core-independence:
     name: Core builds and qualifies without the Git companion
     runs-on: windows-latest

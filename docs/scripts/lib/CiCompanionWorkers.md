@@ -20,6 +20,26 @@ Creates `companions/<Suite>` reports and starts owned processes with inherited o
 
 ## Findings
 
+Each child is the only writer in its own directory. The parent never opens active
+workers' mutable status.json files. It reads the independently published terminal
+core-cases/<case>/case-result.json receipts once and caches their Passed/Failed states.
+These receipts are written after each case process exits and remain immutable. When
+the suite process exits, its final summary replaces its partial contribution to the
+aggregate; the two are never added together. Ordered cases without intermediate
+receipts contribute when their suite completes. Heartbeats continue between completions.
+
+The supervisor reads terminal summary.json only after observing the worker exit.
+Its existing exit-code/state/suite-count gates remain mandatory. Malformed, duplicate
+or invalid case receipts remain explicit errors; completed-case progress is not a
+qualification waiver. The parent writes only its own aggregate, never a child report.
+
+CompanionReports.Tests.ps1 checks 32 Unicode receipts, repeated polls without recounting,
+four malformed/duplicate cases and three targeted mutants. The real two-worker fixture
+holds both mutable status files exclusively locked while publishing terminal case
+receipts, then waits for the parent to observe both before publishing final summaries.
+The old active-status reader fails this Windows reproducer; aggregation requires no
+new report protocol or changes to the shared JSON writer and visible monitor.
+
 The Core prerequisite is checked before creating child directories. Each actual child exit code and saved terminal summary must succeed. Reports are returned in declaration order. Real-process regressions require both sibling start markers, distinct PIDs, preserved RID/TTY arguments, rejection of failed/partial Core, failed child rejection and no-effect preview.
 
 Parallelism is within one matrix target, not separate GitHub jobs or agents. This preserves one build and one image download per target. A shared runner remains unsuitable for controlled concurrent performance comparisons; Core's samples finish before companion fan-out.
@@ -31,7 +51,7 @@ Suitable for shared-image companion validation. Hosted Linux and ARM64 qualifica
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Runs companion suites in bounded isolated processes after the caller has accepted Core.
+Purpose: Counts each published terminal case receipt once without opening mutable worker status files.
 
 Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 
