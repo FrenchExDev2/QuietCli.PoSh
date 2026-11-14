@@ -13,6 +13,20 @@ function Test-QuietGitHubReleaseLifecycle {
     [void][IO.Directory]::CreateDirectory($directory)
     $properties=0;$malformed=0
     function Invoke-ReleaseFixture {
+        <#
+        .SYNOPSIS
+        Checks release lifecycle behavior against an offline transport fixture.
+        .PARAMETER Text
+        Production or mutated release helper source evaluated in an isolated module.
+        .PARAMETER Scenario
+        Transport response scenario and its expected safety outcome.
+        .PARAMETER Version
+        Module version used to construct the tag and prerelease expectations.
+        .PARAMETER Length
+        Byte length of the generated package asset.
+        .PARAMETER Preview
+        Verifies that WhatIf makes no transport request.
+        #>
         param([string]$Text,[string]$Scenario='success',[string]$Version='0.2.0-preview1',[int]$Length=9,[switch]$Preview)
         $asset=Join-Path $directory ('module '+$Length+'.nupkg')
         [IO.File]::WriteAllBytes($asset,[byte[]]::new($Length))
@@ -153,6 +167,12 @@ function Test-QuietGitHubReleaseLifecycle {
     $run=($steps|ForEach-Object {$_['run']}) -join "`n"
     if($run -match 'Build-Workspace|Publish-QuietGallery' -or $run -notmatch 'Publish-QuietGitHubRelease.ps1'){throw 'GitHubReleaseRebuiltOrRepublishedGallery'}
     function Assert-ReleaseWorkflowCondition {
+        <#
+        .SYNOPSIS
+        Verifies that only the successful release batch leader may publish.
+        .PARAMETER Condition
+        Restricted workflow expression checked across release results and leader flags.
+        #>
         param([string]$Condition)
         if($Condition -cnotmatch "\A(?:needs\.release\.result|needs\.plan\.outputs\.is_leader|'success'|'true'|\s|==|&&)+\z"){throw 'GitHubReleaseConditionInvalid'}
         $expression=$Condition.Replace('needs.release.result','$result').Replace('needs.plan.outputs.is_leader','$leader').Replace('==',' -ceq ').Replace('&&',' -and ')
