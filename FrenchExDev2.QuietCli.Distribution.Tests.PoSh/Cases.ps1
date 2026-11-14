@@ -57,7 +57,8 @@ function Test-QuietCoreGalleryDistribution {
         Assert-QuietEqual $prepared.Version $sourceIdentity.Version
         & {
             param($scripts,$packages,$expectedVersion)
-            . (Join-Path $scripts Common.ps1);Import-Module (Join-Path $scripts lib/Gallery.psm1)
+            Import-Module ([IO.Path]::Combine($scripts,'lib','Common.psm1')) -DisableNameChecking -ErrorAction Stop
+            Import-Module ([IO.Path]::Combine($scripts,'lib','Gallery.psm1')) -DisableNameChecking -ErrorAction Stop
             foreach($wrong in @('0.0.0-invalid','999.999.999-invalid','0.0.0')|Where-Object {$_ -cne $expectedVersion}){
                 $rejected=$false
                 try{$null=Test-QuietGalleryPackageSet $packages -Version $wrong}catch{$rejected=$_.Exception.Message -eq 'GalleryReleaseVersionMismatch'}
