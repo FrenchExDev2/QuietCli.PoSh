@@ -29,9 +29,10 @@ $WorkspaceRoot=[IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($W
 $sourceRoot=Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent
 foreach($name in @('Core','Git')){
     $manifest=[IO.Path]::Combine($sourceRoot,"FrenchExDev2.QuietCli.$name.PoSh/FrenchExDev2.QuietCli.$name.PoSh.psd1")
-    $expected=[IO.Path]::ChangeExtension($manifest,'.psm1')
+    $expected=[IO.Path]::GetFullPath([IO.Path]::ChangeExtension($manifest,'.psm1'))
     $loaded=Get-Module "FrenchExDev2.QuietCli.$name.PoSh"
-    if(!$loaded -or $loaded.Path -cne $expected){Import-Module $manifest -ErrorAction Stop -DisableNameChecking}
+    $scope=if($name -eq 'Core'){'Global'}else{'Local'}
+    if(!$loaded -or $loaded.Path -cne $expected){Import-Module $manifest -Scope $scope -ErrorAction Stop -DisableNameChecking}
     if((Get-Module "FrenchExDev2.QuietCli.$name.PoSh").Path -cne $expected){throw 'TagRemovalModulePathMismatch'}
 }
 function Invoke-QuietTagCommand {

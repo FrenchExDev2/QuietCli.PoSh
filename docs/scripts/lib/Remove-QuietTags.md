@@ -22,6 +22,8 @@ omitting it generates a unique receipt in the system temporary directory.
 ## Dependencies and side effects
 
 Uses this checkout's built Core/Git modules and the `quiet` facade for every native call.
+Module identity checks normalize absolute paths before comparing directory separators.
+Core exports are imported into process-global scope so Git's required-module registration can resolve them.
 Git reads local refs; authenticated GitHub CLI enumerates and deletes remote refs through
 the GitHub REST API. No release, branch, package or source commit is deleted.
 WhatIf returns before imports, native calls, network access or writes. PlanOnly reads
