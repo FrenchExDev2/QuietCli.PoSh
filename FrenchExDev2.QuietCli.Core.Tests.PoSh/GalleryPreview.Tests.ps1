@@ -55,6 +55,10 @@ function Invoke-QuietGalleryPreviewTests {
     $previewRoot=Join-Path $RunDirectory 'gallery-preview';[void][IO.Directory]::CreateDirectory($previewRoot)
     $cases=[ordered]@{};$results=[Collections.Generic.List[object]]::new();$mutants=[Collections.Generic.List[object]]::new()
     $identityEvidence=[Collections.Generic.List[object]]::new()
+    $cases['GitHub releases publish exact Gallery assets after tag-bound draft verification']={
+        . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/GitHubRelease.Tests.ps1')
+        Test-QuietGitHubReleaseLifecycle -WorkspaceRoot $WorkspaceRoot -RunDirectory $previewRoot
+    }
     $cases['public QuietCli staging preserves sources and rejects executable manifests']={
         . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/GalleryIdentity.Tests.ps1')
         $identity=Invoke-QuietGalleryIdentityTests -RunDirectory $previewRoot -Mutation:$Mutation

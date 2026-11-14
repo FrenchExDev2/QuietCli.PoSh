@@ -1,6 +1,6 @@
 # publish-psgallery.yml
 
-<!-- workflow-source-sha256: 97D3F9EDA59B647228C15474FF247BCD03EE30EF4AB67A3A5B95D5055B1BEAD5 -->
+<!-- workflow-source-sha256: A0782FBA8418711C4AA0F487864240A804AA88EAF3B85040AEA7753DC20DB336 -->
 
 ## Purpose
 
@@ -55,6 +55,10 @@ Qualification requests All with collect_performance=true, or validates a downloa
 The Windows packaging job follows global.json, builds verified Release ReadyToRun distributions, tests the exact packaging build and calls New-QuietGalleryPackage with the selected module. Package artifacts include module/version/SHA/attempt in their identity. Git includes its parser outputs and Core dependency; Core includes its RID/CLR payloads. Generated run/attempt preview artifacts remain Core-only and cannot publish.
 
 The publish job requires original-repository push/tag context, explicit publication intent, no generated-preview mode and successful exact-revision qualification. It downloads the exact artifact, validates module/version/GUID/dependencies/binaries, re-resolves the tag against its owning source manifest and requires tag module/version to match the prepared plan. Only then does Publish-QuietGallery publish through the psgallery environment. Pull requests, branches, forks and manual dispatch cannot publish. No current develop HEAD lookup or automatic retry occurs.
+
+The reusable workflow exports the exact package artifact name and the publication receipt artifact name from the job/attempt that actually published Gallery packages. The tag-only caller uses these outputs for its separate github-release job; retrying that job alone does not substitute a newer attempt number for an existing artifact. This reusable workflow keeps contents read-only, including for manual artifact callers. The tag caller's GitHub job alone requests contents:write. No build or Gallery publication is repeated.
+
+Existing releases/drafts are refused without replacement. Interrupted uploads leave a draft and fail the GitHub job; Gallery remains published. Inspect existing remote state before retrying only the GitHub job. Partial multi-module GitHub success has no rollback. Offline lifecycle/property/malformed-response/mutation fixtures do not establish real transport or hosted artifact layout.
 
 ## Validation and limits
 

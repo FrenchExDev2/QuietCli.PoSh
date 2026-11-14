@@ -10,6 +10,8 @@ function Test-QuietCiScalability {
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     . (Join-Path $PSScriptRoot 'CiCache.Tests.ps1')
     Test-QuietNuGetCacheLifecycle -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+    . (Join-Path $PSScriptRoot 'GitHubRelease.Tests.ps1')
+    Test-QuietGitHubReleaseLifecycle -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
     . (Join-Path $PSScriptRoot 'MutationShards.Tests.ps1')
     Test-QuietMutationShardContracts -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImpact.psm1')

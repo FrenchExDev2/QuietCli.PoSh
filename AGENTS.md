@@ -127,6 +127,7 @@ Native mutation containers have a 1 GiB cgroup memory limit. On musl the fuzzer 
 <!-- commit-checkpoints:begin -->
 ## Commit checkpoints
 
+- Never edit or commit on `develop`, or push directly to it. Create a `fix/*` or `feature/*` branch from the observed `develop` revision before changing sources. Deliver through a pull request and the required GitHub CI, including for workflow/CI changes; never bypass checks or use CI-skip commit directives. Remote `develop` protection must require pull requests and the successful `QuietCli required CI` check, including for administrators.
 - Create commits at validated, coherent checkpoints for each module or change. Account explicitly for every created, modified or deleted file in that change; do not accumulate unrelated completed work without committing it. One commit per file is not required.
 - Commit from this monorepo root. Cross-module changes belong together when splitting them would break dependency contracts, builds or tests. Keep unrelated module changes separate and order shared foundations before their consumers.
 - After completing and validating requested work, make its checkpoint commit without waiting for another reminder. Refresh the workspace lock before committing, review the exact staged paths and diff, and use a message describing the resulting behavior and relevant validation. Build/test execution alone does not authorize unrelated commits; never include secrets, generated artifacts or another task's unfinished work.

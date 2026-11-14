@@ -30,6 +30,12 @@ on:
       version:
         description: Exact prepared package identity
         value: ${{ jobs.package.outputs.version }}
+      artifact_name:
+        description: Exact verified Gallery package artifact for this run and attempt
+        value: ${{ jobs.package.outputs.artifact_name }}
+      publication_artifact_name:
+        description: Publication receipts from the attempt that actually published Gallery packages
+        value: ${{ jobs.publish.outputs.artifact_name }}
   workflow_dispatch:
     inputs:
       module:
@@ -192,6 +198,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 10
     environment: psgallery
+    outputs:
+      artifact_name: quietcli2-publication-${{ needs.package.outputs.version }}-attempt${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
