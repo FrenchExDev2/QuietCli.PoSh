@@ -66,7 +66,7 @@ function Get-QuietWorkflowDocumentation {
                 $execution+='; container '+$container
             }
             $runText=@($job['steps']|Where-Object {$_}|ForEach-Object {$_['run']}) -join "`n"
-            $scripts=@([regex]::Matches($runText,'(?:\./)?scripts/[A-Za-z0-9_./-]+\.ps(?:m)?1')|ForEach-Object Value|Sort-Object -Unique)
+            $scripts=@([regex]::Matches($runText,'(?:\./)?scripts/[A-Za-z0-9_./-]+\.ps(?:m)?1')|ForEach-Object {$_.Value}|Sort-Object -Unique)
             $cells=@($name,$execution,(@($job['needs']) -join ', '),$(if($job['if']){$job['if']}else{'default success condition'}),($scripts -join ', '))
             $cells=@($cells|ForEach-Object {([string]$_).Replace('|','&#124;').Replace("`r",'').Replace("`n",'<br>')})
             $lines.Add('| '+($cells -join ' | ')+' |')

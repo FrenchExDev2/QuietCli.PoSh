@@ -57,7 +57,7 @@ function Assert-QuietMutationShard {
     if($Report.ShardIndex -ne $Index -or $Report.ShardCount -ne $Count -or $Report.TotalCatalogue -ne $Catalogue.Count -or $Report.SourceSHA256 -cne $SourceSHA256 -or $Report.Revision -cne $Revision -or $Report.BaselinePassed -isnot [bool] -or !$Report.BaselinePassed -or $Report.Seed -ne 61207 -or $Report.Iterations -ne 120 -or $Report.Partial -isnot [bool] -or $Report.Partial -ne ($Count -gt 1)){throw 'MutationShardIdentityMismatch'}
     if($Report.Results.Count -ne $expected.Count){throw 'MutationShardCoverageIncomplete'}
     $names=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    $expectedNames=@($expected|ForEach-Object Name)
+    $expectedNames=@($expected|ForEach-Object {$_.Name})
     foreach($result in $Report.Results){
         if($result.Outcome -cne 'Killed' -or $result.Name -cnotin $expectedNames -or !$names.Add($result.Name)){throw 'MutationShardOutcomeOrCoverageInvalid'}
     }

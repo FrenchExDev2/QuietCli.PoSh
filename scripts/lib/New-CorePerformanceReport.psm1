@@ -92,7 +92,7 @@ foreach($manifestFile in $manifests){
             $row.ControlledStates=$controlled.Scenarios.Count
             foreach($scenario in $controlled.Scenarios){
                 $warm=@($scenario.Human.Samples|Where-Object Kind -EQ WarmEngine)
-                $cells=@($label,$scenario.Name,(Format-ReportNumber $scenario.Human.Samples[0].InvocationMs),(Format-ReportNumber (Get-ReportMedian @($warm|ForEach-Object InvocationMs))),(Format-ReportNumber (Get-ReportMedian @($warm|ForEach-Object ReferenceMs))),(Format-ReportNumber (Get-ReportMedian @($warm|ForEach-Object CallbackMs))),$scenario.Samples.Count)
+                $cells=@($label,$scenario.Name,(Format-ReportNumber $scenario.Human.Samples[0].InvocationMs),(Format-ReportNumber (Get-ReportMedian @($warm|ForEach-Object {$_.InvocationMs}))),(Format-ReportNumber (Get-ReportMedian @($warm|ForEach-Object {$_.ReferenceMs}))),(Format-ReportNumber (Get-ReportMedian @($warm|ForEach-Object {$_.CallbackMs}))),$scenario.Samples.Count)
                 $scenarioLines.Add('| '+(($cells|ForEach-Object {ConvertTo-ReportCell $_}) -join ' | ')+' |')
             }
         }

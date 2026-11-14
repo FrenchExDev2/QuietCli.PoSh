@@ -178,7 +178,7 @@ function Sync-EditorExtensionManifest {
         if(!$selected.ContainsKey($record.Id)){$selected[$record.Id]=$record}
     }
     $installed=@()
-    if(!$Preview){$query=Invoke-DevelopmentEditorCli $Cli @('--list-extensions','--show-versions');$installed=@(ConvertFrom-EditorExtensionList $query.Lines|ForEach-Object Id)}
+    if(!$Preview){$query=Invoke-DevelopmentEditorCli $Cli @('--list-extensions','--show-versions');$installed=@(ConvertFrom-EditorExtensionList $query.Lines|ForEach-Object {$_.Id})}
     $results=[Collections.Generic.List[object]]::new()
     foreach($entry in $selected.Values|Sort-Object Id){
         $action=if($Update){'EnsureLatest'}else{'InstallMissing'}

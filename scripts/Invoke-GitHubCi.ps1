@@ -52,7 +52,7 @@ if($Suite -ceq 'RunProfilesMutation' -and ($env:QUIETCLI_MUTATION_SHARD_INDEX -o
     if(![int]::TryParse($env:QUIETCLI_MUTATION_SHARD_INDEX,[ref]$shardIndex) -or ![int]::TryParse($env:QUIETCLI_MUTATION_SHARD_COUNT,[ref]$shardCount) -or $shardCount -lt 2 -or $shardCount -gt 32 -or $shardIndex -lt 0 -or $shardIndex -ge $shardCount -or $env:GITHUB_SHA -cnotmatch '\A[a-f0-9]{40}\z' -or $Image -or $Profiler){throw 'GitHubMutationShardContextInvalid'}
     $mutationShard=$true
 }
-if($Suite -ceq 'All' -or $Suite -cin @(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object {!$_.IsTest}|ForEach-Object Suite)){$null=& ([IO.Path]::Combine($PSScriptRoot,'Test-TestCaseMetadata.ps1')) -WorkspaceRoot $WorkspaceRoot}
+if($Suite -ceq 'All' -or $Suite -cin @(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object {!$_.IsTest}|ForEach-Object {$_.Suite})){$null=& ([IO.Path]::Combine($PSScriptRoot,'Test-TestCaseMetadata.ps1')) -WorkspaceRoot $WorkspaceRoot}
 if(!$SkipBuild -and $Suite -ne 'RunProfilesMutation'){
     $buildRid=if($ExpectedRuntimeIdentifier){$ExpectedRuntimeIdentifier}else{[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier}
     $build=@{WorkspaceRoot=$WorkspaceRoot;Suite=$Suite;Configuration='Release';ReadyToRun=$true;ReadyToRunRuntimeIdentifier=@($buildRid)}

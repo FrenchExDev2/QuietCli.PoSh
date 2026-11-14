@@ -46,7 +46,7 @@ if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-Workspace
 $Suite=if($PSBoundParameters.ContainsKey('Suite')){[string]$PSBoundParameters['Suite']}else{'All'}
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
-if($Suite -ceq 'All' -or $Suite -cin @(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object {!$_.IsTest}|ForEach-Object Suite)){$null=& ([IO.Path]::Combine($PSScriptRoot,'Test-TestCaseMetadata.ps1')) -WorkspaceRoot $WorkspaceRoot}
+if($Suite -ceq 'All' -or $Suite -cin @(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object {!$_.IsTest}|ForEach-Object {$_.Suite})){$null=& ([IO.Path]::Combine($PSScriptRoot,'Test-TestCaseMetadata.ps1')) -WorkspaceRoot $WorkspaceRoot}
 if($Profiler){
     if($Suite -notin @('Core','All','Integration')){throw 'ProfilerRequiresCoreIntegration'}
     if(!$ProfilerModulePath -or !$ClrProfilerPath){

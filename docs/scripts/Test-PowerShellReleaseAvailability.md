@@ -19,6 +19,16 @@ Imports [PowerShellReleases](lib/PowerShellReleases.md). Performs bounded HTTPS 
 
 `scripts/Test-PowerShellReleaseAvailability.ps1:1` provides a reproducible source inventory, not execution qualification. HEAD availability and published checksums do not verify archive bytes; host preparation verifies downloaded bytes, and native tests establish execution. The current musl ARM64 GA archive and Alpine GA package gaps remain explicit.
 
+<!-- script-library-boundary:begin -->
+## Automation library boundary
+
+This entry point contains no function definitions. Automation helpers are imported from `scripts/lib` with `-DisableNameChecking`; path composition uses `System.IO.Path`. Public parameters and the documented operation remain unchanged.
+
+Direct library contracts: [PowerShellReleases.psm1](lib/PowerShellReleases.md).
+
+See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-automation-contracts.md) for dependency, preview and source-layout obligations.
+<!-- script-library-boundary:end -->
+
 <!-- script-contract:begin -->
 ## Execution contract
 

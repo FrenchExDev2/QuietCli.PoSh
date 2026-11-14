@@ -31,7 +31,7 @@ $evidenceDirectory=if($env:GITHUB_ACTIONS -ceq 'true'){[IO.Path]::Combine($Works
 $directory=[IO.Path]::Combine(([IO.Path]::GetTempPath()),('qc-core-'+$owner.Substring(0,12)))
 [void][IO.Directory]::CreateDirectory($directory)
 [void][IO.Directory]::CreateDirectory($evidenceDirectory)
-$allowed=@('scripts','build','docs','.github')+@(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object Name -CNE 'FrenchExDev2.QuietCli.Git.PoSh'|ForEach-Object Name)
+$allowed=@('scripts','build','docs','.github')+@(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object Name -CNE 'FrenchExDev2.QuietCli.Git.PoSh'|ForEach-Object {$_.Name})
 foreach($file in Get-QuietSourceFiles $WorkspaceRoot){
     $segments=$file.Path.Split('/')
     if($segments -contains '.env'){continue}

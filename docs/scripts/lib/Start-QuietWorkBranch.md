@@ -62,3 +62,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+## Fresh-session product loading
+
+Core is bound to process-global scope before importing Git, because Git registration resolves Core commands there. Both modules must come from this checkout; a conflicting loaded path requires a fresh session. No profile is changed and imports do not rebuild binaries. The Tooling layout regression previews Commit-Workspace in a clean, profile-disabled child and rejects missing-registration or skipped-sniffer warnings.
+
+Command binding temporarily disables preview/confirmation only while importing inert product definitions, then restores both preferences before business operations. This lets the read-only sniffer bind the exported quiet alias during preview without weakening lock, staging, commit or branch guards.

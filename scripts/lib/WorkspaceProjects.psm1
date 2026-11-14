@@ -149,7 +149,7 @@ function Get-QuietWorkspaceBuildSelection {
             if($dependency -clike 'FrenchExDev2.QuietCli.*.PoSh'){$pending.Enqueue($dependency)}
         }
     }
-    @($projects|Where-Object {$selected.Contains($_.Name)}|ForEach-Object Name)
+    @($projects|Where-Object {$selected.Contains($_.Name)}|ForEach-Object {$_.Name})
 }
 
 function Get-QuietWorkspaceTestSuites {

@@ -176,7 +176,7 @@ if($TestImport){
         $handlers=@(Get-QuietHandler).Count
     }finally{$env:PSModulePath=$previousModulePath}
 }
-[pscustomobject]@{Verified=$true;Authenticated=$false;ImportTested=[bool]$TestImport;ExtractionDirectory=$ExtractionDirectory;Files=$fileCount;UncompressedBytes=$total;Handlers=$handlers;Modules=$expected;ImportedModules=$(if($TestImport){@($projectCatalogue | Where-Object {!$_.IsTest} | ForEach-Object Name)}else{@()})}
+[pscustomobject]@{Verified=$true;Authenticated=$false;ImportTested=[bool]$TestImport;ExtractionDirectory=$ExtractionDirectory;Files=$fileCount;UncompressedBytes=$total;Handlers=$handlers;Modules=$expected;ImportedModules=$(if($TestImport){@($projectCatalogue | Where-Object {!$_.IsTest} | ForEach-Object {$_.Name})}else{@()})}
 
 }
 Export-ModuleMember -Function 'Invoke-QuietScriptTestWorkspacePackage'

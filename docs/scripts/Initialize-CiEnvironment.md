@@ -21,6 +21,16 @@ Their explicit Docker arguments remain overrides. Container transport forwards o
 runtime key into a fresh staged `.env`, never the private source file or unrelated credentials.
 See [the CI environment contract](../ci/environment.md) and RAC-ENV-001.
 
+<!-- script-library-boundary:begin -->
+## Automation library boundary
+
+This entry point contains no function definitions. Automation helpers are imported from `scripts/lib` with `-DisableNameChecking`; path composition uses `System.IO.Path`. Public parameters and the documented operation remain unchanged.
+
+Direct library contracts: [EnvFile.psm1](lib/EnvFile.md).
+
+See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-automation-contracts.md) for dependency, preview and source-layout obligations.
+<!-- script-library-boundary:end -->
+
 <!-- script-contract:begin -->
 ## Execution contract
 

@@ -39,6 +39,16 @@ those effects. Container resolution follows RAC-ENV-001 and starts no daemon.
 Suitable for reviewed opt-in portable installation. It does not install OS prerequisites,
 IIS Hosting Bundle, workloads or a machine-wide registration.
 
+<!-- script-library-boundary:begin -->
+## Automation library boundary
+
+This entry point contains no function definitions. Automation helpers are imported from `scripts/lib` with `-DisableNameChecking`; path composition uses `System.IO.Path`. Public parameters and the documented operation remain unchanged.
+
+Direct library contracts: [DotNetProvisioning.psm1](lib/DotNetProvisioning.md).
+
+See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-automation-contracts.md) for dependency, preview and source-layout obligations.
+<!-- script-library-boundary:end -->
+
 <!-- script-contract:begin -->
 ## Execution contract
 

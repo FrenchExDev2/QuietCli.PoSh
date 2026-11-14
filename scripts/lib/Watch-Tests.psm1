@@ -91,7 +91,7 @@ try{
             }else{$lines.Add((Fit-Cell "$($state.Platform) | $($state.State) | $duration | PID $($state.ProcessId)" $width));$lines.Add((Fit-Cell "Passed $($state.Passed) | Failed $($state.Failed)" $width))}
             $lines.Add((Fit-Cell $state.Case $width));$lines.Add((Fit-Cell "Rapport : $RunDirectory" $width))
             if($state.Error){$lines.Add((Fit-Cell $state.Error $width))}
-            $lines.Add((Fit-Cell ('Report activity | bytes='+(($streams|ForEach-Object TotalBytes|Measure-Object -Sum).Sum)+' | lines='+(($streams|ForEach-Object TotalLines|Measure-Object -Sum).Sum)+' (not test counts)') $width))
+            $lines.Add((Fit-Cell ('Report activity | bytes='+(($streams|ForEach-Object {$_.TotalBytes}|Measure-Object -Sum).Sum)+' | lines='+(($streams|ForEach-Object {$_.TotalLines}|Measure-Object -Sum).Sum)+' (not test counts)') $width))
             $room=[Math]::Max(0,$height-$lines.Count-1)
             foreach($stream in $streams){
                 foreach($line in @($stream.Lines)|Select-Object -Last ([Math]::Max(1,[int]($room/2)))){

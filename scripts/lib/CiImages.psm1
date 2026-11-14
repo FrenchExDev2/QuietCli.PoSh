@@ -85,7 +85,7 @@ function Get-QuietModuleContainerfile {
     param([Parameter(Mandatory)][ValidateSet('debian','alpine')][string]$Platform,[Parameter(Mandatory)][string]$Objective,[Parameter(Mandatory)][object[]]$Stages,[string]$DefaultCoreImage)
     $manager=if($Platform -ceq 'debian'){'apt'}else{'apk'}
     $cacheMount=if($Platform -ceq 'debian'){'--mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,target=/var/lib/apt,sharing=locked'}else{'--mount=type=cache,target=/var/cache/apk,sharing=locked'}
-    $stageNames=@($Stages|ForEach-Object Name)
+    $stageNames=@($Stages|ForEach-Object {$_.Name})
     $usesCoreImage=$false
     $lines=[Collections.Generic.List[string]]::new()
     [void]$lines.Add("# Objectif : $Objective")

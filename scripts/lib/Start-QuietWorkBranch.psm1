@@ -25,13 +25,19 @@ param(
 if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,"Shelve pending work, pull $BaseBranch and create $Branch")){return}
 $ErrorActionPreference='Stop'
 $sourceRoot=Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent
+$savedWhatIf=$WhatIfPreference;$savedConfirm=$ConfirmPreference
+try{
+$WhatIfPreference=$false;$ConfirmPreference='None'
 foreach($name in @('Core','Git')){
     $manifest=[IO.Path]::Combine($sourceRoot,"FrenchExDev2.QuietCli.$name.PoSh/FrenchExDev2.QuietCli.$name.PoSh.psd1")
     $expected=[IO.Path]::ChangeExtension($manifest,'.psm1')
     $loaded=Get-Module "FrenchExDev2.QuietCli.$name.PoSh"
-    if(!$loaded -or $loaded.Path -cne $expected){Import-Module $manifest -ErrorAction Stop -DisableNameChecking}
+    if($loaded -and $loaded.Path -cne $expected){throw ('WorkBranchModulePathMismatch: '+$name+'; start a fresh session.')}
+    $scope=if($name -eq 'Core'){'Global'}else{'Local'}
+    if(!$loaded -or $name -eq 'Core'){Import-Module $manifest -Scope $scope -ErrorAction Stop -DisableNameChecking}
     if((Get-Module "FrenchExDev2.QuietCli.$name.PoSh").Path -cne $expected){throw 'WorkBranchModulePathMismatch'}
 }
+}finally{$WhatIfPreference=$savedWhatIf;$ConfirmPreference=$savedConfirm}
 function Invoke-QuietWorkBranchGit {
     <#
     .SYNOPSIS

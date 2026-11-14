@@ -74,3 +74,5 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 ## Explicit library dependencies
 
 Imports Common explicitly for runtime resolution, native orchestration and metadata receipts; callers do not need to inject those functions into a shared scope.
+
+Read-only property projections use script blocks so metadata remains available during WhatIf; mutating operations retain their existing operation guards.

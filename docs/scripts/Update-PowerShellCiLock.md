@@ -22,6 +22,16 @@ Delegates to [PowerShellReleases](lib/PowerShellReleases.md). All required evide
 
 `scripts/Update-PowerShellCiLock.ps1:1` is the explicit PowerShell counterpart to the independent .NET lock updater. Property/malformed-evidence fixtures test archive identity, missing packages, native architecture sets, preview isolation and preserved unrelated pins. Actual resource availability is audited separately; hosted runner and image qualification remain required.
 
+<!-- script-library-boundary:begin -->
+## Automation library boundary
+
+This entry point contains no function definitions. Automation helpers are imported from `scripts/lib` with `-DisableNameChecking`; path composition uses `System.IO.Path`. Public parameters and the documented operation remain unchanged.
+
+Direct library contracts: [PowerShellReleases.psm1](lib/PowerShellReleases.md).
+
+See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-automation-contracts.md) for dependency, preview and source-layout obligations.
+<!-- script-library-boundary:end -->
+
 <!-- script-contract:begin -->
 ## Execution contract
 

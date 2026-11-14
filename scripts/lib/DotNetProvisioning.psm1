@@ -171,7 +171,7 @@ function Update-DotNetGlobalJson {
     if(!$Version){$Version=(Get-DotNetSdkRelease -Channel $Channel -Preleases:$Preleases -Confirm:$false).Version; $plans=@(Get-DotNetGlobalJsonPlan @planOptions -Version $Version)}
     if(!$SkipInstalledCheck) {
         $inventory=Get-DotNetInstallation -DotNetPath $DotNetPath -QuietCliRoot $QuietCliRoot -Confirm:$false
-        if(!$inventory.Sdk.Success -or $Version -notin @($inventory.Sdk.Records|ForEach-Object Version)){throw "Exact SDK $Version is not verified as installed using $DotNetPath. Install it first or explicitly use -SkipInstalledCheck."}
+        if(!$inventory.Sdk.Success -or $Version -notin @($inventory.Sdk.Records|ForEach-Object {$_.Version})){throw "Exact SDK $Version is not verified as installed using $DotNetPath. Install it first or explicitly use -SkipInstalledCheck."}
     }
     foreach($plan in $plans) {
         if(!$plan.Changed){[pscustomobject]@{Path=$plan.Path;Version=$Version;PreviousVersion=$plan.PreviousVersion;Status='Unchanged';BackupPath=$null};continue}
@@ -214,7 +214,7 @@ function Assert-DotNetInstalledPayload {
     <# .SYNOPSIS Requires complete SDK/core/ASP.NET inventories and Windows Desktop where applicable. #>
     param([string]$DotNetPath,[string]$Version,[string]$RuntimeVersion,[string]$QuietCliRoot)
     $inventory=Get-DotNetInstallation -DotNetPath $DotNetPath -QuietCliRoot $QuietCliRoot -Confirm:$false
-    if(!$inventory.Sdk.Success -or !$inventory.Runtime.Success -or $Version -notin @($inventory.Sdk.Records|ForEach-Object Version)){throw 'Installed SDK verification failed or was incomplete.'}
+    if(!$inventory.Sdk.Success -or !$inventory.Runtime.Success -or $Version -notin @($inventory.Sdk.Records|ForEach-Object {$_.Version})){throw 'Installed SDK verification failed or was incomplete.'}
     $required=@('Microsoft.NETCore.App','Microsoft.AspNetCore.App')
     if($IsWindows){$required+='Microsoft.WindowsDesktop.App'}
     foreach($name in $required) {

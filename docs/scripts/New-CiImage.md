@@ -23,6 +23,16 @@ Loads Common and CiImages; the Core `ci/Get-CiImageArguments.ps1` contract suppl
 
 
 
+<!-- script-library-boundary:begin -->
+## Automation library boundary
+
+This entry point contains no function definitions. Automation helpers are imported from `scripts/lib` with `-DisableNameChecking`; path composition uses `System.IO.Path`. Public parameters and the documented operation remain unchanged.
+
+Direct library contracts: [CiImages.psm1](lib/CiImages.md), [Common.psm1](lib/Common.md).
+
+See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-automation-contracts.md) for dependency, preview and source-layout obligations.
+<!-- script-library-boundary:end -->
+
 <!-- script-contract:begin -->
 ## Execution contract
 

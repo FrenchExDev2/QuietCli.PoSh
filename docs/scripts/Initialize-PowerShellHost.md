@@ -26,6 +26,16 @@ Creates a new destination, optionally populates the checksum-addressed cache and
 
 The host lock and digest bind extraction, while execution identity remains the worker's responsibility. Offline ZIP and independently generated tar/gzip fixtures cover cache reuse, corruption and no-effect previews; archive presence is not ARM64 execution evidence. General hostile-archive qualification and hosted transfer speed are outside these checks. The selected release URLs are constructed from validated versions/RIDs rather than caller-provided hosts.
 
+<!-- script-library-boundary:begin -->
+## Automation library boundary
+
+This entry point contains no function definitions. Automation helpers are imported from `scripts/lib` with `-DisableNameChecking`; path composition uses `System.IO.Path`. Public parameters and the documented operation remain unchanged.
+
+Direct library contracts: [Common.psm1](lib/Common.md).
+
+See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-automation-contracts.md) for dependency, preview and source-layout obligations.
+<!-- script-library-boundary:end -->
+
 <!-- script-contract:begin -->
 ## Execution contract
 

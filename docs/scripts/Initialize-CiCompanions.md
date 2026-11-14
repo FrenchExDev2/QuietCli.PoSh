@@ -17,6 +17,16 @@ resource preparation or output writes.
 
 Tool dependencies do not select their test suites: a required Git executable does not select Git handler tests or mutations. Integration suites declare several companions and their own test module/command.
 
+<!-- script-library-boundary:begin -->
+## Automation library boundary
+
+This entry point contains no function definitions. Automation helpers are imported from `scripts/lib` with `-DisableNameChecking`; path composition uses `System.IO.Path`. Public parameters and the documented operation remain unchanged.
+
+Direct library contracts: [CiCompanions.psm1](lib/CiCompanions.md).
+
+See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-automation-contracts.md) for dependency, preview and source-layout obligations.
+<!-- script-library-boundary:end -->
+
 <!-- script-contract:begin -->
 ## Execution contract
 

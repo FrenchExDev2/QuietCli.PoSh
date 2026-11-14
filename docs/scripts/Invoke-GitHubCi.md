@@ -70,6 +70,16 @@ The real GitHub entry is tested in owned child processes with synthetic worker r
 ## Critical review and verdict
 
 `scripts/Invoke-GitHubCi.ps1:49` validates the context before effects; the final shard branch reuses Assert-QuietMutationShard, also consumed by the complete aggregator. Partition acceptance therefore has one implementation. Existing host/RID, failure-state and full product qualification checks remain active. See [the workflow contract](../ci/github/script-tooling-ci.md#shard-execution-boundary).
+<!-- script-library-boundary:begin -->
+## Automation library boundary
+
+This entry point contains no function definitions. Automation helpers are imported from `scripts/lib` with `-DisableNameChecking`; path composition uses `System.IO.Path`. Public parameters and the documented operation remain unchanged.
+
+Direct library contracts: [Common.psm1](lib/Common.md), [MutationShards.psm1](lib/MutationShards.md), [WorkspaceProjects.psm1](lib/WorkspaceProjects.md).
+
+See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-automation-contracts.md) for dependency, preview and source-layout obligations.
+<!-- script-library-boundary:end -->
+
 <!-- script-contract:begin -->
 ## Execution contract
 

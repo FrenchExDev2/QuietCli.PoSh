@@ -154,7 +154,7 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'Ci.Process.psm1')) -DisableName
             if($stop -and !$active.Count){break}
             if($active.Count){[void][Threading.Tasks.Task]::Delay(50).GetAwaiter().GetResult()}
         }
-        [pscustomobject]@{Cases=@(foreach($case in $Cases){if($completed.ContainsKey($case.Name)){$completed[$case.Name]}});NotStarted=@($pending.ToArray()|ForEach-Object Name);MaxActive=$peak;MaxConcurrency=$MaxConcurrency;InternalConcurrency=1}
+        [pscustomobject]@{Cases=@(foreach($case in $Cases){if($completed.ContainsKey($case.Name)){$completed[$case.Name]}});NotStarted=@($pending.ToArray()|ForEach-Object {$_.Name});MaxActive=$peak;MaxConcurrency=$MaxConcurrency;InternalConcurrency=1}
     }finally{
         foreach($worker in $active){try{if(!$worker.Process.HasExited){$worker.Process.Kill($true);$worker.Process.WaitForExit()}}finally{$worker.Process.Dispose()}}
     }

@@ -233,8 +233,22 @@ function Test-QuietCommitFileSniffer {
     # The module lives next to this script's own real location, not under the (possibly disposable
     # or fixture) $WorkspaceRoot being committed - matches the Measure-ColdStart.ps1 guard idiom.
     $moduleRoot = Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent
-    if (-not (Get-Command quiet -ErrorAction SilentlyContinue)) { Import-Module ([IO.Path]::Combine($moduleRoot,'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')) -DisableNameChecking }
-    if (-not (Get-Module FrenchExDev2.QuietCli.Git.PoSh)) { Import-Module ([IO.Path]::Combine($moduleRoot,'FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1')) -DisableNameChecking }
+    foreach($name in @('Core','Git')){
+        $moduleName='FrenchExDev2.QuietCli.'+$name+'.PoSh'
+        $expected=[IO.Path]::Combine($moduleRoot,$moduleName,($moduleName+'.psm1'))
+        foreach($loaded in @(Get-Module $moduleName -All)){
+            if($loaded.Path -cne $expected){throw ('CommitLocalModulePathMismatch: '+$moduleName+'; start a fresh session.')}
+        }
+    }
+    $coreManifest=[IO.Path]::Combine($moduleRoot,'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
+    # Git's RequiredModules registration resolves Core commands from the process-global scope.
+    $savedWhatIf=$WhatIfPreference;$savedConfirm=$ConfirmPreference
+    try{
+        # In-memory command registration is required even for a read-only preview.
+        $WhatIfPreference=$false;$ConfirmPreference='None'
+        Import-Module $coreManifest -Scope Global -DisableNameChecking -ErrorAction Stop
+        if (-not (Get-Module FrenchExDev2.QuietCli.Git.PoSh)) { Import-Module ([IO.Path]::Combine($moduleRoot,'FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1')) -DisableNameChecking -ErrorAction Stop }
+    }finally{$WhatIfPreference=$savedWhatIf;$ConfirmPreference=$savedConfirm}
     $status = quiet -AsObject -WorkingDirectory $WorkspaceRoot git status
     if ($status.Outcome -ne 'Success') {
         Write-Warning "CommitFileSniffer: could not read 'git status' via quiet (Outcome=$($status.Outcome)); skipping the binary/oversized-file check."

@@ -160,3 +160,5 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+Read-only property projections use script blocks so metadata remains available during WhatIf; mutating operations retain their existing operation guards.

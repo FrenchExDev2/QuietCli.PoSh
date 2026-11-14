@@ -50,3 +50,5 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- script-contract:end -->
 
 Preview is explicit across module boundaries: Get-QuietWorkflowDocumentation -WhatIf forwards standard preview options to Ensure-QuietResource. A missing parser remains unprepared in preview and cannot produce a successful documentation result.
+
+Read-only property projections use script blocks, so the ForEach-Object member-access ShouldProcess behavior cannot suppress workflow metadata during WhatIf. The complete Commit-Workspace preview is exercised in a clean process.

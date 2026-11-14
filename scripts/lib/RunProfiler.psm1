@@ -28,7 +28,7 @@ function Resolve-RunProfilerModule {
         $cache = [IO.Path]::Combine(([IO.Path]::GetTempPath()),'QuietCli2')
         if (Test-Path -LiteralPath $cache) {
             $candidates += @(Get-ChildItem -LiteralPath $cache -Recurse -Filter Profiler.psd1 -File -ErrorAction SilentlyContinue |
-                    Where-Object { $_.FullName -match '[\\/]profilers[\\/]pinned[\\/]Profiler[\\/]' } | Sort-Object LastWriteTimeUtc -Descending | ForEach-Object FullName)
+                    Where-Object { $_.FullName -match '[\\/]profilers[\\/]pinned[\\/]Profiler[\\/]' } | Sort-Object LastWriteTimeUtc -Descending | ForEach-Object {$_.FullName})
         }
     }
     foreach ($candidate in $candidates) {

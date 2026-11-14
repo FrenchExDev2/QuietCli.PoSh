@@ -123,5 +123,28 @@ function Test-QuietScriptLayoutContract {
     foreach($relative in $expected){
         if((Get-FileHash -LiteralPath ([IO.Path]::Combine($stage,$relative))).Hash -cne (Get-FileHash -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts',$relative))).Hash){throw 'ProbeInputChanged'}
     }
+    # A clean process must bootstrap Core/Git for the real informational sniffer without preloaded test helpers.
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop
+    $repository=New-QuietCommitWorkspaceFixture -Root $RunDirectory -RealScriptsPath ([IO.Path]::Combine($WorkspaceRoot,'scripts'))
+    $head=Get-QuietCommitWorkspaceHeadRevision $repository
+    $driver=[IO.Path]::Combine($RunDirectory,'Invoke-CommitBootstrap.ps1')
+    $driverSource=@'
+#requires -Version 7.6
+param([string]$SubjectRoot,[string]$Repository)
+$utf8=[Text.UTF8Encoding]::new($false)
+[Console]::InputEncoding=$utf8;[Console]::OutputEncoding=$utf8;$OutputEncoding=$utf8
+& ([IO.Path]::Combine($SubjectRoot,'scripts/Commit-Workspace.ps1')) -WorkspaceRoot $Repository -Message 'Bootstrap preview' -WhatIf
+'@
+    [IO.File]::WriteAllText($driver,$driverSource+"`n",$utf8)
+    $observed=@{Lines=0;Bad=[Collections.Generic.List[string]]::new();Tail=[Collections.Generic.Queue[string]]::new()}
+    $process=Invoke-CiProcess -FilePath ([IO.Path]::Combine($PSHOME,('pwsh'+$(if($IsWindows){'.exe'}else{''})))) -WorkingDirectory $repository -TimeoutSeconds 180 -ArgumentList @('-NoProfile','-NonInteractive','-File',$driver,'-SubjectRoot',$WorkspaceRoot,'-Repository',$repository) -State $observed -OnOutput {
+        param($event,$state)
+        $state.Lines++
+        if($event.Text -match 'Register-QuietHandler|CommitFileSniffer: could not'){$state.Bad.Add($event.Text)}
+        $state.Tail.Enqueue($event.Text.Substring(0,[Math]::Min(512,$event.Text.Length)))
+        if($state.Tail.Count -gt 8){[void]$state.Tail.Dequeue()}
+    }
+    if($process.Outcome -ne 'Success' -or $observed.Bad.Count){throw ('FreshCommitBootstrapFailed: '+$process.Outcome+'; '+(($observed.Bad.ToArray()+$observed.Tail.ToArray()) -join ' | '))}
+    if((Get-QuietCommitWorkspaceHeadRevision $repository) -cne $head -or (Test-Path -LiteralPath ([IO.Path]::Combine($repository,'repositories.lock.json')))){throw 'FreshCommitPreviewMutatedRepository'}
     [pscustomobject]@{ValidNames=33;Malformed=$invalid.Count;MutantsKilled=$killed;DelegatedGuardMutants=3;PreviewNoEffects=$true}
 }

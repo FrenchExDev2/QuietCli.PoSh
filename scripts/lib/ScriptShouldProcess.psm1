@@ -56,7 +56,7 @@ function Get-QuietScriptShouldProcess {
             $libAst=[Management.Automation.Language.Parser]::ParseFile($library,[ref]$libTokens,[ref]$libErrors)
             $target=@($libAst.EndBlock.Statements | Where-Object {$_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -ceq $calls[0].GetCommandName()})
             if(!$libErrors.Count -and $target.Count -eq 1){
-                $declared=@($target[0].Body.ParamBlock.Attributes | Where-Object {$_.TypeName.Name -ieq 'CmdletBinding'} | ForEach-Object NamedArguments | Where-Object {$_.ArgumentName -ieq 'SupportsShouldProcess' -and ($_.ExpressionOmitted -or $_.Argument.SafeGetValue() -eq $true)})
+                $declared=@($target[0].Body.ParamBlock.Attributes | Where-Object {$_.TypeName.Name -ieq 'CmdletBinding'} | ForEach-Object {$_.NamedArguments} | Where-Object {$_.ArgumentName -ieq 'SupportsShouldProcess' -and ($_.ExpressionOmitted -or $_.Argument.SafeGetValue() -eq $true)})
                 $targetGuard=@($target[0].Body.FindAll({param($n)
                     $n -is [Management.Automation.Language.InvokeMemberExpressionAst] -and
                     $n.Member -is [Management.Automation.Language.StringConstantExpressionAst] -and

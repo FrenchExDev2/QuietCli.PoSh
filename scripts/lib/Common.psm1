@@ -159,7 +159,7 @@ function Wait-WorkspaceWorker {
     while(!$Worker.HasExited){
         foreach($stream in $streams){foreach($line in (Read-QuietReportStream $stream -MaxLines 4)){if($line){Write-Host ('[report] '+$line)}}}
         if([DateTimeOffset]::UtcNow -ge $nextHeartbeat){
-            Write-Host ('Progress: Follow active report | elapsed='+[int]([DateTimeOffset]::UtcNow-$started).TotalSeconds+'s | observed lines='+(($streams|ForEach-Object TotalLines|Measure-Object -Sum).Sum)+' | PID='+$Worker.Id)
+            Write-Host ('Progress: Follow active report | elapsed='+[int]([DateTimeOffset]::UtcNow-$started).TotalSeconds+'s | observed lines='+(($streams|ForEach-Object {$_.TotalLines}|Measure-Object -Sum).Sum)+' | PID='+$Worker.Id)
             $nextHeartbeat=[DateTimeOffset]::UtcNow.AddSeconds(10)
         }
         if($Monitor -and $Monitor.HasExited){

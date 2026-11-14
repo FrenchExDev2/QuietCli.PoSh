@@ -8,6 +8,16 @@ Returns Reused=false on missing credentials, stale/mismatched evidence or an API
 
 scripts/Get-DevelopQualification.ps1:1 deliberately accepts only a supported original repository and bounded API pages/artifacts. API metadata establishes run success; lib/CiImpact checks receipt fields independently. Legacy receipts without Tree/tooling fields are rejected. Publication continues to require an exact current-run revision receipt; this develop optimization cannot authorize a release.
 
+<!-- script-library-boundary:begin -->
+## Automation library boundary
+
+This entry point contains no function definitions. Automation helpers are imported from `scripts/lib` with `-DisableNameChecking`; path composition uses `System.IO.Path`. Public parameters and the documented operation remain unchanged.
+
+Direct library contracts: [CiImpact.psm1](lib/CiImpact.md), [Common.psm1](lib/Common.md).
+
+See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-automation-contracts.md) for dependency, preview and source-layout obligations.
+<!-- script-library-boundary:end -->
+
 <!-- script-contract:begin -->
 ## Execution contract
 

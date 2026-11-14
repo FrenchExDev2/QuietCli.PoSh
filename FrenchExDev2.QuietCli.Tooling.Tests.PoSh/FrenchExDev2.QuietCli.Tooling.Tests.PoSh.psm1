@@ -434,7 +434,7 @@ if (!$invalidCompanionRejected) { throw 'LauncherInvalidCompanionAccepted' }
         Assert-QuietEqual $r.Outcome Success 'Local companion launcher qualification failed'
     }
     $caseMetadata=@{
-        'script layout enforces entry points libraries imports and IO paths'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'script layout enforces entry points libraries imports and IO paths'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess')}
         'CI scales by affected suites with verified merge reuse and intermediate caches'=@{TestKind='Integration';Dependencies=@('FileSystem')}
         'local launcher imports exact business companions and restores their lifecycle'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
         'test case classifications are complete explicit and fail closed before filtering'=@{TestKind='Integration';Dependencies=@('FileSystem','ProcessEnvironment')}
