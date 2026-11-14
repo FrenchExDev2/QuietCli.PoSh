@@ -9,6 +9,9 @@ function Test-QuietReadyToRun {
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
+    . ([IO.Path]::Combine($PSScriptRoot,'WorkspacePublication.Tests.ps1'))
+    $publication=Test-QuietWorkspacePublication -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+    Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'publication-campaign.json')) $publication
     . (Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/src/Protocol.ps1')
     $rids=@((Get-QuietRuntimeTargets $WorkspaceRoot).Rid)
     $fixture=Join-Path $RunDirectory 'readytorun-policy'
@@ -57,6 +60,7 @@ function Test-QuietReadyToRun {
     $buildSource=[IO.File]::ReadAllText([IO.Path]::Combine($WorkspaceRoot,'scripts/Build-Workspace.ps1'),[Text.Encoding]::UTF8)
     if(!$buildSource.Contains("Import-Module ([IO.Path]::Combine(`$PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop")){throw 'BuildFixtureDependencyAnchorMissing'}
     $buildSource=$buildSource.Replace("Import-Module ([IO.Path]::Combine(`$PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop",". ([IO.Path]::Combine(`$PSScriptRoot,'Common.fixture.ps1'))")
+    $buildSource=$buildSource.Replace("Import-Module ([IO.Path]::Combine(`$PSScriptRoot,'lib/WorkspacePublication.psm1')) -DisableNameChecking -ErrorAction Stop",'')
     [IO.File]::WriteAllText([IO.Path]::Combine($scripts,'Build-Workspace.ps1'),$buildSource,[Text.UTF8Encoding]::new($false))
     Copy-Item -LiteralPath (Join-Path $WorkspaceRoot Quietly.slnx) -Destination $fixture
     $buildDistributions=@(Get-QuietWorkspaceBuildProjects $WorkspaceRoot)
@@ -69,6 +73,7 @@ function Assert-QuietRuntimePublication { param($Directory,$Target) }
 function Get-QuietBinaryInputs { param($WorkspaceRoot,$Project) ,@{Path='fixture';SHA256='fixture'} }
 function Get-QuietRuntimeTargets { param($WorkspaceRoot) foreach($rid in @('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){[pscustomobject]@{Rid=$rid;PlatformTarget=$(if($rid.EndsWith('arm64')){'ARM64'}else{'x64'})}} }
 function Invoke-WorkspaceNative { param($FilePath,$Arguments,$WorkingDirectory) $Commands.Add(@($Arguments));if($FailBuild -and $Arguments[0] -ceq 'build'){throw 'FixtureSolutionBuildFailed'} }
+function Invoke-WorkspacePublication { param($Arguments,$WorkspaceRoot) Invoke-WorkspaceNative dotnet $Arguments $WorkspaceRoot }
 function Write-QuietBuildManifest { param($WorkspaceRoot,$Project,$Output,$Inputs,$Configuration,$RuntimeIdentifier,$PlatformTarget,[switch]$ReadyToRun,$ReadyToRunTargets) }
 '@
     [void][IO.File]::WriteAllTextAsync(([IO.Path]::Combine($scripts,'Common.fixture.ps1')),$mock,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()

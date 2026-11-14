@@ -26,6 +26,14 @@ Compiles `Quietly.slnx` once in Release by default, then prepares the portable d
 
 ## Outputs and dependencies
 
+All distributions are prepared through [WorkspacePublication](lib/WorkspacePublication.md)
+in a fresh staging directory before replacing their files by rename. This also permits
+rebuilding while an existing PowerShell session uses a published assembly on Windows.
+That session keeps its previous assembly until restarted. Locked previous files are
+retained under `.quiet-previous-<id>` with a warning, rather than blocking dotnet's copy
+step. Failed publication leaves existing files intact; promotion errors restore replaced
+files. Concurrent builds/imports into the same output remain unsupported.
+
 Requires the pinned SDK/runtime packs, Common.ps1, valid PTY receipts and NuGet restore availability. Commands use Ci.Process.ps1. Portable net10.0 and net11.0 outputs remain at `lib/inprocess` and `lib/engine`. ReadyToRun net10.0 outputs live at `lib/inprocess/<rid>`; corresponding net11.0 outputs at `lib/engine/<rid>`. Other net11.0 distributions stay IL. Portable manifests list only this build's selected slots, so stale directories cannot silently override a later portable build. Existing generated directories are retained; no source, profile or registry is changed.
 
 Every manifest binds source and binary hashes. ReadyToRun receipts require the CLR native header and RTR signature; Linux architecture checks account for the native OS override in the PE machine field. Protocol.ps1 selects a slot for the actual CLR and RID, otherwise portable IL.

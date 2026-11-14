@@ -130,7 +130,7 @@ For container-based source checks, `./scripts/Initialize-CiEnvironment.ps1 -Targ
 checkout's ignored runtime preset. Explicit `-ContainerRuntime` overrides `.env`; otherwise discovery
 is the fallback. See [local/GitHub environment initialization](docs/ci/environment.md).
 
-Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100`). Build before importing the local modules. Close sessions that already loaded this checkout's assemblies before rebuilding.
+Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100`). Build before importing the local modules. Rebuilds stage new distributions before replacing files, including assemblies already loaded by PowerShell. Existing sessions keep their old assemblies; restart them to use the new build. Locked previous files are retained with a warning until their owning sessions close; see [build publication](docs/scripts/lib/WorkspacePublication.md).
 
 For SDK/runtimes installation, container image downloads and SDK pin updates, see [the .NET and global.json guide](README-dotnet-and-global-dot-json.md).
 
