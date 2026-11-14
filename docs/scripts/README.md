@@ -187,6 +187,7 @@ file by hand, run:
 - [`lib/WorkflowDocumentation.psm1`](../../scripts/lib/WorkflowDocumentation.psm1) -> [documentation](lib/WorkflowDocumentation.md)
 - [`lib/WorkspaceJson.psm1`](../../scripts/lib/WorkspaceJson.psm1) -> [documentation](lib/WorkspaceJson.md)
 - [`lib/WorkspaceProjects.psm1`](../../scripts/lib/WorkspaceProjects.psm1) -> [documentation](lib/WorkspaceProjects.md)
+- [`lib/WorkspacePublication.psm1`](../../scripts/lib/WorkspacePublication.psm1) -> [documentation](lib/WorkspacePublication.md)
 - [`lib/WorkstationResources.psm1`](../../scripts/lib/WorkstationResources.psm1) -> [documentation](lib/WorkstationResources.md)
 
 ## `scripts/RunProfiles/`

@@ -23,6 +23,7 @@ Builds only the selected test suite and its transitive module dependencies. All 
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Build-Workspace')){return}
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspacePublication.psm1')) -DisableNameChecking -ErrorAction Stop
 $selectedModules=@(Get-QuietWorkspaceBuildSelection $WorkspaceRoot -Suite $Suite)
 $solutionPath=[IO.Path]::Combine($WorkspaceRoot,'Quietly.slnx')
 if($Suite -cne 'All'){
@@ -67,7 +68,7 @@ foreach($distribution in $distributions){
 Invoke-WorkspaceNative dotnet @('build',$solutionPath,'-c',$Configuration,'--nologo') $WorkspaceRoot
 foreach($distribution in $distributions){
     # Publish only copies the solution's portable outputs and dependencies; compilation is disabled.
-    Invoke-WorkspaceNative dotnet @('publish',([IO.Path]::Combine($WorkspaceRoot,$distribution.Project)),'-f',$distribution.TargetFramework,'-c',$Configuration,'--no-build','-o',([IO.Path]::Combine($WorkspaceRoot,$distribution.Output)),'--nologo') $WorkspaceRoot
+    Invoke-WorkspacePublication @('publish',([IO.Path]::Combine($WorkspaceRoot,$distribution.Project)),'-f',$distribution.TargetFramework,'-c',$Configuration,'--no-build','-o',([IO.Path]::Combine($WorkspaceRoot,$distribution.Output)),'--nologo') $WorkspaceRoot
     $slots=if($distribution.Package -ceq 'FrenchExDev2.QuietCli.Core.PoSh'){$ReadyToRunRuntimeIdentifier}else{@()}
     Write-QuietBuildManifest $WorkspaceRoot $distribution.Project $distribution.Output -Inputs $snapshots[$distribution.Output] -Configuration $Configuration -ReadyToRunTargets @($slots)
 }
@@ -77,7 +78,7 @@ foreach($rid in $ReadyToRunRuntimeIdentifier){
     $output='FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/'+$rid
     $target=Get-QuietRuntimeTargets $WorkspaceRoot|Where-Object Rid -CEQ $rid
     $inputs=@(Get-QuietBinaryInputs $WorkspaceRoot $project)
-    Invoke-WorkspaceNative dotnet @('publish',([IO.Path]::Combine($WorkspaceRoot,$project)),'-f','net10.0','-c',$Configuration,'-r',$rid,'--self-contained','false',('-p:PlatformTarget='+$target.PlatformTarget),'-p:PublishReadyToRun=true','-o',([IO.Path]::Combine($WorkspaceRoot,$output)),'--nologo') $WorkspaceRoot
+    Invoke-WorkspacePublication @('publish',([IO.Path]::Combine($WorkspaceRoot,$project)),'-f','net10.0','-c',$Configuration,'-r',$rid,'--self-contained','false',('-p:PlatformTarget='+$target.PlatformTarget),'-p:PublishReadyToRun=true','-o',([IO.Path]::Combine($WorkspaceRoot,$output)),'--nologo') $WorkspaceRoot
     Write-QuietBuildManifest $WorkspaceRoot $project $output -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $rid -PlatformTarget $target.PlatformTarget -ReadyToRun
 }
 foreach($rid in $RuntimeIdentifier){
@@ -89,7 +90,7 @@ foreach($rid in $RuntimeIdentifier){
     $publishArguments=@('publish',([IO.Path]::Combine($WorkspaceRoot,$project)),'-f','net11.0','-c',$Configuration,'-r',$rid,'--self-contained','false',('-p:PlatformTarget='+$architecture),'-o',([IO.Path]::Combine($WorkspaceRoot,$output)),'--nologo')
     $precompiled=$rid -in $ReadyToRunRuntimeIdentifier
     $publishArguments+=('-p:PublishReadyToRun='+$precompiled.ToString().ToLowerInvariant())
-    Invoke-WorkspaceNative dotnet $publishArguments $WorkspaceRoot
+    Invoke-WorkspacePublication $publishArguments $WorkspaceRoot
     Assert-QuietRuntimePublication ([IO.Path]::Combine($WorkspaceRoot,$output)) $target
     Write-QuietBuildManifest $WorkspaceRoot $project $output -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $rid -PlatformTarget $architecture -ReadyToRun:$precompiled
 }
