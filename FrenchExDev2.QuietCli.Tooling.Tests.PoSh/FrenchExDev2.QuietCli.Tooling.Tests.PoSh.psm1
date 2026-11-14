@@ -188,6 +188,9 @@ function Invoke-QuietToolingTests {
         Assert-QuietEqual (Test-Path (Join-Path $directory 'inputs.json')) $false
     }
         $cases['release gate rejects failed skipped cancelled or incomplete required jobs']={
+        . ([IO.Path]::Combine($toolingRoot,'ToolingResults.Tests.ps1'))
+        $result=Test-QuietToolingResults -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+        Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'tooling-results-campaign.json')) $result
         $directory=Join-Path $WorkspaceRoot ('artifacts/gate-tests/'+[guid]::NewGuid().ToString('N'))
         [void][IO.Directory]::CreateDirectory($directory)
         $script=Join-Path $WorkspaceRoot 'scripts/Assert-QualificationGate.ps1'

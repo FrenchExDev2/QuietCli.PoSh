@@ -20,6 +20,10 @@ Native mutation job result supplied by GitHub needs.
 Repository automation and run-profile behavior result.
 .PARAMETER ToolingMutationResult
 Isolated run-profile mutation campaign result.
+.PARAMETER ToolingCompletionResult
+Exact source-bound mutation catalogue completeness result.
+.PARAMETER ToolingWorkflowResult
+Overall reusable workflow result, including setup and artifact failures.
 .PARAMETER RequireTooling
 Requires both tooling campaigns before accepting this revision.
 .PARAMETER ReceiptPath
@@ -38,6 +42,7 @@ Checkout whose suite declarations decide whether Core native evidence is require
     [string]$PerformanceResult='skipped',
     [Parameter(Mandatory)][string]$MutationResult,
     [string]$ToolingResult='skipped',[string]$ToolingMutationResult='skipped',[switch]$RequireTooling,
+    [AllowEmptyString()][string]$ToolingCompletionResult='skipped',[AllowEmptyString()][string]$ToolingWorkflowResult='skipped',
     [Parameter(Mandatory)][string]$ReceiptPath,
     [Parameter(Mandatory)][string]$OutputPath,
     [string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent)
@@ -52,9 +57,10 @@ $mutationExpected=if($mutationRequired){'success'}else{'skipped'}
 $performanceRequired=$selection.HasCoreEvidence
 $performanceExpected=if($performanceRequired){'success'}else{'skipped'}
 $toolingExpected=if($RequireTooling){'success'}else{'skipped'}
-$ready=$WindowsResult -ceq 'success' -and $LinuxResult -ceq 'success' -and $MutationResult -ceq $mutationExpected -and $PerformanceResult -ceq $performanceExpected -and $ToolingResult -ceq $toolingExpected -and $ToolingMutationResult -ceq $toolingExpected
+$toolingReady=if($RequireTooling){$ToolingWorkflowResult -ceq 'success' -and $ToolingResult -ceq 'success' -and $ToolingMutationResult -ceq 'success' -and $ToolingCompletionResult -ceq 'success'}else{$ToolingWorkflowResult -ceq 'skipped' -and $ToolingCompletionResult -ceq 'skipped'}
+$ready=$WindowsResult -ceq 'success' -and $LinuxResult -ceq 'success' -and $MutationResult -ceq $mutationExpected -and $PerformanceResult -ceq $performanceExpected -and $ToolingResult -ceq $toolingExpected -and $ToolingMutationResult -ceq $toolingExpected -and $toolingReady
 $tree=Read-QuietRepositoryValue $WorkspaceRoot @('rev-parse','HEAD^{tree}')
 [void][IO.Directory]::CreateDirectory((Split-Path ([IO.Path]::GetFullPath($ReceiptPath,$PWD.Path)) -Parent))
-Write-WorkspaceJson $ReceiptPath @{Revision=$Revision;Tree=$tree;Suite=$Suite;Ready=$ready;Windows=$WindowsResult;Linux=$LinuxResult;Performance=$PerformanceResult;PerformanceRequired=$performanceRequired;Mutation=$MutationResult;MutationRequired=$mutationRequired;Tooling=$ToolingResult;ToolingMutation=$ToolingMutationResult;ToolingRequired=[bool]$RequireTooling;RunId=$env:GITHUB_RUN_ID;RunAttempt=$env:GITHUB_RUN_ATTEMPT;TtyQualification=$(if($SkipTty){'Excluded'}elseif($mutationRequired){'Required for selected Core evidence'}else{'Not required by selected suites'})}
+Write-WorkspaceJson $ReceiptPath @{Revision=$Revision;Tree=$tree;Suite=$Suite;Ready=$ready;Windows=$WindowsResult;Linux=$LinuxResult;Performance=$PerformanceResult;PerformanceRequired=$performanceRequired;Mutation=$MutationResult;MutationRequired=$mutationRequired;Tooling=$ToolingResult;ToolingMutation=$ToolingMutationResult;ToolingCompletion=$ToolingCompletionResult;ToolingWorkflow=$ToolingWorkflowResult;ToolingRequired=[bool]$RequireTooling;RunId=$env:GITHUB_RUN_ID;RunAttempt=$env:GITHUB_RUN_ATTEMPT;TtyQualification=$(if($SkipTty){'Excluded'}elseif($mutationRequired){'Required for selected Core evidence'}else{'Not required by selected suites'})}
 if(!$ready){throw 'QualificationRejected: every required job must succeed for this revision.'}
 [void][IO.File]::AppendAllTextAsync($OutputPath,("qualified_sha=$Revision`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()

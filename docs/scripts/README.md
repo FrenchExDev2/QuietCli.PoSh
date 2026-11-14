@@ -113,6 +113,7 @@ file by hand, run:
 - [`Watch-DotNetTests.ps1`](../../scripts/Watch-DotNetTests.ps1) -> [documentation](Watch-DotNetTests.md)
 - [`Watch-GitHubRun.ps1`](../../scripts/Watch-GitHubRun.ps1) -> [documentation](Watch-GitHubRun.md)
 - [`Watch-Tests.ps1`](../../scripts/Watch-Tests.ps1) -> [documentation](Watch-Tests.md)
+- [`Write-ToolingResults.ps1`](../../scripts/Write-ToolingResults.ps1) -> [documentation](Write-ToolingResults.md)
 
 ## `scripts/lib/`
 
@@ -183,6 +184,7 @@ file by hand, run:
 - [`lib/TestCaseMetadata.psm1`](../../scripts/lib/TestCaseMetadata.psm1) -> [documentation](lib/TestCaseMetadata.md)
 - [`lib/TestCaseScheduling.psm1`](../../scripts/lib/TestCaseScheduling.psm1) -> [documentation](lib/TestCaseScheduling.md)
 - [`lib/TestConfiguration.psm1`](../../scripts/lib/TestConfiguration.psm1) -> [documentation](lib/TestConfiguration.md)
+- [`lib/ToolingResults.psm1`](../../scripts/lib/ToolingResults.psm1) -> [documentation](lib/ToolingResults.md)
 - [`lib/Watch-Tests.psm1`](../../scripts/lib/Watch-Tests.psm1) -> [documentation](lib/Watch-Tests.md)
 - [`lib/WorkflowDocumentation.psm1`](../../scripts/lib/WorkflowDocumentation.psm1) -> [documentation](lib/WorkflowDocumentation.md)
 - [`lib/WorkspaceJson.psm1`](../../scripts/lib/WorkspaceJson.psm1) -> [documentation](lib/WorkspaceJson.md)
