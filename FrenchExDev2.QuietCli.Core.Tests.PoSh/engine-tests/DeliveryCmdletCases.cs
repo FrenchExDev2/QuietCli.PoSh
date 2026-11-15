@@ -126,8 +126,9 @@ internal static class DeliveryCmdletCases
         {
             object result = Result(runspace, new Dictionary<string, object> { ["Name"] = "value" });
             string text = (string)Script(runspace, "param($r) ConvertTo-QuietYaml $r -Tokenizer off", result).Single().BaseObject;
-            // Keys are JSON-quoted by the renderer.
-            Require(text.StartsWith("\"SchemaVersion\": 1", StringComparison.Ordinal) && text.Contains("\"Name\":") && text.Contains("\"Analysis\": true"), "YAML delivery shape changed: " + text.Replace("\n", "\\n"));
+            // Compact rendering: plain keys, LF only, implicit document markers, flow style for scalar-only containers.
+            Require(text.StartsWith("SchemaVersion: 1\n", StringComparison.Ordinal) && text.Contains("\nData: {Name: value}\n") && text.Contains("Completeness: {Source: true, Analysis: true}"), "YAML delivery shape changed: " + text.Replace("\n", "\\n"));
+            Require(!text.Contains('\r') && !text.StartsWith("---", StringComparison.Ordinal) && !text.EndsWith("...", StringComparison.Ordinal), "YAML delivery framing changed: " + text.Replace("\n", "\\n"));
             Require((string)Script(runspace, "param($r) $r.Deliveries[0].Format", result).Single().BaseObject == "yaml", "YAML format not recorded");
             return Task.CompletedTask;
         });

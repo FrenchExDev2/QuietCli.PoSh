@@ -57,7 +57,7 @@ function Test-QuietGainOutput {
             if($json -notmatch '\r?\n' -or $compact -match '\r?\n'){throw 'GainJsonWhitespaceInvariant'}
             if(($json|ConvertFrom-Json).Invocations -ne 1 -or ($compact|ConvertFrom-Json).RootDeliveries -ne 1){throw 'GainJsonCountersInvariant'}
             $yaml=Get-QuietCliGain @options -AsYaml
-            if($yaml -notmatch '"Invocations": 1' -or $yaml -notmatch '"Groups":' -or $yaml -match '^\s*\{'){throw 'GainYamlMappingInvariant'}
+            if($yaml -notmatch '(?m)^Invocations: 1$' -or $yaml -notmatch '(?m)^Groups:' -or $yaml -match '^\s*\{' -or $yaml.Contains("`r")){throw 'GainYamlMappingInvariant'}
             foreach($invalid in @(@{Compress=$true},@{AsYaml=$true;Compress=$true},@{AsYaml=$true;AsJson=$true},@{AsObject=$true;AsJson=$true},@{AsObject=$true;AsYaml=$true},@{Compress=$false})){
                 $rejected=$false
                 try{$null=Get-QuietCliGain @options @invalid}catch{$rejected=$_.Exception.Message -in @('CompressRequiresAsJson','OutputFormatsAreExclusive')}

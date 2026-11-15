@@ -64,13 +64,10 @@ Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 YAML excerpt; invocation IDs and other envelope metadata are omitted. The version shown is the SDK selected in this checkout. `-Output` reads one native record; `-Complete` creates `{ SdkVersion }`. `-AsObject` keeps that result local, and `Out-QuietResult -AsYaml` formats the same result without executing `dotnet` again.
 
 ```yaml
-"Outcome": "Success"
-"Context": "sdk-version"
-"Data":
-  "SdkVersion": "11.0.100"
-"Completeness":
-  "Source": true
-  "Analysis": true
+Outcome: Success
+Context: sdk-version
+Data: {SdkVersion: "11.0.100"}
+Completeness: {Source: true, Analysis: true}
 ```
 
 The source manifest above loads the local Core project. The public Gallery module is named `QuietCli`; its installation uses `Install-PSResource -Name QuietCli` and `Import-Module QuietCli`.

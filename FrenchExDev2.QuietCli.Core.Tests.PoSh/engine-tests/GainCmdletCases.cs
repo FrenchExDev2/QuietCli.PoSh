@@ -146,7 +146,7 @@ internal static class GainCmdletCases
                 // JSON output delegates to ConvertTo-Json, which this minimal runspace lacks; Gain.Output.Tests.ps1 covers it in the real module.
                 Reset(runspace, OnePage());
                 string yaml = (string)DeliveryCmdletCases.Script(runspace, "param($from) Get-QuietCliGain -AsYaml -From $from", DateTimeOffset.Parse("2026-01-02T03:04:05Z")).Single().BaseObject;
-                Require(yaml.Contains("\"Invocations\": 7") && yaml.Contains("\"Groups\":") && yaml.Contains("2026-01-02T03:04:05") && !yaml.TrimStart().StartsWith('{'), "YAML report shape changed: " + yaml.Replace("\n", "\\n"));
+                Require(yaml.StartsWith("Invocations: 7\n", StringComparison.Ordinal) && yaml.Contains("\nGroups:\n- {Name: a}") && yaml.Contains("2026-01-02T03:04:05") && !yaml.TrimStart().StartsWith('{'), "YAML report shape changed: " + yaml.Replace("\n", "\\n"));
                 Require(Actions(runspace) == "gain", "Formatting a report sent extra requests");
                 return Task.CompletedTask;
             });
