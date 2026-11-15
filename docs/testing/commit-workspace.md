@@ -4,7 +4,7 @@
 
 ## Local checkpoint versus CI qualification
 
-Local feature/fix-branch commits and pushes do not require companion execution. Commit-Workspace runs the shared source/documentation checks and lock validation; Push-Workspace only performs the explicitly selected push. Neither script launches companion tests. Full local campaigns require an explicit request or prior agreement. Required qualification belongs to the applicable GitHub workflows and publication gates; a local checkpoint does not claim that qualification passed.
+Local feature/fix-branch commits and pushes do not require companion execution. Commit-Workspace validates discovered manifests and runs shared source/documentation checks without generating an internal source lock; Push-Workspace only performs the explicitly selected push. Neither script launches companion tests. Full local campaigns require an explicit request or prior agreement. Required qualification belongs to the applicable GitHub workflows and publication gates; a local checkpoint does not claim that qualification passed.
 
 ## What the current suite actually does
 

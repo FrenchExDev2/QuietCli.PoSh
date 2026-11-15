@@ -8,7 +8,7 @@ Builds only Core and Core.Tests for the native RID in a fresh short temporary pa
 
 The script reuses an existing checkout-local pinned SDK by temporarily setting process PATH/DOTNET_ROOT, then restores them. It installs nothing and changes no profile. NuGet restore/audit retains the build's normal network and warning policies. Sources and failed copies remain in an owned short temporary directory; evidence is copied to artifacts/core-independence. No user checkout or Git history is deleted.
 
-Distribution mode (`-Suite Distribution -SkipBuild`) validates portable Core/Core.Tests build receipts, their declared ReadyToRun slots and all six Core engine RIDs before copying built libraries into the Git-absent checkout. It regenerates an owned source lock for the reduced source copy and records the original source revision in its independence receipt. It runs the complete separately declared Distribution catalogue without compilation. Only the tooling job prepares the complete six-RID build. Core mode rejects SkipBuild. Local evidence uses the external report root; CI retains artifacts/core-independence.
+Distribution mode (`-Suite Distribution -SkipBuild`) validates portable Core/Core.Tests build receipts, their declared ReadyToRun slots and all six Core engine RIDs before copying built libraries into the Git-absent checkout. It records the original source revision in its independence receipt; no committed source lock is needed for the reduced copy. It runs the complete separately declared Distribution catalogue without compilation. Only the tooling job prepares the complete six-RID build. Core mode rejects SkipBuild. Local evidence uses the external report root; CI retains artifacts/core-independence.
 
 ## Critical review and verdict
 

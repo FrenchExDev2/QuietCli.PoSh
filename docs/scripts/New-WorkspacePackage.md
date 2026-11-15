@@ -4,7 +4,7 @@ Selected packages and their transitive RequiredModules determine which declared 
 
 ## Purpose and usage
 
-Stages and archives independently versioned modules after verifying their compiled payloads. The optional Module array selects exact source project names from repositories.lock.json; omitted projects are not archived. With no selection, all locked projects retain the existing distribution behavior.
+Stages and archives independently versioned modules after verifying their compiled payloads. The optional Module array selects exact source project names discovered from inert manifests; omitted projects are not archived. With no selection, all discovered projects retain the existing distribution behavior.
 
 ```powershell
 ./scripts/New-WorkspacePackage.ps1 -OutputDirectory <new-directory> -RequireReadyToRun
@@ -14,7 +14,7 @@ Stages and archives independently versioned modules after verifying their compil
 
 ## Dependencies and side effects
 
-Uses Common.ps1, AgentDocuments.ps1, runtime/build manifests and repositories.lock.json. Copies staged module files, production agent documents, SHA-256 manifests and deterministic ZIPs into the new output directory. Compiled payloads are copied recursively, including RID-specific net10.0 and net11.0 slots. No compilation, network access or registry publication.
+Uses Common, AgentDocuments and runtime/build manifests. Captures current source identity on demand instead of reading a committed workspace snapshot. Copies staged module files, production agent documents, SHA-256 manifests and deterministic ZIPs into the new output directory. Package manifests record the available Git revision/tree, dirty state, actual project source hash and packaged file hashes. Compiled payloads are copied recursively, including RID-specific net10.0 and net11.0 slots. No compilation, network access or registry publication.
 
 ## Critical review
 
@@ -45,7 +45,7 @@ See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-autom
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Packages every locked, independently versioned source/test module; never publishes them.
+Purpose: Packages discovered, independently versioned source/test modules with source evidence; never publishes them.
 
 Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 

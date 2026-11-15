@@ -115,7 +115,7 @@ jobs:
           cache-dependency-path: '**/*.csproj'
       - uses: ./.github/actions/cache-resources
       - uses: ./.github/actions/setup-powershell
-      - name: Verify monorepo source lock
+      - name: Verify monorepo structure and external resources
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Build the baseline module for every distribution

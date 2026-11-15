@@ -1,6 +1,6 @@
 # publish-psgallery.yml
 
-<!-- workflow-source-sha256: F1BDDCB0C8577AE47E4F386F8C07EDE1C3215942A7B4AABCB0FAAD5A4CBE73EF -->
+<!-- workflow-source-sha256: 1689D36CD6C07A11DBE5830E34E1D3C9EFD93B1A1ACC82176963511C11A82A8F -->
 
 ## Purpose
 
@@ -13,6 +13,11 @@ workflow_call accepts module (alias/full name), version, publication intent, qua
 ## Qualification, preparation and publication
 
 Current-run/current-attempt All evidence must match the exact source revision; otherwise the workflow runs All. Develop same-tree reuse cannot substitute for release evidence. Windows builds the required ReadyToRun RID/CLR distributions and validates packaging outputs before preparing the selected package or batch.
+
+Workspace initialization validates discovered manifests and pinned external resources. Internal
+sources require no committed workspace lock. Package manifests and package-set.json retain
+actual source identities with available Git revision/tree and dirty state, while existing binary
+and exact-revision qualification checks remain required.
 
 Publication downloads those prepared nupkg files and verifies versions, hashes and the qualified checkpoint without rebuilding. Only a matching original-repository module-tag release with publication intent can use the protected PSGallery environment. Manual dispatch and generated-preview requests create artifacts. Batch members are validated first, then published in dependency order. Core/Git eligibility comes from manifests; tests and disabled Vagrant are excluded. See the [publication diagram](../execution-model.md#gallery-publication).
 

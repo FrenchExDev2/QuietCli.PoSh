@@ -127,7 +127,7 @@ jobs:
       - uses: ./.github/actions/cache-resources
         with:
           host-channel: ${{ matrix.channel }}
-      - name: Verify monorepo source lock
+      - name: Verify monorepo structure and external resources
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Prepare the pinned PowerShell host without installing or changing profiles
@@ -387,7 +387,7 @@ jobs:
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-${{ runner.arch }}-quietcli-nuget-${{ hashFiles('**/*.csproj', 'Directory.Packages.props', 'Directory.Build.props', 'global.json') }}
-      - name: Verify source lock and restore pinned resources
+      - name: Verify workspace and restore pinned external resources
         run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Build distributions in the selected native toolchain image
         run: ./scripts/Build-Workspace.ps1 -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
@@ -475,7 +475,7 @@ jobs:
             Directory.Build.props
             global.json
       - uses: ./.github/actions/cache-resources
-      - name: Verify monorepo source lock
+      - name: Verify monorepo structure and external resources
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Build engines for the six distributions

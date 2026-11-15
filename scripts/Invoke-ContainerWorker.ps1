@@ -67,7 +67,7 @@ try{
         if($productFiles.Count){throw 'NativeStageMustNotContainProductBuildsOrModules'}
         Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'bootstrap.json')) @{Mode='Direct CI processes';ProductBuildFiles=0;NativeSourceSHA256=(Get-FileHash ([IO.Path]::Combine($stage,'FrenchExDev2.QuietCli.Core.PoSh/native/quietcli-pty.c')) -Algorithm SHA256).Hash}
     }else{
-        foreach($file in @('global.json','Directory.Packages.props','repositories.lock.json')){if(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$file))){Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$file)) -Destination $stage}}
+        foreach($file in @('global.json','Directory.Packages.props')){if(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$file))){Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$file)) -Destination $stage}}
         Write-WorkspaceJson ([IO.Path]::Combine($stage,'transport-origin.json')) (Get-QuietWorkspaceIdentity $WorkspaceRoot -IncludeBinaries)
     }
     $imageState=@{Id=$null}

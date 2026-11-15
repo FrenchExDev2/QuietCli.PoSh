@@ -224,14 +224,11 @@ multi-target pins, DTDs and links fail instead of triggering a broad text replac
 Use `-Path`, `-Framework`, `-Preleases` and explicit `-AllowDowngrade` for deliberate
 scope/version changes. Original-byte backups precede each atomic changed-file replacement.
 
-After changing SDK/runtime/lock sources, refresh repository metadata:
+After changing SDK/runtime declarations, synchronize the corresponding external archive/image
+locks with the commands above and review their Git diff. Internal source edits require no
+workspace source-lock refresh; see [source identity](docs/README-source-identity.md).
 
-```powershell
-./scripts/Update-WorkspaceLock.ps1
-```
-
-Its SDK and runtime labels follow global.json and the engine's net11.0 runtime property.
-SDK setup steps in CI, package preparation and the manual ReadyToRun workflow also read
+SDK setup steps in CI, package preparation and the manual ReadyToRun workflow read
 global.json. Rebuild before relying on compiled payloads: changing a runtime pin does not
 rebuild assemblies or runtimeconfig files, nor qualify an existing binary under the new pin.
 

@@ -1,6 +1,6 @@
 # qualification.yml
 
-<!-- workflow-source-sha256: FB9EE06CB5B1425B2CA90F98DC7B9FE6D76C267DF072AD420F8D4C62578BC362 -->
+<!-- workflow-source-sha256: 05E09661058BD278FAD1828B736ADF7CB676F82B01362D0BF069A8A1250E6314 -->
 
 ## Purpose
 
@@ -38,7 +38,7 @@ flowchart TD
 
 An optional shared resource-archive cache precedes preparation. Cache hits do not qualify the self-hosted runner or bypass resource hash verification.
 
-Requires self-hosted Linux x64 labels podman and kvm, restores the source lock, then calls Invoke-GitQualification with QUIETCLI_QUALIFICATION_CONFIG. Qualification artifacts upload with always().
+Requires self-hosted Linux x64 labels podman and kvm, validates discovered project manifests and restores pinned external resources, then calls Invoke-GitQualification with QUIETCLI_QUALIFICATION_CONFIG. Qualification artifacts upload with always(). Internal sources use the checked-out Git revision and generated execution evidence, without a committed workspace source snapshot.
 
 ## Validation and limits
 

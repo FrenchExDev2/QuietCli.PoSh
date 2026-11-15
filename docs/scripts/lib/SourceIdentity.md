@@ -29,14 +29,23 @@ checks. Pinned third-party profiler files retain their original bytes and are no
 
 ## Critical review
 
-- `scripts/SourceIdentity.psm1:81` compares source snapshots before recording a build. ReadyToRun format verification precedes the receipt; a flag alone cannot qualify IL as precompiled output.
-- `scripts/SourceIdentity.psm1:112` rechecks hashes and RID architecture, including Linux R2R machine encoding. Older manifests without R2R fields remain portable-compatible.
-- `scripts/SourceIdentity.psm1:155` includes selected net10.0 RID slots as well as portable builds and embedded net11.0 publications. Inactive stale net10.0 slots are not treated as current qualification evidence.
+- `scripts/lib/SourceIdentity.psm1:84` compares source snapshots before recording a build. ReadyToRun format verification precedes the receipt; a flag alone cannot qualify IL as precompiled output.
+- `scripts/lib/SourceIdentity.psm1:115` rechecks hashes and RID architecture, including Linux R2R machine encoding. Older manifests without R2R fields remain portable-compatible.
+- `scripts/lib/SourceIdentity.psm1:158` includes selected net10.0 RID slots as well as portable builds and embedded net11.0 publications. Inactive stale net10.0 slots are not treated as current qualification evidence.
 - Hashes bind observed bytes to source inputs; they are not signatures or evidence that an unexecuted platform passed tests. The final Gallery package is rebuilt on Windows after source-revision matrix qualification.
 
 ## Verdict
 
 One source/binary identity contract serves local tests, GitHub tests and packaging. Full platform execution is still a separate release requirement.
+
+Internal source snapshots are generated evidence, not a committed workspace lock.
+Get-QuietWorkspaceIdentity records the available Git revision and committed tree plus Dirty
+and the digest of actual tracked/non-ignored untracked source content. A dirty checkout's tree
+is its committed baseline; its source digest identifies the observed changes. Missing Git
+metadata leaves revision/tree null and preserves the explicit transport-origin receipt.
+External resources retain their dedicated pinned manifests. See
+[source identity](../../README-source-identity.md). The commit integration campaign asserts
+that an uncommitted edit changes the digest without changing the committed revision/tree.
 
 <!-- credits:begin -->
 ## Credits

@@ -10,7 +10,7 @@ Every Core, Git and Vagrant top-level case declares `TestKind` and `Dependencies
 
 Run from the monorepo root in PowerShell Core 7.6+, with the pinned SDK and existing native prerequisites. Builds and tests do not publish packages.
 
-Local feature/fix-branch commits and pushes do not require running the companion suites. Commit-Workspace checks source/documentation contracts and the source lock; it never launches companions. Ask before starting a full local campaign unless explicitly requested. GitHub workflows perform the qualification for their PR/develop/release scope. A cancelled or filtered local run does not prevent creating a work-branch checkpoint and never counts as qualification.
+Local feature/fix-branch commits and pushes do not require running the companion suites. Commit-Workspace checks discovered manifests and source/documentation contracts without generating an internal source lock; it never launches companions. External dependency locks retain their integrity contracts. Ask before starting a full local campaign unless explicitly requested. GitHub workflows perform the qualification for their PR/develop/release scope. A cancelled or filtered local run does not prevent creating a work-branch checkpoint and never counts as qualification.
 
 Core mixes pure logic, filesystem integration, native processes and qualification campaigns. The special Integration suite selects the import/performance workload; it is not a filter for every integration test. Known case reports expose TestKind/Dependencies; unreviewed cases remain Unclassified. [Commit-suite boundaries and PSDrive feasibility](docs/testing/commit-workspace.md) explain the physical temporary repositories and the separation available for fast unit logic.
 

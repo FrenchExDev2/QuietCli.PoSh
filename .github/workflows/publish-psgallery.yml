@@ -121,7 +121,7 @@ jobs:
             Directory.Build.props
             global.json
       - uses: ./.github/actions/cache-resources
-      - name: Verify the qualified source lock
+      - name: Verify the qualified workspace and external resources
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Select the checksum-pinned stable PowerShell host

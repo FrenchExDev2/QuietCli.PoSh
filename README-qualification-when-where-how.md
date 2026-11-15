@@ -23,7 +23,7 @@ require Core and Vagrant and name its own test runner. Tool requirements do not 
 suite implicitly. Core's commit test requires Git's supported toolchain, but Core-only selection
 does not execute Git's mutation campaigns. See [the CI catalogue](docs/scripts/lib/CiCompanions.md).
 
-Local commits and pushes do not launch local companion suites. [Commit-Workspace.ps1](scripts/Commit-Workspace.ps1) checks source/documentation contracts and the source lock. [Push-Workspace.ps1](scripts/Push-Workspace.ps1) pushes and updates the existing PR; the resulting PR event can start GitHub tests independently.
+Local commits and pushes do not launch local companion suites. [Commit-Workspace.ps1](scripts/Commit-Workspace.ps1) checks manifests and source/documentation contracts without refreshing an internal source lock. [Push-Workspace.ps1](scripts/Push-Workspace.ps1) pushes and updates the existing PR; the resulting PR event can start GitHub tests independently. [Source identity](docs/README-source-identity.md) separates Git sources, generated execution evidence and external dependency locks.
 
 Other path-filtered PR checks run on `ubuntu-latest`: [scripts-docs-check.yml](.github/workflows/scripts-docs-check.yml) checks the shared automation/documentation contracts, and [sync-credits-check.yml](.github/workflows/sync-credits-check.yml) checks credit aggregation and links. These jobs do not execute companion suites. A green documentation check alone does not establish functional test coverage.
 

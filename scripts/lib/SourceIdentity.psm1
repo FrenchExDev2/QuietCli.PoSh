@@ -23,7 +23,6 @@ function Get-QuietSourceFiles {
             if(!$item.PSIsContainer -and $item.Name -match '\.(json|csproj|props)\.bak-'){continue}
             if($item.Name -eq 'lib' -and $item.FullName -ne [IO.Path]::GetFullPath([IO.Path]::Combine($rootPath,'scripts/lib'))){continue}
             if($directory -eq $rootPath -and $item.Name -in $ExcludeChildren){continue}
-            if($directory -eq $rootPath -and $item.Name -eq 'repositories.lock.json'){continue}
             if($item.Attributes -band [IO.FileAttributes]::ReparsePoint){throw ('SourceLinkNotAllowed: '+$item.FullName)}
             if($item.PSIsContainer){$pending.Push($item.FullName)}else{$files.Add($item.FullName)}
         }
@@ -169,10 +168,11 @@ function Get-QuietWorkspaceIdentity {
     #>
     param([string]$WorkspaceRoot,[switch]$IncludeBinaries,[string]$Suite='All')
     $children=@((Get-QuietWorkspaceProjects $WorkspaceRoot).Name)
-    $revision=$null;$remote=$null;$dirty=$false
+    $revision=$null;$tree=$null;$remote=$null;$dirty=$false
     $allowedFiles=$null
     if(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'.git'))){
         $revision=Read-QuietRepositoryValue $WorkspaceRoot @('rev-parse','--verify','HEAD')
+        $tree=Read-QuietRepositoryValue $WorkspaceRoot @('rev-parse','--verify','HEAD^{tree}')
         $remote=Read-QuietRepositoryValue $WorkspaceRoot @('remote','get-url','origin')
         $dirty=![string]::IsNullOrWhiteSpace((Read-QuietRepositoryValue $WorkspaceRoot @('status','--porcelain=v1')))
         $selection=@{Files=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)}
@@ -182,7 +182,7 @@ function Get-QuietWorkspaceIdentity {
     }
     $projects=@(foreach($name in $children){$files=@(Get-QuietSourceFiles ([IO.Path]::Combine($WorkspaceRoot,$name))|Where-Object {$null -eq $allowedFiles -or $allowedFiles.Contains($name+'/'+$_.Path)});@{Name=$name;Path=$name;SourceSHA256=(Get-QuietManifestDigest $files);Files=$files}})
     $rootFiles=@(Get-QuietSourceFiles $WorkspaceRoot|Where-Object {$null -eq $allowedFiles -or $allowedFiles.Contains($_.Path)})
-    $repository=@{Name='FrenchExDev2.QuietCli.PoSh';Revision=$revision;Remote=$remote;Dirty=$dirty;SourceSHA256=(Get-QuietManifestDigest $rootFiles);Files=$rootFiles}
+    $repository=@{Name='FrenchExDev2.QuietCli.PoSh';Revision=$revision;Tree=$tree;Remote=$remote;Dirty=$dirty;SourceSHA256=(Get-QuietManifestDigest $rootFiles);Files=$rootFiles}
     $binaries=@()
     if($IncludeBinaries){
         $selectedModules=@(Get-QuietWorkspaceBuildSelection $WorkspaceRoot -Suite $Suite)

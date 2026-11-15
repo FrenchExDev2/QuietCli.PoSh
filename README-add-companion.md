@@ -221,20 +221,23 @@ starts at 2.40. This is a test-tool requirement, not a reverse product dependenc
 
 ## 6. Refresh documentation and source contracts
 
-Review the documentation affected by the actual change. Regenerate the relevant indexes and lock:
+Review the documentation affected by the actual change. Regenerate the relevant indexes:
 
 ```powershell
 ./scripts/Sync-ScriptsReadme.ps1 -Apply
 ./scripts/Sync-ScriptContracts.ps1 -Apply
 ./scripts/Sync-ResourcesReadme.ps1 -Apply
 ./scripts/Sync-DocsCredits.ps1 -Apply
-./scripts/Update-WorkspaceLock.ps1
 ./scripts/Invoke-WorkspaceChecks.ps1
 ```
 
 A real workflow edit also requires reviewing its `docs/ci/github/` contract, updating its SHA-256
 receipt and running `Sync-GitHubWorkflowsReadme.ps1 -Apply`. Registering another companion or suite
 in the catalogue does not require another workflow file.
+
+Internal projects are discovered from their Git-tracked manifests; no workspace source lock is
+generated. Change dedicated external dependency locks only when their reviewed inputs change.
+See [source identity](docs/README-source-identity.md).
 
 Run the required qualification for the delivered revision before claiming release readiness.
 A commit does not authorize pushing, and a push does not authorize publication.

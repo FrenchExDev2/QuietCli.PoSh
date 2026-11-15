@@ -17,10 +17,10 @@ intentional use of the quiet module in this otherwise quiet-independent script -
 or larger than -MaxChangedFileSize, unless .gitattributes already marks it binary. Pass
 -NoCommitFileSnifferWarning to override (silence) that warning; it never blocks the commit either.
 Fully supports -WhatIf/-Confirm (SupportsShouldProcess): with -WhatIf, the sync gates and the drift
-warning still run and report exactly as they would for a real commit, but the workspace lock is not
-refreshed, nothing is staged and no commit is created.
+warning still run and report exactly as they would for a real commit, but nothing is staged
+and no commit is created.
 With -NoAll, the working tree and index are never refreshed or staged. An isolated temporary index
-snapshot supplies the source-lock and documentation checks, including during WhatIf preview.
+snapshot supplies the manifest and documentation checks, including during WhatIf preview.
 .PARAMETER Message
 Required commit message, without trailers.
 .PARAMETER WorkspaceRoot
@@ -33,9 +33,9 @@ contributing agent explicitly named by the caller; each entry is either `Name <e
 agent name from `$knownCoAuthors` (see docs/agents/README.md for the documented list). Skips an
 entry already present verbatim in Message so a caller-supplied trailer is never duplicated.
 .PARAMETER NoAll
-Commits only the prepared index. Does not refresh the working-tree lock or stage any file.
-Requires a repositories.lock.json matching the staged sources; validates an isolated index snapshot
-before committing. Prepare and stage the matching lock together with the selected source changes.
+Commits only the prepared index without staging any file.
+Validates manifests and source/documentation policy in an isolated index snapshot before committing.
+Internal source identity belongs to Git and execution evidence, not a committed source lock.
 .PARAMETER NoScriptsReadmeCheck
 Skips the scripts/README documentation-coverage gate (Sync-ScriptsReadme.ps1).
 .PARAMETER NoDocsCreditsCheck
@@ -70,15 +70,14 @@ informational only; it never blocks the commit whether this switch is passed or 
 Runs every sync gate and the drift warning, then stages and commits as usual.
 .EXAMPLE
 ./scripts/Commit-Workspace.ps1 -Message "Quick fix" -NoSyncChecks -NoScriptDocDriftWarning
-Skips every documentation-sync gate and the drift warning; still refreshes the lock, stages and
-commits.
+Skips every documentation-sync gate and the drift warning; still stages and commits.
 .EXAMPLE
 ./scripts/Commit-Workspace.ps1 -Message "Preview" -WhatIf
 Runs the gates and reports script/doc drift, but refreshes nothing, stages nothing and commits
 nothing.
 .EXAMPLE
 ./scripts/Commit-Workspace.ps1 -Message "Commit selected changes" -NoAll
-Validates and commits the prepared index with its matching source lock; preserves unstaged changes.
+Validates and commits the prepared index; preserves unstaged changes.
 .EXAMPLE
 ./scripts/Commit-Workspace.ps1 -Message "Vendor a tool" -MaxChangedFileSize 2MiB
 Raises the binary/oversized-file sniffer's threshold to 2 MiB for this run only.

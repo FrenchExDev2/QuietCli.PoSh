@@ -1,6 +1,6 @@
 # quietcli2-readytorun.yml
 
-<!-- workflow-source-sha256: AADD08BCC05458CDB929A4D3E9B9B9C460211C6B2D10DEB6AD105B29D5869F73 -->
+<!-- workflow-source-sha256: A3B7D9F23888598A29362136A6988E39DC8AC7D6834D6BA8E3C05397D4F8DEA8 -->
 
 ## Purpose
 
@@ -45,6 +45,8 @@ flowchart TD
 ## Scripts and effects
 
 Both checkout paths run `Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker`.
+Workspace initialization validates manifests and restores pinned external resources without an
+internal source-lock refresh; source-bound benchmark artifacts still identify their actual inputs.
 The shared initializer deterministically prepares the ignored runtime key without loading an engine
 or starting a daemon. Explicit Docker worker arguments remain overrides; no trigger or blocking
 dependency is added. See [environment resolution](../environment.md).

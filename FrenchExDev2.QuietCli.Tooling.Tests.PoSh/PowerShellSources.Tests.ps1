@@ -80,7 +80,6 @@ function Get-Fixture {
     $commitFixture=New-QuietCommitWorkspaceFixture -Root $RunDirectory -RealScriptsPath $realScripts
     $defect=[IO.Path]::Combine($commitFixture,'FrenchExDev2.QuietCli.Core.PoSh/Undocumented.ps1')
     [IO.File]::WriteAllText($defect,($badHelp+"`n"),$utf8)
-    $null=& ([IO.Path]::Combine($realScripts,'Update-WorkspaceLock.ps1')) -WorkspaceRoot $commitFixture
     $null=Invoke-WorkspaceNative git @('-C',$commitFixture,'add','--all','--') $commitFixture
     $index=[IO.Path]::Combine($commitFixture,'.git/index')
     $before=(Get-FileHash -LiteralPath $index).Hash

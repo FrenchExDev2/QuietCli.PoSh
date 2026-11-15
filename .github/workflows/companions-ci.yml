@@ -85,7 +85,7 @@ jobs:
             global.json
       - uses: ./.github/actions/cache-resources
       - uses: ./.github/actions/setup-powershell
-      - name: Verify merged source lock and exercise Core
+      - name: Verify merged workspace and external resources and exercise Core
         shell: pwsh
         run: |
           ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false

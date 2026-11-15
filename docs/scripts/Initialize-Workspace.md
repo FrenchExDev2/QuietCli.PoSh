@@ -10,15 +10,15 @@ Verifies a single monorepo checkout and optionally restores checksum-pinned thir
 
 WorkspaceRoot defaults to the script checkout. Every discovered project must have its matching manifest and no nested .git. The root may use normal Git metadata or a linked worktree's .git file.
 
-Restore requires the existing schema-3 Monorepo lock to match the repository and every discovered project's source hashes before restoring Core resources. Without Restore, Update-WorkspaceLock refreshes that source lock instead. WhatIf returns before both paths.
+Restore verifies/restores Core's pinned external resources. Without Restore, this command only validates the monorepo structure and inert project manifests. Neither mode reads or generates an internal source lock. WhatIf returns before validation or restoration.
 
 ## Dependencies and side effects
 
-Loads Common and its workspace/resource helpers. Restore-CoreResources can fetch/extract verified missing resources or reuse existing ones; the default path writes repositories.lock.json. This is source/resource readiness, not NuGet compilation, test execution or hosted qualification. See [resources](../../README-resources.md).
+Loads Common and its workspace/resource helpers. Restore-CoreResources can fetch/extract verified missing resources or reuse existing ones; the default path writes nothing. This is source/resource readiness, not NuGet compilation, test execution or hosted qualification. See [resources](../../README-resources.md) and [source identity](../README-source-identity.md).
 
 ## Critical review and verdict
 
-`scripts/Initialize-Workspace.ps1:24` validates committed source hashes before resource preparation. Its final object currently reports Restored=false unconditionally, including successful Restore invocations. Read the resource operation's own Restored/Reused counts rather than using that summary flag to infer download activity. No code correction is included in this documentation review.
+`scripts/Initialize-Workspace.ps1:17` requires Git metadata and discovers project manifests without importing product code. The final Restored flag reports whether resource restoration completed; read the resource operation's own Restored/Reused counts to distinguish downloads from reuse. Missing manifests, dependency cycles and nested repositories remain failures. The commit companion verifies initialization/restoration without an internal lock and preserves external dependency files.
 
 
 
@@ -35,7 +35,7 @@ See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-autom
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Verifies the monorepo structure; Restore checks committed source hashes instead of cloning child repositories, then restores Core's pinned third-party resources (see Restore-CoreResources.ps1) so a fresh clone is read...
+Purpose: Verifies the Git monorepo structure and optionally restores Core's pinned third-party resources. Internal projects are discovered from their manifests; no committed source snapshot is required.
 
 Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 

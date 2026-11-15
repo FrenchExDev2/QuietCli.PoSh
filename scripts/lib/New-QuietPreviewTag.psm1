@@ -107,8 +107,7 @@ if($PSCmdlet.ParameterSetName -ceq 'Publish'){
     $invokeGit={param($arguments) Invoke-QuietPreviewGit -Arguments $arguments}
     $commit={
         param($root,$message,$paths)
-        & ([IO.Path]::Combine($scriptDirectory,'Update-WorkspaceLock.ps1')) -WorkspaceRoot $root | Out-Null
-        $allowed=@($paths)+@('repositories.lock.json')
+        $allowed=@($paths)
         $changed=@((Invoke-QuietPreviewGit @('diff','--name-only','HEAD')).Lines)
         if(@($changed|Where-Object {$_ -cnotin $allowed}).Count){throw 'ReleaseUnrelatedChangesBeforeCommit'}
         $null=Invoke-QuietPreviewGit (@('add','--')+$allowed)
