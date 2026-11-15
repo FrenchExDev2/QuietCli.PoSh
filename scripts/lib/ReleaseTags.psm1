@@ -160,6 +160,56 @@ function Push-QuietReleaseTags {
     $result
 }
 
+function Get-QuietModuleReleaseSelection {
+    <#
+    .SYNOPSIS
+    Selects per-package release versions and tags from already observed tag names; reads manifests only, without Git or network access.
+    .PARAMETER WorkspaceRoot
+    Source checkout whose business package manifests are discovered.
+    .PARAMETER Module
+    Discovered component aliases, full package names or All.
+    .PARAMETER Version
+    Common requested base or full version; preview counters remain independent per package.
+    .PARAMETER Preview
+    Explicit positive preview number, or null for the next available number.
+    .PARAMETER PreviewSpecified
+    Distinguishes omitted Preview from an explicitly supplied null.
+    .PARAMETER NextPreview
+    Requests automatic numeric preview selection.
+    .PARAMETER NoCommit
+    Requires every selected version to already match its manifest.
+    .PARAMETER KnownTags
+    Local tag names and remote ls-remote tag records; every selected tag must be absent from them.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[string[]]$Module=@('Core'),[Parameter(Mandatory)][string]$Version,
+        [Nullable[int]]$Preview,[switch]$PreviewSpecified,[switch]$NextPreview,[switch]$NoCommit,[string[]]$KnownTags=@())
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'GalleryRelease.psm1')) -DisableNameChecking
+    $targets=@(Select-QuietGalleryReleaseTargets $WorkspaceRoot -Module $Module)
+    if($Version -cnotmatch '\A((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))(?:-([A-Za-z][A-Za-z0-9-]*))?\z'){throw 'ReleaseVersionInvalid'}
+    $base=$Matches[1];$hasSuffix=$Matches.ContainsKey(2)
+    try{$null=[semver]$Version}catch{throw 'ReleaseVersionInvalid'}
+    if(($NextPreview -or $PreviewSpecified) -and $hasSuffix){throw 'ReleasePreviewVersionConflict'}
+    if($null -ne $Preview -and $Preview -lt 1){throw 'ReleasePreviewNumberInvalid'}
+    if($NextPreview -and $PreviewSpecified -and $null -ne $Preview){throw 'ReleasePreviewSelectionConflict'}
+    $known=@($KnownTags|ForEach-Object {($_ -split "`t")[-1] -creplace '\Arefs/tags/',''})
+    $releases=[Collections.Generic.List[object]]::new()
+    foreach($target in $targets){
+        $number=$null;$selectedVersion=$Version
+        if($NextPreview -or $PreviewSpecified){
+            $number=if($null -ne $Preview){[int]$Preview}else{Get-QuietNextPreviewNumber -Module $target.Module -Version $base -Tags $known}
+            $selectedVersion=$base+'-preview'+$number
+        }
+        $tag=$target.Module+'/v'+$selectedVersion
+        if($tag -cin $known){throw ('ReleaseTagAlreadyExists: '+$tag)}
+        if($NoCommit -and $target.Version -cne $selectedVersion){throw 'ReleaseNoCommitRequiresCommittedVersions'}
+        $text=[IO.File]::ReadAllText($target.ManifestPath,[Text.UTF8Encoding]::new($false,$true))
+        $updated=Get-QuietReleaseManifestText -Text $text -Version $selectedVersion
+        $releases.Add([pscustomobject]@{Module=$target.Module;Component=$target.Component;Version=$selectedVersion;Preview=$number;Tag=$tag;ManifestPath=$target.ManifestPath;OriginalText=$text;UpdatedText=$updated;VersionChanged=($target.Version -cne $selectedVersion)})
+    }
+    $releases.ToArray()
+}
+
 function Invoke-QuietModuleRelease {
     <#
     .SYNOPSIS
@@ -203,13 +253,6 @@ function Invoke-QuietModuleRelease {
         [ValidatePattern('\A[A-Za-z0-9][A-Za-z0-9._/-]*\z')][string]$DeliveryBranch='develop',[string]$Message,
         [Parameter(Mandatory)][scriptblock]$GitCommand,[Parameter(Mandatory)][scriptblock]$CommitCommand)
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'GalleryRelease.psm1')) -DisableNameChecking
-    $targets=@(Select-QuietGalleryReleaseTargets $WorkspaceRoot -Module $Module)
-    if($Version -cnotmatch '\A((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))(?:-([A-Za-z][A-Za-z0-9-]*))?\z'){throw 'ReleaseVersionInvalid'}
-    $base=$Matches[1];$hasSuffix=$Matches.ContainsKey(2)
-    try{$null=[semver]$Version}catch{throw 'ReleaseVersionInvalid'}
-    if(($NextPreview -or $PreviewSpecified) -and $hasSuffix){throw 'ReleasePreviewVersionConflict'}
-    if($null -ne $Preview -and $Preview -lt 1){throw 'ReleasePreviewNumberInvalid'}
-    if($NextPreview -and $PreviewSpecified -and $null -ne $Preview){throw 'ReleasePreviewSelectionConflict'}
     $revision=(& $GitCommand @('rev-parse','--verify','HEAD^{commit}')).Value
     $branch=(& $GitCommand @('rev-parse','--abbrev-ref','HEAD')).Value
     $dirty=(& $GitCommand @('status','--porcelain=v1','--untracked-files=normal')).HasOutput
@@ -218,24 +261,11 @@ function Invoke-QuietModuleRelease {
     $remoteTags=@()
     $remoteChecked=!$WhatIfPreference
     if($remoteChecked){$remoteTags=@((& $GitCommand @('ls-remote','--tags','--refs',$Remote)).Lines)}
-    $known=@($local)+@($remoteTags|ForEach-Object {($_ -split "`t")[-1] -creplace '\Arefs/tags/',''})
-    $releases=[Collections.Generic.List[object]]::new()
-    foreach($target in $targets){
-        $number=$null;$selectedVersion=$Version
-        if($NextPreview -or $PreviewSpecified){
-            $number=if($null -ne $Preview){[int]$Preview}else{Get-QuietNextPreviewNumber -Module $target.Module -Version $base -Tags $known}
-            $selectedVersion=$base+'-preview'+$number
-        }
-        $tag=$target.Module+'/v'+$selectedVersion
-        if($tag -cin $known){throw ('ReleaseTagAlreadyExists: '+$tag)}
-        if($NoCommit -and $target.Version -cne $selectedVersion){throw 'ReleaseNoCommitRequiresCommittedVersions'}
-        $text=[IO.File]::ReadAllText($target.ManifestPath,[Text.UTF8Encoding]::new($false,$true))
-        $updated=Get-QuietReleaseManifestText -Text $text -Version $selectedVersion
-        $releases.Add([pscustomobject]@{Module=$target.Module;Component=$target.Component;Version=$selectedVersion;Preview=$number;Tag=$tag;ManifestPath=$target.ManifestPath;OriginalText=$text;UpdatedText=$updated;VersionChanged=($target.Version -cne $selectedVersion)})
-    }
+    $selection=@{WorkspaceRoot=$WorkspaceRoot;Module=$Module;Version=$Version;Preview=$Preview;PreviewSpecified=$PreviewSpecified;NextPreview=$NextPreview;NoCommit=$NoCommit;KnownTags=(@($local)+@($remoteTags))}
+    $releases=@(Get-QuietModuleReleaseSelection @selection)
     $changed=@($releases|Where-Object VersionChanged)
     $mode=if(!$NoCommit -and $changed.Count){'Commit'}else{'Tag'}
-    if($mode -ceq 'Commit' -and ($branch -ceq 'HEAD' -or $branch -ceq $DeliveryBranch)){throw ('ReleaseCommitRequiresWorkBranch: create a fix/* or feature/* branch; '+$DeliveryBranch+' only receives pull requests.')}
+    if($mode -ceq 'Commit' -and ($branch -ceq 'HEAD' -or $branch -ceq $DeliveryBranch)){throw ('ReleaseCommitRequiresWorkBranch: create a fix/*, feature/* or release/* branch (Invoke-QuietRelease.ps1 creates one); '+$DeliveryBranch+' only receives pull requests.')}
     $result=[pscustomobject]@{Mode=$mode;Revision=$revision;Branch=$branch;Remote=$Remote;DeliveryBranch=$DeliveryBranch;RemoteChecked=$remoteChecked;Committed=$false;Created=@();DeliveryChecked=$false;Pushed=$false;TagPushState='NotRequested';Releases=@($releases|Select-Object Module,Component,Version,Preview,Tag,VersionChanged);Receipt=$null}
     $description=($result.Releases|ForEach-Object {$_.Tag}) -join ', '
     $action=if($mode -ceq 'Commit'){'Commit version edits for '+$description+' on '+$branch+'; tags follow the merge into '+$DeliveryBranch}else{'Tag '+$description+'; push='+(!$NoPush)}
@@ -289,4 +319,4 @@ function Invoke-QuietModuleRelease {
         [IO.File]::WriteAllText($result.Receipt,$json+"`n",[Text.UTF8Encoding]::new($false))
     }
 }
-Export-ModuleMember -Function Get-QuietNextPreviewNumber,Get-QuietReleaseManifestText,Assert-QuietReleaseTagSet,Assert-QuietReleaseDelivery,Push-QuietReleaseTags,Invoke-QuietModuleRelease
+Export-ModuleMember -Function Get-QuietNextPreviewNumber,Get-QuietReleaseManifestText,Get-QuietModuleReleaseSelection,Assert-QuietReleaseTagSet,Assert-QuietReleaseDelivery,Push-QuietReleaseTags,Invoke-QuietModuleRelease

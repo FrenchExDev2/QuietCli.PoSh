@@ -4,7 +4,7 @@
 
 `-PrDescriptionBodyFile <utf8.md>` explicitly replaces the verified existing PR description with `gh pr edit --body-file` after pushing. Both Markdown files are validated before the push. Description editing and commenting use the same selected remote, branch and exact head verification; WhatIf performs neither. Omitting the new option preserves comment-only behavior. Failures are reported separately from the successful push.
 
-After a successful `feature/*` or `fix/*` push, RAC-PR-001 adds an update to the existing open PR
+After a successful `feature/*`, `fix/*` or `release/*` push, RAC-PR-001 adds an update to the existing open PR
 on the selected GitHub remote. `-PrCommentBodyFile <utf8.md>` supplies a reviewed summary of changes
 and actual validation; without it, the comment lists the PR's current commits and leaves qualification
 to GitHub checks. The shared [PR update helper](lib/PullRequestUpdates.md) verifies the checkpoint and
@@ -36,7 +36,7 @@ Pushes the monorepo's single root repository's current branch to its configured 
 
 ## Side effects
 
-No companion tests or qualification campaign is started by this script. A feature/fix branch can be pushed explicitly before local full-suite qualification; the applicable GitHub workflows validate it. Always pass -Branch for the intended work branch: the compatibility default is main.
+No companion tests or qualification campaign is started by this script. A feature/fix/release branch can be pushed explicitly before local full-suite qualification; the applicable GitHub workflows validate it. Always pass -Branch for the intended work branch: the compatibility default is main.
 
 - Pushes `Branch` to `Remote` with `--set-upstream` (line 17) — a real, non-idempotent network/remote-state mutation. `--set-upstream` will also rewrite the local branch's tracking configuration even on branches that already track a different upstream, which is a side effect beyond "just push."
 - PR reporting writes a temporary UTF-8 Markdown body and removes it after the GitHub CLI call.
@@ -66,7 +66,7 @@ This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which 
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Pushes one monorepo branch and summarizes feature/fix updates on its existing GitHub PR.
+Purpose: Pushes one monorepo branch and summarizes feature/fix/release updates on its existing GitHub PR.
 
 Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 

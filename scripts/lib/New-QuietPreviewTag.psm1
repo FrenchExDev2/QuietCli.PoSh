@@ -62,18 +62,26 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $sourceRoot = Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent
-foreach ($component in @('Core', 'Git')) {
-    $name = "FrenchExDev2.QuietCli.$component.PoSh"
-    $path = [IO.Path]::Combine($sourceRoot,$name,($name+'.psm1'))
-    $loaded = Get-Module -Name $name
-    if ($loaded -and @($loaded | Where-Object { ![StringComparer]::OrdinalIgnoreCase.Equals($_.Path, $path) }).Count) {
-        throw "PreviewTagUnexpectedModulePath: $name; start a fresh PowerShell session."
+# Git's RequiredModules registration resolves Core commands from the process-global scope, so Core is
+# imported globally first. Registration is in-memory only, so it also runs under -WhatIf.
+$savedWhatIf = $WhatIfPreference; $savedConfirm = $ConfirmPreference
+try {
+    $WhatIfPreference = $false; $ConfirmPreference = 'None'
+    foreach ($component in @('Core', 'Git')) {
+        $name = "FrenchExDev2.QuietCli.$component.PoSh"
+        $path = [IO.Path]::Combine($sourceRoot,$name,($name+'.psm1'))
+        $loaded = Get-Module -Name $name -All
+        if ($loaded -and @($loaded | Where-Object { ![StringComparer]::OrdinalIgnoreCase.Equals($_.Path, $path) }).Count) {
+            throw "PreviewTagUnexpectedModulePath: $name; start a fresh PowerShell session."
+        }
+        $manifest = [IO.Path]::Combine($sourceRoot,"$name/$name.psd1")
+        if ($component -ceq 'Core') { Import-Module $manifest -Scope Global -ErrorAction Stop -DisableNameChecking }
+        elseif (!$loaded) { Import-Module $manifest -ErrorAction Stop -DisableNameChecking }
+        if (![StringComparer]::OrdinalIgnoreCase.Equals((Get-Module -Name $name).Path, $path)) {
+            throw "PreviewTagUnexpectedModulePath: $name"
+        }
     }
-    if (!$loaded) { Import-Module ([IO.Path]::Combine($sourceRoot,"$name/$name.psd1")) -ErrorAction Stop -DisableNameChecking }
-    if (![StringComparer]::OrdinalIgnoreCase.Equals((Get-Module -Name $name).Path, $path)) {
-        throw "PreviewTagUnexpectedModulePath: $name"
-    }
-}
+} finally { $WhatIfPreference = $savedWhatIf; $ConfirmPreference = $savedConfirm }
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'PreviewTag.psm1')) -DisableNameChecking -ErrorAction Stop
 $WorkspaceRoot = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($WorkspaceRoot, $PWD.Path))
 

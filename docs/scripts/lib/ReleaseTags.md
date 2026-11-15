@@ -7,11 +7,33 @@ Every operator-created module tag annotation carries the same bounded `QuietCli-
 Shared release planning and orchestration behind [New-QuietPreviewTag](../New-QuietPreviewTag.md).
 
 - `Get-QuietNextPreviewNumber` accepts a package name, numeric base version and local/remote tag records. It matches the complete escaped `<package>/v<base>-preview<N>` expression and computes the numeric maximum plus one. Other modules, versions, timestamps, malformed suffixes and peeled refs do not change the counter; overflow fails.
+- `Get-QuietModuleReleaseSelection` computes the per-package versions, tags and manifest edits from already observed tag names. It reads manifests only, without Git or network access, and enforces the version, preview, collision and NoCommit rules. `Invoke-QuietModuleRelease` and [ReleaseFlow](ReleaseFlow.md) share it, so the facade can plan before switching branches.
 - `Get-QuietReleaseManifestText` returns a literal AST-based ModuleVersion/Prerelease edit, preserving GUIDs, dependency declarations, unrelated text and UTF-8/LF.
 - `Invoke-QuietModuleRelease` discovers selected business packages, validates local and remote collisions and confirms a concrete plan. In Commit mode (versions differ from HEAD, no NoCommit) it commits the version edits through the checked commit callback on a work branch and creates no tag; the delivery branch is refused. In Tag mode it checks delivery, creates annotated tags and atomically pushes exactly those tags unless NoPush. It never pushes a branch.
 - `Assert-QuietReleaseTagSet` reads local refs only: every selected tag exists, is annotated, designates one shared commit, and its `QuietCli-Release-Batch` members equal the selected set.
 - `Assert-QuietReleaseDelivery` rejects selected tags already present remotely, fetches the remote delivery branch without tags and requires the release commit to be contained in it.
 - `Push-QuietReleaseTags` combines both checks (only the local one under WhatIf) before an atomic push of existing local tags.
+
+```mermaid
+flowchart TD
+    CALL[New-QuietPreviewTag.ps1 or ReleaseFlow] --> PUSHTAG{PushTag?}
+    PUSHTAG -- yes --> LOCAL[Assert-QuietReleaseTagSet: annotated, one commit, full batch]
+    LOCAL --> PUSHGUARD[Assert-QuietReleaseDelivery]
+    PUSHGUARD -- contained --> ATOMIC
+    PUSHGUARD -- not contained --> UNMERGED
+    PUSHTAG -- no --> SELECT[Get-QuietModuleReleaseSelection with local and remote tags]
+    SELECT --> MODE{Versions differ from HEAD and no NoCommit?}
+    MODE -- yes --> BRANCH{HEAD on the delivery branch or detached?}
+    BRANCH -- yes --> REFUSE[ReleaseCommitRequiresWorkBranch]
+    BRANCH -- no --> COMMIT[Commit mode: manifest edits, Commit-Workspace, no tag]
+    COMMIT --> PRSTEP[Deliver through a pull request]
+    MODE -- no --> NOPUSH{NoPush?}
+    NOPUSH -- yes --> KEEP[Create annotated tags locally, no push]
+    NOPUSH -- no --> GUARD[Assert-QuietReleaseDelivery: tags absent remotely, commit on origin/delivery]
+    GUARD -- not contained --> UNMERGED[ReleaseRevisionNotOnDeliveryBranch]
+    GUARD -- contained --> CREATE[Create annotated tags]
+    CREATE --> ATOMIC["push --atomic of the selected tags only"]
+```
 
 ## Effects and boundaries
 

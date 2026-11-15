@@ -44,7 +44,25 @@ $release = ./scripts/New-QuietPreviewTag.ps1 -Release
 $release.Tag
 ```
 
-For release orchestration, use New-QuietPreviewTag.ps1 with Version and one or more Module aliases. NextPreview computes preview1, preview2, etc. independently per module/base from exact local and remote tags; Preview accepts an explicit number or null. The protected `develop` branch only receives pull requests, so a release has two steps: on a `fix/*` or `feature/*` branch, `./scripts/New-QuietPreviewTag.ps1 -Module Core,Git -Version 0.3.0 -NextPreview` commits the version edits without tags; after the pull request is merged, the same command with `-NoCommit` on the updated `develop` creates the annotated tags and pushes only those tags. The tool never pushes a branch. Add WhatIf to preview either step; NoPush keeps created tags local, and `-PushTag <tags>` later pushes existing local tags once their commit is contained in origin/develop. Existing local or remote tags are refused without force. See [all operator options and recovery rules](scripts/New-QuietPreviewTag.md).
+Release with the facade: `./scripts/Invoke-QuietRelease.ps1 -Module Core,Git -Version 0.3.0 -NextPreview -Merge` (add `-WhatIf` first). After one confirmation it creates a `release/*` branch from origin/develop, commits the version edits, pushes only that branch, opens the pull request, waits for `QuietCli required CI`, merges with a merge commit (only with `-Merge` and a green check), tags the merge commit, pushes only those tags and restores your branch. Ctrl+C, a failure or a timeout leaves `artifacts/releases/<id>/release-flow.json`; continue with `-Resume <receipt>`. See [the facade](scripts/Invoke-QuietRelease.md) and [its phases](scripts/lib/ReleaseFlow.md).
+
+```mermaid
+flowchart LR
+    START([Release Core,Git 0.3.0]) --> FACADE{Facade?}
+    FACADE -- recommended --> F1[Invoke-QuietRelease.ps1 -NextPreview -Merge]
+    F1 --> F2[release/* from origin/develop, commit, push, PR]
+    F2 --> F3[Required CI green, merge commit]
+    F3 --> TAGS[Annotated tags on the merge commit, atomic tag push]
+    FACADE -- manual --> M1[New branch from origin/develop, not local develop]
+    M1 --> M2[New-QuietPreviewTag.ps1 -Version 0.3.0 -NextPreview]
+    M2 --> M3[Push-Workspace, open the PR, wait for CI, merge]
+    M3 --> M4[Detached checkout of the merged commit]
+    M4 --> M5[New-QuietPreviewTag.ps1 -Version 0.3.0 -NextPreview -NoCommit]
+    M5 --> TAGS
+    TAGS --> WF[release-tags.yml qualification and publication]
+```
+
+The manual path uses New-QuietPreviewTag.ps1 with Version and one or more Module aliases. NextPreview computes preview1, preview2, etc. independently per module/base from exact local and remote tags; Preview accepts an explicit number or null. The protected `develop` branch only receives pull requests, so a manual release has two steps. First, on a `fix/*`, `feature/*` or `release/*` branch created from origin/develop (not from a local develop that may have diverged), `./scripts/New-QuietPreviewTag.ps1 -Module Core,Git -Version 0.3.0 -NextPreview` commits the version edits without tags. Second, after the pull request is merged, run `./scripts/New-QuietPreviewTag.ps1 -Module Core,Git -Version 0.3.0 -NextPreview -NoCommit` on a checkout of the merged commit. Keep the base version and `-NextPreview`: preview counters are independent per module, so `-Version 0.3.0-preview1 -NoCommit` only works when every module is at preview1. That step creates the annotated tags and pushes only those tags. The tool never pushes a branch. Add WhatIf to preview either step; NoPush keeps created tags local, and `-PushTag <tags>` later pushes existing local tags once their commit is contained in origin/develop. Existing local or remote tags are refused without force. See [all operator options and recovery rules](scripts/New-QuietPreviewTag.md).
 
 Namespaced tag pushes request publication through release-tags.yml: validate the selected manifest, qualify All with profiling, prepare verified packages and publish those bytes on PowerShell Gallery. After the complete selected Gallery publication succeeds, a separate job creates one GitHub Release per module tag with the identical nupkg, package-set.json and successful publication.json. Preview versions become GitHub prereleases. Releases do not change the repository-wide latest pointer. Legacy local timestamp/exact-manifest tag modes without Version still never push, and a published identity is never overwritten.
 

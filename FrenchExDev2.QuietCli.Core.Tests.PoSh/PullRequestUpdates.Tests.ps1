@@ -54,7 +54,7 @@ function Test-QuietPullRequestUpdates {
     Send-QuietPullRequestUpdate $WorkspaceRoot origin develop -Confirm:$false
     if($fixture.Calls){throw 'PrUpdatePreviewOrUnrelatedBranchInvokedNativeTool'}
     $source=(Get-Command Send-QuietPullRequestUpdate).ScriptBlock.ToString()
-    $anchor="if(`$Branch -cnotmatch '^(feature|fix)/'){return}"
+    $anchor="if(`$Branch -cnotmatch '^(feature|fix|release)/'){return}"
     if(!$source.Contains($anchor)){throw 'PrBranchMutationAnchorMissing'}
     $mutant=[scriptblock]::Create($source.Replace($anchor,''))
     try{& $mutant $WorkspaceRoot origin develop -Confirm:$false}catch{}
@@ -62,7 +62,7 @@ function Test-QuietPullRequestUpdates {
     $fixture.Calls=0
     $seed=20261110;$random=[Random]::new($seed)
     foreach($index in 1..16){
-        $fixture.Branch=$(if($index%2){'fix/'}else{'feature/'})+'fixture-'+$random.Next()
+        $fixture.Branch=@('fix/','feature/','release/')[$index%3]+'fixture-'+$random.Next()
         Send-QuietPullRequestUpdate $WorkspaceRoot origin $fixture.Branch -Confirm:$false
         if(!$fixture.Body.Contains('Synthetic Unicode é漢 change') -or !$fixture.Body.Contains($fixture.Head) -or !$fixture.Body.Contains('does not assert success')){throw 'PrCommitSummaryPropertyFailed'}
     }
