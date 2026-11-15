@@ -43,6 +43,14 @@ Out-QuietResult $result -AsYaml -MaxItems 5 -MaxOutputBytes 4096
   already loaded by the caller are retained.
 - `WhatIf` skips import and execution entirely; `Confirm` uses the standard
   PowerShell confirmation before either operation.
+- `ForceReload` passes `-Force` to the Core import and each
+  selected companion import. Omit it or pass `-ForceReload:$false` to retain normal
+  module reuse. Forced import reloads PowerShell module state and registrations;
+  existing references to commands or module state may need to be acquired again.
+  Loaded selected modules are first checked against their local paths, then removed
+  in reverse dependency order before reimport. This clears nested binary-module
+  exports and lets companion cleanup run while Core is still available. Modules
+  already loaded before the call remain loaded after a successful forced reload.
 
 ```powershell
 $context = [pscustomobject]@{ Data = @{ Count = 0 }; State = @{} }
@@ -51,6 +59,12 @@ $context = [pscustomobject]@{ Data = @{ Count = 0 }; State = @{} }
     $runtime.Data.Count++
 }
 ./scripts/Invoke-Quiet.ps1 -WhatIf -Code { throw 'This block must not run' }
+./scripts/Invoke-Quiet.ps1 -ForceReload -Companion Git -Code {
+    $result = quiet -AsObject git status
+    if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
+        !$result.Completeness.Analysis -or $result.Error.Count) { throw 'IncompleteGitStatus' }
+    Out-QuietResult $result -MaxItems 5 -MaxOutputBytes 4096
+}
 ```
 
 The orchestration context is separate from each native call's callback runtime. It
@@ -78,6 +92,9 @@ resources. Imports each `.psd1` rather than globbing `.psm1` files. A different 
 source path for any selected module is rejected with a fresh-session instruction.
 The launcher never builds, downloads dependencies, changes the profile or overrides
 engine hosting. Normal module integrity checks and automatic hosting still apply.
+`ForceReload` does not unload or replace .NET assemblies. Start a fresh PowerShell
+process after rebuilding binaries. A conflicting module source path remains rejected,
+including when forced reimport is requested. `-WhatIf -ForceReload` performs no import.
 
 Code executes with the current session's permissions, variables and working
 directory. Its effects are caller-defined. Pipeline objects and terminating errors
@@ -90,15 +107,19 @@ Imports use `-DisableNameChecking` to suppress unapproved-verb naming warnings w
 
 ## Findings
 
-- `scripts/Invoke-Quiet.ps1:31` guards import and arbitrary Code together, so preview
+- The `ShouldProcess` guard covers import and arbitrary Code together, so preview
   cannot trigger either. It cannot preview the contents of arbitrary user code.
-- `scripts/Invoke-Quiet.ps1:38` rejects a conflicting Core path before import; no
-  forced reload or assembly replacement is attempted.
-- `scripts/Invoke-Quiet.ps1:44` preserves the original block and context, including
+- The module-path check rejects a conflicting Core or selected companion path before
+  its import. Forced module reimport requires the explicit `ForceReload` switch;
+  assembly replacement is never attempted.
+- The Code invocation preserves the original block and context, including
   caller variables. Blocks explicitly bound to another module retain that module's
   command-resolution scope and must import Core into that scope when necessary.
 - The companion's Script suite covers preview, identity, repeated contexts,
   Unicode/input corpora, error propagation, local imports and actual native calls.
+  An isolated child also checks forced first import, default/explicit-false reuse,
+  no-effect forced preview, two forced Core reloads with native UTF-8
+  execution, retention of previously loaded modules and forced path-conflict rejection.
   These checks qualify the launcher on the executed host, not a release matrix.
 
 ## Verdict

@@ -79,12 +79,43 @@ $result = & $LauncherPath -Code {
     $runtime.Data.Native
 }
 if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis -or $result.Error.Count -or $result.Data.Bytes -ne 5) { throw 'LauncherNativeCallFailed' }
+$names=@('FrenchExDev2.QuietCli.Core.PoSh')
+$null=& $LauncherPath -ForceReload -Code {
+    # Force a first import before testing already-loaded modules in this isolated child.
+    foreach($name in $names){if(!(Get-Module $name)){throw 'LauncherForcedImportMissing'}}
+}
+$workspace=Split-Path (Split-Path $LauncherPath -Parent) -Parent
+Import-Module ([IO.Path]::Combine($workspace,'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')) -Scope Global -DisableNameChecking -ErrorAction Stop
+$before=@{}
+foreach($name in $names){$before[$name]=Get-Module $name;& $before[$name] {$script:LauncherReloadProbe=$true}}
+foreach($options in @(@{},@{ForceReload=$false},@{ForceReload=$true;WhatIf=$true})){
+    $signal=@{Calls=0}
+    $null=& $LauncherPath @options -Code {$signal.Calls++}
+    if($options.WhatIf -and $signal.Calls){throw 'LauncherForcePreviewExecuted'}
+    foreach($name in $names){if(![object]::ReferenceEquals($before[$name],(Get-Module $name))){throw 'LauncherUnexpectedReload'}}
+}
+foreach($attempt in 1..2){
+    $result=& $LauncherPath -ForceReload -Code {
+        foreach($name in $names){
+            $module=Get-Module $name
+            if(!$module -or [object]::ReferenceEquals($before[$name],$module) -or (& $module {Get-Variable LauncherReloadProbe -Scope Script -ErrorAction SilentlyContinue})){throw 'LauncherForceDidNotReload'}
+        }
+        quiet -AsObject -StdoutMode Bytes -Data @{Bytes=0L} -Output {
+            param($event,$native)
+            if($event.Stream -eq 'stdout'){$native.Data.Bytes+=$event.ByteCount}
+        } -Complete {param($native) $native.Data} -FilePath ([IO.Path]::Combine($PSHOME,$(if($IsWindows){'pwsh.exe'}else{'pwsh'}))) -ArgumentList @('-NonInteractive','-Command','[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); [Console]::Out.Write("é漢")')
+    }
+    if($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis -or $result.Error.Count -or $result.Data.Bytes -ne 5){throw 'LauncherForcedNativeCallFailed'}
+    foreach($name in $names){if(!(Get-Module $name)){throw 'LauncherRemovedPreviouslyLoadedModule'};$before[$name]=Get-Module $name}
+}
 $conflict = New-Module -Name FrenchExDev2.QuietCli.Core.PoSh -ScriptBlock {} | Import-Module -Scope Local -PassThru
 try {
-    $rejected = $false
-    try { & $LauncherPath -Code { throw 'ConflictingCodeExecuted' } }
-    catch { $rejected = $_.Exception.Message.StartsWith('QuietLocalModuleConflict:') }
-    if (!$rejected) { throw 'LauncherConflictingModuleAccepted' }
+    foreach($force in @($false,$true)){
+        $rejected = $false
+        try { & $LauncherPath -ForceReload:$force -Code { throw 'ConflictingCodeExecuted' } }
+        catch { $rejected = $_.Exception.Message.StartsWith('QuietLocalModuleConflict:') }
+        if (!$rejected) { throw 'LauncherConflictingModuleAccepted' }
+    }
 } finally { Remove-Module -ModuleInfo $conflict }
 [Console]::Out.Write('LauncherNativeSuccess')
 '@
