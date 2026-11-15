@@ -4,6 +4,8 @@
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [New-QuietPreviewTag.psm1](lib/New-QuietPreviewTag.md). See that library for the full operation, dependencies, examples, effects and validation limits.
 
+The Publish parameter set accepts `-DeliveryBranch` (develop by default), and the PushTags set accepts `-PushTag` with `-Remote`/`-DeliveryBranch` to push existing local release tags. No parameter set pushes a branch.
+
 ## Dependencies and effects
 
 Imports its local library using `-DisableNameChecking -ErrorAction Stop` and invokes `Invoke-QuietScriptNewQuietPreviewTag`. The library retains the original operation guards and output contract. Import alone does not run the operation.
