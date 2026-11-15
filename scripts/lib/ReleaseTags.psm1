@@ -65,10 +65,110 @@ function Get-QuietReleaseManifestText {
     $Text.Replace("`r`n","`n").Replace("`r","`n")
 }
 
+function Assert-QuietReleaseTagSet {
+    <#
+    .SYNOPSIS
+    Verifies local annotated release tags share one commit and match their declared batch; reads local refs only.
+    .PARAMETER Tag
+    Exact release tag names to deliver together.
+    .PARAMETER GitCommand
+    Operator's exact-argument quiet Git callback, returning Value, HasOutput and Lines.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string[]]$Tag,[Parameter(Mandatory)][scriptblock]$GitCommand)
+    $selected=@($Tag)
+    if(!$selected.Count -or $selected.Count -gt 32 -or @($selected|Select-Object -Unique).Count -ne $selected.Count){throw 'ReleaseTagSetInvalid'}
+    $revision=$null
+    foreach($name in $selected){
+        if($name -cnotmatch '\A[A-Za-z0-9][A-Za-z0-9._-]*/v[0-9][0-9A-Za-z.-]*\z'){throw ('ReleaseTagNameInvalid: '+$name)}
+        $refs=@((& $GitCommand @('for-each-ref','--format=%(refname)%09%(objecttype)',('refs/tags/'+$name))).Lines|Where-Object {($_ -split "`t")[0] -ceq ('refs/tags/'+$name)})
+        if(!$refs.Count){throw ('ReleaseTagMissingLocally: '+$name)}
+        if(($refs[0] -split "`t")[-1] -cne 'tag'){throw ('ReleaseTagNotAnnotated: '+$name)}
+        $commit=(& $GitCommand @('rev-parse','--verify',('refs/tags/'+$name+'^{commit}'))).Value
+        if($null -eq $revision){$revision=$commit}elseif($commit -cne $revision){throw ('ReleaseTagRevisionMismatch: '+$name)}
+        $annotation=(& $GitCommand @('for-each-ref','--format=%(contents)',('refs/tags/'+$name))).Lines -join "`n"
+        $records=@([regex]::Matches($annotation,'(?m)^QuietCli-Release-Batch: (.+)$'))
+        if($records.Count -gt 1){throw ('ReleaseTagBatchMismatch: '+$name)}
+        if($records.Count){
+            $batch=$records[0].Groups[1].Value|ConvertFrom-Json
+            $members=@($batch.Tags|ForEach-Object {[string]$_}|Sort-Object -CaseSensitive)
+            $expected=@($selected|Sort-Object -CaseSensitive)
+            if($batch.Revision -cne $revision -or ($members -join "`n") -cne ($expected -join "`n")){throw ('ReleaseTagBatchMismatch: '+$name)}
+        }elseif($selected.Count -ne 1){throw ('ReleaseTagBatchMismatch: '+$name)}
+    }
+    $revision
+}
+
+function Assert-QuietReleaseDelivery {
+    <#
+    .SYNOPSIS
+    Fetches the remote delivery branch and requires the release commit on it and the selected tags absent remotely.
+    .PARAMETER Tag
+    Exact release tag names that will be pushed.
+    .PARAMETER Revision
+    Release commit the tags designate.
+    .PARAMETER Remote
+    Configured Git remote name.
+    .PARAMETER DeliveryBranch
+    Protected branch that must already contain Revision, develop by default.
+    .PARAMETER GitCommand
+    Operator's exact-argument quiet Git callback, returning Value, HasOutput and Lines.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string[]]$Tag,[Parameter(Mandatory)][ValidatePattern('\A(?:[a-f0-9]{40}|[a-f0-9]{64})\z')][string]$Revision,
+        [Parameter(Mandatory)][ValidatePattern('\A[A-Za-z0-9][A-Za-z0-9._-]*\z')][string]$Remote,
+        [Parameter(Mandatory)][ValidatePattern('\A[A-Za-z0-9][A-Za-z0-9._/-]*\z')][string]$DeliveryBranch,[Parameter(Mandatory)][scriptblock]$GitCommand)
+    $remoteTags=@((& $GitCommand @('ls-remote','--tags','--refs',$Remote)).Lines|ForEach-Object {($_ -split "`t")[-1] -creplace '\Arefs/tags/',''})
+    foreach($name in $Tag){if($name -cin $remoteTags){throw ('ReleaseTagAlreadyExists: '+$name)}}
+    $null=& $GitCommand @('fetch','--no-tags','--quiet',$Remote,('refs/heads/'+$DeliveryBranch))
+    $tip=(& $GitCommand @('rev-parse','--verify','FETCH_HEAD^{commit}')).Value
+    if((& $GitCommand @('rev-list','--max-count=1',$Revision,('^'+$tip),'--')).HasOutput){throw ('ReleaseRevisionNotOnDeliveryBranch: '+$Revision+' is not contained in '+$Remote+'/'+$DeliveryBranch+'; merge its pull request first.')}
+    $tip
+}
+
+function Push-QuietReleaseTags {
+    <#
+    .SYNOPSIS
+    Atomically pushes existing local release tags once their commit is merged on the remote delivery branch.
+    .PARAMETER Tag
+    Exact release tag names, including every member of an annotated batch.
+    .PARAMETER Remote
+    Configured Git remote name.
+    .PARAMETER DeliveryBranch
+    Protected branch that must already contain the tagged commit.
+    .PARAMETER GitCommand
+    Operator's exact-argument quiet Git callback, returning Value, HasOutput and Lines.
+    #>
+    [CmdletBinding(SupportsShouldProcess,ConfirmImpact='Medium')]
+    param([Parameter(Mandatory)][string[]]$Tag,[ValidatePattern('\A[A-Za-z0-9][A-Za-z0-9._-]*\z')][string]$Remote='origin',
+        [ValidatePattern('\A[A-Za-z0-9][A-Za-z0-9._/-]*\z')][string]$DeliveryBranch='develop',[Parameter(Mandatory)][scriptblock]$GitCommand)
+    $revision=Assert-QuietReleaseTagSet -Tag $Tag -GitCommand $GitCommand
+    $result=[pscustomobject]@{Tags=@($Tag);Revision=$revision;Remote=$Remote;DeliveryBranch=$DeliveryBranch;DeliveryChecked=$false;Pushed=$false;TagPushState='NotRequested'}
+    if(!$PSCmdlet.ShouldProcess(($Remote+' @ '+$revision),('Push release tags '+(@($Tag) -join ', ')+' after checking '+$Remote+'/'+$DeliveryBranch))){return $result}
+    $null=Assert-QuietReleaseDelivery -Tag $Tag -Revision $revision -Remote $Remote -DeliveryBranch $DeliveryBranch -GitCommand $GitCommand
+    $result.DeliveryChecked=$true
+    $result.TagPushState='Pending'
+    try{
+        $null=& $GitCommand (@('push','--atomic',$Remote)+@($Tag|ForEach-Object {'refs/tags/'+$_+':refs/tags/'+$_}))
+    }catch{
+        $result.TagPushState='Unknown'
+        Write-Warning 'Tag push failed or its outcome is unknown; inspect remote tags before any retry.'
+        throw
+    }
+    $result.Pushed=$true
+    $result.TagPushState='Confirmed'
+    $result
+}
+
 function Invoke-QuietModuleRelease {
     <#
     .SYNOPSIS
-    Plans selected releases, commits owned version edits and pushes only the selected annotated tags.
+    Plans selected releases: commits version edits on a work branch, or tags a merged commit and pushes only those tags.
+    .DESCRIPTION
+    No branch is ever pushed. When selected versions differ from HEAD, the edits are committed on the current work
+    branch without tags; deliver that commit through a pull request. When versions already match HEAD (or NoCommit),
+    annotated tags are created and, unless NoPush, pushed atomically only once HEAD is contained in the remote
+    delivery branch.
     .PARAMETER WorkspaceRoot
     Clean Git source checkout.
     .PARAMETER Module
@@ -87,20 +187,21 @@ function Invoke-QuietModuleRelease {
     Creates local tags only; remote tags are still read to reject collisions before edits.
     .PARAMETER Remote
     Configured Git remote name.
+    .PARAMETER DeliveryBranch
+    Protected branch that receives release commits through pull requests and must contain tagged commits.
     .PARAMETER Message
     Optional release commit message.
     .PARAMETER GitCommand
     Operator's exact-argument quiet Git callback, returning Value, HasOutput and Lines.
     .PARAMETER CommitCommand
     Existing checked commit orchestration callback.
-    .PARAMETER PushCommand
-    Existing branch push and PR-update orchestration callback.
     #>
     [CmdletBinding(SupportsShouldProcess,ConfirmImpact='Medium')]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[string[]]$Module=@('Core'),[Parameter(Mandatory)][string]$Version,
         [Nullable[int]]$Preview,[switch]$PreviewSpecified,[switch]$NextPreview,[switch]$NoCommit,[switch]$NoPush,
-        [ValidatePattern('\A[A-Za-z0-9][A-Za-z0-9._-]*\z')][string]$Remote='origin',[string]$Message,
-        [Parameter(Mandatory)][scriptblock]$GitCommand,[Parameter(Mandatory)][scriptblock]$CommitCommand,[Parameter(Mandatory)][scriptblock]$PushCommand)
+        [ValidatePattern('\A[A-Za-z0-9][A-Za-z0-9._-]*\z')][string]$Remote='origin',
+        [ValidatePattern('\A[A-Za-z0-9][A-Za-z0-9._/-]*\z')][string]$DeliveryBranch='develop',[string]$Message,
+        [Parameter(Mandatory)][scriptblock]$GitCommand,[Parameter(Mandatory)][scriptblock]$CommitCommand)
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'GalleryRelease.psm1')) -DisableNameChecking
     $targets=@(Select-QuietGalleryReleaseTargets $WorkspaceRoot -Module $Module)
     if($Version -cnotmatch '\A((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))(?:-([A-Za-z][A-Za-z0-9-]*))?\z'){throw 'ReleaseVersionInvalid'}
@@ -113,7 +214,6 @@ function Invoke-QuietModuleRelease {
     $branch=(& $GitCommand @('rev-parse','--abbrev-ref','HEAD')).Value
     $dirty=(& $GitCommand @('status','--porcelain=v1','--untracked-files=normal')).HasOutput
     if(!$WhatIfPreference -and $dirty){throw 'ReleaseRequiresCleanCheckout'}
-    if(!$NoPush -and $branch -ceq 'HEAD'){throw 'ReleasePushRequiresBranch'}
     $local=@((& $GitCommand @('tag','--list')).Lines)
     $remoteTags=@()
     $remoteChecked=!$WhatIfPreference
@@ -133,15 +233,18 @@ function Invoke-QuietModuleRelease {
         $updated=Get-QuietReleaseManifestText -Text $text -Version $selectedVersion
         $releases.Add([pscustomobject]@{Module=$target.Module;Component=$target.Component;Version=$selectedVersion;Preview=$number;Tag=$tag;ManifestPath=$target.ManifestPath;OriginalText=$text;UpdatedText=$updated;VersionChanged=($target.Version -cne $selectedVersion)})
     }
-    $result=[pscustomobject]@{Revision=$revision;Branch=$branch;Remote=$Remote;RemoteChecked=$remoteChecked;Committed=$false;Created=@();Pushed=$false;BranchPushed=$false;BranchPushState='NotRequested';TagPushState='NotRequested';Releases=@($releases|Select-Object Module,Component,Version,Preview,Tag,VersionChanged);Receipt=$null}
+    $changed=@($releases|Where-Object VersionChanged)
+    $mode=if(!$NoCommit -and $changed.Count){'Commit'}else{'Tag'}
+    if($mode -ceq 'Commit' -and ($branch -ceq 'HEAD' -or $branch -ceq $DeliveryBranch)){throw ('ReleaseCommitRequiresWorkBranch: create a fix/* or feature/* branch; '+$DeliveryBranch+' only receives pull requests.')}
+    $result=[pscustomobject]@{Mode=$mode;Revision=$revision;Branch=$branch;Remote=$Remote;DeliveryBranch=$DeliveryBranch;RemoteChecked=$remoteChecked;Committed=$false;Created=@();DeliveryChecked=$false;Pushed=$false;TagPushState='NotRequested';Releases=@($releases|Select-Object Module,Component,Version,Preview,Tag,VersionChanged);Receipt=$null}
     $description=($result.Releases|ForEach-Object {$_.Tag}) -join ', '
-    if(!$PSCmdlet.ShouldProcess(($WorkspaceRoot+' @ '+$revision),('Release '+$description+'; commit='+(!$NoCommit)+'; push='+(!$NoPush)))){return $result}
+    $action=if($mode -ceq 'Commit'){'Commit version edits for '+$description+' on '+$branch+'; tags follow the merge into '+$DeliveryBranch}else{'Tag '+$description+'; push='+(!$NoPush)}
+    if(!$PSCmdlet.ShouldProcess(($WorkspaceRoot+' @ '+$revision),$action)){return $result}
     $reportDirectory=[IO.Path]::Combine($WorkspaceRoot,('artifacts/releases/'+[guid]::NewGuid().ToString('N')))
     [void][IO.Directory]::CreateDirectory($reportDirectory)
     $result.Receipt=[IO.Path]::Combine($reportDirectory,'release.json')
     try{
-        $changed=@($releases|Where-Object VersionChanged)
-        if(!$NoCommit -and $changed.Count){
+        if($mode -ceq 'Commit'){
             foreach($release in $changed){
                 if([IO.File]::ReadAllText($release.ManifestPath,[Text.UTF8Encoding]::new($false,$true)) -cne $release.OriginalText){throw 'ReleaseManifestChangedDuringPlanning'}
                 [IO.File]::WriteAllText($release.ManifestPath,$release.UpdatedText,[Text.UTF8Encoding]::new($false))
@@ -153,6 +256,12 @@ function Invoke-QuietModuleRelease {
             $revision=(& $GitCommand @('rev-parse','--verify','HEAD^{commit}')).Value
             if($revision -ceq $result.Revision){throw 'ReleaseCommitDidNotAdvanceHead'}
             $result.Revision=$revision
+            Write-Warning ('Release versions committed on '+$branch+'. Merge its pull request into '+$DeliveryBranch+', then rerun with -NoCommit on the updated '+$DeliveryBranch+' to create and push the tags.')
+            return $result
+        }
+        if(!$NoPush){
+            $null=Assert-QuietReleaseDelivery -Tag @($releases.Tag) -Revision $revision -Remote $Remote -DeliveryBranch $DeliveryBranch -GitCommand $GitCommand
+            $result.DeliveryChecked=$true
         }
         if((& $GitCommand @('status','--porcelain=v1','--untracked-files=normal')).HasOutput){throw 'ReleaseCheckoutChangedBeforeTagging'}
         $batch=@{SchemaVersion=1;Revision=$revision;Tags=@($releases.Tag)}|ConvertTo-Json -Compress
@@ -163,19 +272,14 @@ function Invoke-QuietModuleRelease {
             $result.Created+=@($release.Tag)
         }
         if(!$NoPush){
-            $result.BranchPushState='Pending'
-            $null=& $PushCommand $WorkspaceRoot $Remote $branch
-            $result.BranchPushed=$true
-            $result.BranchPushState='Confirmed'
-            $arguments=@('push','--atomic',$Remote)+@($result.Created|ForEach-Object {'refs/tags/'+$_+':refs/tags/'+$_})
+            if((Assert-QuietReleaseTagSet -Tag $result.Created -GitCommand $GitCommand) -cne $revision){throw 'ReleaseTagRevisionMismatch'}
             $result.TagPushState='Pending'
-            $null=& $GitCommand $arguments
+            $null=& $GitCommand (@('push','--atomic',$Remote)+@($result.Created|ForEach-Object {'refs/tags/'+$_+':refs/tags/'+$_}))
             $result.Pushed=$true
             $result.TagPushState='Confirmed'
         }
         $result
     }catch{
-        if($result.BranchPushState -ceq 'Pending'){$result.BranchPushState='Unknown'}
         if($result.TagPushState -ceq 'Pending'){$result.TagPushState='Unknown'}
         $_.Exception.Data['ReleaseReceipt']=$result.Receipt
         Write-Warning ('Release stopped; retained local changes/tags and receipt: '+$result.Receipt)
@@ -185,4 +289,4 @@ function Invoke-QuietModuleRelease {
         [IO.File]::WriteAllText($result.Receipt,$json+"`n",[Text.UTF8Encoding]::new($false))
     }
 }
-Export-ModuleMember -Function Get-QuietNextPreviewNumber,Get-QuietReleaseManifestText,Invoke-QuietModuleRelease
+Export-ModuleMember -Function Get-QuietNextPreviewNumber,Get-QuietReleaseManifestText,Assert-QuietReleaseTagSet,Assert-QuietReleaseDelivery,Push-QuietReleaseTags,Invoke-QuietModuleRelease
