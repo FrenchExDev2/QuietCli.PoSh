@@ -54,7 +54,8 @@ try{
         $packages.Add(@{Module=$name;File=[IO.Path]::GetFileName($path);SHA256=(Get-FileHash $path -Algorithm SHA256).Hash;Bytes=(Get-Item $path).Length})
     }
 }finally{$env:PSModulePath=$modulePath}
-$plan=@{SchemaVersion=1;Module=$publicName;Version=$release;SourceVersion=$sourceVersion;BaseVersion=$releaseInfo.BaseVersion;ReadyToRun=[bool]($RequireReadyToRun -and $corePackage);Repository='https://www.powershellgallery.com/api/v2';Targets=@(if($corePackage){Get-QuietRuntimeTargets $WorkspaceRoot});Packages=$packages.ToArray();SourceLockSHA256=(Get-FileHash ([IO.Path]::Combine($WorkspaceRoot,'repositories.lock.json')) -Algorithm SHA256).Hash;Published=$false}
+$sourceIdentity=(Get-QuietWorkspaceIdentity $WorkspaceRoot).Repository
+$plan=@{SchemaVersion=1;Module=$publicName;Version=$release;SourceVersion=$sourceVersion;BaseVersion=$releaseInfo.BaseVersion;ReadyToRun=[bool]($RequireReadyToRun -and $corePackage);Repository='https://www.powershellgallery.com/api/v2';Targets=@(if($corePackage){Get-QuietRuntimeTargets $WorkspaceRoot});Packages=$packages.ToArray();SourceIdentity=@{Revision=$sourceIdentity.Revision;Tree=$sourceIdentity.Tree;Dirty=$sourceIdentity.Dirty;SourceSHA256=$sourceIdentity.SourceSHA256};Published=$false}
 Write-WorkspaceJson ([IO.Path]::Combine($OutputDirectory,'package-set.json')) $plan
 $verified=Test-QuietGalleryPackageSet $OutputDirectory -Version $release
 [pscustomobject]@{State='Prepared';Version=$verified.Version;Packages=$verified.Packages;Targets=@($verified.Targets|ForEach-Object {$_.Rid});Published=$false}

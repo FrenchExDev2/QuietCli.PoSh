@@ -24,6 +24,10 @@ Uses Common.ps1, lib/Gallery.psm1, GalleryRelease target discovery and Compress-
 
 Preparation is offline and separate from publication. The exact prepared nupkg is the unit delivered to PSGallery.
 
+The generated package-set records SourceIdentity (available Git revision/tree, dirty state and
+actual repository source hash), replacing an internal source-lock file digest. This generated
+evidence does not refresh a committed file or replace source-bound binary and qualification checks.
+
 <!-- credits:begin -->
 ## Credits
 

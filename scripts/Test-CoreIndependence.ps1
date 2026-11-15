@@ -48,7 +48,6 @@ if($SkipBuild){
         if(Test-Path -LiteralPath $lib){Copy-Item -LiteralPath $lib -Destination ([IO.Path]::Combine($directory,$name)) -Recurse}
     }
 }
-$null=& ([IO.Path]::Combine($directory,'scripts/Update-WorkspaceLock.ps1')) -WorkspaceRoot $directory
 if($env:GITHUB_ACTIONS -ceq 'true'){& ([IO.Path]::Combine($directory,'scripts/Initialize-CiEnvironment.ps1')) -Target GitHub -ContainerRuntime docker -Confirm:$false|Out-Null}
 $previousPath=$env:PATH;$previousDotnetRoot=$env:DOTNET_ROOT
 try{

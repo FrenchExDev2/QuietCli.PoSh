@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 4321531AE1DC945B063E6ABA4B762C08C4E898E5525C407C9EEEBC737AD98936 -->
+<!-- workflow-source-sha256: 6105A97C2BE79A4842657AAA2C9D74DAF9D447937173EDFCEE00B36F5C6680DE -->
 
 ## Purpose
 
@@ -32,7 +32,7 @@ Manual dispatch additionally exposes `images_only` (false by default). On the up
 
 ## Scripts and effects
 
-Uses the shared scripts/ entry points, validated source lock, selected builds and private artifacts described above. Network access is limited to pinned dependency preparation, verified image caches and explicit GitHub evidence reads. No module publication occurs here.
+Uses the shared scripts/ entry points, discovered manifests, selected source-bound builds and private artifacts described above. Git identifies committed internal sources; generated execution receipts retain actual source hashes and dirty state. Pinned external resources retain their dedicated locks. Network access is limited to pinned dependency preparation, verified image caches and explicit GitHub evidence reads. No module publication occurs here.
 
 Native Linux image and fallback jobs initialize the checkout's Docker preset immediately after checkout, then prepare the checksum-pinned GA PowerShell host. The initial environment bootstrap uses the runner host; subsequent image preparation, builds and tests use the selected GA host. The existing GitHub CI orchestration regression enforces this order in both linux-images and linux-test-driver.
 

@@ -1,12 +1,12 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: 2EB61F76AC575B654B863307FBFC6151BF2E9855A5B6572F2AF9E306B6CA4BF0 -->
+<!-- workflow-source-sha256: 23D1256E6779675A520165F1BCF6C683B0DCBC9BF3690719F7A8BE859337C873 -->
 
 ## Purpose
 
 One stable pull-request/develop entry point for discovered companions. The complete no-rename diff and transitive catalogue requirements select a companion-only scope, shared All scope or tooling-only campaign. Unknown inputs conservatively require All. Documentation-only plans can omit native tests while the final QuietCli required CI check remains present.
 
-Develop reuses successful merged-PR evidence only when its bounded artifact, authoritative workflow run/attempt and exact Git tree match. Legacy/missing/expired/mismatched receipts fall back to complete All qualification. Reuse still verifies the merged source lock, Core integration and native image caches. No module publication occurs on develop.
+Develop reuses successful merged-PR evidence only when its bounded artifact, authoritative workflow run/attempt and exact Git tree match. Legacy/missing/expired/mismatched receipts fall back to complete All qualification. Reuse still verifies the merged workspace structure, pinned external resources, Core integration and native image caches. No module publication occurs on develop.
 
 ## Validation and limits
 
@@ -27,7 +27,7 @@ Every pull request and develop push; the plan decides which campaigns are requir
 
 ## Scripts and effects
 
-Uses the shared scripts/ entry points, validated source lock, selected builds and private artifacts described above. Network access is limited to pinned dependency preparation, verified image caches and explicit GitHub evidence reads. No module publication occurs here.
+Uses the shared scripts/ entry points, discovered manifests, selected source-bound builds and private artifacts described above. Git identifies committed internal sources; generated execution receipts retain actual source hashes and dirty state. Pinned external resources retain their dedicated locks. Network access is limited to pinned dependency preparation, verified image caches and explicit GitHub evidence reads. No module publication occurs here.
 
 ## Plan and final status
 

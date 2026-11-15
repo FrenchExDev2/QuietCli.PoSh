@@ -159,25 +159,6 @@ try {
     [IO.File]::WriteAllText((Join-Path $ignored 'sdk-marker'),'ignored',[Text.UTF8Encoding]::new($false))
     Assert-DotNetLocks (@(Get-QuietSourceFiles $root|Where-Object Path -Like '.dotnet/*').Count -eq 0) 'Portable SDK payloads are pruned before source hashing.'
     Assert-DotNetLocks (@(Get-QuietSourceFiles $root|Where-Object Path -Match '\.(json|csproj|props)\.bak-').Count -eq 0) 'Generated original-byte backups are excluded from source/build identities.'
-    $metadataRoot=Join-Path $root 'workspace-lock'
-    $null=[IO.Directory]::CreateDirectory((Join-Path $metadataRoot 'scripts'))
-    $null=[IO.Directory]::CreateDirectory((Join-Path $metadataRoot 'FrenchExDev2.QuietCli.Core.PoSh/engine'))
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../scripts/Update-WorkspaceLock.ps1') -Destination (Join-Path $metadataRoot 'scripts/Update-WorkspaceLock.ps1')
-    $common=@'
-function Get-QuietWorkspaceIdentity { param($WorkspaceRoot) @{Projects=@();Repository=@{Name='fixture';Remote='fixture';SourceSHA256=('a'*64)}} }
-function Get-QuietWorkspaceProjects { param($WorkspaceRoot) }
-function Write-WorkspaceJson { param($Path,$Value) [IO.File]::WriteAllText($Path,($Value|ConvertTo-Json -Depth 10),[Text.UTF8Encoding]::new($false)) }
-'@
-    [IO.File]::WriteAllText((Join-Path $metadataRoot 'scripts/lib/Common.psm1'),$common,[Text.UTF8Encoding]::new($false))
-    foreach($case in 1..60){
-        $sdkVersion='11.0.'+$random.Next(100,900);$runtimeVersion='11.0.'+$random.Next(0,99)
-        Write-LockFixture (Join-Path $metadataRoot 'global.json') @{sdk=@{version=$sdkVersion}}
-        $xml='<Project><PropertyGroup><RuntimeFrameworkVersion Condition="''$(TargetFramework)'' == ''net11.0''">'+$runtimeVersion+'</RuntimeFrameworkVersion></PropertyGroup></Project>'
-        [IO.File]::WriteAllText((Join-Path $metadataRoot 'FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj'),$xml,[Text.UTF8Encoding]::new($false))
-        $null=& (Join-Path $metadataRoot 'scripts/Update-WorkspaceLock.ps1') -WorkspaceRoot $metadataRoot -Confirm:$false
-        $generated=Get-Content (Join-Path $metadataRoot 'repositories.lock.json') -Raw -Encoding utf8|ConvertFrom-Json
-        Assert-DotNetLocks ($generated.SDK -eq $sdkVersion -and $generated.Runtime -eq $runtimeVersion) "Generated workspace lock follows SDK/runtime source pins case $case."
-    }
     $killed=0
     if(!$NoMutations){
         $source=Get-Content $ModulePath -Raw -Encoding utf8
@@ -203,7 +184,7 @@ function Write-WorkspaceJson { param($Path,$Value) [IO.File]::WriteAllText($Path
             $killed++;Write-Output "Killed lock mutant: $($mutation[0])"
         }
     }
-    [pscustomobject]@{State='Passed';Assertions=$assertions;PropertyCases=120;FuzzCases=104;MutantsKilled=$killed;Seed=110105}
+    [pscustomobject]@{State='Passed';Assertions=$assertions;PropertyCases=60;FuzzCases=104;MutantsKilled=$killed;Seed=110105}
 }finally{
     Remove-Module $module -Force -ErrorAction SilentlyContinue
     $resolved=[IO.Path]::GetFullPath($root);$temp=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar)

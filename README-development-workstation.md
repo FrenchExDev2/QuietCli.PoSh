@@ -370,9 +370,9 @@ Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.
 ./scripts/Invoke-WorkspaceCi.ps1 -Suite All -SkipBuild
 ```
 
-On an intentionally modified checkout, refresh the local source lock using
-`Initialize-Workspace.ps1` without `-Restore` before validation. Builds verify existing bundled PTY
-bridges. To rebuild their C source explicitly:
+Internal source edits require no lock refresh. Git identifies committed sources and execution
+artifacts retain actual source hashes, including dirty content; external tool/resource pins retain
+their dedicated locks. Builds verify existing bundled PTY bridges. To rebuild their C source explicitly:
 
 ```powershell
 ./scripts/Build-PtyBridge.ps1 -CompilerPath $env:QUIETCLI_DEVELOPMENT_ZIG

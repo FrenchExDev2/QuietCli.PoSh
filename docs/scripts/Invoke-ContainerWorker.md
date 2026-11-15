@@ -37,6 +37,10 @@ builds need no guest network. Native-only campaign staging remains restricted. A
 uses the separately checksum-pinned Microsoft musl runtime under `/opt/pwsh-runtime`; the SDK keeps
 its own root. This preserves strict native RID checks instead of accepting distro-specific aliases.
 
+Root SDK/package inputs accompany the discovered projects without an internal workspace lock.
+The transport-origin receipt retains the host's available Git revision/tree, dirty state and
+observed source hashes, since the networkless guest does not receive Git internals.
+
 ## Usage
 
 Parameters:

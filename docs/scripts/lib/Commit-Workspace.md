@@ -30,9 +30,9 @@ DocsCredits and Credits. ScriptLayout rejects invalid Verb-Noun names, functions
 points, misplaced modules, Join-Path and imports lacking DisableNameChecking. Legacy preview
 waivers do not waive this policy. Check failures stop the commit.
 
-The default mode checks the working tree, refreshes its source lock, stages all changes and
+The default mode checks the working tree's manifests and policy, stages all changes and
 creates one commit. `NoAll` preserves the working tree and index, exports an isolated prepared
-index snapshot, verifies its own source lock and checks that snapshot. Unstaged fixes cannot
+index snapshot and checks that snapshot's manifests and policy. Unstaged fixes cannot
 qualify a bad prepared index. Temporary snapshots are removed from their checked owned root.
 
 `SkipCheck` explicitly omits named checks. The compatibility switches are
@@ -53,8 +53,8 @@ not automatically captured; orchestration retains bounded failure diagnostics.
 
 ## Preview and effects
 
-Standard WhatIf/Confirm guards lock refresh, staging and commit. WhatIf still runs the
-check registry and warnings, but does not refresh the lock, stage or commit. NoAll preview
+Standard WhatIf/Confirm guards staging and commit. WhatIf still runs the
+check registry and warnings, but does not stage or commit. NoAll preview
 also validates an exported index. Read-only checks may prepare a missing checksum-pinned
 YAML parser only through its own guarded resource contract; preview options cross library
 boundaries explicitly. Detailed process/Git failures remain failures and are not retried.
@@ -65,8 +65,9 @@ Ci.Process library. This command does not infer authorization for a push or publ
 
 ## Validation and limits
 
-The Tooling companion uses disposable Git repositories for commit-once behavior, source-lock
-checks, prepared-index isolation, WhatIf, explicit omissions and warnings. Generated filename
+The Tooling companion uses disposable Git repositories for commit-once behavior, absence of
+generated internal source locks, Git/dirty-content identity, manifest checks, prepared-index
+isolation, WhatIf, explicit omissions and warnings. Generated filename
 and size cases and targeted mutations verify meaningful failures. Layout policy assertions
 also include malformed PowerShell, nested functions, filters and import variants. Local,
 filtered development runs remain partial evidence; they do not qualify the hosted matrix.
@@ -91,4 +92,12 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 
 Core is bound to process-global scope before importing Git, because Git registration resolves Core commands there. Both modules must come from this checkout; a conflicting loaded path requires a fresh session. No profile is changed and imports do not rebuild binaries. The Tooling layout regression previews Commit-Workspace in a clean, profile-disabled child and rejects missing-registration or skipped-sniffer warnings.
 
-Command binding temporarily disables preview/confirmation only while importing inert product definitions, then restores both preferences before business operations. This lets the read-only sniffer bind the exported quiet alias during preview without weakening lock, staging, commit or branch guards.
+Command binding temporarily disables preview/confirmation only while importing inert product definitions, then restores both preferences before business operations. This lets the read-only sniffer bind the exported quiet alias during preview without weakening staging, commit or branch guards.
+
+## Internal sources and external inputs
+
+No workspace source lock is read, refreshed or staged. Git records internal sources; build,
+test and package evidence retains actual source hashes and available Git revision/tree.
+Dedicated external dependency locks keep their integrity contracts. See
+[source identity](../../README-source-identity.md). Commit-Workspace does not launch
+Invoke-WorkspaceCi; test execution and checkpoint creation remain separate operations.

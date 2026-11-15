@@ -32,7 +32,7 @@ Standard WhatIf/Confirm applies to a concrete batch. WhatIf permits dirty source
 
 An existing exact local or remote tag causes refusal before edits. There is no force, replacement, retry or rollback. The atomic selected-tag push can still fail on a concurrent update; a prior branch push may already have succeeded. A NoPush run creates real local tags, so the same release subsequently refuses them; use WhatIf for repeatable previews.
 
-Execution requires clean sources. Only selected manifests and the refreshed lock enter Commit-Workspace -NoAll. Push-Workspace retains the feature/fix PR-comment contract. An ignored artifacts/releases/<id>/release.json records commit, created tags and completed pushes; partial failures retain owned work and this receipt.
+Execution requires clean sources. Only selected manifests enter Commit-Workspace -NoAll; no internal source-lock refresh is performed. Unrelated changed paths still block the release commit. Push-Workspace retains the feature/fix PR-comment contract. An ignored artifacts/releases/<id>/release.json records commit, created tags and completed pushes; partial failures retain owned work and this receipt.
 
 ## Dependencies and legacy mode
 

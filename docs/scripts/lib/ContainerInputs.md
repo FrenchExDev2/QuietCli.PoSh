@@ -14,7 +14,7 @@ Export-ModuleMember -Function 'Copy-QuietContainerInputs'
 `Copy-QuietContainerInputs -WorkspaceRoot $root -Destination $stage` prepares the explicit inputs
 used by `Invoke-ContainerWorker.ps1`. It copies scripts, build metadata, documentation, GitHub
 definitions, discovered projects and built module resources. Root Markdown documents and the
-named SDK/package/source locks are included; `.env`, arbitrary root JSON files, Git internals,
+named SDK/package/build inputs are included; `.env`, arbitrary root JSON files, Git internals,
 intermediate `bin`/`obj` directories and old reports are excluded. The optional `-ContainerRuntime`
 selection, or the source checkout's runtime key when omitted, creates a fresh staged `.env` containing
 only `QUIET_CONTAINER_RUNTIME`. Unrelated private assignments are never copied. The caller forwards

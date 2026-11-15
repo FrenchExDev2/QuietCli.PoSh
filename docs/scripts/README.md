@@ -109,7 +109,6 @@ file by hand, run:
 - [`Update-EnvFile.ps1`](../../scripts/Update-EnvFile.ps1) -> [documentation](Update-EnvFile.md)
 - [`Update-PowerShellCiLock.ps1`](../../scripts/Update-PowerShellCiLock.ps1) -> [documentation](Update-PowerShellCiLock.md)
 - [`Update-QuietDependencies.ps1`](../../scripts/Update-QuietDependencies.ps1) -> [documentation](Update-QuietDependencies.md)
-- [`Update-WorkspaceLock.ps1`](../../scripts/Update-WorkspaceLock.ps1) -> [documentation](Update-WorkspaceLock.md)
 - [`Verify-Distribution.ps1`](../../scripts/Verify-Distribution.ps1) -> [documentation](Verify-Distribution.md)
 - [`Watch-DotNetTests.ps1`](../../scripts/Watch-DotNetTests.ps1) -> [documentation](Watch-DotNetTests.md)
 - [`Watch-GitHubRun.ps1`](../../scripts/Watch-GitHubRun.ps1) -> [documentation](Watch-GitHubRun.md)

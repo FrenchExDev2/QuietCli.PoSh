@@ -244,7 +244,6 @@ function Test-QuietAutomationCommitChecks {
             $null=& (Join-Path $scripts Sync-ScriptsReadme.ps1) -ScriptsPath (Join-Path $fixture scripts) -DocsPath (Join-Path $fixture docs/scripts) -Apply
         }
         $null=& (Join-Path $scripts Sync-DocsCredits.ps1) -DocsPath (Join-Path $fixture docs) -RootPath $fixture -CreditsPath (Join-Path $fixture CREDITS.md) -Apply
-        $null=& (Join-Path $scripts Update-WorkspaceLock.ps1) -WorkspaceRoot $fixture
         $null=Invoke-WorkspaceNative git @('-C',$fixture,'add','--all','--') $fixture
         [void][IO.File]::WriteAllTextAsync($fixPath,$good,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         $index=(Get-FileHash (Join-Path $fixture .git/index)).Hash
@@ -330,7 +329,6 @@ function Test-QuietResourceCommitChecks {
         $good=Get-Content $path -Raw -Encoding utf8
         $bad=if($kind -eq 'Resources'){$good+"`nStale owned fixture.`n"}else{"#Objective: Unwanted script header.`n"+$good}
         [void][IO.File]::WriteAllTextAsync($path,$bad,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-        $null=& (Join-Path $scripts Update-WorkspaceLock.ps1) -WorkspaceRoot $fixture
         $null=Invoke-WorkspaceNative git @('-C',$fixture,'add','--all','--') $fixture
         [void][IO.File]::WriteAllTextAsync($path,$good,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         $index=(Get-FileHash (Join-Path $fixture .git/index)).Hash;$head=Get-QuietCommitWorkspaceHeadRevision $fixture

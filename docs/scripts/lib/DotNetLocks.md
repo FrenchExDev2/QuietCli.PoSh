@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Maintain SDK/CI source locks and runtime project pins through explicit metadata and file
+Maintain external SDK/CI dependency locks and runtime project pins through explicit metadata and file
 policies. Exports Resolve-DotNetBaseImage, Get-DotNetBaseImageTags, Update-DotNetCiLock,
 Get-DotNetRuntimeFrameworkPlan and Update-DotNetRuntimeFrameworkVersion.
 
@@ -42,7 +42,8 @@ per-file replacement. Import itself performs no business I/O.
 - :210 edits only validated runtime property spans. DTDs, links, out-of-root files,
   unresolved/ambiguous framework conditions and implicit downgrades are rejected.
 - Offline Locks fixtures cover real files/hashes and byte-digest checks with stubbed metadata,
-  deterministic XML/source-label properties, malformed inputs and assertion-killed mutants.
+  deterministic XML properties, malformed inputs and assertion-killed mutants. Internal workspace
+  source-lock labels are not generated; SDK/runtime source declarations remain authoritative.
 
 ## Verdict
 

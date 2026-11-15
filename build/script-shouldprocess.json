@@ -252,7 +252,6 @@
     "scripts/Test-WorkspacePackage.ps1",
     "scripts/TestConfiguration.ps1",
     "scripts/Update-QuietDependencies.ps1",
-    "scripts/Update-WorkspaceLock.ps1",
     "scripts/Verify-Distribution.ps1",
     "scripts/Watch-GitHubRun.ps1",
     "scripts/Watch-Tests.ps1",

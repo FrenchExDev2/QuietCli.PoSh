@@ -30,7 +30,7 @@ Set-Location $checkout
 ./scripts/Build-Workspace.ps1
 ```
 
-All paths are relative to the monorepo root. `-Restore` verifies the committed source lock; on an intentionally edited checkout, `./scripts/Initialize-Workspace.ps1` without `-Restore` refreshes the local lock. A successful build creates the compiled engine and companion binaries; it does not publish or install a Gallery package.
+All paths are relative to the monorepo root. `Initialize-Workspace.ps1` validates projects discovered from their manifests; `-Restore` also restores and verifies pinned external Core resources. Git identifies committed internal sources, while build/test artifacts retain actual source and binary identities. Internal edits require no committed source-lock refresh. A successful build creates the compiled engine and companion binaries; it does not publish or install a Gallery package.
 
 ### Import, execute and read YAML
 

@@ -2,6 +2,11 @@
 
 The [generated inventory and source dependencies](docs/resources/README.md) describes the files declared by Core's `resources/dependencies.lock.json`, their origins and the code that consumes or prepares them.
 
+These locks describe external inputs. Internal projects, scripts and build configuration are
+versioned together in Git, with actual source/binary identities retained in execution artifacts;
+they require no committed workspace source lock. Vendored upstream files still retain their
+provenance, licenses and reviewed hashes. See [source identity](docs/README-source-identity.md).
+
 `dotnet restore` resolves project references. It does not prepare the module's ignored resource payloads. `Initialize-Workspace.ps1` delegates this preparation to `Restore-CoreResources.ps1`; module import itself never downloads files. Native PTY payloads are built separately by `Build-PtyBridge.ps1`.
 
 Automation that needs a particular resource calls `Ensure-QuietResource` from `scripts/lib/Resources.psm1`. It verifies the declared hash, restores only the corresponding package if needed, verifies the resulting bytes, and optionally loads the required managed type. An already loaded assembly must match the pinned hash; an incompatible assembly requires a fresh process. Workflow documentation uses this function for YamlDotNet in development and CI, without relying on an earlier workflow step.

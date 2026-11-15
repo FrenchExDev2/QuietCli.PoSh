@@ -35,7 +35,7 @@ are rejected. `RequiredModules` supplies local dependency edges; external module
 external. Results are ordered by dependency, with deterministic ordering among independent projects.
 A cycle fails explicitly instead of returning a partial graph. No module `.psm1` runs during discovery.
 
-Source identity, workspace locking, initialization, local ZIP verification and container staging use
+Source identity, initialization, local ZIP verification and container staging use
 this catalogue. Local workspace ZIPs include companion tests for offline verification; those archives
 are separate from publicly installable Gallery packages.
 

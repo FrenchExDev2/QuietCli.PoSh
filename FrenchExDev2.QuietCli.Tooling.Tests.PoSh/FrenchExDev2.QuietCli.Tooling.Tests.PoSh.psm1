@@ -379,7 +379,7 @@ function Invoke-QuietToolingTests {
         $policy=Test-QuietPowerShellSourcePolicy -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
         Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'powershell-sources-campaign.json')) $policy
         Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
-        $paths=@(@(Get-QuietSourceFiles $WorkspaceRoot)|ForEach-Object {Join-Path $WorkspaceRoot $_.Path})+@(Join-Path $WorkspaceRoot 'repositories.lock.json')
+        $paths=@(Get-QuietSourceFiles $WorkspaceRoot|ForEach-Object {Join-Path $WorkspaceRoot $_.Path})
         foreach($path in $paths){
             $bytes=[IO.File]::ReadAllBytesAsync($path).GetAwaiter().GetResult()
             if([Array]::IndexOf($bytes,[byte]0) -ge 0){continue}
@@ -399,9 +399,17 @@ function Invoke-QuietToolingTests {
     }
         $cases['packaged modules verify and import outside source checkouts']={
         $packageRoot=Join-Path $WorkspaceRoot ('artifacts/package-tests/'+[guid]::NewGuid().ToString('N'))
-        $null=& (Join-Path $WorkspaceRoot 'scripts/Update-WorkspaceLock.ps1') -WorkspaceRoot $WorkspaceRoot
+        $source=Get-QuietWorkspaceIdentity $WorkspaceRoot
         Push-Location -LiteralPath $WorkspaceRoot
         try{$null=& (Join-Path $WorkspaceRoot 'scripts/New-WorkspacePackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory ([IO.Path]::GetRelativePath($WorkspaceRoot,(Join-Path $packageRoot 'packages')))}finally{Pop-Location}
+        foreach($project in $source.Projects){
+            $manifest=Get-Content -LiteralPath (Join-Path $packageRoot ('packages/'+$project.Name+'.manifest.json')) -Raw -Encoding utf8|ConvertFrom-Json
+            Assert-QuietEqual $manifest.Revision $source.Repository.Revision 'Package source revision'
+            Assert-QuietEqual $manifest.Tree $source.Repository.Tree 'Package committed tree'
+            Assert-QuietEqual $manifest.Dirty $source.Repository.Dirty 'Package dirty-state evidence'
+            Assert-QuietEqual $manifest.SourceSHA256 $project.SourceSHA256 'Package actual project source bytes'
+        }
+        if(Test-Path -LiteralPath (Join-Path $WorkspaceRoot 'repositories.lock.json')){throw 'PackagingGeneratedInternalSourceLock'}
         $verify=Join-Path $WorkspaceRoot 'scripts/Verify-Distribution.ps1'
         $r=quiet -AsObject -Role Infrastructure -WorkingDirectory $WorkspaceRoot -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} pwsh -File $verify -PackageDirectory ([IO.Path]::GetRelativePath($WorkspaceRoot,(Join-Path $packageRoot 'packages'))) -ExtractionDirectory ([IO.Path]::GetRelativePath($WorkspaceRoot,(Join-Path $packageRoot 'extracted'))) -TestImport
         Assert-QuietEqual $r.Outcome Success ('Package verifier: '+($r.Error|ConvertTo-Json -Compress))
