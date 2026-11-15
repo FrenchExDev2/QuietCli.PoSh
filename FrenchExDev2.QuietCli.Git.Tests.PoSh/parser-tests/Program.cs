@@ -87,6 +87,7 @@ internal static class Program
         GitPushCases.Run(Case);
         RepositoryCommandCases.Run(Case);
         QueryCases.Run(Case);
+        StatusCases.Run(Case);
         AttributionCases.Run(Case);
         PathQueryCases.Run(Case);
         RevisionCases.Run(Case);

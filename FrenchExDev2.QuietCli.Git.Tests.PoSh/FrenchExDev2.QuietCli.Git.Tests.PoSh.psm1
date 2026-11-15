@@ -8,6 +8,7 @@ foreach($library in @('TestCaseMetadata','TestCaseScheduling')){
 . (Join-Path $PSScriptRoot 'Attribution.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Queries.Tests.ps1')
 . (Join-Path $PSScriptRoot 'RepositoryCommands.Tests.ps1')
+. (Join-Path $PSScriptRoot 'Status.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Parser.Mutation.ps1')
 . (Join-Path $PSScriptRoot 'Migration.Tests.ps1')
 . (Join-Path $PSScriptRoot 'CiImages.Tests.ps1')
@@ -57,7 +58,7 @@ Tests independently prepared repositories, hook counts and local bare push targe
         $schema=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.PoSh/metadata/Git.ArgumentSchema.json'
         $r=quiet -AsObject -Data ([Text.StringBuilder]::new()) -Output {param($event,$runtime)if($event.Stream -eq 'stdout'){[void]$runtime.Data.Append($event.Text)}} -Complete {param($runtime)$runtime.Data.ToString()|ConvertFrom-Json} $dotnet $assembly $schema
         Assert-QuietEqual $r.Outcome Success 'Compiled Git suite process'
-        Assert-QuietEqual $r.Data.Passed 57 'Compiled Git independent cases'
+        Assert-QuietEqual $r.Data.Passed 67 'Compiled Git independent cases'
         Assert-QuietEqual $r.Data.Failed 0 'Compiled Git independent failures'
     }
     $cases['status distinguishes unborn state and Unicode untracked paths']={
@@ -139,6 +140,9 @@ Tests independently prepared repositories, hook counts and local bare push targe
     foreach($entry in $indexCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $semanticCases=Get-QuietGitSemanticCases -RootDirectory $root -Environment $environment
     foreach($entry in $semanticCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
+    if($env:QUIETCLI_GIT_STATUS_MUTATION -eq '1'){$cases['status parser C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Status}}
+    $statusCases=Get-QuietGitStatusCases -RootDirectory $root -Environment $environment
+    foreach($entry in $statusCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $ciImageCases=Get-QuietGitCiImageCases -WorkspaceRoot $WorkspaceRoot
     foreach($entry in $ciImageCases.GetEnumerator()){$cases[$entry.Key]=$entry.Value}
     $cases['Git audit preserves reference case and private artifact cleanup']={
@@ -198,6 +202,7 @@ Tests independently prepared repositories, hook counts and local bare push targe
         'schema parser C# mutants are detected'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState','DotNetBuild');EnabledWhen='QUIETCLI_GIT_SCHEMA_MUTATION=1'}
         'invocation parser C# mutants are detected'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState','DotNetBuild');EnabledWhen='QUIETCLI_GIT_INVOCATION_MUTATION=1'}
         'revision parser C# mutants are detected'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState','DotNetBuild');EnabledWhen='QUIETCLI_GIT_REVISION_MUTATION=1'}
+        'status parser C# mutants are detected'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState','DotNetBuild');EnabledWhen='QUIETCLI_GIT_STATUS_MUTATION=1'}
         'index update-index observes removal and re-add without altering worktree contents'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'index read-tree empties then restores tree and checkout-index restores file bytes'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'index failed native operation retains observed state and never reports success'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
@@ -252,6 +257,15 @@ Tests independently prepared repositories, hook counts and local bare push targe
         'verbose status contains staged and unstaged business patches'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'status rename consumes a distinct original-path NUL record'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'status parser preserves an invalid UTF8 native path as bytes'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
+        'status classifies non-repository bare and git-directory locations without running status'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
+        'status reports tracking state ahead behind gone and uncomputed divergence'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
+        'status exposes unborn staged and detached HEAD states'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
+        'status reports merge conflicts and a merge ready to commit as in-progress operations'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
+        'status reports rebase cherry-pick revert bisect and am operations'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
+        'status reports stash sparse linked worktree submodule and shallow structure'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
+        'status classifies a broken gitfile and an unsupported repository format as typed failures'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
+        'status digests a massive change set into ten disjoint hot paths covering every change'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
+        'status publishes repository summary and entry events to listeners'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'PTY machine-format handler refuses a merged terminal rather than reporting empty success'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'fetch and pull use a local remote and one business execution each'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'worktree mutation executes once and exposes independent before-after lists'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}

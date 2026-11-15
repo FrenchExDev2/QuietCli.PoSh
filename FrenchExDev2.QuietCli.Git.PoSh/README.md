@@ -102,13 +102,70 @@ This second contract scopes observation to `README.md`; a modification to that f
 
 Import registers an inert catalogue. The first invocation observes the Git binary version; later probes use an identity-bound cache. The declared range is stable Git `>= 2.40.0 < 2.57.0`, including `.windows.N` variants. A declared range is not qualification of every version.
 
+## `git status`: repository states, profiles and adaptive view
+
+`git status` (output schema `git.status.v4`) first classifies where it runs, then observes, then decides what is worth showing. `$r.Data` always stays complete (every entry); only the presentation adapts.
+
+**Repository kind.** One `rev-parse` probe sets `Data.Repository.Kind`:
+
+| Kind | Outcome | What you get |
+| --- | --- | --- |
+| `NotARepository` | `Success` | Classified answer; `SearchBoundary` when discovery stopped at a mount point. Status is not run, `Counts` is `$null`. |
+| `Bare` | `Success` | Classified answer with the HEAD branch (`Data.Branch`). |
+| `InsideGitDir` | `Success` | Classified answer (the working directory is inside `.git`). |
+| `WorkTree` | `Success` | Full porcelain v2 observation plus the facts below. |
+
+Flags on `Data.Repository`: `LinkedWorktree`, `Submodule`/`Superproject`, `Shallow`, `PartialClone`, `Sparse{Enabled,Cone,SparseIndex}`, `ObjectFormat`, `RefFormat`.
+
+**Branch and tracking.** `Branch`, `HeadOid`, `Unborn`, `Detached`, `Upstream`, `Ahead`/`Behind`, `AheadBehindComputed` (`$false` with `--no-ahead-behind`), `UpstreamGone` (configured upstream whose remote-tracking ref no longer exists) and `StashCount` (`--show-stash` is on by default; `--no-show-stash` gives `$null`).
+
+**In-progress operations.** Porcelain v2 does not print them, so the handler reads Git's state files the way `git status` long format does. `Data.Operations` is a list, since operations can coexist (for example bisect during a rebase): `Merge` (`ReadyToCommit` once conflicts are resolved), `Rebase`/`RebaseApply` (`Interactive`, `Branch`, `Onto`, `Step`/`Total`), `Am`, `CherryPick`, `Revert`, `Sequence` and `Bisect` (`From`).
+
+**Errors.** A real failure stays `Failed`. Its message starts with a stable code: `GitDubiousOwnership` (with a `safe.directory` hint), `GitBrokenGitFile`, `GitBareRepositoryForbidden`, `GitUnsupportedRepositoryFormat`, `GitCorruptIndex`, `GitPathspecOutsideRepository`, `GitInvalidArgument`, `GitUnclassified`. A `warning: could not open directory` on a successful run becomes an `UnreadableDirectory` diagnostic and sets `AnswerComplete` to `$false`.
+
+**Profile.** These measurements are cheap and never walk history: the index header gives the checkout size; the pack index fan-out headers (1 KiB per pack) and the loose object names give the history size, read in process like `count-objects -v` (alternates excluded); one `config` read gives the relevant settings. `Data.Profile` holds:
+
+- `Checkout.Class` (index entries): Small < 1 000 ≤ Medium < 20 000 ≤ Large < 200 000 ≤ Huge;
+- `History.Class` (objects): Small < 10 000 ≤ Medium < 500 000 ≤ Large < 5 000 000 ≤ Huge;
+- `Changes.Class`: Clean, Few ≤ 20, Many ≤ 1 000, Massive;
+- `Archetype`: `Small`, `DeepHistory` (large history, small checkout), `WideCheckout` (large checkout, small history, for example a vendored tree or a shallow CI clone), `Monorepo` or `Standard`;
+- `Objects`: `Loose`, `Packed`, `Packs`, `PackBytes`, `Alternates`, and `Approximate` (set when more than 200 000 loose names were extrapolated or a pack index was unreadable);
+- `Hints`: fsmonitor or untracked cache off on a large checkout, a status slower than 2 s with `-uall`, a shallow clone with an upstream.
+
+The thresholds are returned in `Profile.Thresholds`.
+
+**Adaptive view (`Data.Digest`).**
+
+| Mode | When | Content |
+| --- | --- | --- |
+| `Classified` | not a work tree | the repository kind only |
+| `Clean` | no change | branch, tracking, stash, operations |
+| `List` | ≤ 20 changes | every entry, conflicts first, then tracked changes, then untracked files |
+| `HotPaths` | > 20 changes | the **10 hottest paths** plus conflicts (up to 50), and `Omitted` |
+
+Hot paths are disjoint directories, files or a `Rest` remainder, and together they cover every change: on a monorepo with 2 000 changes you get the ten subtrees that concentrate them, each with its staged/unstaged/untracked/conflicted split and share. A `Rest` item folds the smaller children of a directory that could not be split within the budget (`Groups` tells how many).
+
+**Presentation.** The handler publishes the view without changing Core:
+
+- `-Listeners` receives `GitStatusRepository`, `GitStatusOperation`, `GitStatusSummary`, `GitStatusHotPath` or `GitStatusEntry`, then `GitStatusDiagnostic` events;
+- `-UI` draws a three-line header (repository, branch, profile) and one lane per operation, hot path or entry.
+
+```powershell
+quiet -UI git status                                          # live view
+quiet -AsObject -Projection { $args[0].Digest } git status    # compact delivered result
+```
+
+Known limit: on a very large change set, the default text delivery budget (4 KiB) can still drop `Data`. Use `-UI`, `-Listeners` or `-Projection { $args[0].Digest }`, or keep the object local with `-AsObject`.
+
+The worktree case costs two extra short Git processes (one probe that also asks for the work-tree root, and one `config` read), plus two `rev-parse --verify` under the reftable backend. Bare repositories and the git directory repeat the probe once, because `--show-toplevel` fails there. On Windows this measured about 195 ms over a raw `git status`. Measurements are in the [status audit](../docs/audits/2026-11-14-git-status-states-profiles.md).
+
 ## Implemented command families
 
 The catalogue holds **58 specialized handlers** out of the 183 entries of the locked official inventory. Each runs one business execution and, for mutations, observes local state before and after. Observations are not atomic snapshots, and they do not prove the side effects of hooks or external processes.
 
 | Family | Commands | What the handler returns |
 | --- | --- | --- |
-| Working tree and index | `status`, `add`, `rm`, `mv`, `restore`, `reset`, `clean`, `checkout`, `switch` | Porcelain v2 status with branch, HEAD, initial/detached state, divergence of local references, entries and counters; observed HEAD/index/worktree changes after a mutation. `clean --dry-run` keeps the requested plan records. |
+| Working tree and index | `status`, `add`, `rm`, `mv`, `restore`, `reset`, `clean`, `checkout`, `switch` | Porcelain v2 status with branch, HEAD, initial/detached state, divergence of local references, entries and counters, plus repository kind, in-progress operations, profile and hot-path digest ([above](#git-status-repository-states-profiles-and-adaptive-view)); observed HEAD/index/worktree changes after a mutation. `clean --dry-run` keeps the requested plan records. |
 | History and objects | `commit`, `log`, `show`, `diff`, `tag`, `describe`, `name-rev`, `shortlog`, `blame`, `annotate`, `reflog` | Full identities, parents, author, committer, subject and body with no hidden commit cap; files, hunks and combined patches with end-of-line markers preserved; line-porcelain attribution; observed ref changes. |
 | Integration | `merge`, `rebase`, `cherry-pick`, `revert`, `fetch`, `pull`, `push` | One native operation with local before/after state and ref changes. A non-zero exit is a failure; unmerged entries are reported as `FailedWithConflicts`. No automatic resolution, abort, continue or retry. |
 | Branches and remotes | `branch`, `stash`, `worktree`, `remote`, `config`, `init`, `clone` | Structured lists and mutations observed before and after; NUL-delimited config records that keep duplicate, multiline and valueless settings. |

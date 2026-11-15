@@ -129,7 +129,7 @@
     "Qualification": "Pending",
     "Contract": "Git.Status.ps1",
     "Name": "status",
-    "OutputSchema": "git.status.v3",
+    "OutputSchema": "git.status.v4",
     "Handler": "Status"
   },
   "cat-file": {

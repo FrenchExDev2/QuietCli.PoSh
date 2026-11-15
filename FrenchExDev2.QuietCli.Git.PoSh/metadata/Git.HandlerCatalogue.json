@@ -82,7 +82,11 @@
       "GitObjectRecords"
     ],
     "status": [
-      "GitRecords"
+      "GitRecords",
+      "GitDiagnostics",
+      "GitRepositoryProfile",
+      "GitStatusDigest",
+      "GitConfigRecords"
     ],
     "ls-remote": [
       "GitReferenceRecords"

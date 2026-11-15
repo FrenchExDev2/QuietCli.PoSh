@@ -9,7 +9,7 @@ $script:GitSpecifications=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'met
 $script:GitParserAssembly=$null
 $script:GitArtifacts=@{}
 $script:GitHandlerCatalogue=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'metadata/Git.HandlerCatalogue.json') -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable
-foreach($source in @('Managed','StatusRecords','Records','Diff','History','Repository','Semantics','RepositoryCommands','Queries','Attribution','PathQueries','IndexOperations','Revisions','Commands')){. (Join-Path $PSScriptRoot "src/$source.ps1")}
+foreach($source in @('Managed','StatusRecords','StatusState','Records','Diff','History','Repository','Semantics','RepositoryCommands','Queries','Attribution','PathQueries','IndexOperations','Revisions','Commands')){. (Join-Path $PSScriptRoot "src/$source.ps1")}
 # The verified parser assembly also carries the compiled cmdlets (invocation binding, version and query projection).
 Import-QuietGitParser
 Import-Module -Assembly $script:GitParserAssembly

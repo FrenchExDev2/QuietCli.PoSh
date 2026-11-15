@@ -1,5 +1,5 @@
 {
-  "ExpectedCases": 57,
+  "ExpectedCases": 67,
   "Catalogues": {
     "Revision": {
       "CasePrefix": "revision ",
@@ -487,6 +487,89 @@
           "File": "GitArgumentFilter.cs",
           "From": "&& remove.Contains(token.Name, StringComparer.Ordinal)) continue;",
           "To": "&& false) continue;"
+        }
+      ]
+    },
+    "Status": {
+      "CasePrefix": "status ",
+      "Mutants": [
+        {
+          "Name": "diagnostic-not-repository",
+          "File": "GitDiagnostics.cs",
+          "From": "(\"NotARepository\", \"not a git repository (or any\", null)",
+          "To": "(\"NotARepository\", \"not a git repository (or every\", null)"
+        },
+        {
+          "Name": "diagnostic-usage-exit",
+          "File": "GitDiagnostics.cs",
+          "From": "if (exitCode == 129)",
+          "To": "if (exitCode == 128)"
+        },
+        {
+          "Name": "diagnostic-excerpt-bound",
+          "File": "GitDiagnostics.cs",
+          "From": "excerpt[..(MaxExcerptCharacters - 1)]",
+          "To": "excerpt[..MaxExcerptCharacters]"
+        },
+        {
+          "Name": "diagnostic-incomplete",
+          "File": "GitDiagnostics.cs",
+          "From": "code == \"UnreadableDirectory\"",
+          "To": "false"
+        },
+        {
+          "Name": "branch-ab-quick",
+          "File": "GitRecords.cs",
+          "From": "bool computed = match.Groups[1].Success;",
+          "To": "bool computed = true;"
+        },
+        {
+          "Name": "upstream-gone",
+          "File": "GitRecords.cs",
+          "From": "data[\"UpstreamGone\"] = upstream && !seen;",
+          "To": "data[\"UpstreamGone\"] = false;"
+        },
+        {
+          "Name": "submodule-untracked",
+          "File": "GitRecords.cs",
+          "From": "\"UntrackedChanges\", field[3] == 'U'",
+          "To": "\"UntrackedChanges\", field[3] == '.'"
+        },
+        {
+          "Name": "index-signature",
+          "File": "GitRepositoryProfile.cs",
+          "From": "!header[..4].SequenceEqual(\"DIRC\"u8)",
+          "To": "header.Length < 0"
+        },
+        {
+          "Name": "checkout-threshold",
+          "File": "GitRepositoryProfile.cs",
+          "From": "CheckoutThresholds = [1_000, 20_000, 200_000]",
+          "To": "CheckoutThresholds = [1_001, 20_000, 200_000]"
+        },
+        {
+          "Name": "change-threshold",
+          "File": "GitRepositoryProfile.cs",
+          "From": "changed <= ChangeThresholds[0] ? \"Few\"",
+          "To": "changed < ChangeThresholds[0] ? \"Few\""
+        },
+        {
+          "Name": "hot-split-room",
+          "File": "GitStatusDigest.cs",
+          "From": "if (expansion.Count <= room)",
+          "To": "if (expansion.Count <= room + 1)"
+        },
+        {
+          "Name": "pack-index-fanout",
+          "File": "GitRepositoryProfile.cs",
+          "From": "int last = fanout + 255 * 4;",
+          "To": "int last = fanout + 254 * 4;"
+        },
+        {
+          "Name": "loose-name-length",
+          "File": "GitRepositoryProfile.cs",
+          "From": "int nameLength = hashHexLength - 2;",
+          "To": "int nameLength = hashHexLength;"
         }
       ]
     }
