@@ -192,7 +192,7 @@ function Get-QuietGitStatusCases {
         # Shallow clone over file:// (local path clones ignore --depth).
         & $prepare $path @('commit','--allow-empty','-m','second') $Environment
         $shallow=Join-Path $RootDirectory ('status-shallow-'+[guid]::NewGuid().ToString('N').Substring(0,8))
-        & $prepare $RootDirectory @('clone','--depth','1',([Uri]$path).AbsoluteUri,$shallow) $Environment
+        & $prepare $RootDirectory @('clone','--depth','1',[Uri]::new($path,[UriKind]::Absolute).AbsoluteUri,$shallow) $Environment
         $r=quiet -AsObject -WorkingDirectory $shallow -Environment $Environment git status
         & $success $r;& $assert $r.Data.Repository.Shallow $true;& $assert $r.Data.Upstream origin/main
         if(@($r.Data.Profile.Hints|Where-Object Code -CEQ ShallowDivergence).Count -ne 1){throw ('Shallow hint missing: '+($r.Data.Profile.Hints|ConvertTo-Json -Compress))}

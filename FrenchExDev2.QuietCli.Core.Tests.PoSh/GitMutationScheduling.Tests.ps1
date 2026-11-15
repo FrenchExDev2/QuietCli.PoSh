@@ -11,13 +11,13 @@ function Test-QuietGitMutationScheduling {
     $manifest=Join-Path $WorkspaceRoot 'FrenchExDev2.QuietCli.Git.Tests.PoSh/FrenchExDev2.QuietCli.Git.Tests.PoSh.psd1'
     $inventory=Get-QuietCompanionTestInventory -ManifestPath $manifest
     $policy=Get-QuietTestExecutionPolicy -ManifestPath $manifest -CaseNames $inventory.CaseNames
-    $mutations=@('push targeted mutations are detected by independent assertions','repository command C# mutants are detected','query parser C# mutants are detected','attribution parser C# mutants are detected','pathquery parser C# mutants are detected','argument filter C# mutants are detected','schema parser C# mutants are detected','invocation parser C# mutants are detected','revision parser C# mutants are detected')
+    $mutations=@('push targeted mutations are detected by independent assertions','repository command C# mutants are detected','query parser C# mutants are detected','attribution parser C# mutants are detected','pathquery parser C# mutants are detected','argument filter C# mutants are detected','schema parser C# mutants are detected','invocation parser C# mutants are detected','revision parser C# mutants are detected','status parser C# mutants are detected')
     $ordered=@($inventory.CaseNames|Where-Object {$_ -cnotin $mutations})+$mutations
     $plan=Get-QuietTestExecutionPlan -CaseNames $ordered -Policy $policy -MaxConcurrency 8
     Assert-QuietEqual $plan.MaxConcurrency 2
     $parallel=@($plan.Stages|Where-Object Mode -CEQ IsolatedProcess)
     Assert-QuietEqual $parallel.Count 1
-    Assert-QuietEqual $parallel[0].Cases.Count 9
+    Assert-QuietEqual $parallel[0].Cases.Count 10
     Assert-QuietEqual $plan.Stages[-1].Mode IsolatedProcess
     $fixture=Join-Path $RunDirectory 'git-mutation-build-fixture'
     $engine='FrenchExDev2.QuietCli.Git.PoSh/engine';$tests='FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests'
@@ -60,5 +60,5 @@ function Invoke-CiProcess {
     Assert-QuietEqual $report.BuildCount 9
     Assert-QuietEqual $report.RestoreCount 1
     Assert-QuietEqual $report.ForcedCompilation $true
-    Write-WorkspaceJson (Join-Path $RunDirectory 'git-mutation-scheduling.json') @{IsolatedCatalogues=9;WorkerCap=2;PristineBuilds=$report.BuildCount;Restores=$report.RestoreCount;NativeBuildExecuted=$false}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'git-mutation-scheduling.json') @{IsolatedCatalogues=10;WorkerCap=2;PristineBuilds=$report.BuildCount;Restores=$report.RestoreCount;NativeBuildExecuted=$false}
 }

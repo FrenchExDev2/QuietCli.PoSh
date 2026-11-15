@@ -100,7 +100,7 @@ function Invoke-QuietCoreTests {
         Assert-QuietEqual ($inventory.CaseNames -ccontains $name) $false
         Assert-QuietEqual ($distribution.CaseNames -ccontains $name) $true
     }
-    Assert-QuietEqual ($companions|Where-Object Suite -CEQ Git).Cases 78
+    Assert-QuietEqual ($companions|Where-Object Suite -CEQ Git).Cases 88
     Assert-QuietEqual ($companions|Where-Object Suite -CEQ Vagrant).Unit 6
     $owned=Join-Path $directory owned-catalogue;[void][IO.Directory]::CreateDirectory($owned)
     $ownedModule=Join-Path $owned owned.psm1;$ownedManifest=Join-Path $owned owned.psd1;$helper=Join-Path $owned cases.ps1
