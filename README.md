@@ -188,13 +188,10 @@ Set-Location $checkout
 YAML excerpt; invocation IDs and other envelope metadata are omitted. The version shown is the SDK selected in this checkout. `-Output` reads one native record; `-Complete` creates `{ SdkVersion }`. `-AsObject` keeps that result local, and `Out-QuietResult -AsYaml` formats the same result without executing `dotnet` again.
 
 ```yaml
-"Outcome": "Success"
-"Context": "sdk-version"
-"Data":
-  "SdkVersion": "11.0.100"
-"Completeness":
-  "Source": true
-  "Analysis": true
+Outcome: Success
+Context: sdk-version
+Data: {SdkVersion: "11.0.100"}
+Completeness: {Source: true, Analysis: true}
 ```
 
 The source manifest above loads the local Core project. Its existing Gallery identity is also `FrenchExDev2.QuietCli.Core.PoSh`; installation uses `Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh` and `Import-Module FrenchExDev2.QuietCli.Core.PoSh`.
@@ -247,13 +244,10 @@ Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 YAML excerpt; invocation IDs and other envelope metadata are omitted. The version shown is the SDK selected in this checkout. `-Output` reads one native record; `-Complete` creates `{ SdkVersion }`. `-AsObject` keeps that result local, and `Out-QuietResult -AsYaml` formats the same result without executing `dotnet` again.
 
 ```yaml
-"Outcome": "Success"
-"Context": "sdk-version"
-"Data":
-  "SdkVersion": "11.0.100"
-"Completeness":
-  "Source": true
-  "Analysis": true
+Outcome: Success
+Context: sdk-version
+Data: {SdkVersion: "11.0.100"}
+Completeness: {Source: true, Analysis: true}
 ```
 
 The raw native output is a version string. The completed business object has one `SdkVersion` property; the YAML envelope adds execution outcome and completeness. Reject an incomplete result before using `Data`. QuietCli options precede the executable, and native arguments follow verbatim.
@@ -330,12 +324,8 @@ A handler is a ready-made callback pair. `quiet -AsObject git status` is shortha
 Illustrative YAML excerpt for branch `develop`, one modified tracked file and one untracked file. The callbacks count the selected porcelain records; `-Complete` defines these four business fields.
 
 ```yaml
-"Outcome": "Success"
-"Data":
-  "Branch": "develop"
-  "Changed": 1
-  "Conflicted": 0
-  "Untracked": 1
+Outcome: Success
+Data: {Branch: develop, Changed: 1, Conflicted: 0, Untracked: 1}
 ```
 
 With the source-development launcher selecting the Git and Vagrant companions (both depend on Core), the same question needs no callback. Git selects its own handler for `git status`; Vagrant is ready for a later call in the same block:
@@ -362,12 +352,8 @@ With the source-development launcher selecting the Git and Vagrant companions (b
 For the same illustrative repository, the handler's projected YAML is:
 
 ```yaml
-"Outcome": "Success"
-"Data":
-  "Branch": "develop"
-  "Staged": 0
-  "Unstaged": 1
-  "Untracked": 1
+Outcome: Success
+Data: {Branch: develop, Staged: 0, Unstaged: 1, Untracked: 1}
 ```
 
 The handler builds the complete local status object; `$statusView` selects the delivered fields without changing `$result.Data`. Counts depend on the selected repository.

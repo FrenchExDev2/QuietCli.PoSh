@@ -99,13 +99,10 @@ Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 YAML excerpt; invocation IDs and other envelope metadata are omitted. The version shown is the SDK selected in this checkout. `-Output` reads one native record; `-Complete` creates `{ SdkVersion }`. `-AsObject` keeps that result local, and `Out-QuietResult -AsYaml` formats the same result without executing `dotnet` again.
 
 ```yaml
-"Outcome": "Success"
-"Context": "sdk-version"
-"Data":
-  "SdkVersion": "11.0.100"
-"Completeness":
-  "Source": true
-  "Analysis": true
+Outcome: Success
+Context: sdk-version
+Data: {SdkVersion: "11.0.100"}
+Completeness: {Source: true, Analysis: true}
 ```
 
 The source manifest above loads the local Core project. Its Gallery identity is also `FrenchExDev2.QuietCli.Core.PoSh`; installation uses `Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh` and `Import-Module FrenchExDev2.QuietCli.Core.PoSh`.
@@ -141,13 +138,10 @@ Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 YAML excerpt; invocation IDs and other envelope metadata are omitted. The version shown is the SDK selected in this checkout. `-Output` reads one native record; `-Complete` creates `{ SdkVersion }`. `-AsObject` keeps that result local, and `Out-QuietResult -AsYaml` formats the same result without executing `dotnet` again.
 
 ```yaml
-"Outcome": "Success"
-"Context": "sdk-version"
-"Data":
-  "SdkVersion": "11.0.100"
-"Completeness":
-  "Source": true
-  "Analysis": true
+Outcome: Success
+Context: sdk-version
+Data: {SdkVersion: "11.0.100"}
+Completeness: {Source: true, Analysis: true}
 ```
 
 The native version line becomes a typed object with one `SdkVersion` property. `Outcome`, `Completeness` and errors describe whether that object can be trusted. See [streaming, callbacks and results](../README-streaming.md).
@@ -228,17 +222,15 @@ Each execution returns `{ Bytes }`: the total stdout bytes seen by that call's c
 `--list-sdks`:
 
 ```yaml
-"Outcome": "Success"
-"Data":
-  "Bytes": 95
+Outcome: Success
+Data: {Bytes: 95}
 ```
 
 `--info`:
 
 ```yaml
-"Outcome": "Success"
-"Data":
-  "Bytes": 3687
+Outcome: Success
+Data: {Bytes: 3687}
 ```
 
 `-DataFactory` and `-StateFactory` also work on ordinary calls. Each receives no
