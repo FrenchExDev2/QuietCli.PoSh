@@ -96,6 +96,7 @@ These reports describe their recorded revisions, environments and executed scope
 - 9 November 2026: [real Vagrant provider, interactive UI and stable/preview qualification](audits/2026-11-09-provider-ui-qualification.md).
 - 9 November 2026: [container runtime/bootstrap and RID resource diagnosis](audits/2026-11-09-container-runtime-diagnosis.md).
 - 9 November 2026: [Alpine recipe correction, rebuilt image and default-host/SDK smoke](audits/2026-11-09-alpine-image-recipe.md).
+- 14 November 2026: [Git status repository states, classified errors, profiles and hot-path view](audits/2026-11-14-git-status-states-profiles.md).
 
 ## Automation contracts
 

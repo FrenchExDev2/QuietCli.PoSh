@@ -11,7 +11,8 @@ public static class GitRecords
     /// <summary>Stateless strict field decoder, shared without incremental state.</summary>
     private static readonly Encoding utf8 = new UTF8Encoding(false, true);
     /// <summary>Local branch divergence format.</summary>
-    private static readonly Regex divergence = new(@"^\+(\d+) -(\d+)$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+    /// <remarks><c>+? -?</c> is printed when ahead/behind counting was not requested or not computed.</remarks>
+    private static readonly Regex divergence = new(@"^(?:\+(\d+) -(\d+)|\+\? -\?)$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
     /// <summary>Porcelain tracked status pair.</summary>
     private static readonly Regex status = new(@"^[.MADRCUT]{2}$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
     /// <summary>Patch file marker, including combined patches.</summary>
@@ -91,7 +92,9 @@ public static class GitRecords
                 case "branch.ab":
                     var match = value is string text ? divergence.Match(text) : Match.Empty;
                     if (!match.Success) throw new InvalidDataException("MalformedBranchDivergence");
-                    data["Ahead"] = long.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture); data["Behind"] = long.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture); break;
+                    data["AheadBehindSeen"] = true;
+                    bool computed = match.Groups[1].Success; data["AheadBehindComputed"] = computed;
+                    data["Ahead"] = computed ? long.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) : null; data["Behind"] = computed ? long.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture) : null; break;
                 case "stash": data["StashCount"] = long.Parse(Convert.ToString(value, CultureInfo.InvariantCulture)!, CultureInfo.InvariantCulture); break;
             }
             return;
@@ -109,14 +112,43 @@ public static class GitRecords
             for (int index = 0; index < record.Length && fields.Count < limit; index++)
                 if (record[index] == 32) { fields.Add(Encoding.ASCII.GetString(record.AsSpan(start, index - start))); start = index + 1; }
             if (fields.Count != limit || start >= record.Length || !status.IsMatch(fields[1])) throw new InvalidDataException("MalformedPorcelainStatusRecord");
-            entry = Map("Kind", kind == 'u' ? "Conflicted" : kind == '2' ? "RenamedOrCopied" : "Tracked", "Status", fields[1], "Path", Decode(record.AsSpan(start)), "OriginalPath", null, "Submodule", fields[2]);
+            entry = Map("Kind", kind == 'u' ? "Conflicted" : kind == '2' ? "RenamedOrCopied" : "Tracked", "Status", fields[1], "Path", Decode(record.AsSpan(start)), "OriginalPath", null, "Submodule", SubmoduleState(fields[2]));
             Increment(counts, "Changed");
+            if (fields[2][0] == 'S') Increment(counts, "Submodules");
             if (kind == 'u') Increment(counts, "Conflicted");
             else { if (fields[1][0] != '.') Increment(counts, "Staged"); if (fields[1][1] != '.') Increment(counts, "Unstaged"); }
             if (kind == '2') { data["Pending"] = entry; if (fields[8].StartsWith('R')) Increment(counts, "Renamed"); }
         }
         else throw new InvalidDataException("UnknownPorcelainStatusRecord");
         List(data, "Entries").Add(entry);
+    }
+
+    /// <summary>
+    /// Completes parsed status state: rejects a dangling rename source and derives upstream facts that porcelain v2
+    /// expresses by omission (a configured upstream without a <c>branch.ab</c> line no longer exists).
+    /// </summary>
+    /// <param name="data">Caller-owned status state.</param>
+    public static void FinalizeStatus(IDictionary data)
+    {
+        if (Unwrap(data["Pending"]) is not null) throw new InvalidDataException("IncompleteRenameSource");
+        data.Remove("Pending");
+        bool seen = Unwrap(data["AheadBehindSeen"]) is true; data.Remove("AheadBehindSeen");
+        bool upstream = Unwrap(data["Upstream"]) is not null;
+        data["UpstreamGone"] = upstream && !seen;
+        if (!upstream || !seen) data["AheadBehindComputed"] = null;
+        data["Clean"] = Convert.ToInt64(Unwrap(Dict(data["Counts"])["Changed"]), CultureInfo.InvariantCulture) == 0;
+    }
+
+    /// <summary>Decodes the porcelain-v2 submodule field (<c>N...</c> or <c>S&lt;C&gt;&lt;M&gt;&lt;U&gt;</c>).</summary>
+    /// <param name="field">Four-character field.</param>
+    /// <returns>Null for a regular path, otherwise CommitChanged, TrackedChanges and UntrackedChanges.</returns>
+    private static Hashtable? SubmoduleState(string field)
+    {
+        if (field.Length != 4) throw new InvalidDataException("MalformedSubmoduleField");
+        bool regular = field == "N...", submodule = field[0] == 'S' && field[1] is ('C' or '.') && field[2] is ('M' or '.') && field[3] is ('U' or '.');
+        if (!regular && !submodule) throw new InvalidDataException("MalformedSubmoduleField");
+        if (field[0] == 'N') return null;
+        return Map("CommitChanged", field[1] == 'C', "TrackedChanges", field[2] == 'M', "UntrackedChanges", field[3] == 'U');
     }
 
     /// <summary>Parses one patch line without changing its display labels or binary representation.</summary>

@@ -24,8 +24,9 @@ Parses complete byte records and releases each block without storing a native do
     Child runtime containing explicit parser state in Data.
     #>
     param($Event,$Runtime)
-    if($Event.Stream -ne 'stdout'){return}
     $state=$Runtime.Data
+    if($Event.Stream -eq 'stderr'){if($state.Diagnostics){Add-QuietGitDiagnosticBytes $state.Diagnostics $Event.Bytes};return}
+    if($Event.Stream -ne 'stdout'){return}
     foreach($record in $state.Pending.Push($Event.Bytes)){Invoke-QuietGitRecordParser $state $record}
 }
 function Complete-QuietGitRecord {
@@ -113,10 +114,13 @@ Invokes a Git command with an explicit streaming business record parser.
     Business or auxiliary source role.
     .PARAMETER Codes
     Documented successful exit conditions.
+    .PARAMETER Diagnostics
+    Optional caller-owned collector from New-QuietGitDiagnosticCollector; receives bounded stderr bytes.
     #>
-    param($Runtime,[string[]]$Arguments,$Data,[scriptblock]$Parser,[scriptblock]$Finalize,[byte]$Delimiter=10,[string]$Role='Business',[int[]]$Codes=@(0))
+    param($Runtime,[string[]]$Arguments,$Data,[scriptblock]$Parser,[scriptblock]$Finalize,[byte]$Delimiter=10,[string]$Role='Business',[int[]]$Codes=@(0),[hashtable]$Diagnostics)
     if($Runtime.Request.Transport -ne 'Pipe' -and $Role -eq 'Business'){throw 'ByteRecordBusinessProtocolRequiresPipe: use explicit -Output for terminal control.'}
     $state=New-QuietGitRecordState $Data $Delimiter $Parser $Finalize
+    $state.Diagnostics=$Diagnostics
     $receive=Get-Command Receive-QuietGitRecord;$complete=Get-Command Complete-QuietGitRecord
     try{$r=Invoke-QuietGitNative $Runtime $Arguments -Role $Role -Data $state -StdoutMode Bytes -StderrMode Bytes -SuccessExitCodes $Codes -Output {param($e,$r)& $receive $e $r}.GetNewClosure() -Complete {param($r)& $complete $r}.GetNewClosure()}
     finally{$state.Pending.Dispose()}
@@ -144,4 +148,42 @@ Preserves explicitly requested formatting as lossless business records, without 
     $decode=Get-Command ConvertFrom-QuietGitBytes
     $r=Invoke-QuietGitRecords $Runtime $Arguments $data -Codes $Codes -Delimiter $Delimiter -Parser {param($record,$data)$data.Records.Add((& $decode $record))}.GetNewClosure()
     return $r.Data
+}
+function New-QuietGitDiagnosticCollector {
+    <#
+    .SYNOPSIS
+    Creates a bounded stderr collector; it keeps native diagnostics for classification, never business output.
+    .PARAMETER Limit
+    Maximum retained bytes; later bytes are counted and marked as truncated.
+    #>
+    param([ValidateRange(1,1048576)][int]$Limit=8192)
+    return @{Stream=[IO.MemoryStream]::new();Limit=$Limit;Truncated=$false;Bytes=0L}
+}
+function Add-QuietGitDiagnosticBytes {
+    <#
+    .SYNOPSIS
+    Appends stderr bytes to a collector up to its limit.
+    .PARAMETER Collector
+    Collector from New-QuietGitDiagnosticCollector.
+    .PARAMETER Bytes
+    Transient stderr block.
+    #>
+    param([hashtable]$Collector,[byte[]]$Bytes)
+    if($null -eq $Bytes -or !$Bytes.Length){return}
+    $Collector.Bytes+=$Bytes.Length
+    $room=$Collector.Limit-[int]$Collector.Stream.Length
+    if($room -le 0){$Collector.Truncated=$true;return}
+    $count=[Math]::Min($room,$Bytes.Length);$Collector.Stream.Write($Bytes,0,$count)
+    if($count -lt $Bytes.Length){$Collector.Truncated=$true}
+}
+function Read-QuietGitDiagnosticText {
+    <#
+    .SYNOPSIS
+    Decodes the retained stderr bytes of a collector (invalid UTF-8 is replaced, not rejected).
+    .PARAMETER Collector
+    Collector from New-QuietGitDiagnosticCollector.
+    #>
+    param([hashtable]$Collector)
+    if(!$Collector){return ''}
+    return [Text.Encoding]::UTF8.GetString($Collector.Stream.ToArray())
 }

@@ -592,6 +592,7 @@
         "--no-ahead-behind",
         "--no-column",
         "--no-renames",
+        "--no-show-stash",
         "--null",
         "--renames",
         "--short",

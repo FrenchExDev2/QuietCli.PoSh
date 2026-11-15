@@ -9,14 +9,13 @@ function Read-QuietGitWorkingState {
     #>
     param($Runtime,[string[]]$Prefix)
     Import-QuietGitParser
-    $data=@{Branch=$null;HeadOid=$null;Unborn=$null;Detached=$null;Pending=$null;Entries=[Collections.Generic.List[object]]::new();Counts=@{Changed=0L;Staged=0L;Unstaged=0L;Untracked=0L;Conflicted=0L;Renamed=0L;Ignored=0L}}
+    $data=@{Branch=$null;HeadOid=$null;Unborn=$null;Detached=$null;Pending=$null;Entries=[Collections.Generic.List[object]]::new();Counts=@{Changed=0L;Staged=0L;Unstaged=0L;Untracked=0L;Conflicted=0L;Renamed=0L;Ignored=0L;Submodules=0L}}
     Invoke-QuietGitRecords $Runtime ($Prefix+@('--no-optional-locks','status','--porcelain=v2','--branch','-z','--untracked-files=all','--ignore-submodules=none')) $data -Role Observation -Delimiter 0 -Parser {
         param($record,$data)
         [FrenchExDev2.QuietCli.Git.GitRecords]::Status($record,$data)
     } -Finalize {
         param($data)
-        if($data.Pending){throw 'IncompleteRenameSource'}
-        $data.Remove('Pending');$data.Clean=$data.Counts.Changed -eq 0
+        [FrenchExDev2.QuietCli.Git.GitRecords]::FinalizeStatus($data)
         $data
     }
 }
