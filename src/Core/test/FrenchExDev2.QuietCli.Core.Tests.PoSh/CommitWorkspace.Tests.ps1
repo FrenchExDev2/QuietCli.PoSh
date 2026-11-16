@@ -70,6 +70,7 @@ function Invoke-QuietCoreTests {
     Copy-Item -LiteralPath ([IO.Path]::Combine([IO.Path]::GetDirectoryName($RealScriptsPath),'docs/scripts/lib/Sync-ScriptsReadme.md')) -Destination ([IO.Path]::Combine($docsScriptsDirectory,'lib'))
     [void][IO.Directory]::CreateDirectory((Join-Path $path build))
     Write-WorkspaceJson (Join-Path $path build/script-shouldprocess.json) @{SchemaVersion=1;LegacyPaths=@();ReadOnlyExceptions=@()}
+    $null=& (Join-Path $RealScriptsPath 'Sync-WorkspaceSolutions.ps1') -WorkspaceRoot $path -Apply
     $null=& (Join-Path $RealScriptsPath 'Sync-GitHubWorkflowsReadme.ps1') -WorkspaceRoot $path -Apply
     $null=& (Join-Path $RealScriptsPath 'Sync-ResourcesReadme.ps1') -WorkspaceRoot $path -Apply
     $null=& (Join-Path $RealScriptsPath 'Sync-ScriptContracts.ps1') -WorkspaceRoot $path -Apply
@@ -208,7 +209,7 @@ function Test-QuietCommitWorkspace {
             & git -C $fixture add -- $name
             if($LASTEXITCODE -ne 0){throw 'NoAllFixtureStagingFailed'}
             $before=Get-QuietCommitWorkspaceHeadRevision $fixture
-            $externalLock=Join-Path $fixture 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json'
+        $externalLock=Join-Path $fixture 'FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json'
             $lockHash=(Get-FileHash $externalLock).Hash
             [void][IO.File]::WriteAllTextAsync($selected,"unstaged content`n",$utf8).GetAwaiter().GetResult()
             [void][IO.File]::WriteAllTextAsync((Join-Path $fixture 'scripts/Unselected.ps1'),"# Unfinished, not selected or documented.`n",$utf8).GetAwaiter().GetResult()
@@ -234,14 +235,14 @@ function Test-QuietCommitWorkspace {
         # B3: staged project defects fail even when the working tree has repaired the manifest.
         foreach($damage in @('missing-manifest','dependency-cycle')){
             $fixture=New-QuietCommitWorkspaceFixture -Root $fixtureRoot -RealScriptsPath $realScripts
-            $manifest=Join-Path $fixture 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'
+            $manifest=Resolve-QuietWorkspacePath $fixture 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'
             $good=Get-Content -LiteralPath $manifest -Raw -Encoding utf8
             if($damage -ceq 'missing-manifest'){
                 Remove-Item -LiteralPath $manifest
             }else{
                 [IO.File]::WriteAllText($manifest,"@{ ModuleVersion='1.0.0';RequiredModules=@('FrenchExDev2.QuietCli.Core.PoSh') }`n",$utf8)
             }
-            & git -C $fixture add -- src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
+        & git -C $fixture add -- FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
             [IO.File]::WriteAllText($manifest,$good,$utf8)
             $before=Get-QuietCommitWorkspaceHeadRevision $fixture
             $indexHash=(Get-FileHash (Join-Path $fixture '.git/index')).Hash

@@ -345,6 +345,7 @@ function Test-QuietModuleWorkstation {
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     $root=Join-Path $RunDirectory 'module-workstation'
     [void][IO.Directory]::CreateDirectory((Join-Path $root 'scripts'))
+    Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) -Destination ([IO.Path]::Combine($root,'scripts/lib')) -Recurse
     $selector=Join-Path $WorkspaceRoot 'scripts/Install-ModuleWorkstation.ps1'
     $selectorSource=[IO.File]::ReadAllTextAsync($selector,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
     $verifySelector={
@@ -419,7 +420,7 @@ function Test-QuietModuleWorkstation {
             }
         }
         foreach($name in @('Git','Vagrant')){
-            $scriptPath=Join-Path $WorkspaceRoot "FrenchExDev2.QuietCli.$name.PoSh/scripts/Install-Workstation.ps1"
+            $scriptPath=Resolve-QuietWorkspacePath $WorkspaceRoot "FrenchExDev2.QuietCli.$name.PoSh/scripts/Install-Workstation.ps1"
             foreach($ready in @($false,$true)){
                 & $module {param($value)$script:FakeReady=$value;$script:Effects.Clear()} $ready
                 $null=& $scriptPath -CheckOnly

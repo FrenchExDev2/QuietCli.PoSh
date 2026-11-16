@@ -152,6 +152,7 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'RuntimeTargets.psm1')) -Disable
     if($plan.SchemaVersion -ne 1 -or ($Version -and $plan.Version -cne $Version) -or $plan.BaseVersion -cne $release.BaseVersion){throw 'GalleryReleaseVersionMismatch'}
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'GalleryRelease.psm1')) -DisableNameChecking
     $workspace=[IO.Path]::GetFullPath(([IO.Path]::Combine($PSScriptRoot,'../..')))
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
     $selector=if($plan.PSObject.Properties['Module']){[string]$plan.Module}else{'Core'}
     $packageTarget=@(Select-QuietGalleryReleaseTargets -WorkspaceRoot $workspace -Module $selector)
     if($packageTarget.Count -ne 1){throw 'GallerySinglePackageRequired'}
@@ -213,7 +214,8 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'RuntimeTargets.psm1')) -Disable
                     if(!$receiptEntry -or $receiptEntry.Length -gt 1MB){throw 'GalleryBusinessBuildManifestMissing'}
                     $reader=[IO.StreamReader]::new($receiptEntry.Open(),[Text.UTF8Encoding]::new($false,$true))
                     try{$receipt=$reader.ReadToEnd()|ConvertFrom-Json}finally{$reader.Dispose()}
-                    if($receipt.Project -cne ($packageTarget[0].Project+'/'+$buildProject.Project) -or !$receipt.Binaries.Count){throw 'GalleryBusinessBuildManifestInvalid'}
+                    $sourceProject=[IO.Path]::GetRelativePath($workspace,(Resolve-QuietWorkspacePath $workspace $packageTarget[0].Project)).Replace('\','/')
+                    if($receipt.Project -cne ($sourceProject+'/'+$buildProject.Project) -or !$receipt.Binaries.Count){throw 'GalleryBusinessBuildManifestInvalid'}
                     foreach($binary in $receipt.Binaries){
                         if($binary.Path -match '(^/|\\|:|(^|/)\.\.(/|$))'){throw 'GalleryBusinessBinaryPathInvalid'}
                         $entry=$zip.GetEntry($prefix+$binary.Path)

@@ -136,7 +136,7 @@ function Invoke-QuietGalleryPreviewTests {
         }
     }
     $cases['preview preparation is offline and leaves both source manifests unchanged']={
-        $sourceFiles=@(foreach($name in @('Core','Git')){Join-Path $WorkspaceRoot "FrenchExDev2.QuietCli.$name.PoSh/FrenchExDev2.QuietCli.$name.PoSh.psd1"})
+        $sourceFiles=@(foreach($name in @('Core','Git')){Resolve-QuietWorkspacePath $WorkspaceRoot "FrenchExDev2.QuietCli.$name.PoSh/FrenchExDev2.QuietCli.$name.PoSh.psd1"})
         $before=@($sourceFiles|ForEach-Object{(Get-FileHash -LiteralPath $_).Hash})
         $sourceManifest=Import-PowerShellDataFile -LiteralPath $sourceFiles[0]
         $expectedVersion=[string]$sourceManifest.ModuleVersion+'-preview00000042a0003'

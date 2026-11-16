@@ -37,7 +37,7 @@ function Invoke-CiProcess {
     $ordinal=if(Test-Path $ordinalPath){[int](Get-Content $ordinalPath -Raw -Encoding utf8)}else{0}
     if($ArgumentList[0] -ceq 'build'){
         if($ArgumentList -cnotcontains '--no-incremental' -or (($ArgumentList -ccontains '--no-restore') -ne ($ordinal -gt 0))){throw 'MutationBuildPolicyChanged'}
-        $stage=[IO.Path]::GetFullPath((Join-Path ([IO.Path]::GetDirectoryName($ArgumentList[1])) '../../../Git/src/FrenchExDev2.QuietCli.Git.PoSh/engine'))
+        $stage=[IO.Path]::GetFullPath((Join-Path ([IO.Path]::GetDirectoryName($ArgumentList[1])) '../../../src/FrenchExDev2.QuietCli.Git.PoSh/engine'))
         foreach($original in Get-ChildItem (Join-Path $root 'src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/engine') -Filter *.cs -File){
             $expected=[IO.File]::ReadAllText($original.FullName,[Text.Encoding]::UTF8)
             if($ordinal -gt 0){$m=$spec.Mutants[$ordinal-1];if($m.File -ceq $original.Name){$expected=$expected.Replace($m.From,$m.To)}}

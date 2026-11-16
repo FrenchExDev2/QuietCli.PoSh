@@ -67,7 +67,7 @@ jobs:
         with: {name: quietcli-layout-tests, path: artifacts/layout-tests}
   products:
     name: Qualify ${{ matrix.suite }}
-    needs: plan
+    needs: [plan, source-checks, layout-tests]
     if: needs.plan.outputs.run_products == 'true'
     strategy:
       fail-fast: false
@@ -86,7 +86,7 @@ jobs:
       run_tooling: false
   smokes:
     name: Dependent smoke (${{ matrix.runner }})
-    needs: plan
+    needs: [plan, source-checks, layout-tests]
     if: needs.plan.outputs.run_smokes == 'true'
     strategy:
       fail-fast: false
@@ -99,11 +99,11 @@ jobs:
       suites_json: ${{ needs.plan.outputs.smoke_suites }}
       runner: ${{ matrix.runner }}
   tooling-only:
-    needs: plan
+    needs: [plan, source-checks, layout-tests]
     if: needs.plan.outputs.run_tooling == 'true'
     uses: ./.github/workflows/tooling-ci.yml
   distribution:
-    needs: plan
+    needs: [plan, source-checks, layout-tests]
     if: needs.plan.outputs.run_distribution == 'true'
     uses: ./.github/workflows/distribution-ci.yml
   ci-status:

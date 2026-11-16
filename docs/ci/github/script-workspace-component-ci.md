@@ -1,6 +1,6 @@
 # workspace-component-ci.yml
 
-<!-- workflow-source-sha256: 1906BE9352F9BD93EA3D070D7076BD0DD41E512DCED55B0EDD3C6C38D78E10F0 -->
+<!-- workflow-source-sha256: 0398118C8AE602C76DB9B01C601A4ABD7649A0E3E40EA326DA0783FBC3F36093 -->
 
 ## Purpose
 
@@ -42,7 +42,7 @@ flowchart TD
 | --- | --- | --- | --- | --- |
 | component | runner ${{ inputs.runner }} | validate | inputs.suite != 'Tooling' &#124;&#124; inputs.qualification_mode != 'full' | ./scripts/Get-CompanionBuildKey.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-ComponentCheck.ps1 |
 | tooling | reuses ./.github/workflows/tooling-ci.yml | validate | inputs.suite == 'Tooling' && inputs.qualification_mode == 'full' |  |
-| validate | runner ubuntu-latest |  | default success condition | ./scripts/Invoke-ComponentCheck.ps1 |
+| validate | runner ubuntu-latest |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Invoke-ComponentCheck.ps1 |
 
 <!-- workflow-generated:end -->
 

@@ -147,6 +147,9 @@ internal static class AgentScaffoldCases
                 Directory.CreateDirectory(Path.Combine(repository, "scripts"));
                 File.WriteAllText(Path.Combine(repository, "scripts", "New-WorkspacePackage.ps1"), "");
                 Require(AgentDocuments.Directory(Path.Combine(repository, "Core")) == Path.Combine(repository, "docs", "agents"), "Repository source not selected");
+                string groupedModule = Path.Combine(repository, "src", "Core", "src", "Core");
+                Directory.CreateDirectory(groupedModule);
+                Require(AgentDocuments.Directory(groupedModule) == Path.Combine(repository, "docs", "agents"), "Grouped repository source not selected");
                 return Task.CompletedTask;
             });
 

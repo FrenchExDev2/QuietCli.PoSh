@@ -94,7 +94,7 @@ function Test-QuietRecallDistribution {
 
         $packages=Join-Path $RunDirectory 'recall-packages'
         $null=& (Join-Path $WorkspaceRoot 'scripts/New-WorkspacePackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $packages -Module FrenchExDev2.QuietCli.Core.PoSh,FrenchExDev2.QuietCli.Core.Tests.PoSh
-        Assert-QuietEqual (Test-Path (Join-Path $packages 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/recall-tools')) $false
+        Assert-QuietEqual (Test-Path (Join-Path $packages 'FrenchExDev2.QuietCli.Core.Tests.PoSh/recall-tools')) $false
         $worker=Join-Path $RunDirectory 'package-recall.ps1'
         $code=@'
 <#
@@ -105,8 +105,8 @@ Extracted four-module package root.
 #>
 param([string]$PackageRoot)
 $ErrorActionPreference='Stop'
-Import-Module (Join-Path $PackageRoot 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
-    Import-Module (Join-Path $PackageRoot 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -DisableNameChecking
+Import-Module (Join-Path $PackageRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
+    Import-Module (Join-Path $PackageRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -DisableNameChecking
 $r=quiet -AsObject -Recall -Output {} pwsh -Command "'fixture'"
 if($r.Outcome -ne 'Success'){throw 'PackagedCaptureFailed'}
 $comparison=Compare-QuietRecallAnalysis $r -First @{Complete={1}} -Second @{Complete={1}}
@@ -119,7 +119,7 @@ if(!$comparison.Equal -or $reduction.Capture.RetainedBytes -lt 1){throw 'Package
         Assert-QuietEqual $r.Outcome Success (($r.Error|ConvertTo-Json -Compress))
         Assert-QuietEqual $r.Data.Equal $true
         $framework=if([Environment]::Version.Major -ge 11){'net11.0'}else{'net10.0'}
-        $binary=Join-Path $packages ('src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/recall-tools/'+$framework+'/QuietCli.Recall.Tools.dll')
+        $binary=Join-Path $packages ('FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/recall-tools/'+$framework+'/QuietCli.Recall.Tools.dll')
         $bytes=[IO.File]::ReadAllBytesAsync($binary).GetAwaiter().GetResult();$bytes[-1]=$bytes[-1] -bxor 1
         [void][IO.File]::WriteAllBytesAsync($binary,$bytes).GetAwaiter().GetResult()
         $broken=quiet -AsObject -Role Infrastructure -TimeoutSeconds 120 -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)[void]$r.Data.Append($e.Text)} -Complete {param($r)$r.Data.ToString()} pwsh -File $worker -PackageRoot $packages

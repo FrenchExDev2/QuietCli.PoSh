@@ -105,6 +105,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
       - uses: ./.github/actions/cache-resources
       - uses: ./.github/actions/setup-powershell
       - name: Validate mode and catalogue paths without building

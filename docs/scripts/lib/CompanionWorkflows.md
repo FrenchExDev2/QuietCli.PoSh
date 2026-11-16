@@ -10,6 +10,8 @@ Get-QuietCompanionProfiles -WorkspaceRoot $checkout
 
 ## Dependencies and side effects
 
+Grouped workspaces require build/companions.yml. Isolated legacy flat manifest fixtures without that catalogue declare no workflow profiles.
+
 Product qualification remains in ci.yml; workspace-only components use workspace-component-ci.yml. Tooling keeps its existing full qualification workflow. Profile parameters are identical for individual callers and the automatic matrix. New product groups require catalogue registration.
 
 ## Critical review

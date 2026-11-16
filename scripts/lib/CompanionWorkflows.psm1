@@ -13,8 +13,12 @@ function Get-QuietCompanionProfiles {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot)
-    $configuration=Read-QuietCiCompanions $WorkspaceRoot
     $modules=@(Get-QuietWorkspaceProjects $WorkspaceRoot)
+    if(!(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/companions.yml')))){
+        if(@($modules|Where-Object {$_.Path.StartsWith('src/',[StringComparison]::Ordinal)}).Count){throw 'CompanionCiCatalogueRequired'}
+        return # Isolated legacy manifest fixtures do not declare CI profiles.
+    }
+    $configuration=Read-QuietCiCompanions $WorkspaceRoot
     foreach($group in @($modules.SolutionGroup|Sort-Object -Unique)){
         $members=@($modules|Where-Object SolutionGroup -CEQ $group)
         $product=$configuration.Companions.Contains($group)

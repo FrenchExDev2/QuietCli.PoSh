@@ -101,7 +101,7 @@ try{
         $state.Passed=$summary.Passed;$state.Failed=$summary.Failed;$summaries.Add($summary)
     }elseif($Suite -in @('Tooling','Distribution')){
         # RequiredModules do not inherit the importing companion's DisableNameChecking option.
-        Import-Module ([IO.Path]::Combine($WorkspaceRoot,'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1')) -DisableNameChecking -ErrorAction Stop
+        Import-Module (Resolve-QuietWorkspacePath $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -DisableNameChecking -ErrorAction Stop
         $testModule='FrenchExDev2.QuietCli.'+$Suite+'.Tests.PoSh'
         $testManifest=Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath ($testModule+'/'+$testModule+'.psd1')
         Import-Module $testManifest -DisableNameChecking -ErrorAction Stop

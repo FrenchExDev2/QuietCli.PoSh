@@ -196,6 +196,7 @@ function Test-QuietGitHubImageAdapters {
     $images='function Get-QuietCiImagePlan { param($WorkspaceRoot,$RuntimeIdentifier); @{Platform="debian";Architecture="x64";Fingerprint=("a"*64)} }; function Get-QuietCiModuleImagePlan { param($WorkspaceRoot,$RuntimeIdentifier,$Module,$ContainerfileFragment,$ModuleArguments,$ModuleInputPaths); @{Arguments=@{};ParentReference=("localhost/quietcli2-ci-core-debian-x64:"+("a"*64))} }; function Invoke-QuietCiImageBuild { param($Plan,$ContextDirectory,$WorkspaceRoot,$ArtifactPrefix,[switch]$RegistryCache,[switch]$PublishCache,[switch]$CacheOnly,$ContainerRuntime); if($CacheOnly){return}; [pscustomobject]@{CredentialPreserved=($env:QUIETCLI_REGISTRY_TOKEN -ceq "synthetic-ephemeral-credential");Runtime=$ContainerRuntime} }'
     $core='$env:QUIETCLI_REGISTRY_TOKEN=$null; [pscustomobject]@{Image=("sha256:"+("1"*64))}'
     [void][IO.Directory]::CreateDirectory([IO.Path]::Combine($fixture,'lib'))
+    Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/WorkspaceLayout.psm1')) -Destination ([IO.Path]::Combine($fixture,'lib'))
     foreach($entry in @{ 'lib/Common.psm1'=$common;'lib/CiImages.psm1'=$images;'New-CiImage.ps1'=$core }.GetEnumerator()){[void][IO.File]::WriteAllTextAsync((Join-Path $fixture $entry.Key),$entry.Value,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}
     $previous=$env:QUIETCLI_REGISTRY_TOKEN
     try{

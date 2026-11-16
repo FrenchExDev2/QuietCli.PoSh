@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 95984390C616D2AB3AAD94ECEDBD661ED5FA0D48A962BB10D51F8044C49DC8F2 -->
+<!-- workflow-source-sha256: BC916F752889D97DA5F8F308B51FD91D434C8B6B59C814711F24D19B3FDA9321 -->
 
 ## Purpose
 
@@ -11,6 +11,8 @@ Shared product qualification engine. The same workflow accepts the generated com
 Reusable workflow_call and explicit workflow_dispatch.
 
 ## Scripts and effects
+
+Profile validation initializes the checkout's deterministic GitHub environment immediately after checkout, like execution jobs; it performs no product build.
 
 Uses profile validation, source-bound build preparation, explicit selected qualification/smoke entry points and private artifacts. The PR planner publishes plan.json and impact.md; build_projects_json passes affected CSharp paths to Build-Workspace. GitHub may prepare pinned SDK/PowerShell resources and verified image caches. No module publication or repository setting change is performed here.
 
@@ -76,7 +78,7 @@ flowchart TD
 | performance-results | runner ubuntu-latest | linux-matrix, windows, linux, linux-test-driver | ${{ always() && !inputs.images_only && (inputs.qualification_mode == '' &#124;&#124; inputs.qualification_mode == 'full') && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 | qualification-gate | runner ubuntu-latest | linux-matrix, windows, linux-result, performance-results, tooling | ${{ always() && !inputs.images_only && (inputs.qualification_mode == '' &#124;&#124; inputs.qualification_mode == 'full') }} | ./scripts/Assert-QualificationGate.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
 | tooling | reuses ./.github/workflows/tooling-ci.yml |  | inputs.run_tooling && !inputs.images_only && (inputs.qualification_mode == '' &#124;&#124; inputs.qualification_mode == 'full') |  |
-| validate | runner ubuntu-latest |  | default success condition | ./scripts/Invoke-ComponentCheck.ps1 |
+| validate | runner ubuntu-latest |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Invoke-ComponentCheck.ps1 |
 | windows | runner ${{ matrix.image }} | linux-matrix | ${{ !inputs.images_only && (inputs.qualification_mode == '' &#124;&#124; inputs.qualification_mode == 'full') }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Get-CompanionBuildKey.ps1, ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 
 <!-- workflow-generated:end -->

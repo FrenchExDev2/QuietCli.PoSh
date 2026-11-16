@@ -18,6 +18,11 @@ internal static class AgentDocuments
         string? repository = Path.GetDirectoryName(moduleRoot);
         if (repository is not null && File.Exists(Path.Combine(repository, "scripts", "New-WorkspacePackage.ps1")))
             return Path.Combine(repository, "docs", "agents");
+        string groupedRepository = Path.GetFullPath(Path.Combine(moduleRoot, "..", "..", "..", ".."));
+        string[] relative = Path.GetRelativePath(groupedRepository, moduleRoot).Split(Path.DirectorySeparatorChar);
+        if (relative.Length == 4 && relative[0] == "src" && relative[2] == "src" &&
+            File.Exists(Path.Combine(groupedRepository, "scripts", "New-WorkspacePackage.ps1")))
+            return Path.Combine(groupedRepository, "docs", "agents");
         throw new InvalidOperationException("AgentInstructionResourcesMissing");
     }
 

@@ -199,7 +199,7 @@ function Test-QuietWorkspaceProjects {
     & $verify $sourcePath (Join-Path $directory 'baseline') $counts
     $mutations=@(
         @{Name='omit-local-dependencies';From='$project.Dependencies=@($project.RequiredModules | Where-Object {$names.Contains($_)})';To='$project.Dependencies=@()'},
-        @{Name='descend-into-artifacts';From='Get-ChildItem -LiteralPath $root -Directory |';To='Get-ChildItem -LiteralPath $root -Directory -Recurse |'},
+        @{Name='descend-into-artifacts';From='Get-ChildItem -LiteralPath $_ -Directory}';To='Get-ChildItem -LiteralPath $_ -Directory -Recurse}'},
         @{Name='return-partial-cycle';From="if(!`$progress){throw 'WorkspaceProjectDependencyCycle'}";To='if(!$progress){return $ordered.ToArray()}'},
         @{Name='publish-test-projects';From='$eligible=!$project.IsTest -and ';To='$eligible='},
         @{Name='publish-undeclared-modules';From='$eligible=!$project.IsTest -and $metadata.ContainsKey(''Publishable'') -and $metadata[''Publishable'']';To='$eligible=!$project.IsTest -and (!$metadata.ContainsKey(''Publishable'') -or $metadata[''Publishable''])'},

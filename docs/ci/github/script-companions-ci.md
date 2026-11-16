@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: 45FB63F483B744583010DD0835F2AE56E61A7E819E4CB6A4CCF307AE1AE98AC7 -->
+<!-- workflow-source-sha256: 2850C4E94730E6C2BB891D602C52599953E383C2E8BAB3ADB10EA1673051C525 -->
 
 ## Purpose
 
@@ -11,6 +11,8 @@ One automatic PR/develop entry point reads the complete diff and publishes the p
 Every pull request and develop push. The planner selects work from the complete diff.
 
 ## Scripts and effects
+
+Selected campaigns wait for successful planning, source checks and layout validation, so invalid shared inputs stop before costly builds and test campaigns.
 
 Uses profile validation, source-bound build preparation, explicit selected qualification/smoke entry points and private artifacts. The PR planner publishes plan.json and impact.md; build_projects_json passes affected CSharp paths to Build-Workspace. GitHub may prepare pinned SDK/PowerShell resources and verified image caches. No module publication or repository setting change is performed here.
 
@@ -44,24 +46,32 @@ flowchart TD
     job_tooling_only --> job_ci_status
     job_distribution --> job_ci_status
     job_plan --> job_distribution
+    job_source_checks --> job_distribution
+    job_layout_tests --> job_distribution
     event --> job_layout_tests
     event --> job_plan
     job_plan --> job_products
+    job_source_checks --> job_products
+    job_layout_tests --> job_products
     job_plan --> job_smokes
+    job_source_checks --> job_smokes
+    job_layout_tests --> job_smokes
     event --> job_source_checks
     job_plan --> job_tooling_only
+    job_source_checks --> job_tooling_only
+    job_layout_tests --> job_tooling_only
 ~~~
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
 | ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, products, smokes, tooling-only, distribution | ${{ always() }} | ./scripts/Assert-CiPlanResults.ps1 |
-| distribution | reuses ./.github/workflows/distribution-ci.yml | plan | needs.plan.outputs.run_distribution == 'true' |  |
+| distribution | reuses ./.github/workflows/distribution-ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_distribution == 'true' |  |
 | layout-tests | runner windows-latest |  | default success condition | ./scripts/Invoke-WorkspaceChecks.ps1, ./scripts/Invoke-WorkspaceCi.ps1 |
 | plan | runner ubuntu-latest |  | default success condition | ./scripts/New-CiImpactPlan.ps1 |
-| products | reuses ./.github/workflows/ci.yml | plan | needs.plan.outputs.run_products == 'true' |  |
-| smokes | reuses ./.github/workflows/workspace-component-ci.yml | plan | needs.plan.outputs.run_smokes == 'true' |  |
+| products | reuses ./.github/workflows/ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_products == 'true' |  |
+| smokes | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_smokes == 'true' |  |
 | source-checks | runner ubuntu-latest |  | default success condition | ./scripts/Invoke-WorkspaceChecks.ps1 |
-| tooling-only | reuses ./.github/workflows/tooling-ci.yml | plan | needs.plan.outputs.run_tooling == 'true' |  |
+| tooling-only | reuses ./.github/workflows/tooling-ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_tooling == 'true' |  |
 
 <!-- workflow-generated:end -->
 

@@ -12,7 +12,7 @@ function Test-QuietContainerInputs {
     $fixture=Join-Path $RunDirectory container-input-fixture
     foreach($name in @('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh')){
         $directory=Join-Path $fixture $name;[void][IO.Directory]::CreateDirectory($directory)
-        Copy-Item -LiteralPath (Join-Path $WorkspaceRoot ($name+'/'+$name+'.psd1')) -Destination $directory
+        Copy-Item -LiteralPath (Resolve-QuietWorkspacePath $WorkspaceRoot ($name+'/'+$name+'.psd1')) -Destination $directory
     }
     foreach($relative in @('scripts/staged.ps1','build/lock.json','docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','README.md','Quietly.slnx','Directory.Build.props','.env','secret.json')){
         $path=Join-Path $fixture $relative;[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path));[void][IO.File]::WriteAllTextAsync($path,'fixture-é漢',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
@@ -20,7 +20,7 @@ function Test-QuietContainerInputs {
     $cache=Join-Path $RunDirectory restored-packages
     [void][IO.Directory]::CreateDirectory((Join-Path $cache 'system.fixture/1.0.0'))
     [void][IO.File]::WriteAllTextAsync((Join-Path $cache system.fixture/1.0.0/content.txt),'restored-package',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-    $assetsPath=Join-Path $fixture src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/engine/obj/project.assets.json
+    $assetsPath=Join-Path $fixture FrenchExDev2.QuietCli.Core.PoSh/engine/obj/project.assets.json
     $assets=@{libraries=@{fixture=@{type='package';path='system.fixture/1.0.0'}};packageFolders=@{$cache=@{}}}
     Write-WorkspaceJson $assetsPath $assets
     $stage=Join-Path $RunDirectory container-input-stage
@@ -30,7 +30,7 @@ function Test-QuietContainerInputs {
     foreach($relative in @('docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','Quietly.slnx','Directory.Build.props','artifacts/nuget-cache/system.fixture/1.0.0/content.txt')){
         if(!(Test-Path -LiteralPath (Join-Path $stage $relative))){throw ('ContainerInputMissing: '+$relative)}
     }
-    if((Test-Path (Join-Path $stage .env)) -or (Test-Path (Join-Path $stage secret.json)) -or (Test-Path (Join-Path $stage src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/engine/obj))){throw 'ContainerStageCopiedUndeclaredInputs'}
+    if((Test-Path (Join-Path $stage .env)) -or (Test-Path (Join-Path $stage secret.json)) -or (Test-Path (Join-Path $stage FrenchExDev2.QuietCli.Core.PoSh/engine/obj))){throw 'ContainerStageCopiedUndeclaredInputs'}
     [void][IO.File]::WriteAllTextAsync((Join-Path $fixture .env),"SECRET=never-forward-this`nQUIET_CONTAINER_RUNTIME=podman`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     foreach($selection in @('','docker')){
         $runtimeStage=Join-Path $RunDirectory ('runtime-stage-'+$(if($selection){$selection}else{'configured'}))
@@ -95,6 +95,7 @@ function Test-QuietCompanionHelperScope {
             if($clauses.Count -ne 1){throw 'WorkerImportBootstrapNotFound'}
             $imports=@($clauses[0].FindAll({param($node)$node -is [Management.Automation.Language.CommandAst] -and $node.GetCommandName() -ceq 'Import-Module'},$true))
             # Minimized dependency graph tests PowerShell's warning propagation without reloading product companions.
+            Import-Module ([IO.Path]::Combine($root,'scripts/lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
             $WorkspaceRoot=Join-Path $run 'worker-import-fixture';$checks=0
             $dependency='FrenchExDev2.QuietCli.Core.Tests.PoSh'
             foreach($suite in @('Core','Tooling','Distribution')){
@@ -274,6 +275,8 @@ function Test-QuietGitHubCi {
     $detected=$false;try{& $gateMutant failure success success $true $true}catch{$detected=$true}
     if($detected){throw 'GitHubCiInvalidGateMutant'}
     $fixture=Join-Path $RunDirectory 'github-entry-fixture';$scripts=Join-Path $fixture 'scripts'
+    New-QuietWorkspaceFixtureProject $fixture 'FrenchExDev2.QuietCli.Core.PoSh' -Metadata "@{TestsModule='FrenchExDev2.QuietCli.Core.Tests.PoSh'}"
+    New-QuietWorkspaceFixtureProject $fixture 'FrenchExDev2.QuietCli.Core.Tests.PoSh' @('FrenchExDev2.QuietCli.Core.PoSh') -Command Invoke-QuietCoreTests
     [void][IO.Directory]::CreateDirectory($scripts)
     foreach($project in Get-ChildItem -LiteralPath $WorkspaceRoot -Directory -Filter 'FrenchExDev2.QuietCli.*.PoSh'){
         $manifest=Join-Path $project.FullName ($project.Name+'.psd1')
