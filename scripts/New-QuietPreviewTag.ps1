@@ -17,13 +17,14 @@ Optional reproducible instant; defaults to the current UTC time at invocation.
 .PARAMETER Release
 Uses the public module namespace and complete manifest version; pushing this tag requests publication.
 .PARAMETER Module
-Independently versioned source component; release creation requires its public packaging capability.
+Exactly one independently versioned source component (alias or full package name, not All); release creation
+requires its public packaging capability. Release several modules together with Invoke-QuietRelease.ps1.
 .PARAMETER Version
 Requested version; selects the commit/tag/push release mode instead of legacy local timestamp tagging.
 .PARAMETER Preview
 Explicit positive preview number, or null to detect the next numeric preview from local and remote tags.
 .PARAMETER NextPreview
-Detects the next numeric preview independently for every selected package.
+Detects the next numeric preview of the selected package from local and remote tags.
 .PARAMETER NoCommit
 Requires selected manifest versions already committed; skips automatic version edits and commit.
 .PARAMETER NoPush

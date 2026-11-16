@@ -67,9 +67,16 @@ function Test-QuietReleaseTags {
     if(@(Select-QuietGalleryReleaseTargets $fixture -Module All).Count -ne 3){throw 'ReleaseSelectionNotDataDriven'}
     $operator=Join-Path $WorkspaceRoot scripts/New-QuietPreviewTag.ps1
     $before=(Invoke-ReleaseFixtureGit @('rev-parse','HEAD')).Value
-    $preview=& $operator -WorkspaceRoot $fixture -Module Core,Git -Version 2.3.4 -NextPreview -WhatIf
-    if($preview.Created.Count -or $preview.Pushed -or $preview.RemoteChecked -or $preview.Receipt -or (Invoke-ReleaseFixtureGit @('rev-parse','HEAD')).Value -cne $before -or (Invoke-ReleaseFixtureGit @('status','--porcelain')).HasOutput){throw 'ReleaseWhatIfProducedEffects'}
-    $nullable=& $operator -WorkspaceRoot $fixture -Module Core,Git -Version 2.3.4 -Preview $null -WhatIf
+    # The operator releases exactly one module; several modules go through the facade (one PR, one batch).
+    foreach($selection in @(@('Core','Git'),@('All'),@('all'))){
+        foreach($noCommit in @($false,$true)){
+            $rejected=$false;try{$null=& $operator -WorkspaceRoot $fixture -Module $selection -Version 2.3.4 -NextPreview -NoCommit:$noCommit -NoPush -Confirm:$false}catch{$rejected=$_.Exception.Message -like 'PreviewTagRequiresOneModule:*'}
+            if(!$rejected -or (Invoke-ReleaseFixtureGit @('rev-parse','HEAD')).Value -cne $before -or (Invoke-ReleaseFixtureGit @('tag','--list')).HasOutput -or (Invoke-ReleaseFixtureGit @('status','--porcelain')).HasOutput){throw ('MultipleModuleOperatorReleaseAccepted: '+($selection -join ','))}
+        }
+    }
+    $preview=& $operator -WorkspaceRoot $fixture -Module Git -Version 2.3.4 -NextPreview -WhatIf
+    if($preview.Created.Count -or $preview.Pushed -or $preview.RemoteChecked -or $preview.Receipt -or @($preview.Releases).Count -ne 1 -or (Invoke-ReleaseFixtureGit @('rev-parse','HEAD')).Value -cne $before -or (Invoke-ReleaseFixtureGit @('status','--porcelain')).HasOutput){throw 'ReleaseWhatIfProducedEffects'}
+    $nullable=& $operator -WorkspaceRoot $fixture -Module Git -Version 2.3.4 -Preview $null -WhatIf
     if(($nullable.Releases.Version -join ',') -cne ($preview.Releases.Version -join ',') -or $nullable.Created.Count){throw 'NullablePreviewDiffersFromNextPreview'}
     $local=& $operator -WorkspaceRoot $fixture -Module Core -Version 2.3.4 -Preview 1 -NoCommit -NoPush -Confirm:$false
     if($local.Created.Count -ne 1 -or $local.Committed -or $local.Pushed -or !$local.RemoteChecked){throw 'ReleaseNoCommitNoPushContractChanged'}
@@ -191,5 +198,5 @@ function Test-QuietReleaseTags {
     if(!$rejected){throw 'NoCommitTaggedUncommittedVersion'}
     $rejected=$false;try{$null=& $operator -WorkspaceRoot $fixture -Module Vagrant -Version 2.3.4 -NextPreview -NoPush -Confirm:$false}catch{$rejected=$_.Exception.Message -like 'GalleryReleaseModuleNotPublishable:*'}
     if(!$rejected){throw 'DisabledCompanionReleaseAccepted'}
-    Write-WorkspaceJson (Join-Path $RunDirectory 'release-tags-campaign.json') @{Seed=611111;PreviewProperties=128;OwnedCommits=$observed.Commits;OwnedBranchPushes=0;UnmergedTagPushRejected=$true;PartialBatchPushRejected=$true;DeliveryGuardMutantKilled=$true;LocalCollisionRejected=$true;RemoteCollisionRejected=$true;WhatIfNoEffects=$true;DynamicTargets=3;ExternalPublication=$false}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'release-tags-campaign.json') @{Seed=611111;PreviewProperties=128;OwnedCommits=$observed.Commits;OwnedBranchPushes=0;UnmergedTagPushRejected=$true;PartialBatchPushRejected=$true;OperatorMultipleModuleRejected=6;DeliveryGuardMutantKilled=$true;LocalCollisionRejected=$true;RemoteCollisionRejected=$true;WhatIfNoEffects=$true;DynamicTargets=3;ExternalPublication=$false}
 }

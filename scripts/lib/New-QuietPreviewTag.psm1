@@ -18,13 +18,14 @@ Optional reproducible instant; defaults to the current UTC time at invocation.
 .PARAMETER Release
 Uses the public module namespace and complete manifest version; pushing this tag requests publication.
 .PARAMETER Module
-Independently versioned source component; release creation requires its public packaging capability.
+Exactly one independently versioned source component (alias or full package name, not All); release creation
+requires its public packaging capability. Release several modules together with Invoke-QuietRelease.ps1.
 .PARAMETER Version
 Requested version; selects the commit/tag/push release mode instead of legacy local timestamp tagging.
 .PARAMETER Preview
 Explicit positive preview number, or null to detect the next numeric preview from local and remote tags.
 .PARAMETER NextPreview
-Detects the next numeric preview independently for every selected package.
+Detects the next numeric preview of the selected package from local and remote tags.
 .PARAMETER NoCommit
 Requires selected manifest versions already committed; skips automatic version edits and commit.
 .PARAMETER NoPush
@@ -61,6 +62,10 @@ param(
     [Parameter(ParameterSetName='Publish')][string]$Message
 )
 $ErrorActionPreference = 'Stop'
+# One module per run: several modules share one pull request and one tag batch only through the facade.
+if ($Module.Count -ne 1 -or $Module[0] -eq 'All') {
+    throw 'PreviewTagRequiresOneModule: pass a single -Module; release several modules with Invoke-QuietRelease.ps1.'
+}
 $sourceRoot = Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent
 # Git's RequiredModules registration resolves Core commands from the process-global scope, so Core is
 # imported globally first. Registration is in-memory only, so it also runs under -WhatIf.
@@ -144,7 +149,6 @@ if($PSCmdlet.ParameterSetName -ceq 'Publish'){
     Invoke-QuietModuleRelease @options
     return
 }
-if($Module.Count -ne 1){throw 'MultipleModuleTagsRequireVersionMode'}
 $Module=$Module[0]
 if(!$Release -and $Module -cne 'Core'){throw 'CompanionTagRequiresReleaseMode'}
 $project="FrenchExDev2.QuietCli.$Module.PoSh"

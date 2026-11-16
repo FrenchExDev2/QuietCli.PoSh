@@ -4,13 +4,13 @@ Implements [New-QuietPreviewTag.ps1](../New-QuietPreviewTag.md). Exports only "I
 
 ## New-QuietPreviewTag.ps1
 
-Version-mode annotations declare the selected release batch and exact commit. Only its dependency-ordered leader starts the release matrix; sibling tag runs stop after validating the plan. Publication is ordered within the batch and retains every module's own version/tag. PR qualification remains independent. Existing manually created tags without batch metadata retain standalone behavior; no existing tag is rewritten to adopt batching.
+Version-mode annotations declare the release batch and exact commit. The operator releases one module per run, so its batches have a single member; multi-module batches come from [Invoke-QuietRelease.ps1](../Invoke-QuietRelease.md). Only a batch's dependency-ordered leader starts the release matrix; sibling tag runs stop after validating the plan. Publication is ordered within the batch and retains every module's own version/tag. PR qualification remains independent. Existing manually created tags without batch metadata retain standalone behavior; no existing tag is rewritten to adopt batching.
 
 ## Purpose and usage
 
-[Invoke-QuietRelease.ps1](../Invoke-QuietRelease.md) runs both steps below, the pull request, the required check and the merge in one resumable command; it is the recommended path. The steps remain available manually.
+[Invoke-QuietRelease.ps1](../Invoke-QuietRelease.md) runs both steps below, the pull request, the required check and the merge in one resumable command; it is the recommended path and the only one that releases several modules together. The steps remain available manually for one module.
 
-With Version, release one or more dynamically discovered business packages in two separate steps, because the protected `develop` branch only receives pull requests and the operator never pushes a branch:
+With Version, release exactly one dynamically discovered business package in two separate steps, because the protected `develop` branch only receives pull requests and the operator never pushes a branch:
 
 1. Version commit: on a `fix/*`, `feature/*` or `release/*` branch created from origin/develop, when selected versions differ from HEAD, edit the manifests and commit them through the checked workspace pipeline. No tag is created. Push the branch and merge its pull request with any merge method. Running this step on the delivery branch fails with `ReleaseCommitRequiresWorkBranch`.
 2. Tags: on a checkout of the merged commit, rerun with the same base version and `-NextPreview -NoCommit` (versions now match HEAD; per-module preview counters are recomputed identically while no tag was created in between). The operator fetches the remote delivery branch, requires HEAD to be contained in it (`ReleaseRevisionNotOnDeliveryBranch` otherwise), creates annotated tags, then atomically pushes exactly those tags.
@@ -18,18 +18,18 @@ With Version, release one or more dynamically discovered business packages in tw
 With PushTag, atomically push existing local annotated release tags, for example tags created earlier with NoPush. Every member of an annotated batch must be supplied; all tags must designate the same commit, which must already be contained in the remote delivery branch, and none may exist remotely.
 
 ```powershell
-./scripts/New-QuietPreviewTag.ps1 -Module Core,Git -Version 0.3.0 -NextPreview -WhatIf
+./scripts/New-QuietPreviewTag.ps1 -Module Git -Version 0.3.0 -NextPreview -WhatIf
 ./scripts/New-QuietPreviewTag.ps1 -Module Git -Version 0.3.0 -NextPreview -Confirm
 ./scripts/New-QuietPreviewTag.ps1 -Module Git -Version 0.3.0 -Preview $null -NoPush
 ./scripts/New-QuietPreviewTag.ps1 -Module Git -Version 0.3.0 -Preview 4 -NoPush
 ./scripts/New-QuietPreviewTag.ps1 -Module Git -Version 0.3.0-preview4 -NoCommit
-./scripts/New-QuietPreviewTag.ps1 -Module Core,Git -Version 0.3.0 -NextPreview -NoCommit
+./scripts/New-QuietPreviewTag.ps1 -Module Git -Version 0.3.0 -NextPreview -NoCommit
 ./scripts/New-QuietPreviewTag.ps1 -PushTag FrenchExDev2.QuietCli.Core.PoSh/v0.3.0-preview1,FrenchExDev2.QuietCli.Git.PoSh/v0.3.0-preview1 -WhatIf
 ```
 
 ## Parameters and discovery
 
-Module accepts component aliases, full package names or All. Existing WorkspaceProjects/manifests supply module names, dependencies and PrivateData.QuietCli.Publishable; test modules and disabled companions are excluded. build/companions.yml still owns CI suite/image declarations, without a duplicate publication YAML.
+Module accepts exactly one component alias or full package name. Several values or All fail with `PreviewTagRequiresOneModule` before any Git call; use the facade for a multi-module release. Existing WorkspaceProjects/manifests supply module names, dependencies and PrivateData.QuietCli.Publishable; test modules and disabled companions are excluded. build/companions.yml still owns CI suite/image declarations, without a duplicate publication YAML.
 
 Version is a numeric base or complete Gallery version. A numeric base without Preview/NextPreview requests stable publication and clears the source prerelease label. NextPreview computes the numeric maximum plus one per package/base version from local and remote tags. Preview accepts a positive number or explicit null for NextPreview; PowerShell requires that nullable argument, so NextPreview is the argument-free spelling. Complete suffixed versions cannot also request Preview.
 
@@ -51,7 +51,7 @@ Without Version, legacy local-only timestamp tagging and -Release remain availab
 
 ## Review and validation
 
-Owned-repository tests cover seeded numeric counters, manifest-driven discovery, version/GUID/dependency preservation, annotated tags, exact commit identities, local and remote collisions, a private bare remote, NoCommit, NoPush and WhatIf, refusal to commit on the delivery branch, refusal to tag or push an unmerged commit, partial-batch and missing-tag PushTag refusal, deferred PushTag delivery after a simulated merge, repeated-push refusal, and a delivery-guard mutant that must accept the unmerged counterexample. Hosted publication is separate evidence.
+Owned-repository tests cover seeded numeric counters, manifest-driven discovery, refusal of several modules or All without effects, version/GUID/dependency preservation, annotated tags, exact commit identities, local and remote collisions, a private bare remote, NoCommit, NoPush and WhatIf, refusal to commit on the delivery branch, refusal to tag or push an unmerged commit, partial-batch and missing-tag PushTag refusal, deferred PushTag delivery after a simulated merge, repeated-push refusal, and a delivery-guard mutant that must accept the unmerged counterexample. Hosted publication is separate evidence.
 
 
 
