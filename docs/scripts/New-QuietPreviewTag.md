@@ -4,7 +4,7 @@
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [New-QuietPreviewTag.psm1](lib/New-QuietPreviewTag.md). See that library for the full operation, dependencies, examples, effects and validation limits.
 
-The Publish parameter set accepts `-DeliveryBranch` (develop by default), and the PushTags set accepts `-PushTag` with `-Remote`/`-DeliveryBranch` to push existing local release tags. No parameter set pushes a branch.
+The Publish parameter set accepts `-DeliveryBranch` (develop by default), and the PushTags set accepts `-PushTag` with `-Remote`/`-DeliveryBranch` to push existing local release tags. No parameter set pushes a branch. `-Module` takes exactly one module: several values or `All` fail with `PreviewTagRequiresOneModule`, and [Invoke-QuietRelease.ps1](Invoke-QuietRelease.md) releases several modules together.
 
 ## Dependencies and effects
 
