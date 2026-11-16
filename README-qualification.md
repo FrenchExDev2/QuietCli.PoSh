@@ -45,8 +45,8 @@ Recall also provides `Compare-QuietRecallAnalysis` (independent analysis states 
 Run the opt-in checks from a Windows desktop with matching built binaries:
 
 ```powershell
-./FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/Invoke-ProviderSmoke.ps1
-./FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-UiConsoleSmoke.ps1
+./Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/Invoke-ProviderSmoke.ps1
+./Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-UiConsoleSmoke.ps1
 ```
 
 Both use the shared visible monitor and save terminal reports before their windows close. The provider
@@ -73,7 +73,7 @@ Core/All includes fresh-session import samples, ten import diagnostic controls a
 
 [Invoke-CoreProfiling.ps1](scripts/Invoke-CoreProfiling.ps1) runs after ordinary timing samples. It records PowerShell line self/inclusive durations and a speedscope view, then collects raw CLR `.nettrace` files and converted speedscope traces for the owned PowerShell PID and, in `Process` hosting, the separate engine PID. Missing collectors, conversions or expected files fail the requested pass. Line wall times and managed frame-name counts are different observations; they are not additive CPU percentages.
 
-[New-CoreEvidenceBundle.ps1](scripts/New-CoreEvidenceBundle.ps1) binds reports and traces to the revision/run and checks file hashes. [New-CorePerformanceReport.ps1](scripts/New-CorePerformanceReport.ps1) produces readable `PERFORMANCES_RESULTS.md` and structured JSON, preserving missing evidence as a failure. See [Core performance definitions and reproduction](FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md).
+[New-CoreEvidenceBundle.ps1](scripts/New-CoreEvidenceBundle.ps1) binds reports and traces to the revision/run and checks file hashes. [New-CorePerformanceReport.ps1](scripts/New-CorePerformanceReport.ps1) produces readable `PERFORMANCES_RESULTS.md` and structured JSON, preserving missing evidence as a failure. See [Core performance definitions and reproduction](src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md).
 
 ## ReadyToRun and cold-start comparisons
 
@@ -137,7 +137,7 @@ For explicit remote use, [Invoke-RemoteWorkflow.ps1](scripts/Invoke-RemoteWorkfl
 
 ## Native campaigns, evidence and limits
 
-Local suites include TTY by default; `-SkipTty` reproduces the reduced GitHub scope. The separate [native PTY campaign](FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests/Invoke-PtyMutation.ps1) and `Invoke-ContainerCi.ps1 -Suite Mutation -ExpectedRuntimeIdentifier <RID>` remain available with visible monitoring. Full Linux native C qualification requires the 43-assertion baseline (including six generated property groups), 20,000 libFuzzer executions with ASan/UBSan and detection of all 31 targeted mutants. Windows ConPTY uses the separate C# implementation. [Assert-PtyQualification.ps1](scripts/lib/Assert-PtyQualification.psm1) rejects missing/incomplete phases. Catalogue mutation coverage is bounded; survivors, invalid mutants, crashes and timeouts are distinct failures, never kills. See [native findings and reproduction](docs/README-native-pty-and-llvm-fuzzing.md).
+Local suites include TTY by default; `-SkipTty` reproduces the reduced GitHub scope. The separate [native PTY campaign](src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests/Invoke-PtyMutation.ps1) and `Invoke-ContainerCi.ps1 -Suite Mutation -ExpectedRuntimeIdentifier <RID>` remain available with visible monitoring. Full Linux native C qualification requires the 43-assertion baseline (including six generated property groups), 20,000 libFuzzer executions with ASan/UBSan and detection of all 31 targeted mutants. Windows ConPTY uses the separate C# implementation. [Assert-PtyQualification.ps1](scripts/lib/Assert-PtyQualification.psm1) rejects missing/incomplete phases. Catalogue mutation coverage is bounded; survivors, invalid mutants, crashes and timeouts are distinct failures, never kills. See [native findings and reproduction](docs/README-native-pty-and-llvm-fuzzing.md).
 
 [Invoke-GitQualification.ps1](scripts/Invoke-GitQualification.ps1) reports inventory gaps and currently ends with `QualificationRunnerNotImplemented` even after prerequisites pass. The full-Git workflow is therefore an incomplete entry point, not evidence of exhaustive command/option/version/platform coverage. Keep it separate from passing companion scenarios.
 

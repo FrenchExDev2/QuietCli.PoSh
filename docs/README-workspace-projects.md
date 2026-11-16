@@ -1,11 +1,11 @@
 # Workspace projects, suites and package eligibility
 
 [`scripts/lib/WorkspaceProjects.psm1`](../scripts/lib/WorkspaceProjects.psm1) is an engine-independent, reusable
-PowerShell script. Dot-source it to inspect the selected source workspace without importing business
+PowerShell module. Import it to inspect the selected source workspace without importing business
 modules, starting native tools or publishing anything:
 
 ```powershell
-. ./scripts/lib/WorkspaceProjects.psm1
+Import-Module ./scripts/lib/WorkspaceProjects.psm1 -DisableNameChecking -ErrorAction Stop
 
 Get-QuietWorkspaceProjects -WorkspaceRoot $PWD.Path
 Get-QuietWorkspaceSuiteNames -WorkspaceRoot $PWD.Path -Scope Container
@@ -28,7 +28,7 @@ CI suite selection additionally reads [build/companions.yml](../build/companions
 test projects independently of product dependencies. Manifest discovery remains the source/build
 inventory; fixtures without the YAML retain manifest-based suite selection.
 
-Discovery reads immediate `FrenchExDev2.QuietCli.*.PoSh` directories and their matching `.psd1`
+Discovery reads `src/<Group>/src/<Module>` and `src/<Group>/test/<Module>` directories and their matching `.psd1`
 manifests as inert UTF-8 data. Generated directories and archived/extracted modules below them are
 outside this search. Linked project directories/manifests, duplicate names and missing manifests
 are rejected. `RequiredModules` supplies local dependency edges; external module dependencies stay
@@ -65,11 +65,11 @@ PrivateData = @{
 }
 ```
 
-Project and output paths are relative to that package. Projects must exist, declared frameworks must match the project XML, outputs must be distinct non-overlapping paths under `lib/`, and links, traversal, DTDs, unknown declaration fields and malformed values fail explicitly. Existing suite/dependency/publication declarations remain independent. This example does not create or qualify a Packer module or authorize publication. A dedicated GitHub caller still defines which changes trigger that consumer's suite.
+Project and output paths are relative to that package. Projects must exist, declared frameworks must match the project XML, outputs must be distinct non-overlapping paths under `lib/`, and links, traversal, DTDs, unknown declaration fields and malformed values fail explicitly. Existing suite/dependency/publication declarations remain independent. This example does not create or qualify a Packer module or authorize publication. Declare its group in build/companions.yml and regenerate its explicit reusable workflow with Sync-CompanionWorkflows.ps1.
 
 `Build-Workspace.ps1` compiles the solution once, then uses `dotnet publish --no-build` to prepare each declared distribution and its integrity receipt. Source identity follows explicit `ProjectReference` edges and linked `Compile Include` paths, rather than consumer names, and hashes `Directory.Build.props` with the SDK/package/protocol inputs. Dynamic MSBuild expressions and wildcard includes in those explicit edges are not supported by this input resolver and fail rather than silently dropping evidence. Core's architecture-specific ReadyToRun publications retain their separate RID policy.
 
-Local `Invoke-WorkspaceCi.ps1`, GitHub `Invoke-GitHubCi.ps1` and direct workflow build steps already delegate to this shared script. Container staging carries the solution and warning policy as well as the manifests and distributions. Workflow path filters include solution and shared build/package properties.
+Local `Invoke-WorkspaceCi.ps1`, GitHub `Invoke-GitHubCi.ps1` and direct workflow build steps already delegate to this shared script. Container staging carries the solution and warning policy as well as the manifests and distributions. The PR orchestrator inspects the complete diff without trigger path filters, then resolves project and package consumers. See [grouped layout and selective CI](README-companion-layout-and-ci.md).
 
 ## Suites are execution selections
 

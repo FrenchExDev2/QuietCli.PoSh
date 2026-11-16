@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/FrenchExDev2.QuietCli.Vagrant.PoSh/">
+    <File Path="src/FrenchExDev2.QuietCli.Vagrant.PoSh/FrenchExDev2.QuietCli.Vagrant.PoSh.psd1" />
+    <File Path="src/FrenchExDev2.QuietCli.Vagrant.PoSh/FrenchExDev2.QuietCli.Vagrant.PoSh.psm1" />
+    <File Path="src/FrenchExDev2.QuietCli.Vagrant.PoSh/LICENSE_CREDITS.md" />
+    <File Path="src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md" />
+    <File Path="src/FrenchExDev2.QuietCli.Vagrant.PoSh/scripts/Install-Workstation.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Vagrant.PoSh/src/Commands.ps1" />
+  </Folder>
+  <Folder Name="/test/" />
+  <Folder Name="/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/">
+    <File Path="test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh.psd1" />
+    <File Path="test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh.psm1" />
+    <File Path="test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/Invoke-ProviderSmoke.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/README.md" />
+    <File Path="test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/VagrantFuzz.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/VagrantLine.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/VagrantParser.Mutation.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/fixture/README.md" />
+  </Folder>
+</Solution>

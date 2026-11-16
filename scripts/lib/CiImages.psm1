@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'Common.psm1')) -DisableNameChecking -ErrorAction Stop
 function Get-QuietCiFingerprint {
     <#
@@ -31,7 +33,7 @@ function Get-QuietCiImagePlan {
     Resolves one native Linux test image without running a tool or accessing a registry.
     .DESCRIPTION
     Core declares its own needs the same way a Core-consumer module declares its own: through a fixed-path
-    script, FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1, returning its own Arguments,
+    script, src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1, returning its own Arguments,
     InputPaths and Containerfile fragment (Stages), plus Base/Architecture/Platform for the requested RID.
     This function only renders that fragment's Containerfile text (Get-QuietModuleContainerfile) and
     composes the fingerprint (Get-QuietCiFingerprint) -- it never hand-authors Containerfile text itself.
@@ -41,8 +43,8 @@ function Get-QuietCiImagePlan {
     Exact guest architecture and libc to test.
     #>
     param([string]$WorkspaceRoot,[ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier)
-    $coreContractPath='FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1'
-    $coreScript=[IO.Path]::Combine($WorkspaceRoot,$coreContractPath)
+    $coreContractPath='src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1'
+    $coreScript=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $coreContractPath)
     if(!(Test-Path -LiteralPath $coreScript)){throw "CiCoreContractMissing: $coreContractPath"}
     $declaration=& $coreScript -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier
     $containerfileText=Get-QuietModuleContainerfile -Platform $declaration.Containerfile.Platform -Objective $declaration.Containerfile.Objective -Stages $declaration.Containerfile.Stages
@@ -341,7 +343,7 @@ function Get-QuietCiBuildCacheOptions {
     if($env:GITHUB_ACTIONS -cne 'true' -or $root -cne $expected){throw 'CiBuildCacheMustBelongToWorkflowCheckout'}
     $scope=$Plan.RegistryPath.Replace('/','-')
     if($scope -cnotmatch '\A[a-z0-9-]+\z'){throw 'CiBuildCacheScopeInvalid'}
-    $source=[IO.Path]::Combine($root,$scope)
+    $source=(Resolve-QuietWorkspacePath -WorkspaceRoot $root -RelativePath $scope)
     $destination=[IO.Path]::Combine($root,($scope+'.next-'+[guid]::NewGuid().ToString('N')))
     foreach($path in @(([IO.Path]::Combine($WorkspaceRoot,'.cache')),$root,$source)){
         if((Test-Path -LiteralPath $path) -and ((Get-Item -LiteralPath $path -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'CiBuildCacheLinkRejected'}
@@ -478,7 +480,7 @@ function Invoke-QuietCiImageBuild {
                 [void][IO.File]::WriteAllTextAsync($generated,$Plan.ContainerfileText,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
                 $generated
             }else{
-                [IO.Path]::Combine($WorkspaceRoot,$Plan.Dockerfile)
+                (Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $Plan.Dockerfile)
             }
             $buildOptions=if($ContainerRuntime -eq 'podman'){@('--pull=never','--jobs','1')}else{@('--pull=false')}
             $buildCache=Get-QuietCiBuildCacheOptions -Plan $Plan -WorkspaceRoot $WorkspaceRoot -ContainerRuntime $ContainerRuntime

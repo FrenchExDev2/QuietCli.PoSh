@@ -73,3 +73,15 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 ## Explicit library dependencies
 
 Imports WorkspaceJson and BinaryHeaders directly; Common reuses the same writer and re-exports the PE reader. Ci.Process and RuntimeTargets are also explicit module dependencies for repository metadata and publication verification. These dependencies define commands without loading the product or performing business operations.
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/lib/SourceIdentity.psm1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

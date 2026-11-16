@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 function Invoke-QuietScriptNewQuietPreviewTag {
 #requires -Version 7.6
 <#
@@ -74,12 +76,12 @@ try {
     $WhatIfPreference = $false; $ConfirmPreference = 'None'
     foreach ($component in @('Core', 'Git')) {
         $name = "FrenchExDev2.QuietCli.$component.PoSh"
-        $path = [IO.Path]::Combine($sourceRoot,$name,($name+'.psm1'))
+        $path = [IO.Path]::Combine((Resolve-QuietWorkspacePath -WorkspaceRoot $sourceRoot -RelativePath $name),($name+'.psm1'))
         $loaded = Get-Module -Name $name -All
         if ($loaded -and @($loaded | Where-Object { ![StringComparer]::OrdinalIgnoreCase.Equals($_.Path, $path) }).Count) {
             throw "PreviewTagUnexpectedModulePath: $name; start a fresh PowerShell session."
         }
-        $manifest = [IO.Path]::Combine($sourceRoot,"$name/$name.psd1")
+        $manifest = (Resolve-QuietWorkspacePath -WorkspaceRoot $sourceRoot -RelativePath "$name/$name.psd1")
         if ($component -ceq 'Core') { Import-Module $manifest -Scope Global -ErrorAction Stop -DisableNameChecking }
         elseif (!$loaded) { Import-Module $manifest -ErrorAction Stop -DisableNameChecking }
         if (![StringComparer]::OrdinalIgnoreCase.Equals((Get-Module -Name $name).Path, $path)) {

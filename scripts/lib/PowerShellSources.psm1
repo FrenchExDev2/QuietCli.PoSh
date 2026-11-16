@@ -1,4 +1,6 @@
 #requires -Version 7.6
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
 function Test-QuietPowerShellSources {
     <#
@@ -14,7 +16,7 @@ function Test-QuietPowerShellSources {
     $files=0;$functions=0
     foreach($directory in $directories){
         $pending=[Collections.Generic.Stack[string]]::new()
-        $pending.Push([IO.Path]::Combine($root,$directory))
+        $pending.Push((Resolve-QuietWorkspacePath -WorkspaceRoot $root -RelativePath $directory))
         while($pending.Count){
             foreach($file in Get-ChildItem -LiteralPath $pending.Pop() -Force -ErrorAction Stop){
                 # Preserve the owning Tooling case's generated/library exclusion boundary.

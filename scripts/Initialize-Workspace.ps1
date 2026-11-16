@@ -10,13 +10,15 @@ Restores and verifies Core's pinned third-party resources without modifying inte
 or selecting a branch.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Restore)
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Initialize-Workspace')){return}
 $ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 if(!(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'.git')))){throw 'MonorepoGitMetadataMissing'}
 $names=@((Get-QuietWorkspaceProjects $WorkspaceRoot).Name)
 foreach($name in $names){
-    $path=[IO.Path]::Combine($WorkspaceRoot,$name)
+    $path=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $name)
     if(!(Test-Path -LiteralPath ([IO.Path]::Combine($path,($name+'.psd1'))))){throw ('ProjectManifestMissing: '+$name)}
     if(Test-Path -LiteralPath ([IO.Path]::Combine($path,'.git'))){throw ('NestedRepositoryUnsupported: '+$name)}
 }

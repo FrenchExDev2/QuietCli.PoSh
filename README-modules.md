@@ -6,9 +6,9 @@ The `QuietCli` PowerShell module provides Core, the engine foundation. A compani
 
 | Module | Role | Status | Docs |
 | --- | --- | --- | --- |
-| `QuietCli` | The `quiet` engine facade: execution, callbacks, delivery, Recall, gains, configuration, agent instructions | `0.2.0-preview` in development | [Core README](FrenchExDev2.QuietCli.Core.PoSh/README.md) |
-| `FrenchExDev2.QuietCli.Git.PoSh` | Git business handlers (for example `git status`) | **Under development**; the worked example of a companion module | [Git README](FrenchExDev2.QuietCli.Git.PoSh/README.md), [Git example in the overview](README.md#example-a-companion-module-git-under-development) |
-| `FrenchExDev2.QuietCli.Vagrant.PoSh` | `up` and `provision` machine-readable events and per-machine UI lanes | **Partial**; real Vagrant/provider qualification remains open | [Vagrant README](FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) |
+| `QuietCli` | The `quiet` engine facade: execution, callbacks, delivery, Recall, gains, configuration, agent instructions | `0.2.0-preview` in development | [Core README](src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md) |
+| `FrenchExDev2.QuietCli.Git.PoSh` | Git business handlers (for example `git status`) | **Under development**; the worked example of a companion module | [Git README](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md), [Git example in the overview](README.md#example-a-companion-module-git-under-development) |
+| `FrenchExDev2.QuietCli.Vagrant.PoSh` | `up` and `provision` machine-readable events and per-machine UI lanes | **Partial**; real Vagrant/provider qualification remains open | [Vagrant README](src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) |
 
 Each module has a companion test project (`*.Tests.PoSh`). `Get-Command -Module QuietCli` lists every public command and `Get-Help <command> -Full` documents it.
 

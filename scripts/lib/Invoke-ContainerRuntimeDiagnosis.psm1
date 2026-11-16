@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 function Invoke-QuietScriptInvokeContainerRuntimeDiagnosis {
 #requires -Version 7.6
 <#
@@ -56,7 +58,7 @@ if(!$Worker){
 $request=Get-Content -LiteralPath ([IO.Path]::Combine($RunDirectory,'request.json')) -Raw -Encoding utf8|ConvertFrom-Json
 $RuntimeRoots=@($request.RuntimeRoots);$ExpectedRuntimeMajor=$request.ExpectedRuntimeMajor
 $owner=[guid]::NewGuid().ToString('N');$name='quietcli-runtime-'+$owner.Substring(0,12)
-$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Container runtime and RID diagnosis';Workspace=$WorkspaceRoot;ProjectDirectory=([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh'));Platform=$ExpectedRuntimeIdentifier;State='Running';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null;ProcessId=$PID;ContainerId=$name;Passed=$null;Failed=$null;Case='Inspect immutable image';Error=$null;Cleanup='NotCreated';Runs=@()}
+$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Container runtime and RID diagnosis';Workspace=$WorkspaceRoot;ProjectDirectory=((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh'));Platform=$ExpectedRuntimeIdentifier;State='Running';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null;ProcessId=$PID;ContainerId=$name;Passed=$null;Failed=$null;Case='Inspect immutable image';Error=$null;Cleanup='NotCreated';Runs=@()}
 $status=[IO.Path]::Combine($RunDirectory,'status.json')
 $commands=[Collections.Generic.List[object]]::new();$observations=[Collections.Generic.List[object]]::new()
 $created=$false;$imageIdentity=$null;$diagnosis=$null
@@ -89,12 +91,12 @@ try{
     Import-Module ([IO.Path]::Combine($stage,'lib/RuntimeDiagnosis.psm1')) -Force -DisableNameChecking -ErrorAction Stop
     $assets=[IO.Path]::Combine($stage,'assets');[void][IO.Directory]::CreateDirectory($assets)
     $inventory=@(foreach($target in Get-QuietRuntimeTargets $WorkspaceRoot|Where-Object Rid -Like 'linux-*'){
-        $source=[IO.Path]::Combine($WorkspaceRoot,("FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/$($target.Rid)/native/libe_sqlite3.so"))
+        $source=[IO.Path]::Combine($WorkspaceRoot,("src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/$($target.Rid)/native/libe_sqlite3.so"))
         if(Test-Path -LiteralPath $source){$destination=[IO.Path]::Combine($assets,$target.Rid);[void][IO.Directory]::CreateDirectory($destination);Copy-Item -LiteralPath $source -Destination $destination;@{Rid=$target.Rid;SHA256=(Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash}}
     })
     Write-WorkspaceJson ([IO.Path]::Combine($assets,'assets.json')) $inventory
-    $bindings=@(foreach($relative in 'FrenchExDev2.QuietCli.Core.PoSh/engine/EngineSession.cs','FrenchExDev2.QuietCli.Core.PoSh/engine/TerminalBridge.cs','scripts/Invoke-TestWorker.ps1'){
-        $path=[IO.Path]::Combine($WorkspaceRoot,$relative)
+    $bindings=@(foreach($relative in 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/engine/EngineSession.cs','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/engine/TerminalBridge.cs','scripts/Invoke-TestWorker.ps1'){
+        $path=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $relative)
         @{Path=$relative;SHA256=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash;RelevantLines=@(Select-String -LiteralPath $path -Pattern 'RuntimeInformation.RuntimeIdentifier|HostRuntimeMismatch'|ForEach-Object {@{Line=$_.LineNumber;Text=$_.Line.Trim()}})}
     })
     Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'inputs.json')) @{Image=$imageIdentity;Assets=$inventory;SourceBindings=$bindings;Scripts=@(Get-ChildItem -LiteralPath $stage -File|ForEach-Object {@{Path=$_.Name;SHA256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})}

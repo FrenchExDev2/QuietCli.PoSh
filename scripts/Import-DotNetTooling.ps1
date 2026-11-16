@@ -23,8 +23,8 @@ $mapping=[ordered]@{
     'scripts/Update-DotNetGlobalJson.ps1'='scripts/Update-DotNetGlobalJson.ps1'
     'scripts/DotNetReadiness.psm1'='scripts/lib/DotNetReadiness.psm1'
     'scripts/DotNetProvisioning.psm1'='scripts/lib/DotNetProvisioning.psm1'
-    'scripts/tests/DotNetReadiness.Tests.ps1'='FrenchExDev2.QuietCli.Core.Tests.PoSh/DotNetReadiness.Tests.ps1'
-    'scripts/tests/DotNetProvisioning.Tests.ps1'='FrenchExDev2.QuietCli.Core.Tests.PoSh/DotNetProvisioning.Tests.ps1'
+    'scripts/tests/DotNetReadiness.Tests.ps1'='src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/DotNetReadiness.Tests.ps1'
+    'scripts/tests/DotNetProvisioning.Tests.ps1'='src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/DotNetProvisioning.Tests.ps1'
     'scripts/tests/Invoke-DotNetReadinessTests.ps1'='scripts/Invoke-DotNetTests.ps1'
     'scripts/tests/Watch-DotNetReadinessTests.ps1'='scripts/Watch-DotNetTests.ps1'
     'Doc/Net/DotNetReadiness.md'='docs/README-dotnet-readiness.md'
@@ -47,7 +47,7 @@ foreach($entry in $mapping.GetEnumerator()) {
         $text=$text.Replace("(Join-Path `$PSScriptRoot '../Net/FrenchExDev')","(Join-Path `$PSScriptRoot '../..')")
         $text=$text.Replace("(Join-Path `$PSScriptRoot '../PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh')","(Join-Path `$PSScriptRoot '../..')")
     }
-    if($entry.Value -like 'FrenchExDev2.QuietCli.Core.Tests.PoSh/*') {
+    if($entry.Value -like 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/*') {
         $text=$text.Replace("'../DotNetReadiness.psm1'","'../scripts/lib/DotNetReadiness.psm1'").Replace("'../DotNetProvisioning.psm1'","'../scripts/lib/DotNetProvisioning.psm1'")
     }
     $null=[IO.Directory]::CreateDirectory((Split-Path $target -Parent))

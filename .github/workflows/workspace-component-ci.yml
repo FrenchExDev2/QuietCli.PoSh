@@ -1,0 +1,98 @@
+name: QuietCli component build and smoke
+on:
+  workflow_call:
+    inputs:
+      suite:
+        type: string
+        required: true
+      qualification_mode:
+        type: string
+        default: full
+      solution_path:
+        type: string
+        default: ''
+      source_path:
+        type: string
+        default: ''
+      test_path:
+        type: string
+        default: ''
+      suites_json:
+        type: string
+        default: '[]'
+      runner:
+        type: string
+        default: windows-latest
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/cache-resources
+      - uses: ./.github/actions/setup-powershell
+      - name: Validate declared scope and paths
+        shell: pwsh
+        env:
+          SUITE: ${{ inputs.suite }}
+          MODE: ${{ inputs.qualification_mode }}
+          SOLUTION: ${{ inputs.solution_path }}
+          SOURCE: ${{ inputs.source_path }}
+          TEST: ${{ inputs.test_path }}
+          SUITES_JSON: ${{ inputs.suites_json }}
+        run: ./scripts/Invoke-ComponentCheck.ps1 -Suite $env:SUITE -QualificationMode $env:MODE -SolutionPath $env:SOLUTION -SourcePath $env:SOURCE -TestPath $env:TEST -SuitesJson $env:SUITES_JSON -ValidateOnly
+  tooling:
+    needs: validate
+    if: inputs.suite == 'Tooling' && inputs.qualification_mode == 'full'
+    uses: ./.github/workflows/tooling-ci.yml
+  component:
+    needs: validate
+    if: inputs.suite != 'Tooling' || inputs.qualification_mode != 'full'
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            **/Directory.Packages.props
+            Directory.Build.props
+            global.json
+      - uses: ./.github/actions/cache-resources
+      - uses: ./.github/actions/setup-powershell
+      - name: Compute selected build cache key
+        id: build_key
+        shell: pwsh
+        env:
+          SUITE: ${{ inputs.suite }}
+          SUITES_JSON: ${{ inputs.suites_json }}
+        run: ./scripts/Get-CompanionBuildKey.ps1 -Suite $env:SUITE -SuitesJson $env:SUITES_JSON -OutputPath $env:GITHUB_OUTPUT
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: src/**/lib/
+          key: ${{ steps.build_key.outputs.cache_key }}
+          restore-keys: ${{ steps.build_key.outputs.cache_prefix }}
+      - name: Run the selected component check
+        shell: pwsh
+        env:
+          SUITE: ${{ inputs.suite }}
+          MODE: ${{ inputs.qualification_mode }}
+          SOLUTION: ${{ inputs.solution_path }}
+          SOURCE: ${{ inputs.source_path }}
+          TEST: ${{ inputs.test_path }}
+          SUITES_JSON: ${{ inputs.suites_json }}
+        run: ./scripts/Invoke-ComponentCheck.ps1 -Suite $env:SUITE -QualificationMode $env:MODE -SolutionPath $env:SOLUTION -SourcePath $env:SOURCE -TestPath $env:TEST -SuitesJson $env:SUITES_JSON -RunDirectory ./artifacts/component
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: quietcli-component-${{ inputs.suite }}-${{ inputs.qualification_mode }}-${{ runner.os }}-${{ github.run_attempt }}
+          path: artifacts/component
+          retention-days: 14

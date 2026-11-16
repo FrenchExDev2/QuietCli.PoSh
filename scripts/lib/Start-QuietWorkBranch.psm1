@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 function Invoke-QuietScriptStartQuietWorkBranch {
 #requires -Version 7.6
 <#
@@ -29,8 +31,8 @@ $savedWhatIf=$WhatIfPreference;$savedConfirm=$ConfirmPreference
 try{
 $WhatIfPreference=$false;$ConfirmPreference='None'
 foreach($name in @('Core','Git')){
-    $manifest=[IO.Path]::Combine($sourceRoot,"FrenchExDev2.QuietCli.$name.PoSh/FrenchExDev2.QuietCli.$name.PoSh.psd1")
-    $expected=[IO.Path]::ChangeExtension($manifest,'.psm1')
+    $manifest=(Resolve-QuietWorkspacePath -WorkspaceRoot $sourceRoot -RelativePath "FrenchExDev2.QuietCli.$name.PoSh/FrenchExDev2.QuietCli.$name.PoSh.psd1")
+    $expected=[IO.Path]::GetFullPath([IO.Path]::ChangeExtension($manifest,'.psm1'))
     $loaded=Get-Module "FrenchExDev2.QuietCli.$name.PoSh"
     if($loaded -and $loaded.Path -cne $expected){throw ('WorkBranchModulePathMismatch: '+$name+'; start a fresh session.')}
     $scope=if($name -eq 'Core'){'Global'}else{'Local'}
@@ -63,7 +65,7 @@ $status=quiet -AsObject -C work-branch -WorkingDirectory $WorkspaceRoot git stat
 if($status.Outcome -ne 'Success' -or !$status.Completeness.Source -or !$status.Completeness.Analysis -or $status.Error.Count -or $status.Data.Detached -or $status.Data.Unborn -or $status.Data.Counts.Conflicted){throw 'WorkBranchInitialStateInvalid'}
 $originalBranch=$status.Data.Branch
 $files=@(foreach($entry in $status.Data.Entries){
-    $path=[IO.Path]::Combine($WorkspaceRoot,$entry.Path)
+    $path=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $entry.Path)
     [pscustomobject]@{Path=$entry.Path;Status=$entry.Status;Hash=if(Test-Path -LiteralPath $path -PathType Leaf){(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash}else{$null}}
 })
 $shelf=$null
@@ -86,7 +88,7 @@ if($shelf){$null=Invoke-QuietWorkBranchGit @('stash','apply','--index',$shelf)}
 $restored=quiet -AsObject -C work-branch -WorkingDirectory $WorkspaceRoot git status
 if($restored.Outcome -ne 'Success' -or !$restored.Completeness.Source -or !$restored.Completeness.Analysis -or $restored.Error.Count -or $restored.Data.Branch -cne $Branch -or $restored.Data.Counts.Conflicted){throw 'WorkBranchRestoreFailed'}
 foreach($file in $files){
-    $path=[IO.Path]::Combine($WorkspaceRoot,$file.Path)
+    $path=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $file.Path)
     $actualHash=if(Test-Path -LiteralPath $path -PathType Leaf){(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash}else{$null}
     $entry=@($restored.Data.Entries|Where-Object Path -CEQ $file.Path)
     if($actualHash -cne $file.Hash -or $entry.Count -ne 1 -or $entry[0].Status -cne $file.Status){throw ('WorkBranchShelfContentChanged: '+$file.Path)}

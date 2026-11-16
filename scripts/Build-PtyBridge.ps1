@@ -10,6 +10,8 @@ Explicit Zig executable from the pinned version.
 Explicitly downloads the checksum-pinned Windows Zig archive into workspace artifacts.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$CompilerPath,[switch]$DownloadCompiler)
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Build-PtyBridge')){return}
 $ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
@@ -34,7 +36,7 @@ if(!$CompilerPath){
 $version=@{Text=''}
 $r=Invoke-CiProcess -FilePath $CompilerPath -ArgumentList @('version') -State $version -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){$s.Text=$e.Text.Trim()}}
 if($r.Outcome -ne 'Success' -or $version.Text -cne $lock.Version){throw 'CompilerVersionMismatch'}
-$module=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')
+$module=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')
 $source=[IO.Path]::Combine($module,'native/quietcli-pty.c');$sourceHash=(Get-FileHash $source -Algorithm SHA256).Hash
 $toolRoot=Split-Path $CompilerPath -Parent;$licenses=[IO.Path]::Combine($module,'third_party/quietcli-pty')
 foreach($item in @(@{Source='LICENSE';Name='ZIG-LICENSE'},@{Source='lib/libc/musl/COPYRIGHT';Name='MUSL-COPYRIGHT'})){

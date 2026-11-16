@@ -12,7 +12,7 @@ session state, loaded modules, or variables with the build/test process that pro
 this script as a brand-new `pwsh -File` child process and parse its single JSON line of stdout. This
 is the shape used by `audit/Probe-Package.ps1`-style callers elsewhere in the repo (that pattern — a
 probe script launched via `quiet -FilePath pwsh -ArgumentList @('-File', 'Probe-X.ps1', ...)` whose
-JSON stdout is parsed back — recurs throughout `FrenchExDev2.QuietCli.Core.Tests.PoSh/audit`), though
+JSON stdout is parsed back — recurs throughout `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/audit`), though
 no test or caller was found inside `scripts/` or the `*.Tests.PoSh` projects invoking
 `Verify-Distribution.ps1` by its own file name specifically — it appears to be a general-purpose,
 externally-invocable CLI entry point for distribution verification (e.g. for a release/gallery

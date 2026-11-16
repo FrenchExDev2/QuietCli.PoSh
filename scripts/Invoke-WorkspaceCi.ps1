@@ -35,7 +35,7 @@ Focused .NET tooling campaign, used only with Suite DotNet.
 .PARAMETER MaxConcurrency
 Maximum number of internal test workers used by parallel-safe campaigns.
 #>
-[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure,[ValidateSet('Readiness','Provisioning','Layout','Locks','All')][string]$DotNetSuite='All',[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)))
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[string]$SmokeSuitesJson='[]',[switch]$Headless,[switch]$SkipBuild,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[ValidatePattern('^[a-z0-9-]+$')][string]$ExpectedRuntimeIdentifier,[string]$RepositoryConfig,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[string]$Case,[switch]$StopOnFirstFailure,[ValidateSet('Readiness','Provisioning','Layout','Locks','All')][string]$DotNetSuite='All',[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)))
 dynamicparam {
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
@@ -54,7 +54,7 @@ if($Profiler){
         $ProfilerModulePath=$tools.ProfilerModulePath;$ClrProfilerPath=$tools.ClrProfilerPath
     }
 }
-if(!$SkipBuild -and $Suite -notin @('DotNet','RunProfilesMutation')){& ([IO.Path]::Combine($PSScriptRoot,'Build-Workspace.ps1')) -WorkspaceRoot $WorkspaceRoot -Suite $Suite}
+if(!$SkipBuild -and $Suite -notin @('DotNet','RunProfilesMutation','WorkspaceLayout','CompanionSmoke')){& ([IO.Path]::Combine($PSScriptRoot,'Build-Workspace.ps1')) -WorkspaceRoot $WorkspaceRoot -Suite $Suite}
 if(!$RunDirectory){$RunDirectory=[IO.Path]::Combine((Get-QuietReportRoot $WorkspaceRoot 'tests'),([DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6)))}
 if(Test-Path -LiteralPath $RunDirectory){throw 'TestRunDirectoryExists'}
 [void][IO.Directory]::CreateDirectory($RunDirectory)
@@ -62,6 +62,7 @@ $runner=[IO.Path]::Combine($PSHOME,$(if($IsWindows){'pwsh.exe'}else{'pwsh'}))
 $workerPath=[IO.Path]::Combine($PSScriptRoot,'Invoke-TestWorker.ps1')
 $monitorPath=[IO.Path]::Combine($PSScriptRoot,'Watch-Tests.ps1')
 $workerArguments=@('-File',(ConvertTo-CiArgument ($workerPath)),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($RunDirectory)),'-Suite',$Suite,'-MaxConcurrency',$MaxConcurrency)
+if($Suite -eq 'CompanionSmoke'){$workerArguments+=@('-SmokeSuitesJson',(ConvertTo-CiArgument $SmokeSuitesJson))}
 if($Suite -eq 'DotNet'){$workerArguments+=@('-DotNetSuite',$DotNetSuite)}
 if($Suite -eq 'RealStatus' -and !$RepositoryConfig){throw 'RealStatusRequiresRepositoryConfig'}
 if($RepositoryConfig){$workerArguments+=@('-RepositoryConfig',(ConvertTo-CiArgument ([IO.Path]::GetFullPath($RepositoryConfig,$PWD.Path))))}

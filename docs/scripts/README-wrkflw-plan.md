@@ -102,7 +102,7 @@ jobs. Report properties, fuzzing, mutants, real workflow execution and platform 
   the tagged CLI has no planner. A wrapper must not implement `-WhatIf` by executing emulation.
 - **Platform gap:** `scripts/lib/DevelopmentWorkstation.psm1:298` reports missing native artifacts;
   `:693` blocks mutating setup before other component effects. Missing platforms are not passes.
-- **Coverage boundary:** `FrenchExDev2.QuietCli.Core.Tests.PoSh/DevelopmentWorkstation.Tests.ps1:1`
+- **Coverage boundary:** `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/DevelopmentWorkstation.Tests.ps1:1`
   covers installer properties, malformed identities and targeted mutations. It does not qualify the
   planned helpers or actual repository workflow execution.
 

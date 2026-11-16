@@ -101,3 +101,15 @@ test and package evidence retains actual source hashes and available Git revisio
 Dedicated external dependency locks keep their integrity contracts. See
 [source identity](../../README-source-identity.md). Commit-Workspace does not launch
 Invoke-WorkspaceCi; test execution and checkpoint creation remain separate operations.
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/lib/Commit-Workspace.psm1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

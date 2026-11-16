@@ -21,8 +21,10 @@ param(
     [switch]$CheckOnly,
     [switch]$Download
 )
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 if ($CheckOnly -and $Download) { throw 'CheckOnlyAndDownloadAreMutuallyExclusive' }
 $root = Split-Path $PSScriptRoot -Parent
 foreach ($module in $Modules) {
-    & ([IO.Path]::Combine($root,"FrenchExDev2.QuietCli.$module.PoSh/scripts/Install-Workstation.ps1")) -CheckOnly:$CheckOnly -Download:$Download -WhatIf:$WhatIfPreference
+    & ((Resolve-QuietWorkspacePath -WorkspaceRoot $root -RelativePath "FrenchExDev2.QuietCli.$module.PoSh/scripts/Install-Workstation.ps1")) -CheckOnly:$CheckOnly -Download:$Download -WhatIf:$WhatIfPreference
 }

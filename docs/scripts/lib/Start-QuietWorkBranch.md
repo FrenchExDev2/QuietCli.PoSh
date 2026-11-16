@@ -68,3 +68,15 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 Core is bound to process-global scope before importing Git, because Git registration resolves Core commands there. Both modules must come from this checkout; a conflicting loaded path requires a fresh session. No profile is changed and imports do not rebuild binaries. The Tooling layout regression previews Commit-Workspace in a clean, profile-disabled child and rejects missing-registration or skipped-sniffer warnings.
 
 Command binding temporarily disables preview/confirmation only while importing inert product definitions, then restores both preferences before business operations. This lets the read-only sniffer bind the exported quiet alias during preview without weakening lock, staging, commit or branch guards.
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/lib/Start-QuietWorkBranch.psm1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

@@ -13,6 +13,8 @@ Distribution only: reuses verified Core/Core.Tests binaries, including all six e
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$Case,[ValidateSet('Core','Distribution')][string]$Suite='Core',[switch]$SkipBuild)
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Copy sources without Git, build Core and run independent qualification')){return}
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
@@ -21,10 +23,10 @@ if($SkipBuild){
     $reused=@(Get-QuietWorkspaceBuildSelection -WorkspaceRoot $WorkspaceRoot -Module FrenchExDev2.QuietCli.Core.Tests.PoSh)
     foreach($output in @(Get-QuietWorkspaceBuildProjects $WorkspaceRoot|Where-Object Package -CIn $reused)){$null=Test-QuietBuildManifest $WorkspaceRoot $output.Output}
     foreach($rid in (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){
-        $null=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid)
+        $null=Test-QuietBuildManifest $WorkspaceRoot ('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid)
     }
-    $portable=Test-QuietBuildManifest $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess'
-    foreach($rid in @($portable.ReadyToRunTargets)){$null=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/'+$rid)}
+    $portable=Test-QuietBuildManifest $WorkspaceRoot 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess'
+    foreach($rid in @($portable.ReadyToRunTargets)){$null=Test-QuietBuildManifest $WorkspaceRoot ('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/'+$rid)}
 }
 $owner=[guid]::NewGuid().ToString('N')
 $evidenceDirectory=if($env:GITHUB_ACTIONS -ceq 'true'){[IO.Path]::Combine($WorkspaceRoot,('artifacts/core-independence/'+$owner))}else{[IO.Path]::Combine((Get-QuietReportRoot $WorkspaceRoot tests),('core-independence-'+$owner))}
@@ -39,7 +41,7 @@ foreach($file in Get-QuietSourceFiles $WorkspaceRoot){
     if($segments.Count -eq 1 -and $file.Path -cnotmatch '\A(?:README.*\.md|AGENTS.*\.md|CREDITS\.md|LICENSE|global\.json|Directory\.(?:Build|Packages)\.props|Quietly\.slnx|repositories\.lock\.json|\.gitignore|\.gitattributes|\.editorconfig)\z'){continue}
     $target=[IO.Path]::Combine($directory,$file.Path)
     [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
-    Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$file.Path)) -Destination $target
+    Copy-Item -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $file.Path)) -Destination $target
 }
 if(Test-Path -LiteralPath ([IO.Path]::Combine($directory,'FrenchExDev2.QuietCli.Git.PoSh'))){throw 'CoreIndependenceGitSourcePresent'}
 if($SkipBuild){

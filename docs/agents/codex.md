@@ -198,8 +198,8 @@ loading in the total duration; a stopwatch around `quiet` alone misses part of t
 Retain raw paired observations, host identities, sample counts and configuration. Local pipe
 measurements do not include Codex tool transport or model time.
 
-The [reproducible benchmark](../../FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-PersistentShellBenchmark.ps1)
-and its [measurement definitions](../../FrenchExDev2.QuietCli.Core.Tests.PoSh/README.md#persistent-powershell-benchmark)
+The [reproducible benchmark](../../src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-PersistentShellBenchmark.ps1)
+and its [measurement definitions](../../src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/README.md#persistent-powershell-benchmark)
 provide a separate validation tool with a disposable Git fixture, private default configurations,
 Core callbacks and a visible monitor. It is a source-distributed benchmark, not an installed
 Core cmdlet. A local run does not establish a universal acceleration factor.

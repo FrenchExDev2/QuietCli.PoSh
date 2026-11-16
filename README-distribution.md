@@ -8,7 +8,7 @@ The [public repository](https://github.com/FrenchExDev2/QuietCli.PoSh) has one r
 
 `New-WorkspacePackage.ps1` creates module archives and SHA-256 manifests. `Test-WorkspacePackage.ps1` verifies paths, sizes, hashes and manifests before extraction; `-TestImport` explicitly enables execution of verified package code. File integrity is distinct from author authentication. Gallery publication requires qualification of the exact delivered revision and an explicit [module release tag push](docs/README-preview-releases.md#module-release-tags-and-independent-versions). After successful Gallery publication, each selected module tag receives a GitHub Release with the identical compiled nupkg and validation/publication receipts; preview versions are prereleases. Develop merges qualify without publishing modules; manually generated preview identities are artifact-only.
 
-For repository commands, dependency rules and publication gates, read [AGENTS.md](AGENTS.md). For API details, use installed command help, the [Core README](FrenchExDev2.QuietCli.Core.PoSh/README.md) and the [Recall documentation](docs/README-recall.md). For agent usage documents, see the [agent documents index](docs/agents/README.md).
+For repository commands, dependency rules and publication gates, read [AGENTS.md](AGENTS.md). For API details, use installed command help, the [Core README](src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md) and the [Recall documentation](docs/README-recall.md). For agent usage documents, see the [agent documents index](docs/agents/README.md).
 
 <!-- credits:begin -->
 ## Credits

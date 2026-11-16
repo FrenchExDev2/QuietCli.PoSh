@@ -13,7 +13,7 @@ $ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'l
 $directory=[IO.Path]::Combine((Get-QuietReportRoot $WorkspaceRoot 'qualification'),([DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')))
 [void][IO.Directory]::CreateDirectory($directory)
 $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+$env:PSModulePath
-Import-Module ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1')) -Force -DisableNameChecking
+Import-Module ([IO.Path]::Combine($WorkspaceRoot,'src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1')) -Force -DisableNameChecking
 $coverage=@(Get-QuietGitCoverage)
 $missing=@($coverage|Where-Object{$_.Qualification -ne 'Qualified'})
 $configurationAvailable=$ConfigurationPath -and (Test-Path -LiteralPath $ConfigurationPath)

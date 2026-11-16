@@ -34,6 +34,8 @@ param(
     [ValidateSet('Git','Vagrant')][string[]]$Companion = @(),
     [switch]$ForceReload
 )
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 
 if (!$PSCmdlet.ShouldProcess($PSCommandPath, ('Import local QuietCli Core{0} and execute Code' -f $(if($Companion.Count){' with '+($Companion -join ', ')}else{''})))) { return }
 $ErrorActionPreference = 'Stop'
@@ -48,7 +50,7 @@ $reloaded=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 if($ForceReload){
     $loadedModules=@{}
     foreach($moduleName in $moduleNames){
-        $expectedPath=[IO.Path]::GetFullPath([IO.Path]::Combine($workspaceRoot,$moduleName,($moduleName+'.psm1')))
+        $expectedPath=[IO.Path]::GetFullPath([IO.Path]::Combine((Resolve-QuietWorkspacePath -WorkspaceRoot $workspaceRoot -RelativePath $moduleName),($moduleName+'.psm1')))
         $loadedModules[$moduleName]=@(Get-Module -Name $moduleName -All)
         foreach($loaded in $loadedModules[$moduleName]){
             if($loaded.Path -ne $expectedPath){throw "QuietLocalModuleConflict: start a fresh PowerShell session; loaded $($loaded.Path), expected $expectedPath"}
@@ -64,7 +66,7 @@ if($ForceReload){
 }
 try{
     foreach($moduleName in $moduleNames){
-        $moduleDirectory = [IO.Path]::Combine($workspaceRoot,$moduleName)
+        $moduleDirectory = (Resolve-QuietWorkspacePath -WorkspaceRoot $workspaceRoot -RelativePath $moduleName)
         $expectedPath = [IO.Path]::GetFullPath(([IO.Path]::Combine($moduleDirectory,($moduleName + '.psm1'))))
         $existing=@(Get-Module -Name $moduleName -All)
         foreach ($loaded in $existing) {

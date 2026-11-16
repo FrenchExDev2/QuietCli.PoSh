@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/test/" />
+  <Folder Name="/test/FrenchExDev2.QuietCli.Distribution.Tests.PoSh/">
+    <File Path="test/FrenchExDev2.QuietCli.Distribution.Tests.PoSh/Cases.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Distribution.Tests.PoSh/FrenchExDev2.QuietCli.Distribution.Tests.PoSh.psd1" />
+    <File Path="test/FrenchExDev2.QuietCli.Distribution.Tests.PoSh/FrenchExDev2.QuietCli.Distribution.Tests.PoSh.psm1" />
+    <File Path="test/FrenchExDev2.QuietCli.Distribution.Tests.PoSh/README.md" />
+  </Folder>
+</Solution>

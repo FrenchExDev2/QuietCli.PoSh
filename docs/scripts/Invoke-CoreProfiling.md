@@ -28,7 +28,7 @@ Example:
 
 - Dot-sources `Common.ps1` (line 17) for `Write-WorkspaceJson`, `ConvertTo-CiArgument`, `Invoke-CiProcess`.
 - Sets `$env:DOTNET_ROLL_FORWARD_TO_PRERELEASE='1'` (line 16).
-- Starts `FrenchExDev2.QuietCli.Core.Tests.PoSh/Profiler.Target.ps1` as the profiled workload (line 25–28), waiting for it to signal readiness via `target-ready.json` (lines 30–34).
+- Starts `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Profiler.Target.ps1` as the profiled workload (line 25–28), waiting for it to signal readiness via `target-ready.json` (lines 30–34).
 - Starts one `Invoke-ClrCollector.ps1` process per distinct target PID (PowerShell host + engine, if isolated) (lines 38–46).
 - Shells out to `dotnet ... convert ... --format Speedscope` (line 64) for CLR trace post-processing.
 - Resolves `pwsh`/`pwsh.exe` via `$PSHOME` (line 21), not via `Get-Command` like other sibling scripts — see Findings.
@@ -79,3 +79,15 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/Invoke-CoreProfiling.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

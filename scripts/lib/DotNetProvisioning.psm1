@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 #Requires -Version 7.6
 Set-StrictMode -Version Latest
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'DotNetReadiness.psm1')) -ErrorAction Stop -DisableNameChecking
@@ -303,7 +305,7 @@ function Install-DotNetEnvironment {
     if($archiveInfo.Count -ne 1){throw "No unique SDK archive for this PowerShell host RID: $rid"}
     $archiveInfo=$archiveInfo[0]
     if($archiveInfo.hash -notmatch '^[a-fA-F0-9]{128}$'){throw 'No valid published SDK SHA-512.'}
-    $target=[IO.Path]::Combine($root,$Version)
+    $target=(Resolve-QuietWorkspacePath -WorkspaceRoot $root -RelativePath $Version)
     $hostName=if($IsWindows){'dotnet.exe'}else{'dotnet'}
     $dotnet=[IO.Path]::Combine($target,$hostName)
     if($UpdateGlobalJson) {

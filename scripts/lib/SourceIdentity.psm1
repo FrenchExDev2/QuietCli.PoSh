@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceJson.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'BinaryHeaders.psm1')) -DisableNameChecking -ErrorAction Stop
@@ -54,17 +56,41 @@ function Get-QuietBinaryInputs {
     #>
     param([string]$WorkspaceRoot,[string]$Project)
     $workspace=[IO.Path]::GetFullPath($WorkspaceRoot).TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar
-    $pending=[Collections.Generic.Stack[string]]::new();$pending.Push(([IO.Path]::Combine($WorkspaceRoot,$Project)))
+    $pending=[Collections.Generic.Stack[string]]::new();$pending.Push(((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $Project)))
     $visited=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $roots=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $packageNames=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $inherited=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $unknownPackages=$false
     while($pending.Count){
         $path=[IO.Path]::GetFullPath($pending.Pop())
         if(!$path.StartsWith($workspace,[StringComparison]::OrdinalIgnoreCase)){throw 'BinaryInputOutsideWorkspace'}
         if(!$visited.Add($path)){continue}
         $directory=Split-Path $path -Parent;[void]$roots.Add($directory)
+        $ancestor=$directory
+        while($ancestor -and ($ancestor+[IO.Path]::DirectorySeparatorChar).StartsWith($workspace,[StringComparison]::OrdinalIgnoreCase)){
+            foreach($name in @('Directory.Build.props','Directory.Build.targets','Directory.Packages.props','NuGet.Config','nuget.config')){
+                $policyPath=[IO.Path]::Combine($ancestor,$name)
+                if(Test-Path -LiteralPath $policyPath){[void]$inherited.Add($policyPath)}
+            }
+            $ancestor=[IO.Path]::GetDirectoryName($ancestor)
+        }
         $text=Get-Content -LiteralPath $path -Raw -Encoding utf8
         if($text -match '<!DOCTYPE'){throw 'BinaryInputDtdRejected'}
         $document=[xml]::new();$document.XmlResolver=$null;$document.LoadXml($text)
+        foreach($reference in $document.SelectNodes('//PackageReference')){
+            $name=if($reference.HasAttribute('Include')){$reference.GetAttribute('Include')}else{$reference.GetAttribute('Update')}
+            if($name -match '[$*?;]' -or !$name){$unknownPackages=$true}else{[void]$packageNames.Add($name)}
+        }
+        if($document.SelectNodes('//Import').Count){$unknownPackages=$true}
+        foreach($import in $document.SelectNodes('//Import[@Project]')){
+            $include=$import.GetAttribute('Project')
+            if($include -notmatch '[$*?;]'){
+                $imported=[IO.Path]::GetFullPath($include,$directory)
+                if(!$imported.StartsWith($workspace,[StringComparison]::OrdinalIgnoreCase)){throw 'BinaryInputOutsideWorkspace'}
+                if(Test-Path -LiteralPath $imported){[void]$inherited.Add($imported)}
+            }
+        }
         foreach($reference in $document.SelectNodes('//ProjectReference[@Include]|//Compile[@Include]')){
             $include=$reference.GetAttribute('Include')
             if($include -match '[$*?;]'){throw ('BinaryInputExpressionUnsupported: '+$include)}
@@ -73,13 +99,36 @@ function Get-QuietBinaryInputs {
             if($reference.Name -ceq 'ProjectReference'){$pending.Push($dependency)}else{[void]$roots.Add((Split-Path $dependency -Parent))}
         }
     }
-    $files=foreach($root in $roots){foreach($file in Get-QuietSourceFiles $root){$file.Path=[IO.Path]::GetRelativePath($WorkspaceRoot,([IO.Path]::Combine($root,$file.Path))).Replace('\','/');$file}}
+    $files=foreach($root in $roots){foreach($file in Get-QuietSourceFiles $root){$file.Path=[IO.Path]::GetRelativePath($WorkspaceRoot,((Resolve-QuietWorkspacePath -WorkspaceRoot $root -RelativePath $file.Path))).Replace('\','/');$file}}
     $sdk=[IO.Path]::Combine($WorkspaceRoot,'global.json')
-    $spec=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh/protocol.json')
+    $spec=[IO.Path]::Combine($WorkspaceRoot,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/protocol.json')
     $packages=[IO.Path]::Combine($WorkspaceRoot,'Directory.Packages.props')
-    @($files)+@([pscustomobject]@{Path='global.json';Bytes=(Get-Item $sdk).Length;SHA256=(Get-FileHash $sdk -Algorithm SHA256).Hash},[pscustomobject]@{Path='FrenchExDev2.QuietCli.Core.PoSh/protocol.json';Bytes=(Get-Item $spec).Length;SHA256=(Get-FileHash $spec -Algorithm SHA256).Hash},[pscustomobject]@{Path='Directory.Packages.props';Bytes=(Get-Item $packages).Length;SHA256=(Get-FileHash $packages -Algorithm SHA256).Hash})
+    @($files)+@([pscustomobject]@{Path='global.json';Bytes=(Get-Item $sdk).Length;SHA256=(Get-FileHash $sdk -Algorithm SHA256).Hash})
+    if(@($visited|Where-Object {[IO.Path]::GetFileName($_) -ceq 'QuietCli.Engine.csproj'}).Count){
+        [pscustomobject]@{Path='src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/protocol.json';Bytes=(Get-Item $spec).Length;SHA256=(Get-FileHash $spec -Algorithm SHA256).Hash}
+    }
+    $packageText=[IO.File]::ReadAllText($packages,[Text.Encoding]::UTF8)
+    if($packageText -match '<!DOCTYPE'){throw 'BinaryInputDtdRejected'}
+    $packageXml=[xml]::new();$packageXml.XmlResolver=$null;$packageXml.LoadXml($packageText)
+    if(@($packageXml.SelectNodes('//CentralPackageTransitivePinningEnabled')|Where-Object {$_.InnerText.Trim() -ine 'false'}).Count){$unknownPackages=$true}
+    if(!$unknownPackages){
+        foreach($entry in @($packageXml.SelectNodes('//PackageVersion'))){
+            $name=if($entry.HasAttribute('Include')){$entry.GetAttribute('Include')}else{$entry.GetAttribute('Update')}
+            if($name -and !$packageNames.Contains($name)){[void]$entry.ParentNode.RemoveChild($entry)}
+        }
+    }
+    $semantic=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($packageXml.OuterXml)))
+    [pscustomobject]@{Path='Directory.Packages.props';Bytes=(Get-Item $packages).Length;SHA256=$semantic;RawSHA256=(Get-FileHash $packages -Algorithm SHA256).Hash;HashKind='EffectivePackageDeclarations'}
     $policy=[IO.Path]::Combine($WorkspaceRoot,'Directory.Build.props')
     if(Test-Path -LiteralPath $policy){[pscustomobject]@{Path='Directory.Build.props';Bytes=(Get-Item $policy).Length;SHA256=(Get-FileHash $policy -Algorithm SHA256).Hash}}
+    foreach($extra in $inherited|Sort-Object){
+        if($extra -ieq $policy -or $extra -ieq $packages){continue}
+        [pscustomobject]@{Path=[IO.Path]::GetRelativePath($WorkspaceRoot,$extra).Replace('\','/');Bytes=(Get-Item $extra).Length;SHA256=(Get-FileHash $extra -Algorithm SHA256).Hash}
+    }
+    foreach($relative in @('scripts/Build-Workspace.ps1','scripts/lib/SourceIdentity.psm1','scripts/lib/WorkspaceProjects.psm1','scripts/lib/WorkspacePublication.psm1')){
+        $contract=[IO.Path]::Combine($WorkspaceRoot,$relative)
+        if(Test-Path -LiteralPath $contract){[pscustomobject]@{Path=$relative;Bytes=(Get-Item $contract).Length;SHA256=(Get-FileHash $contract -Algorithm SHA256).Hash}}
+    }
 }
 function Write-QuietBuildManifest {
     <#
@@ -107,7 +156,7 @@ function Write-QuietBuildManifest {
     param([string]$WorkspaceRoot,[string]$Project,[string]$Output,[Parameter(Mandatory)][object[]]$Inputs,[string]$Configuration='Release',[string]$RuntimeIdentifier='portable',[string]$PlatformTarget='AnyCPU',[switch]$ReadyToRun,[string[]]$ReadyToRunTargets=@())
     $after=@(Get-QuietBinaryInputs $WorkspaceRoot $Project)
     if((Get-QuietManifestDigest $Inputs) -cne (Get-QuietManifestDigest $after)){throw ('SourcesChangedDuringBuild: '+$Project)}
-    $directory=[IO.Path]::Combine($WorkspaceRoot,$Output)
+    $directory=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $Output)
     if($ReadyToRun -and !(Test-QuietReadyToRunImage ([IO.Path]::Combine($directory,'QuietCli.Engine.dll')))){throw ('ReadyToRunImageMissing: '+$Output)}
     $binaries=@(Get-ChildItem -LiteralPath $directory -File|Where-Object Name -NE 'build-manifest.json'|Sort-Object Name|ForEach-Object{@{Path=$_.Name;Bytes=$_.Length;SHA256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})
     Write-WorkspaceJson ([IO.Path]::Combine($directory,'build-manifest.json')) @{SchemaVersion=1;Project=$Project;Configuration=$Configuration;RuntimeIdentifier=$RuntimeIdentifier;PlatformTarget=$PlatformTarget;ReadyToRun=[bool]$ReadyToRun;ReadyToRunTargets=$ReadyToRunTargets;SourceSHA256=(Get-QuietManifestDigest $Inputs);Inputs=$Inputs;Binaries=$binaries}
@@ -122,7 +171,7 @@ function Test-QuietBuildManifest {
     Relative compiled output directory.
     #>
     param([string]$WorkspaceRoot,[string]$Output)
-    $directory=[IO.Path]::Combine($WorkspaceRoot,$Output)
+    $directory=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $Output)
     $path=[IO.Path]::Combine($directory,'build-manifest.json')
     if(!(Test-Path -LiteralPath $path)){throw ('BuildManifestMissing: '+$Output)}
     $manifest=Get-Content -LiteralPath $path -Encoding utf8 -Raw|ConvertFrom-Json
@@ -167,7 +216,7 @@ function Get-QuietWorkspaceIdentity {
     Restricts binary verification to the selected dependency closure; source drift still covers the checkout.
     #>
     param([string]$WorkspaceRoot,[switch]$IncludeBinaries,[string]$Suite='All')
-    $children=@((Get-QuietWorkspaceProjects $WorkspaceRoot).Name)
+    $children=@(Get-QuietWorkspaceProjects $WorkspaceRoot)
     $revision=$null;$tree=$null;$remote=$null;$dirty=$false
     $allowedFiles=$null
     if(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'.git'))){
@@ -180,7 +229,7 @@ function Get-QuietWorkspaceIdentity {
         if($listed.Outcome -ne 'Success'){throw 'MonorepoSourceListUnavailable'}
         $allowedFiles=$selection.Files
     }
-    $projects=@(foreach($name in $children){$files=@(Get-QuietSourceFiles ([IO.Path]::Combine($WorkspaceRoot,$name))|Where-Object {$null -eq $allowedFiles -or $allowedFiles.Contains($name+'/'+$_.Path)});@{Name=$name;Path=$name;SourceSHA256=(Get-QuietManifestDigest $files);Files=$files}})
+    $projects=@(foreach($child in $children){$files=@(Get-QuietSourceFiles $child.Directory|Where-Object {$null -eq $allowedFiles -or $allowedFiles.Contains($child.Path+'/'+$_.Path)});@{Name=$child.Name;Path=$child.Path;SourceSHA256=(Get-QuietManifestDigest $files);Files=$files}})
     $rootFiles=@(Get-QuietSourceFiles $WorkspaceRoot|Where-Object {$null -eq $allowedFiles -or $allowedFiles.Contains($_.Path)})
     $repository=@{Name='FrenchExDev2.QuietCli.PoSh';Revision=$revision;Tree=$tree;Remote=$remote;Dirty=$dirty;SourceSHA256=(Get-QuietManifestDigest $rootFiles);Files=$rootFiles}
     $binaries=@()
@@ -189,14 +238,14 @@ function Get-QuietWorkspaceIdentity {
         foreach($distribution in Get-QuietWorkspaceBuildProjects $WorkspaceRoot|Where-Object Package -CIn $selectedModules){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $distribution.Output}
     }
     if($IncludeBinaries){foreach($rid in (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){
-        $output='FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid
-        if(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$output))){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $output}
+        $output='src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid
+        if(Test-Path -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $output))){$binaries+=Test-QuietBuildManifest $WorkspaceRoot $output}
     }}
     if($IncludeBinaries){
-        $portable=Test-QuietBuildManifest $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess'
+        $portable=Test-QuietBuildManifest $WorkspaceRoot 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess'
         foreach($rid in @($(if($portable.PSObject.Properties['ReadyToRunTargets']){$portable.ReadyToRunTargets}))) {
             if($rid -notin (Get-QuietRuntimeTargets $WorkspaceRoot).Rid){throw 'ReadyToRunTargetInvalid'}
-            $binaries+=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/'+$rid)
+            $binaries+=Test-QuietBuildManifest $WorkspaceRoot ('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/'+$rid)
         }
     }
     $originPath=[IO.Path]::Combine($WorkspaceRoot,'transport-origin.json')

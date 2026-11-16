@@ -8,10 +8,12 @@ Existing source module containing resources/dependencies.json and third_party.
 QuietCli2 workspace.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$ReferenceRoot,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent))
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Update-QuietDependencies')){return}
 $ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 $source=Get-Content ([IO.Path]::Combine($ReferenceRoot,'resources/dependencies.json')) -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable
-$moduleRoot=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')
+$moduleRoot=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')
 $files=[Collections.Generic.List[object]]::new();$packages=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
 foreach($file in Get-ChildItem ([IO.Path]::Combine($moduleRoot,'resources')) -Recurse -File|Where-Object Name -NE 'dependencies.lock.json'){
     $relative=[IO.Path]::GetRelativePath($moduleRoot,$file.FullName).Replace('\','/')

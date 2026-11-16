@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'BinaryHeaders.psm1')) -DisableNameChecking -ErrorAction Stop
 function Get-QuietRuntimeTargets {
     <#
@@ -7,7 +9,7 @@ function Get-QuietRuntimeTargets {
     QuietCli2 workspace.
     #>
     param([string]$WorkspaceRoot)
-    $catalogue=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh/runtime-targets.json')) -Encoding utf8 -Raw|ConvertFrom-Json
+    $catalogue=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/runtime-targets.json')) -Encoding utf8 -Raw|ConvertFrom-Json
     return $catalogue.Targets
 }
 function Get-QuietElfHeader {
@@ -72,7 +74,7 @@ function Assert-QuietPtyPublications {
     QuietCli2 workspace.
     #>
     param([string]$WorkspaceRoot)
-    $module=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')
+    $module=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')
     $source=(Get-FileHash ([IO.Path]::Combine($module,'native/quietcli-pty.c')) -Algorithm SHA256).Hash
     foreach($target in Get-QuietRuntimeTargets $WorkspaceRoot|Where-Object Pty){
         $directory=[IO.Path]::Combine($module,('resources/transport/'+$target.Rid));$path=[IO.Path]::Combine($directory,'quietcli-pty')

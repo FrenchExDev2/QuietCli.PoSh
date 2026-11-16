@@ -66,7 +66,8 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'Resources.psm1')) -DisableNameC
         if($entry -isnot [Collections.IDictionary]){throw 'CiSuiteDeclarationInvalid'}
         foreach($key in $entry.Keys){if($key -cnotin @('test_project','command','requires','core_evidence','qualification')){throw ('CiSuiteFieldUnknown: '+$key)}}
         if($entry['test_project'] -cnotmatch '\AFrenchExDev2\.QuietCli\.[A-Za-z0-9.]+\.Tests\.PoSh\z' -or $entry['command'] -cnotmatch '\AInvoke-Quiet[A-Za-z0-9]+Tests\z' -or $entry['requires'] -isnot [Collections.IList] -or !$entry['requires'].Count -or $entry['core_evidence'] -isnot [bool]){throw 'CiSuiteDeclarationInvalid'}
-        $manifestPath=[IO.Path]::Combine($WorkspaceRoot,($entry['test_project']+'/'+$entry['test_project']+'.psd1'))
+        Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+        $manifestPath=Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath ($entry['test_project']+'/'+$entry['test_project']+'.psd1')
         if(!(Test-Path -LiteralPath $manifestPath -PathType Leaf) -or (Get-Item -LiteralPath $manifestPath -Force).Attributes -band [IO.FileAttributes]::ReparsePoint){throw ('CiSuiteTestProjectMissing: '+$name)}
         $null=[IO.File]::ReadAllText($manifestPath,[Text.UTF8Encoding]::new($false,$true))
         $manifest=Import-PowerShellDataFile -LiteralPath $manifestPath
@@ -82,7 +83,9 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'Resources.psm1')) -DisableNameC
                 $policies+=,$policy
             }
         }
-        $suites.Add($name,[pscustomobject]@{Name=$name;Requires=@($entry['requires']);CoreEvidence=$entry['core_evidence'];Qualification=$policies;TestsModule=$entry['test_project'];TestsManifest=$manifestPath;Command=$entry['command']})
+        $group=if($manifest.PrivateData.QuietCli.SolutionGroup){[string]$manifest.PrivateData.QuietCli.SolutionGroup}else{$name}
+        if($group -cnotmatch '\A[A-Z][A-Za-z0-9]*\z'){throw ('CiSuiteGroupInvalid: '+$group)}
+        $suites.Add($name,[pscustomobject]@{Name=$name;Group=$group;Requires=@($entry['requires']);CoreEvidence=$entry['core_evidence'];Qualification=$policies;TestsModule=$entry['test_project'];TestsManifest=$manifestPath;Command=$entry['command']})
     }
     [pscustomobject]@{Path=$file.FullName;SHA256=(Get-FileHash -LiteralPath $file.FullName).Hash;Companions=$companions;Suites=$suites;Base=$bases[0].Name}
 }
@@ -103,7 +106,8 @@ function Resolve-QuietCiCompanions {
     param([Parameter(Mandatory)]$Configuration,[string]$Suite='All',[string]$RuntimeIdentifier,[int]$RuntimeMajor=[Environment]::Version.Major)
     $map=$Configuration.Companions
     $suites=$Configuration.Suites
-    $selected=@(if($Suite -ieq 'All'){$suites.Keys}else{$canonical=@($suites.Keys|Where-Object {$_ -ieq $Suite});if($canonical.Count -ne 1){throw ('CiCompanionSuiteUnknown: '+$Suite)};$canonical[0]})
+    $selected=@(if($Suite -ieq 'All'){$suites.Keys}elseif(@($map.Keys|Where-Object {$_ -ieq $Suite}).Count){$suites.Keys|Where-Object {$suites[$_].Group -ieq $Suite}}else{$canonical=@($suites.Keys|Where-Object {$_ -ieq $Suite});if($canonical.Count -ne 1){throw ('CiCompanionSuiteUnknown: '+$Suite)};$canonical[0]})
+    if(!$selected.Count){throw ('CiCompanionSuiteUnknown: '+$Suite)}
     $roots=@(foreach($name in $selected){$suites[$name].Requires})
     $order=@(Get-QuietCiCompanionOrder $map $roots)
     if($order -cnotcontains $Configuration.Base){throw 'CiCompanionBaseDependencyMissing'}

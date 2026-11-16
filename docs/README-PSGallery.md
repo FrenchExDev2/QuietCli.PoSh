@@ -3,7 +3,7 @@
 ## GitHub publication
 
 An applicable `develop` push executes `All` qualification and profiling without publishing a module.
-An explicit `FrenchExDev2.QuietCli.Core.PoSh/v<version>` tag push requests a Core release after full qualification of the tagged
+An explicit `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/v<version>` tag push requests a Core release after full qualification of the tagged
 revision. The tag version must exactly match the source manifest, including its prerelease suffix.
 Windows x64 rebuilds all six embedded RIDs in Release ReadyToRun for CLR 10 and 11,
 verifies the Windows build, and prepares one public `FrenchExDev2.QuietCli.Core.PoSh` nupkg with `-RequireReadyToRun`.

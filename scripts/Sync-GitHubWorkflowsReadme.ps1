@@ -9,12 +9,14 @@ Regenerates graph blocks and README after all authored documents match their sou
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Apply)
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkflowDocumentation.psm1')) -DisableNameChecking -ErrorAction Stop
 $entries=@(Get-QuietWorkflowDocumentation $WorkspaceRoot -WhatIf:$WhatIfPreference)
 $updates=[Collections.Generic.List[object]]::new()
 foreach($entry in $entries){
-    $path=[IO.Path]::Combine($WorkspaceRoot,$entry.DocRelativePath)
+    $path=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $entry.DocRelativePath)
     if(!(Test-Path -LiteralPath $path -PathType Leaf)){throw ('WorkflowDocumentationMissing: '+$entry.RelativePath)}
     $text=[IO.File]::ReadAllTextAsync($path,[Text.UTF8Encoding]::new($false,$true)).GetAwaiter().GetResult().Replace("`r`n","`n")
     $receipt=[regex]::Match($text,'(?m)^<!-- workflow-source-sha256: ([A-F0-9]{64}) -->$')

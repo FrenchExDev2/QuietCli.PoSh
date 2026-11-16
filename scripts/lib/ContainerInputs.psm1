@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 function Copy-QuietContainerInputs {
     <#
     .SYNOPSIS
@@ -16,9 +18,9 @@ function Copy-QuietContainerInputs {
     if(!$PSCmdlet.ShouldProcess($Destination,'Copy explicit container inputs and restored NuGet packages')){return}
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'Common.psm1')) -DisableNameChecking -ErrorAction Stop
     $projects=if($NativeOnly){@()}else{@(Get-QuietWorkspaceProjects $WorkspaceRoot)}
-    $directories=if($NativeOnly){@('FrenchExDev2.QuietCli.Core.PoSh/native','FrenchExDev2.QuietCli.Core.PoSh/resources/transport','FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests')}else{@('scripts','build','docs','.github')+@($projects.Path)}
+    $directories=if($NativeOnly){@('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/native','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/transport','src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests')}else{@('scripts','build','docs','.github')+@($projects.Path)}
     foreach($directory in $directories){
-        $source=[IO.Path]::Combine($WorkspaceRoot,$directory)
+        $source=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $directory)
         foreach($file in Get-ChildItem -LiteralPath $source -Recurse -File -Force){
             $relative=[IO.Path]::GetRelativePath($source,$file.FullName)
             if($relative -match '(^|[\\/])(\.git|bin|obj|artifacts)[\\/]'){continue}
@@ -39,7 +41,7 @@ function Copy-QuietContainerInputs {
         $null=Set-QuietEnvValue -Path ([IO.Path]::Combine($Destination,'.env')) -Key QUIET_CONTAINER_RUNTIME -Value $runtime -Confirm:$false
     }
     $packages=[Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
-    foreach($project in $projects){foreach($directory in Get-ChildItem -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$project.Path)) -Directory){
+    foreach($project in $projects){foreach($directory in Get-ChildItem -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $project.Path)) -Directory){
         $assetsPath=[IO.Path]::Combine($directory.FullName,'obj/project.assets.json')
         if(!(Test-Path -LiteralPath $assetsPath)){continue}
         $assets=Get-Content -LiteralPath $assetsPath -Raw -Encoding utf8|ConvertFrom-Json

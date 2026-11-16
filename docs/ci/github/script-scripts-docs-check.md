@@ -1,6 +1,6 @@
 # scripts-docs-check.yml
 
-<!-- workflow-source-sha256: 76F3925DB488AF46072D6DEDE289320B79096E51447F9D974AC243DDD25F26A0 -->
+<!-- workflow-source-sha256: 29B3008717B4B8ECA0BC4737938E0902B0A634868716195E30507436A0D9FCD0 -->
 
 ## Purpose
 
@@ -15,6 +15,12 @@ PR/develop path filters cover scripts, all Core test-project sources, docs/scrip
 ## Checked scope
 
 Runs the shared eight-check registry: case metadata, scripts index, workflow receipts/graphs/index, ShouldProcess policy, resources, script contracts, documentation credits and aggregate credits. Checks are read-only apart from declared consumer preparation of verified resources. They execute no product companion campaign and cannot establish hosted functional or ARM64 qualification. See [the script map](../README.md#script-map).
+
+<!-- grouped-layout-review:begin -->
+## Grouped source layout
+
+Reviewed module/test paths use src/<group>/src and src/<group>/test. Module identities, source-bound integrity checks, current-run qualification requirements and publication boundaries remain unchanged. See [the companion layout contract](../../README-companion-layout-and-ci.md).
+<!-- grouped-layout-review:end -->
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies

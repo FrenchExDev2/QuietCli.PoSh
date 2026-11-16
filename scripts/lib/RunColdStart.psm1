@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 #Objective: Validates the three invariant-culture, finite, nonnegative durations returned by a measurement child.
 #requires -Version 7.6
 function ConvertFrom-RunColdSample {
@@ -55,7 +57,7 @@ function Get-RunModuleHostedPathBytes {
     if(Test-Path -LiteralPath $protocol){
         . $protocol
         $target=Resolve-QuietManagedTarget -ModuleRoot $root -RuntimeIdentifier $RuntimeIdentifier
-        $hosted=[IO.Path]::Combine($root,$target.Directory)
+        $hosted=(Resolve-QuietWorkspacePath -WorkspaceRoot $root -RelativePath $target.Directory)
     }else{$hosted=[IO.Path]::Combine($root,$(if([Environment]::Version.Major -ge 11){'lib/engine'}else{'lib/inprocess'}))}
     if (-not (Test-Path -LiteralPath $hosted -PathType Container)) { throw "RunModuleHostedPathMissing: $hosted" }
     $total = 0L

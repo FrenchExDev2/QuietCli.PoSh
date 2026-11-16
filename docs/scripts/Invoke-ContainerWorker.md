@@ -65,7 +65,7 @@ pwsh -File ./scripts/Invoke-ContainerWorker.ps1 -WorkspaceRoot C:\repo -RunDirec
 - Calls `Get-QuietWorkspaceTestSuites $WorkspaceRoot` (line 39) to resolve suite-to-project mapping for status reporting.
 - Native tool: the resolved Docker/Podman application (`image inspect`, `create`, `cp`, `start`, `inspect`, `rm`) via `Invoke-WorkspaceNative`/`Invoke-CiProcess`.
 - For the `Mutation` suite, dot-sources `Assert-PtyQualification.ps1` (line 126) and calls `Assert-PtyQualification $summary`.
-- Filesystem: stages a large set of directories depending on `-Suite` (lines 47, 58–63) — either `scripts`, `build`, `.github/containers`, `.github/workflows`, plus every project in `(Get-QuietWorkspaceProjects $WorkspaceRoot).Path`, or (for `Mutation`) just `FrenchExDev2.QuietCli.Core.PoSh/native`, `FrenchExDev2.QuietCli.Core.PoSh/resources/transport`, `FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests`.
+- Filesystem: stages a large set of directories depending on `-Suite` (lines 47, 58–63) — either `scripts`, `build`, `.github/containers`, `.github/workflows`, plus every project in `(Get-QuietWorkspaceProjects $WorkspaceRoot).Path`, or (for `Mutation`) just `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/native`, `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/transport`, `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests`.
 
 ## Side effects
 
@@ -110,7 +110,19 @@ See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-autom
 
 Purpose: Stages explicit sources and built artifacts into a private, networkless container.
 
-Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
+Boundary: **Executable**. Preview API: **DelegatedShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/Invoke-ContainerWorker.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

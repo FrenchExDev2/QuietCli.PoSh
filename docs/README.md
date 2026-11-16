@@ -4,7 +4,9 @@ Start with the [product README](../README.md) for installation, requirements and
 
 ## Usage guides
 
-- [Distribution test companion](../FrenchExDev2.QuietCli.Distribution.Tests.PoSh/README.md): one complete six-RID packaging qualification outside the native matrix.
+- [Companion layout and selective CI](README-companion-layout-and-ci.md): grouped sources, local solutions, explicit workflow profiles, selective rebuilds and dependency smokes.
+
+- [Distribution test companion](../src/Distribution/test/FrenchExDev2.QuietCli.Distribution.Tests.PoSh/README.md): one complete six-RID packaging qualification outside the native matrix.
 
 - [Core test classification and concurrency](README-test-classification-and-concurrency.md): explicit case metadata, fail-closed checks and process-isolation candidates.
 
@@ -79,7 +81,7 @@ Repository development follows the root [AGENTS.md](../AGENTS.md). Consumer-proj
 
 ## Performance and profiling
 
-- [Core performance evidence](../FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md): measurement definitions, controlled workloads and reproduction.
+- [Core performance evidence](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md): measurement definitions, controlled workloads and reproduction.
 - [Run profiles](README-run-profiles.md): named measurement campaigns, profiling tools and tooling qualification.
 - [Cold-start A/B testing](README-ab_testing.md): paired measurements, A/A controls and interpretation of statistical verdicts.
 - [ReadyToRun cold-start profiling](README-readytorun_profiling.md): prepare a separate candidate and compare it with the baseline.

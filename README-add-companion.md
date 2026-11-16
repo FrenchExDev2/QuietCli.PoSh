@@ -15,8 +15,8 @@ Choose the supported commands, argument forms and tool versions. Describe the bu
 returned to callers and how native failures, incomplete streams and unsupported forms are reported.
 A command inventory is separate from semantic support.
 
-Use [Vagrant](FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) as the pure PowerShell example and
-[Git](FrenchExDev2.QuietCli.Git.PoSh/README.md) for compiled parsers and a broader command catalogue.
+Use [Vagrant](src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) as the pure PowerShell example and
+[Git](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md) for compiled parsers and a broader command catalogue.
 See [companion modules](README-modules.md), [streaming](README-streaming.md) and
 [PowerShell/C# boundaries](docs/README-powershell-csharp-boundaries.md).
 

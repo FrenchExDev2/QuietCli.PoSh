@@ -34,6 +34,8 @@ Maximum number of internal test workers used by parallel-safe guest campaigns.
 Development-only Core case wildcard; unavailable for the unfiltered GitHub entry point.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RunDirectory,[Parameter(Mandatory)][string]$Image,[Parameter(Mandatory)][string]$Platform,[string]$ExpectedRuntimeIdentifier,[switch]$SkipTty,[switch]$Profiler,[string]$ProfilerModulePath,[string]$ClrProfilerPath,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime,[switch]$GitHubActions,[ValidateRange(1,7200)][int]$TimeoutSeconds=360,[ValidateRange(1,32)][int]$MaxConcurrency=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount)),[string]$Case)
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 dynamicparam {
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
     $selectedRoot=if($PSBoundParameters.ContainsKey('WorkspaceRoot')){$PSBoundParameters['WorkspaceRoot']}else{Split-Path $PSScriptRoot -Parent}
@@ -47,7 +49,7 @@ $ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'l
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/ContainerInputs.psm1')) -DisableNameChecking -ErrorAction Stop
 $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 $owner=[guid]::NewGuid().ToString('N');$name='quietcli2-'+$owner.Substring(0,12)
-$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Tests Podman';Workspace=$WorkspaceRoot;ProjectDirectory=([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh'));Platform=$Platform;State='Preparing';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;ContainerId=$name;Passed=$null;Failed=$null;Case='Staging explicit source files';FinishedUtc=$null;Error=$null;Image=$Image;Owner=$owner}
+$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Tests Podman';Workspace=$WorkspaceRoot;ProjectDirectory=((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh'));Platform=$Platform;State='Preparing';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');ProcessId=$PID;ContainerId=$name;Passed=$null;Failed=$null;Case='Staging explicit source files';FinishedUtc=$null;Error=$null;Image=$Image;Owner=$owner}
 $state.Task='Tests '+$ContainerRuntime;$state.ContainerRuntime=$ContainerRuntime
 $status=[IO.Path]::Combine($RunDirectory,'status.json')
 $companionSelection=@(Get-QuietWorkspaceTestSuites $WorkspaceRoot | Where-Object {$Suite -eq 'All' -or $_.Name -eq $Suite})
@@ -65,9 +67,9 @@ try{
         foreach($file in @('lib/ReportPaths.psm1','lib/Ci.Process.psm1','lib/Common.psm1','lib/EnvFile.psm1','lib/SourceIdentity.psm1','lib/WorkspaceProjects.psm1','lib/RuntimeTargets.psm1','lib/Assert-PtyQualification.psm1','Watch-Tests.ps1','lib/Monitor.Time.psm1','lib/ReportStreaming.psm1')){Copy-Item -LiteralPath ([IO.Path]::Combine($PSScriptRoot,$file)) -Destination ([IO.Path]::Combine($stage,('scripts/'+$file)))}
         $productFiles=@(Get-ChildItem $stage -Recurse -File|Where-Object Extension -In @('.dll','.csproj','.psd1','.psm1'))
         if($productFiles.Count){throw 'NativeStageMustNotContainProductBuildsOrModules'}
-        Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'bootstrap.json')) @{Mode='Direct CI processes';ProductBuildFiles=0;NativeSourceSHA256=(Get-FileHash ([IO.Path]::Combine($stage,'FrenchExDev2.QuietCli.Core.PoSh/native/quietcli-pty.c')) -Algorithm SHA256).Hash}
+        Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'bootstrap.json')) @{Mode='Direct CI processes';ProductBuildFiles=0;NativeSourceSHA256=(Get-FileHash ([IO.Path]::Combine($stage,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/native/quietcli-pty.c')) -Algorithm SHA256).Hash}
     }else{
-        foreach($file in @('global.json','Directory.Packages.props')){if(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$file))){Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$file)) -Destination $stage}}
+        foreach($file in @('global.json','Directory.Packages.props')){if(Test-Path -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $file))){Copy-Item -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $file)) -Destination $stage}}
         Write-WorkspaceJson ([IO.Path]::Combine($stage,'transport-origin.json')) (Get-QuietWorkspaceIdentity $WorkspaceRoot -IncludeBinaries)
     }
     $imageState=@{Id=$null}

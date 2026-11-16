@@ -8,7 +8,7 @@
 
 A C# engine starts the native process and streams its output once, through bounded buffers. Your own PowerShell callbacks, which stay in your process, turn that stream into business data. You then inspect the data directly or deliver a bounded JSON/YAML view of it.
 
-Start here: [Gallery installation](#from-powershell-gallery) · [.NET SDK and global.json](README-dotnet-and-global-dot-json.md) · [Local checkout, build and first command](#from-a-source-checkout) · [Git companion](FrenchExDev2.QuietCli.Git.PoSh/README.md#quick-start).
+Start here: [Gallery installation](#from-powershell-gallery) · [.NET SDK and global.json](README-dotnet-and-global-dot-json.md) · [Local checkout, build and first command](#from-a-source-checkout) · [Git companion](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md#quick-start).
 
 Browse the [documentation index](docs/README.md) for usage guides, technical contracts, agent instructions, CI, profiling and dated audit evidence.
 
@@ -35,7 +35,7 @@ lets `-Complete` read them, and adds a snapshot under the finished result's top-
 alongside `Data`. Without this switch, the runtime list stays empty and the result omits `Events`.
 `-UI` exposes a separate live presentation surface. The
 [streaming guide](README-streaming.md) explains these contracts, and the
-[Vagrant companion](FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) uses both for per-machine progress.
+[Vagrant companion](src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) uses both for per-machine progress.
 
 ```powershell
 $r = quiet -AsObject -CollectEvents -C sdk-version -WorkingDirectory (Get-Location).Path `
@@ -282,7 +282,7 @@ Commands for each agent, the skill form, options and verification steps are in [
 
 ## Example: a companion module (Git, under development)
 
-> **Status: under development.** The Git module illustrates what a companion module looks like. Its handler catalogue is growing, the full command/version/platform matrix is not qualified, and its API and coverage may change. Inventory membership is not support. Read the [Git README](FrenchExDev2.QuietCli.Git.PoSh/README.md#coverage-and-limits) before relying on a command.
+> **Status: under development.** The Git module illustrates what a companion module looks like. Its handler catalogue is growing, the full command/version/platform matrix is not qualified, and its API and coverage may change. Inventory membership is not support. Read the [Git README](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md#coverage-and-limits) before relying on a command.
 
 A handler is a ready-made callback pair. `quiet -AsObject git status` is shorthand for the explicit form `quiet -AsObject -Output { ... } -Complete { ... } git status ...`, where the module supplies the `-Output` parser and the `-Complete` finalizer for you. The explicit form below does the same job by hand on a small scale: it asks Git for its machine format, counts the entries of a repository and returns a typed result.
 
@@ -377,14 +377,14 @@ The [documentation index](docs/README.md) groups all guides and technical refere
 | Registered handlers and writing a module | [Companion modules](README-modules.md) |
 | Working from a source checkout, building | [Development](README-development.md) |
 | Property, fuzzing and mutation campaigns, CI matrix | [Tests and qualification](README-qualification.md) |
-| Performance evidence and reproducible profiling campaigns | [Core performance evidence](FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md), [Run profiles](docs/README-run-profiles.md) |
+| Performance evidence and reproducible profiling campaigns | [Core performance evidence](src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md), [Run profiles](docs/README-run-profiles.md) |
 | Packaging, publication gates, repository layout | [Repository and distribution](README-distribution.md) |
 | Preview identities, artifact preparation and publication | [Preview versions and GitHub publication](docs/README-preview-releases.md) |
 | Repository rules for contributors and agents | [AGENTS.md](AGENTS.md) |
 
 ## License
 
-QuietCli is distributed under the MIT license. Each module directory ships its own `LICENSE` file, for example [Core](FrenchExDev2.QuietCli.Core.PoSh/LICENSE).
+QuietCli is distributed under the MIT license. Each module directory ships its own `LICENSE` file, for example [Core](src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/LICENSE).
 
 Each business module also ships its own `LICENSE_CREDITS.md`, declaring the third-party license(s) its native dependency uses, with reference links. The root [CREDITS.md](CREDITS.md) is generated from them by [`scripts/Sync-Credits.ps1`](scripts/Sync-Credits.ps1); see [AGENTS.md](AGENTS.md) for the module contract.
 

@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 function Invoke-QuietScriptCommitWorkspace {
 #requires -Version 7.6
 <#
@@ -223,14 +225,14 @@ function Test-QuietCommitFileSniffer {
             if($loaded.Path -cne $expected){throw ('CommitLocalModulePathMismatch: '+$moduleName+'; start a fresh session.')}
         }
     }
-    $coreManifest=[IO.Path]::Combine($moduleRoot,'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
+    $coreManifest=[IO.Path]::Combine($moduleRoot,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
     # Git's RequiredModules registration resolves Core commands from the process-global scope.
     $savedWhatIf=$WhatIfPreference;$savedConfirm=$ConfirmPreference
     try{
         # In-memory command registration is required even for a read-only preview.
         $WhatIfPreference=$false;$ConfirmPreference='None'
         Import-Module $coreManifest -Scope Global -DisableNameChecking -ErrorAction Stop
-        if (-not (Get-Module FrenchExDev2.QuietCli.Git.PoSh)) { Import-Module ([IO.Path]::Combine($moduleRoot,'FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1')) -DisableNameChecking -ErrorAction Stop }
+        if (-not (Get-Module FrenchExDev2.QuietCli.Git.PoSh)) { Import-Module ([IO.Path]::Combine($moduleRoot,'src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1')) -DisableNameChecking -ErrorAction Stop }
     }finally{$WhatIfPreference=$savedWhatIf;$ConfirmPreference=$savedConfirm}
     $status = quiet -AsObject -WorkingDirectory $WorkspaceRoot git status
     if ($status.Outcome -ne 'Success') {
@@ -241,7 +243,7 @@ function Test-QuietCommitFileSniffer {
         if ($entry.Kind -eq 'Ignored') { continue }
         if ($entry.Path -isnot [string]) { continue }
         if ($entry.Status -and $entry.Status.Contains('D')) { continue }
-        $full = [IO.Path]::Combine($WorkspaceRoot,$entry.Path)
+        $full = (Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $entry.Path)
         if (!(Test-Path -LiteralPath $full -PathType Leaf)) { continue }
         $attr = quiet -AsObject -WorkingDirectory $WorkspaceRoot -- git check-attr binary -- $entry.Path
         if ($attr.Outcome -eq 'Success' -and @($attr.Data.Entries).Count -and $attr.Data.Entries[0].Value -ceq 'set') { continue }

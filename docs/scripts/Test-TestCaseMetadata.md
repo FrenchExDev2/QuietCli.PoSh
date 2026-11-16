@@ -33,7 +33,7 @@ Checks still execute with inherited `WhatIfPreference`, as in a commit preview. 
 
 - `scripts/Test-TestCaseMetadata.ps1`: the check reads the selected owning test runner and explicitly declared helper sources, not an installed release. The parser never evaluates case bodies.
 - `scripts/lib/TestCaseMetadata.psm1`: missing/orphan entries, duplicate registrations, invalid kinds/dependencies and nonliteral metadata fail closed. Syntax and classification checks cannot prove isolation or complete dependency declarations.
-- `FrenchExDev2.QuietCli.Core.Tests.PoSh/TestCaseMetadata.Tests.ps1`: generated valid inputs, malformed entries and source mutants exercise rejection and inert parsing; the check preserves the source hash.
+- `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/TestCaseMetadata.Tests.ps1`: generated valid inputs, malformed entries and source mutants exercise rejection and inert parsing; the check preserves the source hash.
 - The scope is Core's top-level case runner. Nested campaigns and other companion runners retain their existing reports; this is not a claim that every assertion in the repository has acquired metadata.
 
 ## Verdict

@@ -21,7 +21,7 @@ See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-autom
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Writes a conservative PR/develop CI plan from the complete Git diff and verified same-tree PR receipts.
+Purpose: Writes an explained selective PR/develop CI plan from the complete Git diff and XML dependencies.
 
 Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
@@ -33,3 +33,15 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/New-CiImpactPlan.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

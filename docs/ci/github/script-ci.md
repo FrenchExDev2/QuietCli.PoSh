@@ -1,57 +1,24 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 6105A97C2BE79A4842657AAA2C9D74DAF9D447937173EDFCEE00B36F5C6680DE -->
+<!-- workflow-source-sha256: 95984390C616D2AB3AAD94ECEDBD661ED5FA0D48A962BB10D51F8044C49DC8F2 -->
 
 ## Purpose
 
-Tooling qualification consumes separate functional, mutation-execution and catalogue
-completion outputs from the reusable tooling workflow. The gate also checks the
-overall reusable result, preserving failures in setup, uploads and reporting.
-Disabled tooling supplies explicit skipped statuses; missing enabled outputs fail
-closed. Its decision receipt preserves the independent results after rejection.
-
-Shared manual/reusable qualification. Four required GA Windows host/mode rows and four Linux glibc/musl architecture rows run the selected product suite. Core/All keeps mandatory per-environment import, controlled Git-status and PowerShell/CLR profiling evidence. Git/Vagrant-only selections do not claim Core qualification.
-
-run_tooling defaults true for manual/release callers; PR planning may disable it for companion-only changes. The separate tooling-ci.yml workflow must succeed when required, and qualification receipts record its outcomes plus the exact Git tree. Failures, missing profiles and cancelled jobs block qualification.
-
-Core requires only the base toolchain image. All runs Core completely before bounded independent companion workers consume the same image. Build-Workspace compiles only the selected dependency closure and publishes the tested RID. Full IL distributions and their three private Distribution.Tests checks run once in tooling-ci.yml. Public release packaging retains its separate all-RID ReadyToRun requirement.
-
-Linux resolves verified final GHCR images before building parents. Missing images use Docker BuildKit mode=max intermediate caches via cache-ci-layers. The active-context builder uses the containerd image store so local parent images remain visible. Cache save follows image preparation and precedes tests. PRs never publish images. Native architecture, fingerprints, parent provenance and labels remain mandatory.
-
-Linux job containers restore NuGet packages with the pinned restore-only cache action before builds and tests. A final explicit save uses its resolved `cache-primary-key`, after successful tests and report uploads and only without an exact cache hit. The project/package/build/SDK input hash is evaluated during restore, never during save or post-job cleanup: generated fixtures can change the checkout tree and make a later recursive hash fail. Cache paths and OS/architecture/dependency partitioning are preserved. The focused `CI scales by affected suites with verified merge reuse and intermediate caches` tooling case checks ordering, the frozen key, the success/cache-hit decisions and damaged workflow variants. Local contract checks do not reproduce GitHub's container post-job evaluator.
-
-## Validation and limits
-
-Production requires eight product targets. Explicit run_preview=true adds two Windows InProcess targets for a published next-version prerelease; the default false does not depend on Preview availability. RunProfiles functional/mutation campaigns moved out of the product matrix; profiling each environment remains independent. Local mocked/cache-boundary tests do not establish hosted cache transfer speed or ARM64 execution. See [scalable companion qualification](../scalable-companions.md).
+Shared product qualification engine. The same workflow accepts the generated companion profiles and explicit affected CSharp project paths from the PR matrix. Full mode retains locked native Windows/Linux qualification, explicit optional Preview, Core performance evidence, source-bound distributions and the exact-revision gate. Smoke/build modes route to workspace-component-ci.yml. Profile validation runs before expensive work. Build caches are namespaced by target/scope and verified before reuse. Artifacts are suite-scoped to avoid matrix collisions; All retains the legacy quietcli2-qualification-gate artifact name consumed by publication.
 
 ## Triggers
 
-Manual workflow_dispatch and reusable workflow_call. Suite, collect_performance, run_tooling and run_preview are explicit inputs. run_preview defaults false for both triggers.
-
-Manual dispatch additionally exposes `images_only` (false by default). On the upstream `develop` ref, selecting it runs the existing native Linux image producer and its verified GHCR/BuildKit preparation without product tests, tooling mutation, performance aggregation or a qualification receipt. The shared context guard rejects forks, PR events and other refs. Existing trusted develop producers continue populating the same caches; PR fallback remains read-only for GHCR. This mode primes base-branch caches for later PRs instead of storing the only reusable layers under a PR merge ref. It never qualifies a package or emits `qualified_sha`.
+Reusable workflow_call and explicit workflow_dispatch.
 
 ## Scripts and effects
 
-Uses the shared scripts/ entry points, discovered manifests, selected source-bound builds and private artifacts described above. Git identifies committed internal sources; generated execution receipts retain actual source hashes and dirty state. Pinned external resources retain their dedicated locks. Network access is limited to pinned dependency preparation, verified image caches and explicit GitHub evidence reads. No module publication occurs here.
+Uses profile validation, source-bound build preparation, explicit selected qualification/smoke entry points and private artifacts. The PR planner publishes plan.json and impact.md; build_projects_json passes affected CSharp paths to Build-Workspace. GitHub may prepare pinned SDK/PowerShell resources and verified image caches. No module publication or repository setting change is performed here.
 
-Native Linux image and fallback jobs initialize the checkout's Docker preset immediately after checkout, then prepare the checksum-pinned GA PowerShell host. The initial environment bootstrap uses the runner host; subsequent image preparation, builds and tests use the selected GA host. The existing GitHub CI orchestration regression enforces this order in both linux-images and linux-test-driver.
+## Validation and limits
 
-## Operational modes and acceptance
+The stable automatic gate requires planning, source checks, generated-layout tests and every selected job. Skipped scopes are untested, not passed. A smoke/build result is not full product or publication qualification. Full native product runs retain their declared host/RID matrix, profiling policy and explicit TTY/Preview exclusions. Cache hits require source/payload/target verification; partial restores rebuild stale distributions.
 
-```mermaid
-flowchart LR
-    INPUT[Manual or reusable inputs] --> MODE{images_only?}
-    MODE -- Yes --> CONTEXT[Require upstream develop dispatch]
-    CONTEXT --> CACHE[Four native Linux image producers]
-    MODE -- No --> PRODUCT[Four GA Windows and four Linux product targets]
-    PRODUCT --> EVIDENCE[Selected tests and declared Core profiles]
-    EVIDENCE --> GATE[Require platforms, profiling and requested tooling]
-    GATE --> RECEIPT[Revision, tree, run and attempt receipt]
-```
-
-Core evidence requires the combined eight-environment production report, or ten when Preview is explicitly selected. Select-PowerShellCiMatrix derives the rows and expected report count from the host lock. GA is 7.7.0 / CLR 11; the announced 7.8.0-preview.1 is unavailable until published and verified. Alpine keeps the approved native 7.6.9-r0 / CLR 10 exception. `always()` retains failure-report assembly; cache-only mode and scopes without Core evidence skip it. A collect_performance opt-out cannot qualify Core. Windows rows use checksum-pinned hosts and one tested RID; tooling owns the complete IL distribution checks outside the matrix. The [CI map](../README.md) explains script roles and source-change dates.
-
-The [tooling shard boundary](script-tooling-ci.md#shard-execution-boundary) accepts validated intermediate partitions while retaining Partial=true. Only complete aggregation satisfies required tooling. Configured graphs describe routing, not a successful hosted qualification.
+Local WorkspaceLayout and CompanionSmoke reports exercise the selection and actual integration paths. Hosted matrix results must be inspected for the delivered revision. Authored workflow-source-sha256 receipts are reviewed separately from generated YAML and job graphs.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
@@ -61,6 +28,7 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 ~~~mermaid
 flowchart TD
     event["Triggers: workflow_call, workflow_dispatch"]
+    job_component_check["component-check"]
     job_linux["linux"]
     job_linux_images["linux-images"]
     job_linux_matrix["linux-matrix"]
@@ -70,10 +38,12 @@ flowchart TD
     job_performance_results["performance-results"]
     job_qualification_gate["qualification-gate"]
     job_tooling["tooling"]
+    job_validate["validate"]
     job_windows["windows"]
+    job_validate --> job_component_check
     job_linux_selection --> job_linux
     job_linux_matrix --> job_linux_images
-    event --> job_linux_matrix
+    job_validate --> job_linux_matrix
     job_linux_selection --> job_linux_result
     job_linux --> job_linux_result
     job_linux_test_driver --> job_linux_result
@@ -90,23 +60,28 @@ flowchart TD
     job_performance_results --> job_qualification_gate
     job_tooling --> job_qualification_gate
     event --> job_tooling
+    event --> job_validate
     job_linux_matrix --> job_windows
 ~~~
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| linux | runner ${{ matrix.runner }}; container ${{ matrix.image }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_container == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
+| component-check | reuses ./.github/workflows/workspace-component-ci.yml | validate | inputs.qualification_mode == 'smoke' &#124;&#124; inputs.qualification_mode == 'build' |  |
+| linux | runner ${{ matrix.runner }}; container ${{ matrix.image }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_container == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Get-CompanionBuildKey.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 | linux-images | runner ${{ matrix.runner }} | linux-matrix | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiSuiteImage.ps1 |
-| linux-matrix | runner ubuntu-latest |  | default success condition | ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/lib/GitHubCi.psm1, ./scripts/Select-PowerShellCiMatrix.ps1 |
-| linux-result | runner ubuntu-latest | linux-selection, linux, linux-test-driver | ${{ always() && !inputs.images_only }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/lib/GitHubCi.psm1 |
+| linux-matrix | runner ubuntu-latest | validate | inputs.qualification_mode == '' &#124;&#124; inputs.qualification_mode == 'full' | ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/lib/GitHubCi.psm1, ./scripts/Select-PowerShellCiMatrix.ps1 |
+| linux-result | runner ubuntu-latest | linux-selection, linux, linux-test-driver | ${{ always() && !inputs.images_only && (inputs.qualification_mode == '' &#124;&#124; inputs.qualification_mode == 'full') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/lib/GitHubCi.psm1 |
 | linux-selection | runner ubuntu-latest | linux-matrix, linux-images | ${{ always() && !cancelled() && !inputs.images_only && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' &#124;&#124; needs.linux-images.result == 'skipped') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Select-GitHubCiMatrix.ps1 |
-| linux-test-driver | runner ${{ matrix.runner }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_docker_container_runtime == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CiSuiteImage.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
-| performance-results | runner ubuntu-latest | linux-matrix, windows, linux, linux-test-driver | ${{ always() && !inputs.images_only && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CorePerformanceReport.ps1 |
-| qualification-gate | runner ubuntu-latest | linux-matrix, windows, linux-result, performance-results, tooling | ${{ always() && !inputs.images_only }} | ./scripts/Assert-QualificationGate.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
-| tooling | reuses ./.github/workflows/tooling-ci.yml |  | inputs.run_tooling && !inputs.images_only |  |
-| windows | runner ${{ matrix.image }} | linux-matrix | ${{ !inputs.images_only }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
+| linux-test-driver | runner ${{ matrix.runner }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_docker_container_runtime == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Get-CompanionBuildKey.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CiSuiteImage.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
+| performance-results | runner ubuntu-latest | linux-matrix, windows, linux, linux-test-driver | ${{ always() && !inputs.images_only && (inputs.qualification_mode == '' &#124;&#124; inputs.qualification_mode == 'full') && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CorePerformanceReport.ps1 |
+| qualification-gate | runner ubuntu-latest | linux-matrix, windows, linux-result, performance-results, tooling | ${{ always() && !inputs.images_only && (inputs.qualification_mode == '' &#124;&#124; inputs.qualification_mode == 'full') }} | ./scripts/Assert-QualificationGate.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
+| tooling | reuses ./.github/workflows/tooling-ci.yml |  | inputs.run_tooling && !inputs.images_only && (inputs.qualification_mode == '' &#124;&#124; inputs.qualification_mode == 'full') |  |
+| validate | runner ubuntu-latest |  | default success condition | ./scripts/Invoke-ComponentCheck.ps1 |
+| windows | runner ${{ matrix.image }} | linux-matrix | ${{ !inputs.images_only && (inputs.qualification_mode == '' &#124;&#124; inputs.qualification_mode == 'full') }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Get-CompanionBuildKey.ps1, ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
 
 <!-- workflow-generated:end -->
+
+See [companion layout and selective CI](../../README-companion-layout-and-ci.md).
 
 <!-- credits:begin -->
 ## Credits

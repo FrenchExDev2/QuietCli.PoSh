@@ -64,7 +64,7 @@ triggering, hooks and credentials are outside installation.
 - **Validation boundary:** the thin entry point delegates string/path validation to
   `New-DevelopmentPlan` (`scripts/lib/DevelopmentWorkstation.psm1:359`); the native wrkflw lock is
   validated by `Get-DevelopmentWrkflwSpecification` (`:110`).
-- **Coverage:** `FrenchExDev2.QuietCli.Core.Tests.PoSh/DevelopmentWorkstation.Tests.ps1:1` asserts
+- **Coverage:** `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/DevelopmentWorkstation.Tests.ps1:1` asserts
   generated version/host policies, malformed lock/banner inputs, checksum cache integrity,
   activation, control modes, idempotence and targeted mutations. This is not platform-wide
   real installation or actual workflow qualification.

@@ -9,12 +9,14 @@ Removes objective headers/announcements, applies missing guards and regenerates 
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Apply)
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/ScriptReview.psm1')) -DisableNameChecking -ErrorAction Stop
 $entries=@(Get-QuietScriptReview $WorkspaceRoot)
 $changes=0
 foreach($entry in $entries){
-    $path=[IO.Path]::Combine($WorkspaceRoot,$entry.Path)
+    $path=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $entry.Path)
     $before=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
     $text=$before.Replace("`r`n","`n");$name=[IO.Path]::GetFileNameWithoutExtension($path)
     if([IO.Path]::GetExtension($path) -eq '.ps1'){

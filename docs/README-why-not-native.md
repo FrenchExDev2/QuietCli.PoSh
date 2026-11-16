@@ -1,7 +1,7 @@
 # Why `quiet` stays a PowerShell module, not a native binary
 
 `quiet` is the alias exported for `Invoke-QuietCli`, a binary cmdlet hosted inside the `pwsh`
-process (see [FrenchExDev2.QuietCli.Core.PoSh.psm1](../FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psm1)).
+process (see [FrenchExDev2.QuietCli.Core.PoSh.psm1](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psm1)).
 This note records why a standalone native (AOT or ReadyToRun) `quiet.exe`, called as an external
 command instead, was rejected, and where the actual cold-start lever already lives.
 

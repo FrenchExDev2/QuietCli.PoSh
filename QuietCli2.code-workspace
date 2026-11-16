@@ -1,16 +1,49 @@
 {
   "folders": [
-    {"name":"Workspace", "path":"."},
-    {"name":"Core", "path":"FrenchExDev2.QuietCli.Core.PoSh"},
-    {"name":"Core.Tests", "path":"FrenchExDev2.QuietCli.Core.Tests.PoSh"},
-    {"name":"Git", "path":"FrenchExDev2.QuietCli.Git.PoSh"},
-    {"name":"Git.Tests", "path":"FrenchExDev2.QuietCli.Git.Tests.PoSh"},
-    {"name":"Vagrant", "path":"FrenchExDev2.QuietCli.Vagrant.PoSh"},
-    {"name":"Vagrant.Tests", "path":"FrenchExDev2.QuietCli.Vagrant.Tests.PoSh"}
+    {
+      "name": "Workspace",
+      "path": "."
+    },
+    {
+      "name": "Core",
+      "path": "src/Core/src/FrenchExDev2.QuietCli.Core.PoSh"
+    },
+    {
+      "name": "Core.Tests",
+      "path": "src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh"
+    },
+    {
+      "name": "Git",
+      "path": "src/Git/src/FrenchExDev2.QuietCli.Git.PoSh"
+    },
+    {
+      "name": "Git.Tests",
+      "path": "src/Git/test/FrenchExDev2.QuietCli.Git.Tests.PoSh"
+    },
+    {
+      "name": "Vagrant",
+      "path": "src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh"
+    },
+    {
+      "name": "Vagrant.Tests",
+      "path": "src/Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh"
+    },
+    {
+      "name": "Distribution.Tests",
+      "path": "src/Distribution/test/FrenchExDev2.QuietCli.Distribution.Tests.PoSh"
+    },
+    {
+      "name": "Tooling.Tests",
+      "path": "src/Tooling/test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh"
+    }
   ],
   "settings": {
-    "files.encoding":"utf8",
-    "powershell.cwd":"Workspace",
-    "search.exclude":{"**/bin":true,"**/obj":true,"**/artifacts":true}
+    "files.encoding": "utf8",
+    "powershell.cwd": "Workspace",
+    "search.exclude": {
+      "**/bin": true,
+      "**/obj": true,
+      "**/artifacts": true
+    }
   }
 }
