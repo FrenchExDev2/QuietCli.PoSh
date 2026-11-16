@@ -495,6 +495,8 @@ try{
     Invoke-QuietPreviewTagTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $releaseFixture
     . (Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.Tests.PoSh/ReleaseTags.Tests.ps1)
     Test-QuietReleaseTags -WorkspaceRoot $WorkspaceRoot -RunDirectory $releaseFixture
+    . (Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.Tests.PoSh/ReleaseFlow.Tests.ps1)
+    Test-QuietReleaseFlow -WorkspaceRoot $WorkspaceRoot -RunDirectory $releaseFixture
     Write-WorkspaceJson (Join-Path $releaseFixture campaign.json) @{MalformedOrUnavailableTags=$releaseRejections;PublicationProperties=$releaseProperties;RealLocalTagLifecycle=$true;RemotePublication=$false}
     foreach($rid in @('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){
         $declaration=& (Join-Path $WorkspaceRoot FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $rid

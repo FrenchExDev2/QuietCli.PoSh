@@ -31,7 +31,7 @@ function Send-QuietPullRequestUpdate {
     .PARAMETER Remote
     Remote name; non-GitHub URLs skip the update.
     .PARAMETER Branch
-    Feature/fix branch; other branch families skip the update.
+    Feature, fix or release branch; other branch families skip the update.
     .PARAMETER Body
     Optional reviewed Markdown explaining changes and actual validation; omitted uses PR commit titles.
     .PARAMETER Description
@@ -39,7 +39,7 @@ function Send-QuietPullRequestUpdate {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param([string]$WorkspaceRoot,[string]$Remote,[string]$Branch,[AllowNull()][AllowEmptyString()][string]$Body,[AllowNull()][string]$Description)
-    if($Branch -cnotmatch '^(feature|fix)/'){return}
+    if($Branch -cnotmatch '^(feature|fix|release)/'){return}
     if(!$PSCmdlet.ShouldProcess($Branch,'Comment on the existing GitHub pull request')){return}
     $url=Invoke-QuietPullRequestTool $WorkspaceRoot git @('remote','get-url',$Remote)
     if($url -notmatch '\A(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)(?<repo>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?\z'){

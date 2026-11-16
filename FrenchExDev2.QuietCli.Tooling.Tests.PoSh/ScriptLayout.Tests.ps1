@@ -145,5 +145,31 @@ $utf8=[Text.UTF8Encoding]::new($false)
     }
     if($process.Outcome -ne 'Success' -or $observed.Bad.Count){throw ('FreshCommitBootstrapFailed: '+$process.Outcome+'; '+(($observed.Bad.ToArray()+$observed.Tail.ToArray()) -join ' | '))}
     if((Get-QuietCommitWorkspaceHeadRevision $repository) -cne $head -or (Test-Path -LiteralPath ([IO.Path]::Combine($repository,'repositories.lock.json')))){throw 'FreshCommitPreviewMutatedRepository'}
-    [pscustomobject]@{ValidNames=33;Malformed=$invalid.Count;MutantsKilled=$killed;DelegatedGuardMutants=3;PreviewNoEffects=$true}
+    # Release entry points bootstrap Core/Git themselves: in a clean process Git's handler must register under -WhatIf.
+    # The fixture carries no release metadata, so only the bootstrap is asserted; a refused plan is expected and reported.
+    $releaseDriver=[IO.Path]::Combine($RunDirectory,'Invoke-ReleaseBootstrap.ps1')
+    $releaseDriverSource=@'
+#requires -Version 7.6
+param([string]$SubjectRoot,[string]$Repository,[string]$Entry)
+$utf8=[Text.UTF8Encoding]::new($false)
+[Console]::InputEncoding=$utf8;[Console]::OutputEncoding=$utf8;$OutputEncoding=$utf8
+try{$null=& ([IO.Path]::Combine($SubjectRoot,'scripts',$Entry)) -WorkspaceRoot $Repository -Module Core -Version 0.3.0 -NextPreview -WhatIf}catch{'BootstrapPlanRefused: '+$_.Exception.Message}
+if(!@(Get-QuietHandler|Where-Object Id -ceq 'FrenchExDev2.QuietCli.Git.PoSh').Count){throw 'FreshGitHandlerNotRegistered'}
+'FreshGitHandlerRegistered'
+'@
+    [IO.File]::WriteAllText($releaseDriver,$releaseDriverSource+"`n",$utf8)
+    foreach($entry in @('New-QuietPreviewTag.ps1','Invoke-QuietRelease.ps1')){
+        $observed=@{Lines=0;Registered=$false;Bad=[Collections.Generic.List[string]]::new();Tail=[Collections.Generic.Queue[string]]::new()}
+        $process=Invoke-CiProcess -FilePath ([IO.Path]::Combine($PSHOME,('pwsh'+$(if($IsWindows){'.exe'}else{''})))) -WorkingDirectory $repository -TimeoutSeconds 180 -ArgumentList @('-NoProfile','-NonInteractive','-File',$releaseDriver,'-SubjectRoot',$WorkspaceRoot,'-Repository',$repository,'-Entry',$entry) -State $observed -OnOutput {
+            param($event,$state)
+            $state.Lines++
+            if($event.Text -match 'Register-QuietHandler'){$state.Bad.Add($event.Text)}
+            if($event.Text -ceq 'FreshGitHandlerRegistered'){$state.Registered=$true}
+            $state.Tail.Enqueue($event.Text.Substring(0,[Math]::Min(512,$event.Text.Length)))
+            if($state.Tail.Count -gt 8){[void]$state.Tail.Dequeue()}
+        }
+        if($process.Outcome -ne 'Success' -or !$observed.Registered -or $observed.Bad.Count){throw ('FreshReleaseBootstrapFailed: '+$entry+'; '+$process.Outcome+'; '+(($observed.Bad.ToArray()+$observed.Tail.ToArray()) -join ' | '))}
+        if((Get-QuietCommitWorkspaceHeadRevision $repository) -cne $head){throw ('FreshReleasePreviewMutatedRepository: '+$entry)}
+    }
+    [pscustomobject]@{ValidNames=33;Malformed=$invalid.Count;MutantsKilled=$killed;DelegatedGuardMutants=3;PreviewNoEffects=$true;ReleaseBootstraps=2}
 }

@@ -24,7 +24,7 @@ function Test-QuietReleaseTags {
     [void][IO.Directory]::CreateDirectory($remote)
     $emptyTemplate=Join-Path $RunDirectory 'release-empty-template'
     [void][IO.Directory]::CreateDirectory($emptyTemplate)
-    $observed=@{Commits=0;Pushes=0}
+    $observed=@{Commits=0}
     function Invoke-ReleaseFixtureGit {
         <# .SYNOPSIS
         Executes exact Git arguments against an owned repository with bounded metadata.
@@ -67,9 +67,16 @@ function Test-QuietReleaseTags {
     if(@(Select-QuietGalleryReleaseTargets $fixture -Module All).Count -ne 3){throw 'ReleaseSelectionNotDataDriven'}
     $operator=Join-Path $WorkspaceRoot scripts/New-QuietPreviewTag.ps1
     $before=(Invoke-ReleaseFixtureGit @('rev-parse','HEAD')).Value
-    $preview=& $operator -WorkspaceRoot $fixture -Module Core,Git -Version 2.3.4 -NextPreview -WhatIf
-    if($preview.Created.Count -or $preview.Pushed -or $preview.RemoteChecked -or $preview.Receipt -or (Invoke-ReleaseFixtureGit @('rev-parse','HEAD')).Value -cne $before -or (Invoke-ReleaseFixtureGit @('status','--porcelain')).HasOutput){throw 'ReleaseWhatIfProducedEffects'}
-    $nullable=& $operator -WorkspaceRoot $fixture -Module Core,Git -Version 2.3.4 -Preview $null -WhatIf
+    # The operator releases exactly one module; several modules go through the facade (one PR, one batch).
+    foreach($selection in @(@('Core','Git'),@('All'),@('all'))){
+        foreach($noCommit in @($false,$true)){
+            $rejected=$false;try{$null=& $operator -WorkspaceRoot $fixture -Module $selection -Version 2.3.4 -NextPreview -NoCommit:$noCommit -NoPush -Confirm:$false}catch{$rejected=$_.Exception.Message -like 'PreviewTagRequiresOneModule:*'}
+            if(!$rejected -or (Invoke-ReleaseFixtureGit @('rev-parse','HEAD')).Value -cne $before -or (Invoke-ReleaseFixtureGit @('tag','--list')).HasOutput -or (Invoke-ReleaseFixtureGit @('status','--porcelain')).HasOutput){throw ('MultipleModuleOperatorReleaseAccepted: '+($selection -join ','))}
+        }
+    }
+    $preview=& $operator -WorkspaceRoot $fixture -Module Git -Version 2.3.4 -NextPreview -WhatIf
+    if($preview.Created.Count -or $preview.Pushed -or $preview.RemoteChecked -or $preview.Receipt -or @($preview.Releases).Count -ne 1 -or (Invoke-ReleaseFixtureGit @('rev-parse','HEAD')).Value -cne $before -or (Invoke-ReleaseFixtureGit @('status','--porcelain')).HasOutput){throw 'ReleaseWhatIfProducedEffects'}
+    $nullable=& $operator -WorkspaceRoot $fixture -Module Git -Version 2.3.4 -Preview $null -WhatIf
     if(($nullable.Releases.Version -join ',') -cne ($preview.Releases.Version -join ',') -or $nullable.Created.Count){throw 'NullablePreviewDiffersFromNextPreview'}
     $local=& $operator -WorkspaceRoot $fixture -Module Core -Version 2.3.4 -Preview 1 -NoCommit -NoPush -Confirm:$false
     if($local.Created.Count -ne 1 -or $local.Committed -or $local.Pushed -or !$local.RemoteChecked){throw 'ReleaseNoCommitNoPushContractChanged'}
@@ -89,15 +96,47 @@ function Test-QuietReleaseTags {
         $null=Invoke-ReleaseFixtureGit (@('add','--')+$paths)
         $null=Invoke-ReleaseFixtureGit @('commit','--quiet','--no-verify','-m',$message)
     }
-    $push={param($root,$remoteName,$branch) $observed.Pushes++;$null=Invoke-ReleaseFixtureGit @('push',$remoteName,("HEAD:refs/heads/"+$branch))}
-    $next=Invoke-QuietModuleRelease -WorkspaceRoot $fixture -Module Core,Git -Version 2.3.4 -NextPreview -NoPush -GitCommand $git -CommitCommand $commit -PushCommand $push -Confirm:$false
-    if(!$next.Committed -or $next.Created.Count -ne 2 -or $next.Pushed -or $observed.Commits -ne 1 -or $observed.Pushes -or $next.Releases[0].Version -cne '2.3.4-preview3' -or $next.Releases[1].Version -cne '2.3.4-preview6'){throw 'IndependentNextPreviewCommitFailed'}
+    # The protected delivery branch only advances through simulated merges; the release never pushes a branch.
+    $null=Invoke-ReleaseFixtureGit @('push','--quiet','origin',($before+':refs/heads/develop'))
+    $rejected=$false;try{$null=Invoke-QuietModuleRelease -WorkspaceRoot $fixture -Module Core -Version 2.3.4 -Preview 7 -PreviewSpecified -DeliveryBranch fixture-release -GitCommand $git -CommitCommand $commit -Confirm:$false}catch{$rejected=$_.Exception.Message -like 'ReleaseCommitRequiresWorkBranch:*'}
+    if(!$rejected -or $observed.Commits -or (Invoke-ReleaseFixtureGit @('rev-parse','HEAD')).Value -cne $before -or (Invoke-ReleaseFixtureGit @('status','--porcelain')).HasOutput){throw 'ReleaseCommittedOnDeliveryBranch'}
+    $bump=Invoke-QuietModuleRelease -WorkspaceRoot $fixture -Module Core,Git -Version 2.3.4 -NextPreview -GitCommand $git -CommitCommand $commit -Confirm:$false
+    if($bump.Mode -cne 'Commit' -or !$bump.Committed -or $bump.Created.Count -or $bump.Pushed -or $bump.DeliveryChecked -or $observed.Commits -ne 1 -or $bump.Releases[0].Version -cne '2.3.4-preview3' -or $bump.Releases[1].Version -cne '2.3.4-preview6'){throw 'IndependentNextPreviewCommitFailed'}
+    if((Invoke-ReleaseFixtureGit @('tag','--list','*-preview3')).HasOutput -or (Invoke-ReleaseFixtureGit @('ls-remote','--heads','origin','refs/heads/fixture-release')).HasOutput){throw 'ReleaseCommitModeTaggedOrPushedBranch'}
+    $rejected=$false;try{$null=Invoke-QuietModuleRelease -WorkspaceRoot $fixture -Module Core,Git -Version 2.3.4 -NextPreview -NoCommit -GitCommand $git -CommitCommand $commit -Confirm:$false}catch{$rejected=$_.Exception.Message -like 'ReleaseRevisionNotOnDeliveryBranch:*'}
+    if(!$rejected -or (Invoke-ReleaseFixtureGit @('tag','--list','*-preview3')).HasOutput -or (Invoke-ReleaseFixtureGit @('ls-remote','--tags','origin','*-preview3')).HasOutput){throw 'UnmergedReleaseRevisionTagged'}
+    $next=Invoke-QuietModuleRelease -WorkspaceRoot $fixture -Module Core,Git -Version 2.3.4 -NextPreview -NoCommit -NoPush -GitCommand $git -CommitCommand $commit -Confirm:$false
+    if($next.Mode -cne 'Tag' -or $next.Committed -or $next.Created.Count -ne 2 -or $next.Pushed -or $next.Revision -cne $bump.Revision -or $observed.Commits -ne 1){throw 'DeferredReleaseTagsNotCreated'}
     foreach($tag in $next.Created){if((Invoke-ReleaseFixtureGit @('cat-file','-t',('refs/tags/'+$tag))).Value -cne 'tag'){throw 'ReleaseTagNotAnnotated'}}
     $annotation=(Invoke-ReleaseFixtureGit @('for-each-ref','--format=%(contents)',('refs/tags/'+$next.Created[0]))).Lines -join "`n"
     $batch=Resolve-QuietGalleryReleaseBatch -WorkspaceRoot $fixture -Tag $next.Created[0] -Revision $next.Revision -Annotation $annotation
     $follower=Resolve-QuietGalleryReleaseBatch -WorkspaceRoot $fixture -Tag $next.Created[1] -Revision $next.Revision -Annotation $annotation
     if(!$batch.IsLeader -or $follower.IsLeader -or $batch.Releases.Count -ne 2){throw 'ReleaseBatchLeaderNotUnique'}
-    $null=Invoke-ReleaseFixtureGit (@('push','--atomic','origin')+@($next.Created|ForEach-Object {'refs/tags/'+$_}))
+    $rejected=$false;try{$null=& $operator -WorkspaceRoot $fixture -PushTag $next.Created[0] -WhatIf}catch{$rejected=$_.Exception.Message -like 'ReleaseTagBatchMismatch:*'}
+    if(!$rejected){throw 'PartialReleaseBatchPushAccepted'}
+    $rejected=$false;try{$null=& $operator -WorkspaceRoot $fixture -PushTag 'FrenchExDev2.QuietCli.Vagrant.PoSh/v9.9.9' -WhatIf}catch{$rejected=$_.Exception.Message -like 'ReleaseTagMissingLocally:*'}
+    if(!$rejected){throw 'MissingReleaseTagPushAccepted'}
+    $pushPreview=& $operator -WorkspaceRoot $fixture -PushTag $next.Created -WhatIf
+    if($pushPreview.Pushed -or $pushPreview.DeliveryChecked -or $pushPreview.Revision -cne $next.Revision -or (Invoke-ReleaseFixtureGit @('ls-remote','--tags','origin','*-preview3')).HasOutput){throw 'ReleaseTagPushWhatIfProducedEffects'}
+    $rejected=$false;try{$null=& $operator -WorkspaceRoot $fixture -PushTag $next.Created -Confirm:$false}catch{$rejected=$_.Exception.Message -like 'ReleaseRevisionNotOnDeliveryBranch:*'}
+    if(!$rejected -or (Invoke-ReleaseFixtureGit @('ls-remote','--tags','origin','*-preview3')).HasOutput){throw 'UnmergedReleaseTagsPushed'}
+    # Removing the delivery-branch guard accepts this same unmerged counterexample.
+    $releaseSource=[IO.File]::ReadAllText([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/ReleaseTags.psm1'),[Text.Encoding]::UTF8)
+    $deliveryAnchor="if((& `$GitCommand @('rev-list','--max-count=1',`$Revision,('^'+`$tip),'--')).HasOutput)"
+    if(!$releaseSource.Contains($deliveryAnchor)){throw 'ReleaseDeliveryMutantAnchorInvalid'}
+    $deliveryMutant=[IO.Path]::Combine($RunDirectory,'release-delivery-mutant/ReleaseTagsDeliveryMutant.psm1')
+    [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($deliveryMutant))
+    [IO.File]::WriteAllText($deliveryMutant,$releaseSource.Replace($deliveryAnchor,'if($false)'),[Text.UTF8Encoding]::new($false))
+    $mutantModule=Import-Module $deliveryMutant -PassThru -DisableNameChecking -Prefix DeliveryMutant
+    try{$mutantTip=& $mutantModule {param($tags,$revision,$gitCommand) Assert-QuietReleaseDelivery -Tag $tags -Revision $revision -Remote origin -DeliveryBranch develop -GitCommand $gitCommand} $next.Created $next.Revision $git}
+    finally{Remove-Module $mutantModule -Force}
+    if($mutantTip -cne $before){throw 'ReleaseDeliveryMutantInvalid'}
+    $null=Invoke-ReleaseFixtureGit @('push','--quiet','origin','HEAD:refs/heads/develop')
+    $pushed=& $operator -WorkspaceRoot $fixture -PushTag $next.Created -Confirm:$false
+    if(!$pushed.Pushed -or !$pushed.DeliveryChecked -or $pushed.TagPushState -cne 'Confirmed'){throw 'MergedReleaseTagsNotPushed'}
+    foreach($tag in $next.Created){if(((Invoke-ReleaseFixtureGit @('ls-remote','origin',('refs/tags/'+$tag+'^{}'))).Value -split "`t")[0] -cne $next.Revision){throw 'RemoteDeferredReleaseTagMismatch'}}
+    $rejected=$false;try{$null=& $operator -WorkspaceRoot $fixture -PushTag $next.Created -Confirm:$false}catch{$rejected=$_.Exception.Message -like 'ReleaseTagAlreadyExists:*'}
+    if(!$rejected){throw 'RepeatedReleaseTagPushAccepted'}
     $planScript=Join-Path $WorkspaceRoot scripts/Get-QuietReleasePlan.ps1
     $outputs=Join-Path $RunDirectory release-batch-outputs.txt
     $leader=& $planScript -WorkspaceRoot $fixture -Tag $next.Created[0] -Revision $next.Revision -ReadBatch -OutputPath $outputs
@@ -147,13 +186,17 @@ function Test-QuietReleaseTags {
     [IO.File]::WriteAllText([IO.Path]::Combine($mutantScripts,'lib/Get-QuietReleasePlan.psm1'),$source.Replace($anchor,'if($false)'),[Text.UTF8Encoding]::new($false))
     $accepted=& $mutant -WorkspaceRoot $fixture -Tag $next.Created[0] -Revision $next.Revision -ReadBatch
     if(!$accepted.Batch.IsLeader){throw 'ReleaseRevisionMutantInvalid'}
-    $published=Invoke-QuietModuleRelease -WorkspaceRoot $fixture -Module Core -Version 2.3.4 -Preview 4 -PreviewSpecified -GitCommand $git -CommitCommand $commit -PushCommand $push -Confirm:$false
-    if(!$published.Pushed -or !$published.BranchPushed -or $observed.Pushes -ne 1 -or $observed.Commits -ne 2){throw 'OwnedReleasePushFailed'}
+    $bumped=Invoke-QuietModuleRelease -WorkspaceRoot $fixture -Module Core -Version 2.3.4 -Preview 4 -PreviewSpecified -GitCommand $git -CommitCommand $commit -Confirm:$false
+    if($bumped.Mode -cne 'Commit' -or $bumped.Created.Count -or $observed.Commits -ne 2){throw 'OwnedReleaseCommitFailed'}
+    $null=Invoke-ReleaseFixtureGit @('push','--quiet','origin','HEAD:refs/heads/develop')
+    $published=Invoke-QuietModuleRelease -WorkspaceRoot $fixture -Module Core -Version 2.3.4-preview4 -NoCommit -GitCommand $git -CommitCommand $commit -Confirm:$false
+    if($published.Mode -cne 'Tag' -or !$published.Pushed -or !$published.DeliveryChecked -or $published.Revision -cne $bumped.Revision -or $observed.Commits -ne 2){throw 'OwnedReleasePushFailed'}
+    if((Invoke-ReleaseFixtureGit @('ls-remote','--heads','origin','refs/heads/fixture-release')).HasOutput){throw 'ReleasePushedWorkBranch'}
     $remoteValue=(Invoke-ReleaseFixtureGit @('ls-remote','origin',('refs/tags/'+$published.Created[0]+'^{}'))).Value
     if(($remoteValue -split "`t")[0] -cne $published.Revision){throw 'RemoteReleaseCommitMismatch'}
     $rejected=$false;try{$null=& $operator -WorkspaceRoot $fixture -Module Git -Version 2.3.4-preview99 -NoCommit -NoPush -Confirm:$false}catch{$rejected=$_.Exception.Message -ceq 'ReleaseNoCommitRequiresCommittedVersions'}
     if(!$rejected){throw 'NoCommitTaggedUncommittedVersion'}
     $rejected=$false;try{$null=& $operator -WorkspaceRoot $fixture -Module Vagrant -Version 2.3.4 -NextPreview -NoPush -Confirm:$false}catch{$rejected=$_.Exception.Message -like 'GalleryReleaseModuleNotPublishable:*'}
     if(!$rejected){throw 'DisabledCompanionReleaseAccepted'}
-    Write-WorkspaceJson (Join-Path $RunDirectory 'release-tags-campaign.json') @{Seed=611111;PreviewProperties=128;OwnedCommits=$observed.Commits;OwnedBranchPushes=$observed.Pushes;LocalCollisionRejected=$true;RemoteCollisionRejected=$true;WhatIfNoEffects=$true;DynamicTargets=3;ExternalPublication=$false}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'release-tags-campaign.json') @{Seed=611111;PreviewProperties=128;OwnedCommits=$observed.Commits;OwnedBranchPushes=0;UnmergedTagPushRejected=$true;PartialBatchPushRejected=$true;OperatorMultipleModuleRejected=6;DeliveryGuardMutantKilled=$true;LocalCollisionRejected=$true;RemoteCollisionRejected=$true;WhatIfNoEffects=$true;DynamicTargets=3;ExternalPublication=$false}
 }

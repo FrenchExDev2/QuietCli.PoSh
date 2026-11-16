@@ -71,6 +71,11 @@ Product jobs retain functional reports and integrity-checked performance bundles
 
 ```mermaid
 flowchart TD
+    BUMP[Version commit on a release/* branch: Invoke-QuietRelease] --> PR[Pull request into develop]
+    PR --> REQ[QuietCli required CI]
+    REQ --> MERGE[Merge commit on develop]
+    MERGE --> CONTAINED[Tag only a commit contained in origin/develop]
+    CONTAINED --> TAG
     TAG[Explicit publishable module tag or annotated batch] --> PLAN[Validate owner, version and batch leader]
     PLAN --> Q[Exact-revision All qualification]
     Q --> B[Windows all-RID ReadyToRun packaging build]
@@ -84,7 +89,7 @@ flowchart TD
 
 Core packages embed six RIDs for CLR 10 and 11; Git packages contain their parser outputs and retain the Core dependency. Manifests declare package eligibility; tests are never public targets and Vagrant remains disabled. The packaging job rebuilds after source qualification, rather than assembling the final package from matrix binaries. Its build validation and package hashes remain distinct evidence.
 
-Develop pushes, PRs, manual generated-preview preparation and image-cache publication do not publish Gallery modules. Publication requires current-run/current-attempt exact-source evidence and validates the tagged checkpoint, never mutable branch HEAD. See [release tags](github/script-release-tags.md) and [publication](github/script-publish-psgallery.md).
+Tags are prepared upstream by [Invoke-QuietRelease](../scripts/Invoke-QuietRelease.md): the version commit reaches develop only through its pull request and the required check, and tags are pushed only for the merged commit. Develop pushes, PRs, manual generated-preview preparation and image-cache publication do not publish Gallery modules. Publication requires current-run/current-attempt exact-source evidence and validates the tagged checkpoint, never mutable branch HEAD. See [release tags](github/script-release-tags.md) and [publication](github/script-publish-psgallery.md).
 
 ## Local execution and maintenance
 
