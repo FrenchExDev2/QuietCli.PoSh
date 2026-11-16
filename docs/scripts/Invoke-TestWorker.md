@@ -74,6 +74,7 @@ This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which 
 <!-- credits:end -->
 
 <!-- grouped-layout-review:begin -->
+WorkspaceLayout verifies source identity without importing, querying or stopping a product engine, including at the final boundary. It runs in a source-only checkout with no compiled lib directories.
 ## Grouped workspace contract
 
 Reviewed source: scripts/Invoke-TestWorker.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.

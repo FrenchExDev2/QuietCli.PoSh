@@ -54,7 +54,7 @@ param(
     [ValidateSet('utf-8', 'oem')][string]$ConsoleEncoding = 'utf-8'
 )
 $ErrorActionPreference = 'Stop'
-$workspace = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$workspace = [IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))
 $scripts = Join-Path $workspace 'scripts'
 Import-Module ([IO.Path]::Combine($scripts,'lib/Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop
 foreach ($module in 'RunEncoding', 'RunFormat') { Import-Module (Join-Path $scripts "lib/$module.psm1") -Force }

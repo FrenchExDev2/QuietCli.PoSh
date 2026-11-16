@@ -9,7 +9,7 @@ New external report directory; generated when omitted.
 Internal unredirected console worker. Use the ordinary entry point to retain the visible monitor.
 #>
 [CmdletBinding()]
-param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[switch]$Worker)
+param([string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))),[string]$RunDirectory,[switch]$Worker)
 $ErrorActionPreference='Stop'
 $root=$WorkspaceRoot
 $run=$RunDirectory

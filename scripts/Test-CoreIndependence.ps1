@@ -33,21 +33,21 @@ $evidenceDirectory=if($env:GITHUB_ACTIONS -ceq 'true'){[IO.Path]::Combine($Works
 $directory=[IO.Path]::Combine(([IO.Path]::GetTempPath()),('qc-core-'+$owner.Substring(0,12)))
 [void][IO.Directory]::CreateDirectory($directory)
 [void][IO.Directory]::CreateDirectory($evidenceDirectory)
-$allowed=@('scripts','build','docs','.github')+@(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object Name -CNE 'FrenchExDev2.QuietCli.Git.PoSh'|ForEach-Object {$_.Name})
+$allowed=@('scripts/','build/','docs/','.github/')+@(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object Name -CNE 'FrenchExDev2.QuietCli.Git.PoSh'|ForEach-Object {$_.Path+'/'})
 foreach($file in Get-QuietSourceFiles $WorkspaceRoot){
     $segments=$file.Path.Split('/')
     if($segments -contains '.env'){continue}
-    if($segments.Count -gt 1 -and $segments[0] -cnotin $allowed){continue}
+    if($segments.Count -gt 1 -and !@($allowed|Where-Object {$file.Path.StartsWith($_,[StringComparison]::Ordinal)}).Count){continue}
     if($segments.Count -eq 1 -and $file.Path -cnotmatch '\A(?:README.*\.md|AGENTS.*\.md|CREDITS\.md|LICENSE|global\.json|Directory\.(?:Build|Packages)\.props|Quietly\.slnx|repositories\.lock\.json|\.gitignore|\.gitattributes|\.editorconfig)\z'){continue}
     $target=[IO.Path]::Combine($directory,$file.Path)
     [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
     Copy-Item -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $file.Path)) -Destination $target
 }
-if(Test-Path -LiteralPath ([IO.Path]::Combine($directory,'FrenchExDev2.QuietCli.Git.PoSh'))){throw 'CoreIndependenceGitSourcePresent'}
+if(Test-Path -LiteralPath (Resolve-QuietWorkspacePath $directory 'FrenchExDev2.QuietCli.Git.PoSh')){throw 'CoreIndependenceGitSourcePresent'}
 if($SkipBuild){
     foreach($name in $reused){
-        $lib=[IO.Path]::Combine($WorkspaceRoot,($name+'/lib'))
-        if(Test-Path -LiteralPath $lib){Copy-Item -LiteralPath $lib -Destination ([IO.Path]::Combine($directory,$name)) -Recurse}
+        $lib=Resolve-QuietWorkspacePath $WorkspaceRoot ($name+'/lib')
+        if(Test-Path -LiteralPath $lib){Copy-Item -LiteralPath $lib -Destination (Resolve-QuietWorkspacePath $directory $name) -Recurse}
     }
 }
 if($env:GITHUB_ACTIONS -ceq 'true'){& ([IO.Path]::Combine($directory,'scripts/Initialize-CiEnvironment.ps1')) -Target GitHub -ContainerRuntime docker -Confirm:$false|Out-Null}

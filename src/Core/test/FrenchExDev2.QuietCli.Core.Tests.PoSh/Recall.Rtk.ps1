@@ -12,7 +12,7 @@ function Invoke-QuietRecallRtkComparison {
     [CmdletBinding()]param([Parameter(Mandatory)][string]$RunDirectory,[string]$RtkPath,[object[]]$Cases)
     if(!$RtkPath){$tool=Get-Command rtk -CommandType Application -ErrorAction SilentlyContinue;if($tool){$RtkPath=$tool.Source}}
     if(!$RtkPath){return [pscustomobject]@{State='Unavailable';Reason='RTK is not installed. No comparison was executed.';Version=$null;BinarySHA256=$null}}
-    $workspace=Split-Path $PSScriptRoot -Parent
+    $workspace=[IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))
     $arguments=@('-File',(Join-Path $PSScriptRoot 'Recall.Corpus.Worker.ps1'),'-WorkspaceRoot',$workspace,'-RunDirectory',$RunDirectory,'-RtkPath',(Get-Item -LiteralPath $RtkPath).FullName)
     if($PSBoundParameters.ContainsKey('Cases')){
         $path=Join-Path $RunDirectory 'recall-comparison-cases.json'

@@ -32,7 +32,7 @@ param(
     [ValidateSet('Execute','Retain')][string]$Mode='Execute'
 )
 $ErrorActionPreference='Stop'
-$workspace=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$workspace=[IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))
 $manifest=Join-Path $workspace 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'
 $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
 $self=$PSCommandPath

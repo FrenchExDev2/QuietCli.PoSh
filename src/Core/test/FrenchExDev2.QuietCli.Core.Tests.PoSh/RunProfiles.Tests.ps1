@@ -36,7 +36,7 @@ param(
     [ValidateSet('utf-8', 'oem')][string]$ConsoleEncoding = 'utf-8'
 )
 $ErrorActionPreference = 'Stop'
-$scripts = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../scripts'))
+$scripts = [IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../../scripts'))
 foreach ($module in 'RunEncoding', 'RunFormat', 'RunStatistics', 'RunProfileStore', 'RunProfiler') { Import-Module (Join-Path $scripts "lib/$module.psm1") -Force }
 # The console encoding is a boundary setting: tables use box-drawing characters and the consumer decodes strict UTF-8.
 [void](Set-RunConsoleEncoding -Name $ConsoleEncoding)

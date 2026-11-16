@@ -15,7 +15,7 @@ New external report directory, generated when omitted.
 Internal background entry point. Use the normal entry point to retain the visible monitor.
 #>
 [CmdletBinding()]
-param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[switch]$Worker)
+param([string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))),[string]$RunDirectory,[switch]$Worker)
 $ErrorActionPreference='Stop'
 Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$Worker){

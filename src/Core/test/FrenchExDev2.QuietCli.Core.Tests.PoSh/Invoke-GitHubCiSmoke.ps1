@@ -12,7 +12,7 @@ New owned report directory.
 Internal background entry point.
 #>
 [CmdletBinding(SupportsShouldProcess)]
-param([Parameter(Mandatory)][string]$Image,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[switch]$Worker)
+param([Parameter(Mandatory)][string]$Image,[string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))),[string]$RunDirectory,[switch]$Worker)
 $ErrorActionPreference='Stop'
 Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Run the owned Docker GitHub entry smoke with a visible local monitor')){return}

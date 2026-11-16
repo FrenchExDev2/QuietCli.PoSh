@@ -11,7 +11,7 @@ Runs the bounded source mutation catalogue after the C# and PowerShell baselines
 .PARAMETER Worker
 Internal background entry point; the parent owns its timeout and visible monitor.
 #>
-[CmdletBinding()]param([string]$WorkspaceRoot=([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))),[string]$RunDirectory,[switch]$Mutation,[switch]$Worker)
+[CmdletBinding()]param([string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../../..'))),[string]$RunDirectory,[switch]$Mutation,[switch]$Worker)
 $ErrorActionPreference='Stop'
 Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$Worker){

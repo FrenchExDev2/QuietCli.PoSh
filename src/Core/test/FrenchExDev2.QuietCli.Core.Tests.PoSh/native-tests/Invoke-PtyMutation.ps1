@@ -27,7 +27,7 @@ Requires coverage-guided decoder fuzzing with ASan/UBSan, as in every Linux CI j
 Required libFuzzer execution count for the original source.
 #>
 [CmdletBinding()]param(
-    [string]$WorkspaceRoot=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path,
+    [string]$WorkspaceRoot=[IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../../..')),
     [string]$CompilerPath,
     [string]$Image='localhost/quietcli2-debian-net11:2.56.0',
     [string]$RunDirectory,

@@ -41,6 +41,7 @@ This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which 
 <!-- credits:end -->
 
 <!-- grouped-layout-review:begin -->
+The owned source copy filters full catalogue path prefixes and preserves the grouped layout for reused binaries. The Git-absence check resolves the actual module directory rather than assuming a root-level module.
 ## Grouped workspace contract
 
 Reviewed source: scripts/Test-CoreIndependence.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.

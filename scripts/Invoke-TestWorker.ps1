@@ -238,11 +238,11 @@ finally{
             $drift=@(foreach($before in $sourceIdentity.Projects){$current=@($after.Projects|Where-Object Name -CEQ $before.Name)[0];if($current.SourceSHA256 -cne $before.SourceSHA256){$before.Name}};if($sourceIdentity.Repository.SourceSHA256 -cne $after.Repository.SourceSHA256){'Monorepo'})
             if($drift.Count){$state.State='Failed';$state.Failed++;$state.Case='Sources changed during the run';$state.Error=$drift -join ', '}
             Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'source-identity-final.json')) $after
-            if($Suite -notin @('Import','DotNet','RunProfilesMutation')){$engineIdentity=Get-QuietEngine}
-            if($Suite -notin @('Import','DotNet','RunProfilesMutation') -and $ExpectedRuntimeIdentifier -and $engineIdentity.Engine.RuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw 'FinalEngineRuntimeMismatch'}
+            if($Suite -notin @('Import','DotNet','RunProfilesMutation','WorkspaceLayout')){$engineIdentity=Get-QuietEngine}
+            if($Suite -notin @('Import','DotNet','RunProfilesMutation','WorkspaceLayout') -and $ExpectedRuntimeIdentifier -and $engineIdentity.Engine.RuntimeIdentifier -cne $ExpectedRuntimeIdentifier){throw 'FinalEngineRuntimeMismatch'}
         }catch{$state.State='Failed';$state.Failed++;$state.Error='Build/source identity verification failed: '+$_.Exception.Message}
     }
-    if($Suite -notin @('DotNet','RunProfilesMutation')){try{Stop-QuietEngine}catch{}}
+    if($Suite -notin @('DotNet','RunProfilesMutation','WorkspaceLayout')){try{Stop-QuietEngine}catch{}}
     $state.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o')
     Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'summary.json')) @{State=$state;Suites=$summaries.ToArray();Profiling=$profiling;EngineIdentity=$engineIdentity;HostRuntime=[Runtime.InteropServices.RuntimeInformation]::FrameworkDescription;PowerShellVersion=$PSVersionTable.PSVersion.ToString();OSArchitecture=[Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString();ProcessArchitecture=[Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString();OSDescription=[Runtime.InteropServices.RuntimeInformation]::OSDescription;MachineName=[Environment]::MachineName;ExpectedRuntimeIdentifier=$ExpectedRuntimeIdentifier;RunnerImage=$env:ImageOS;RunnerImageVersion=$env:ImageVersion}
     Write-WorkspaceJson $statusPath $state

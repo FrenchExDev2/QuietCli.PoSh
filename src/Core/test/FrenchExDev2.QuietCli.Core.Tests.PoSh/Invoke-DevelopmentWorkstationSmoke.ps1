@@ -12,7 +12,7 @@ Host checks to execute. Native ARM64 is covered separately by policy fixtures.
 Internal background worker; use the ordinary entry point to retain the visible monitor.
 #>
 [CmdletBinding()]
-param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string]$RunDirectory,[ValidateSet('Windows','Debian','Ubuntu','Alpine','Fedora')][string[]]$Targets=@('Windows','Debian','Ubuntu','Alpine','Fedora'),[switch]$Worker)
+param([string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))),[string]$RunDirectory,[ValidateSet('Windows','Debian','Ubuntu','Alpine','Fedora')][string[]]$Targets=@('Windows','Debian','Ubuntu','Alpine','Fedora'),[switch]$Worker)
 $ErrorActionPreference='Stop'
 Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
 if(!$Worker){

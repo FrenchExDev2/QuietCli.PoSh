@@ -68,6 +68,11 @@ jobs:
             global.json
       - uses: ./.github/actions/cache-resources
       - uses: ./.github/actions/setup-powershell
+      - name: Initialize checkout and restore pinned resources
+        shell: pwsh
+        run: |
+          ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+          ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Compute selected build cache key
         id: build_key
         shell: pwsh

@@ -16,7 +16,7 @@ New external evidence directory, generated when omitted.
 Internal background entry point. Use the normal launcher for local visible monitoring.
 #>
 [CmdletBinding()]
-param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),
+param([string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))),
     [ValidateSet('linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier='linux-musl-x64',[string]$RunDirectory,[switch]$Worker)
 $ErrorActionPreference='Stop'
 Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop

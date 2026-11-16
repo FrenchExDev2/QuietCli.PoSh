@@ -1,6 +1,6 @@
 # workspace-component-ci.yml
 
-<!-- workflow-source-sha256: 95728EF62D9FE708932334BA2D1CFCC5581CC7C19126E38E814322426665D99F -->
+<!-- workflow-source-sha256: 1906BE9352F9BD93EA3D070D7076BD0DD41E512DCED55B0EDD3C6C38D78E10F0 -->
 
 ## Purpose
 
@@ -11,6 +11,8 @@ Shared profile-validated workspace build/smoke engine. Supports individual compo
 Reusable workflow_call.
 
 ## Scripts and effects
+
+Before build-cache restoration and execution, Initialize-CiEnvironment selects the checkout's GitHub Docker preset and Initialize-Workspace restores checksum-pinned runtime resources. A cold cache therefore has the same dependency prerequisites as a product job.
 
 Uses profile validation, source-bound build preparation, explicit selected qualification/smoke entry points and private artifacts. The PR planner publishes plan.json and impact.md; build_projects_json passes affected CSharp paths to Build-Workspace. GitHub may prepare pinned SDK/PowerShell resources and verified image caches. No module publication or repository setting change is performed here.
 
@@ -38,7 +40,7 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| component | runner ${{ inputs.runner }} | validate | inputs.suite != 'Tooling' &#124;&#124; inputs.qualification_mode != 'full' | ./scripts/Get-CompanionBuildKey.ps1, ./scripts/Invoke-ComponentCheck.ps1 |
+| component | runner ${{ inputs.runner }} | validate | inputs.suite != 'Tooling' &#124;&#124; inputs.qualification_mode != 'full' | ./scripts/Get-CompanionBuildKey.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-ComponentCheck.ps1 |
 | tooling | reuses ./.github/workflows/tooling-ci.yml | validate | inputs.suite == 'Tooling' && inputs.qualification_mode == 'full' |  |
 | validate | runner ubuntu-latest |  | default success condition | ./scripts/Invoke-ComponentCheck.ps1 |
 

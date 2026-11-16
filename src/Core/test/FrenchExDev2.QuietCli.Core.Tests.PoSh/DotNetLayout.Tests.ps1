@@ -7,7 +7,7 @@ Checks library placement, import preservation and the engine-independent native 
 param()
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Run .NET script layout properties, malformed initializers and targeted mutants')){return}
 $ErrorActionPreference='Stop'
-$workspace=Split-Path $PSScriptRoot -Parent
+$workspace=[IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))
 $root=Join-Path ([IO.Path]::GetTempPath()) ('quiet-dotnet-layout-'+[guid]::NewGuid().ToString('N'))
 $null=[IO.Directory]::CreateDirectory($root)
 $assertions=0

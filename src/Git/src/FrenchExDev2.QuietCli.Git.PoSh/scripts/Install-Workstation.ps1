@@ -15,8 +15,8 @@ Module readiness, observed version/path, action, cache path and reboot requireme
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact='Medium')]
 param([switch]$CheckOnly,[switch]$Download)
 if($CheckOnly -and $Download){throw 'CheckOnlyAndDownloadAreMutuallyExclusive'}
-Import-Module (Join-Path $PSScriptRoot '../../scripts/lib/DevelopmentWorkstation.psm1') -ErrorAction Stop
-Import-Module (Join-Path $PSScriptRoot '../../scripts/lib/ModuleWorkstation.psm1') -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'../../../../../scripts/lib/DevelopmentWorkstation.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'../../../../../scripts/lib/ModuleWorkstation.psm1')) -DisableNameChecking -ErrorAction Stop
 $name='Git'
 $target=Get-DevelopmentHost
 $report=Get-ModuleWorkstationStatus $name $target
