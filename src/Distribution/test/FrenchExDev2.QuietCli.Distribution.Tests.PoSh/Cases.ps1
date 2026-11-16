@@ -92,7 +92,31 @@ function Test-QuietRecallDistribution {
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
 
-        $packages=Join-Path $RunDirectory 'recall-packages'
+        $shadow=[IO.Path]::Combine($RunDirectory,'source-lookalike-é漢')
+        $helpers=[IO.Path]::Combine($shadow,'scripts/lib')
+        [void][IO.Directory]::CreateDirectory($helpers)
+        foreach($name in @('Common','TestCaseMetadata','TestCaseScheduling')){
+            [IO.File]::WriteAllText([IO.Path]::Combine($helpers,($name+'.psm1')),"throw 'PackagedRecallImportedSourceHelpers'`n",[Text.UTF8Encoding]::new($false))
+        }
+        # Match the hosted artifact depth, where four parents previously selected the real checkout.
+        $packages=[IO.Path]::Combine($shadow,'artifacts/component/recall-packages')
+        $moduleName='FrenchExDev2.QuietCli.Core.Tests.PoSh'
+        foreach($index in 0..31){
+            $module=if($index -eq 0){[IO.Path]::Combine($packages,$moduleName)}else{[IO.Path]::Combine($shadow,('nested-'+$index),$moduleName)}
+            Assert-QuietEqual (Get-QuietTestSourceWorkspace -ModuleRoot $module) $null
+        }
+        Assert-QuietEqual (Get-QuietTestSourceWorkspace -ModuleRoot (Resolve-QuietWorkspacePath $WorkspaceRoot $moduleName)) ([IO.Path]::GetFullPath($WorkspaceRoot))
+        foreach($index in 0..31){
+            $resolved=$null
+            try{$resolved=Get-QuietTestSourceWorkspace -ModuleRoot ($shadow+[char]0+$index)}catch{}
+            if($null -ne $resolved){throw 'MalformedRecallWorkspaceAccepted'}
+        }
+        $guard='if(![string]::Equals($module,$expected,$comparison)){return $null}'
+        $source=(Get-Command Get-QuietTestSourceWorkspace).ScriptBlock.Ast.Extent.Text
+        if(([regex]::Matches($source,[regex]::Escape($guard))).Count -ne 1){throw 'RecallWorkspaceGuardMutationAnchorInvalid'}
+        $mutant=New-Module -ScriptBlock ([scriptblock]::Create($source.Replace($guard,'')))
+        $observed=& $mutant {param($root) Get-QuietTestSourceWorkspace -ModuleRoot $root} ([IO.Path]::Combine($packages,$moduleName))
+        if($null -eq $observed){throw 'RecallWorkspaceGuardMutantSurvived'}
         $null=& (Join-Path $WorkspaceRoot 'scripts/New-WorkspacePackage.ps1') -WorkspaceRoot $WorkspaceRoot -OutputDirectory $packages -Module FrenchExDev2.QuietCli.Core.PoSh,FrenchExDev2.QuietCli.Core.Tests.PoSh
         Assert-QuietEqual (Test-Path (Join-Path $packages 'FrenchExDev2.QuietCli.Core.Tests.PoSh/recall-tools')) $false
         $worker=Join-Path $RunDirectory 'package-recall.ps1'
@@ -127,5 +151,6 @@ if(!$comparison.Equal -or $reduction.Capture.RetainedBytes -lt 1){throw 'Package
         $broken=quiet -AsObject -Role Infrastructure -TimeoutSeconds 120 -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)[void]$r.Data.Append($e.Text)} -Complete {param($r)$r.Data.ToString()} -FilePath $runner -ArgumentList @('-File',$worker,'-PackageRoot',$packages)
         Assert-QuietEqual $broken.Outcome Failed
         Assert-QuietEqual $broken.Data.Contains('RecallToolsBinaryIntegrityFailed') $true
+        Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'packaged-recall-integrity.json')) @{SourceWorkspaceProperties=33;MalformedRoots=32;WorkspaceGuardMutantsKilled=1;SourceHelperImports=0;Framework=$framework;TamperedPackageRejected=$true;RuntimeMajor=$r.Data.RuntimeMajor}
 
 }

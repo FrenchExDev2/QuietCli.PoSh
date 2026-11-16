@@ -1,5 +1,21 @@
-$workspaceHelpers=Join-Path ([IO.Path]::GetFullPath('../../../..',$PSScriptRoot)) 'scripts/lib/Common.psm1'
-if(Test-Path -LiteralPath $workspaceHelpers){Import-Module $workspaceHelpers -DisableNameChecking -ErrorAction Stop}
+function Get-QuietTestSourceWorkspace {
+    <#
+    .SYNOPSIS
+    Resolves workspace helpers only for the actual grouped source test module.
+    .PARAMETER ModuleRoot
+    Physical directory of the test module, including source-free package locations.
+    #>
+    param([Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$ModuleRoot)
+    $module=[IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($ModuleRoot))
+    $workspace=[IO.Path]::GetFullPath('../../../..',$module)
+    $expected=[IO.Path]::GetFullPath([IO.Path]::Combine($workspace,'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh'))
+    $comparison=if($IsWindows){[StringComparison]::OrdinalIgnoreCase}else{[StringComparison]::Ordinal}
+    if(![string]::Equals($module,$expected,$comparison)){return $null}
+    if(Test-Path -LiteralPath ([IO.Path]::Combine($workspace,'scripts/lib/Common.psm1')) -PathType Leaf){return $workspace}
+    return $null
+}
+$sourceWorkspace=Get-QuietTestSourceWorkspace -ModuleRoot $PSScriptRoot
+if($sourceWorkspace){Import-Module ([IO.Path]::Combine($sourceWorkspace,'scripts/lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop}
 . (Join-Path $PSScriptRoot 'Script.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Configuration.TestSupport.ps1')
 . (Join-Path $PSScriptRoot 'Recall.Large.Tests.ps1')
@@ -14,10 +30,10 @@ if(Test-Path -LiteralPath $workspaceHelpers){Import-Module $workspaceHelpers -Di
 . (Join-Path $PSScriptRoot 'CiScalability.Tests.ps1')
 . (Join-Path $PSScriptRoot 'TestCaseMetadata.Tests.ps1')
 . (Join-Path $PSScriptRoot 'TestCaseScheduling.Tests.ps1')
-$caseMetadataLibrary=Join-Path ([IO.Path]::GetFullPath('../../../..',$PSScriptRoot)) 'scripts/lib/TestCaseMetadata.psm1'
-if(Test-Path -LiteralPath $caseMetadataLibrary){Import-Module $caseMetadataLibrary -ErrorAction Stop}
-$caseSchedulingLibrary=Join-Path ([IO.Path]::GetFullPath('../../../..',$PSScriptRoot)) 'scripts/lib/TestCaseScheduling.psm1'
-if(Test-Path -LiteralPath $caseSchedulingLibrary){Import-Module $caseSchedulingLibrary -ErrorAction Stop}
+if($sourceWorkspace){
+    Import-Module ([IO.Path]::Combine($sourceWorkspace,'scripts/lib/TestCaseMetadata.psm1')) -DisableNameChecking -ErrorAction Stop
+    Import-Module ([IO.Path]::Combine($sourceWorkspace,'scripts/lib/TestCaseScheduling.psm1')) -DisableNameChecking -ErrorAction Stop
+}
 . (Join-Path $PSScriptRoot 'ReadyToRun.Tests.ps1')
 . (Join-Path $PSScriptRoot 'AutomationContracts.Tests.ps1')
 . (Join-Path $PSScriptRoot 'EnvFile.Tests.ps1')

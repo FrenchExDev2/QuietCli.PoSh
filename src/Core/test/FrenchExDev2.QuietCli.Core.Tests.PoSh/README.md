@@ -20,6 +20,13 @@ Core mixes pure logic with real filesystem, Git, process and package integration
 
 See [Qualification: when, where and how](../../../../README-qualification-when-where-how.md) for PR triggers, the six Windows and four Linux environments, build versus test execution, local launchers and qualification exclusions.
 
+Only the actual `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh` source directory enables
+workspace helper discovery. A flat installed package beside a checkout uses its own Recall build
+manifest and binary hashes, even when four parent directories contain `scripts/lib/Common.psm1`.
+The Distribution regression creates that hosted artifact layout with throwing source-helper sentinels,
+checks 33 workspace-location properties and 32 malformed paths, kills the workspace-guard mutant,
+and requires rejection of the damaged packaged binary.
+
 In a source checkout, the companion loads `scripts/lib/Common.psm1` into its own private module scope, including the CI process,
 JSON, source-identity and project-discovery helpers. Test functions do not depend on a caller script
 or workstation profile having loaded those functions. The focused case `GitHub CI companion helpers

@@ -3,11 +3,11 @@ function Import-QuietRecallDevelopment {
     .SYNOPSIS
     Loads the source-verified companion assembly compatible with the current CLR.
     #>
-    $workspace=[IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))
+    $workspace=Get-QuietTestSourceWorkspace -ModuleRoot $PSScriptRoot
     $framework=if([Environment]::Version.Major -ge 11){'net11.0'}else{'net10.0'}
     $output='src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/recall-tools/'+$framework
     $directory=Join-Path $PSScriptRoot ('lib/recall-tools/'+$framework)
-    if(Test-Path -LiteralPath (Join-Path $workspace 'scripts/lib/Common.psm1')){
+    if($workspace){
         Import-Module (Join-Path $workspace 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
         $null=Test-QuietBuildManifest -WorkspaceRoot $workspace -Output $output
     }else{
