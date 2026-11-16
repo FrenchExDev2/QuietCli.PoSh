@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: BC916F752889D97DA5F8F308B51FD91D434C8B6B59C814711F24D19B3FDA9321 -->
+<!-- workflow-source-sha256: 9358FF7C965AD471945C008E3F25A67C6EFF387EFC189CBE9AF7119DD5797BDF -->
 
 ## Purpose
 
@@ -19,6 +19,8 @@ Uses profile validation, source-bound build preparation, explicit selected quali
 ## Validation and limits
 
 The stable automatic gate requires planning, source checks, generated-layout tests and every selected job. Skipped scopes are untested, not passed. A smoke/build result is not full product or publication qualification. Full native product runs retain their declared host/RID matrix, profiling policy and explicit TTY/Preview exclusions. Cache hits require source/payload/target verification; partial restores rebuild stale distributions.
+
+The Linux image producer serializes per suite and RID (`quietcli2-suite-image-<suite>-<rid>`). GitHub keeps only one pending job per concurrency group, so a group shared by the parallel Core/Git/Vagrant calls from companions-ci.yml cancelled the waiting suites' producers. Concurrent publication of a shared base remains safe because GHCR cache entries are content-addressed by fingerprint.
 
 Local WorkspaceLayout and CompanionSmoke reports exercise the selection and actual integration paths. Hosted matrix results must be inspected for the delivered revision. Authored workflow-source-sha256 receipts are reviewed separately from generated YAML and job graphs.
 
