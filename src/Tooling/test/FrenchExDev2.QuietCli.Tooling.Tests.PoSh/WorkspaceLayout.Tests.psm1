@@ -164,7 +164,7 @@ function Invoke-QuietWorkspaceLayoutTests {
         }
     }
     $cases['cached distributions restore the selected graph before compilation is reduced']={
-        $root=[IO.Path]::Combine($RunDirectory,'cached-build')
+        $root=[IO.Path]::GetFullPath([IO.Path]::Combine($RunDirectory,'cached-build'),$PWD.Path)
         $scripts=[IO.Path]::Combine($root,'scripts');$lib=[IO.Path]::Combine($scripts,'lib')
         [void][IO.Directory]::CreateDirectory($lib)
         $engine='src/Demo/src/Demo/engine/Engine.csproj';$doc='src/Demo/src/Demo/tools/Doc.csproj'
