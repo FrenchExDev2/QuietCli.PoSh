@@ -213,7 +213,7 @@ Test-Case 'benchmark: profiled runs stay outside measured pairs and retain repor
 }
 
 Test-Case 'coldstart-live: the benchmark measures fresh real processes and writes an A/A smoke report' {
-    $manifest = Join-Path $scripts '../../src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'
+    $manifest = [IO.Path]::GetFullPath([IO.Path]::Combine($scripts,'../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'))
     Import-Module $manifest -ErrorAction Stop
     $path = Join-Path $work 'coldstart-live.json'
     $null = & (Join-Path $scripts 'Measure-ColdStart.ps1') -CandidateModule $manifest -Runs 3 -Warmup 0 -BootstrapResamples 100 -OutputPath $path -LogLevel Off

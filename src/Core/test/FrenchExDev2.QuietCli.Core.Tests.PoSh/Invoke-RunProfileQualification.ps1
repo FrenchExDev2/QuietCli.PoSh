@@ -1,7 +1,10 @@
 function Invoke-RunProfileQualification {
     <#
     .SYNOPSIS
-    Runs the complete tooling suite or mutation catalogue through the independent CI process helper.
+    Runs functional tooling cases or the mutation catalogue through the independent CI process helper.
+    .DESCRIPTION
+    The shared worker's explicit case filter selects functional development cases and marks the
+    report partial. Unfiltered qualification requires every case with zero skips.
     .PARAMETER WorkspaceRoot
     Selected QuietCli2 checkout.
     .PARAMETER RunDirectory
@@ -19,6 +22,9 @@ function Invoke-RunProfileQualification {
     $report = Join-Path $RunDirectory 'run-profiles-mutation.json'
     $scriptName = if ($Mutation) { 'RunProfiles.Mutation.ps1' } else { 'RunProfiles.Tests.ps1' }
     $arguments = @('-File', (Join-Path $tests $scriptName))
+    $casePattern=$env:QUIETCLI_TEST_CASE
+    if($casePattern -and $Mutation){throw 'RunProfileMutationCaseFilterUnsupported'}
+    if($casePattern){$arguments+=@('-CasePattern',$casePattern)}
     if ($Mutation) { $arguments += @('-OutputPath', $report,'-MaxConcurrency',"$MaxConcurrency") }
     if($Mutation -and ($env:QUIETCLI_MUTATION_SHARD_INDEX -or $env:QUIETCLI_MUTATION_SHARD_COUNT)){
         $index=0;$count=0
@@ -46,8 +52,8 @@ function Invoke-RunProfileQualification {
         $capture.Failed = @($data.Results | Where-Object Outcome -CNE Killed).Count
         $capture.Summary = $data.Results.Count -gt 0
     }
-    if (-not $capture.Summary -or $process.Outcome -ne 'Success' -or (-not $Mutation -and $capture.Skipped -gt 0)) { $capture.Failed = [Math]::Max(1, $capture.Failed) }
-    $partial=$Mutation -and $null -ne $data -and $data.Partial
+    if (-not $capture.Summary -or $process.Outcome -ne 'Success' -or (-not $Mutation -and !$casePattern -and $capture.Skipped -gt 0) -or ($casePattern -and $capture.Passed -eq 0)) { $capture.Failed = [Math]::Max(1, $capture.Failed) }
+    $partial=[bool]$casePattern -or ($Mutation -and $null -ne $data -and $data.Partial)
     $summary = [pscustomobject]@{ Project = 'RunProfiles'; Mutation = [bool]$Mutation; Partial=[bool]$partial; Incomplete=$false; Passed = $capture.Passed; Failed = $capture.Failed; Skipped = $capture.Skipped; Process = $process; Diagnostics = $capture.Diagnostics.ToArray() }
     if (-not $Mutation) { Write-WorkspaceJson (Join-Path $RunDirectory 'run-profiles-suite.json') $summary }
     return $summary

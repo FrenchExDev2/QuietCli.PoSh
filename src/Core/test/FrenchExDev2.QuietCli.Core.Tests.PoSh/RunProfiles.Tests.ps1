@@ -16,6 +16,9 @@ Generated inputs per property case.
 .PARAMETER Skip
 Case-name fragments; matching cases are counted as skipped.
 
+.PARAMETER CasePattern
+Development-only wildcard selection; excluded cases remain skipped and cannot qualify the full suite.
+
 .PARAMETER Mutation
 Runs the mutation campaign (RunProfiles.Mutation.ps1) instead of the suite.
 
@@ -31,6 +34,7 @@ param(
     [int]$Seed = 61207,
     [ValidateRange(10, 100000)][int]$Iterations = 300,
     [string[]]$Skip = @(),
+    [string]$CasePattern,
     [switch]$Mutation,
     [string[]]$MutantName = @(),
     [ValidateSet('utf-8', 'oem')][string]$ConsoleEncoding = 'utf-8'
@@ -50,6 +54,7 @@ if ([Console]::OutputEncoding.CodePage -ne $expectedCodePage -or $global:OutputE
 }
 # Skip entries may be comma-separated, because `pwsh -File` passes an array argument as one string.
 $Skip = @($Skip | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+if ($Mutation -and $CasePattern) { throw 'RunProfileMutationCaseFilterUnsupported' }
 if ($Mutation) { & (Join-Path $PSScriptRoot 'RunProfiles.Mutation.ps1') -Seed $Seed -MutantName $MutantName -ConsoleEncoding $ConsoleEncoding; exit $LASTEXITCODE }
 $work = Join-Path ([IO.Path]::GetTempPath()) ('RunProfilesTests-' + [Guid]::NewGuid().ToString('N'))
 [void][IO.Directory]::CreateDirectory($work)
@@ -66,6 +71,7 @@ function Test-Case {
     Case body; throws on failure.
     #>
     param([string]$Name, [scriptblock]$Body)
+    if ($CasePattern -and $Name -notlike $CasePattern) { $counters.Skipped++; return }
     if (@($Skip | Where-Object { $Name.Contains($_) }).Count -gt 0) { $counters.Skipped++; return }
     $case = [Diagnostics.Stopwatch]::StartNew()
     try { & $Body; $counters.Passed++; $state = 'passed' } catch { $counters.Failed++; $state = "FAILED: $($_.Exception.Message)" }
@@ -489,7 +495,7 @@ if ($Fail) { throw 'FixtureFailed' }
     Test-Case 'console: quiet decodes child output as strict UTF-8 - a UTF-8 child succeeds, an OEM child fails with a decode error' {
         $oemPage = [Globalization.CultureInfo]::CurrentCulture.TextInfo.OEMCodePage
         if ($oemPage -eq 65001) { $counters.Skipped++; $counters.Passed--; return }
-        if (-not (Get-Command quiet -ErrorAction SilentlyContinue)) { Import-Module (Join-Path $scripts '../../src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1') }
+        if (-not (Get-Command quiet -ErrorAction SilentlyContinue)) { Import-Module ([IO.Path]::GetFullPath([IO.Path]::Combine($scripts,'../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'))) }
         $emit = '[Console]::OutputEncoding = [Text.Encoding]::GetEncoding({0}); [Console]::Out.WriteLine([string][char]0x2500 * 3)'
         foreach ($case in @(@{ Page = 65001; Outcome = 'Success' }, @{ Page = $oemPage; Outcome = 'Failed' })) {
             $result = quiet -AsObject -RecordDelimiter "`n" -TimeoutSeconds 60 -Data @{ Lines = 0 } -Output { param($event, $runtime) $runtime.Data.Lines++ } -Complete { param($runtime) } pwsh -NoProfile -Command ($emit -f $case.Page)

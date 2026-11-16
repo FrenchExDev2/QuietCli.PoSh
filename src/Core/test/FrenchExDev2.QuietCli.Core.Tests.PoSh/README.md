@@ -275,3 +275,9 @@ Restore uses only the existing global package cache and an empty explicit local 
 ordinary workspace builds retain vulnerability auditing. Each mutant saves bounded restore/build
 diagnostics and process metadata. A failed restore, compilation or deadline is recorded as
 `InfrastructureFailure` and stops the campaign; it never counts as a killed mutant.
+
+Run-profile development can select an existing functional case through the shared monitor:
+`./scripts/Invoke-WorkspaceCi.ps1 -Suite RunProfiles -SkipBuild -Case 'coldstart-live*'`.
+The result is partial, excluded cases stay skipped, and a selection matching nothing fails.
+Unfiltered CI still requires every functional case with zero skips; mutation selection uses its
+own catalogue controls. Cold-start and console probes resolve Core from the grouped source path.
