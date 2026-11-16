@@ -140,10 +140,29 @@ function Invoke-QuietConfigurationDeliveryEngine {
             $source=[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
             if(([regex]::Matches($source,[regex]::Escape($mutant.From))).Count -ne 1){throw ('ConfigurationDeliveryMutationAnchorInvalid: '+$mutant.Name)}
             [void][IO.File]::WriteAllTextAsync($path,$source.Replace($mutant.From,$mutant.To),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-            # This campaign executes net11 only. Do not restore the engine's unused net10 target
-            # or query vulnerability feeds from a deliberately networkless CI guest.
-            $build=Invoke-CiProcess -FilePath dotnet -ArgumentList @('build',(Join-Path $directory 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/engine-tests/QuietCli.Engine.Tests.csproj'),'-f','net11.0','-p:TargetFrameworks=net11.0','-p:NuGetAudit=false','-c','Release','-o',(Join-Path $directory 'out'),'--nologo') -WorkingDirectory $directory -TimeoutSeconds 120
-            if($build.Outcome -ne 'Success'){throw ('InvalidConfigurationDeliveryMutant: '+$mutant.Name)}
+            # Only the restored global package cache is available to this net11 campaign.
+            # An empty explicit feed prevents an accidental HTTP fallback on a cache miss.
+            $offlineFeed=[IO.Path]::Combine($directory,'offline-feed')
+            [void][IO.Directory]::CreateDirectory($offlineFeed)
+            $project=[IO.Path]::Combine($directory,'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/engine-tests/QuietCli.Engine.Tests.csproj')
+            $phases=[ordered]@{
+                Restore=@('restore',$project,'-p:TargetFrameworks=net11.0','-p:NuGetAudit=false','--source',$offlineFeed,'--nologo')
+                Build=@('build',$project,'--no-restore','-f','net11.0','-p:TargetFrameworks=net11.0','-c','Release','-o',([IO.Path]::Combine($directory,'out')),'--nologo')
+            }
+            foreach($phase in $phases.Keys){
+                $diagnostics=[Collections.Generic.Queue[string]]::new()
+                $build=Invoke-CiProcess -FilePath dotnet -ArgumentList $phases[$phase] -WorkingDirectory $directory -TimeoutSeconds 120 -State $diagnostics -OnOutput {
+                    param($line,$tail)
+                    Write-Host $line.Text
+                    if($tail.Count -ge 12){$null=$tail.Dequeue()}
+                    $tail.Enqueue($line.Text.Substring(0,[Math]::Min(1024,$line.Text.Length)))
+                }
+                Write-WorkspaceJson ([IO.Path]::Combine($directory,($phase.ToLowerInvariant()+'.json'))) @{Phase=$phase;Execution=$build;Diagnostics=$diagnostics.ToArray();Offline=$true}
+                if($build.Outcome -ne 'Success'){
+                    Write-WorkspaceJson ([IO.Path]::Combine($directory,'result.json')) @{Name=$mutant.Name;State='InfrastructureFailure';Phase=$phase;Execution=$build;Diagnostics=$diagnostics.ToArray()}
+                    throw ('ConfigurationDeliveryMutantInfrastructureFailure: '+$mutant.Name+'; phase='+$phase+'; outcome='+$build.Outcome+'; exit='+$build.ExitCode+'; '+($diagnostics.ToArray() -join ' | '))
+                }
+            }
             $run=& $runCases (Join-Path $directory 'out/QuietCli.Engine.Tests.dll')
             $outcome=if($run.Execution.Outcome -eq 'Failed' -and $run.Report.Failed -gt 0){'Killed'}elseif($run.Execution.Outcome -eq 'Success' -and !$run.Report.Failed){'Survived'}else{'InfrastructureFailure'}
             $result=@{Name=$mutant.Name;State=$outcome;Run=$run;SourceSHA256=(Get-FileHash $path -Algorithm SHA256).Hash}

@@ -1,12 +1,17 @@
 # tooling-ci.yml
 
-<!-- workflow-source-sha256: 99ACCE95FB09C8A44409CAD3783B00443EF4F9AFF838ECE5E278B3E63AED7A79 -->
+<!-- workflow-source-sha256: 02C60C77FA97EBD140D2E27E277603C4C3BE5504B178A8AB3053119DF93406C8 -->
 
 ## Purpose
 
 Reusable private repository-automation qualification, run once independently of the product matrix. Tooling.Tests owns its .psm1 catalogue and metadata; Core.Tests retains private assertion helpers. The complete functional RunProfiles suite follows tooling tests. The single complete tooling build supplies the independently declared Distribution.Tests catalogue. Test-CoreIndependence -Suite Distribution -SkipBuild verifies/copies Core/Core.Tests libraries to an owned checkout without Git, then runs every distribution case once, without another build. The mutation matrix declares two shards, each with a green baseline and at most two isolated process/sandbox pairs, accepting only Killed outcomes. Measurements and product profiling occur on separate runners.
 
 A separate job builds and runs complete Core qualification in a fresh source copy without the real Git module. Git remains an executable fixture dependency. It uses a short temporary path to avoid Windows native-library path limits. Saved evidence records the isolated source/binary identity and generated scripted companion regression.
+
+The automation job's displayed name explicitly includes distribution independence. Its separately
+identified `distribution_independence` step runs the complete Distribution catalogue in the owned
+Git-free source copy. A passing Tooling catalogue followed by a failed distribution probe still
+fails the job; the named step distinguishes those results without weakening qualification.
 
 Mutation uses Ci.Process exclusively and performs no product build or import. Functional RunProfiles explicitly prepares both pinned profiler tools. New native build jobs reuse the common NuGet cache.
 

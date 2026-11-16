@@ -129,28 +129,46 @@ Extracted four-module package root.
 #>
 param([string]$PackageRoot)
 $ErrorActionPreference='Stop'
+$utf8=[Text.UTF8Encoding]::new($false)
+[Console]::InputEncoding=$utf8;[Console]::OutputEncoding=$utf8;$OutputEncoding=$utf8
+try{
 Import-Module (Join-Path $PackageRoot 'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
     Import-Module (Join-Path $PackageRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -DisableNameChecking
-$r=quiet -AsObject -Recall -Output {} pwsh -Command "'fixture'"
+$r=quiet -AsObject -Recall -Output {} -FilePath ([Environment]::ProcessPath) -ArgumentList @('-Command',"'fixture'")
 if($r.Outcome -ne 'Success'){throw 'PackagedCaptureFailed'}
 $comparison=Compare-QuietRecallAnalysis $r -First @{Complete={1}} -Second @{Complete={1}}
 $reduction=Reduce-QuietRecall $r -FailurePredicate {param($c)$c.RetainedBytes -gt 0} -MaxAttempts 5
 if(!$comparison.Equal -or $reduction.Capture.RetainedBytes -lt 1){throw 'PackagedToolsFailed'}
-[pscustomobject]@{Equal=$comparison.Equal;ProvenMinimal=$reduction.ProvenMinimal;RuntimeMajor=[Environment]::Version.Major}|ConvertTo-Json -Compress
+[pscustomobject]@{State='Success';Equal=$comparison.Equal;ProvenMinimal=$reduction.ProvenMinimal;RuntimeMajor=[Environment]::Version.Major;OutputEncoding=[Console]::OutputEncoding.WebName}|ConvertTo-Json -Compress
+}catch{
+    [pscustomobject]@{State='Failed';ErrorId=$_.FullyQualifiedErrorId;ErrorMessage=$_.Exception.Message;RuntimeMajor=[Environment]::Version.Major;OutputEncoding=[Console]::OutputEncoding.WebName}|ConvertTo-Json -Compress
+    exit 1
+}
 '@
         [void][IO.File]::WriteAllTextAsync($worker,$code.Replace("`r`n","`n")+"`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         $runner=[Environment]::ProcessPath
         $r=quiet -AsObject -Role Infrastructure -TimeoutSeconds 120 -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} -FilePath $runner -ArgumentList @('-File',$worker,'-PackageRoot',$packages)
         Assert-QuietEqual $r.Outcome Success (($r.Error|ConvertTo-Json -Compress))
+        Assert-QuietEqual $r.Completeness.Source $true
+        Assert-QuietEqual $r.Completeness.Analysis $true
+        Assert-QuietEqual $r.Data.State Success
+        Assert-QuietEqual $r.Data.OutputEncoding 'utf-8'
         Assert-QuietEqual $r.Data.Equal $true
         Assert-QuietEqual $r.Data.RuntimeMajor ([Environment]::Version.Major)
         $framework=if([Environment]::Version.Major -ge 11){'net11.0'}else{'net10.0'}
         $binary=Join-Path $packages ('FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/recall-tools/'+$framework+'/QuietCli.Recall.Tools.dll')
         $bytes=[IO.File]::ReadAllBytesAsync($binary).GetAwaiter().GetResult();$bytes[-1]=$bytes[-1] -bxor 1
         [void][IO.File]::WriteAllBytesAsync($binary,$bytes).GetAwaiter().GetResult()
-        $broken=quiet -AsObject -Role Infrastructure -TimeoutSeconds 120 -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)[void]$r.Data.Append($e.Text)} -Complete {param($r)$r.Data.ToString()} -FilePath $runner -ArgumentList @('-File',$worker,'-PackageRoot',$packages)
-        Assert-QuietEqual $broken.Outcome Failed
-        Assert-QuietEqual $broken.Data.Contains('RecallToolsBinaryIntegrityFailed') $true
-        Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'packaged-recall-integrity.json')) @{SourceWorkspaceProperties=33;MalformedRoots=32;WorkspaceGuardMutantsKilled=1;SourceHelperImports=0;Framework=$framework;TamperedPackageRejected=$true;RuntimeMajor=$r.Data.RuntimeMajor}
+        $broken=quiet -AsObject -Role Infrastructure -TimeoutSeconds 120 -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} -FilePath $runner -ArgumentList @('-File',$worker,'-PackageRoot',$packages)
+        $diagnostic=$broken.Error|ConvertTo-Json -Depth 8 -Compress
+        Assert-QuietEqual $broken.Outcome Failed $diagnostic
+        Assert-QuietEqual $broken.Completeness.Source $true $diagnostic
+        Assert-QuietEqual $broken.Completeness.Analysis $true $diagnostic
+        Assert-QuietEqual $broken.Execution.Native.ExitCode 1
+        Assert-QuietEqual $broken.Data.State Failed
+        Assert-QuietEqual $broken.Data.OutputEncoding 'utf-8'
+        Assert-QuietEqual $broken.Data.RuntimeMajor ([Environment]::Version.Major)
+        Assert-QuietEqual $broken.Data.ErrorMessage 'RecallToolsBinaryIntegrityFailed'
+        Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'packaged-recall-integrity.json')) @{SourceWorkspaceProperties=33;MalformedRoots=32;WorkspaceGuardMutantsKilled=1;SourceHelperImports=0;Framework=$framework;TamperedPackageRejected=$true;RuntimeMajor=$r.Data.RuntimeMajor;AnalysisComplete=$broken.Completeness.Analysis;Rejection=$broken.Data}
 
 }

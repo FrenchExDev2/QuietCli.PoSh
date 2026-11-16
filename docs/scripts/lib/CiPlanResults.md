@@ -12,6 +12,11 @@ Assert-QuietCiPlanResults -Needs $needs
 
 Planning outputs are closed boolean strings. The stable gate requires success for selected jobs and skipped for unselected jobs, while preserving source and layout checks independently of expensive product campaigns.
 
+Failure diagnostics collect every missing prerequisite, invalid planning flag, absent job and
+scope/result mismatch in deterministic order. A failed product, tooling and distribution job
+therefore appear together instead of hiding behind the first rejected result. Any issue still
+throws before producing a successful receipt; skipped or incomplete required work never qualifies.
+
 ## Critical review
 
 - The implementation in scripts/lib/CiPlanResults.psm1 keeps executable orchestration in entry points and helper functions in libraries; imports do not start business operations.

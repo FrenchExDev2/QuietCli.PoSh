@@ -8,18 +8,23 @@ function Assert-QuietCiPlanResults {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][Collections.IDictionary]$Needs)
+    $issues=[Collections.Generic.List[string]]::new()
     foreach($name in @('plan','source-checks','layout-tests')){
-        if(!$Needs.Contains($name) -or $Needs[$name].result -cne 'success'){throw ('CiPlanPrerequisiteRequired: '+$name)}
+        if(!$Needs.Contains($name) -or $Needs[$name].result -cne 'success'){$issues.Add('CiPlanPrerequisiteRequired: '+$name)}
     }
-    $requirements=@{products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';distribution='run_distribution'}
+    $requirements=[ordered]@{products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';distribution='run_distribution'}
     foreach($name in $requirements.Keys){
-        $flag=$Needs.plan.outputs[$requirements[$name]]
-        if($flag -cnotin @('true','false')){throw ('CiPlanOutputMissing: '+$requirements[$name])}
-        if(!$Needs.Contains($name)){throw ('CiPlanJobMissing: '+$name)}
+        $flag=if($Needs.Contains('plan') -and $Needs.plan.outputs){$Needs.plan.outputs[$requirements[$name]]}else{$null}
+        if($flag -cnotin @('true','false')){$issues.Add('CiPlanOutputMissing: '+$requirements[$name])}
+        if(!$Needs.Contains($name)){$issues.Add('CiPlanJobMissing: '+$name);continue}
+        if($flag -cnotin @('true','false')){continue}
         $expected=if($flag -ceq 'true'){'success'}else{'skipped'}
-        if($Needs[$name].result -cne $expected){throw ('CiPlanScopeResultMismatch: '+$name+' expected '+$expected)}
+        if($Needs[$name].result -cne $expected){$issues.Add('CiPlanScopeResultMismatch: '+$name+' expected '+$expected+'; observed '+$Needs[$name].result)}
     }
-    foreach($name in $Needs.Keys){if($Needs[$name].result -cnotin @('success','skipped')){throw ('CiPlanJobFailed: '+$name)}}
+    foreach($name in @($Needs.Keys|Sort-Object)){
+        if($name -cnotin @('plan','source-checks','layout-tests') -and !$requirements.Contains($name) -and $Needs[$name].result -cnotin @('success','skipped')){$issues.Add('CiPlanJobFailed: '+$name)}
+    }
+    if($issues.Count){throw ($issues -join "`n")}
     [pscustomobject]@{SchemaVersion=2;Ready=$true;QualificationMode='selected';Jobs=$Needs}
 }
 Export-ModuleMember -Function Assert-QuietCiPlanResults

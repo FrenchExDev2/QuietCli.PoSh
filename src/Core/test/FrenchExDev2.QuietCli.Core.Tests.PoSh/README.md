@@ -268,3 +268,10 @@ The automation-contract cases cover Docker/Podman discovery, standard ShouldProc
 Run `../scripts/Invoke-DotNetTests.ps1` from this directory, or `./scripts/Invoke-DotNetTests.ps1` from the checkout root. The shared `DotNet` worker selects Readiness, Provisioning and Layout fixtures, bounded properties/fuzz inputs and targeted mutations without building or importing the product engine. Reports use the shared external temporary root and visible monitor. This focused Windows evidence is separate from Core/All release qualification. See [the user guide](../../../../README-dotnet-and-global-dot-json.md).
 
 Core product qualification requires only Core. The scaffolding case generates a scripted git-status companion and checks clean/untracked Unicode observations without the real Git module. Repository commit and source-check catalogues belong to private Tooling.Tests. The three full-distribution architecture, Gallery installation and packaged Recall checks belong to private Distribution.Tests and run once behind the tooling build barrier. Build-Workspace -Suite Core compiles only Core and its own tests; Test-CoreIndependence verifies a source copy with Git absent.
+
+The compiled configuration/delivery mutation harness separates offline restore from compilation.
+Restore uses only the existing global package cache and an empty explicit local feed; build uses
+`--no-restore`. The net11-only mutant preparation keeps its existing audit-feed exception while
+ordinary workspace builds retain vulnerability auditing. Each mutant saves bounded restore/build
+diagnostics and process metadata. A failed restore, compilation or deadline is recorded as
+`InfrastructureFailure` and stops the campaign; it never counts as a killed mutant.

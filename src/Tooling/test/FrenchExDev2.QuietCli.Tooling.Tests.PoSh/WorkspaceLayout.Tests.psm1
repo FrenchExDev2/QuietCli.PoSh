@@ -147,6 +147,21 @@ function Invoke-QuietWorkspaceLayoutTests {
             try{$null=Assert-QuietCiPlanResults $needs}catch{$rejected=$true}
             if(!$rejected){throw ('SelectedJobAccepted: '+$failure)};$campaign.Properties++
         }
+        $needs.plan.outputs.run_distribution='true';$needs.plan.outputs.run_tooling='true'
+        $needs.products.result='failure';$needs.distribution.result='failure';$needs['tooling-only'].result='cancelled'
+        $message=''
+        try{$null=Assert-QuietCiPlanResults $needs}catch{$message=$_.Exception.Message}
+        foreach($name in @('products','tooling-only','distribution')){
+            if(!$message.Contains('CiPlanScopeResultMismatch: '+$name+' expected success')){throw ('GateFailureDiagnosticMissing: '+$name)}
+            $campaign.Properties++
+        }
+        $needs.Remove('plan');$needs.Remove('distribution')
+        $message=''
+        try{$null=Assert-QuietCiPlanResults $needs}catch{$message=$_.Exception.Message}
+        foreach($reason in @('CiPlanPrerequisiteRequired: plan','CiPlanOutputMissing: run_products','CiPlanJobMissing: distribution')){
+            if(!$message.Contains($reason)){throw ('GateMalformedDiagnosticMissing: '+$reason)}
+            $campaign.Malformed++
+        }
     }
     $cases['conditional package properties and malformed XML fail independently']={
         $random=[Random]::new($seed)

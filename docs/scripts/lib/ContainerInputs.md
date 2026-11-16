@@ -33,13 +33,19 @@ access. Preparation does not download, restore or build; a referenced package mi
 restored host cache is an error. NuGet extraction paths must contain exactly a package ID and version;
 rooted paths, separators in either component and traversal are rejected.
 
+Package copies include hidden files with `-Force`, particularly NuGet's `.nupkg.metadata`
+extraction marker. Both the restored source and staged package must contain that marker;
+an incomplete cache fails before container creation. Missing the marker on Linux causes NuGet
+to attempt another download even when the package's assemblies were copied.
+
 `-NativeOnly` selects the independent C/PTY campaign inputs and omits modules and NuGet packages.
 `-WhatIf` returns before creating directories or copying inputs; `-Confirm` uses standard PowerShell
 confirmation. The executable caller guards the overall operation and delegates its approved copy.
 
 The focused Core case `GitHub CI container inputs include docs and restored packages without secrets
-or path escapes` uses small filesystem fixtures, including absent-destination preview and hostile
-package paths. It starts no container and performs no network operation.
+or path escapes` uses small filesystem fixtures, including absent-destination preview, a hidden
+extraction-marker hash check, rejection of an incomplete package and hostile package paths.
+It starts no container and performs no network operation.
 
 <!-- credits:begin -->
 ## Credits

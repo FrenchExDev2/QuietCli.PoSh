@@ -20,6 +20,9 @@ function Test-QuietContainerInputs {
     $cache=Join-Path $RunDirectory restored-packages
     [void][IO.Directory]::CreateDirectory((Join-Path $cache 'system.fixture/1.0.0'))
     [void][IO.File]::WriteAllTextAsync((Join-Path $cache system.fixture/1.0.0/content.txt),'restored-package',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $metadata=[IO.Path]::Combine($cache,'system.fixture/1.0.0/.nupkg.metadata')
+    [IO.File]::WriteAllText($metadata,'{"version":2,"source":"https://api.nuget.org/v3/index.json"}',[Text.UTF8Encoding]::new($false))
+    if($IsWindows){[IO.File]::SetAttributes($metadata,[IO.FileAttributes]::Hidden)}
     $assetsPath=Join-Path $fixture FrenchExDev2.QuietCli.Core.PoSh/engine/obj/project.assets.json
     $assets=@{libraries=@{fixture=@{type='package';path='system.fixture/1.0.0'}};packageFolders=@{$cache=@{}}}
     Write-WorkspaceJson $assetsPath $assets
@@ -27,6 +30,8 @@ function Test-QuietContainerInputs {
     $null=Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $stage -WhatIf
     if(Test-Path -LiteralPath $stage){throw 'ContainerStagePreviewWroteFiles'}
     Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $stage -Confirm:$false
+    $stagedMetadata=[IO.Path]::Combine($stage,'artifacts/nuget-cache/system.fixture/1.0.0/.nupkg.metadata')
+    if(!(Test-Path -LiteralPath $stagedMetadata) -or (Get-FileHash -LiteralPath $stagedMetadata).Hash -cne (Get-FileHash -LiteralPath $metadata).Hash){throw 'ContainerNuGetExtractionMetadataLost'}
     foreach($relative in @('docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','Quietly.slnx','Directory.Build.props','Directory.Build.targets','src/Core/Core.slnx','src/Core/Directory.Build.props','src/Core/test/Directory.Packages.props','build/imports/policy.targets','artifacts/nuget-cache/system.fixture/1.0.0/content.txt')){
         if(!(Test-Path -LiteralPath (Join-Path $stage $relative))){throw ('ContainerInputMissing: '+$relative)}
     }
@@ -39,13 +44,17 @@ function Test-QuietContainerInputs {
         $stagedText=[IO.File]::ReadAllText((Join-Path $runtimeStage .env),[Text.UTF8Encoding]::new($false,$true))
         if($stagedText -cne ('QUIET_CONTAINER_RUNTIME="'+$expected+'"'+"`n")){throw 'ContainerStageForwardedPrivateEnvironmentOrIgnoredOverride'}
     }
+    [IO.File]::Delete($metadata)
+    $rejected=$false
+    try{Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination ([IO.Path]::Combine($RunDirectory,'incomplete-package-stage')) -Confirm:$false}catch{$rejected=$_.Exception.Message -ceq 'ContainerRestoredPackageMetadataMissing: system.fixture/1.0.0'}
+    if(!$rejected){throw 'IncompleteRestoredPackageAccepted'}
     $bad=@('../outside','x/../outside','/root/private','C:\private','x/1.0/extra',"x/1.0`n")
     foreach($relative in $bad){
         $assets.libraries.fixture.path=$relative;Write-WorkspaceJson $assetsPath $assets
         $rejected=$false;try{Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination (Join-Path $RunDirectory ('bad-stage-'+[guid]::NewGuid().ToString('N'))) -Confirm:$false}catch{$rejected=$_.Exception.Message -eq 'ContainerNuGetPackagePathInvalid'}
         if(!$rejected){throw 'ContainerNuGetPathEscapeAccepted'}
     }
-    Write-WorkspaceJson (Join-Path $RunDirectory container-inputs.json) @{Preview='No writes';RestoredPackages=1;MalformedPaths=$bad.Count;SecretsCopied=$false;ContainerStarted=$false}
+    Write-WorkspaceJson (Join-Path $RunDirectory container-inputs.json) @{Preview='No writes';RestoredPackages=1;ExtractionMetadataPreserved=$true;IncompletePackageRejected=$true;MalformedPaths=$bad.Count;SecretsCopied=$false;ContainerStarted=$false}
 }
 function Test-QuietCompanionHelperScope {
     <#

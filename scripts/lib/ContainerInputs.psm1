@@ -58,13 +58,17 @@ function Copy-QuietContainerInputs {
             if($packages.ContainsKey($relative)){continue}
             $cached=@(foreach($folder in $assets.packageFolders.PSObject.Properties.Name){$candidate=[IO.Path]::Combine($folder,$relative);if(Test-Path -LiteralPath $candidate -PathType Container){$candidate}})
             if(!$cached.Count){throw ('ContainerRestoredPackageMissing: '+$relative)}
+            if(!(Test-Path -LiteralPath ([IO.Path]::Combine($cached[0],'.nupkg.metadata')) -PathType Leaf)){throw ('ContainerRestoredPackageMetadataMissing: '+$relative)}
             $packages.Add($relative,$cached[0])
         }
     }}
     foreach($package in $packages.GetEnumerator()){
         $target=[IO.Path]::Combine($Destination,('artifacts/nuget-cache/'+$package.Key))
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
-        Copy-Item -LiteralPath $package.Value -Destination $target -Recurse
+        # NuGet treats a package without this hidden extraction marker as incomplete.
+        # Linux Copy-Item omits dotfiles unless Force is explicit.
+        Copy-Item -LiteralPath $package.Value -Destination $target -Recurse -Force
+        if(!(Test-Path -LiteralPath ([IO.Path]::Combine($target,'.nupkg.metadata')) -PathType Leaf)){throw ('ContainerStagedPackageMetadataMissing: '+$package.Key)}
     }
 }
 
