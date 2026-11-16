@@ -1,0 +1,310 @@
+#Objective: Pure planning, Pester configuration, report and status functions for the scripts test runner.
+#requires -Version 7.6
+
+function Get-QuietScriptsTestPlan {
+    <#
+    .SYNOPSIS
+    Discovers the *.Tests.ps1 files selected by kind, paths and filters, in ordinal order.
+    .PARAMETER TestsRoot
+    Existing tests root containing unit/ and integration/.
+    .PARAMETER Kind
+    Unit, Integration or All.
+    .PARAMETER Path
+    Optional file or directory selectors inside TestsRoot; any selector makes the run partial.
+    .PARAMETER FullNameFilter
+    Optional Pester full-name filters; makes the run partial.
+    .PARAMETER Tag
+    Optional Pester tags to include; makes the run partial.
+    .PARAMETER ExcludeTag
+    Optional Pester tags to exclude; makes the run partial.
+    #>
+    param([Parameter(Mandatory)][string]$TestsRoot,[ValidateSet('Unit','Integration','All')][string]$Kind='All',[string[]]$Path=@(),[string[]]$FullNameFilter=@(),[string[]]$Tag=@(),[string[]]$ExcludeTag=@())
+    try{$root=[IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($TestsRoot))}catch{throw 'ScriptsTestPathInvalid: tests-root'}
+    if(![IO.Directory]::Exists($root) -or [IO.DirectoryInfo]::new($root).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'ScriptsTestPathInvalid: tests-root'}
+    $kinds=if($Kind -ceq 'All'){@('unit','integration')}else{@($Kind.ToLowerInvariant())}
+    $options=[IO.EnumerationOptions]::new();$options.RecurseSubdirectories=$true;$options.AttributesToSkip=[IO.FileAttributes]::ReparsePoint;$options.MatchCasing=[IO.MatchCasing]::CaseInsensitive
+    $discovered=[Collections.Generic.List[string]]::new()
+    foreach($name in $kinds){
+        $directory=[IO.Path]::Combine($root,$name)
+        if(![IO.Directory]::Exists($directory) -or [IO.DirectoryInfo]::new($directory).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){continue}
+        foreach($file in [IO.Directory]::EnumerateFiles($directory,'*.Tests.ps1',$options)){$discovered.Add([IO.Path]::GetFullPath($file))}
+    }
+    $selectors=@(foreach($entry in @($Path|Where-Object {$null -ne $_})){Resolve-QuietScriptsTestPath -Path $entry -TestsRoot $root})
+    $files=[Collections.Generic.List[string]]::new()
+    foreach($file in $discovered){
+        if($selectors.Count -eq 0){$files.Add($file);continue}
+        foreach($selector in $selectors){if(Test-QuietScriptsPathWithin -Path $file -Root $selector){$files.Add($file);break}}
+    }
+    if($files.Count -eq 0){throw 'ScriptsTestSelectionEmpty'}
+    $sorted=[string[]]$files.ToArray();[Array]::Sort($sorted,[StringComparer]::Ordinal)
+    $clean={param($values)@(@($values)|Where-Object {![string]::IsNullOrWhiteSpace($_)})}
+    $nameFilters=[string[]](& $clean $FullNameFilter);$tags=[string[]](& $clean $Tag);$excluded=[string[]](& $clean $ExcludeTag)
+    [pscustomobject][ordered]@{
+        Kind=$Kind;TestsRoot=$root;Files=$sorted
+        FullNameFilter=$nameFilters;Tag=$tags;ExcludeTag=$excluded
+        Partial=[bool]($selectors.Count -gt 0 -or $nameFilters.Count -gt 0 -or $tags.Count -gt 0 -or $excluded.Count -gt 0)
+    }
+}
+
+function Get-QuietScriptsTestValue {
+    <#
+    .SYNOPSIS
+    Reads one property or dictionary entry without throwing on null, scalar or malformed input.
+    .PARAMETER InputObject
+    Any object, dictionary or null.
+    .PARAMETER Name
+    Property or key name.
+    #>
+    param($InputObject,[Parameter(Mandatory)][string]$Name)
+    if($null -eq $InputObject){return $null}
+    if($InputObject -is [Collections.IDictionary]){if($InputObject.Contains($Name)){return $InputObject[$Name]};return $null}
+    $property=$InputObject.PSObject.Properties[$Name]
+    if($null -eq $property){return $null}
+    try{return $property.Value}catch{return $null}
+}
+
+function Test-QuietScriptsPathWithin {
+    <#
+    .SYNOPSIS
+    Returns whether a full path equals or is contained in a full root path (case-insensitive on Windows).
+    .PARAMETER Path
+    Full candidate path.
+    .PARAMETER Root
+    Full root directory.
+    #>
+    param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)][string]$Root)
+    $comparison=if($IsWindows){[StringComparison]::OrdinalIgnoreCase}else{[StringComparison]::Ordinal}
+    $root=[IO.Path]::TrimEndingDirectorySeparator($Root)
+    $candidate=[IO.Path]::TrimEndingDirectorySeparator($Path)
+    if([string]::Equals($candidate,$root,$comparison)){return $true}
+    return $candidate.StartsWith($root+[IO.Path]::DirectorySeparatorChar,$comparison)
+}
+
+function Resolve-QuietScriptsTestPath {
+    <#
+    .SYNOPSIS
+    Validates one -Path selector and returns its full path inside the tests root.
+    .DESCRIPTION
+    Rejects empty values, control or invalid characters, '..' segments, paths outside the root, missing
+    targets, links on the way from the root, and files that are not *.Tests.ps1. Every rejection throws
+    ScriptsTestPathInvalid with a reason code; the offending value is never echoed.
+    .PARAMETER Path
+    Selector, relative to TestsRoot or absolute inside it.
+    .PARAMETER TestsRoot
+    Full, existing tests root.
+    #>
+    param([AllowNull()][AllowEmptyString()][string]$Path,[Parameter(Mandatory)][string]$TestsRoot)
+    if([string]::IsNullOrWhiteSpace($Path)){throw 'ScriptsTestPathInvalid: empty'}
+    foreach($character in $Path.ToCharArray()){if([char]::IsControl($character)){throw 'ScriptsTestPathInvalid: control-character'}}
+    if($Path.IndexOfAny([IO.Path]::GetInvalidPathChars()) -ge 0){throw 'ScriptsTestPathInvalid: invalid-character'}
+    if(@($Path -split '[\\/]') -contains '..'){throw 'ScriptsTestPathInvalid: parent-segment'}
+    try{$full=if([IO.Path]::IsPathRooted($Path)){[IO.Path]::GetFullPath($Path)}else{[IO.Path]::GetFullPath([IO.Path]::Combine($TestsRoot,$Path))}}catch{throw 'ScriptsTestPathInvalid: unresolvable'}
+    if(!(Test-QuietScriptsPathWithin -Path $full -Root $TestsRoot)){throw 'ScriptsTestPathInvalid: outside-root'}
+    $isFile=[IO.File]::Exists($full);$isDirectory=[IO.Directory]::Exists($full)
+    if(!$isFile -and !$isDirectory){throw 'ScriptsTestPathInvalid: missing'}
+    $cursor=[IO.Path]::TrimEndingDirectorySeparator($full);$root=[IO.Path]::TrimEndingDirectorySeparator($TestsRoot)
+    while($cursor.Length -gt $root.Length){
+        $info=if([IO.File]::Exists($cursor)){[IO.FileInfo]::new($cursor)}else{[IO.DirectoryInfo]::new($cursor)}
+        if($info.Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'ScriptsTestPathInvalid: link'}
+        $cursor=[IO.Path]::GetDirectoryName($cursor)
+    }
+    if($isFile -and !$full.EndsWith('.Tests.ps1',[StringComparison]::OrdinalIgnoreCase)){throw 'ScriptsTestPathInvalid: not-a-test-file'}
+    return $full
+}
+
+function Get-QuietScriptsCoverageTargets {
+    <#
+    .SYNOPSIS
+    Reads coverage.targets.psd1 ({Threshold; Paths relative to the scripts root}) and resolves the targets.
+    .PARAMETER TestsRoot
+    Tests root containing coverage.targets.psd1.
+    .PARAMETER ScriptsRoot
+    Scripts root against which target paths are resolved (a mutated copy is allowed).
+    #>
+    param([Parameter(Mandatory)][string]$TestsRoot,[Parameter(Mandatory)][string]$ScriptsRoot)
+    $file=[IO.Path]::Combine($TestsRoot,'coverage.targets.psd1')
+    if(![IO.File]::Exists($file)){throw 'ScriptsTestCoverageTargetsMissing'}
+    try{$data=Import-PowerShellDataFile -LiteralPath $file -ErrorAction Stop}catch{throw 'ScriptsTestCoverageTargetsInvalid: syntax'}
+    $threshold=$data['Threshold']
+    if($threshold -isnot [int] -and $threshold -isnot [double] -and $threshold -isnot [decimal]){throw 'ScriptsTestCoverageTargetsInvalid: threshold'}
+    if([double]$threshold -lt 0 -or [double]$threshold -gt 100){throw 'ScriptsTestCoverageTargetsInvalid: threshold'}
+    $relative=@($data['Paths'])
+    if($relative.Count -eq 0){throw 'ScriptsTestCoverageTargetsInvalid: paths'}
+    $scripts=[IO.Path]::GetFullPath($ScriptsRoot)
+    $paths=foreach($item in $relative){
+        if($item -isnot [string] -or [string]::IsNullOrWhiteSpace($item) -or [IO.Path]::IsPathRooted($item) -or @($item -split '[\\/]') -contains '..'){throw 'ScriptsTestCoverageTargetsInvalid: path'}
+        $full=[IO.Path]::GetFullPath([IO.Path]::Combine($scripts,$item))
+        if(![IO.File]::Exists($full)){throw 'ScriptsTestCoverageTargetsInvalid: missing-target'}
+        $full
+    }
+    [pscustomobject][ordered]@{Threshold=[double]$threshold;Paths=[string[]]@($paths)}
+}
+
+function New-QuietScriptsPesterConfiguration {
+    <#
+    .SYNOPSIS
+    Returns a JSON-serializable hashtable accepted by New-PesterConfiguration -Hashtable for one plan.
+    .PARAMETER Plan
+    Result of Get-QuietScriptsTestPlan.
+    .PARAMETER RunDirectory
+    Run directory receiving results.junit.xml and coverage.xml.
+    .PARAMETER CoverageTargets
+    Optional result of Get-QuietScriptsCoverageTargets; enables JaCoCo coverage with its threshold.
+    #>
+    param([Parameter(Mandatory)]$Plan,[Parameter(Mandatory)][string]$RunDirectory,$CoverageTargets)
+    $files=[string[]]@(Get-QuietScriptsTestValue $Plan 'Files')
+    if($files.Count -eq 0){throw 'ScriptsTestSelectionEmpty'}
+    $filter=[ordered]@{}
+    foreach($name in @('FullNameFilter','Tag','ExcludeTag')){
+        $values=[string[]]@(@(Get-QuietScriptsTestValue $Plan $name)|Where-Object {![string]::IsNullOrWhiteSpace($_)})
+        if($values.Count -gt 0){$filter[$(if($name -ceq 'FullNameFilter'){'FullName'}else{$name})]=$values}
+    }
+    $configuration=[ordered]@{
+        Run=[ordered]@{Path=$files;PassThru=$true;Exit=$false;Throw=$false}
+        Filter=$filter
+        Output=[ordered]@{Verbosity='Detailed';StackTraceVerbosity='Filtered';RenderMode='Plaintext'}
+        TestResult=[ordered]@{Enabled=$true;OutputFormat='JUnitXml';OutputPath=[IO.Path]::Combine($RunDirectory,'results.junit.xml')}
+        Should=[ordered]@{ErrorAction='Stop'}
+    }
+    if($null -ne $CoverageTargets){
+        $configuration.CodeCoverage=[ordered]@{Enabled=$true;Path=[string[]]@($CoverageTargets.Paths);OutputFormat='JaCoCo';OutputPath=[IO.Path]::Combine($RunDirectory,'coverage.xml');CoveragePercentTarget=[double]$CoverageTargets.Threshold}
+    }
+    return $configuration
+}
+
+function ConvertTo-QuietScriptsTestCount {
+    <#
+    .SYNOPSIS
+    Converts one reported count to a non-negative integer, or $null when it is absent or malformed.
+    .PARAMETER Value
+    Raw count.
+    #>
+    param($Value)
+    if($null -eq $Value){return $null}
+    if($Value -is [bool]){return $null}
+    $number=0L
+    if(![long]::TryParse([string]$Value,[Globalization.NumberStyles]::Integer,[Globalization.CultureInfo]::InvariantCulture,[ref]$number)){return $null}
+    if($number -lt 0 -or $number -gt [int]::MaxValue){return $null}
+    return [int]$number
+}
+
+function ConvertTo-QuietScriptsTestReport {
+    <#
+    .SYNOPSIS
+    Maps a Pester run result (or any malformed object) to the repository test report without throwing.
+    .DESCRIPTION
+    Failed includes failed tests, blocks and containers. Passed + Failed + Skipped = Total always holds.
+    A missing or malformed result, zero executed tests or missing requested coverage marks the report
+    Incomplete; Success requires a complete report, no failure and, when requested, the coverage threshold.
+    .PARAMETER Result
+    Pester result object (PassThru), or anything else.
+    .PARAMETER Plan
+    Result of Get-QuietScriptsTestPlan.
+    .PARAMETER Seed
+    Seed exported to the run as QUIETCLI_TEST_SEED.
+    .PARAMETER CoverageTarget
+    Required coverage percentage when coverage was requested; omit otherwise.
+    #>
+    param($Result,[Parameter(Mandatory)]$Plan,[int]$Seed,[Nullable[double]]$CoverageTarget)
+    $incomplete=$null -eq $Result
+    $counts=@{}
+    foreach($name in @('PassedCount','FailedCount','SkippedCount','NotRunCount','FailedBlocksCount','FailedContainersCount')){
+        $raw=Get-QuietScriptsTestValue $Result $name
+        $value=ConvertTo-QuietScriptsTestCount $raw
+        if($null -eq $value){$value=0;if($name -in @('PassedCount','FailedCount','SkippedCount')){$incomplete=$true}}
+        $counts[$name]=$value
+    }
+    $passed=$counts.PassedCount;$skipped=$counts.SkippedCount
+    $failed=[int][Math]::Min([long][int]::MaxValue,[long]$counts.FailedCount+$counts.FailedBlocksCount+$counts.FailedContainersCount)
+    $outcome=[string](Get-QuietScriptsTestValue $Result 'Result')
+    if($outcome -notin @('Passed','Failed')){$incomplete=$true}
+    if($passed+$failed+$skipped -eq 0){$incomplete=$true}
+    $cases=[Collections.Generic.List[object]]::new()
+    foreach($test in @(Get-QuietScriptsTestValue $Result 'Tests')){
+        if($null -eq $test){continue}
+        $name=Get-QuietScriptsTestValue $test 'ExpandedPath';if([string]::IsNullOrEmpty($name)){$name=Get-QuietScriptsTestValue $test 'Name'}
+        $block=Get-QuietScriptsTestValue $test 'ScriptBlock'
+        $duration=Get-QuietScriptsTestValue $test 'Duration'
+        $cases.Add([ordered]@{Name=[string]$name;Result=[string](Get-QuietScriptsTestValue $test 'Result');File=[string](Get-QuietScriptsTestValue $block 'File');DurationMs=$(if($duration -is [TimeSpan]){[Math]::Round($duration.TotalMilliseconds,1)}else{$null})})
+    }
+    $coverage=$null
+    if($null -ne $CoverageTarget){
+        $percent=Get-QuietScriptsTestValue (Get-QuietScriptsTestValue $Result 'CodeCoverage') 'CoveragePercent'
+        $number=0.0
+        if($null -eq $percent -or $percent -is [bool] -or ![double]::TryParse([string]$percent,[Globalization.NumberStyles]::Float,[Globalization.CultureInfo]::InvariantCulture,[ref]$number) -or [double]::IsNaN($number)){$incomplete=$true;$coverage=[ordered]@{Percent=$null;Target=[double]$CoverageTarget;Met=$false}}
+        else{$coverage=[ordered]@{Percent=[Math]::Round($number,2);Target=[double]$CoverageTarget;Met=[bool]($number -ge [double]$CoverageTarget)}}
+    }
+    $success=!$incomplete -and $failed -eq 0 -and ($null -eq $coverage -or $coverage.Met)
+    [ordered]@{
+        Project='Scripts.Tests';Kind=[string](Get-QuietScriptsTestValue $Plan 'Kind');State=$(if($success){'Success'}else{'Failed'})
+        Passed=$passed;Failed=$failed;Skipped=$skipped;NotRun=$counts.NotRunCount;Total=$passed+$failed+$skipped
+        Partial=[bool](Get-QuietScriptsTestValue $Plan 'Partial');Incomplete=[bool]$incomplete;Seed=$Seed
+        Files=[string[]]@(Get-QuietScriptsTestValue $Plan 'Files');Coverage=$coverage;Cases=$cases.ToArray()
+    }
+}
+
+function New-QuietScriptsTestStatus {
+    <#
+    .SYNOPSIS
+    Builds the initial Running status read by Watch-Tests.ps1 and Wait-WorkspaceWorker.
+    .PARAMETER WorkspaceRoot
+    Source workspace.
+    .PARAMETER Plan
+    Result of Get-QuietScriptsTestPlan.
+    .PARAMETER ProcessId
+    Worker process id.
+    .PARAMETER StartedUtc
+    Worker start time.
+    #>
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)]$Plan,[int]$ProcessId,[DateTimeOffset]$StartedUtc=[DateTimeOffset]::UtcNow)
+    $files=@(Get-QuietScriptsTestValue $Plan 'Files')
+    [ordered]@{
+        Project='FrenchExDev2.QuietCli.Scripts.Tests';Task=('Tests scripts ('+[string](Get-QuietScriptsTestValue $Plan 'Kind')+')')
+        Workspace=$WorkspaceRoot;ProjectDirectory=[string](Get-QuietScriptsTestValue $Plan 'TestsRoot')
+        Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;StartedUtc=$StartedUtc.ToString('o');ProcessId=$ProcessId
+        Passed=0;Failed=0;State='Running';Case=('Running '+$files.Count+' test file(s)');Error=$null;FinishedUtc=$null
+    }
+}
+
+function Update-QuietScriptsTestStatus {
+    <#
+    .SYNOPSIS
+    Moves a Running status to its single terminal state from a report or a crash message.
+    .PARAMETER Status
+    Current status; only Running may transition.
+    .PARAMETER Report
+    Result of ConvertTo-QuietScriptsTestReport.
+    .PARAMETER ErrorMessage
+    Crash message when the run could not produce a report.
+    .PARAMETER FinishedUtc
+    Terminal time.
+    #>
+    [CmdletBinding(DefaultParameterSetName='Report')]
+    param([Parameter(Mandatory)][Collections.IDictionary]$Status,[Parameter(Mandatory,ParameterSetName='Report')][Collections.IDictionary]$Report,[Parameter(Mandatory,ParameterSetName='Crash')][string]$ErrorMessage,[DateTimeOffset]$FinishedUtc=[DateTimeOffset]::UtcNow)
+    if([string]$Status['State'] -cne 'Running'){throw 'ScriptsTestStatusTransitionInvalid'}
+    $next=[ordered]@{};foreach($entry in $Status.GetEnumerator()){$next[$entry.Key]=$entry.Value}
+    $next.FinishedUtc=$FinishedUtc.ToString('o')
+    if($PSCmdlet.ParameterSetName -ceq 'Crash'){
+        $next.State='Crash';$next.Failed=[int]$next.Failed+1;$next.Case='Worker failed before a complete report';$next.Error=$ErrorMessage
+        return $next
+    }
+    $state=[string]$Report['State'];if($state -cnotin @('Success','Failed','Crash','Timeout','Cancelled')){throw 'ScriptsTestStatusTransitionInvalid'}
+    $next.State=$state;$next.Passed=[int]$Report['Passed'];$next.Failed=[int]$Report['Failed']
+    $next.Case=('{0} passed, {1} failed, {2} skipped{3}{4}' -f $Report['Passed'],$Report['Failed'],$Report['Skipped'],$(if($Report['Partial']){' (partial)'}else{''}),$(if($Report['Incomplete']){' (incomplete)'}else{''}))
+    $next.Error=$null
+    return $next
+}
+
+function Get-QuietScriptsTestExitCode {
+    <#
+    .SYNOPSIS
+    Returns 0 for a Success state and 1 for every other state.
+    .PARAMETER State
+    Terminal state.
+    #>
+    param([AllowNull()][AllowEmptyString()][string]$State)
+    if($State -ceq 'Success'){return 0}
+    return 1
+}
+
+Export-ModuleMember -Function Get-QuietScriptsTestPlan,Resolve-QuietScriptsTestPath,Get-QuietScriptsCoverageTargets,New-QuietScriptsPesterConfiguration,ConvertTo-QuietScriptsTestReport,New-QuietScriptsTestStatus,Update-QuietScriptsTestStatus,Get-QuietScriptsTestExitCode

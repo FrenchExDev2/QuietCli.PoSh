@@ -12,6 +12,15 @@ function Get-QuietScriptShouldProcess {
     if($errors.Count){throw ('ScriptSafetyParseFailed: '+$Path)}
     $statements=@(foreach($block in @($ast.BeginBlock,$ast.ProcessBlock,$ast.EndBlock)){if($block){$block.Statements}})
     if(!$ast.ParamBlock -and @($statements|Where-Object {$_ -isnot [Management.Automation.Language.FunctionDefinitionAst]}).Count -eq 0){return 'Library'}
+    # A Pester container whose top level only declares Pester blocks has no load-time effect; its
+    # effects run inside the ShouldProcess-guarded scripts test runner (Invoke-ScriptsTests.ps1).
+    if(!$ast.ParamBlock -and $Path.EndsWith('.Tests.ps1',[StringComparison]::OrdinalIgnoreCase) -and $statements.Count -gt 0){
+        $container=$true
+        foreach($statement in $statements){
+            if($statement -isnot [Management.Automation.Language.PipelineAst] -or $statement.PipelineElements.Count -ne 1 -or $statement.PipelineElements[0] -isnot [Management.Automation.Language.CommandAst] -or $statement.PipelineElements[0].GetCommandName() -cnotin @('BeforeAll','AfterAll','BeforeDiscovery','Describe')){$container=$false;break}
+        }
+        if($container){return 'TestContainer'}
+    }
     # A script library may declare strict mode, exports and a sibling library import.
     # Arbitrary initializer code is executable and still requires its own effect boundary.
     if([IO.Path]::GetExtension($Path) -eq '.psm1' -and !$ast.ParamBlock){
@@ -92,7 +101,7 @@ function Test-QuietScriptShouldProcessPolicy {
         $exceptions[$exception.Path]=$exception
     }
     $pending=[Collections.Generic.Stack[string]]::new();$pending.Push([IO.Path]::GetFullPath($WorkspaceRoot))
-    $checked=0;$grandfathered=0;$readOnly=0;$libraries=0
+    $checked=0;$grandfathered=0;$readOnly=0;$libraries=0;$testContainers=0
     while($pending.Count){
         foreach($item in Get-ChildItem -LiteralPath $pending.Pop() -Force){
             if($item.Name -in @('.git','bin','obj','artifacts','.profilers','.cache','.vs')){continue}
@@ -108,6 +117,7 @@ function Test-QuietScriptShouldProcessPolicy {
             $kind=Get-QuietScriptShouldProcess $item.FullName
             if($kind -eq 'ShouldProcess'){$checked++;continue}
             if($kind -eq 'Library'){$libraries++;continue}
+            if($kind -eq 'TestContainer' -and $relative -like 'test/scripts/*'){$testContainers++;continue}
             if($exceptions.ContainsKey($relative)){
                 if((Get-FileHash -LiteralPath $item.FullName -Algorithm SHA256).Hash -cne $exceptions[$relative].SHA256){throw ('ScriptShouldProcessExceptionStale: '+$relative)}
                 $readOnly++;continue
@@ -115,7 +125,7 @@ function Test-QuietScriptShouldProcessPolicy {
             throw ('ScriptShouldProcessRequired: '+$relative+'; implement SupportsShouldProcess and a real $PSCmdlet.ShouldProcess guard, or document a reviewed read-only exception.')
         }
     }
-    [pscustomobject]@{Check='ScriptShouldProcess';Guarded=$checked;Libraries=$libraries;ReviewedReadOnly=$readOnly;LegacyUnqualified=$grandfathered}
+    [pscustomobject]@{Check='ScriptShouldProcess';Guarded=$checked;Libraries=$libraries;TestContainers=$testContainers;ReviewedReadOnly=$readOnly;LegacyUnqualified=$grandfathered}
 }
 
 Export-ModuleMember -Function 'Get-QuietScriptShouldProcess','Test-QuietScriptShouldProcessPolicy'
