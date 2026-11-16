@@ -25,14 +25,14 @@ function Invoke-QuietProperty {
     Maximum accepted shrinking steps.
     #>
     param([Parameter(Mandatory)][string]$Name,[Parameter(Mandatory)][int]$Seed,[ValidateRange(1,100000)][int]$Count=100,[Parameter(Mandatory)][scriptblock]$Generator,[Parameter(Mandatory)][scriptblock]$Property,[scriptblock]$Shrink,[ValidateRange(0,10000)][int]$MaxShrinks=200)
-    $check={param($case)
-        try{$value=& $Property $case;if($value -is [bool] -and !$value){return 'property returned false'};return $null}catch{return $_.Exception.Message}
+    $check={param($predicate,$case)
+        try{$value=& $predicate $case;if($value -is [bool] -and !$value){return 'property returned false'};return $null}catch{return $_.Exception.Message}
     }
     $master=[Random]::new($Seed)
     for($index=1;$index -le $Count;$index++){
         $caseSeed=$master.Next()
         $case=& $Generator ([Random]::new($caseSeed))
-        $failure=& $check $case
+        $failure=& $check $Property $case
         if($null -eq $failure){continue}
         $steps=0
         if($Shrink){
@@ -40,7 +40,7 @@ function Invoke-QuietProperty {
             while($improved -and $steps -lt $MaxShrinks){
                 $improved=$false
                 foreach($candidate in @(& $Shrink $case)){
-                    $candidateFailure=& $check $candidate
+                    $candidateFailure=& $check $Property $candidate
                     if($null -ne $candidateFailure){$case=$candidate;$failure=$candidateFailure;$steps++;$improved=$true;break}
                 }
             }

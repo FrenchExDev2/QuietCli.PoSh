@@ -1,6 +1,6 @@
 #Objective: Returns checksum-pinned diagnostic and script test packages and prepares them in an isolated verified cache.
 #requires -Version 7.6
-Import-Module ([IO.Path]::Combine($PSScriptRoot,'RunEncoding.psm1')) -DisableNameChecking
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'RunEncoding.psm1')) -DisableNameChecking -ErrorAction Stop
 
 function Get-RunProfilerPackages {
     <#

@@ -1,0 +1,860 @@
+{
+  "SchemaVersion": 1,
+  "Analyzer": "PSScriptAnalyzer 1.25.0",
+  "Entries": [
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/Initialize-PowerShellHost.ps1",
+      "Function": "",
+      "ExtentSHA256": "E2B7D9A45903A259C77C72D8B2CE34EC5960CB0BD717C5471B2DD41534AA219C",
+      "Count": 2
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/Invoke-ClrCollector.ps1",
+      "Function": "",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/Invoke-CoreProfiling.ps1",
+      "Function": "",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/Invoke-RunProfile.ps1",
+      "Function": "",
+      "ExtentSHA256": "3884E727FEAADAD536B02B207A5E89DEA34C337FA14C24262DCC8F2B30FC0516",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/New-CiImpactPlan.ps1",
+      "Function": "",
+      "ExtentSHA256": "0D6B2C8568CD36E63F41E4C20859C94EEF8813ADE0410566FA370A968DC9906A",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/New-CiImpactPlan.ps1",
+      "Function": "",
+      "ExtentSHA256": "3884E727FEAADAD536B02B207A5E89DEA34C337FA14C24262DCC8F2B30FC0516",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/New-RunProfile.ps1",
+      "Function": "",
+      "ExtentSHA256": "3884E727FEAADAD536B02B207A5E89DEA34C337FA14C24262DCC8F2B30FC0516",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/Restore-CoreResources.ps1",
+      "Function": "",
+      "ExtentSHA256": "E2B7D9A45903A259C77C72D8B2CE34EC5960CB0BD717C5471B2DD41534AA219C",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/CiImages.psm1",
+      "Function": "Get-QuietCiRegistryDigest",
+      "ExtentSHA256": "BE578DE96ACCDF450D78AB3CAB495BC8BB4EC1F3A22D4CF8D9EA408A5709B3D9",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/CiImages.psm1",
+      "Function": "Get-QuietCiVerifiedImage",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/CiImages.psm1",
+      "Function": "Invoke-QuietCiImageBuild",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/CiProjectGraph.psm1",
+      "Function": "Get-QuietEvaluatedProjectInputs",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/Commit-Workspace.psm1",
+      "Function": "Invoke-WorkspaceChecksForCommit",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/CompanionWorkflows.psm1",
+      "Function": "Assert-QuietCompanionProfile",
+      "ExtentSHA256": "3884E727FEAADAD536B02B207A5E89DEA34C337FA14C24262DCC8F2B30FC0516",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/CompanionWorkflows.psm1",
+      "Function": "Get-QuietCompanionWorkflowDefinitions",
+      "ExtentSHA256": "3884E727FEAADAD536B02B207A5E89DEA34C337FA14C24262DCC8F2B30FC0516",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/DotNetReadiness.psm1",
+      "Function": "Get-DotNetReadinessLocal",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/DotNetReadiness.psm1",
+      "Function": "Get-DotNetRuntimeRelease",
+      "ExtentSHA256": "BE578DE96ACCDF450D78AB3CAB495BC8BB4EC1F3A22D4CF8D9EA408A5709B3D9",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/DotNetReadiness.psm1",
+      "Function": "Get-DotNetSdkRelease",
+      "ExtentSHA256": "BE578DE96ACCDF450D78AB3CAB495BC8BB4EC1F3A22D4CF8D9EA408A5709B3D9",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/DotNetReadiness.psm1",
+      "Function": "Invoke-DotNetContainerPull",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/GalleryRelease.psm1",
+      "Function": "Select-QuietGalleryReleaseTargets",
+      "ExtentSHA256": "BE578DE96ACCDF450D78AB3CAB495BC8BB4EC1F3A22D4CF8D9EA408A5709B3D9",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/Get-QuietReleasePlan.psm1",
+      "Function": "Read-ReleaseGitMetadata",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/GitHubCi.psm1",
+      "Function": "Assert-GitHubCiImagePreparationContext",
+      "ExtentSHA256": "0D6B2C8568CD36E63F41E4C20859C94EEF8813ADE0410566FA370A968DC9906A",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/Invoke-ContainerRuntimeDiagnosis.psm1",
+      "Function": "Invoke-DiagnosisProcess",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/Invoke-QuietRelease.psm1",
+      "Function": "Invoke-QuietReleaseGit",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/Measure-ColdStart.psm1",
+      "Function": "Invoke-QuietChild",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/New-QuietPreviewTag.psm1",
+      "Function": "Invoke-QuietPreviewGit",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/PowerShellReleases.psm1",
+      "Function": "Get-QuietAlpinePowerShellPackage",
+      "ExtentSHA256": "E2B7D9A45903A259C77C72D8B2CE34EC5960CB0BD717C5471B2DD41534AA219C",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/PullRequestUpdates.psm1",
+      "Function": "Invoke-QuietPullRequestTool",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/Remove-QuietTags.psm1",
+      "Function": "Invoke-QuietTagCommand",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/RunProfileStore.psm1",
+      "Function": "Assert-RunProfile",
+      "ExtentSHA256": "DFE16FBAB0319E0619B868A9CD822ECB874D25AE66F1CD74D8D354E90BC69763",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/RunProfileStore.psm1",
+      "Function": "ConvertTo-RunProfileSource",
+      "ExtentSHA256": "DFE16FBAB0319E0619B868A9CD822ECB874D25AE66F1CD74D8D354E90BC69763",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/RunProfileStore.psm1",
+      "Function": "Merge-RunProfileArguments",
+      "ExtentSHA256": "DFE16FBAB0319E0619B868A9CD822ECB874D25AE66F1CD74D8D354E90BC69763",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/RunProfileStore.psm1",
+      "Function": "Resolve-RunProfileTarget",
+      "ExtentSHA256": "DFE16FBAB0319E0619B868A9CD822ECB874D25AE66F1CD74D8D354E90BC69763",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/RunProfileStore.psm1",
+      "Function": "Write-RunProfile",
+      "ExtentSHA256": "DFE16FBAB0319E0619B868A9CD822ECB874D25AE66F1CD74D8D354E90BC69763",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidAssignmentToAutomaticVariable",
+      "Path": "scripts/lib/Start-QuietWorkBranch.psm1",
+      "Function": "Invoke-QuietWorkBranchGit",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidUsingEmptyCatchBlock",
+      "Path": "scripts/Build-Workspace.ps1",
+      "Function": "",
+      "ExtentSHA256": "13ACB369D8BEE4304D41A925710CD7DC106495A5C3699935E76800D20969EA8B",
+      "Count": 2
+    },
+    {
+      "Rule": "PSAvoidUsingEmptyCatchBlock",
+      "Path": "scripts/Export-CiFailureDiagnostics.ps1",
+      "Function": "",
+      "ExtentSHA256": "CA09AC82DEADCD5DB77FC40C1878C0CF4D8DECF6E4996807257B7FE182C8EE56",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidUsingEmptyCatchBlock",
+      "Path": "scripts/Invoke-CoreProfiling.ps1",
+      "Function": "",
+      "ExtentSHA256": "13ACB369D8BEE4304D41A925710CD7DC106495A5C3699935E76800D20969EA8B",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidUsingEmptyCatchBlock",
+      "Path": "scripts/Invoke-TestWorker.ps1",
+      "Function": "",
+      "ExtentSHA256": "13ACB369D8BEE4304D41A925710CD7DC106495A5C3699935E76800D20969EA8B",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidUsingEmptyCatchBlock",
+      "Path": "scripts/lib/Ci.Process.psm1",
+      "Function": "Invoke-CiProcess",
+      "ExtentSHA256": "13ACB369D8BEE4304D41A925710CD7DC106495A5C3699935E76800D20969EA8B",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidUsingEmptyCatchBlock",
+      "Path": "scripts/lib/Common.psm1",
+      "Function": "Wait-WorkspaceWorker",
+      "ExtentSHA256": "13ACB369D8BEE4304D41A925710CD7DC106495A5C3699935E76800D20969EA8B",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidUsingEmptyCatchBlock",
+      "Path": "scripts/lib/DevelopmentWorkstation.psm1",
+      "Function": "Get-DevelopmentInventory",
+      "ExtentSHA256": "13ACB369D8BEE4304D41A925710CD7DC106495A5C3699935E76800D20969EA8B",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidUsingPlainTextForPassword",
+      "Path": "scripts/Sync-Credits.ps1",
+      "Function": "",
+      "ExtentSHA256": "03EEDA1E82A67193423DF7561214F771887488FBEB3B042905EDDF2367D495E7",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidUsingPlainTextForPassword",
+      "Path": "scripts/Sync-DocsCredits.ps1",
+      "Function": "",
+      "ExtentSHA256": "03EEDA1E82A67193423DF7561214F771887488FBEB3B042905EDDF2367D495E7",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidUsingPlainTextForPassword",
+      "Path": "scripts/lib/Sync-Credits.psm1",
+      "Function": "Invoke-QuietScriptSyncCredits",
+      "ExtentSHA256": "D9CD5BEDDF02BC6CADB15D165869CFA65DBADEE7A2996656DCA3F087979185E5",
+      "Count": 1
+    },
+    {
+      "Rule": "PSAvoidUsingPlainTextForPassword",
+      "Path": "scripts/lib/Sync-DocsCredits.psm1",
+      "Function": "Invoke-QuietScriptSyncDocsCredits",
+      "ExtentSHA256": "D9CD5BEDDF02BC6CADB15D165869CFA65DBADEE7A2996656DCA3F087979185E5",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/Invoke-ContainerWorker.ps1",
+      "Function": "",
+      "ExtentSHA256": "81812BDBCE35BE4607A21F7F0FADA3751E59FB34551CCA8BFFB3D7CED8D46A88",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/Invoke-CoreProfiling.ps1",
+      "Function": "",
+      "ExtentSHA256": "8FBADBEA76BB270F59C59D327A5DA355DCE424308831ED79722D6022A3B30B06",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/Invoke-CoreProfiling.ps1",
+      "Function": "",
+      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/Invoke-RunProfile.ps1",
+      "Function": "",
+      "ExtentSHA256": "A6283B1CCB25AAB93D46170922AEA22CEA45CB9A71606DCB8E4D712EF42BC7EF",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/Invoke-TestWorker.ps1",
+      "Function": "",
+      "ExtentSHA256": "7C02C375594A35A2C94BCDAD9384F7A71DEEC75D53BCDDA0EA7B90FFDA6BF769",
+      "Count": 12
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/New-CiImpactPlan.ps1",
+      "Function": "",
+      "ExtentSHA256": "0D6B2C8568CD36E63F41E4C20859C94EEF8813ADE0410566FA370A968DC9906A",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/New-RunProfile.ps1",
+      "Function": "",
+      "ExtentSHA256": "2FCF86D941C99E4222A5E1A19896DFD4B3E89BBCB1CBD0EC7F200E598B7CCF30",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/Push-Workspace.ps1",
+      "Function": "",
+      "ExtentSHA256": "CC08701FA0D36E694FA35605888BBA86181BC15E64819C5B6E11CEFD7E136BEA",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/Sync-GitHubWorkflowsReadme.ps1",
+      "Function": "",
+      "ExtentSHA256": "AF6324A357E772660D76326577F0BB8A35D4E07ED5F26F1D3993DBBDDC6A377F",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/Sync-ScriptContracts.ps1",
+      "Function": "",
+      "ExtentSHA256": "C140BBE56862A8A6785CF11C73D6C3B1134FBF807006EB5ABFC5C780DDC7A2DE",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/Update-EnvFile.ps1",
+      "Function": "",
+      "ExtentSHA256": "42DFEE6749F045A56C100C261B1F82076A40BD0407453CC84A0363F87A7D83F4",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/CiCompanions.psm1",
+      "Function": "Get-QuietCiCompanionOrder",
+      "ExtentSHA256": "4890F31BA1AA2D4F6292F53B6216F60613150E4B710DE93D78CA82BB8785667B",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Commit-Workspace.psm1",
+      "Function": "Invoke-QuietScriptCommitWorkspace",
+      "ExtentSHA256": "038A4E0A2E7B5D8F5E624DC65997E1C2C13698F1E9EF116AD0058B553A9C946F",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Commit-Workspace.psm1",
+      "Function": "Invoke-QuietScriptCommitWorkspace",
+      "ExtentSHA256": "065A5F3988ADA7DB80ACFCFCAA76E7A78EC37F245CC764E0DD8194D39C32A58B",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Commit-Workspace.psm1",
+      "Function": "Invoke-QuietScriptCommitWorkspace",
+      "ExtentSHA256": "13E6E945A3BE1EAB5093B6C25466E3451D9AD70D60E16EFE2205BDCABBC78B30",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Commit-Workspace.psm1",
+      "Function": "Invoke-QuietScriptCommitWorkspace",
+      "ExtentSHA256": "5BF710BB4C18ABD59890E3819B5ABAF08F9101CC9A56612A83849877E1C79EDA",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Commit-Workspace.psm1",
+      "Function": "Invoke-QuietScriptCommitWorkspace",
+      "ExtentSHA256": "5D7F2936EB5A233F5C545145996A4D5B70D0B3EB6CFE0DC81EE8F7E31C0B82D8",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Commit-Workspace.psm1",
+      "Function": "Invoke-QuietScriptCommitWorkspace",
+      "ExtentSHA256": "998764073CD2E8688A180877C07990D7B5699F531F3557751780CC699997506C",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Commit-Workspace.psm1",
+      "Function": "Invoke-QuietScriptCommitWorkspace",
+      "ExtentSHA256": "B0F8BBF971E4B99493599330C036DA94FF317068DBFD714AD74F626007E63E78",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Commit-Workspace.psm1",
+      "Function": "Invoke-QuietScriptCommitWorkspace",
+      "ExtentSHA256": "CC08701FA0D36E694FA35605888BBA86181BC15E64819C5B6E11CEFD7E136BEA",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Commit-Workspace.psm1",
+      "Function": "Invoke-QuietScriptCommitWorkspace",
+      "ExtentSHA256": "FDE4B982FE2517350F2F96C8D28BC04777171B7DB95CA4D2FEE6F5B0D02873B1",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Commit-Workspace.psm1",
+      "Function": "Invoke-QuietScriptCommitWorkspace",
+      "ExtentSHA256": "FDFC6F6572B9D5EDF698D0C5E71FFE4DFD9D4B530EE04112A110B0C3B4B0B09C",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Measure-ColdStart.psm1",
+      "Function": "Invoke-QuietScriptMeasureColdStart",
+      "ExtentSHA256": "66516F291BB930D31FAAD22D93446AC7F29A837CFE03AB26E7A5B65C7151D163",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Measure-ColdStart.psm1",
+      "Function": "Invoke-QuietScriptMeasureColdStart",
+      "ExtentSHA256": "9B082E3A39E86D57933F915EBDDF204F9CDA78F72F0B1793D62A83B71379F9C6",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Measure-ColdStart.psm1",
+      "Function": "Invoke-QuietScriptMeasureColdStart",
+      "ExtentSHA256": "FBB68F286EB97CF4793E22754F41BF51217B1ED03165CFE48C64317FB32D26CC",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Probe-ContainerRuntime.psm1",
+      "Function": "Invoke-QuietScriptProbeContainerRuntime",
+      "ExtentSHA256": "9A42A15A922B7C7250F6F264771CA34D40EB49BF00E0F72FB49F0F7FA77348AD",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/RunFormat.psm1",
+      "Function": "Format-RunTable",
+      "ExtentSHA256": "70052E41FDF4630A33E8C83F5CAA0268089191CEA4C2796FCFF19DC501E26503",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/TestCaseMetadata.psm1",
+      "Function": "Get-QuietTestCaseInventory",
+      "ExtentSHA256": "F56385F8D76C565CDF58BE6FFEF6029316B62475E9D3351B0608317022BA3DD4",
+      "Count": 1
+    },
+    {
+      "Rule": "PSReviewUnusedParameter",
+      "Path": "scripts/lib/Update-Packages.psm1",
+      "Function": "Invoke-QuietScriptUpdatePackages",
+      "ExtentSHA256": "2424E1D33931E5FC15FB5DBB2CBDE1664ADB1543C903B830B28849639346D6DE",
+      "Count": 1
+    },
+    {
+      "Rule": "PSUseApprovedVerbs",
+      "Path": "scripts/lib/CiCompanions.psm1",
+      "Function": "Visit-Companion",
+      "ExtentSHA256": "672FA64E2EDC500EEBA7B143C79739E38D15D7078E49A2AECAF599232E23B340",
+      "Count": 1
+    },
+    {
+      "Rule": "PSUseApprovedVerbs",
+      "Path": "scripts/lib/Resources.psm1",
+      "Function": "Ensure-QuietResource",
+      "ExtentSHA256": "150AD79A8CBFEA906D43E48103D0A12F38BCB71615C528F5EE829BA7AC56E78E",
+      "Count": 1
+    },
+    {
+      "Rule": "PSUseApprovedVerbs",
+      "Path": "scripts/lib/Watch-Tests.psm1",
+      "Function": "Fit-Cell",
+      "ExtentSHA256": "9F1EF215F12096D75FE829D5D95A0255F65653ACE3AA800659C6908076B99A2C",
+      "Count": 1
+    },
+    {
+      "Rule": "PSUseLiteralInitializerForHashtable",
+      "Path": "scripts/lib/Update-Packages.psm1",
+      "Function": "Invoke-QuietScriptUpdatePackages",
+      "ExtentSHA256": "828B3BB68B15C07A4B1EEBD6EB7388D223F7CC02CB23301DC705A890F44A39D2",
+      "Count": 1
+    },
+    {
+      "Rule": "PSUseLiteralInitializerForHashtable",
+      "Path": "scripts/lib/Update-Packages.psm1",
+      "Function": "Set-QuietPackageVersion",
+      "ExtentSHA256": "828B3BB68B15C07A4B1EEBD6EB7388D223F7CC02CB23301DC705A890F44A39D2",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Assert-QualificationGate.ps1",
+      "Function": "",
+      "ExtentSHA256": "A6154FCAA7946B54E1D71FCF65BBC5D104E68B8AA40D97F31EA7F11D2F75CE3E",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Get-ModulePackageName.ps1",
+      "Function": "",
+      "ExtentSHA256": "5A32DF97539026BEEEA3C2E247C4F2DDE61EB649B50AA6896F802C01E5F2ED42",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Initialize-CiCompanions.ps1",
+      "Function": "",
+      "ExtentSHA256": "A6154FCAA7946B54E1D71FCF65BBC5D104E68B8AA40D97F31EA7F11D2F75CE3E",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Initialize-Profilers.ps1",
+      "Function": "",
+      "ExtentSHA256": "646373571DA26B5E8BC53363AD56AA45C49DD271FBBDFA96F5D9D7F5EA965ADC",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Install-DevelopmentWorkstation.ps1",
+      "Function": "",
+      "ExtentSHA256": "57ECA7BC4ADC53E08DA84FCCE0F897AC9311E491DB028CA686108EE19EB87DA0",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Install-DevelopmentWorkstation.ps1",
+      "Function": "",
+      "ExtentSHA256": "8105C8F67B79E089277A951820908C7B0020BE5F843B885E2E83CBA86B112977",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Invoke-ColdStartMatrix.ps1",
+      "Function": "",
+      "ExtentSHA256": "5183229BCA681F12338EEEBFCCD592BAE97C744015D51F431293639339EB6FE4",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Invoke-GitQualification.ps1",
+      "Function": "",
+      "ExtentSHA256": "9E17D02E515A3858AD4087E17B672DDD2FE244E66339EC40352C662DB71281A0",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Invoke-QuietGalleryRelease.ps1",
+      "Function": "",
+      "ExtentSHA256": "779A7460CA8950A61BD6073A6DC918280D028FDB0D1F273CD432A920AB110F47",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Invoke-QuietGalleryRelease.ps1",
+      "Function": "",
+      "ExtentSHA256": "CB960BB5C508F092FC094F398B78F2E3D40ACCC461E54E565B0C32E30BE49977",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Invoke-TestWorker.ps1",
+      "Function": "",
+      "ExtentSHA256": "4B58DADFD76E4388C74FABEADE6C7513013D2BDB4E8776D074448FD3F4D9F062",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Invoke-TestWorker.ps1",
+      "Function": "",
+      "ExtentSHA256": "CB8D58FB9F0FE7DA0005826E7C40F17412D3768FF8656168235EB9DB0ACAEF57",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Invoke-TestWorker.ps1",
+      "Function": "",
+      "ExtentSHA256": "EBF9CB0D425D3FF97C7D088396C48A4271EAB90B0D945C2AB3BF6A787B8F18AF",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Invoke-TestWorker.ps1",
+      "Function": "",
+      "ExtentSHA256": "F2DDF0F317CB2FC72966371B3882366AD3A6A9C811EED7415480F24753C8218B",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/New-CiSuiteImage.ps1",
+      "Function": "",
+      "ExtentSHA256": "A6154FCAA7946B54E1D71FCF65BBC5D104E68B8AA40D97F31EA7F11D2F75CE3E",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/New-QuietGalleryPackage.ps1",
+      "Function": "",
+      "ExtentSHA256": "779A7460CA8950A61BD6073A6DC918280D028FDB0D1F273CD432A920AB110F47",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/New-QuietGalleryPackage.ps1",
+      "Function": "",
+      "ExtentSHA256": "CB960BB5C508F092FC094F398B78F2E3D40ACCC461E54E565B0C32E30BE49977",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/New-QuietPreviewPackage.ps1",
+      "Function": "",
+      "ExtentSHA256": "CB960BB5C508F092FC094F398B78F2E3D40ACCC461E54E565B0C32E30BE49977",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/New-RunProfile.ps1",
+      "Function": "",
+      "ExtentSHA256": "215EB33A8F7D934DA89190F7EC12176EEFAC6DA4D37445DCDAF7B6FFE684D83C",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Publish-QuietGallery.ps1",
+      "Function": "",
+      "ExtentSHA256": "CB960BB5C508F092FC094F398B78F2E3D40ACCC461E54E565B0C32E30BE49977",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Publish-QuietGitHubRelease.ps1",
+      "Function": "",
+      "ExtentSHA256": "779A7460CA8950A61BD6073A6DC918280D028FDB0D1F273CD432A920AB110F47",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Publish-QuietGitHubRelease.ps1",
+      "Function": "",
+      "ExtentSHA256": "CB960BB5C508F092FC094F398B78F2E3D40ACCC461E54E565B0C32E30BE49977",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Publish-QuietGitHubRelease.ps1",
+      "Function": "",
+      "ExtentSHA256": "CF272D9A42036CB1E20396337B1B95857F0B22056F526F0B3639742CEC5613CF",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Remove-DevelopmentWorkstationRun.ps1",
+      "Function": "",
+      "ExtentSHA256": "2E719F501DF3234ADA90F6CBF6F267AD169A6F887D68D9249144FE7357A4A70F",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/Sync-DevelopmentEditorExtensions.ps1",
+      "Function": "",
+      "ExtentSHA256": "57ECA7BC4ADC53E08DA84FCCE0F897AC9311E491DB028CA686108EE19EB87DA0",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/DevelopmentWorkstation.psm1",
+      "Function": "Get-DevelopmentInventory",
+      "ExtentSHA256": "161EDF91DAA7CBF1386603F7C897046E31D4FDC2867DF9DEB93289F8CC00A278",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/Gallery.psm1",
+      "Function": "Get-QuietGalleryModuleIdentity",
+      "ExtentSHA256": "DAFCC77BA9E621D4B6852D5845E6D7B5DBFC37BD03CC368A1B43E66A4F97CA1B",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/Gallery.psm1",
+      "Function": "Get-QuietGalleryRemoteIdentity",
+      "ExtentSHA256": "AB220FB9D5F95DF3BA411B3B5ED9CBE74BDCF25E0DDEECA49C1CED3A13620473",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/Gallery.psm1",
+      "Function": "Test-QuietGalleryPackageSet",
+      "ExtentSHA256": "AB220FB9D5F95DF3BA411B3B5ED9CBE74BDCF25E0DDEECA49C1CED3A13620473",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/GalleryRelease.psm1",
+      "Function": "Get-QuietGalleryReleaseTargets",
+      "ExtentSHA256": "DAFCC77BA9E621D4B6852D5845E6D7B5DBFC37BD03CC368A1B43E66A4F97CA1B",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/Invoke-ContainerRuntimeDiagnosis.psm1",
+      "Function": "Invoke-QuietScriptInvokeContainerRuntimeDiagnosis",
+      "ExtentSHA256": "DAC09B91D430F8B371F8A64AF18B936048B65DE06D463C4F29C12455DB66C2DF",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/Measure-ColdStart.psm1",
+      "Function": "Invoke-QuietScriptMeasureColdStart",
+      "ExtentSHA256": "0C9894840A23362A8CD77CD7C69733B4B6CADBD1412F8B9D78D132B029374862",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/New-QuietPreviewTag.psm1",
+      "Function": "Invoke-QuietScriptNewQuietPreviewTag",
+      "ExtentSHA256": "DAFCC77BA9E621D4B6852D5845E6D7B5DBFC37BD03CC368A1B43E66A4F97CA1B",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/ReleaseTags.psm1",
+      "Function": "Get-QuietModuleReleaseSelection",
+      "ExtentSHA256": "AB220FB9D5F95DF3BA411B3B5ED9CBE74BDCF25E0DDEECA49C1CED3A13620473",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/ReleaseTags.psm1",
+      "Function": "Invoke-QuietModuleRelease",
+      "ExtentSHA256": "AB220FB9D5F95DF3BA411B3B5ED9CBE74BDCF25E0DDEECA49C1CED3A13620473",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/RunLog.psm1",
+      "Function": "",
+      "ExtentSHA256": "F5A7E14750577CF64CB44EA5092DD0C42A7CF2463A105A64204D8A118F744C18",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/RunProfileStore.psm1",
+      "Function": "",
+      "ExtentSHA256": "7AB9023BB904EACF7857F1E3D5BE6140ED4B687F9399F9CFFDA18CDE15FA5A4C",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/RunProfiler.psm1",
+      "Function": "",
+      "ExtentSHA256": "F5A7E14750577CF64CB44EA5092DD0C42A7CF2463A105A64204D8A118F744C18",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/RunProfiler.psm1",
+      "Function": "Invoke-RunProfiled",
+      "ExtentSHA256": "4631EA903ACD57E0883CC981DA8BC7301A45D419D75C69A10F816B6B3577534B",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/Test-WorkspacePackage.psm1",
+      "Function": "Invoke-QuietScriptTestWorkspacePackage",
+      "ExtentSHA256": "F074E8EA575F0D5B3FCE6CF630796639007E90B795E68E555B0AAB93AB9C7118",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/WorkspaceProjects.psm1",
+      "Function": "Get-QuietWorkspaceSuiteNames",
+      "ExtentSHA256": "6013EE9832216DA8BB198CAB0FD426C7F701A373CF60F4C465319BCFC9BC7C83",
+      "Count": 1
+    },
+    {
+      "Rule": "QuietImportErrorAction",
+      "Path": "scripts/lib/WorkspaceProjects.psm1",
+      "Function": "Get-QuietWorkspaceSuiteSelection",
+      "ExtentSHA256": "6013EE9832216DA8BB198CAB0FD426C7F701A373CF60F4C465319BCFC9BC7C83",
+      "Count": 1
+    }
+  ]
+}

@@ -67,7 +67,7 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 
 Purpose: Returns the two checksum-pinned diagnostic packages and their required entrypoints.
 
-Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 0.
+Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->

@@ -4,7 +4,7 @@
 
 Prepares the checksum-pinned script test tools in an isolated cache, without global installation:
 - Pester 6.2.0, for [Invoke-ScriptsTests](Invoke-ScriptsTests.md);
-- PSScriptAnalyzer 1.25.0, for script analysis.
+- PSScriptAnalyzer 1.25.0, for the [ScriptAnalyzer check](Test-ScriptAnalysis.md).
 
 ```powershell
 ./scripts/Initialize-TestTools.ps1                    # both tools into <workspace>/.cache/test-tools

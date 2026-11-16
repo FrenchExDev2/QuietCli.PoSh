@@ -13,7 +13,11 @@ Export-ModuleMember -Function 'Get-QuietScriptShouldProcess','Test-QuietScriptSh
 
 ## Purpose and usage
 
-Read-only AST/policy library. Get-QuietScriptShouldProcess -Path <file> classifies standard ShouldProcess support, a function-only/empty library or an unclassified entry point. Test-QuietScriptShouldProcessPolicy -WorkspaceRoot <root> checks new PowerShell scripts against build/script-shouldprocess.json.
+Read-only AST/policy library. Get-QuietScriptShouldProcess -Path <file> classifies standard ShouldProcess support, a function-only/empty library, a Pester test container or an unclassified entry point. Test-QuietScriptShouldProcessPolicy -WorkspaceRoot <root> checks new PowerShell scripts against build/script-shouldprocess.json.
+
+### Test containers
+
+A `*.Tests.ps1` file is classified `TestContainer` when it has no param block and every top-level statement is a single `BeforeAll`, `AfterAll`, `BeforeDiscovery` or `Describe` command. Pester runs these blocks itself, so the file performs no effect when it is dot-sourced or discovered. `Test-QuietScriptShouldProcessPolicy` accepts this classification only for paths under `test/scripts/` and counts them in `TestContainers`. Anywhere else, or with any other top-level statement, the file stays an executable script that needs ShouldProcess.
 
 ## Dependencies and side effects
 

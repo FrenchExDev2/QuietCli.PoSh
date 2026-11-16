@@ -5,5 +5,6 @@
     Paths = @(
         'lib/ScriptsTests.psm1'
         'lib/RunToolCache.psm1'
+        'lib/ScriptAnalysis.psm1'
     )
 }
