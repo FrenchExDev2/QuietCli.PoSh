@@ -220,7 +220,7 @@ function Test-QuietCommitFileSniffer {
     $moduleRoot = Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent
     foreach($name in @('Core','Git')){
         $moduleName='FrenchExDev2.QuietCli.'+$name+'.PoSh'
-        $expected=[IO.Path]::Combine($moduleRoot,$moduleName,($moduleName+'.psm1'))
+        $expected=[IO.Path]::GetFullPath([IO.Path]::Combine((Resolve-QuietWorkspacePath $moduleRoot $moduleName),($moduleName+'.psm1')))
         foreach($loaded in @(Get-Module $moduleName -All)){
             if($loaded.Path -cne $expected){throw ('CommitLocalModulePathMismatch: '+$moduleName+'; start a fresh session.')}
         }

@@ -103,6 +103,7 @@ Dedicated external dependency locks keep their integrity contracts. See
 Invoke-WorkspaceCi; test execution and checkpoint creation remain separate operations.
 
 <!-- grouped-layout-review:begin -->
+The file sniffer validates any already loaded Core/Git module against its catalogue-resolved grouped directory, so using the current local module in the calling session remains supported.
 ## Grouped workspace contract
 
 Reviewed source: scripts/lib/Commit-Workspace.psm1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
