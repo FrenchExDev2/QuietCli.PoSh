@@ -11,6 +11,7 @@ Run ./scripts/Sync-GitHubWorkflowsReadme.ps1 -Apply to regenerate graphs and thi
 | [core-ci.yml](../../../.github/workflows/core-ci.yml) | [documentation](script-core-ci.md) |
 | [distribution-ci.yml](../../../.github/workflows/distribution-ci.yml) | [documentation](script-distribution-ci.md) |
 | [git-ci.yml](../../../.github/workflows/git-ci.yml) | [documentation](script-git-ci.md) |
+| [packages-update.yml](../../../.github/workflows/packages-update.yml) | [documentation](script-packages-update.md) |
 | [preview-psgallery.yml](../../../.github/workflows/preview-psgallery.yml) | [documentation](script-preview-psgallery.md) |
 | [publish-psgallery.yml](../../../.github/workflows/publish-psgallery.yml) | [documentation](script-publish-psgallery.md) |
 | [qualification.yml](../../../.github/workflows/qualification.yml) | [documentation](script-qualification.md) |

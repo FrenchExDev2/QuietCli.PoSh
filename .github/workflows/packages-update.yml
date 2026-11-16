@@ -1,0 +1,75 @@
+name: QuietCli2 NuGet package updates
+
+# Manual only: evaluates every tracked project once per target framework with MSBuild, so each
+# Directory.Packages.props Condition resolves as restore resolves it, and checks each package x
+# framework row against nuget.org catalog assets. The report job always runs read-only with -WhatIf
+# and prints the table in the logs and the job summary. The apply job runs only when the apply input
+# is true: it writes the compatible versions, checks them with dotnet restore (the original file is
+# restored on failure), then commits and pushes Directory.Packages.props to the dispatched branch.
+# Triggering it with apply=true is the explicit approval to write and push.
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Write Directory.Packages.props, restore-check, commit and push
+        type: boolean
+        default: false
+      prerelease:
+        description: Also propose pre-release versions
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    name: Report compatible package updates per target framework
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+      - uses: ./.github/actions/setup-powershell
+      - name: List package x framework rows and the updates that would be written
+        shell: pwsh
+        env:
+          QUIET_PRERELEASE: ${{ inputs.prerelease }}
+        run: ./scripts/Update-Packages.ps1 -WhatIf -IncludePrerelease:($env:QUIET_PRERELEASE -eq 'true')
+  apply:
+    name: Apply compatible package updates and push
+    needs: report
+    if: ${{ inputs.apply }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+      - uses: ./.github/actions/setup-powershell
+      - name: Write compatible versions and check them with dotnet restore
+        shell: pwsh
+        env:
+          QUIET_PRERELEASE: ${{ inputs.prerelease }}
+        run: ./scripts/Update-Packages.ps1 -Apply -Confirm:$false -IncludePrerelease:($env:QUIET_PRERELEASE -eq 'true')
+      - name: Commit and push Directory.Packages.props, if it changed
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- Directory.Packages.props
+          if (git diff --cached --quiet) {
+            Write-Host 'Nothing to commit: every package is already at its newest compatible version.'
+          } else {
+            git commit -m 'Update NuGet package versions'
+            git push origin "HEAD:${{ github.ref }}"
+          }
