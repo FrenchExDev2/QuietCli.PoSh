@@ -351,7 +351,7 @@ jobs:
       contents: read
       packages: write
     concurrency:
-      group: quietcli2-suite-image-${{ matrix.rid }}
+      group: quietcli2-suite-image-${{ inputs.suite || 'All' }}-${{ matrix.rid }}
       cancel-in-progress: false
     strategy:
       fail-fast: false
