@@ -90,7 +90,8 @@ function Test-QuietWorkspaceBuildProjects {
     $identityRoot=Join-Path $RunDirectory build-catalogue
     foreach($relative in @('global.json','Directory.Packages.props','Directory.Build.props','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/protocol.json','FrenchExDev2.QuietCli.Packer.PoSh/shared/Shared.cs')){
         $path=Join-Path $identityRoot $relative;[void][IO.Directory]::CreateDirectory((Split-Path $path -Parent))
-        [IO.File]::WriteAllText($path,'fixture',[Text.UTF8Encoding]::new($false))
+        $content=if($relative.EndsWith('.props')){'<Project />'}else{'fixture'}
+        [IO.File]::WriteAllText($path,$content,[Text.UTF8Encoding]::new($false))
     }
     $peer=Join-Path $identityRoot 'FrenchExDev2.QuietCli.Packer.PoSh/peer/Peer.csproj';[void][IO.Directory]::CreateDirectory((Split-Path $peer -Parent))
     [IO.File]::WriteAllText($peer,'<Project />',[Text.UTF8Encoding]::new($false))

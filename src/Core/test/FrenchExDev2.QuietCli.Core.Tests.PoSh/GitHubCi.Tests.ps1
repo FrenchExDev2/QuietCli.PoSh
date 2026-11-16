@@ -14,7 +14,7 @@ function Test-QuietContainerInputs {
         $directory=Join-Path $fixture $name;[void][IO.Directory]::CreateDirectory($directory)
         Copy-Item -LiteralPath (Resolve-QuietWorkspacePath $WorkspaceRoot ($name+'/'+$name+'.psd1')) -Destination $directory
     }
-    foreach($relative in @('scripts/staged.ps1','build/lock.json','docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','README.md','Quietly.slnx','Directory.Build.props','.env','secret.json')){
+    foreach($relative in @('scripts/staged.ps1','build/lock.json','docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','README.md','Quietly.slnx','Directory.Build.props','Directory.Build.targets','src/Core/Core.slnx','src/Core/Directory.Build.props','src/Core/test/Directory.Packages.props','build/imports/policy.targets','.env','secret.json')){
         $path=Join-Path $fixture $relative;[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path));[void][IO.File]::WriteAllTextAsync($path,'fixture-é漢',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     }
     $cache=Join-Path $RunDirectory restored-packages
@@ -27,7 +27,7 @@ function Test-QuietContainerInputs {
     $null=Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $stage -WhatIf
     if(Test-Path -LiteralPath $stage){throw 'ContainerStagePreviewWroteFiles'}
     Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $stage -Confirm:$false
-    foreach($relative in @('docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','Quietly.slnx','Directory.Build.props','artifacts/nuget-cache/system.fixture/1.0.0/content.txt')){
+    foreach($relative in @('docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','Quietly.slnx','Directory.Build.props','Directory.Build.targets','src/Core/Core.slnx','src/Core/Directory.Build.props','src/Core/test/Directory.Packages.props','build/imports/policy.targets','artifacts/nuget-cache/system.fixture/1.0.0/content.txt')){
         if(!(Test-Path -LiteralPath (Join-Path $stage $relative))){throw ('ContainerInputMissing: '+$relative)}
     }
     if((Test-Path (Join-Path $stage .env)) -or (Test-Path (Join-Path $stage secret.json)) -or (Test-Path (Join-Path $stage FrenchExDev2.QuietCli.Core.PoSh/engine/obj))){throw 'ContainerStageCopiedUndeclaredInputs'}

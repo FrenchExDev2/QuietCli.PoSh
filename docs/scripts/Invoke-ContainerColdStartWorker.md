@@ -1,5 +1,7 @@
 # Invoke-ContainerColdStartWorker.ps1
 
+The staged baseline manifest resolves beneath `/workspace/src/Core/src/`, matching the grouped checkout.
+
 Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
 
 ## Purpose and usage

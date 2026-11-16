@@ -56,6 +56,7 @@ function Test-QuietReadyToRun {
         if($actual.Directory -ceq 'lib/inprocess/win-x64'){throw 'ReadyToRunRoutingMutantSurvived'}
     }
     $scripts=Join-Path $fixture scripts;[void][IO.Directory]::CreateDirectory($scripts)
+    Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) -Destination ([IO.Path]::Combine($scripts,'lib')) -Recurse
     # Replace only the dependency boundary with a lexical fixture; the assertions own its state.
     $buildSource=[IO.File]::ReadAllText([IO.Path]::Combine($WorkspaceRoot,'scripts/Build-Workspace.ps1'),[Text.Encoding]::UTF8)
     if(!$buildSource.Contains("Import-Module ([IO.Path]::Combine(`$PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop")){throw 'BuildFixtureDependencyAnchorMissing'}
@@ -64,11 +65,13 @@ function Test-QuietReadyToRun {
     [IO.File]::WriteAllText([IO.Path]::Combine($scripts,'Build-Workspace.ps1'),$buildSource,[Text.UTF8Encoding]::new($false))
     Copy-Item -LiteralPath (Join-Path $WorkspaceRoot Quietly.slnx) -Destination $fixture
     $buildDistributions=@(Get-QuietWorkspaceBuildProjects $WorkspaceRoot)
+    $buildModuleProjects=@(Get-QuietWorkspaceProjects $WorkspaceRoot)
     $FailBuild=$false
     $mock=@'
 function Assert-QuietPtyPublications { param($WorkspaceRoot) }
 function Get-QuietWorkspaceBuildProjects { param($WorkspaceRoot) $buildDistributions }
 function Get-QuietWorkspaceBuildSelection { param($WorkspaceRoot,$Suite) @($buildDistributions.Package|Select-Object -Unique) }
+function Get-QuietWorkspaceProjects { param($WorkspaceRoot) $buildModuleProjects }
 function Assert-QuietRuntimePublication { param($Directory,$Target) }
 function Get-QuietBinaryInputs { param($WorkspaceRoot,$Project) ,@{Path='fixture';SHA256='fixture'} }
 function Get-QuietRuntimeTargets { param($WorkspaceRoot) foreach($rid in @('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')){[pscustomobject]@{Rid=$rid;PlatformTarget=$(if($rid.EndsWith('arm64')){'ARM64'}else{'x64'})}} }

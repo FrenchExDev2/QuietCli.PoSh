@@ -153,7 +153,7 @@ function Test-QuietAutomationContracts {
     [void][IO.Directory]::CreateDirectory($isolatedScripts)
     $isolatedLibrary=[IO.Path]::Combine($isolatedScripts,'lib')
     [void][IO.Directory]::CreateDirectory($isolatedLibrary)
-    foreach($helper in @('WorkflowDocumentation','Resources')){Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib',($helper+'.psm1'))) -Destination $isolatedLibrary}
+    Get-ChildItem -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) -File -Filter *.psm1 | Copy-Item -Destination $isolatedLibrary
     $isolatedResources=Join-Path $fixture tooling/FrenchExDev2.QuietCli.Core.PoSh/resources
     [void][IO.Directory]::CreateDirectory((Join-Path $isolatedResources yaml))
     Copy-Item -LiteralPath (Join-Path $WorkspaceRoot src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json) -Destination $isolatedResources

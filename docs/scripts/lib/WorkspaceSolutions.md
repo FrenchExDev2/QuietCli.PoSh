@@ -10,6 +10,8 @@ Get-QuietWorkspaceSolutions -WorkspaceRoot $checkout
 
 ## Dependencies and side effects
 
+Only grouped workspaces generate solutions. Legacy flat manifest fixtures remain readable without creating or enforcing generated solution membership.
+
 Multiple modules share a SolutionGroup without a one-to-one source/test constraint. Actual csproj files become Project entries; PowerShell sources and Markdown become File entries. Generated libraries and build output are excluded.
 
 ## Critical review

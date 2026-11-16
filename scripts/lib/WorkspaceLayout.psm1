@@ -12,6 +12,16 @@ function Resolve-QuietWorkspacePath {
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$RelativePath)
     $root=[IO.Path]::GetFullPath($WorkspaceRoot)
     if([IO.Path]::IsPathRooted($RelativePath) -or $RelativePath.Replace('\','/').Split('/') -contains '..'){throw 'WorkspaceRelativePathInvalid'}
+    $portable=$RelativePath.Replace('\','/')
+    if($portable -cmatch '\Asrc/[A-Z][A-Za-z0-9]*/(?:src|test)/(?<module>FrenchExDev2\.QuietCli\.[A-Za-z0-9.]+\.PoSh)(?:/(?<tail>.*))?\z'){
+        $module=$Matches.module;$tail=$Matches.tail
+        $grouped=if($tail){$portable.Substring(0,$portable.Length-$tail.Length-1)}else{$portable}
+        $legacy=[IO.Path]::Combine($root,$module)
+        if(!(Test-Path -LiteralPath ([IO.Path]::Combine($root,$grouped)) -PathType Container) -and (Test-Path -LiteralPath $legacy -PathType Container)){
+            if($tail){return [IO.Path]::Combine($legacy,$tail)}
+            return $legacy
+        }
+    }
     $parts=$RelativePath.Replace('\','/').Split('/',2)
     if($parts[0] -cnotmatch '\AFrenchExDev2\.QuietCli\.(?<group>[A-Za-z0-9.]+?)(?<test>\.Tests)?\.PoSh\z'){return [IO.Path]::Combine($root,$RelativePath)}
     $module=$parts[0];$group=$Matches.group;$category=if($Matches.test){'test'}else{'src'}

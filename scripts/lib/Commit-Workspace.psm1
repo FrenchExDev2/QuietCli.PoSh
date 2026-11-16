@@ -138,7 +138,24 @@ function Invoke-WorkspaceChecksForCommit {
     Explicitly omitted registry names.
     #>
     param([string]$Root,[string[]]$Skipped)
-    & ([IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),'Invoke-WorkspaceChecks.ps1')) -WorkspaceRoot $Root -SkipCheck @($Skipped|Sort-Object -Unique)
+    $registry=[IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),'Invoke-WorkspaceChecks.ps1')
+    $skips=@($Skipped|Sort-Object -Unique)
+    if($Root -ceq $WorkspaceRoot){& $registry -WorkspaceRoot $Root -SkipCheck $skips;return}
+    # A parser loaded from a prepared snapshot locks its DLL on Windows until process exit.
+    # Run the trusted registry in a child process before deleting that owned snapshot.
+    $skipLiteral=(@($skips|ForEach-Object {"'"+$_.Replace("'","''")+"'"}) -join ',')
+    $code="`$ErrorActionPreference='Stop';try{& '"+$registry.Replace("'","''")+"' -WorkspaceRoot '"+$Root.Replace("'","''")+"' -SkipCheck @("+$skipLiteral+")}catch{[Console]::Error.WriteLine('QUIET_INDEX_ERROR:'+(`$_.Exception.Message|ConvertTo-Json -Compress));exit 1}"
+    $state=@{Failure=$null}
+    $result=Invoke-CiProcess -FilePath (Get-Command pwsh -CommandType Application|Select-Object -First 1).Source -ArgumentList @('-NonInteractive','-OutputFormat','Text','-EncodedCommand',[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($code))) -WorkingDirectory $WorkspaceRoot -TimeoutSeconds 600 -State $state -OnOutput {
+        param($event,$state)
+        foreach($line in $event.Text.Split([char]10,[StringSplitOptions]::RemoveEmptyEntries)){
+            if($line.StartsWith('QUIET_INDEX_ERROR:',[StringComparison]::Ordinal)){$state.Failure=$line.Substring(18)|ConvertFrom-Json}else{Write-Host $line}
+        }
+    }
+    if($result.Outcome -ne 'Success'){
+        if($state.Failure){throw $state.Failure}
+        throw 'CommitWorkspaceIndexChecksFailed'
+    }
 }
 
 function Assert-QuietStagedWorkspaceChecks {

@@ -74,6 +74,7 @@ This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which 
 <!-- credits:end -->
 
 <!-- grouped-layout-review:begin -->
+Core test preloading resolves the selected manifest through the layout catalogue, including isolated legacy fixtures, before importing Tooling or Distribution.
 WorkspaceLayout verifies source identity without importing, querying or stopping a product engine, including at the final boundary. It runs in a source-only checkout with no compiled lib directories.
 ## Grouped workspace contract
 

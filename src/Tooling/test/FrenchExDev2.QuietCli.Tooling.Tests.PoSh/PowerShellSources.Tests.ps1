@@ -78,7 +78,7 @@ function Get-Fixture {
     if(!$rejected){throw 'PowerShellSourceRegistryAcceptedRegression'}
     $realScripts=[IO.Path]::Combine($WorkspaceRoot,'scripts')
     $commitFixture=New-QuietCommitWorkspaceFixture -Root $RunDirectory -RealScriptsPath $realScripts
-    $defect=[IO.Path]::Combine($commitFixture,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/Undocumented.ps1')
+    $defect=Resolve-QuietWorkspacePath $commitFixture 'FrenchExDev2.QuietCli.Core.PoSh/Undocumented.ps1'
     [IO.File]::WriteAllText($defect,($badHelp+"`n"),$utf8)
     $null=Invoke-WorkspaceNative git @('-C',$commitFixture,'add','--all','--') $commitFixture
     $index=[IO.Path]::Combine($commitFixture,'.git/index')
@@ -93,6 +93,12 @@ function Get-Fixture {
     $job=$workflow['jobs']['source-checks']
     if(!$job -or $job.ContainsKey('needs') -or $job.ContainsKey('if') -or @($workflow['jobs']['ci-status']['needs']) -cnotcontains 'source-checks'){throw 'PowerShellSourceEarlyJobMissing'}
     if((@($job['steps']|ForEach-Object {[string]$_['run']}) -join "`n") -notmatch 'Invoke-WorkspaceChecks.ps1 -Check PowerShellSources'){throw 'PowerShellSourceEarlyCheckChanged'}
-    if((@($workflow['jobs']['ci-status']['steps']|ForEach-Object {[string]$_['run']}) -join "`n").IndexOf("if(`$jobs['source-checks'].result -cne 'success')",[StringComparison]::Ordinal) -lt 0){throw 'PowerShellSourceSkippedJobAccepted'}
+    if((@($workflow['jobs']['ci-status']['steps']|ForEach-Object {[string]$_['run']}) -join "`n") -notmatch 'Assert-CiPlanResults.ps1 -NeedsJson'){throw 'PowerShellSourceSkippedJobAccepted'}
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/CiPlanResults.psm1')) -DisableNameChecking -ErrorAction Stop
+    foreach($result in @('skipped','failure','cancelled','')){
+        $rejected=$false
+        try{$null=Assert-QuietCiPlanResults -Needs @{plan=@{result='success'};'source-checks'=@{result=$result};'layout-tests'=@{result='success'}}}catch{$rejected=$_.Exception.Message -ceq 'CiPlanPrerequisiteRequired: source-checks'}
+        if(!$rejected){throw 'PowerShellSourceSkippedJobAccepted'}
+    }
     [pscustomobject]@{GeneratedSources=32;MalformedSources=3;MutantsKilled=$killed;PreparedIndexRejected=$true;PreviewPreservedIndex=$true;InspectedSourcesExecuted=$false}
 }

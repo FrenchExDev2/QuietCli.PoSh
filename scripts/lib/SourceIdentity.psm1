@@ -101,7 +101,7 @@ function Get-QuietBinaryInputs {
     }
     $files=foreach($root in $roots){foreach($file in Get-QuietSourceFiles $root){$file.Path=[IO.Path]::GetRelativePath($WorkspaceRoot,((Resolve-QuietWorkspacePath -WorkspaceRoot $root -RelativePath $file.Path))).Replace('\','/');$file}}
     $sdk=[IO.Path]::Combine($WorkspaceRoot,'global.json')
-    $spec=[IO.Path]::Combine($WorkspaceRoot,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/protocol.json')
+    $spec=Resolve-QuietWorkspacePath $WorkspaceRoot 'FrenchExDev2.QuietCli.Core.PoSh/protocol.json'
     $packages=[IO.Path]::Combine($WorkspaceRoot,'Directory.Packages.props')
     @($files)+@([pscustomobject]@{Path='global.json';Bytes=(Get-Item $sdk).Length;SHA256=(Get-FileHash $sdk -Algorithm SHA256).Hash})
     if(@($visited|Where-Object {[IO.Path]::GetFileName($_) -ceq 'QuietCli.Engine.csproj'}).Count){

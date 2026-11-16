@@ -22,6 +22,10 @@ its effective runtime explicitly; `-NativeOnly` omits this dotenv preparation.
 
 Root build inputs explicitly include `Quietly.slnx` and `Directory.Build.props`, preserving the same solution inventory and warning-as-error policy in local and GitHub container staging. The container-input regression asserts both files are copied, while private root files remain excluded.
 
+Grouped solutions and all source `.props`, `.targets` and `NuGet.Config` files retain their relative
+paths, including inherited policies between a companion and its module directories and shared imports.
+Generated directories remain excluded by the source enumerator.
+
 For ordinary companion suites, the helper reads the host's existing `project.assets.json` files
 and copies only their restored package directories into `artifacts/nuget-cache`. The container sets
 `NUGET_PACKAGES=/workspace/artifacts/nuget-cache`, allowing mutation builds without guest network

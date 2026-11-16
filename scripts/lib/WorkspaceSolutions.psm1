@@ -15,6 +15,7 @@ function Get-QuietWorkspaceSolutions {
     param([Parameter(Mandatory)][string]$WorkspaceRoot)
     $root=[IO.Path]::GetFullPath($WorkspaceRoot)
     $projects=@(Get-QuietWorkspaceProjects $root)
+    if(!@($projects|Where-Object {$_.Path.StartsWith('src/',[StringComparison]::Ordinal)}).Count){return}
     $groups=@($projects.SolutionGroup|Sort-Object -Unique)
     foreach($scope in @('')+$groups){
         $relative=if($scope){'src/'+$scope+'/'+$scope+'.slnx'}else{'Quietly.slnx'}

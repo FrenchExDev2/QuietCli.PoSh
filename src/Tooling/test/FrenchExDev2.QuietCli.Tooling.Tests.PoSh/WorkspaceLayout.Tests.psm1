@@ -66,6 +66,12 @@ function Invoke-QuietWorkspaceLayoutTests {
         $xml=[xml]($definitions|Where-Object Path -CEQ 'Quietly.slnx').Content
         if($definitions.Count -ne 6 -or @($xml.SelectNodes('//Project')).Count -ne 7){throw 'RealSolutionMembershipMismatch'}
         Sync-QuietWorkspaceSolutions $WorkspaceRoot;Sync-QuietCompanionWorkflows $WorkspaceRoot
+        $worker=[IO.Path]::Combine($WorkspaceRoot,'scripts/Invoke-ContainerWorker.ps1')
+        $preview=[IO.Path]::Combine($RunDirectory,'container-binding-preview')
+        foreach($suite in @('Core','Git','Vagrant','Mutation')){
+            $null=& $worker -WorkspaceRoot $WorkspaceRoot -RunDirectory $preview -Image fixture -Platform debian -Suite $suite -WhatIf
+            if(Test-Path -LiteralPath $preview){throw 'ContainerBindingPreviewWroteFiles'}
+        }
         foreach($group in @('Core','Git','Vagrant','Tooling','Distribution')){
             $workflow=if($group -ceq 'Tooling'){'tooling-component-ci.yml'}else{$group.ToLowerInvariant()+'-ci.yml'}
             $plan=Get-QuietCiImpact $WorkspaceRoot @('.github/workflows/'+$workflow)

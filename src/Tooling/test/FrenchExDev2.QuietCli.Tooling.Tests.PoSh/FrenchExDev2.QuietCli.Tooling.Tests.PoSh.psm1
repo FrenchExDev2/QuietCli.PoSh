@@ -331,7 +331,7 @@ function Invoke-QuietToolingTests {
         $directory=Join-Path $WorkspaceRoot ('artifacts/build-provenance/'+[guid]::NewGuid().ToString('N'))
         foreach($folder in @('src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/fixture','FrenchExDev2.QuietCli.Core.PoSh','output')){[void][IO.Directory]::CreateDirectory((Join-Path $directory $folder))}
         $project='src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/fixture/Synthetic.csproj'
-        $files=@{'global.json'='{}';'Directory.Packages.props'='<Project />';'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/protocol.json'='{}';$project='<Project />';'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/fixture/Program.cs'='// synthetic source';'output/Synthetic.dll'='synthetic binary'}
+        $files=@{'global.json'='{}';'Directory.Packages.props'='<Project />';'FrenchExDev2.QuietCli.Core.PoSh/protocol.json'='{}';$project='<Project />';'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/fixture/Program.cs'='// synthetic source';'output/Synthetic.dll'='synthetic binary'}
         foreach($entry in $files.GetEnumerator()){[void][IO.File]::WriteAllTextAsync((Join-Path $directory $entry.Key),$entry.Value,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}
         & {
             param($scripts,$directory,$project)

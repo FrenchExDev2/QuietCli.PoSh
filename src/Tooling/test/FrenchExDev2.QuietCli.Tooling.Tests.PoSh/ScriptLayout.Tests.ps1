@@ -102,7 +102,7 @@ function Test-QuietScriptLayoutContract {
     Assert-QuietRuntimePublication -Directory $peDirectory -Target @{Rid='win-x64';NativeFormat='PE';ManagedMachine=0x8664;NativeMachine=0x8664;Apphost='apphost.exe'}
     $build=[IO.Path]::Combine($RunDirectory,'build-manifest')
     foreach($relative in @('Product/lib','FrenchExDev2.QuietCli.Core.PoSh')){[void][IO.Directory]::CreateDirectory([IO.Path]::Combine($build,$relative))}
-    foreach($item in @{'Product/Fixture.csproj'='<Project />';'global.json'='{}';'Directory.Packages.props'='<Project />';'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/protocol.json'='{}';'Product/lib/fixture.dll'='inert fixture'}.GetEnumerator()){
+    foreach($item in @{'Product/Fixture.csproj'='<Project />';'global.json'='{}';'Directory.Packages.props'='<Project />';'FrenchExDev2.QuietCli.Core.PoSh/protocol.json'='{}';'Product/lib/fixture.dll'='inert fixture'}.GetEnumerator()){
         [IO.File]::WriteAllText([IO.Path]::Combine($build,$item.Key),$item.Value,$utf8)
     }
     $inputs=@(Get-QuietBinaryInputs -WorkspaceRoot $build -Project 'Product/Fixture.csproj')

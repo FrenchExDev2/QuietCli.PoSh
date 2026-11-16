@@ -24,6 +24,11 @@ No build, companion campaign, push, tag, PR creation or publication is implicit.
 
 ## Shared checks
 
+Prepared-index checks run the trusted registry in a separate PowerShell process with its normal
+profile. The process exits before snapshot cleanup, releasing checksum-pinned YAML parser DLLs
+on Windows. Explicit skips and the original check failure message are preserved; working-tree
+checks continue in the caller process. The timeout fails closed without creating a commit.
+
 The [shared registry](../Invoke-WorkspaceChecks.md) validates ScriptLayout, TestCaseMetadata,
 ScriptsReadme, GitHubWorkflowDocs, ScriptShouldProcess, Resources, ScriptContracts,
 DocsCredits and Credits. ScriptLayout rejects invalid Verb-Noun names, functions in entry

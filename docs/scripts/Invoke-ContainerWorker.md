@@ -1,5 +1,9 @@
 # Invoke-ContainerWorker.ps1
 
+The dynamic `Suite` block precedes executable imports so PowerShell binds companion selection before
+execution. The layout campaign checks real Core, Git, Vagrant and Mutation bindings with `-WhatIf`.
+The independent native probe uses the grouped Core test path inside `/workspace/src/Core/test/`.
+
 `-Case` forwards a development-only Core wildcard to `Invoke-WorkspaceCi.ps1`. The guest
 retains partial-run metadata. It is rejected with other suites or `-GitHubActions`, keeping
 the hosted qualification entry point unfiltered.
@@ -110,7 +114,7 @@ See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-autom
 
 Purpose: Stages explicit sources and built artifacts into a private, networkless container.
 
-Boundary: **Executable**. Preview API: **DelegatedShouldProcess**. Guarded functions: 0.
+Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->

@@ -17,6 +17,9 @@ Suite limits binary verification to the selected build closure; source drift sti
 
 ## Purpose and usage
 
+Core protocol inputs resolve by module identity through `WorkspaceLayout`, supporting both the grouped
+checkout and owned legacy fixtures. Binary receipts continue to record the actual physical source paths.
+
 Common.ps1 loads deterministic source/binary identity helpers. `Get-QuietWorkspaceIdentity -WorkspaceRoot <root> -IncludeBinaries` verifies current source associations and output hashes. `Write-QuietBuildManifest` records project, configuration, RID, architecture, sources and direct binary files. Optional `-ReadyToRun` requires a real native R2R header; `-ReadyToRunTargets <rids>` declares selected child slots in portable manifests. `Test-QuietBuildManifest` rejects stale or modified output.
 
 Portable distributions are supplied by `Get-QuietWorkspaceBuildProjects`, including both recall-tool frameworks and future declared consumers. Compiler inputs recursively follow explicit `ProjectReference` edges and linked `Compile Include` directories within the workspace. `Directory.Build.props` participates when present, so a changed warning policy invalidates existing receipts. DTDs, workspace escapes and dynamic/wildcard explicit include expressions fail. Core's RID publications remain separately verified. The catalogue companion regression includes a synthetic Packer dependency graph and a changed build-policy hash.

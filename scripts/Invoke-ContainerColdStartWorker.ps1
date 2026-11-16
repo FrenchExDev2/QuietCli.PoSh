@@ -87,7 +87,7 @@ try {
         '-File', '/workspace/scripts/Invoke-ColdStartGate.ps1',
         '-CandidateModule', "/workspace/candidate/$candidateRelative",
         '-CandidateLabel', $CandidateLabel,
-        '-BaselineModule', '/workspace/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1',
+        '-BaselineModule', '/workspace/src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1',
         '-ArtifactsDirectory', '/workspace/artifacts/coldstart',
         '-MeasurePackageSize'
     )

@@ -35,6 +35,12 @@ function Copy-QuietContainerInputs {
         if($file.Extension -cne '.md' -and $file.Name -cnotin @('global.json','Directory.Build.props','Directory.Packages.props','Quietly.slnx','.gitattributes','.editorconfig','.gitignore','LICENSE')){continue}
         Copy-Item -LiteralPath $file.FullName -Destination $Destination
     }
+    foreach($file in Get-QuietSourceFiles $WorkspaceRoot){
+        if([IO.Path]::GetExtension($file.Path) -cnotin @('.slnx','.props','.targets') -and [IO.Path]::GetFileName($file.Path) -inotmatch '^NuGet\.Config$'){continue}
+        $target=[IO.Path]::Combine($Destination,$file.Path)
+        [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
+        Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$file.Path)) -Destination $target
+    }
     $runtime=if($ContainerRuntime){$ContainerRuntime}else{Get-QuietEnvValue -Path ([IO.Path]::Combine($WorkspaceRoot,'.env')) -Key QUIET_CONTAINER_RUNTIME}
     if($null -ne $runtime){
         if($runtime -cnotin @('podman','docker')){throw 'ContainerRuntimeConfigurationInvalid'}

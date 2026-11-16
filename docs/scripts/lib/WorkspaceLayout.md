@@ -10,7 +10,7 @@ Import-Module ./scripts/lib/WorkspaceLayout.psm1 -DisableNameChecking
 
 ## Dependencies and side effects
 
-The conventional grouped path is resolved before a bounded catalogue scan; isolated flat fixtures remain supported. Module identities are globally unique. Migration helpers support ShouldProcess and reject destination collisions and workspace escapes.
+The conventional grouped path is resolved before a bounded catalogue scan; isolated flat fixtures remain supported. A grouped module path can resolve to an existing flat module in such a fixture; an existing grouped directory always retains its explicit location. Module identities are globally unique. Migration helpers support ShouldProcess and reject destination collisions and workspace escapes.
 
 ## Critical review
 
