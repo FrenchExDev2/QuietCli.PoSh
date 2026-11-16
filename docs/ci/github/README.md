@@ -8,6 +8,7 @@ Run ./scripts/Sync-GitHubWorkflowsReadme.ps1 -Apply to regenerate graphs and thi
 | --- | --- |
 | [ci.yml](../../../.github/workflows/ci.yml) | [documentation](script-ci.md) |
 | [companions-ci.yml](../../../.github/workflows/companions-ci.yml) | [documentation](script-companions-ci.md) |
+| [packages-update.yml](../../../.github/workflows/packages-update.yml) | [documentation](script-packages-update.md) |
 | [preview-psgallery.yml](../../../.github/workflows/preview-psgallery.yml) | [documentation](script-preview-psgallery.md) |
 | [publish-psgallery.yml](../../../.github/workflows/publish-psgallery.yml) | [documentation](script-publish-psgallery.md) |
 | [qualification.yml](../../../.github/workflows/qualification.yml) | [documentation](script-qualification.md) |
