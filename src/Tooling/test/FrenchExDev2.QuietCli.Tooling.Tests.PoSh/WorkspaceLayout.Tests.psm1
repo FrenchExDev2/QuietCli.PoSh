@@ -163,6 +163,75 @@ function Invoke-QuietWorkspaceLayoutTests {
             $campaign.Malformed++
         }
     }
+    $cases['cached distributions restore the selected graph before compilation is reduced']={
+        $root=[IO.Path]::Combine($RunDirectory,'cached-build')
+        $scripts=[IO.Path]::Combine($root,'scripts');$lib=[IO.Path]::Combine($scripts,'lib')
+        [void][IO.Directory]::CreateDirectory($lib)
+        $engine='src/Demo/src/Demo/engine/Engine.csproj';$doc='src/Demo/src/Demo/tools/Doc.csproj'
+        $other='src/Other/src/Other/engine/Other.csproj'
+        foreach($relative in @($engine,$doc,$other)){
+            $path=[IO.Path]::Combine($root,$relative);[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))
+            [IO.File]::WriteAllText($path,'<Project />',[Text.UTF8Encoding]::new($false))
+        }
+        [IO.File]::WriteAllText([IO.Path]::Combine($root,'Quietly.slnx'),('<Solution><Project Path="'+$engine+'" /><Project Path="'+$doc+'" /><Project Path="'+$other+'" /></Solution>'),[Text.UTF8Encoding]::new($false))
+        $fake=@'
+function Get-QuietWorkspaceBuildSelection { <# .SYNOPSIS
+Returns the owned fixture module.
+#> param($WorkspaceRoot,$Suite) 'Demo' }
+function Get-QuietWorkspaceBuildProjects { <# .SYNOPSIS
+Returns one cached distribution and leaves documentation unpublished.
+#> param($WorkspaceRoot) [pscustomobject]@{Package='Demo';Project='src/Demo/src/Demo/engine/Engine.csproj';Output='lib/engine';TargetFramework='net11.0'} }
+function Get-QuietWorkspaceProjects { <# .SYNOPSIS
+Returns the fixture source container.
+#> param($WorkspaceRoot) [pscustomobject]@{Name='Demo';Path='src/Demo/src/Demo'} }
+function Assert-QuietPtyPublications { <# .SYNOPSIS
+Keeps the fixture independent of native payloads.
+#> param($WorkspaceRoot) }
+function Test-QuietBuildManifest { <# .SYNOPSIS
+Models a verified cached distribution.
+#> param($WorkspaceRoot,$Output) [pscustomobject]@{Configuration='Release';ReadyToRun=$false} }
+function Invoke-WorkspaceNative { <# .SYNOPSIS
+Records compiler admission and materializes restore assets without starting a tool.
+#> param($FilePath,$ArgumentList,$WorkingDirectory)
+    if(Test-Path ([IO.Path]::Combine($WorkingDirectory,'fail-restore'))){throw 'InjectedRestoreFailure'}
+    $solution=[xml][IO.File]::ReadAllText($ArgumentList[1],[Text.Encoding]::UTF8)
+    $paths=@($solution.SelectNodes('//Project')|ForEach-Object {$_.GetAttribute('Path')})
+    if(@($paths|Where-Object {$_ -match '[\\/]Other[\\/]'}).Count){throw 'RestoreExpandedToUnselectedCompanion'}
+    $record=@{Action=$ArgumentList[0];Projects=$paths}|ConvertTo-Json -Compress
+    [IO.File]::AppendAllText([IO.Path]::Combine($WorkingDirectory,'calls.jsonl'),$record+"`n",[Text.UTF8Encoding]::new($false))
+    if($ArgumentList[0] -ceq 'restore'){
+        foreach($path in $paths){$assets=[IO.Path]::Combine([IO.Path]::GetDirectoryName($path),'obj/project.assets.json');[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($assets));[IO.File]::WriteAllText($assets,'{}',[Text.UTF8Encoding]::new($false))}
+    }
+}
+Export-ModuleMember -Function *
+'@
+        [IO.File]::WriteAllText([IO.Path]::Combine($lib,'Common.psm1'),$fake,[Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText([IO.Path]::Combine($lib,'WorkspaceLayout.psm1'),'function Resolve-QuietWorkspacePath {param($WorkspaceRoot,$RelativePath) [IO.Path]::Combine($WorkspaceRoot,$RelativePath)}; Export-ModuleMember -Function Resolve-QuietWorkspacePath',[Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText([IO.Path]::Combine($lib,'WorkspacePublication.psm1'),'function Invoke-WorkspacePublication {throw "CachedDistributionWasRepublished"}; Export-ModuleMember -Function Invoke-WorkspacePublication',[Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText([IO.Path]::Combine($lib,'CompanionBuildCache.psm1'),'function Test-QuietReusableBuild {$true}; Export-ModuleMember -Function Test-QuietReusableBuild',[Text.UTF8Encoding]::new($false))
+        $entry=[IO.Path]::Combine($scripts,'Build-Workspace.ps1')
+        $source=[IO.File]::ReadAllText([IO.Path]::Combine($WorkspaceRoot,'scripts/Build-Workspace.ps1'),[Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText($entry,$source,[Text.UTF8Encoding]::new($false))
+        $assets=[IO.Path]::Combine($root,'src/Demo/src/Demo/engine/obj/project.assets.json')
+        $calls=[IO.Path]::Combine($root,'calls.jsonl')
+        $null=& $entry -WorkspaceRoot $root -Suite Demo -ReuseVerifiedBuild -RuntimeIdentifier @()
+        $observed=@(Get-Content -LiteralPath $calls -Encoding utf8|ConvertFrom-Json)
+        if(!(Test-Path $assets) -or $observed.Count -ne 1 -or $observed[0].Action -cne 'restore' -or $observed[0].Projects.Count -ne 2){throw 'CachedBuildDidNotRestoreFullSelectedClosure'}
+        [IO.File]::Delete($assets);[IO.File]::Delete($calls)
+        $null=& $entry -WorkspaceRoot $root -Suite Demo -ReuseVerifiedBuild -Project @($engine,$doc) -RuntimeIdentifier @()
+        $observed=@(Get-Content -LiteralPath $calls -Encoding utf8|ConvertFrom-Json)
+        if(!(Test-Path $assets) -or ($observed.Action -join ',') -cne 'restore,build' -or $observed[0].Projects.Count -ne 2 -or $observed[1].Projects.Count -ne 1 -or !($observed[1].Projects[0].Replace('\','/').EndsWith('tools/Doc.csproj'))){throw 'PartialCachedBuildDidNotRestoreCachedDependencies'}
+        [IO.File]::WriteAllText([IO.Path]::Combine($root,'fail-restore'),'fixture',[Text.UTF8Encoding]::new($false))
+        $rejected=$false;try{$null=& $entry -WorkspaceRoot $root -Suite Demo -ReuseVerifiedBuild -RuntimeIdentifier @()}catch{$rejected=$_.Exception.Message -ceq 'InjectedRestoreFailure'}
+        if(!$rejected){throw 'CachedBuildIgnoredRestoreFailure'}
+        [IO.File]::Delete([IO.Path]::Combine($root,'fail-restore'));[IO.File]::Delete($assets)
+        $anchor="Invoke-WorkspaceNative dotnet @('restore',`$solutionPath,('-p:Configuration='+`$Configuration),'--nologo') `$WorkspaceRoot"
+        if(([regex]::Matches($source,[regex]::Escape($anchor))).Count -ne 1){throw 'CachedRestoreMutationAnchorInvalid'}
+        [IO.File]::WriteAllText($entry,$source.Replace($anchor,''),[Text.UTF8Encoding]::new($false))
+        $null=& $entry -WorkspaceRoot $root -Suite Demo -ReuseVerifiedBuild -RuntimeIdentifier @()
+        if(Test-Path $assets){throw 'CachedRestoreOmissionMutantSurvived'}
+        $campaign.Properties+=3;$campaign.Killed++
+    }
     $cases['conditional package properties and malformed XML fail independently']={
         $random=[Random]::new($seed)
         foreach($index in 1..48){

@@ -21,7 +21,7 @@ Builds only the selected test suite and its transitive module dependencies. All 
 .PARAMETER Project
 Explicit affected project paths from the CI graph; each must belong to the selected module closure.
 .PARAMETER ReuseVerifiedBuild
-Reuses matching source-bound distributions after verifying every required binary and target slot.
+Reuses verified distributions while restoring the selected solution's package graph for downstream offline tests.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Release','Debug')][string]$Configuration='Release',[Alias('WindowsRuntimeIdentifier')][ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$RuntimeIdentifier=@('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64'),[switch]$ReadyToRun,[string]$LocalRuntimeIdentifier=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier,[ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$ReadyToRunRuntimeIdentifier=@(),[switch]$SolutionOnly,[string]$Suite='All',[switch]$ReuseVerifiedBuild,[string[]]$Project=@())
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
@@ -34,12 +34,10 @@ $selectedModules=@(Get-QuietWorkspaceBuildSelection $WorkspaceRoot -Suite $Suite
 $declaredProjectPaths=@(Get-QuietWorkspaceBuildProjects $WorkspaceRoot|Where-Object Package -CIn $selectedModules|Select-Object -ExpandProperty Project -Unique)
 $unpublishedRequests=@($Project|Where-Object {$_ -cnotin $declaredProjectPaths})
 if($ReadyToRun -and !$ReadyToRunRuntimeIdentifier.Count){$ReadyToRunRuntimeIdentifier=@($LocalRuntimeIdentifier)}
+$reuseComplete=$false
 if($ReuseVerifiedBuild -and !$SolutionOnly -and !$unpublishedRequests.Count){
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CompanionBuildCache.psm1')) -DisableNameChecking -ErrorAction Stop
-    if(Test-QuietReusableBuild -WorkspaceRoot $WorkspaceRoot -Modules $selectedModules -Configuration $Configuration -RuntimeIdentifier $RuntimeIdentifier -ReadyToRunRuntimeIdentifier $ReadyToRunRuntimeIdentifier){
-        Write-Host ('Summary: Reused verified build for '+$Suite)
-        return
-    }
+    $reuseComplete=Test-QuietReusableBuild -WorkspaceRoot $WorkspaceRoot -Modules $selectedModules -Configuration $Configuration -RuntimeIdentifier $RuntimeIdentifier -ReadyToRunRuntimeIdentifier $ReadyToRunRuntimeIdentifier
 }
 $solutionPath=[IO.Path]::Combine($WorkspaceRoot,'Quietly.slnx')
 if($Suite -cne 'All'){
@@ -74,6 +72,17 @@ if($ReadyToRun -and !$ReadyToRunRuntimeIdentifier.Count){$ReadyToRunRuntimeIdent
 foreach($rid in $ReadyToRunRuntimeIdentifier){if($rid -notin $RuntimeIdentifier){throw ('ReadyToRunTargetNotPublished: '+$rid)}}
 if(!$ReadyToRun -and $ReadyToRunRuntimeIdentifier.Count){throw 'ReadyToRunSwitchRequired'}
 Assert-QuietPtyPublications $WorkspaceRoot
+[xml]$membership=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'Quietly.slnx')) -Raw -Encoding utf8
+$selectedRoots=@(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object Name -CIn $selectedModules|ForEach-Object {$_.Path+'/'})
+foreach($requested in $Project){
+    if($requested -cnotin @($membership.SelectNodes('//Project')|ForEach-Object {$_.GetAttribute('Path')}) -or !@($selectedRoots|Where-Object {$requested.StartsWith($_,[StringComparison]::Ordinal)}).Count){throw ('WorkspaceRequestedProjectOutsideSelection: '+$requested)}
+}
+if($ReuseVerifiedBuild){
+    # Binary caches do not contain obj/project.assets.json. Restore the full selected
+    # closure before reducing compilation to stale/unpublished projects or returning.
+    Invoke-WorkspaceNative dotnet @('restore',$solutionPath,('-p:Configuration='+$Configuration),'--nologo') $WorkspaceRoot
+    if($reuseComplete){Write-Host ('Summary: Reused verified build for '+$Suite);return}
+}
 $distributions=@(Get-QuietWorkspaceBuildProjects $WorkspaceRoot|Where-Object Package -CIn $selectedModules)
 if($ReuseVerifiedBuild){
     $distributions=@($distributions|Where-Object {
@@ -90,11 +99,6 @@ if($ReuseVerifiedBuild){
         }
         [IO.File]::WriteAllText($solutionPath,$selection.OuterXml,[Text.UTF8Encoding]::new($false))
     }
-}
-[xml]$membership=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'Quietly.slnx')) -Raw -Encoding utf8
-$selectedRoots=@(Get-QuietWorkspaceProjects $WorkspaceRoot|Where-Object Name -CIn $selectedModules|ForEach-Object {$_.Path+'/'})
-foreach($requested in $Project){
-    if($requested -cnotin @($membership.SelectNodes('//Project')|ForEach-Object {$_.GetAttribute('Path')}) -or !@($selectedRoots|Where-Object {$requested.StartsWith($_,[StringComparison]::Ordinal)}).Count){throw ('WorkspaceRequestedProjectOutsideSelection: '+$requested)}
 }
 [xml]$solution=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'Quietly.slnx')) -Raw -Encoding utf8
 $solutionProjects=@($solution.SelectNodes('//Project') | ForEach-Object {$_.GetAttribute('Path').Replace('\','/')})

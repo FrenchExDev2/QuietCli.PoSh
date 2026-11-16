@@ -130,6 +130,12 @@ rebuilds stale distributions and explicit affected projects without republishing
 unaffected outputs. Missing dependencies on a cold runner still require preparation.
 Unpublished projects can be passed explicitly with Build-Workspace -Project.
 
+Verified binary reuse still restores the complete selected solution before returning or narrowing
+compilation. Cold runners have no intermediate `project.assets.json` files in the binary cache;
+container staging needs these assets to transfer the package closure into its networkless guest.
+A documentation-only rebuild must therefore retain the cached product projects in the restore graph,
+while compilation remains limited to stale or unpublished projects. Restore failure blocks reuse.
+
 ~~~powershell
 ./scripts/Build-Workspace.ps1 -Suite Git -RuntimeIdentifier win-x64 -ReuseVerifiedBuild
 ./scripts/Get-CompanionBuildKey.ps1 -Suite Git -RuntimeIdentifier win-x64

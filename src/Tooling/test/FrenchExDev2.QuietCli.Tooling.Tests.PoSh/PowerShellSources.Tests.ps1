@@ -97,7 +97,9 @@ function Get-Fixture {
     Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/CiPlanResults.psm1')) -DisableNameChecking -ErrorAction Stop
     foreach($result in @('skipped','failure','cancelled','')){
         $rejected=$false
-        try{$null=Assert-QuietCiPlanResults -Needs @{plan=@{result='success'};'source-checks'=@{result=$result};'layout-tests'=@{result='success'}}}catch{$rejected=$_.Exception.Message -ceq 'CiPlanPrerequisiteRequired: source-checks'}
+        # Isolate the source prerequisite: all other planning flags and job results are valid.
+        $needs=@{plan=@{result='success';outputs=@{run_products='false';run_smokes='false';run_tooling='false';run_distribution='false'}};'source-checks'=@{result=$result};'layout-tests'=@{result='success'};products=@{result='skipped'};smokes=@{result='skipped'};'tooling-only'=@{result='skipped'};distribution=@{result='skipped'}}
+        try{$null=Assert-QuietCiPlanResults -Needs $needs}catch{$rejected=$_.Exception.Message -ceq 'CiPlanPrerequisiteRequired: source-checks'}
         if(!$rejected){throw 'PowerShellSourceSkippedJobAccepted'}
     }
     [pscustomobject]@{GeneratedSources=32;MalformedSources=3;MutantsKilled=$killed;PreparedIndexRejected=$true;PreviewPreservedIndex=$true;InspectedSourcesExecuted=$false}

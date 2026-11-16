@@ -4,6 +4,14 @@
 
 Suite selects the test module and transitive RequiredModules closure. A scoped owned solution contains its projects; undeclared ProjectReferences fail before compilation. All preserves the complete solution. Incremental compilation reuses valid MSBuild outputs; portable publications remain --no-build. Matrix calls publish only their tested RuntimeIdentifier; packaging retains every required RID. WhatIf creates no scoped solution.
 
+`ReuseVerifiedBuild` always restores that complete selected solution before returning verified
+cached distributions or narrowing compilation to stale/unpublished projects. Binary cache archives
+do not contain `obj/project.assets.json`; downstream offline container staging needs those assets
+to find the restored dependency closure. A cache hit therefore skips compilation and publication,
+while restore still runs with vulnerability auditing enabled. It never restores unselected companions.
+The layout regression covers an empty intermediate tree, complete reuse, documentation-only
+compilation beside cached products, restore failure and an omitted-restore mutant.
+
 ## Purpose and usage
 
 Compiles `Quietly.slnx` once in Release by default, then prepares the portable distributions declared by the discovered packages, without tests or registry publication. Both local launchers and GitHub workflows use this same entry point.

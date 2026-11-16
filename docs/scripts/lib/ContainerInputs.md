@@ -33,6 +33,10 @@ access. Preparation does not download, restore or build; a referenced package mi
 restored host cache is an error. NuGet extraction paths must contain exactly a package ID and version;
 rooted paths, separators in either component and traversal are rejected.
 
+The host build restores its selected solution even when every distribution is reused from a binary
+cache, and before narrowing compilation to an unpublished documentation project. This materializes
+the assets that staging consumes on cold runners; restored binaries alone do not supply package metadata.
+
 Package copies include hidden files with `-Force`, particularly NuGet's `.nupkg.metadata`
 extraction marker. Both the restored source and staged package must contain that marker;
 an incomplete cache fails before container creation. Missing the marker on Linux causes NuGet
