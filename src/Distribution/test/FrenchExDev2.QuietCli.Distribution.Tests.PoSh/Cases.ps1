@@ -112,17 +112,19 @@ if($r.Outcome -ne 'Success'){throw 'PackagedCaptureFailed'}
 $comparison=Compare-QuietRecallAnalysis $r -First @{Complete={1}} -Second @{Complete={1}}
 $reduction=Reduce-QuietRecall $r -FailurePredicate {param($c)$c.RetainedBytes -gt 0} -MaxAttempts 5
 if(!$comparison.Equal -or $reduction.Capture.RetainedBytes -lt 1){throw 'PackagedToolsFailed'}
-[pscustomobject]@{Equal=$comparison.Equal;ProvenMinimal=$reduction.ProvenMinimal}|ConvertTo-Json -Compress
+[pscustomobject]@{Equal=$comparison.Equal;ProvenMinimal=$reduction.ProvenMinimal;RuntimeMajor=[Environment]::Version.Major}|ConvertTo-Json -Compress
 '@
         [void][IO.File]::WriteAllTextAsync($worker,$code.Replace("`r`n","`n")+"`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-        $r=quiet -AsObject -Role Infrastructure -TimeoutSeconds 120 -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} pwsh -File $worker -PackageRoot $packages
+        $runner=[Environment]::ProcessPath
+        $r=quiet -AsObject -Role Infrastructure -TimeoutSeconds 120 -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} -FilePath $runner -ArgumentList @('-File',$worker,'-PackageRoot',$packages)
         Assert-QuietEqual $r.Outcome Success (($r.Error|ConvertTo-Json -Compress))
         Assert-QuietEqual $r.Data.Equal $true
+        Assert-QuietEqual $r.Data.RuntimeMajor ([Environment]::Version.Major)
         $framework=if([Environment]::Version.Major -ge 11){'net11.0'}else{'net10.0'}
         $binary=Join-Path $packages ('FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/recall-tools/'+$framework+'/QuietCli.Recall.Tools.dll')
         $bytes=[IO.File]::ReadAllBytesAsync($binary).GetAwaiter().GetResult();$bytes[-1]=$bytes[-1] -bxor 1
         [void][IO.File]::WriteAllBytesAsync($binary,$bytes).GetAwaiter().GetResult()
-        $broken=quiet -AsObject -Role Infrastructure -TimeoutSeconds 120 -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)[void]$r.Data.Append($e.Text)} -Complete {param($r)$r.Data.ToString()} pwsh -File $worker -PackageRoot $packages
+        $broken=quiet -AsObject -Role Infrastructure -TimeoutSeconds 120 -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)[void]$r.Data.Append($e.Text)} -Complete {param($r)$r.Data.ToString()} -FilePath $runner -ArgumentList @('-File',$worker,'-PackageRoot',$packages)
         Assert-QuietEqual $broken.Outcome Failed
         Assert-QuietEqual $broken.Data.Contains('RecallToolsBinaryIntegrityFailed') $true
 

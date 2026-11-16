@@ -144,18 +144,21 @@ function Invoke-WorkspaceChecksForCommit {
     # A parser loaded from a prepared snapshot locks its DLL on Windows until process exit.
     # Run the trusted registry in a child process before deleting that owned snapshot.
     $skipLiteral=(@($skips|ForEach-Object {"'"+$_.Replace("'","''")+"'"}) -join ',')
-    $code="`$ErrorActionPreference='Stop';try{& '"+$registry.Replace("'","''")+"' -WorkspaceRoot '"+$Root.Replace("'","''")+"' -SkipCheck @("+$skipLiteral+")}catch{[Console]::Error.WriteLine('QUIET_INDEX_ERROR:'+(`$_.Exception.Message|ConvertTo-Json -Compress));exit 1}"
-    $state=@{Failure=$null}
+    $code="`$ErrorActionPreference='Stop';try{& '"+$registry.Replace("'","''")+"' -WorkspaceRoot '"+$Root.Replace("'","''")+"' -SkipCheck @("+$skipLiteral+")|ForEach-Object {[Console]::Out.WriteLine('QUIET_INDEX_CHECK:'+(`$_|ConvertTo-Json -Compress -Depth 4))}}catch{[Console]::Error.WriteLine('QUIET_INDEX_ERROR:'+(`$_.Exception.Message|ConvertTo-Json -Compress));exit 1}"
+    $state=@{Failure=$null;Checks=[Collections.Generic.List[object]]::new()}
     $result=Invoke-CiProcess -FilePath (Get-Command pwsh -CommandType Application|Select-Object -First 1).Source -ArgumentList @('-NonInteractive','-OutputFormat','Text','-EncodedCommand',[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($code))) -WorkingDirectory $WorkspaceRoot -TimeoutSeconds 600 -State $state -OnOutput {
         param($event,$state)
         foreach($line in $event.Text.Split([char]10,[StringSplitOptions]::RemoveEmptyEntries)){
-            if($line.StartsWith('QUIET_INDEX_ERROR:',[StringComparison]::Ordinal)){$state.Failure=$line.Substring(18)|ConvertFrom-Json}else{Write-Host $line}
+            if($line.StartsWith('QUIET_INDEX_ERROR:',[StringComparison]::Ordinal)){$state.Failure=$line.Substring(18)|ConvertFrom-Json}
+            elseif($line.StartsWith('QUIET_INDEX_CHECK:',[StringComparison]::Ordinal)){$state.Checks.Add(($line.Substring(18)|ConvertFrom-Json))}
+            else{Write-Host $line}
         }
     }
     if($result.Outcome -ne 'Success'){
         if($state.Failure){throw $state.Failure}
         throw 'CommitWorkspaceIndexChecksFailed'
     }
+    $state.Checks.ToArray()
 }
 
 function Assert-QuietStagedWorkspaceChecks {

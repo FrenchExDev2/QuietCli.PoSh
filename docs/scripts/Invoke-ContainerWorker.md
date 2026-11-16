@@ -3,6 +3,8 @@
 The dynamic `Suite` block precedes executable imports so PowerShell binds companion selection before
 execution. The layout campaign checks real Core, Git, Vagrant and Mutation bindings with `-WhatIf`.
 The independent native probe uses the grouped Core test path inside `/workspace/src/Core/test/`.
+The transport-origin receipt validates binaries for the requested suite's dependency closure. A
+Core or Vagrant run does not require an unbuilt Git parser merely because its source manifest exists.
 
 `-Case` forwards a development-only Core wildcard to `Invoke-WorkspaceCi.ps1`. The guest
 retains partial-run metadata. It is rejected with other suites or `-GitHubActions`, keeping

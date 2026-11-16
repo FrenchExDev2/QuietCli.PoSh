@@ -29,7 +29,7 @@ The following focused Windows measurements used PowerShell **7.6.9 / .NET 10.0.1
 | Windows GA | x64 and ARM64 | Process and InProcess; 7.7.0 / CLR 11 |
 | Optional Windows Preview | x64 and ARM64 | InProcess; published next-version release only |
 | Debian / glibc | x64 and ARM64 | Auto; 7.7.0 / CLR 11 |
-| Alpine / musl | x64 and ARM64 | Auto; accepted native 7.6.9-r0 / CLR 10 exception |
+| Alpine / musl | x64 and ARM64 | Auto; accepted native 7.6.10-r0 / CLR 10 exception |
 
 These snapshots observed about **90.5% less import time** and **87.3% fewer cumulative managed allocations**. This is a local observation, not a universal performance guarantee. Allocations are not retained-memory or working-set guarantees. CPU, managed heap, working-set/private-memory deltas, raw pairs and end-to-end invocation timing are also retained in the original reports. Signed differences are never clamped.
 

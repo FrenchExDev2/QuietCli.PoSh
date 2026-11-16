@@ -69,7 +69,7 @@ try{
         Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'bootstrap.json')) @{Mode='Direct CI processes';ProductBuildFiles=0;NativeSourceSHA256=(Get-FileHash ([IO.Path]::Combine($stage,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/native/quietcli-pty.c')) -Algorithm SHA256).Hash}
     }else{
         foreach($file in @('global.json','Directory.Packages.props')){if(Test-Path -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $file))){Copy-Item -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $file)) -Destination $stage}}
-        Write-WorkspaceJson ([IO.Path]::Combine($stage,'transport-origin.json')) (Get-QuietWorkspaceIdentity $WorkspaceRoot -IncludeBinaries)
+        Write-WorkspaceJson ([IO.Path]::Combine($stage,'transport-origin.json')) (Get-QuietWorkspaceIdentity $WorkspaceRoot -Suite $Suite -IncludeBinaries)
     }
     $imageState=@{Id=$null}
     $inspect=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('image','inspect','--format','{{.Id}}',$Image) -TimeoutSeconds 20 -State $imageState -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){$s.Id=$e.Text.Trim()}}
