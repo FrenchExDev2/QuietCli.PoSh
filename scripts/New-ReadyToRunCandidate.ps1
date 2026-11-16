@@ -36,6 +36,8 @@ param(
     [ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier = [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier,
     [ValidateSet('Release', 'Debug')][string]$Configuration = 'Release'
 )
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-ReadyToRunCandidate')){return}
 $ErrorActionPreference = 'Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
@@ -48,19 +50,19 @@ New-Item -ItemType Directory -Path $CandidateRoot | Out-Null
 Copy-Item ([IO.Path]::Combine($WorkspaceRoot,'global.json')) $CandidateRoot
 Copy-Item ([IO.Path]::Combine($WorkspaceRoot,'Directory.Packages.props')) $CandidateRoot
 Copy-Item ([IO.Path]::Combine($WorkspaceRoot,'Directory.Build.props')) $CandidateRoot
-Copy-Item ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')) ([IO.Path]::Combine($CandidateRoot,'FrenchExDev2.QuietCli.Core.PoSh')) -Recurse
+Copy-Item ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')) ([IO.Path]::Combine($CandidateRoot,'FrenchExDev2.QuietCli.Core.PoSh')) -Recurse
 
-$project = 'FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj'
-$output = 'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/'+$RuntimeIdentifier
+$project = 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj'
+$output = 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/'+$RuntimeIdentifier
 $inputs = @(Get-QuietBinaryInputs $CandidateRoot $project)
 $null = Invoke-WorkspaceNative dotnet @('publish', ([IO.Path]::Combine($CandidateRoot,$project)), '-f', 'net10.0', '-c', $Configuration, '-r', $RuntimeIdentifier, '--self-contained', 'false', '-p:PublishReadyToRun=true', '-o', ([IO.Path]::Combine($CandidateRoot,$output)), '--nologo') $CandidateRoot
 $target=Get-QuietRuntimeTargets $WorkspaceRoot|Where-Object Rid -CEQ $RuntimeIdentifier
 Write-QuietBuildManifest $CandidateRoot $project $output -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $RuntimeIdentifier -PlatformTarget $target.PlatformTarget -ReadyToRun
-$portable=[IO.Path]::Combine($CandidateRoot,'FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/build-manifest.json')
+$portable=[IO.Path]::Combine($CandidateRoot,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/build-manifest.json')
 $manifest=Get-Content -LiteralPath $portable -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable
 $manifest.ReadyToRunTargets=@($RuntimeIdentifier)
 Write-WorkspaceJson $portable $manifest
 
-$manifestPath = [IO.Path]::Combine($CandidateRoot,'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
+$manifestPath = [IO.Path]::Combine($CandidateRoot,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "ReadyToRunCandidateManifestMissing: $manifestPath" }
 Write-Output $manifestPath

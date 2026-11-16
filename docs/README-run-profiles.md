@@ -123,7 +123,7 @@ PSProfiler traces PowerShell only: C# time is invisible to it and appears as the
 
 ## Tests and mutation testing
 
-Property, fuzz, example and integration cases live in `FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1`
+Property, fuzz, example and integration cases live in `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1`
 (standalone runner: the exit code is the number of failed cases, seeds are fixed, the last line is
 `SUMMARY Passed=N Failed=N Skipped=N`).
 
@@ -147,7 +147,7 @@ Property, fuzz, example and integration cases live in `FrenchExDev2.QuietCli.Cor
   mutation runner skips only the live `profiler:`, `console:`, `coldstart-live:` and `tool-cache-live:` cases. Independent
   profiler, benchmark and cache assertions still run against every mutant in its disposable sandbox.
 
-`RunProfiles.Mutation.ps1` applies one substitution to each disposable sandbox and runs the independent assertion suite through Ci.Process. Killed means assertions detected the change; Survived, Crashed, Timeout and Invalid all fail. A green baseline precedes mutations. The inert [catalogue](../FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Mutation.Catalogue.psd1) owns the 92 `{Name; File; From; To}` entries.
+`RunProfiles.Mutation.ps1` applies one substitution to each disposable sandbox and runs the independent assertion suite through Ci.Process. Killed means assertions detected the change; Survived, Crashed, Timeout and Invalid all fail. A green baseline precedes mutations. The inert [catalogue](../src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Mutation.Catalogue.psd1) owns the 92 `{Name; File; From; To}` entries.
 
 The separate [tooling workflow](ci/github/script-tooling-ci.md) declares two shards, each with a green baseline and two isolated workers. Each is partial evidence. The completion job requires their exact source-identical union, fixed seed 61207/120 iterations and only Killed results. Default local execution remains the full catalogue; shared profiler/encoding/report helpers retain All impact, while reviewed command/store/profile-definition changes can select tooling only.
 

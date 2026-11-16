@@ -54,7 +54,7 @@ using module ./lib/RunLog.psm1
 param(
     [Parameter(Mandatory)][string]$CandidateModule,
     [ValidateNotNullOrEmpty()][string]$CandidateLabel = 'candidate',
-    [string]$BaselineModule = ([IO.Path]::Combine((Split-Path $PSScriptRoot -Parent),'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')),
+    [string]$BaselineModule = ([IO.Path]::Combine((Split-Path $PSScriptRoot -Parent),'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')),
     [ValidateNotNullOrEmpty()][string]$ProfileName = 'coldstart-100',
     [string]$ArtifactsDirectory = ([IO.Path]::Combine((Split-Path $PSScriptRoot -Parent),'artifacts/coldstart')),
     [ValidateRange(1, 365)][int]$MaxAgeDays = 14,

@@ -45,7 +45,7 @@ already invoke it; it does not need to be run separately in those paths.
 
 ## Dependencies
 
-- Reads `FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json` directly (no dot-sourced
+- Reads `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json` directly (no dot-sourced
   helper) — `SchemaVersion`/`Packages`/`Files` are consumed with the same shape `ResourceVerifier.cs`
   expects, but this script does not call into `Update-QuietDependencies.ps1` or share code with it; the
   two scripts independently agree on the lock's shape.
@@ -64,7 +64,7 @@ already invoke it; it does not need to be run separately in those paths.
   against the exact `Source` URL recorded in `dependencies.lock.json` (official `api.nuget.org` flat
   container URLs for every package in today's lock).
 - Filesystem: writes the cached `.nupkg` under `.cache/nuget-resources/`, and writes each restored file to
-  its exact `Path` under `FrenchExDev2.QuietCli.Core.PoSh/`, creating parent directories as needed.
+  its exact `Path` under `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/`, creating parent directories as needed.
   Existing files whose hash already matches are left untouched (not even re-read after the initial hash
   check) unless `-Force` is passed.
 - No Git operation of any kind — it does not stage, commit or otherwise touch the working tree's VCS
@@ -131,3 +131,15 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/Restore-CoreResources.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

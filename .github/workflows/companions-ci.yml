@@ -3,9 +3,7 @@ on:
   pull_request:
   push:
     branches: [develop]
-permissions:
-  contents: read
-  actions: read
+permissions: {contents: read, actions: read}
 concurrency:
   group: quietcli-companions-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -15,163 +13,113 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - name: Check syntax and function help without importing product modules
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - name: Validate sources without importing product modules
         shell: pwsh
         run: ./scripts/Invoke-WorkspaceChecks.ps1 -Check PowerShellSources
   plan:
-    name: Determine affected suites and qualified merge reuse
+    name: Explain affected projects and select companion work
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
-      suite: ${{ steps.plan.outputs.suite }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      smoke_suites: ${{ steps.plan.outputs.smoke_suites }}
       run_products: ${{ steps.plan.outputs.run_products }}
+      run_smokes: ${{ steps.plan.outputs.run_smokes }}
       run_tooling: ${{ steps.plan.outputs.run_tooling }}
+      run_distribution: ${{ steps.plan.outputs.run_distribution }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {fetch-depth: 0, persist-credentials: false}
       - uses: ./.github/actions/cache-resources
       - uses: ./.github/actions/setup-powershell
-      - name: Resolve the complete change scope
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          global-json-file: global.json
+      - name: Read complete diff, project references and central packages
+        # MSBuild evaluation is used only for imports and property-based references.
         id: plan
         shell: pwsh
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          GH_TOKEN: ${{ github.token }}
         run: ./scripts/New-CiImpactPlan.ps1 -Base $env:BASE_SHA -Revision $env:GITHUB_SHA -Event $env:GITHUB_EVENT_NAME -OutputPath $env:GITHUB_OUTPUT
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
-        with:
-          name: quietcli-ci-plan
-          path: artifacts/ci-plan
-          retention-days: 14
-  companions:
-    needs: plan
-    if: needs.plan.outputs.run_products == 'true'
-    permissions:
-      contents: read
-      packages: write
-    uses: ./.github/workflows/ci.yml
-    with:
-      suite: ${{ needs.plan.outputs.suite }}
-      collect_performance: true
-      run_tooling: ${{ needs.plan.outputs.run_tooling == 'true' }}
-  tooling-only:
-    name: Tooling without product changes
-    needs: plan
-    if: needs.plan.outputs.run_products == 'false' && needs.plan.outputs.run_tooling == 'true'
-    uses: ./.github/workflows/tooling-ci.yml
-  develop-smoke:
-    name: Merged checkout integrity and Core integration
-    needs: plan
-    if: github.event_name == 'push' && needs.plan.outputs.run_products == 'false'
+        with: {name: quietcli-ci-plan, path: artifacts/ci-plan, retention-days: 14}
+  layout-tests:
+    name: Verify generated layout and selective planning
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: |
-            **/*.csproj
-            Directory.Packages.props
-            Directory.Build.props
-            global.json
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
       - uses: ./.github/actions/cache-resources
       - uses: ./.github/actions/setup-powershell
-      - name: Verify merged workspace and external resources and exercise Core
+      - name: Verify generated solutions and companion workflows
         shell: pwsh
-        run: |
-          ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
-          ./scripts/Initialize-Workspace.ps1 -Restore
-          ./scripts/Build-Workspace.ps1 -Suite Core -RuntimeIdentifier win-x64
-          ./scripts/Invoke-GitHubCi.ps1 -Suite Integration -SkipBuild -SkipTty -RunDirectory ./artifacts/develop-smoke
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        run: ./scripts/Invoke-WorkspaceChecks.ps1 -Check WorkspaceSolutions,CompanionWorkflows
+      - name: Run layout, property, malformed-input and mutation checks
+        shell: pwsh
+        run: ./scripts/Invoke-WorkspaceCi.ps1 -Suite WorkspaceLayout -SkipBuild -Headless -TimeoutSeconds 600 -RunDirectory ./artifacts/layout-tests
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
-        with:
-          name: quietcli-develop-integrity
-          path: artifacts/develop-smoke
-          retention-days: 14
-  develop-images:
-    name: Refresh toolchain image cache (${{ matrix.rid }})
-    needs: plan
-    if: github.event_name == 'push' && needs.plan.outputs.run_products == 'false' && github.repository == 'FrenchExDev2/QuietCli.PoSh'
-    permissions:
-      contents: read
-      packages: write
+        with: {name: quietcli-layout-tests, path: artifacts/layout-tests}
+  products:
+    name: Qualify ${{ matrix.suite }}
+    needs: [plan, source-checks, layout-tests]
+    if: needs.plan.outputs.run_products == 'true'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    permissions: {contents: read, packages: write}
+    uses: ./.github/workflows/ci.yml
+    with:
+      suite: ${{ matrix.suite }}
+      qualification_mode: full
+      solution_path: ${{ matrix.solution_path }}
+      source_path: ${{ matrix.source_path }}
+      test_path: ${{ matrix.test_path }}
+      build_projects_json: ${{ matrix.build_projects_json }}
+      collect_performance: ${{ matrix.collect_performance }}
+      run_tooling: false
+  smokes:
+    name: Dependent smoke (${{ matrix.runner }})
+    needs: [plan, source-checks, layout-tests]
+    if: needs.plan.outputs.run_smokes == 'true'
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - rid: linux-x64
-            runner: ubuntu-latest
-          - rid: linux-musl-x64
-            runner: ubuntu-latest
-          - rid: linux-arm64
-            runner: ubuntu-24.04-arm
-          - rid: linux-musl-arm64
-            runner: ubuntu-24.04-arm
-    concurrency:
-      group: quietcli2-suite-image-${{ matrix.rid }}
-      cancel-in-progress: false
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 35
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/cache-resources
-      - uses: ./.github/actions/setup-powershell
-      - name: Probe final image before restoring intermediate layers
-        id: image_probe
-        shell: pwsh
-        env:
-          EXPECTED_RID: ${{ matrix.rid }}
-          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
-        run: |
-          $probe=./scripts/New-CiSuiteImage.ps1 -Suite All -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -ProbeOnly
-          [IO.File]::AppendAllText($env:GITHUB_OUTPUT,"cache_hit=$($probe.CacheHit.ToString().ToLowerInvariant())`nfingerprint=$($probe.Fingerprint)`n",[Text.UTF8Encoding]::new($false))
-      - uses: ./.github/actions/cache-ci-layers
-        if: steps.image_probe.outputs.cache_hit != 'true'
-        with:
-          mode: restore
-          rid: ${{ matrix.rid }}
-          fingerprint: ${{ steps.image_probe.outputs.fingerprint }}
-      - name: Resolve final image first and publish only missing toolchain layers
-        shell: pwsh
-        env:
-          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
-          EXPECTED_RID: ${{ matrix.rid }}
-        run: ./scripts/New-CiSuiteImage.ps1 -Suite All -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -PublishCache -ResolveOnly -ContainerRuntime docker
-      - uses: ./.github/actions/cache-ci-layers
-        if: steps.image_probe.outputs.cache_hit != 'true'
-        with:
-          mode: save
-          rid: ${{ matrix.rid }}
-          fingerprint: ${{ steps.image_probe.outputs.fingerprint }}
+        runner: [windows-latest, ubuntu-latest]
+    uses: ./.github/workflows/workspace-component-ci.yml
+    with:
+      suite: SmokeBatch
+      qualification_mode: smoke
+      suites_json: ${{ needs.plan.outputs.smoke_suites }}
+      runner: ${{ matrix.runner }}
+  tooling-only:
+    needs: [plan, source-checks, layout-tests]
+    if: needs.plan.outputs.run_tooling == 'true'
+    uses: ./.github/workflows/tooling-ci.yml
+  distribution:
+    needs: [plan, source-checks, layout-tests]
+    if: needs.plan.outputs.run_distribution == 'true'
+    uses: ./.github/workflows/distribution-ci.yml
   ci-status:
     name: QuietCli required CI
-    needs: [plan, source-checks, companions, tooling-only, develop-smoke, develop-images]
+    needs: [plan, source-checks, layout-tests, products, smokes, tooling-only, distribution]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Reject failed or cancelled prerequisites
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - name: Require selected scopes and preserve the release check name
         shell: pwsh
         env:
           RESULTS: ${{ toJson(needs) }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          $jobs=$env:RESULTS|ConvertFrom-Json -AsHashtable
-          if($jobs.plan.result -cne 'success'){throw 'CiPlanRequired'}
-          if($jobs['source-checks'].result -cne 'success'){throw 'PowerShellSourcesRequired'}
-          foreach($name in $jobs.Keys){if($jobs[$name].result -cnotin @('success','skipped')){throw ('CiPrerequisiteFailed: '+$name)}}
-          if($jobs.plan.outputs.run_products -ceq 'true' -and $jobs.companions.result -cne 'success'){throw 'ProductQualificationRequired'}
-          if($jobs.plan.outputs.run_products -ceq 'false' -and $jobs.plan.outputs.run_tooling -ceq 'true' -and $jobs['tooling-only'].result -cne 'success'){throw 'ToolingQualificationRequired'}
-          if($env:EVENT_NAME -ceq 'push' -and $jobs.plan.outputs.run_products -ceq 'false' -and ($jobs['develop-smoke'].result -cne 'success' -or $jobs['develop-images'].result -cne 'success')){throw 'DevelopIntegrityRequired'}
+        run: ./scripts/Assert-CiPlanResults.ps1 -NeedsJson $env:RESULTS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: quietcli-ci-plan-results, path: artifacts/ci-plan-results}

@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 function Invoke-QuietScriptCommitWorkspace {
 #requires -Version 7.6
 <#
@@ -136,7 +138,27 @@ function Invoke-WorkspaceChecksForCommit {
     Explicitly omitted registry names.
     #>
     param([string]$Root,[string[]]$Skipped)
-    & ([IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),'Invoke-WorkspaceChecks.ps1')) -WorkspaceRoot $Root -SkipCheck @($Skipped|Sort-Object -Unique)
+    $registry=[IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),'Invoke-WorkspaceChecks.ps1')
+    $skips=@($Skipped|Sort-Object -Unique)
+    if($Root -ceq $WorkspaceRoot){& $registry -WorkspaceRoot $Root -SkipCheck $skips;return}
+    # A parser loaded from a prepared snapshot locks its DLL on Windows until process exit.
+    # Run the trusted registry in a child process before deleting that owned snapshot.
+    $skipLiteral=(@($skips|ForEach-Object {"'"+$_.Replace("'","''")+"'"}) -join ',')
+    $code="`$ErrorActionPreference='Stop';try{& '"+$registry.Replace("'","''")+"' -WorkspaceRoot '"+$Root.Replace("'","''")+"' -SkipCheck @("+$skipLiteral+")|ForEach-Object {[Console]::Out.WriteLine('QUIET_INDEX_CHECK:'+(`$_|ConvertTo-Json -Compress -Depth 4))}}catch{[Console]::Error.WriteLine('QUIET_INDEX_ERROR:'+(`$_.Exception.Message|ConvertTo-Json -Compress));exit 1}"
+    $state=@{Failure=$null;Checks=[Collections.Generic.List[object]]::new()}
+    $result=Invoke-CiProcess -FilePath (Get-Command pwsh -CommandType Application|Select-Object -First 1).Source -ArgumentList @('-NonInteractive','-OutputFormat','Text','-EncodedCommand',[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($code))) -WorkingDirectory $WorkspaceRoot -TimeoutSeconds 600 -State $state -OnOutput {
+        param($event,$state)
+        foreach($line in $event.Text.Split([char]10,[StringSplitOptions]::RemoveEmptyEntries)){
+            if($line.StartsWith('QUIET_INDEX_ERROR:',[StringComparison]::Ordinal)){$state.Failure=$line.Substring(18)|ConvertFrom-Json}
+            elseif($line.StartsWith('QUIET_INDEX_CHECK:',[StringComparison]::Ordinal)){$state.Checks.Add(($line.Substring(18)|ConvertFrom-Json))}
+            else{Write-Host $line}
+        }
+    }
+    if($result.Outcome -ne 'Success'){
+        if($state.Failure){throw $state.Failure}
+        throw 'CommitWorkspaceIndexChecksFailed'
+    }
+    $state.Checks.ToArray()
 }
 
 function Assert-QuietStagedWorkspaceChecks {
@@ -218,19 +240,19 @@ function Test-QuietCommitFileSniffer {
     $moduleRoot = Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent
     foreach($name in @('Core','Git')){
         $moduleName='FrenchExDev2.QuietCli.'+$name+'.PoSh'
-        $expected=[IO.Path]::Combine($moduleRoot,$moduleName,($moduleName+'.psm1'))
+        $expected=[IO.Path]::GetFullPath([IO.Path]::Combine((Resolve-QuietWorkspacePath $moduleRoot $moduleName),($moduleName+'.psm1')))
         foreach($loaded in @(Get-Module $moduleName -All)){
             if($loaded.Path -cne $expected){throw ('CommitLocalModulePathMismatch: '+$moduleName+'; start a fresh session.')}
         }
     }
-    $coreManifest=[IO.Path]::Combine($moduleRoot,'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
+    $coreManifest=[IO.Path]::Combine($moduleRoot,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
     # Git's RequiredModules registration resolves Core commands from the process-global scope.
     $savedWhatIf=$WhatIfPreference;$savedConfirm=$ConfirmPreference
     try{
         # In-memory command registration is required even for a read-only preview.
         $WhatIfPreference=$false;$ConfirmPreference='None'
         Import-Module $coreManifest -Scope Global -DisableNameChecking -ErrorAction Stop
-        if (-not (Get-Module FrenchExDev2.QuietCli.Git.PoSh)) { Import-Module ([IO.Path]::Combine($moduleRoot,'FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1')) -DisableNameChecking -ErrorAction Stop }
+        if (-not (Get-Module FrenchExDev2.QuietCli.Git.PoSh)) { Import-Module ([IO.Path]::Combine($moduleRoot,'src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1')) -DisableNameChecking -ErrorAction Stop }
     }finally{$WhatIfPreference=$savedWhatIf;$ConfirmPreference=$savedConfirm}
     $status = quiet -AsObject -WorkingDirectory $WorkspaceRoot git status
     if ($status.Outcome -ne 'Success') {
@@ -241,7 +263,7 @@ function Test-QuietCommitFileSniffer {
         if ($entry.Kind -eq 'Ignored') { continue }
         if ($entry.Path -isnot [string]) { continue }
         if ($entry.Status -and $entry.Status.Contains('D')) { continue }
-        $full = [IO.Path]::Combine($WorkspaceRoot,$entry.Path)
+        $full = (Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $entry.Path)
         if (!(Test-Path -LiteralPath $full -PathType Leaf)) { continue }
         $attr = quiet -AsObject -WorkingDirectory $WorkspaceRoot -- git check-attr binary -- $entry.Path
         if ($attr.Outcome -eq 'Success' -and @($attr.Data.Entries).Count -and $attr.Data.Entries[0].Value -ceq 'set') { continue }

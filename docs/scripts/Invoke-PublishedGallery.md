@@ -6,7 +6,7 @@ Local runs keep their visible monitor and its reopen instruction.
 
 ## Purpose
 
-Validates that an already-published version of the Core PowerShell module actually installs and works from a public gallery feed (PSGallery), without touching the user's own locally-installed modules. It solves the "it builds locally but is the published package actually usable" problem — the gap between "the repo's source works" and "what a real consumer who runs `Install-Module` gets" is otherwise unverified. It launches a worker script (`FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/Probe-PublishedGallery.ps1`) in an isolated background process and a visible monitor window per the repository's mandatory test-monitoring convention, then waits for and reports the result. This is a release-verification step, likely run after a `publish-psgallery` workflow (an actual workflow of that name exists at `.github/workflows/publish-psgallery.yml`), though no `.ps1`/`.yml` caller of this exact script was found in the scripts folder itself — it appears to be a manually or externally triggered post-publish check rather than something the main workspace CI pipeline invokes automatically.
+Validates that an already-published version of the Core PowerShell module actually installs and works from a public gallery feed (PSGallery), without touching the user's own locally-installed modules. It solves the "it builds locally but is the published package actually usable" problem — the gap between "the repo's source works" and "what a real consumer who runs `Install-Module` gets" is otherwise unverified. It launches a worker script (`src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/Probe-PublishedGallery.ps1`) in an isolated background process and a visible monitor window per the repository's mandatory test-monitoring convention, then waits for and reports the result. This is a release-verification step, likely run after a `publish-psgallery` workflow (an actual workflow of that name exists at `.github/workflows/publish-psgallery.yml`), though no `.ps1`/`.yml` caller of this exact script was found in the scripts folder itself — it appears to be a manually or externally triggered post-publish check rather than something the main workspace CI pipeline invokes automatically.
 
 ## Usage
 
@@ -24,7 +24,7 @@ Example:
 
 - Dot-sources `Common.ps1` (line 14) for `Get-QuietReportRoot`, `ConvertTo-CiArgument`, and `Wait-WorkspaceWorker`.
 - Shells out to `pwsh` (resolved via `Get-Command pwsh -CommandType Application`, line 17) to launch the worker and, when not headless, the monitor window (`Watch-Tests.ps1`, line 23–24).
-- Depends on `FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/Probe-PublishedGallery.ps1` existing and accepting `-WorkspaceRoot`, `-RunDirectory`, `-Version`.
+- Depends on `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/Probe-PublishedGallery.ps1` existing and accepting `-WorkspaceRoot`, `-RunDirectory`, `-Version`.
 - Filesystem: creates a new run directory under `Get-QuietReportRoot $WorkspaceRoot 'gallery-validation'`.
 - Implicit network dependency: the worker script presumably reaches out to the real PSGallery (not verified in this script itself, but implied by "validates the published public Core package").
 
@@ -72,3 +72,15 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/Invoke-PublishedGallery.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

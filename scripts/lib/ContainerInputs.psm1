@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 function Copy-QuietContainerInputs {
     <#
     .SYNOPSIS
@@ -16,9 +18,9 @@ function Copy-QuietContainerInputs {
     if(!$PSCmdlet.ShouldProcess($Destination,'Copy explicit container inputs and restored NuGet packages')){return}
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'Common.psm1')) -DisableNameChecking -ErrorAction Stop
     $projects=if($NativeOnly){@()}else{@(Get-QuietWorkspaceProjects $WorkspaceRoot)}
-    $directories=if($NativeOnly){@('FrenchExDev2.QuietCli.Core.PoSh/native','FrenchExDev2.QuietCli.Core.PoSh/resources/transport','FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests')}else{@('scripts','build','docs','.github')+@($projects.Path)}
+    $directories=if($NativeOnly){@('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/native','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/transport','src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests')}else{@('scripts','build','docs','.github')+@($projects.Path)}
     foreach($directory in $directories){
-        $source=[IO.Path]::Combine($WorkspaceRoot,$directory)
+        $source=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $directory)
         foreach($file in Get-ChildItem -LiteralPath $source -Recurse -File -Force){
             $relative=[IO.Path]::GetRelativePath($source,$file.FullName)
             if($relative -match '(^|[\\/])(\.git|bin|obj|artifacts)[\\/]'){continue}
@@ -33,13 +35,19 @@ function Copy-QuietContainerInputs {
         if($file.Extension -cne '.md' -and $file.Name -cnotin @('global.json','Directory.Build.props','Directory.Packages.props','Quietly.slnx','.gitattributes','.editorconfig','.gitignore','LICENSE')){continue}
         Copy-Item -LiteralPath $file.FullName -Destination $Destination
     }
+    foreach($file in Get-QuietSourceFiles $WorkspaceRoot){
+        if([IO.Path]::GetExtension($file.Path) -cnotin @('.slnx','.props','.targets') -and [IO.Path]::GetFileName($file.Path) -inotmatch '^NuGet\.Config$'){continue}
+        $target=[IO.Path]::Combine($Destination,$file.Path)
+        [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
+        Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$file.Path)) -Destination $target
+    }
     $runtime=if($ContainerRuntime){$ContainerRuntime}else{Get-QuietEnvValue -Path ([IO.Path]::Combine($WorkspaceRoot,'.env')) -Key QUIET_CONTAINER_RUNTIME}
     if($null -ne $runtime){
         if($runtime -cnotin @('podman','docker')){throw 'ContainerRuntimeConfigurationInvalid'}
         $null=Set-QuietEnvValue -Path ([IO.Path]::Combine($Destination,'.env')) -Key QUIET_CONTAINER_RUNTIME -Value $runtime -Confirm:$false
     }
     $packages=[Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
-    foreach($project in $projects){foreach($directory in Get-ChildItem -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$project.Path)) -Directory){
+    foreach($project in $projects){foreach($directory in Get-ChildItem -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $project.Path)) -Directory){
         $assetsPath=[IO.Path]::Combine($directory.FullName,'obj/project.assets.json')
         if(!(Test-Path -LiteralPath $assetsPath)){continue}
         $assets=Get-Content -LiteralPath $assetsPath -Raw -Encoding utf8|ConvertFrom-Json
@@ -50,13 +58,17 @@ function Copy-QuietContainerInputs {
             if($packages.ContainsKey($relative)){continue}
             $cached=@(foreach($folder in $assets.packageFolders.PSObject.Properties.Name){$candidate=[IO.Path]::Combine($folder,$relative);if(Test-Path -LiteralPath $candidate -PathType Container){$candidate}})
             if(!$cached.Count){throw ('ContainerRestoredPackageMissing: '+$relative)}
+            if(!(Test-Path -LiteralPath ([IO.Path]::Combine($cached[0],'.nupkg.metadata')) -PathType Leaf)){throw ('ContainerRestoredPackageMetadataMissing: '+$relative)}
             $packages.Add($relative,$cached[0])
         }
     }}
     foreach($package in $packages.GetEnumerator()){
         $target=[IO.Path]::Combine($Destination,('artifacts/nuget-cache/'+$package.Key))
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
-        Copy-Item -LiteralPath $package.Value -Destination $target -Recurse
+        # NuGet treats a package without this hidden extraction marker as incomplete.
+        # Linux Copy-Item omits dotfiles unless Force is explicit.
+        Copy-Item -LiteralPath $package.Value -Destination $target -Recurse -Force
+        if(!(Test-Path -LiteralPath ([IO.Path]::Combine($target,'.nupkg.metadata')) -PathType Leaf)){throw ('ContainerStagedPackageMetadataMissing: '+$package.Key)}
     }
 }
 

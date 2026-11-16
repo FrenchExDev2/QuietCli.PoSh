@@ -44,11 +44,13 @@ Explicit selection overrides the checkout dotenv key; absent configuration uses 
     [ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,
     [AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime
 )
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ContainerColdStartWorker')){return}
 $ErrorActionPreference = 'Stop'; Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 $owner = [guid]::NewGuid().ToString('N'); $name = 'quietcli2-coldstart-' + $owner.Substring(0, 12)
-$state = @{ Project = 'FrenchExDev2.QuietCli.Core.PoSh'; Task = 'ReadyToRun cold-start report'; Workspace = $WorkspaceRoot; ProjectDirectory = ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')); Platform = $Platform; State = 'Preparing'; StartedUtc = [DateTimeOffset]::UtcNow.ToString('o'); ProcessId = $PID; ContainerId = $name; Passed = $null; Failed = $null; Case = 'Staging baseline and candidate modules'; FinishedUtc = $null; Error = $null; Image = $Image; Owner = $owner }
+$state = @{ Project = 'FrenchExDev2.QuietCli.Core.PoSh'; Task = 'ReadyToRun cold-start report'; Workspace = $WorkspaceRoot; ProjectDirectory = ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')); Platform = $Platform; State = 'Preparing'; StartedUtc = [DateTimeOffset]::UtcNow.ToString('o'); ProcessId = $PID; ContainerId = $name; Passed = $null; Failed = $null; Case = 'Staging baseline and candidate modules'; FinishedUtc = $null; Error = $null; Image = $Image; Owner = $owner }
 $status = [IO.Path]::Combine($RunDirectory,'status.json')
 Write-WorkspaceJson $status $state
 $created = $false
@@ -60,8 +62,8 @@ try {
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
         Copy-Item -LiteralPath $file.FullName -Destination $destination
     }
-    foreach ($file in Get-ChildItem -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')) -Recurse -File -Force) {
-        $relative = [IO.Path]::GetRelativePath(([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')), $file.FullName)
+    foreach ($file in Get-ChildItem -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')) -Recurse -File -Force) {
+        $relative = [IO.Path]::GetRelativePath(((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')), $file.FullName)
         if ($relative -match '(^|[\\/])(\.git|bin|obj)[\\/]') { continue }
         $destination = [IO.Path]::Combine(([IO.Path]::Combine($stage,'FrenchExDev2.QuietCli.Core.PoSh')),$relative)
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
@@ -85,7 +87,7 @@ try {
         '-File', '/workspace/scripts/Invoke-ColdStartGate.ps1',
         '-CandidateModule', "/workspace/candidate/$candidateRelative",
         '-CandidateLabel', $CandidateLabel,
-        '-BaselineModule', '/workspace/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1',
+        '-BaselineModule', '/workspace/src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1',
         '-ArtifactsDirectory', '/workspace/artifacts/coldstart',
         '-MeasurePackageSize'
     )

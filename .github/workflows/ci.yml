@@ -6,6 +6,26 @@ on:
         description: Exact revision accepted by all required qualification jobs
         value: ${{ jobs.qualification-gate.outputs.qualified_sha }}
     inputs:
+      build_projects_json:
+        type: string
+        required: false
+        default: '[]'
+      qualification_mode:
+        type: string
+        required: false
+        default: full
+      solution_path:
+        type: string
+        required: false
+        default: ''
+      source_path:
+        type: string
+        required: false
+        default: ''
+      test_path:
+        type: string
+        required: false
+        default: ''
       run_preview:
         description: Explicitly add the published next-version Windows preview (optional; production defaults to GA only)
         type: boolean
@@ -32,6 +52,26 @@ on:
         type: boolean
         required: false
         default: false
+      build_projects_json:
+        type: string
+        required: false
+        default: '[]'
+      qualification_mode:
+        type: string
+        required: false
+        default: full
+      solution_path:
+        type: string
+        required: false
+        default: ''
+      source_path:
+        type: string
+        required: false
+        default: ''
+      test_path:
+        type: string
+        required: false
+        default: ''
       run_preview:
         description: Explicitly add the published next-version Windows preview (optional; production defaults to GA only)
         type: boolean
@@ -55,12 +95,44 @@ on:
 permissions:
   contents: read
 env:
+  QUIETCLI_BUILD_PROJECTS: ${{ inputs.build_projects_json || '[]' }}
   QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
 jobs:
+  validate:
+    name: Validate component profile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+      - uses: ./.github/actions/cache-resources
+      - uses: ./.github/actions/setup-powershell
+      - name: Validate mode and catalogue paths without building
+        shell: pwsh
+        env:
+          SUITE: ${{ inputs.suite || 'All' }}
+          MODE: ${{ inputs.qualification_mode || 'full' }}
+          SOLUTION: ${{ inputs.solution_path }}
+          SOURCE: ${{ inputs.source_path }}
+          TEST: ${{ inputs.test_path }}
+        run: ./scripts/Invoke-ComponentCheck.ps1 -Suite $env:SUITE -QualificationMode $env:MODE -SolutionPath $env:SOLUTION -SourcePath $env:SOURCE -TestPath $env:TEST -ValidateOnly
+  component-check:
+    needs: validate
+    if: inputs.qualification_mode == 'smoke' || inputs.qualification_mode == 'build'
+    uses: ./.github/workflows/workspace-component-ci.yml
+    with:
+      suite: ${{ inputs.suite || 'All' }}
+      qualification_mode: ${{ inputs.qualification_mode }}
+      solution_path: ${{ inputs.solution_path }}
+      source_path: ${{ inputs.source_path }}
+      test_path: ${{ inputs.test_path }}
   qualification-gate:
     name: QuietCli2 qualification gate
     needs: [linux-matrix, windows, linux-result, performance-results, tooling]
-    if: ${{ always() && !inputs.images_only }}
+    if: ${{ always() && !inputs.images_only && (inputs.qualification_mode == '' || inputs.qualification_mode == 'full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -92,15 +164,15 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: quietcli2-qualification-gate
+          name: ${{ (inputs.suite == '' || inputs.suite == 'All') && 'quietcli2-qualification-gate' || format('quietcli2-qualification-gate-{0}', inputs.suite) }}
           path: artifacts/qualification-gate
   tooling:
-    if: inputs.run_tooling && !inputs.images_only
+    if: inputs.run_tooling && !inputs.images_only && (inputs.qualification_mode == '' || inputs.qualification_mode == 'full')
     uses: ./.github/workflows/tooling-ci.yml
   windows:
     name: Windows (${{ matrix.rid }}, ${{ matrix.channel }}, ${{ matrix.mode }})
     needs: linux-matrix
-    if: ${{ !inputs.images_only }}
+    if: ${{ !inputs.images_only && (inputs.qualification_mode == '' || inputs.qualification_mode == 'full') }}
     env:
       QUIETCLI_SUITE_HAS_CORE: ${{ needs.linux-matrix.outputs.has_core }}
     strategy:
@@ -139,9 +211,20 @@ jobs:
           # Objective: Select the checksum-verified host for every subsequent PowerShell step and child.
           $hostInfo=./scripts/Initialize-PowerShellHost.ps1 -Channel $env:HOST_CHANNEL -RuntimeIdentifier $env:HOST_RID -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-powershell-host')
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_PATH,($hostInfo.Directory+"`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+      - name: Fingerprint the selected build closure
+        id: build_key
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+        run: ./scripts/Get-CompanionBuildKey.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -ReadyToRun -OutputPath $env:GITHUB_OUTPUT
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: src/**/lib/
+          key: ${{ steps.build_key.outputs.cache_key }}
+          restore-keys: ${{ steps.build_key.outputs.cache_prefix }}
       - name: Build all required distributions in Release
         shell: pwsh
-        run: ./scripts/Build-Workspace.ps1 -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
+        run: ./scripts/Build-Workspace.ps1 -Project @(ConvertFrom-Json $env:QUIETCLI_BUILD_PROJECTS) -ReuseVerifiedBuild -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
       - name: Resolve declared companion qualification controls
         shell: pwsh
         env:
@@ -194,7 +277,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: quietcli-core-evidence-${{ matrix.rid }}-${{ matrix.channel }}-${{ matrix.mode }}-${{ github.sha }}
+          name: quietcli-core-evidence-${{ matrix.rid }}-${{ matrix.channel }}-${{ matrix.mode }}-${{ github.sha }}-${{ inputs.suite || 'All' }}
           path: artifacts/evidence
           include-hidden-files: true
           if-no-files-found: error
@@ -210,12 +293,14 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: quietcli-failure-${{ matrix.rid }}-${{ matrix.channel }}-${{ matrix.mode }}-${{ github.sha }}-attempt${{ github.run_attempt }}
+          name: quietcli-failure-${{ matrix.rid }}-${{ matrix.channel }}-${{ matrix.mode }}-${{ github.sha }}-attempt${{ github.run_attempt }}-${{ inputs.suite || 'All' }}
           path: artifacts/failure-diagnostics
           if-no-files-found: warn
           retention-days: 14
           compression-level: 6
   linux-matrix:
+    needs: validate
+    if: inputs.qualification_mode == '' || inputs.qualification_mode == 'full'
     name: Linux matrix
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -312,7 +397,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: quietcli2-suite-image-${{ inputs.suite || 'All' }}-${{ matrix.rid }}
+          name: quietcli2-suite-image-${{ inputs.suite || 'All' }}-${{ matrix.rid }}-${{ inputs.suite || 'All' }}
           path: artifacts/ci-images
   linux-selection:
     name: Select verified Linux images and Docker fallback
@@ -346,7 +431,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: quietcli-linux-selection-${{ github.sha }}-attempt${{ github.run_attempt }}
+          name: quietcli-linux-selection-${{ github.sha }}-attempt${{ github.run_attempt }}-${{ inputs.suite || 'All' }}
           path: artifacts/github-matrix
           retention-days: 14
   linux:
@@ -389,8 +474,19 @@ jobs:
           key: ${{ runner.os }}-${{ runner.arch }}-quietcli-nuget-${{ hashFiles('**/*.csproj', 'Directory.Packages.props', 'Directory.Build.props', 'global.json') }}
       - name: Verify workspace and restore pinned external resources
         run: ./scripts/Initialize-Workspace.ps1 -Restore
+      - name: Fingerprint the selected build closure
+        id: build_key
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+        run: ./scripts/Get-CompanionBuildKey.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -ReadyToRun -OutputPath $env:GITHUB_OUTPUT
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: src/**/lib/
+          key: ${{ steps.build_key.outputs.cache_key }}
+          restore-keys: ${{ steps.build_key.outputs.cache_prefix }}
       - name: Build distributions in the selected native toolchain image
-        run: ./scripts/Build-Workspace.ps1 -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
+        run: ./scripts/Build-Workspace.ps1 -Project @(ConvertFrom-Json $env:QUIETCLI_BUILD_PROJECTS) -ReuseVerifiedBuild -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
       - name: Run selected suites directly inside the GitHub job container
         env:
           EXPECTED_RID: ${{ matrix.rid }}
@@ -419,7 +515,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: quietcli-core-evidence-${{ matrix.rid }}-Auto-${{ github.sha }}
+          name: quietcli-core-evidence-${{ matrix.rid }}-Auto-${{ github.sha }}-${{ inputs.suite || 'All' }}
           path: artifacts/evidence
           include-hidden-files: true
           if-no-files-found: error
@@ -433,7 +529,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
-          name: quietcli-failure-${{ matrix.rid }}-${{ github.sha }}-attempt${{ github.run_attempt }}
+          name: quietcli-failure-${{ matrix.rid }}-${{ github.sha }}-attempt${{ github.run_attempt }}-${{ inputs.suite || 'All' }}
           path: artifacts/failure-diagnostics
           if-no-files-found: warn
           retention-days: 14
@@ -478,9 +574,20 @@ jobs:
       - name: Verify monorepo structure and external resources
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
+      - name: Fingerprint the selected build closure
+        id: build_key
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+        run: ./scripts/Get-CompanionBuildKey.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -ReadyToRun -OutputPath $env:GITHUB_OUTPUT
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: src/**/lib/
+          key: ${{ steps.build_key.outputs.cache_key }}
+          restore-keys: ${{ steps.build_key.outputs.cache_prefix }}
       - name: Build engines for the six distributions
         shell: pwsh
-        run: ./scripts/Build-Workspace.ps1 -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
+        run: ./scripts/Build-Workspace.ps1 -Project @(ConvertFrom-Json $env:QUIETCLI_BUILD_PROJECTS) -ReuseVerifiedBuild -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
       - name: Plan the intermediate cache key without registry or daemon access
         id: image_plan
         shell: pwsh
@@ -542,7 +649,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: quietcli-core-evidence-${{ matrix.rid }}-Auto-${{ github.sha }}
+          name: quietcli-core-evidence-${{ matrix.rid }}-Auto-${{ github.sha }}-${{ inputs.suite || 'All' }}
           path: artifacts/evidence
           include-hidden-files: true
           if-no-files-found: error
@@ -558,7 +665,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: quietcli-failure-${{ matrix.rid }}-${{ github.sha }}-attempt${{ github.run_attempt }}
+          name: quietcli-failure-${{ matrix.rid }}-${{ github.sha }}-attempt${{ github.run_attempt }}-${{ inputs.suite || 'All' }}
           path: artifacts/failure-diagnostics
           if-no-files-found: warn
           retention-days: 14
@@ -566,7 +673,7 @@ jobs:
   linux-result:
     name: Require every selected Linux execution path
     needs: [linux-selection, linux, linux-test-driver]
-    if: ${{ always() && !inputs.images_only }}
+    if: ${{ always() && !inputs.images_only && (inputs.qualification_mode == '' || inputs.qualification_mode == 'full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -590,7 +697,7 @@ jobs:
   performance-results:
     name: Readable performance evidence for the complete matrix
     needs: [linux-matrix, windows, linux, linux-test-driver]
-    if: ${{ always() && !inputs.images_only && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }}
+    if: ${{ always() && !inputs.images_only && (inputs.qualification_mode == '' || inputs.qualification_mode == 'full') && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -603,7 +710,7 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         if: always()
         with:
-          pattern: quietcli-core-evidence-*-${{ github.sha }}
+          pattern: quietcli-core-evidence-*-${{ inputs.suite || 'All' }}
           path: artifacts/matrix-evidence
           merge-multiple: false
       - name: Render readable results and expose missing matrix evidence
@@ -625,7 +732,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: quietcli-performance-results-${{ github.sha }}
+          name: quietcli-performance-results-${{ github.sha }}-${{ inputs.suite || 'All' }}
           path: artifacts/performance-results
           if-no-files-found: error
           retention-days: 30

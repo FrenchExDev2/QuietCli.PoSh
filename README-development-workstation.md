@@ -197,7 +197,7 @@ see [Remote Development with Linux](https://code.visualstudio.com/docs/remote/li
 
 ### Vagrant (Windows/Debian/Ubuntu/Fedora only)
 
-The [Vagrant companion module](FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) is optional and installed
+The [Vagrant companion module](src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) is optional and installed
 separately from the main workstation pipeline above, via
 `./scripts/Install-ModuleWorkstation.ps1 -Modules Vagrant` (see [that script's own
 documentation](scripts/Install-ModuleWorkstation.ps1) for `-CheckOnly`/`-Download`/`-WhatIf`). It targets
@@ -217,7 +217,7 @@ Install Vagrant itself from HashiCorp's own official channels:
 
 A container provider (Docker or Podman) is **not redocumented here**: it is the same `Containers` component
 (`podman`) already covered above and probed by `Get-DevelopmentInventory`. See the Vagrant module's own
-[fixture documentation](FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/fixture/README.md) for the Docker-provider
+[fixture documentation](src/Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/fixture/README.md) for the Docker-provider
 choice and the Podman "sans plugin" (`DOCKER_HOST`) alternative.
 
 ### Clone once, then select the workstation
@@ -355,7 +355,7 @@ No installer restarts the machine; MSI code 3010 reports `RestartRequired`.
 Vagrant readiness also requires a working `docker info` client. For the documented Podman socket
 wiring, provide a Docker-compatible client and set `DOCKER_HOST`; installing Podman alone does not
 establish provider readiness. These scripts do not configure a container engine. See the
-[Vagrant fixture guide](FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/fixture/README.md) for provider setup
+[Vagrant fixture guide](src/Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/fixture/README.md) for provider setup
 and manual multi-machine checks. `State` describes readiness; `Action` and `CachePath` separately
 record what download/install mode did. Real installation tests are manual; automated tests trap
 all download/install effects.
@@ -366,7 +366,7 @@ all download/install effects.
 ./scripts/Initialize-Workspace.ps1 -Restore
 ./scripts/Build-Workspace.ps1
 # Open a fresh normal-profile PowerShell session, activate it, then:
-Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
+Import-Module ./Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
 ./scripts/Invoke-WorkspaceCi.ps1 -Suite All -SkipBuild
 ```
 
@@ -392,10 +392,10 @@ The installer does not claim to add a Linux desktop test monitor or qualify unex
 From a Windows host with working Podman, run the companion smoke launcher:
 
 ```powershell
-./FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-DevelopmentWorkstationSmoke.ps1
+./Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-DevelopmentWorkstationSmoke.ps1
 
 # Windows controls and wrkflw archive/list/validation smoke only; no Podman required.
-./FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-DevelopmentWorkstationSmoke.ps1 -Targets Windows
+./Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-DevelopmentWorkstationSmoke.ps1 -Targets Windows
 ```
 
 It opens the shared visible monitor. Windows exercises read-only control modes, installs only the

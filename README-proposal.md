@@ -56,7 +56,7 @@ From a built checkout, these nine lines count stdout bytes from `pwsh -v`; no bu
 For a Gallery installation, replace the first line with `Import-Module QuietCli`.
 
 ```powershell
-Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
+Import-Module ./Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
 $countStdout = { param($event, $runtime) if ($event.Stream -eq 'stdout') { $runtime.Data.Bytes += $event.ByteCount } }
 $r = quiet -AsObject -C version -StdoutMode Bytes -Data @{ Bytes = 0L } `
     -Output $countStdout -Complete { param($runtime) [pscustomobject]@{ Bytes = $runtime.Data.Bytes } } pwsh -v
@@ -214,7 +214,7 @@ New-QuietModule -Name Example.Tool.PoSh -Binary tool -OutputPath ./modules
 
 This command writes a module and companion test skeleton; existing destinations are rejected. Configure `Probe`, `TestVersion`, `Match` and `Execute`.
 The generated handler starts unimplemented, and the initial tests fail until independent business assertions are written; generation is not qualification.
-The [Git companion](FrenchExDev2.QuietCli.Git.PoSh/README.md) is an optional, in-development example, not a Core dependency at runtime.
+The [Git companion](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md) is an optional, in-development example, not a Core dependency at runtime.
 See [companion modules](README-modules.md) and [qualification](README-qualification.md).
 
 ## Use with AI agents

@@ -26,7 +26,7 @@ The check also executes under inherited WhatIf in commit previews. Its ReadOnly 
 
 All divides its shared worker budget across concurrent Git/Vagrant suite slots. With four slots and two admitted suites, each receives two; individual isolated case workers still receive one. A smaller caller budget wins over every manifest cap. Exclusive/Ordered stages constrain the owning companion; suite-level scheduling remains a separate boundary. Core's measurements and profiling complete outside sibling-suite fan-out.
 
-The Core test companion declares its policy in [its PSD1 manifest](../FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1), which is also exposed as the module's PrivateData. The declaration is inert data:
+The Core test companion declares its policy in [its PSD1 manifest](../src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1), which is also exposed as the module's PrivateData. The declaration is inert data:
 
 ```powershell
 PrivateData = @{ QuietCli = @{ TestExecution = @{

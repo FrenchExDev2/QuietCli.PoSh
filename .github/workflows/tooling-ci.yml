@@ -74,7 +74,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   tooling:
-    name: Repository automation and run-profile behavior
+    name: Repository automation, distribution independence and run-profile behavior
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
@@ -102,7 +102,8 @@ jobs:
         id: tooling_tests
         shell: pwsh
         run: ./scripts/Invoke-GitHubCi.ps1 -Suite Tooling -SkipBuild -SkipTty -MaxConcurrency 2 -RunDirectory ./artifacts/tooling/tests
-      - name: Qualify every distribution case once without Git or another build
+      - name: Qualify distribution independence without Git or another build
+        id: distribution_independence
         shell: pwsh
         run: ./scripts/Test-CoreIndependence.ps1 -Suite Distribution -SkipBuild
       - name: Prepare exact profiler prerequisites for functional tooling tests

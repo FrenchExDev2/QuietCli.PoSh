@@ -26,7 +26,7 @@ fixtures and bounded mutants, with no real SDK download or image pull.
 
 - scripts/Invoke-DotNetTests.ps1:16 guards process/report creation; it forwards only
   selected scope to the shared launcher instead of maintaining another scheduler.
-- FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-DotNetQualification.ps1:1 retains per-suite
+- src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-DotNetQualification.ps1:1 retains per-suite
   counters/hashes and reports progress through the existing monitor callback.
 - The focused suite is independent of Core/All release qualification. Real installation,
   interactive confirmation and unexecuted operating systems remain evidence gaps.

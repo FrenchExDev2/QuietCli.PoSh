@@ -32,10 +32,12 @@ Verified preceding image plan when composing declared companion layers; omitted 
 Already prepared image matching ParentPlan; required with ParentPlan for a real build.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([Parameter(Mandatory)][ValidatePattern('\A[A-Z][A-Za-z0-9]*\z')][string]$Module,[Parameter(Mandatory)][ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$RegistryCache,[switch]$PublishCache,[switch]$PlanOnly,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime,$ParentPlan,[string]$ParentImage)
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 $ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop;Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiImages.psm1')) -DisableNameChecking -ErrorAction Stop
-$moduleRoot="FrenchExDev2.QuietCli.$Module.PoSh"
+$moduleRoot=[IO.Path]::GetRelativePath($WorkspaceRoot,(Resolve-QuietWorkspacePath $WorkspaceRoot "FrenchExDev2.QuietCli.$Module.PoSh")).Replace('\','/')
 $moduleContractPath="$moduleRoot/ci/Get-CiImageArguments.ps1"
-$moduleScript=[IO.Path]::Combine($WorkspaceRoot,$moduleContractPath)
+$moduleScript=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $moduleContractPath)
 if(!(Test-Path -LiteralPath $moduleScript)){throw "CiModuleContractMissing: $moduleContractPath"}
 $core=if($ParentPlan){$ParentPlan}else{Get-QuietCiImagePlan $WorkspaceRoot $RuntimeIdentifier}
 if($ParentPlan -and ($ParentPlan.Rid -cne $RuntimeIdentifier -or $ParentPlan.Fingerprint -cnotmatch '\A[a-f0-9]{64}\z')){throw 'CiModuleParentPlanInvalid'}
@@ -48,7 +50,7 @@ if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-CiModuleImag
 $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 if($RegistryCache -and !$ParentPlan){
     $credential=$env:QUIETCLI_REGISTRY_TOKEN
-    try{$cached=Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory ([IO.Path]::Combine($WorkspaceRoot,$moduleRoot,'.github/containers')) -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache -CacheOnly -ContainerRuntime $ContainerRuntime}
+    try{$cached=Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory ([IO.Path]::Combine((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $moduleRoot),'.github/containers')) -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache -CacheOnly -ContainerRuntime $ContainerRuntime}
     finally{$env:QUIETCLI_REGISTRY_TOKEN=$credential;$credential=$null}
     if($cached){return $cached}
 }
@@ -62,4 +64,4 @@ finally{$env:QUIETCLI_REGISTRY_TOKEN=$registryCredential;$registryCredential=$nu
 $coreTag=$plan.ParentReference
 $null=Invoke-WorkspaceNative $ContainerRuntime @('tag',$coreImage.Image,$coreTag) $WorkspaceRoot -TimeoutSeconds 30
 $plan.Arguments.CORE_IMAGE=$coreTag
-Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory ([IO.Path]::Combine($WorkspaceRoot,$moduleRoot,'.github/containers')) -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
+Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory ([IO.Path]::Combine((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $moduleRoot),'.github/containers')) -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime

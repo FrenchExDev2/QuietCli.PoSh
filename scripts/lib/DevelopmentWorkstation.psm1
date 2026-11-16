@@ -172,8 +172,8 @@ function Get-DevelopmentSpecification {
     $lock=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/development-workstation.lock.json')) -Raw -Encoding utf8|ConvertFrom-Json
     $ci=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/ci-images.lock.json')) -Raw -Encoding utf8|ConvertFrom-Json
     $zig=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/zig.lock.json')) -Raw -Encoding utf8|ConvertFrom-Json
-    $git=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/ci-image.lock.json')) -Raw -Encoding utf8|ConvertFrom-Json
-    $sources=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/UpstreamSources.json')) -Raw -Encoding utf8|ConvertFrom-Json
+    $git=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/ci-image.lock.json')) -Raw -Encoding utf8|ConvertFrom-Json
+    $sources=Get-Content -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/metadata/locks/UpstreamSources.json')) -Raw -Encoding utf8|ConvertFrom-Json
     $sdk=[string]$global.sdk.version
     if($lock.SchemaVersion -ne 1 -or $sdk -cnotmatch '^[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.]+)?$' -or $lock.SdkVersion -cne $sdk -or $ci.SDK -cne $sdk){throw 'WorkstationSdkLockMismatch'}
     if($lock.ZigVersion -cne $zig.Version -or $lock.GitVersion -cne $git.GitVersion){throw 'WorkstationToolLockMismatch'}

@@ -8,6 +8,8 @@ The explicit exports cover identity reading, staging, literal archive manifests,
 
 ## Dependencies and effects
 
+Build receipts are checked against the catalogue-resolved source project path. The archive keeps its public install layout while retaining the actual grouped source path as build provenance.
+
 Identity and target discovery use the sibling ModulePackage/GalleryRelease modules. Runtime-target data is loaded privately when validating Core. Caller entry points own ShouldProcess and filesystem/publication effects. Staging copies source filenames/bytes unchanged; only an explicitly requested staged prerelease label is rewritten.
 
 Each package set contains exactly one selected business package. Its name, version, GUID, dependency IDs/minimum versions and nuspec must agree with the owning manifest. Unsafe ZIP paths, extra packages, missing build receipts and modified declared binaries are rejected. Core additionally requires six RID payloads and verifies ReadyToRun headers when requested. Git contains its declared net10.0/net11.0 parser outputs and retains its Core dependency; it does not embed Core.

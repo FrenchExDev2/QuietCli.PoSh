@@ -1,12 +1,17 @@
 # tooling-ci.yml
 
-<!-- workflow-source-sha256: 99ACCE95FB09C8A44409CAD3783B00443EF4F9AFF838ECE5E278B3E63AED7A79 -->
+<!-- workflow-source-sha256: 02C60C77FA97EBD140D2E27E277603C4C3BE5504B178A8AB3053119DF93406C8 -->
 
 ## Purpose
 
 Reusable private repository-automation qualification, run once independently of the product matrix. Tooling.Tests owns its .psm1 catalogue and metadata; Core.Tests retains private assertion helpers. The complete functional RunProfiles suite follows tooling tests. The single complete tooling build supplies the independently declared Distribution.Tests catalogue. Test-CoreIndependence -Suite Distribution -SkipBuild verifies/copies Core/Core.Tests libraries to an owned checkout without Git, then runs every distribution case once, without another build. The mutation matrix declares two shards, each with a green baseline and at most two isolated process/sandbox pairs, accepting only Killed outcomes. Measurements and product profiling occur on separate runners.
 
 A separate job builds and runs complete Core qualification in a fresh source copy without the real Git module. Git remains an executable fixture dependency. It uses a short temporary path to avoid Windows native-library path limits. Saved evidence records the isolated source/binary identity and generated scripted companion regression.
+
+The automation job's displayed name explicitly includes distribution independence. Its separately
+identified `distribution_independence` step runs the complete Distribution catalogue in the owned
+Git-free source copy. A passing Tooling catalogue followed by a failed distribution probe still
+fails the job; the named step distinguishes those results without weakening qualification.
 
 Mutation uses Ci.Process exclusively and performs no product build or import. Functional RunProfiles explicitly prepares both pinned profiler tools. New native build jobs reuse the common NuGet cache.
 
@@ -27,7 +32,7 @@ Failures in any job fail this reusable workflow and its calling gate. Artifact u
 
 Ordinary tooling and independence artifacts select top-level JSON reports, receipts and diagnostic logs, plus isolated case-worker reports. They exclude nested fixture workspaces, binaries and generated packages. Functional tooling failures additionally upload their existing fixture trees under a separate seven-day diagnostic artifact; those trees are never uploaded on success. Missing required report evidence still fails the ordinary artifact upload. Product/release package artifacts are unaffected.
 
-Native orchestration and test/smoke steps select checksum-pinned GA PowerShell through the local setup-powershell action. Linux guest images retain their own reviewed lock (Debian 7.7.0; accepted Alpine 7.6.9-r0 exception). The setup changes only the job PATH; it does not install a machine-wide host or enable optional Preview.
+Native orchestration and test/smoke steps select checksum-pinned GA PowerShell through the local setup-powershell action. Linux guest images retain their own reviewed lock (Debian 7.7.0; accepted Alpine 7.6.10-r0 exception). The setup changes only the job PATH; it does not install a machine-wide host or enable optional Preview.
 
 ## Triggers
 

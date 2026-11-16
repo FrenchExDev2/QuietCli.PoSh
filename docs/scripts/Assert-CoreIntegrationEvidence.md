@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Fails closed a Core (or "All") suite CI result that lacks the full mandated fresh-session-import, import-diagnostics, and controlled-Git-status evidence — a hard qualification gate ensuring the property/fuzz/mutation evidence the repository's test strategy requires was actually produced, not merely declared present. It is invoked by `scripts/Invoke-TestWorker.ps1` (line 145, when `$selected -eq 'Core'`) and exercised directly by `FrenchExDev2.QuietCli.Core.Tests.PoSh/Integration.Tests.ps1` (line 29) and `Integration.Gate.Tests.ps1` (line 9, which instead reads this file's own text as a static contract check).
+Fails closed a Core (or "All") suite CI result that lacks the full mandated fresh-session-import, import-diagnostics, and controlled-Git-status evidence — a hard qualification gate ensuring the property/fuzz/mutation evidence the repository's test strategy requires was actually produced, not merely declared present. It is invoked by `scripts/Invoke-TestWorker.ps1` (line 145, when `$selected -eq 'Core'`) and exercised directly by `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Integration.Tests.ps1` (line 29) and `Integration.Gate.Tests.ps1` (line 9, which instead reads this file's own text as a static contract check).
 
 ## Usage
 

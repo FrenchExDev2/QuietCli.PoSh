@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 function Invoke-QuietScriptRemoveQuietTags {
 #requires -Version 7.6
 <#
@@ -28,7 +30,7 @@ $ErrorActionPreference='Stop'
 $WorkspaceRoot=[IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path))
 $sourceRoot=Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent
 foreach($name in @('Core','Git')){
-    $manifest=[IO.Path]::Combine($sourceRoot,"FrenchExDev2.QuietCli.$name.PoSh/FrenchExDev2.QuietCli.$name.PoSh.psd1")
+    $manifest=(Resolve-QuietWorkspacePath -WorkspaceRoot $sourceRoot -RelativePath "FrenchExDev2.QuietCli.$name.PoSh/FrenchExDev2.QuietCli.$name.PoSh.psd1")
     $expected=[IO.Path]::GetFullPath([IO.Path]::ChangeExtension($manifest,'.psm1'))
     $loaded=Get-Module "FrenchExDev2.QuietCli.$name.PoSh"
     $scope=if($name -eq 'Core'){'Global'}else{'Local'}

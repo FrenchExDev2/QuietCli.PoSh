@@ -19,7 +19,7 @@ Because the script always throws (see Findings), every invocation currently term
 ## Dependencies
 
 - Dot-sources `Common.ps1` (line 12), which in turn loads `ReportPaths.ps1`, `Ci.Process.ps1`, `SourceIdentity.ps1`, `RuntimeTargets.ps1`.
-- Imports `FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1` (line 16) — the actual source of `Get-QuietGitCoverage`.
+- Imports `src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1` (line 16) — the actual source of `Get-QuietGitCoverage`.
 - Uses `Get-QuietReportRoot` (from `ReportPaths.ps1`) and `Write-WorkspaceJson` (from `Common.ps1`) for report placement/writing.
 - Filesystem: creates a timestamped directory under the workspace's report root (`qualification/<timestamp>`).
 - No external native process is shelled out to directly in this script.
@@ -68,3 +68,15 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/Invoke-GitQualification.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

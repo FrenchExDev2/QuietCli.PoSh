@@ -15,7 +15,7 @@ scripts/lib/CiImpact.psm1:1 favors a conservative full matrix over guessed depen
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Selects product qualification from changed paths and transitive declared companion dependencies.
+Purpose: Separates affected builds, full qualification and dependent smokes from complete old/new changed paths.
 
 Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
@@ -27,3 +27,15 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 
 This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/lib/CiImpact.psm1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

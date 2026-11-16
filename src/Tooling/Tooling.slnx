@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/test/" />
+  <Folder Name="/test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/">
+    <File Path="test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/CompanionReports.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/FrenchExDev2.QuietCli.Tooling.Tests.PoSh.psd1" />
+    <File Path="test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/FrenchExDev2.QuietCli.Tooling.Tests.PoSh.psm1" />
+    <File Path="test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/PowerShellSources.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/README.md" />
+    <File Path="test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/ScriptLayout.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/ToolingResults.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/WorkspaceLayout.Tests.psm1" />
+  </Folder>
+</Solution>

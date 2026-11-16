@@ -17,6 +17,9 @@ Suite limits binary verification to the selected build closure; source drift sti
 
 ## Purpose and usage
 
+Core protocol inputs resolve by module identity through `WorkspaceLayout`, supporting both the grouped
+checkout and owned legacy fixtures. Binary receipts continue to record the actual physical source paths.
+
 Common.ps1 loads deterministic source/binary identity helpers. `Get-QuietWorkspaceIdentity -WorkspaceRoot <root> -IncludeBinaries` verifies current source associations and output hashes. `Write-QuietBuildManifest` records project, configuration, RID, architecture, sources and direct binary files. Optional `-ReadyToRun` requires a real native R2R header; `-ReadyToRunTargets <rids>` declares selected child slots in portable manifests. `Test-QuietBuildManifest` rejects stale or modified output.
 
 Portable distributions are supplied by `Get-QuietWorkspaceBuildProjects`, including both recall-tool frameworks and future declared consumers. Compiler inputs recursively follow explicit `ProjectReference` edges and linked `Compile Include` directories within the workspace. `Directory.Build.props` participates when present, so a changed warning policy invalidates existing receipts. DTDs, workspace escapes and dynamic/wildcard explicit include expressions fail. Core's RID publications remain separately verified. The catalogue companion regression includes a synthetic Packer dependency graph and a changed build-policy hash.
@@ -73,3 +76,15 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 ## Explicit library dependencies
 
 Imports WorkspaceJson and BinaryHeaders directly; Common reuses the same writer and re-exports the PE reader. Ci.Process and RuntimeTargets are also explicit module dependencies for repository metadata and publication verification. These dependencies define commands without loading the product or performing business operations.
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/lib/SourceIdentity.psm1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

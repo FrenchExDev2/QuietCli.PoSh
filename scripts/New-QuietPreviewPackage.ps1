@@ -24,6 +24,8 @@ param(
     [string]$QualifiedRevision,
     [switch]$RequireReadyToRun
 )
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-QuietPreviewPackage')){return}
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
@@ -33,10 +35,10 @@ $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
 # This list only forbids writing generated artifacts inside source modules. It never selects public packages;
 # New-QuietGalleryPackage.ps1 stages only Core under the existing name inferred from its .psm1 and manifest.
 foreach($name in (Get-QuietWorkspaceProjects $WorkspaceRoot).Name){
-    $moduleRoot=([IO.Path]::Combine($WorkspaceRoot,$name))+[IO.Path]::DirectorySeparatorChar
+    $moduleRoot=((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $name))+[IO.Path]::DirectorySeparatorChar
     if($OutputDirectory.StartsWith($moduleRoot,[StringComparison]::OrdinalIgnoreCase)){throw 'GalleryPreviewOutputInsideModule'}
 }
-$manifest=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
+$manifest=[IO.Path]::Combine($WorkspaceRoot,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
 $base=[string](Import-PowerShellDataFile -LiteralPath $manifest).ModuleVersion
 $version=New-QuietGalleryPreviewVersion -BaseVersion $base -BuildNumber $BuildNumber -Attempt $Attempt
 $info=Get-QuietGalleryVersion $version

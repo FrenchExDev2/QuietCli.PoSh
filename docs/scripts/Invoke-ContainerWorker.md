@@ -1,5 +1,11 @@
 # Invoke-ContainerWorker.ps1
 
+The dynamic `Suite` block precedes executable imports so PowerShell binds companion selection before
+execution. The layout campaign checks real Core, Git, Vagrant and Mutation bindings with `-WhatIf`.
+The independent native probe uses the grouped Core test path inside `/workspace/src/Core/test/`.
+The transport-origin receipt validates binaries for the requested suite's dependency closure. A
+Core or Vagrant run does not require an unbuilt Git parser merely because its source manifest exists.
+
 `-Case` forwards a development-only Core wildcard to `Invoke-WorkspaceCi.ps1`. The guest
 retains partial-run metadata. It is rejected with other suites or `-GitHubActions`, keeping
 the hosted qualification entry point unfiltered.
@@ -65,7 +71,7 @@ pwsh -File ./scripts/Invoke-ContainerWorker.ps1 -WorkspaceRoot C:\repo -RunDirec
 - Calls `Get-QuietWorkspaceTestSuites $WorkspaceRoot` (line 39) to resolve suite-to-project mapping for status reporting.
 - Native tool: the resolved Docker/Podman application (`image inspect`, `create`, `cp`, `start`, `inspect`, `rm`) via `Invoke-WorkspaceNative`/`Invoke-CiProcess`.
 - For the `Mutation` suite, dot-sources `Assert-PtyQualification.ps1` (line 126) and calls `Assert-PtyQualification $summary`.
-- Filesystem: stages a large set of directories depending on `-Suite` (lines 47, 58–63) — either `scripts`, `build`, `.github/containers`, `.github/workflows`, plus every project in `(Get-QuietWorkspaceProjects $WorkspaceRoot).Path`, or (for `Mutation`) just `FrenchExDev2.QuietCli.Core.PoSh/native`, `FrenchExDev2.QuietCli.Core.PoSh/resources/transport`, `FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests`.
+- Filesystem: stages a large set of directories depending on `-Suite` (lines 47, 58–63) — either `scripts`, `build`, `.github/containers`, `.github/workflows`, plus every project in `(Get-QuietWorkspaceProjects $WorkspaceRoot).Path`, or (for `Mutation`) just `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/native`, `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/transport`, `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests`.
 
 ## Side effects
 
@@ -114,3 +120,15 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/Invoke-ContainerWorker.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

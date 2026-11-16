@@ -10,7 +10,7 @@ native CI tooling beyond Core's base image (for example, a compiled `git`) build
 layered over a verified parent starting with Core, through a small, generic, reusable contract. `Git` is the
 first module to use it; the same shape is intended for any future Core-consumer module.
 
-Core declares its own image the exact same way: `FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1`
+Core declares its own image the exact same way: `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1`
 is Core's own contract script, in the same shape as every module's, returning its own `Stages` (including
 the explicit, visible decision to install a plain distro `git` -- needed only because Core's own
 `Status.ControlledProbe.ps1` resolves `git` from PATH independent of the Git module). Core has no parent

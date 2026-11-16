@@ -23,7 +23,7 @@ $runner=[IO.Path]::Combine($PSHOME,$(if($IsWindows){'pwsh.exe'}else{'pwsh'}))
 $owned=[Collections.Generic.List[Diagnostics.Process]]::new();$collectors=[Collections.Generic.List[object]]::new()
 $report=@{State='Running';ProfilerVersion='4.3.0';ClrProfilerVersion='10.0.750501';Instrumented=$true;PowerShellLineReport='powershell-lines.json';Collectors=@();Error=$null}
 try{
-    $arguments=@('-NoProfile','-File',(ConvertTo-CiArgument (([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/Profiler.Target.ps1')))),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($directory)),'-RepositoryPath',(ConvertTo-CiArgument ($repository)),'-ProfilerModulePath',(ConvertTo-CiArgument ($ProfilerModulePath)))
+    $arguments=@('-NoProfile','-File',(ConvertTo-CiArgument (([IO.Path]::Combine($WorkspaceRoot,'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Profiler.Target.ps1')))),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($directory)),'-RepositoryPath',(ConvertTo-CiArgument ($repository)),'-ProfilerModulePath',(ConvertTo-CiArgument ($ProfilerModulePath)))
     $options=@{FilePath=$runner;ArgumentList=$arguments;PassThru=$true;RedirectStandardOutput=([IO.Path]::Combine($directory,'target.stdout.log'));RedirectStandardError=([IO.Path]::Combine($directory,'target.stderr.log'))}
     if($IsWindows){$options.WindowStyle='Hidden'}
     $target=Start-Process @options;$owned.Add($target)

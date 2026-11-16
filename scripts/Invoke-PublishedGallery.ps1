@@ -15,7 +15,7 @@ $ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'l
 $run=[IO.Path]::Combine((Get-QuietReportRoot $WorkspaceRoot 'gallery-validation'),([DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,6)))
 [void][IO.Directory]::CreateDirectory($run)
 $runner=(Get-Command pwsh -CommandType Application|Select-Object -First 1).Source
-$workerPath=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/Probe-PublishedGallery.ps1')
+$workerPath=[IO.Path]::Combine($WorkspaceRoot,'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/Probe-PublishedGallery.ps1')
 $arguments=@('-File',(ConvertTo-CiArgument ($workerPath)),'-WorkspaceRoot',(ConvertTo-CiArgument ($WorkspaceRoot)),'-RunDirectory',(ConvertTo-CiArgument ($run)),'-Version',$Version)
 $options=@{FilePath=$runner;ArgumentList=$arguments;PassThru=$true;RedirectStandardOutput=([IO.Path]::Combine($run,'worker.stdout.log'));RedirectStandardError=([IO.Path]::Combine($run,'worker.stderr.log'))}
 if($IsWindows){$options.WindowStyle='Hidden'}elseif(!$Headless){throw 'Use the Windows host launcher for a local visible monitor.'}

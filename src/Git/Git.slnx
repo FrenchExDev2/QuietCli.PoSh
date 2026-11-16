@@ -1,0 +1,47 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/FrenchExDev2.QuietCli.Git.PoSh/">
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psd1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psm1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/LICENSE_CREDITS.md" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/README.md" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/THIRD_PARTY_NOTICES.md" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/ci/Get-CiImageArguments.ps1" />
+    <Project Path="src/FrenchExDev2.QuietCli.Git.PoSh/engine/QuietCli.Git.Parser.csproj" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/scripts/Install-Workstation.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/Attribution.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/Commands.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/Diff.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/History.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/IndexOperations.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/Managed.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/PathQueries.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/Queries.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/Records.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/Repository.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/RepositoryCommands.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/Revisions.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/Semantics.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/StatusRecords.ps1" />
+    <File Path="src/FrenchExDev2.QuietCli.Git.PoSh/src/StatusState.ps1" />
+  </Folder>
+  <Folder Name="/test/" />
+  <Folder Name="/test/FrenchExDev2.QuietCli.Git.Tests.PoSh/">
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/Attribution.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/CiImages.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/FrenchExDev2.QuietCli.Git.Tests.PoSh.psd1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/FrenchExDev2.QuietCli.Git.Tests.PoSh.psm1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/IndexOperations.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/Migration.Baseline.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/Migration.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/Parser.Mutation.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/PathQueries.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/Queries.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/README.md" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/RepositoryCommands.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/Revisions.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/Semantic.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/Status.Tests.ps1" />
+    <Project Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/parser-tests/QuietCli.Git.Parser.Tests.csproj" />
+  </Folder>
+</Solution>

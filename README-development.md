@@ -41,7 +41,7 @@ All paths are relative to the monorepo root. `Initialize-Workspace.ps1` validate
 ```powershell
 $checkout = Join-Path $HOME 'src/QuietCli'
 Set-Location $checkout
-Import-Module ./FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1 -ErrorAction Stop
+Import-Module ./Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1 -ErrorAction Stop
 Get-Alias quiet
 
 $r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
@@ -78,7 +78,7 @@ The source manifest above loads the local Core project. The public Gallery modul
 
 ## Run the Git companion
 
-After the shared build, open a fresh session and follow the [Git quick start](FrenchExDev2.QuietCli.Git.PoSh/README.md#quick-start). It imports both local manifests, defines the repository explicitly and shows the handler's YAML projection.
+After the shared build, open a fresh session and follow the [Git quick start](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md#quick-start). It imports both local manifests, defines the repository explicitly and shows the handler's YAML projection.
 
 ## Rebuild and validate
 

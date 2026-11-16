@@ -27,10 +27,12 @@ param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Manda
     [ValidateSet('Validate','Run')][string]$Mode='Validate',[ValidatePattern('^[\w.-]+$')][string]$Job,
     [ValidateSet('podman','docker','emulation')][string]$Runtime='podman',
     [ValidateRange(1,1800)][int]$TimeoutSeconds=180,[string]$RunDirectory,[switch]$Worker)
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 if($Mode -eq 'Run' -and !$Job){throw 'LocalWorkflowExplicitJobRequired'}
-if(!(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$Workflow)) -PathType Leaf)){throw 'LocalWorkflowDefinitionMissing'}
+if(!(Test-Path -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $Workflow)) -PathType Leaf)){throw 'LocalWorkflowDefinitionMissing'}
 $nativeArguments=if($Mode -eq 'Validate'){@('validate','--exit-code',$Workflow)}else{@('run','--runtime',$Runtime,'--job',$Job,$Workflow)}
 if(!$Worker){
     if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,('wrkflw '+($nativeArguments -join ' ')))){return}
@@ -50,7 +52,7 @@ if(!$Worker){
     if($summary.State.State -ne 'Success'){throw "Local workflow failed. See $RunDirectory"}
     return
 }
-$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task="Local workflow $Mode ($Workflow / $Job)";Workspace=$WorkspaceRoot;ProjectDirectory=([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh'));Platform='local-'+$Runtime;State='Running';ProcessId=$PID;Passed=$null;Failed=$null;StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null;Error=$null;Case='Verify pinned wrkflw version'}
+$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task="Local workflow $Mode ($Workflow / $Job)";Workspace=$WorkspaceRoot;ProjectDirectory=((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh'));Platform='local-'+$Runtime;State='Running';ProcessId=$PID;Passed=$null;Failed=$null;StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null;Error=$null;Case='Verify pinned wrkflw version'}
 $exitCode=$null
 try{
     Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'status.json')) $state

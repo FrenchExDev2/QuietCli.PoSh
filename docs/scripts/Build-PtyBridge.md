@@ -21,13 +21,13 @@ Cross-compiles the native PTY bridge binary for Linux x64/ARM64 (both glibc and 
 - Dot-sources `Common.ps1` (line 14) for `Invoke-CiProcess`/`Invoke-WorkspaceNative`/`Write-WorkspaceJson`.
 - Shells out to the Zig compiler's `cc` driver (`Invoke-WorkspaceNative`, line 48) and to the compiler itself for `version` (`Invoke-CiProcess`, line 35).
 - Uses `Invoke-WebRequest` (line 26) to download the pinned Zig archive from `ziglang.org`, and `[IO.Compression.ZipFile]::ExtractToDirectoryAsync` (line 28) to unpack it, only when `-DownloadCompiler` is passed.
-- Reads `build/zig.lock.json` (line 16) and `FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json` (line 59).
+- Reads `build/zig.lock.json` (line 16) and `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json` (line 59).
 - Calls `Assert-QuietPtyPublications` (line 67), a function not defined in this file — it is presumably pulled in transitively through `Common.ps1`'s own dot-source chain.
 
 ## Side effects
 
 - Downloads and SHA-256-verifies a third-party compiler archive into `artifacts/toolchains/...` (lines 24-28), gated behind `-DownloadCompiler` and a strict URL regex check (line 25).
-- Copies two license files into `FrenchExDev2.QuietCli.Core.PoSh/third_party/quietcli-pty/` (lines 40-42).
+- Copies two license files into `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/third_party/quietcli-pty/` (lines 40-42).
 - Compiles two static binaries (x64, arm64) into `artifacts/pty-build/<arch>/quietcli-pty` (line 46), then copies each into **two** resource directories per architecture — `resources/transport/linux-<arch>` and `resources/transport/linux-musl-<arch>` (line 51) — since the binary is statically linked and works under either libc.
 - Rewrites `resources/dependencies.lock.json` in place (lines 58-66), replacing every `resources/transport/*` entry with freshly computed ones.
 - Writes a `build.json` manifest per RID directory (line 55).
@@ -69,3 +69,15 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/Build-PtyBridge.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

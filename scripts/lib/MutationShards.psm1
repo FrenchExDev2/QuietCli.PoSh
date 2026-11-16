@@ -28,7 +28,7 @@ function Get-QuietRunProfileMutationIdentity {
     param([string]$WorkspaceRoot)
     $paths=@('scripts/New-RunProfile.ps1','scripts/Invoke-RunProfile.ps1','scripts/Measure-ColdStart.ps1','scripts/Initialize-Profilers.ps1','scripts/lib/Ci.Process.psm1')
     $paths+=@(Get-ChildItem -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) -File -Recurse | ForEach-Object {[IO.Path]::GetRelativePath($WorkspaceRoot,$_.FullName).Replace('\','/')})
-    $paths+=@('RunProfiles.Tests.ps1','RunProfiles.Benchmark.Tests.ps1','RunProfiles.Profiler.Tests.ps1','RunProfiles.Mutation.ps1','RunProfiles.MutationWorker.ps1','RunProfiles.Mutation.Catalogue.psd1')|ForEach-Object {'FrenchExDev2.QuietCli.Core.Tests.PoSh/'+$_}
+    $paths+=@('RunProfiles.Tests.ps1','RunProfiles.Benchmark.Tests.ps1','RunProfiles.Profiler.Tests.ps1','RunProfiles.Mutation.ps1','RunProfiles.MutationWorker.ps1','RunProfiles.Mutation.Catalogue.psd1')|ForEach-Object {'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/'+$_}
     $lines=@($paths|Sort-Object -Unique|ForEach-Object {$_+' '+(Get-FileHash -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$_)) -Algorithm SHA256).Hash})
     [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes(($lines -join "`n")))).ToLowerInvariant()
 }

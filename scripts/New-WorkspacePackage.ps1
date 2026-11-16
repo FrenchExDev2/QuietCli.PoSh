@@ -12,6 +12,8 @@ Rejects packages unless both CLR builds are verified ReadyToRun for all six rele
 Optional exact source project names to package; omitted packages are not archived.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputDirectory,[switch]$RequireReadyToRun,[string[]]$Module=@())
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-WorkspacePackage')){return}
 $ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/AgentDocuments.psm1')) -DisableNameChecking -ErrorAction Stop
@@ -26,12 +28,12 @@ foreach($distribution in @(Get-QuietWorkspaceBuildProjects $WorkspaceRoot|Where-
     $null=Test-QuietBuildManifest $WorkspaceRoot $distribution.Output
 }
 foreach($rid in @(if($selected -ccontains 'FrenchExDev2.QuietCli.Core.PoSh'){(Get-QuietRuntimeTargets $WorkspaceRoot).Rid})){
-    $build=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid)
+    $build=Test-QuietBuildManifest $WorkspaceRoot ('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/engine/'+$rid)
     if($build.RuntimeIdentifier -cne $rid){throw ('EngineDistributionMissing: '+$rid)}
     if($RequireReadyToRun){
         foreach($slot in @('engine','inprocess')){
-            $portable=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/'+$slot)
-            $compiled=Test-QuietBuildManifest $WorkspaceRoot ('FrenchExDev2.QuietCli.Core.PoSh/lib/'+$slot+'/'+$rid)
+            $portable=Test-QuietBuildManifest $WorkspaceRoot ('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/'+$slot)
+            $compiled=Test-QuietBuildManifest $WorkspaceRoot ('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/'+$slot+'/'+$rid)
             if($rid -cnotin @($portable.ReadyToRunTargets) -or !$compiled.ReadyToRun -or $compiled.RuntimeIdentifier -cne $rid -or $compiled.Configuration -cne 'Release'){throw ('ReadyToRunDistributionMissing: '+$slot+'/'+$rid)}
         }
     }
@@ -39,7 +41,7 @@ foreach($rid in @(if($selected -ccontains 'FrenchExDev2.QuietCli.Core.PoSh'){(Ge
 if(Test-Path -LiteralPath $OutputDirectory){throw 'PackageOutputAlreadyExists'}
 [void][IO.Directory]::CreateDirectory($OutputDirectory)
 foreach($repository in $identity.Projects | Where-Object {!$Module.Count -or $_.Name -cin $Module}){
-    $source=[IO.Path]::Combine($WorkspaceRoot,$repository.Path);$stage=[IO.Path]::Combine($OutputDirectory,$repository.Name)
+    $source=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $repository.Path);$stage=[IO.Path]::Combine($OutputDirectory,$repository.Name)
     [void][IO.Directory]::CreateDirectory($stage)
     foreach($item in Get-ChildItem -LiteralPath $source -Force){
         if($item.Name -in @('.git','.gitignore','bin','obj','artifacts','engine','fixture','engine-tests','parser-tests','tools','recall-tools','global.json')){continue}

@@ -1,0 +1,352 @@
+function Test-QuietContainerInputs {
+    <#
+    .SYNOPSIS
+    Verifies offline staging of docs and restored packages, preview effects and hostile package paths.
+    .PARAMETER WorkspaceRoot
+    Source checkout providing the real staging function and inert module manifests.
+    .PARAMETER RunDirectory
+    Owned staging/property fixtures, never a real container or registry.
+    #>
+    param([string]$WorkspaceRoot,[string]$RunDirectory)
+    Import-Module (Join-Path $WorkspaceRoot scripts/lib/ContainerInputs.psm1) -DisableNameChecking -ErrorAction Stop
+    $fixture=Join-Path $RunDirectory container-input-fixture
+    foreach($name in @('FrenchExDev2.QuietCli.Core.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh')){
+        $directory=Join-Path $fixture $name;[void][IO.Directory]::CreateDirectory($directory)
+        Copy-Item -LiteralPath (Resolve-QuietWorkspacePath $WorkspaceRoot ($name+'/'+$name+'.psd1')) -Destination $directory
+    }
+    foreach($relative in @('scripts/staged.ps1','build/lock.json','docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','README.md','Quietly.slnx','Directory.Build.props','Directory.Build.targets','src/Core/Core.slnx','src/Core/Directory.Build.props','src/Core/test/Directory.Packages.props','build/imports/policy.targets','.env','secret.json')){
+        $path=Join-Path $fixture $relative;[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path));[void][IO.File]::WriteAllTextAsync($path,'fixture-é漢',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    }
+    $cache=Join-Path $RunDirectory restored-packages
+    [void][IO.Directory]::CreateDirectory((Join-Path $cache 'system.fixture/1.0.0'))
+    [void][IO.File]::WriteAllTextAsync((Join-Path $cache system.fixture/1.0.0/content.txt),'restored-package',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $metadata=[IO.Path]::Combine($cache,'system.fixture/1.0.0/.nupkg.metadata')
+    [IO.File]::WriteAllText($metadata,'{"version":2,"source":"https://api.nuget.org/v3/index.json"}',[Text.UTF8Encoding]::new($false))
+    if($IsWindows){[IO.File]::SetAttributes($metadata,[IO.FileAttributes]::Hidden)}
+    $assetsPath=Join-Path $fixture FrenchExDev2.QuietCli.Core.PoSh/engine/obj/project.assets.json
+    $assets=@{libraries=@{fixture=@{type='package';path='system.fixture/1.0.0'}};packageFolders=@{$cache=@{}}}
+    Write-WorkspaceJson $assetsPath $assets
+    $stage=Join-Path $RunDirectory container-input-stage
+    $null=Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $stage -WhatIf
+    if(Test-Path -LiteralPath $stage){throw 'ContainerStagePreviewWroteFiles'}
+    Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $stage -Confirm:$false
+    $stagedMetadata=[IO.Path]::Combine($stage,'artifacts/nuget-cache/system.fixture/1.0.0/.nupkg.metadata')
+    if(!(Test-Path -LiteralPath $stagedMetadata) -or (Get-FileHash -LiteralPath $stagedMetadata).Hash -cne (Get-FileHash -LiteralPath $metadata).Hash){throw 'ContainerNuGetExtractionMetadataLost'}
+    foreach($relative in @('docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','Quietly.slnx','Directory.Build.props','Directory.Build.targets','src/Core/Core.slnx','src/Core/Directory.Build.props','src/Core/test/Directory.Packages.props','build/imports/policy.targets','artifacts/nuget-cache/system.fixture/1.0.0/content.txt')){
+        if(!(Test-Path -LiteralPath (Join-Path $stage $relative))){throw ('ContainerInputMissing: '+$relative)}
+    }
+    if((Test-Path (Join-Path $stage .env)) -or (Test-Path (Join-Path $stage secret.json)) -or (Test-Path (Join-Path $stage FrenchExDev2.QuietCli.Core.PoSh/engine/obj))){throw 'ContainerStageCopiedUndeclaredInputs'}
+    [void][IO.File]::WriteAllTextAsync((Join-Path $fixture .env),"SECRET=never-forward-this`nQUIET_CONTAINER_RUNTIME=podman`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    foreach($selection in @('','docker')){
+        $runtimeStage=Join-Path $RunDirectory ('runtime-stage-'+$(if($selection){$selection}else{'configured'}))
+        Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $runtimeStage -ContainerRuntime $selection -Confirm:$false
+        $expected=if($selection){$selection}else{'podman'}
+        $stagedText=[IO.File]::ReadAllText((Join-Path $runtimeStage .env),[Text.UTF8Encoding]::new($false,$true))
+        if($stagedText -cne ('QUIET_CONTAINER_RUNTIME="'+$expected+'"'+"`n")){throw 'ContainerStageForwardedPrivateEnvironmentOrIgnoredOverride'}
+    }
+    [IO.File]::Delete($metadata)
+    $rejected=$false
+    try{Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination ([IO.Path]::Combine($RunDirectory,'incomplete-package-stage')) -Confirm:$false}catch{$rejected=$_.Exception.Message -ceq 'ContainerRestoredPackageMetadataMissing: system.fixture/1.0.0'}
+    if(!$rejected){throw 'IncompleteRestoredPackageAccepted'}
+    $bad=@('../outside','x/../outside','/root/private','C:\private','x/1.0/extra',"x/1.0`n")
+    foreach($relative in $bad){
+        $assets.libraries.fixture.path=$relative;Write-WorkspaceJson $assetsPath $assets
+        $rejected=$false;try{Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination (Join-Path $RunDirectory ('bad-stage-'+[guid]::NewGuid().ToString('N'))) -Confirm:$false}catch{$rejected=$_.Exception.Message -eq 'ContainerNuGetPackagePathInvalid'}
+        if(!$rejected){throw 'ContainerNuGetPathEscapeAccepted'}
+    }
+    Write-WorkspaceJson (Join-Path $RunDirectory container-inputs.json) @{Preview='No writes';RestoredPackages=1;ExtractionMetadataPreserved=$true;IncompletePackageRejected=$true;MalformedPaths=$bad.Count;SecretsCopied=$false;ContainerStarted=$false}
+}
+function Test-QuietCompanionHelperScope {
+    <#
+    .SYNOPSIS
+    Imports the companion in a clean process without caller helpers and verifies its private dependencies.
+    .PARAMETER WorkspaceRoot
+    Selected checkout containing the source module and orchestration libraries.
+    .PARAMETER RunDirectory
+    Owned report directory for the isolated module probe.
+    #>
+    param([string]$WorkspaceRoot,[string]$RunDirectory)
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
+    $script={
+            param($root,$run)
+            $ErrorActionPreference='Stop'
+            $utf8=[Text.UTF8Encoding]::new($false)
+            [Console]::InputEncoding=$utf8;[Console]::OutputEncoding=$utf8;$OutputEncoding=$utf8
+            $stagePath=Join-Path $run 'companion-helper-stage.txt'
+            [IO.File]::WriteAllText($stagePath,'Core import',$utf8)
+            $helpers=@('Invoke-CiProcess','Write-WorkspaceJson','ConvertTo-QuietByteCount','Get-QuietWorkspaceProjects')
+            foreach($name in $helpers){if(Test-Path ('Function:'+ $name)){throw ('CallerHelperAlreadyPresent: '+$name)}}
+            Import-Module (Join-Path $root 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
+            $importWarnings=@()
+            $module=Import-Module (Join-Path $root 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -PassThru -DisableNameChecking -WarningVariable importWarnings
+            [IO.File]::WriteAllText($stagePath,'Private helper assertions',$utf8)
+            if($importWarnings.Count){throw 'CompanionImportEmittedWarnings'}
+            $result=& $module {
+                param($root,$run,$helpers)
+                foreach($name in $helpers){
+                    $command=Get-Command $name -ListImported -ErrorAction Stop
+                    $expected=[IO.Path]::Combine($root,('scripts/lib/'+$(if($name -eq 'Invoke-CiProcess'){'Ci.Process.psm1'}elseif($name -eq 'Get-QuietWorkspaceProjects'){'WorkspaceProjects.psm1'}elseif($name -eq 'Write-WorkspaceJson'){'WorkspaceJson.psm1'}else{'Common.psm1'})))
+                    if([IO.Path]::GetFullPath($command.ScriptBlock.File) -cne [IO.Path]::GetFullPath($expected)){throw ('UnexpectedCompanionHelperSource: '+$name)}
+                }
+                if((ConvertTo-QuietByteCount '1 KiB') -ne 1024){throw 'CompanionByteCountHelperChanged'}
+                $report=Join-Path $run 'isolated-companion/receipt.json'
+                Write-WorkspaceJson $report @{Message='é漢';Helpers=$helpers}
+                if((Get-Content $report -Raw -Encoding utf8|ConvertFrom-Json).Message -cne 'é漢'){throw 'CompanionJsonHelperChanged'}
+                [pscustomobject]@{Helpers=$helpers.Count;Private=$true;ProfileRequired=$false}
+            } $root $run $helpers
+            foreach($name in $helpers){if(Test-Path ('Function:'+ $name)){throw ('CompanionHelperLeakedToCaller: '+$name)}}
+            $tokens=$null;$errors=$null
+            $workerAst=[Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'scripts/Invoke-TestWorker.ps1'),[ref]$tokens,[ref]$errors)
+            if($errors.Count){throw 'WorkerImportProbeSyntaxInvalid'}
+            $clauses=@(foreach($statement in $workerAst.FindAll({param($node)$node -is [Management.Automation.Language.IfStatementAst]},$true)){
+                foreach($clause in $statement.Clauses){if($clause.Item1.Extent.Text -ceq '$Suite -in @(''Tooling'',''Distribution'')'){$clause.Item2}}
+            })
+            if($clauses.Count -ne 1){throw 'WorkerImportBootstrapNotFound'}
+            $imports=@($clauses[0].FindAll({param($node)$node -is [Management.Automation.Language.CommandAst] -and $node.GetCommandName() -ceq 'Import-Module'},$true))
+            # Minimized dependency graph tests PowerShell's warning propagation without reloading product companions.
+            Import-Module ([IO.Path]::Combine($root,'scripts/lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+            $WorkspaceRoot=Join-Path $run 'worker-import-fixture';$checks=0
+            $dependency='FrenchExDev2.QuietCli.Core.Tests.PoSh'
+            foreach($suite in @('Core','Tooling','Distribution')){
+                $name='FrenchExDev2.QuietCli.'+$suite+'.Tests.PoSh'
+                $directory=Join-Path $WorkspaceRoot $name
+                [void][IO.Directory]::CreateDirectory($directory)
+                $exports=if($suite -ceq 'Core'){'Reduce-WorkerImportProbe'}else{'Invoke-WorkerImportProbe'}
+                $required=if($suite -ceq 'Core'){''}else{"RequiredModules=@('$dependency');"}
+                [IO.File]::WriteAllText((Join-Path $directory ($name+'.psm1')),('function '+$exports+' {}; Export-ModuleMember -Function '+$exports),$utf8)
+                [IO.File]::WriteAllText((Join-Path $directory ($name+'.psd1')),("@{RootModule='$name.psm1';ModuleVersion='0.1.0';"+$required+"FunctionsToExport=@('$exports')}"),$utf8)
+            }
+            $env:PSModulePath=$WorkspaceRoot+[IO.Path]::PathSeparator+(Join-Path $PSHOME 'Modules')
+            foreach($mode in @('Tooling','Distribution','MissingPreload')){
+                [IO.File]::WriteAllText($stagePath,('Dependency import: '+$mode),$utf8)
+                foreach($name in @('FrenchExDev2.QuietCli.Tooling.Tests.PoSh','FrenchExDev2.QuietCli.Distribution.Tests.PoSh','FrenchExDev2.QuietCli.Core.Tests.PoSh')){Remove-Module $name -Force -ErrorAction SilentlyContinue}
+                if(@(Get-Module FrenchExDev2.QuietCli.Core.Tests.PoSh -All).Count){throw 'WorkerImportProbeNotIsolated'}
+                $testModule='FrenchExDev2.QuietCli.'+$(if($mode -ceq 'MissingPreload'){'Tooling'}else{$mode})+'.Tests.PoSh'
+                $testManifest=Join-Path $WorkspaceRoot ($testModule+'/'+$testModule+'.psd1')
+                $selected=@($imports|Where-Object {$mode -cne 'MissingPreload' -or $_.Extent.Text -notmatch 'FrenchExDev2\.QuietCli\.Core\.Tests\.PoSh'})
+                $body=($selected|ForEach-Object {$_.Extent.Text}) -join "`n"
+                'QUIETCLI_IMPORT_PROBE='+$mode
+                $warnings=@(& ([scriptblock]::Create($body)) 3>&1|Where-Object {$_ -is [Management.Automation.WarningRecord]})
+                foreach($warning in $warnings){$warning.Message}
+                if($mode -cne 'MissingPreload'){
+                    if($warnings.Count){throw ('WorkerDependencyImportEmittedWarnings: '+$mode)}
+                    $checks++
+                }
+            }
+            $result|Add-Member NoteProperty DependencyImportChecks $checks
+            'QUIETCLI_HELPER_PROBE='+($result|ConvertTo-Json -Compress)
+    }.ToString()
+    $path=Join-Path $RunDirectory 'companion-helper-probe.ps1'
+    [void][IO.File]::WriteAllTextAsync($path,$script,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $state=@{Receipt=$null;Mode=$null;ImportWarnings=@{Tooling=0;Distribution=0;MissingPreload=0};Diagnostics=[Collections.Generic.List[string]]::new()}
+    $runner=Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})
+    # Deliberate profile isolation detects caller/session dependencies hidden by workstation startup.
+    $execution=Invoke-CiProcess -FilePath $runner -ArgumentList @('-NoProfile','-File',$path,$WorkspaceRoot,$RunDirectory) -TimeoutSeconds 45 -State $state -OnOutput {
+        param($event,$state)
+        $prefix='QUIETCLI_HELPER_PROBE='
+        if($event.Text.StartsWith($prefix)){$state.Receipt=$event.Text.Substring($prefix.Length)|ConvertFrom-Json}
+        elseif($event.Text.StartsWith('QUIETCLI_IMPORT_PROBE=')){$state.Mode=$event.Text.Substring('QUIETCLI_IMPORT_PROBE='.Length)}
+        elseif($state.Mode -and $event.Text -match 'FrenchExDev2\.QuietCli\.Core\.Tests\.PoSh'){$state.ImportWarnings[$state.Mode]++}
+        elseif($state.Diagnostics.Count -lt 8){$state.Diagnostics.Add($event.Text)}
+    }
+    Write-WorkspaceJson (Join-Path $RunDirectory 'companion-helper-process.json') @{Outcome=$execution.Outcome;ExitCode=$execution.ExitCode;ElapsedMs=$execution.ElapsedMs;Diagnostics=$state.Diagnostics.ToArray();Receipt=$state.Receipt;ImportWarnings=$state.ImportWarnings;MissingPreloadMutantDetected=($state.ImportWarnings.MissingPreload -gt 0)}
+    if($execution.Outcome -ne 'Success'){
+        $stagePath=Join-Path $RunDirectory 'companion-helper-stage.txt'
+        $stage=if(Test-Path -LiteralPath $stagePath){[IO.File]::ReadAllText($stagePath,[Text.Encoding]::UTF8)}else{'Not started'}
+        throw ('CompanionHelperScopeProbeFailed: '+$execution.Outcome+' at '+$stage+'; '+($state.Diagnostics -join '; '))
+    }
+    if(!$state.Receipt -or $state.Receipt.Helpers -ne 4 -or !$state.Receipt.Private -or $state.Receipt.DependencyImportChecks -ne 2){throw 'CompanionHelperScopeReceiptChanged'}
+    if($state.ImportWarnings.Tooling -or $state.ImportWarnings.Distribution){throw 'WorkerImplicitDependencyImportEmittedWarnings'}
+    if(!$state.ImportWarnings.MissingPreload){throw 'MissingPreloadWarningMutantSurvived'}
+}
+function Test-QuietGitHubCiJsonReceipts {
+    <#
+    .SYNOPSIS
+    Reproduces clean-checkout matrix output and checks atomic JSON publication on owned files.
+    .PARAMETER WorkspaceRoot
+    Source checkout providing the real writer, selector and matrix policy.
+    .PARAMETER RunDirectory
+    Owned fixture directory; no registry access or real container execution is performed.
+    #>
+    param([string]$WorkspaceRoot,[string]$RunDirectory)
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
+    $fixture=Join-Path $RunDirectory 'github-json-receipts'
+    $receipt=Join-Path $fixture 'clean/artifacts/github-matrix/selection.json'
+    if(Test-Path -LiteralPath (Split-Path $receipt -Parent)){throw 'GitHubJsonRegressionRequiresAbsentParent'}
+    Write-WorkspaceJson $receipt @{Message="é漢`nsecond line";Index=0}
+    $saved=Get-Content -LiteralPath $receipt -Raw -Encoding utf8|ConvertFrom-Json
+    if($saved.Message -cne "é漢`nsecond line" -or $saved.Index -ne 0){throw 'GitHubJsonCleanCheckoutReceiptChanged'}
+    $seed=20261110;$random=[Random]::new($seed)
+    foreach($index in 1..32){
+        $path=Join-Path $fixture (('paths/{0}/nested-é漢/state.json' -f $random.Next()))
+        foreach($revision in 1..2){
+            $output=@(Write-WorkspaceJson $path @{Index=$index;Revision=$revision;Message='é漢'})
+            $bytes=[IO.File]::ReadAllBytes($path)
+            $value=[Text.UTF8Encoding]::new($false,$true).GetString($bytes)|ConvertFrom-Json
+            if($output.Count -or $value.Index -ne $index -or $value.Revision -ne $revision -or $value.Message -cne 'é漢' -or $bytes[0] -ne 123 -or $bytes -contains 13){throw 'WorkspaceJsonRoundTripPropertyFailed'}
+        }
+    }
+    Push-Location $fixture
+    try{Write-WorkspaceJson 'relative.json' @{Relative=$true}}finally{Pop-Location}
+    if(!(Test-Path -LiteralPath (Join-Path $fixture relative.json))){throw 'WorkspaceJsonRelativePathChanged'}
+    $blocked=Join-Path $fixture blocked
+    [void][IO.File]::WriteAllTextAsync($blocked,'preserve',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $rejected=$false
+    try{Write-WorkspaceJson (Join-Path $blocked 'nested/state.json') @{Invalid=$true}}catch{$rejected=$true}
+    if(!$rejected -or [IO.File]::ReadAllText($blocked) -cne 'preserve'){throw 'WorkspaceJsonBlockedParentAccepted'}
+    $writerSource=(Get-Command Write-WorkspaceJson).ScriptBlock.ToString()
+    $anchor='[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($Path))'
+    if(!$writerSource.Contains($anchor)){throw 'WorkspaceJsonParentCreationMutationAnchorMissing'}
+    $mutant=[scriptblock]::Create($writerSource.Replace($anchor,''))
+    $killed=$false
+    try{& $mutant (Join-Path $fixture 'mutant/absent/selection.json') @{Mutant=$true}}catch{$killed=$_.Exception.GetBaseException() -is [IO.DirectoryNotFoundException]}
+    if(!$killed){throw 'WorkspaceJsonMissingParentMutantSurvived'}
+    $scripts=Join-Path $fixture 'selector/scripts'
+    [void][IO.Directory]::CreateDirectory($scripts)
+    Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) -Destination ([IO.Path]::Combine($scripts,'lib')) -Recurse
+    foreach($name in @('Select-GitHubCiMatrix.ps1')){
+        Copy-Item -LiteralPath (Join-Path $WorkspaceRoot "scripts/$name") -Destination $scripts
+    }
+    $adapter='function Get-QuietCiRegistryDigest { param($Plan,$Token,$Actor,[switch]$IncludeConfiguration); return $null }'
+    [void][IO.File]::WriteAllTextAsync(([IO.Path]::Combine($scripts,'lib/CiImages.psm1')),$adapter,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $plan='param($WorkspaceRoot,$RuntimeIdentifier,$Suite,[switch]$PlanOnly); if($Suite -notin @("Core","Git","Vagrant","All")){throw "SuiteNotForwarded"}; [pscustomobject]@{Platform=$(if($RuntimeIdentifier.Contains("-musl-")){"alpine"}else{"debian"})}'
+    foreach($name in @('New-CiSuiteImage.ps1')){[void][IO.File]::WriteAllTextAsync((Join-Path $scripts $name),$plan,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}
+    foreach($suite in @('Core','Git','Vagrant','All')){
+        $checkout=Join-Path $fixture ('selector/'+$suite)
+        $outputPath=Join-Path $fixture ($suite+'-output.txt')
+        [void][IO.File]::WriteAllTextAsync($outputPath,"existing=value`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+        $before=(Get-FileHash -LiteralPath $outputPath).Hash
+        $null=& (Join-Path $scripts Select-GitHubCiMatrix.ps1) -WorkspaceRoot $checkout -Suite $suite -OutputPath $outputPath -WhatIf
+        if((Test-Path -LiteralPath $checkout) -or (Get-FileHash -LiteralPath $outputPath).Hash -cne $before){throw 'GitHubMatrixPreviewCreatedOutput'}
+        $null=& (Join-Path $scripts Select-GitHubCiMatrix.ps1) -WorkspaceRoot $checkout -Suite $suite -OutputPath $outputPath -Confirm:$false
+        $selection=Get-Content -LiteralPath (Join-Path $checkout 'artifacts/github-matrix/selection.json') -Raw -Encoding utf8|ConvertFrom-Json
+        $outputs=Get-Content -LiteralPath $outputPath -Encoding utf8
+        if($selection.HasContainer -or !$selection.HasFallback -or @($selection.Fallback.include).Count -ne 4 -or $outputs[0] -cne 'existing=value' -or $outputs -cnotcontains 'has_docker_container_runtime=true' -or $outputs -cnotcontains 'has_container=false'){throw 'GitHubMatrixCleanCheckoutOutputsChanged'}
+    }
+    if(@(Get-ChildItem -LiteralPath $fixture -Filter '*.tmp' -File -Recurse).Count){throw 'WorkspaceJsonTemporaryFilesLeaked'}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'github-json-receipts.json') @{Seed=$seed;RoundTrips=64;SelectorSuites=@('Core','Git','Vagrant','All');PreviewCases=4;BlockedParentRejected=$true;MutantsKilled=1;RealRegistry=$false;RealHostedRunner=$false}
+}
+function Test-QuietGitHubCi {
+    <#
+    .SYNOPSIS
+    Checks matrix partition properties, malformed identities, fail-closed gates and direct GitHub entry.
+    .PARAMETER WorkspaceRoot
+    Source checkout providing the shared execution policy.
+    .PARAMETER RunDirectory
+    Owned fixture and property campaign directory.
+    #>
+    param([string]$WorkspaceRoot,[string]$RunDirectory)
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/GitHubCi.psm1') -DisableNameChecking -ErrorAction Stop
+    . (Join-Path $PSScriptRoot 'GitHubImageAdapters.Tests.ps1')
+    Test-QuietGitHubImageAdapters -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+    $seed=20261110;$random=[Random]::new($seed);$properties=0;$gateCases=0
+    $rids=@('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')
+    for($mask=0;$mask -lt 16;$mask++){
+        $rows=@(for($index=0;$index -lt 4;$index++){
+            $rid=$rids[$index];$platform=if($rid.Contains('-musl-')){'alpine'}else{'debian'}
+            [pscustomobject]@{Rid=$rid;Platform=$platform;Runner=$(if($rid.EndsWith('arm64')){'ubuntu-24.04-arm'}else{'ubuntu-latest'});Reference=$(if($mask -band (1 -shl $index)){'ghcr.io/frenchexdev2/quietcli2-ci-fixture@sha256:'+('a'*64)}else{$null})}
+        })
+        foreach($iteration in 1..16){
+            $permuted=@($rows|Sort-Object {$random.Next()})
+            $matrix=Get-GitHubCiExecutionMatrix $permuted
+            $native=@($matrix.Container.include);$fallback=@($matrix.Fallback.include)
+            $all=@($native)+@($fallback)
+            if($all.Count -ne 4 -or @($all|Group-Object rid|Where-Object Count -NE 1).Count -or @($all|Where-Object rid -NotIn $rids).Count){throw 'GitHubCiTargetPartitionChanged'}
+            foreach($row in $rows){
+                $expectedNative=[bool]$row.Reference -and $row.Rid -cne 'linux-musl-arm64'
+                if(@($native|Where-Object rid -CEQ $row.Rid).Count -ne [int]$expectedNative){throw 'GitHubCiContainerPolicyChanged'}
+            }
+            if($matrix.HasContainer -ne [bool]$native.Count -or $matrix.HasFallback -ne [bool]$fallback.Count){throw 'GitHubCiSelectionFlagsChanged'}
+            $properties++
+        }
+    }
+    $base=@($rows|ForEach-Object {$_.PSObject.Copy()})
+    $badInputs=@(@{Kind='missing';Rows=@($base[0..2])},@{Kind='duplicate';Rows=@($base[0],$base[0],$base[2],$base[3])})
+    foreach($value in @('latest','ghcr.io/frenchexdev2/quietcli2-ci-fixture:tag','ghcr.io/other/image@sha256:'+('a'*64),"bad`nimage")){
+        $copy=@($base|ForEach-Object {$_.PSObject.Copy()});$copy[0].Reference=$value;$badInputs+=@{Kind='identity';Rows=$copy}
+    }
+    $copy=@($base|ForEach-Object {$_.PSObject.Copy()});$copy[1].Runner='ubuntu-latest';$badInputs+=@{Kind='runner';Rows=$copy}
+    foreach($bad in $badInputs){$rejected=$false;try{$null=Get-GitHubCiExecutionMatrix $bad.Rows}catch{$rejected=$true};if(!$rejected){throw 'GitHubCiMalformedMatrixAccepted'}}
+    foreach($hasNative in @($false,$true)){
+        foreach($selection in @('success','failure','cancelled','skipped')){foreach($native in @('success','failure','cancelled','skipped')){foreach($fallback in @('success','failure','cancelled','skipped')){
+            $expected=$selection -ceq 'success' -and $fallback -ceq 'success' -and $native -ceq $(if($hasNative){'success'}else{'skipped'})
+            $accepted=$true;try{Assert-GitHubCiLinuxResults $selection $native $fallback $hasNative $true}catch{$accepted=$false}
+            if($accepted -ne $expected){throw 'GitHubCiAggregateGateChanged'};$gateCases++
+        }}}
+    }
+    $source=(Get-Command Get-GitHubCiExecutionMatrix).ScriptBlock.ToString()
+    $mutant=[scriptblock]::Create($source.Replace("`$rid -cne 'linux-musl-arm64'",'$true'))
+    $observed=& $mutant -Images $base
+    if(@($observed.Container.include|Where-Object rid -EQ linux-musl-arm64).Count -ne 1){throw 'GitHubCiInvalidAlpineMutant'}
+    $gateSource=(Get-Command Assert-GitHubCiLinuxResults).ScriptBlock.ToString()
+    $gateMutant=[scriptblock]::Create($gateSource.Replace("`$SelectionResult -cne 'success'",'$false'))
+    $detected=$false;try{& $gateMutant failure success success $true $true}catch{$detected=$true}
+    if($detected){throw 'GitHubCiInvalidGateMutant'}
+    $fixture=Join-Path $RunDirectory 'github-entry-fixture';$scripts=Join-Path $fixture 'scripts'
+    New-QuietWorkspaceFixtureProject $fixture 'FrenchExDev2.QuietCli.Core.PoSh' -Metadata "@{TestsModule='FrenchExDev2.QuietCli.Core.Tests.PoSh'}"
+    New-QuietWorkspaceFixtureProject $fixture 'FrenchExDev2.QuietCli.Core.Tests.PoSh' @('FrenchExDev2.QuietCli.Core.PoSh') -Command Invoke-QuietCoreTests
+    [void][IO.Directory]::CreateDirectory($scripts)
+    foreach($project in Get-ChildItem -LiteralPath $WorkspaceRoot -Directory -Filter 'FrenchExDev2.QuietCli.*.PoSh'){
+        $manifest=Join-Path $project.FullName ($project.Name+'.psd1')
+        if(Test-Path -LiteralPath $manifest){
+            $target=Join-Path $fixture $project.Name;[void][IO.Directory]::CreateDirectory($target)
+            Copy-Item -LiteralPath $manifest -Destination $target
+        }
+    }
+    Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) -Destination ([IO.Path]::Combine($scripts,'lib')) -Recurse
+    Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/Invoke-GitHubCi.ps1')) -Destination $scripts
+    $worker='param($WorkspaceRoot,$RunDirectory,$Suite,$ExpectedRuntimeIdentifier,[switch]$SkipTty); Import-Module ([IO.Path]::Combine($PSScriptRoot,"lib/Common.psm1")) -DisableNameChecking -ErrorAction Stop; if(![IO.Path]::IsPathFullyQualified($WorkspaceRoot) -or ![IO.Path]::IsPathFullyQualified($RunDirectory)){throw "GitHubWorkerPathsMustBeAbsolute"}; Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,"summary.json")) @{State=@{State="Success";Passed=3;Failed=0};WorkerPid=$PID;Suite=$Suite;SkipTty=[bool]$SkipTty}'
+    [void][IO.File]::WriteAllTextAsync((Join-Path $scripts 'Invoke-TestWorker.ps1'),$worker,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+    $previous=$env:GITHUB_ACTIONS
+    try{
+        $env:GITHUB_ACTIONS='false';$rejected=$false
+        try{$null=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot $fixture -Suite Import -SkipBuild}catch{$rejected=$true}
+        if(!$rejected -or (Test-Path (Join-Path $fixture artifacts))){throw 'GitHubEntryRanOutsideGitHubContext'}
+        $env:GITHUB_ACTIONS='true'
+        Push-Location $RunDirectory
+        try{$null=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot './github-entry-fixture' -RunDirectory './relative-entry-run' -Suite Import -SkipBuild}finally{Pop-Location}
+        if(!(Test-Path -LiteralPath (Join-Path $RunDirectory 'relative-entry-run/summary.json'))){throw 'GitHubRelativeRunDirectoryLost'}
+        $env:GITHUB_ACTIONS='true';$run=Join-Path $fixture 'artifacts/tests/direct'
+        $result=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot $fixture -Suite Import -SkipBuild -SkipTty -RunDirectory $run
+        $receipt=Get-Content -LiteralPath (Join-Path $run summary.json) -Raw -Encoding utf8|ConvertFrom-Json
+        if($result.State -cne 'Success' -or $receipt.WorkerPid -ne $PID -or !$receipt.SkipTty){throw 'GitHubEntryDidNotExecuteDirectWorker'}
+        foreach($flag in @('Partial','Incomplete')){
+            $partialWorker=$worker.Replace(';WorkerPid',(';Suites=@(@{'+$flag+'=$true});WorkerPid'))
+            [IO.File]::WriteAllText((Join-Path $scripts Invoke-TestWorker.ps1),$partialWorker,[Text.UTF8Encoding]::new($false))
+            $rejected=$false
+            try{$null=& (Join-Path $scripts 'Invoke-GitHubCi.ps1') -WorkspaceRoot $fixture -Suite Import -SkipBuild -RunDirectory (Join-Path $fixture ('artifacts/tests/'+$flag))}catch{$rejected=$_.Exception.Message -ceq 'GitHubCiRequiresCompleteUnfilteredSuites'}
+            if(!$rejected){throw ('GitHubEntryAccepted'+$flag+'Evidence')}
+        }
+    }finally{$env:GITHUB_ACTIONS=$previous}
+    $workflowPath=if($env:QUIETCLI_CI_CANDIDATE){$env:QUIETCLI_CI_CANDIDATE}else{Join-Path $WorkspaceRoot '.github/workflows/ci.yml'}
+    $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
+    $parser=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build();$reader=[IO.StringReader]::new([IO.File]::ReadAllText($workflowPath,[Text.Encoding]::UTF8))
+    try{$workflow=$parser.Deserialize($reader,[object])}finally{$reader.Dispose()}
+    $jobs=$workflow['jobs']
+    foreach($name in $jobs.Keys){
+        if(!$jobs[$name].ContainsKey('steps')){
+            if(!$jobs[$name].ContainsKey('uses')){throw 'GitHubJobHasNoExecutionContract'}
+            continue
+        }
+        $steps=@($jobs[$name]['steps'])
+        for($index=0;$index -lt $steps.Count;$index++){
+            if([string]$steps[$index]['uses'] -notlike 'actions/checkout@*'){continue}
+            if($index+1 -ge $steps.Count -or [string]$steps[$index+1]['run'] -notmatch '\./scripts/Initialize-CiEnvironment\.ps1 -Target GitHub -ContainerRuntime docker' -or $steps[$index+1]['shell'] -cne 'pwsh'){throw ('GitHubEnvironmentInitializationMissing: '+$name)}
+        }
+    }
+    foreach($entry in @(@{Job='linux';Flag='has_container'},@{Job='linux-test-driver';Flag='has_docker_container_runtime'})){
+        $condition=[string]$jobs[$entry.Job]['if']
+        if(!$condition.Contains('!cancelled()') -or !$condition.Contains("needs.linux-selection.result == 'success'") -or !$condition.Contains(("needs.linux-selection.outputs."+$entry.Flag+" == 'true'"))){throw ('GitHubCiSelectedJobInheritedSkip: '+$entry.Job)}
+    }
+    foreach($name in $jobs.Keys){foreach($dependency in @($jobs[$name]['needs'])){if($dependency -and !$jobs.ContainsKey($dependency)){throw 'GitHubWorkflowDanglingDependency'}}}
+    if(!$jobs['linux']['container'] -or $jobs['windows']['container'] -or $jobs['linux-test-driver']['container']){throw 'GitHubWorkflowExecutionEnvironmentChanged'}
+    $direct=@($jobs['linux']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
+    if(!$direct.Contains('Invoke-GitHubCi.ps1') -or $direct -match 'Invoke-ContainerCi|New-CiImage|podman'){throw 'GitHubContainerNestedRuntimeDetected'}
+    $fallback=@($jobs['linux-test-driver']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
+    if(!$fallback.Contains('-ContainerRuntime docker') -or $fallback.Contains('-PublishCache')){throw 'GitHubFallbackPublicationOrRuntimeChanged'}
+    if($fallback -notmatch 'New-CiSuiteImage\.ps1 -Suite' -or $fallback -match '-Module Git' -or $jobs.ContainsKey('linux-git-images')){throw 'CompanionSpecificWorkflowImageBranch'}
+    $workflowSource=[IO.File]::ReadAllText($workflowPath,[Text.Encoding]::UTF8)
+    if($workflowSource -match "QUIETCLI_GIT_|inputs\.suite\s*!=\s*'Git'"){throw 'CompanionSpecificWorkflowControls'}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'github-ci-campaign.json') @{Seed=$seed;PartitionProperties=$properties;MalformedCases=$badInputs.Count;GateCases=$gateCases;MutantsKilled=2;DirectWorkerSameProcess=$true;Workflow=$workflowPath;RealHostedRunner=$false}
+}

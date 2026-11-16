@@ -4,6 +4,14 @@
 
 Suite selects the test module and transitive RequiredModules closure. A scoped owned solution contains its projects; undeclared ProjectReferences fail before compilation. All preserves the complete solution. Incremental compilation reuses valid MSBuild outputs; portable publications remain --no-build. Matrix calls publish only their tested RuntimeIdentifier; packaging retains every required RID. WhatIf creates no scoped solution.
 
+`ReuseVerifiedBuild` always restores that complete selected solution before returning verified
+cached distributions or narrowing compilation to stale/unpublished projects. Binary cache archives
+do not contain `obj/project.assets.json`; downstream offline container staging needs those assets
+to find the restored dependency closure. A cache hit therefore skips compilation and publication,
+while restore still runs with vulnerability auditing enabled. It never restores unselected companions.
+The layout regression covers an empty intermediate tree, complete reuse, documentation-only
+compilation beside cached products, restore failure and an omitted-restore mutant.
+
 ## Purpose and usage
 
 Compiles `Quietly.slnx` once in Release by default, then prepares the portable distributions declared by the discovered packages, without tests or registry publication. Both local launchers and GitHub workflows use this same entry point.
@@ -70,3 +78,15 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
 <!-- credits:end -->
+
+<!-- grouped-layout-review:begin -->
+## Grouped workspace contract
+
+Reviewed source: scripts/Build-Workspace.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

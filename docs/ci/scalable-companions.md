@@ -4,7 +4,7 @@
 
 ## Select only the required work
 
-[New-CiImpactPlan](../scripts/New-CiImpactPlan.md) uses the complete no-rename diff and transitive `build/companions.yml` requirements. A companion-only change selects its dependent suites; Core/shared/unknown paths require All plus tooling. Several affected companions share one matrix. Reviewed run-profile command/store/definition paths select tooling only; shared profiler, encoding, report and build changes still require All. Mixed paths union requirements.
+[New-CiImpactPlan](../scripts/New-CiImpactPlan.md) uses the complete no-rename diff and transitive `build/companions.yml` requirements. A companion change qualifies its owning group; Core changes qualify Core plus dependent smokes. ProjectReference edges select dependent builds. PackageReference consumers and inherited props/targets select the projects affected by central XML changes. Unknown shared paths use an explained conservative fallback. Several affected groups share one matrix. Reviewed run-profile command/store/definition paths select tooling only; shared profiler, encoding, report and build changes still require All. Mixed paths union requirements.
 
 Core.Tests depends only on Core. Its scaffolding fixture generates a scripted Git-status companion; Git remains an executable tool without importing the real Git module. Tooling.Tests owns repository automation. Distribution.Tests owns the architecture, installed-package and packaged-Recall checks executed once in tooling. Existing FrenchExDev application modules are consumers; membership does not qualify their CLI semantics.
 
@@ -50,7 +50,7 @@ Git's nine opt-in compiled mutation catalogues use independent processes, capped
 
 Docker first probes the verified final GHCR fingerprint. A final-image hit avoids intermediate-cache transfer; a miss restores BuildKit `mode=max` cache by image/RID/fingerprint and prepares required parents in the same producer job. Cache save precedes tests. GitHub uses Docker; local resolution keeps explicit selection, checkout `.env`, then Podman-first discovery. See [Linux images](linux-images.md).
 
-On develop, replay may be omitted only after verifying a successful originating PR workflow attempt and an identical Git tree. Missing, expired, legacy or mismatched proof falls back to All. Reuse still requires source integrity/Core integration smoke and image resolution. Cache-only manual dispatch emits no qualification receipt. Develop never publishes Gallery modules.
+PR and develop events recompute their selective plans from the complete diff. Build reuse verifies source/payload hashes, configuration and RID slots; it never authorizes omitted qualification. Dedicated group YAML files declare their solution/source/test paths and delegate through uses/with. Cache-only manual dispatch emits no qualification receipt. Develop never publishes Gallery modules.
 
 ## Artifacts and acceptance
 

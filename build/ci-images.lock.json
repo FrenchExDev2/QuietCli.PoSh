@@ -1,7 +1,7 @@
 {
   "SchemaVersion": 2,
   "SDK": "11.0.100",
-  "AlpinePowerShellPackage": "7.6.9-r0",
+  "AlpinePowerShellPackage": "7.6.10-r0",
   "AlpineRuntime": "10.0.14",
   "Platforms": [
     {
@@ -42,7 +42,7 @@
   "PowerShellException": {
     "Requested": "7.7.0",
     "Platform": "alpine",
-    "Retained": "7.6.9-r0",
+    "Retained": "7.6.10-r0",
     "Reason": "Official musl ARM64 archive and native GA APK are not published; retain the available native package explicitly."
   }
 }

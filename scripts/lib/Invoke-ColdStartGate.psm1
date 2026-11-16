@@ -55,7 +55,7 @@ Optional log file.
 param(
     [Parameter(Mandatory)][string]$CandidateModule,
     [ValidateNotNullOrEmpty()][string]$CandidateLabel = 'candidate',
-    [string]$BaselineModule = ([IO.Path]::Combine((Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')),
+    [string]$BaselineModule = ([IO.Path]::Combine((Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')),
     [ValidateNotNullOrEmpty()][string]$ProfileName = 'coldstart-100',
     [string]$ArtifactsDirectory = ([IO.Path]::Combine((Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),'artifacts/coldstart')),
     [ValidateRange(1, 365)][int]$MaxAgeDays = 14,

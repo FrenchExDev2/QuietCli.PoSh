@@ -1,39 +1,26 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: 23D1256E6779675A520165F1BCF6C683B0DCBC9BF3690719F7A8BE859337C873 -->
+<!-- workflow-source-sha256: 2850C4E94730E6C2BB891D602C52599953E383C2E8BAB3ADB10EA1673051C525 -->
 
 ## Purpose
 
-One stable pull-request/develop entry point for discovered companions. The complete no-rename diff and transitive catalogue requirements select a companion-only scope, shared All scope or tooling-only campaign. Unknown inputs conservatively require All. Documentation-only plans can omit native tests while the final QuietCli required CI check remains present.
-
-Develop reuses successful merged-PR evidence only when its bounded artifact, authoritative workflow run/attempt and exact Git tree match. Legacy/missing/expired/mismatched receipts fall back to complete All qualification. Reuse still verifies the merged workspace structure, pinned external resources, Core integration and native image caches. No module publication occurs on develop.
-
-## Validation and limits
-
-An unconditional source-checks job runs the shared PowerShellSources check alongside
-plan, without importing product modules or starting companion tests. It does not add
-a dependency before planning or matrix execution. The final required status explicitly
-requires source-checks success, including documentation-only plans; skipped, cancelled,
-missing and failed source checks cannot qualify the PR. Local commits use the same
-function through Invoke-WorkspaceChecks, including prepared-index snapshots.
-
-The unconditional final check rejects failed/cancelled planning and required campaigns, including incorrectly skipped product/tooling jobs. Configure required checks, up-to-date branches and direct-push restrictions separately in repository rules. No repository settings are changed by this workflow. Publication requires its own exact revision/current-run evidence and explicit module tags.
-
-Native orchestration and test/smoke steps select checksum-pinned GA PowerShell through the local setup-powershell action. Linux guest images retain their own reviewed lock (Debian 7.7.0; accepted Alpine 7.6.9-r0 exception). The setup changes only the job PATH; it does not install a machine-wide host or enable optional Preview.
+One automatic PR/develop entry point reads the complete diff and publishes the package/project/companion/action reason chain. A matrix runs full qualification only for selected groups; a grouped Windows/Linux smoke checks runtime dependents. Source checks and layout/property/malformed-input/mutation checks remain separate. Tooling and Distribution run when selected. The final check remains exactly QuietCli required CI, required by release automation. Missing prior merge evidence never broadens a targeted change to All; explicit shared/unknown inputs remain conservatively explained.
 
 ## Triggers
 
-Every pull request and develop push; the plan decides which campaigns are required.
+Every pull request and develop push. The planner selects work from the complete diff.
 
 ## Scripts and effects
 
-Uses the shared scripts/ entry points, discovered manifests, selected source-bound builds and private artifacts described above. Git identifies committed internal sources; generated execution receipts retain actual source hashes and dirty state. Pinned external resources retain their dedicated locks. Network access is limited to pinned dependency preparation, verified image caches and explicit GitHub evidence reads. No module publication occurs here.
+Selected campaigns wait for successful planning, source checks and layout validation, so invalid shared inputs stop before costly builds and test campaigns.
 
-## Plan and final status
+Uses profile validation, source-bound build preparation, explicit selected qualification/smoke entry points and private artifacts. The PR planner publishes plan.json and impact.md; build_projects_json passes affected CSharp paths to Build-Workspace. GitHub may prepare pinned SDK/PowerShell resources and verified image caches. No module publication or repository setting change is performed here.
 
-The reviewed tooling-only set is limited to New-RunProfile, Invoke-RunProfile, RunProfileStore and restricted lowercase profile-definition paths. Unknown scripts, shared encoding/profiler/report helpers and CI policy retain All. Mixed changes union product/tooling requirements, independently of path order. Documentation-only PRs can omit native tests while preserving the stable final check.
+## Validation and limits
 
-Develop reuse checks a merged PR, successful originating workflow attempt and exact Git tree, not merely a similar commit message or branch. If verification fails, All runs. Reuse still requires integrity/Core integration smoke and native image resolution; it cannot authorize Gallery publication. See the [end-to-end diagram and source dates](../README.md).
+The stable automatic gate requires planning, source checks, generated-layout tests and every selected job. Skipped scopes are untested, not passed. A smoke/build result is not full product or publication qualification. Full native product runs retain their declared host/RID matrix, profiling policy and explicit TTY/Preview exclusions. Cache hits require source/payload/target verification; partial restores rebuild stale distributions.
+
+Local WorkspaceLayout and CompanionSmoke reports exercise the selection and actual integration paths. Hosted matrix results must be inspected for the delivered revision. Authored workflow-source-sha256 receipts are reviewed separately from generated YAML and job graphs.
 
 <!-- workflow-generated:begin -->
 ## Jobs and dependencies
@@ -44,37 +31,51 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 flowchart TD
     event["Triggers: pull_request, push"]
     job_ci_status["ci-status"]
-    job_companions["companions"]
-    job_develop_images["develop-images"]
-    job_develop_smoke["develop-smoke"]
+    job_distribution["distribution"]
+    job_layout_tests["layout-tests"]
     job_plan["plan"]
+    job_products["products"]
+    job_smokes["smokes"]
     job_source_checks["source-checks"]
     job_tooling_only["tooling-only"]
     job_plan --> job_ci_status
     job_source_checks --> job_ci_status
-    job_companions --> job_ci_status
+    job_layout_tests --> job_ci_status
+    job_products --> job_ci_status
+    job_smokes --> job_ci_status
     job_tooling_only --> job_ci_status
-    job_develop_smoke --> job_ci_status
-    job_develop_images --> job_ci_status
-    job_plan --> job_companions
-    job_plan --> job_develop_images
-    job_plan --> job_develop_smoke
+    job_distribution --> job_ci_status
+    job_plan --> job_distribution
+    job_source_checks --> job_distribution
+    job_layout_tests --> job_distribution
+    event --> job_layout_tests
     event --> job_plan
+    job_plan --> job_products
+    job_source_checks --> job_products
+    job_layout_tests --> job_products
+    job_plan --> job_smokes
+    job_source_checks --> job_smokes
+    job_layout_tests --> job_smokes
     event --> job_source_checks
     job_plan --> job_tooling_only
+    job_source_checks --> job_tooling_only
+    job_layout_tests --> job_tooling_only
 ~~~
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| ci-status | runner ubuntu-latest | plan, source-checks, companions, tooling-only, develop-smoke, develop-images | ${{ always() }} |  |
-| companions | reuses ./.github/workflows/ci.yml | plan | needs.plan.outputs.run_products == 'true' |  |
-| develop-images | runner ${{ matrix.runner }} | plan | github.event_name == 'push' && needs.plan.outputs.run_products == 'false' && github.repository == 'FrenchExDev2/QuietCli.PoSh' | ./scripts/New-CiSuiteImage.ps1 |
-| develop-smoke | runner windows-latest | plan | github.event_name == 'push' && needs.plan.outputs.run_products == 'false' | ./scripts/Build-Workspace.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1 |
+| ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, products, smokes, tooling-only, distribution | ${{ always() }} | ./scripts/Assert-CiPlanResults.ps1 |
+| distribution | reuses ./.github/workflows/distribution-ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_distribution == 'true' |  |
+| layout-tests | runner windows-latest |  | default success condition | ./scripts/Invoke-WorkspaceChecks.ps1, ./scripts/Invoke-WorkspaceCi.ps1 |
 | plan | runner ubuntu-latest |  | default success condition | ./scripts/New-CiImpactPlan.ps1 |
+| products | reuses ./.github/workflows/ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_products == 'true' |  |
+| smokes | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_smokes == 'true' |  |
 | source-checks | runner ubuntu-latest |  | default success condition | ./scripts/Invoke-WorkspaceChecks.ps1 |
-| tooling-only | reuses ./.github/workflows/tooling-ci.yml | plan | needs.plan.outputs.run_products == 'false' && needs.plan.outputs.run_tooling == 'true' |  |
+| tooling-only | reuses ./.github/workflows/tooling-ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_tooling == 'true' |  |
 
 <!-- workflow-generated:end -->
+
+See [companion layout and selective CI](../../README-companion-layout-and-ci.md).
 
 <!-- credits:begin -->
 ## Credits

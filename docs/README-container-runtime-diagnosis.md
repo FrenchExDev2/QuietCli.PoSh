@@ -10,12 +10,12 @@ the diagnostic then examines that image in a private networkless container.
 ## 1. Prepare the host and select a target
 
 Open PowerShell Core 7.6+ with its normal profile in the QuietCli monorepo root: the directory containing
-`scripts/`, `build/` and `FrenchExDev2.QuietCli.Core.PoSh/`.
+`scripts/`, `build/` and `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/`.
 
 You need:
 
 - The repository scripts, lock files and actual bundled native resources, including the SQLite libraries
-  under `FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/`.
+  under `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/`.
 - Podman on `PATH`, connected to a running Linux backend. On Windows this is the Podman machine; the
   build script checks the backend OS and architecture, not the OS of the PowerShell client.
 - Network access from the build environment to fetch base images, locked tool archives and distribution
@@ -62,7 +62,7 @@ The inputs come from:
 - [`global.json`](../global.json): the SDK version.
 - [`build/ci-images.lock.json`](../build/ci-images.lock.json): base-image digests and tool/package versions
   and checksums.
-- [Core's image declaration](../FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1): build
+- [Core's image declaration](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/ci/Get-CiImageArguments.ps1): build
   arguments, final-stage packages, environment and entry point.
 - [`CiImages.ps1`](../scripts/lib/CiImages.psm1) and [the build context](../.github/containers/): shared rendering,
   downloads and orchestration.
@@ -183,7 +183,7 @@ For Alpine targets, the companion's combined build-and-smoke launcher performs t
 verifies that `dotnet --version` still returns the pinned SDK version with unchanged image defaults:
 
 ```powershell
-./FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-AlpineImageSmoke.ps1 -RuntimeIdentifier $rid
+./Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-AlpineImageSmoke.ps1 -RuntimeIdentifier $rid
 ```
 
 It opens a visible monitor for the build/smoke run and another for the runtime controls, retains the

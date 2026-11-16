@@ -14,6 +14,8 @@ param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string[]]$Check
 $ErrorActionPreference='Stop'
 # This registry is the single extension point for a new repository check.
 $registry=@(
+    @{Name='WorkspaceSolutions';Script='Sync-WorkspaceSolutions.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
+    @{Name='CompanionWorkflows';Script='Sync-CompanionWorkflows.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
     @{Name='ScriptLayout';Script='Test-ScriptLayout.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
     @{Name='PowerShellSources';Script='Test-PowerShellSources.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
     @{Name='TestCaseMetadata';Script='Test-TestCaseMetadata.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},

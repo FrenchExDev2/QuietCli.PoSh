@@ -88,7 +88,7 @@ Optional log file.
 using module ./lib/RunLog.psm1
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$BaselineModule = ([IO.Path]::Combine((Split-Path $PSScriptRoot -Parent),'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')),
+    [string]$BaselineModule = ([IO.Path]::Combine((Split-Path $PSScriptRoot -Parent),'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')),
     [Parameter(Mandatory)][string]$CandidateModule,
     [ValidateNotNullOrEmpty()][string]$BaselineLabel = 'baseline',
     [ValidateNotNullOrEmpty()][string]$CandidateLabel = 'candidate',

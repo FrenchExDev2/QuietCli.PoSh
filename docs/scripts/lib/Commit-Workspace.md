@@ -24,6 +24,13 @@ No build, companion campaign, push, tag, PR creation or publication is implicit.
 
 ## Shared checks
 
+Prepared-index checks run the trusted registry in a separate PowerShell process with its normal
+profile. The process exits before snapshot cleanup, releasing checksum-pinned YAML parser DLLs
+on Windows. Explicit skips and the original check failure message are preserved; working-tree
+checks continue in the caller process. The timeout fails closed without creating a commit.
+The child streams progress as text and returns each check record through a JSON envelope; callers
+retain the structured `Skipped` records used by preview and omission checks.
+
 The [shared registry](../Invoke-WorkspaceChecks.md) validates ScriptLayout, TestCaseMetadata,
 ScriptsReadme, GitHubWorkflowDocs, ScriptShouldProcess, Resources, ScriptContracts,
 DocsCredits and Credits. ScriptLayout rejects invalid Verb-Noun names, functions in entry
@@ -101,3 +108,16 @@ test and package evidence retains actual source hashes and available Git revisio
 Dedicated external dependency locks keep their integrity contracts. See
 [source identity](../../README-source-identity.md). Commit-Workspace does not launch
 Invoke-WorkspaceCi; test execution and checkpoint creation remain separate operations.
+
+<!-- grouped-layout-review:begin -->
+The file sniffer validates any already loaded Core/Git module against its catalogue-resolved grouped directory, so using the current local module in the calling session remains supported.
+## Grouped workspace contract
+
+Reviewed source: scripts/lib/Commit-Workspace.psm1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+
+Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
+
+See the [layout and selective-CI contract](
+../../README-companion-layout-and-ci.md
+).
+<!-- grouped-layout-review:end -->

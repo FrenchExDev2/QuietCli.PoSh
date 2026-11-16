@@ -80,7 +80,7 @@ if($mutationShard){
     $reportFile=Get-Item -LiteralPath ([IO.Path]::Combine($RunDirectory,'run-profiles-mutation.json')) -ErrorAction Stop
     if($reportFile.Length -gt 2097152 -or $reportFile.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'MutationShardReportInvalid'}
     $report=[IO.File]::ReadAllText($reportFile.FullName,[Text.UTF8Encoding]::new($false,$true))|ConvertFrom-Json
-    $catalogue=@((Import-PowerShellDataFile -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Mutation.Catalogue.psd1'))).Mutants)
+    $catalogue=@((Import-PowerShellDataFile -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Mutation.Catalogue.psd1'))).Mutants)
     $shard=Assert-QuietMutationShard -Report $report -Catalogue $catalogue -SourceSHA256 (Get-QuietRunProfileMutationIdentity $WorkspaceRoot) -Revision $env:GITHUB_SHA -Index $shardIndex -Count $shardCount
     if($suiteSummaries.Count -ne 1){throw 'GitHubMutationShardSummaryInvalid'}
     $mutationSummary=$suiteSummaries[0]

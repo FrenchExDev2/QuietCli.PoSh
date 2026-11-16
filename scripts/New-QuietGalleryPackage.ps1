@@ -16,6 +16,8 @@ Requires verified Release ReadyToRun engines for every packaged RID and CLR befo
 Discovered component alias or full package name; Core by default.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$OutputDirectory,[string]$Version,[string]$Prerelease,[switch]$RequireReadyToRun,[string]$Module='Core')
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-QuietGalleryPackage')){return}
 $ErrorActionPreference='Stop';Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop;Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Gallery.psm1')) -DisableNameChecking
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path);$OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.Path)
@@ -24,9 +26,9 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/GalleryRelease.psm1')) -Dis
 $target=@(Select-QuietGalleryReleaseTargets -WorkspaceRoot $WorkspaceRoot -Module $Module)
 if($target.Count -ne 1){throw 'GallerySinglePackageRequired'}
 $sourceName=$target[0].Project
-$identity=Get-QuietGalleryModuleIdentity ([IO.Path]::Combine($WorkspaceRoot,"$sourceName/$sourceName.psm1"))
+$identity=Get-QuietGalleryModuleIdentity ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath "$sourceName/$sourceName.psm1"))
 $publicName=$identity.Name
-$manifest=Import-PowerShellDataFile ([IO.Path]::Combine(([IO.Path]::Combine($WorkspaceRoot,$sourceName)),($sourceName+'.psd1')))
+$manifest=Import-PowerShellDataFile ([IO.Path]::Combine(((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $sourceName)),($sourceName+'.psd1')))
 $release=Get-QuietGalleryModuleVersion $manifest
 $sourceVersion=$release
 $releaseInfo=Get-QuietGalleryVersion $release

@@ -1,4 +1,6 @@
 #requires -Version 7.6
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 function Get-QuietResourceDocumentation {
     <#
     .SYNOPSIS
@@ -7,7 +9,7 @@ function Get-QuietResourceDocumentation {
     Repository to document.
     #>
     param([string]$WorkspaceRoot)
-    $module=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')
+    $module=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')
     $manifest=[IO.Path]::Combine($module,'resources/dependencies.lock.json')
     if(!(Test-Path $module)){return "# Resource inventory and source dependencies`n`nThis workspace declares no Core resource payloads.`n"}
     $lock=Get-Content $manifest -Raw -Encoding utf8|ConvertFrom-Json
@@ -24,7 +26,7 @@ function Get-QuietResourceDocumentation {
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'SourceIdentity.psm1')) -DisableNameChecking -ErrorAction Stop
     foreach($file in Get-QuietSourceFiles $WorkspaceRoot){
         if($file.Path -notmatch '\.(ps1|psm1|cs)$' -or $file.Path -match '\.Tests\.PoSh/|^scripts/ResourceDocumentation\.ps1$'){continue}
-        $text=Get-Content ([IO.Path]::Combine($WorkspaceRoot,$file.Path)) -Raw -Encoding utf8
+        $text=Get-Content ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $file.Path)) -Raw -Encoding utf8
         $references=@([regex]::Matches($text,'(?im)^.*(?:resources[/\\]|["'']resources["'']|Restore-CoreResources|Ensure-QuietResource|Copy-QuietProductionAgentDocuments).*$')|ForEach-Object {$_.Value.Trim()}|Sort-Object -Unique)
         if(!$references.Count){continue}
         $description=($references|ForEach-Object {if($_.Length -gt 180){$_.Substring(0,180)+'…'}else{$_}}) -join '<br>'

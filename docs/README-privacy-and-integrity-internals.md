@@ -2,7 +2,7 @@
 
 [Back to the documentation index](README.md) · [QuietCli overview](../README.md)
 
-The [Core README's "Limits, integrity and privacy" section](../FrenchExDev2.QuietCli.Core.PoSh/README.md#limits-integrity-and-privacy) states the contract in one paragraph per mechanism. This guide traces each mechanism to the code that implements it, then proposes how a companion module could plug into it without forking Core. Related: [Measurements and privacy](../README-measurements.md), [PowerShell and C# boundaries](README-powershell-csharp-boundaries.md), [Companion modules](../README-modules.md).
+The [Core README's "Limits, integrity and privacy" section](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md#limits-integrity-and-privacy) states the contract in one paragraph per mechanism. This guide traces each mechanism to the code that implements it, then proposes how a companion module could plug into it without forking Core. Related: [Measurements and privacy](../README-measurements.md), [PowerShell and C# boundaries](README-powershell-csharp-boundaries.md), [Companion modules](../README-modules.md).
 
 ## 1. Timeouts that turn an unfinished exchange into a known outcome
 

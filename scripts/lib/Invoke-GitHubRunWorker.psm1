@@ -1,3 +1,5 @@
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 function Invoke-QuietScriptInvokeGitHubRunWorker {
 #requires -Version 7.6
 <#
@@ -30,7 +32,7 @@ function Read-QuietGitHubJson {
     if($r.Outcome -ne 'Success'){throw 'GitHubStatusUnavailable'}
     return $state.Json.ToString()|ConvertFrom-Json
 }
-$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='CI GitHub images et tests';Workspace=$WorkspaceRoot;ProjectDirectory=([IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh'));Platform='GitHub';State='Running';ProcessId=$PID;Passed=$null;Failed=$null;StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null;Case='Waiting for remote job metadata; test counters unknown';Error=$null;RunId=$RunId;Runs=@()}
+$state=@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='CI GitHub images et tests';Workspace=$WorkspaceRoot;ProjectDirectory=((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh'));Platform='GitHub';State='Running';ProcessId=$PID;Passed=$null;Failed=$null;StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null;Case='Waiting for remote job metadata; test counters unknown';Error=$null;RunId=$RunId;Runs=@()}
 try{
     $deadline=[DateTimeOffset]::UtcNow.AddMinutes(58)
     do{

@@ -1,6 +1,6 @@
 # Qualification: when, where and how
 
-For All, one build and image serve the target: complete Core validation precedes bounded independent companion workers. Core.Tests generates its own scripted Git-status companion and requires no real Git module. Tooling runs separately. Develop reuses verified same-tree PR evidence, then runs integrity smoke and image-cache resolution; missing evidence falls back to All. Publication remains explicit-module-tag-only.
+For All, one build and image serve the target: complete Core validation precedes bounded independent companion workers. Core.Tests generates its own scripted Git-status companion and requires no real Git module. Tooling runs separately. PR and develop events compute selective project/package impact; each selected scope is qualified explicitly. Publication remains explicit-module-tag-only.
 
 [QuietCli overview](README.md) · [Development](README-development.md) · [Tests and qualification](README-qualification.md) · [Documentation index](docs/README.md)
 
@@ -11,10 +11,10 @@ GitHub qualification builds the solution **and executes the selected companion t
 The shared [companions-ci.yml](.github/workflows/companions-ci.yml) caller selects suites for
 [ci.yml](.github/workflows/ci.yml):
 
-- Every PR receives a complete-diff plan. A companion-only change selects its dependent suites; shared/Core/unknown paths select All plus tooling. Multiple affected companions share one matrix.
+- Every PR receives a complete-diff plan. A companion change qualifies its owning group. Core changes qualify Core and request dependent integration smokes. XML project references, central package consumers and inherited build files determine selective rebuilds. Unknown shared inputs request an explained conservative product/tooling scope.
 - Opening or updating a PR triggers the caller. The unconditional QuietCli required CI check reports the planned scope, including intentional documentation-only omissions.
 - Manual dispatch and reusable calls accept a YAML-declared `suite`, defaulting to `All`.
-- A develop merge reuses successful PR qualification only for an identical Git tree and exact originating workflow attempt. It still runs merged-source integration smoke and refreshes missing image layers. Absent or mismatched proof requires full qualification; module tags separately request publication.
+- A develop push recomputes impact from its complete before/after diff. The plan summary shows each input, package, consumer project and selected action. Module tags separately request publication with current-run All evidence.
 - [publish-psgallery.yml](.github/workflows/publish-psgallery.yml) requests `All` qualification before packaging. Its Windows packaging job also rebuilds and rechecks the distributions. Publication has its own input and protected environment; qualification does not itself authorize publication.
 
 `All` expands to the independent suites in [build/companions.yml](build/companions.yml), currently

@@ -89,7 +89,7 @@ Optional log file.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$BaselineModule = ([IO.Path]::Combine((Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')),
+    [string]$BaselineModule = ([IO.Path]::Combine((Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')),
     [Parameter(Mandatory)][string]$CandidateModule,
     [ValidateNotNullOrEmpty()][string]$BaselineLabel = 'baseline',
     [ValidateNotNullOrEmpty()][string]$CandidateLabel = 'candidate',
@@ -207,7 +207,7 @@ function Invoke-ColdRun {
 }
 
 foreach ($module in @($BaselineModule, $CandidateModule)) { if (-not (Test-Path -LiteralPath $module -PathType Leaf)) { throw "ModuleManifestNotFound: $module" } }
-if (-not (Get-Command quiet -ErrorAction SilentlyContinue)) { Import-Module ([IO.Path]::Combine((Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),'FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')) -DisableNameChecking }
+if (-not (Get-Command quiet -ErrorAction SilentlyContinue)) { Import-Module ([IO.Path]::Combine((Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')) -DisableNameChecking }
 
 $variants = @(
     @{ Label = $BaselineLabel; Module = [IO.Path]::GetFullPath($BaselineModule) }

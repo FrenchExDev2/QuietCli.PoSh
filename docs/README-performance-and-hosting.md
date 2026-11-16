@@ -31,7 +31,7 @@ Direct hosting has a shared failure boundary. A request timeout stops the caller
 
 ## Reproduce measurements
 
-`FrenchExDev2.QuietCli.Core.Tests.PoSh/Performance.Tests.ps1` is part of the existing Core suite. Run `scripts/Build-Workspace.ps1`, then `scripts/Invoke-WorkspaceCi.ps1 -SkipBuild -Suite All`. The launcher opens the required visible monitor and persists `summary.json` under its run directory. `Suites[].Performance` contains only counters and timing samples.
+`src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Performance.Tests.ps1` is part of the existing Core suite. Run `scripts/Build-Workspace.ps1`, then `scripts/Invoke-WorkspaceCi.ps1 -SkipBuild -Suite All`. The launcher opens the required visible monitor and persists `summary.json` under its run directory. `Suites[].Performance` contains only counters and timing samples.
 
 Framing uses identical 1 MiB synthetic inputs, 16 KiB blocks and record widths of 64 and 8,192 bytes. Three samples per implementation alternate order after helper warmup. The baseline reproduces the former scan/buffer/copy loop with a constant delimiter; neither side includes a real Git parser callback. This is a local mechanism comparison, not a Git throughput guarantee.
 

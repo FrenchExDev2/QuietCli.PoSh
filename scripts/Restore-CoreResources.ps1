@@ -14,8 +14,10 @@ Redownloads and re-extracts every package even when the local file already match
 Optional package IDs from the pinned manifest; omitted restores all resource packages.
 #>
 [CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Force,[string[]]$IncludePackage=@())
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 $ErrorActionPreference='Stop'
-$moduleRoot=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')
+$moduleRoot=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')
 $lockPath=[IO.Path]::Combine($moduleRoot,'resources/dependencies.lock.json')
 if(!(Test-Path -LiteralPath $lockPath)){throw 'DependencyManifestMissing'}
 $lock=Get-Content -LiteralPath $lockPath -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable

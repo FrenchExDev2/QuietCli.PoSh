@@ -10,7 +10,7 @@ function Initialize-QuietTestConfiguration {
     Whether the worker persists telemetry.
     #>
     param([Parameter(Mandatory)][string]$DatabasePath,[string]$Hosting='Auto',[bool]$Enabled=$true)
-    . ([IO.Path]::Combine($PSScriptRoot,'../../FrenchExDev2.QuietCli.Core.Tests.PoSh/Configuration.TestSupport.ps1'))
+    . ([IO.Path]::Combine($PSScriptRoot,'../../src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Configuration.TestSupport.ps1'))
     $directory=[IO.Path]::Combine(([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($DatabasePath))),('config-'+[IO.Path]::GetFileNameWithoutExtension($DatabasePath)))
     [void][IO.Directory]::CreateDirectory($directory)
     $databaseLiteral=ConvertTo-Json -InputObject ([IO.Path]::GetFullPath($DatabasePath)) -Compress

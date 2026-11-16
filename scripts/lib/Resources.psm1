@@ -1,4 +1,6 @@
 #requires -Version 7.6
+
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 function Ensure-QuietResource {
     <#
     .SYNOPSIS
@@ -12,7 +14,7 @@ function Ensure-QuietResource {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param([string]$WorkspaceRoot=(Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),[Parameter(Mandatory)][string]$RelativePath,[string]$AssemblyType)
-    $module=[IO.Path]::Combine($WorkspaceRoot,'FrenchExDev2.QuietCli.Core.PoSh')
+    $module=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')
     $manifest=Get-Content -LiteralPath ([IO.Path]::Combine($module,'resources/dependencies.lock.json')) -Raw -Encoding utf8|ConvertFrom-Json
     $entries=@($manifest.Files|Where-Object Path -CEQ $RelativePath)
     if($entries.Count -ne 1 -or $RelativePath -notmatch '^resources/[A-Za-z0-9_./-]+$' -or $RelativePath -match '(^|/)\.\.(/|$)'){throw ('ResourceNotDeclared: '+$RelativePath)}

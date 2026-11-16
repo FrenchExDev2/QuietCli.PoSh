@@ -49,7 +49,7 @@ The stable final check rejects missing required campaigns. Documentation-only om
 
 ## PowerShell resource policy
 
-Production selects locked GA 7.7.0 on Windows and Debian. Alpine keeps the explicitly accepted native 7.6.9-r0 / CLR 10 exception until both native architectures can advance. Next-version Windows Preview is optional (`run_preview=false`); the announced 7.8.0-preview.1 is currently unavailable. Explicit opt-in requires verified published archives. Matrix planning and profile aggregation agree on eight production targets or ten with Preview.
+Production selects locked GA 7.7.0 on Windows and Debian. Alpine keeps the explicitly accepted native 7.6.10-r0 / CLR 10 exception until both native architectures can advance. Next-version Windows Preview is optional (`run_preview=false`); the announced 7.8.0-preview.1 is currently unavailable. Explicit opt-in requires verified published archives. Matrix planning and profile aggregation agree on eight production targets or ten with Preview.
 
 ```mermaid
 flowchart LR
