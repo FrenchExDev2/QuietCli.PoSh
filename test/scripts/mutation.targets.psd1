@@ -130,6 +130,14 @@
         }
 
         @{
+            # Initialize-RunToolCache is covered by the Core run-profile mutation catalogue; this target covers the retry.
+            Name = 'RunToolCache'
+            Module = 'lib/RunToolCache.psm1'
+            Functions = @('Test-RunToolTransientDownloadError','Invoke-RunToolDownload')
+            UnitTestFiles = @('unit/lib/RunToolCache.Tests.ps1')
+            Break = 80
+        }
+        @{
             Name = 'WorkBranch'
             Module = 'lib/WorkBranch.psm1'
             Functions = @('Get-QuietWorkBranchKinds','Resolve-QuietWorkBranchName','Assert-QuietWorkBranchBase','Get-QuietWorkBranchStatusProblems','ConvertFrom-QuietWorkBranchLsRemote','Compare-QuietWorkBranchShelf')

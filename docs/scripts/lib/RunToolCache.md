@@ -56,6 +56,21 @@ Get-RunProfilerPackages accepts -Module as a validated string array (profiler, d
 
 `Get-RunTestToolPackages [-Tool pester,scriptanalyzer]` returns the pinned PowerShell Gallery packages Pester 6.2.0 (`E6AC7418…A239`) and PSScriptAnalyzer 1.25.0 (`14E634C8…5D60`) with entrypoints `Pester.psd1` and `PSScriptAnalyzer.psd1`. `Get-QuietTestToolDirectory -WorkspaceRoot` returns `<workspace>/.cache/test-tools` (ignored by Git). `Initialize-QuietTestTools -WorkspaceRoot [-OutputDirectory] [-Tool] [-Offline] [-DownloadBytes]` verifies them through `Initialize-RunToolCache` and returns `PesterModulePath`, `ScriptAnalyzerModulePath`, `Receipt` and `Directory`; unrequested tools return null paths. `Initialize-RunToolCache` now also returns, and records in its receipt, a generic `Paths` map keyed by package name; the profiler fields are unchanged. Entry point: [Initialize-TestTools.ps1](../Initialize-TestTools.md). Tests: `test/scripts/unit/lib/RunToolCache.Tests.ps1`.
 
+## Download retries
+
+A cache miss downloads through `Invoke-RunToolDownload`, whether the bytes come from `HttpClient` or from `-DownloadBytes`. This is because a PowerShell Gallery `503 (Service Unavailable)` once failed two CI mutation shards.
+
+- **Retried failures:** `Test-RunToolTransientDownloadError` decides which failures are retried. It searches the exception and its inner exceptions, since a .NET call from PowerShell wraps the real one in a `MethodInvocationException`. The first `HttpRequestException` it meets decides:
+  - HTTP 408, 429 and 500 to 599 are retried;
+  - a request without a status (DNS or connection failure) is retried;
+  - any other status, such as 404, is not.
+- **Timeouts:** a `TimeoutException` or `TaskCanceledException` is retried too.
+- **Attempts:** five in all, with 2, 4, 8 and 16 s between them. Each retry writes a warning with the URL, the attempt and the original message.
+- **Final failure:** any other failure, or the last attempt, rethrows the original exception unchanged.
+- **Checksums:** a digest mismatch is never retried. The SHA-256 is still checked once the bytes arrive.
+
+The mutation target `RunToolCache` covers both functions. `Initialize-RunToolCache` itself stays covered by the Core run-profile mutation catalogue.
+
 <!-- credits:begin -->
 ## Credits
 

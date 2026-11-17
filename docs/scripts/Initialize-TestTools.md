@@ -20,7 +20,7 @@ Prepares the checksum-pinned script test tools in an isolated cache, without glo
 
 ## Dependencies and side effects
 
-Delegates to `Initialize-QuietTestTools` in [RunToolCache.psm1](lib/RunToolCache.md). Every archive is downloaded from the PowerShell Gallery URL pinned in `Get-RunTestToolPackages`. Its SHA-256 is verified before it is written, and again before every reuse. A mismatch fails, and a corrupt cache entry is never silently replaced.
+Delegates to `Initialize-QuietTestTools` in [RunToolCache.psm1](lib/RunToolCache.md). Every archive is downloaded from the PowerShell Gallery URL pinned in `Get-RunTestToolPackages`. Its SHA-256 is verified before it is written, and again before every reuse. A mismatch fails, and a corrupt cache entry is never silently replaced. A transient download failure, such as HTTP 503, 429 or a lost connection, is retried up to five times with a doubling delay ([download retries](lib/RunToolCache.md#download-retries)).
 
 Side effects:
 - writes `<cache>/<Name>/<Name>.<Version>.nupkg`, the extracted module and `tool-receipt.json`;
@@ -30,7 +30,7 @@ Side effects:
 
 ## Critical review and verdict
 
-This is a thin entry point. Download, verification and extraction are shared with the profiler cache (`Initialize-RunToolCache`). Tests: `test/scripts/unit/lib/RunToolCache.Tests.ps1` covers the pins, selection, generic `Paths`, an offline miss with no provider call, a digest mismatch, and offline preparation from the real pinned archive.
+This is a thin entry point. Download, verification and extraction are shared with the profiler cache (`Initialize-RunToolCache`). Tests: `test/scripts/unit/lib/RunToolCache.Tests.ps1` covers the pins, selection, generic `Paths`, an offline miss with no provider call, a digest mismatch, the retry rules, and offline preparation from the real pinned archive.
 
 <!-- script-contract:begin -->
 ## Execution contract
