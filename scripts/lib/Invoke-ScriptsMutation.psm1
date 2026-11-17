@@ -79,8 +79,10 @@ function Invoke-QuietScriptInvokeScriptsMutation {
     $reportPath=[IO.Path]::Combine($RunDirectory,'report.json')
     $report=if([IO.File]::Exists($reportPath)){Get-Content -LiteralPath $reportPath -Raw -Encoding utf8|ConvertFrom-Json}else{$null}
     foreach($entry in @(if($report){$report.Targets})){Write-Host ('Mutation score: {0} {1:0.##} % (break {2} %) killed={3} timeout={4} survived={5} compile={6} equivalent={7} cached={8}' -f $entry.Name,[double]$entry.Score,$entry.Break,$entry.Killed,$entry.Timeout,$entry.Survived,$entry.CompileError,$entry.Equivalent,$entry.Cached)}
+    $incomplete=$null -eq $report -or $true -eq $report.PSObject.Properties['Incomplete']?.Value
+    if($report -and $incomplete){Write-Host ('Mutation stopped: target={0} not-run={1}; {2}' -f $report.Crash.Target,(@($report.Crash.NotRun) -join ','),$report.Crash.Error)}
     [pscustomobject][ordered]@{
-        State=$state;Passed=[bool]($report -and $report.Passed);Seed=$Seed;RunDirectory=$RunDirectory;Report=$reportPath
+        State=$state;Passed=[bool]($report -and $report.Passed);Incomplete=$incomplete;Seed=$Seed;RunDirectory=$RunDirectory;Report=$reportPath
         Markdown=[IO.Path]::Combine($RunDirectory,'report.md');Targets=@(if($report){$report.Targets|Select-Object Name,Score,Break,Passed,Killed,Timeout,Survived,CompileError,Equivalent,Cached})
         ExitCode=$(if($state -ceq 'Success' -and $report -and $report.Passed){0}else{1})
     }
@@ -151,6 +153,15 @@ function Invoke-QuietScriptsMutationWorker {
     $results=[Collections.Generic.List[object]]::new()
     $usedKeys=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $report=$null
+    # Targets run in request order: the first $finished are complete, $current is the one running (empty outside any).
+    $finished=0;$current=''
+    $writeReports={param($Crash)
+        $built=New-QuietScriptMutationReport -Targets @($request.Targets|Select-Object -First $finished|ForEach-Object {[pscustomobject]@{Name=$_.Name;Module=$_.Module;Functions=[string[]]@($_.Functions);Break=[int]$_.Break}}) -Results $results.ToArray() -Seed ([int]$request.Seed) -Crash $Crash
+        Write-WorkspaceJson ([IO.Path]::Combine($runDirectory,'report.json')) $built
+        Write-WorkspaceJson ([IO.Path]::Combine($runDirectory,'mutants.json')) @{Mutants=$results.ToArray()}
+        [IO.File]::WriteAllText([IO.Path]::Combine($runDirectory,'report.md'),(ConvertTo-QuietScriptMutationMarkdown $built),[Text.UTF8Encoding]::new($false))
+        $built
+    }
     $count=[int]$request.ThrottleLimit
     $roots=[string[]]::new($count);$slots=[object[]]::new($count);$generations=[int[]]::new($count)
     # The trusted modules that load and run the tests are part of the engine: editing them invalidates the cache.
@@ -193,6 +204,7 @@ function Invoke-QuietScriptsMutationWorker {
             & $startSlot $index
         }
         foreach($targetEntry in @($request.Targets)){
+            $current=[string]$targetEntry.Name
             $relative=[string]$targetEntry.Module
             $files=[string[]]@($targetEntry.UnitTestFiles)
             $original=[IO.File]::ReadAllBytes([IO.Path]::Combine($request.ScriptsRoot,$relative))
@@ -216,6 +228,7 @@ function Invoke-QuietScriptsMutationWorker {
             }
             if($queue.Count -eq 0){
                 Write-Host ("Progress: Cached $($targetEntry.Name) | mutants=$($mutants.Count) reused=$reused equivalent=$($split.Equivalent.Count)")
+                $finished++
                 continue
             }
             # A baseline already proven on this machine for the same engine, sources and tests is not run again.
@@ -271,18 +284,24 @@ function Invoke-QuietScriptsMutationWorker {
                 }
                 if($active.Count){[void][Threading.Tasks.Task]::Delay(20).GetAwaiter().GetResult()}
             }
+            $finished++
         }
-        $report=New-QuietScriptMutationReport -Targets @($request.Targets|ForEach-Object {[pscustomobject]@{Name=$_.Name;Module=$_.Module;Functions=[string[]]@($_.Functions);Break=[int]$_.Break}}) -Results $results.ToArray() -Seed ([int]$request.Seed)
-        Write-WorkspaceJson ([IO.Path]::Combine($runDirectory,'report.json')) $report
-        Write-WorkspaceJson ([IO.Path]::Combine($runDirectory,'mutants.json')) @{Mutants=$results.ToArray()}
-        [IO.File]::WriteAllText([IO.Path]::Combine($runDirectory,'report.md'),(ConvertTo-QuietScriptMutationMarkdown $report),[Text.UTF8Encoding]::new($false))
+        $current=''
+        $report=& $writeReports $null
         # Only a campaign that keyed every selected target prunes: an aborted one would drop outcomes it never reached.
         if($cache -and $request.PruneCache){Write-Host ('Cache: pruned '+(Remove-QuietScriptMutantCacheUnused -Directory $cache -Keys @($usedKeys))+' unused documents, kept '+$usedKeys.Count+' keys')}
         $status.State=$(if($report.Passed){'Success'}else{'Failed'})
         $status.Case=((@($report.Targets)|ForEach-Object {'{0} {1:0.##} % (break {2}, cached {3})' -f $_.Name,[double]$_.Score,$_.Break,$_.Cached}) -join '; ')
     }catch{
-        Write-Host ('Worker error: '+$_.Exception.Message)
-        $status.State='Crash';$status.Failed=[int]$status.Failed+1;$status.Case='Mutation campaign failed before a complete report';$status.Error=$_.Exception.Message
+        $message=$_.Exception.Message
+        Write-Host ('Worker error: '+$message)
+        $status.State='Crash';$status.Failed=[int]$status.Failed+1;$status.Error=$message
+        $status.Case=('Mutation campaign stopped{0}; {1} of {2} targets finished' -f $(if($current){' in '+$current}),$finished,@($request.Targets).Count)
+        # The finished targets keep their report; a complete report already written (a prune failure) is kept as is.
+        if($null -eq $report){
+            $notRun=[string[]]@($request.Targets|Select-Object -Skip ($finished+[int][bool]$current)|ForEach-Object {[string]$_.Name})
+            try{$null=& $writeReports ([pscustomobject]@{Target=$current;Error=$message;NotRun=$notRun})}catch{Write-Host ('Partial report failed: '+$_.Exception.Message)}
+        }
     }finally{
         for($index=0;$index -lt $count;$index++){try{& $retireSlot $index}catch{Write-Host ('Slot stop failed: '+$_.Exception.Message)}}
         if([IO.Directory]::Exists($slotsRoot)){try{[IO.Directory]::Delete($slotsRoot,$true)}catch{Write-Host ('Slot cleanup failed: '+$_.Exception.Message)}}

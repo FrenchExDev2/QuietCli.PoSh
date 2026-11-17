@@ -356,6 +356,29 @@ Describe 'New-QuietScriptMutationReport' {
         @($report.Targets[1].Survivors.Id)|Should -Be @('id5')
         $report.Targets[0].Cached|Should -Be 0
         $report.Targets[1].Cached|Should -Be 0
+        $report.Incomplete|Should -BeFalse
+        $report.Crash|Should -BeNullOrEmpty
+    }
+
+    It 'marks a stopped campaign Incomplete and never Passed, with only its finished targets and the normalized crash' {
+        $targets=@([pscustomobject]@{Name='A';Module='lib/A.psm1';Functions=@('F');Break=50})
+        $report=New-QuietScriptMutationReport -Targets $targets -Results @((& $newResult 'A' 'Killed' 1),(& $newResult 'B' 'Survived' 2)) -Seed 7 -Crash @{Target='B';Error='ScriptMutationBaselineFailed: B';NotRun=@('C','',$null,'D')}
+        $report.Incomplete|Should -BeTrue
+        $report.Passed|Should -BeFalse -Because 'the finished target passes, but the campaign stopped'
+        @($report.Targets.Name)|Should -Be @('A')
+        $report.Targets[0].Passed|Should -BeTrue
+        $report.Targets[0].Mutants|Should -Be 1
+        '{0}|{1}|{2}' -f $report.Crash.Target,$report.Crash.Error,($report.Crash.NotRun -join ',')|Should -BeExactly 'B|ScriptMutationBaselineFailed: B|C,D'
+        ,$report.Crash.NotRun|Should -BeOfType ([string[]])
+    }
+
+    It 'reports a campaign stopped outside any target without a target entry' {
+        $report=New-QuietScriptMutationReport -Targets @() -Seed 7 -Crash ([pscustomobject]@{Target=$null;Error='boom';NotRun=@('A')})
+        $report.Incomplete|Should -BeTrue
+        $report.Passed|Should -BeFalse
+        @($report.Targets).Count|Should -Be 0
+        $report.Crash.Target|Should -BeExactly ''
+        @($report.Crash.NotRun)|Should -Be @('A')
     }
 
     It 'counts declared equivalents apart from the score and lists them with their reason' {
@@ -382,6 +405,7 @@ Describe 'New-QuietScriptMutationReport' {
         $targets=@([pscustomobject]@{Name='A';Module='lib/A.psm1';Functions=@('F');Break=80},[pscustomobject]@{Name='C';Module='lib/C.psm1';Functions=@('F');Break=80})
         $report=New-QuietScriptMutationReport -Targets $targets -Results @((& $newResult 'A' 'Killed'),(& $newResult 'a' 'Survived')) -Seed 1
         $report.Passed|Should -BeTrue
+        $report.Incomplete|Should -BeFalse
         $report.Targets[1].Mutants|Should -Be 0
         $report.Targets[0].Mutants|Should -Be 1
     }
@@ -419,7 +443,24 @@ Describe 'ConvertTo-QuietScriptMutationMarkdown' {
         $markdown|Should -Match 'Verdict: \*\*passed\*\*'
         $markdown|Should -Not -Match 'Survivors|Equivalent mutants'
         $report.Targets[0].PSObject.Properties.Remove('Equivalents')
+        $report.PSObject.Properties.Remove('Incomplete')
         ConvertTo-QuietScriptMutationMarkdown -Report $report|Should -BeExactly $markdown
+    }
+
+    It 'names where an incomplete campaign stopped <Case>, with its escaped error and the targets never run' -ForEach @(
+        @{Case='in a target';Crash=@{Target='B|1';Error='Baseline | `x`';NotRun=@('C|2','D')};Line='Stopped in target `B\|1` with `Baseline \| ''x''`. Not run: `C\|2`, `D`. Only the finished targets are scored below.'}
+        @{Case='outside any target';Crash=@{Target='';Error='boom';NotRun=@()};Line='Stopped outside any target with `boom`. Not run: none. Only the finished targets are scored below.'}
+    ) {
+        $report=New-QuietScriptMutationReport -Targets @([pscustomobject]@{Name='A';Module='lib/A.psm1';Functions=@('F');Break=80}) -Results @((& $newResult 'A' 'Killed' 1)) -Seed 4 -Crash $Crash
+        $expected=@(
+            '# Script mutation report',''
+            'Verdict: **incomplete**. Seed: 4.',''
+            $Line,''
+            '| Target | Module | Mutants | Killed | Timeout | Survived | Compile errors | Equivalent | Cached | Score | Break | Verdict |'
+            '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
+            '| A | `lib/A.psm1` | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 100 % | 80 % | passed |'
+        ) -join "`n"
+        ConvertTo-QuietScriptMutationMarkdown -Report ($report|ConvertTo-Json -Depth 6|ConvertFrom-Json)|Should -BeExactly ($expected+"`n") -Because 'the report is rendered as read back from report.json'
     }
 }
 
@@ -434,7 +475,7 @@ Describe 'Assert-QuietScriptMutationShards' {
         $issuesOf={param([object[]]$Reports)
             try{$null=Assert-QuietScriptMutationShards -Targets $shardTargets -Reports $Reports;@()}catch{[string[]]($_.Exception.Message -split '; ')}
         }
-        $typedShardIssue='^ScriptMutationShard(ReportsMissing|ReportInvalid|(Unknown|Duplicate|Missing|Stale|BreakLowered|Failed): .*)$'
+        $typedShardIssue='^ScriptMutationShard(ReportsMissing|ReportInvalid|(Incomplete|Unknown|Duplicate|Missing|Stale|BreakLowered|Failed): .*)$'
     }
 
     It 'accepts any partition of the targets into shards and returns one receipt row per target' {
@@ -484,9 +525,19 @@ Describe 'Assert-QuietScriptMutationShards' {
         @{Case='a dictionary entry instead of a parsed object';Edit={param($r)$h=[ordered]@{};foreach($p in $r.Targets[0].PSObject.Properties){$h[$p.Name]=$p.Value};$r.Targets[0]=[hashtable]$h};Issue='ScriptMutationShardUnknown: |ScriptMutationShardMissing: A'}
         @{Case='a stale target with a lowered break';Edit={param($r)$r.Targets[0].Module='lib/Other.psm1';$r.Targets[0].Break=79};Issue='ScriptMutationShardStale: A'}
         @{Case='a lowered break with a failed verdict';Edit={param($r)$r.Targets[0].Break=79;$r.Targets[0].Passed=$false};Issue='ScriptMutationShardBreakLowered: A'}
+        @{Case='a textual incomplete flag without a crash';Edit={param($r)$r.Incomplete='false'};Issue='ScriptMutationShardIncomplete: '}
     ) {
         $report=& $shard $shardTargets
         & $Edit $report
+        (& $issuesOf @($report)) -join '|'|Should -BeExactly $Issue -Because $Case
+    }
+
+    It 'rejects a shard that stopped <Case> but still counts the targets it finished' -ForEach @(
+        @{Case='in a target';Finished=@('A','B');Crash=@{Target='C';Error='boom';NotRun=@('D')};Issue='ScriptMutationShardIncomplete: C|ScriptMutationShardMissing: C|ScriptMutationShardMissing: D'}
+        @{Case='outside any target';Finished=@();Crash=@{Target='';Error='boom';NotRun=@('A','B','C','D')};Issue='ScriptMutationShardIncomplete: |ScriptMutationShardMissing: A|ScriptMutationShardMissing: B|ScriptMutationShardMissing: C|ScriptMutationShardMissing: D'}
+    ) {
+        $finishedTargets=@($shardTargets|Where-Object {$_.Name -cin $Finished})
+        $report=New-QuietScriptMutationReport -Targets $finishedTargets -Results @(foreach($entry in $finishedTargets){& $newResult $entry.Name 'Killed' 1}) -Seed 5 -Crash $Crash|ConvertTo-Json -Depth 6|ConvertFrom-Json
         (& $issuesOf @($report)) -join '|'|Should -BeExactly $Issue -Because $Case
     }
 
@@ -535,6 +586,8 @@ Describe 'Assert-QuietScriptMutationShards' {
                     }
                 }
                 if($random.Next(0,8) -eq 0){$report.SchemaVersion=Get-QuietRandomItem $random $values}
+                if($random.Next(0,8) -eq 0){$report.Incomplete=Get-QuietRandomItem $random $values}
+                if($random.Next(0,8) -eq 0){$report.Crash=Get-QuietRandomItem $random $values}
                 if($random.Next(0,10) -eq 0){$null}else{$report}
             })
             [pscustomobject]@{Reports=[object[]]$reports}

@@ -22,6 +22,7 @@ Each report is checked against the targets file by `Assert-QuietScriptMutationSh
 | --- | --- |
 | `ScriptMutationShardReportsMissing` | No report was downloaded. |
 | `ScriptMutationShardReportInvalid` | The report is over 4 MB, is a reparse point, has a schema other than 1, or has no targets. |
+| `ScriptMutationShardIncomplete: <name>` | The campaign stopped in that target (empty name: outside any target), so the report is `Incomplete`. The targets it finished still count; the one it stopped in is also reported missing. |
 | `ScriptMutationShardUnknown: <name>` | The target is not configured. |
 | `ScriptMutationShardDuplicate: <name>` | The target is reported by more than one shard. |
 | `ScriptMutationShardMissing: <name>` | No shard reports the target. |

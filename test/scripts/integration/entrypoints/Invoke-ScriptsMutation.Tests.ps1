@@ -130,14 +130,26 @@ Describe 'Invoke-ScriptsMutation.ps1' {
         $outcome.Report.Passed|Should -BeTrue
     }
 
-    It 'stops with ScriptMutationBaselineFailed when the unmutated tests fail' {
-        $workspace=& $newWorkspace @((& $target 'Failing' 'Failing.Tests.ps1' 0))
+    It 'stops with ScriptMutationBaselineFailed when the unmutated tests fail, keeping the report of the finished targets' {
+        $workspace=& $newWorkspace @((& $target 'Strong' 'Strong.Tests.ps1'),(& $target 'Failing' 'Failing.Tests.ps1' 0),(& $target 'Weak' 'Weak.Tests.ps1'))
         $outcome=& $run $workspace
         $outcome.ExitCode|Should -Be 1
-        $outcome.Report|Should -BeNullOrEmpty
         $status=Get-Content -LiteralPath ([IO.Path]::Combine($outcome.RunDirectory,'status.json')) -Raw|ConvertFrom-Json
         $status.State|Should -BeExactly 'Crash'
         $status.Error|Should -Match '^ScriptMutationBaselineFailed: Failing state=Failed'
+        $status.Case|Should -BeExactly 'Mutation campaign stopped in Failing; 1 of 3 targets finished'
+        $outcome.Report|Should -Not -BeNullOrEmpty -Because ($outcome.Output+$outcome.Error)
+        $outcome.Report.Incomplete|Should -BeTrue
+        $outcome.Report.Passed|Should -BeFalse
+        @($outcome.Report.Targets.Name)|Should -Be @('Strong')
+        $outcome.Report.Targets[0].Score|Should -Be 100
+        $outcome.Report.Crash.Target|Should -BeExactly 'Failing'
+        @($outcome.Report.Crash.NotRun)|Should -Be @('Weak')
+        $outcome.Report.Crash.Error|Should -BeExactly $status.Error
+        @(@((Get-Content -LiteralPath ([IO.Path]::Combine($outcome.RunDirectory,'mutants.json')) -Raw|ConvertFrom-Json).Mutants)|Where-Object Target -CEQ 'Strong').Count|Should -Be $outcome.Report.Targets[0].Mutants
+        [IO.File]::ReadAllText([IO.Path]::Combine($outcome.RunDirectory,'report.md'))|Should -Match 'Verdict: \*\*incomplete\*\*[\s\S]*Stopped in target `Failing`[\s\S]*Not run: `Weak`'
+        $outcome.Output|Should -Match 'Mutation stopped: target=Failing not-run=Weak; ScriptMutationBaselineFailed'
+        [IO.Directory]::Exists([IO.Path]::Combine($outcome.RunDirectory,'slots'))|Should -BeFalse
     }
 
     It 'rejects <Case> before creating the run directory' -ForEach @(

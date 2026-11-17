@@ -11,7 +11,7 @@ The launcher performs these steps in order:
 4. Prepares the pinned Pester.
 5. Creates the run directory and writes `request.json`, with the cache directory (`<WorkspaceRoot>/.cache/script-mutation` by default, empty with `-NoCache`) and the prune flag.
 6. Hands the worker to [ScriptsWorker.psm1](ScriptsWorker.md).
-7. Returns `{State, Passed, Seed, RunDirectory, Report, Markdown, Targets, ExitCode}`. `ExitCode` is 0 only for a `Success` state with every target at or above its break.
+7. Returns `{State, Passed, Incomplete, Seed, RunDirectory, Report, Markdown, Targets, ExitCode}`. `ExitCode` is 0 only for a `Success` state with every target at or above its break. `Incomplete` is true without a report or with an incomplete one, whose stop (`Mutation stopped: target=… not-run=…; <error>`) is printed after the scores of the finished targets.
 
 The worker performs these steps:
 1. Copies the scripts root into `ThrottleLimit` slots (`Copy-QuietScriptsMutationTree`, which skips links), and starts one persistent [slot worker](ScriptMutationSlot.md) per copy.
@@ -24,6 +24,8 @@ The worker performs these steps:
 8. Writes `report.json`, `mutants.json` and `report.md`. With `-PruneCache`, it then deletes every cache document no key of this campaign uses. This happens only here, after every selected target was keyed, so an aborted campaign never prunes.
 9. Writes the terminal `status.json` and `summary.json`, stops the slots and deletes the copies.
 
+When the campaign stops before step 8 (a failed baseline, a slot state leak, a corrupted slot or any other error), the worker still writes `report.json`, `mutants.json` and `report.md` before it reports the crash. The report scores only the targets finished in request order and is `Incomplete`, with `Crash = {Target, Error, NotRun}`. `mutants.json` also holds the outcomes already reached in the target that stopped, which the cache keeps too. The status case reads `Mutation campaign stopped in <target>; <finished> of <total> targets finished`. A failure after the reports were written (a prune) keeps the complete report and only sets the `Crash` state.
+
 `Passed` and `Failed` in the status count detected and surviving mutants. Each target in the report carries `Cached`, the number of outcomes reused.
 
 ## Dependencies and side effects
@@ -32,7 +34,7 @@ Imports ScriptMutation, ScriptMutationCache, ScriptMutationSlot, RunToolCache, W
 
 ## Critical review and verdict
 
-A slot runs one mutant at a time, and the original bytes are written back before the slot is reused, so two mutants never share a source. The engine fingerprint in every cache key includes Pester, PowerShell, the platform and the hashes of `ScriptMutationSlot.psm1` and `ScriptsTests.psm1`, so a change to how tests run invalidates the whole cache. An exception in the worker becomes a `Crash` status with the message, and the slots are still stopped and deleted. The integration test drives the real entry point on a fixture library, so this library is covered end to end rather than by line coverage.
+A slot runs one mutant at a time, and the original bytes are written back before the slot is reused, so two mutants never share a source. The engine fingerprint in every cache key includes Pester, PowerShell, the platform and the hashes of `ScriptMutationSlot.psm1` and `ScriptsTests.psm1`, so a change to how tests run invalidates the whole cache. An exception in the worker becomes a `Crash` status with the message and an incomplete report of the finished targets, and the slots are still stopped and deleted. The integration test drives the real entry point on a fixture library, so this library is covered end to end rather than by line coverage.
 
 <!-- script-contract:begin -->
 ## Execution contract
