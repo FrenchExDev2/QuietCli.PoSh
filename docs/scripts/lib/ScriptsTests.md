@@ -21,7 +21,7 @@ Pure functions behind [Invoke-ScriptsTests.ps1](../Invoke-ScriptsTests.md). Impo
 Rules applied by `ConvertTo-QuietScriptsTestReport`:
 - `Failed` counts failed tests, failed blocks and failed containers.
 - `Passed + Failed + Skipped = Total` always holds.
-- A null or malformed result, zero executed tests, or missing requested coverage marks the report `Incomplete`.
+- A null or malformed result, zero executed tests, or missing requested coverage marks the report `Incomplete`. A property whose getter throws reads as absent: PowerShell returns null for it instead of raising.
 - `Success` requires a complete report, no failure, and, when coverage was requested, the threshold met.
 
 ## Dependencies and side effects
@@ -37,11 +37,11 @@ Tests: `test/scripts/unit/lib/ScriptsTests.Tests.ps1`. It covers:
 - 400 fuzzed selector sets, where only typed errors may occur and no file escapes the root;
 - a property that `Partial` is true exactly when the run is narrowed;
 - a property that Pester 6 accepts every generated configuration;
-- 500 fuzzed results that keep the invariant;
+- 500 fuzzed results that keep the invariant, and a result whose getter throws;
 - status transitions;
 - the exhaustive applicability product (test tree as directory, file or absent, crossed with `src/`).
 
-The library is a mutation target in `test/scripts/mutation.targets.psd1` (break 80 %), run by [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md).
+The library is a mutation target in `test/scripts/mutation.targets.psd1` (break 80 %), run by [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). The platform comparison of `Test-QuietScriptsPathWithin` is a single ternary, so coverage sees the same command on Windows and Linux. Forcing its `$IsWindows` condition to the platform's own value is the one platform-scoped equivalent mutant.
 
 <!-- script-contract:begin -->
 ## Execution contract
