@@ -247,6 +247,52 @@ function ConvertTo-QuietScriptsTestReport {
     }
 }
 
+function ConvertTo-QuietScriptsXmlText {
+    <#
+    .SYNOPSIS
+    Returns a text an XML 1.0 document can hold: ANSI escape sequences removed, every other forbidden character written as U+XXXX.
+    .DESCRIPTION
+    A null text yields the empty string. A lone surrogate becomes U+FFFD. Characters outside the Basic Multilingual Plane
+    are kept.
+    .PARAMETER Text
+    Any text, such as a failure message captured from a child process.
+    #>
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+    $builder=[Text.StringBuilder]::new()
+    foreach($rune in ([regex]::Replace($Text,'\x1B\[[0-?]*[ -/]*[@-~]','')).EnumerateRunes()){
+        if($rune.IsBmp -and ![Xml.XmlConvert]::IsXmlChar([char]$rune.Value)){[void]$builder.AppendFormat('U+{0:X4}',$rune.Value)}else{[void]$builder.Append($rune.ToString())}
+    }
+    $builder.ToString()
+}
+
+function Protect-QuietScriptsTestResult {
+    <#
+    .SYNOPSIS
+    Makes every text of a Pester result that the JUnit report holds XML-safe, in place, and returns how many it changed.
+    .DESCRIPTION
+    Pester writes test paths, failure messages and stack traces into the report as they are. A colored error captured
+    from a child process, or a control character in a data-driven test name, would otherwise make the whole export fail
+    and the run incomplete. Covers the ExpandedPath of each test and the DisplayErrorMessage and DisplayStackTrace of
+    every error record of the tests and containers. Values that are not strings are left alone.
+    .PARAMETER Result
+    Pester run result (Run.PassThru).
+    #>
+    param([Parameter(Mandatory)]$Result)
+    $fields=[Collections.Generic.List[object[]]]::new()
+    foreach($test in $Result.Tests){$fields.Add(@($test,'ExpandedPath'))}
+    foreach($owner in @($Result.Tests)+@($Result.Containers)){
+        foreach($record in $owner.ErrorRecord){$fields.Add(@($record,'DisplayErrorMessage'));$fields.Add(@($record,'DisplayStackTrace'))}
+    }
+    $changed=0
+    foreach($field in $fields){
+        $text=$field[0].($field[1])
+        if($text -isnot [string]){continue}
+        $safe=ConvertTo-QuietScriptsXmlText -Text $text
+        if($safe -cne $text){$field[0].($field[1])=$safe;$changed++}
+    }
+    $changed
+}
+
 function New-QuietScriptsTestStatus {
     <#
     .SYNOPSIS
@@ -327,4 +373,4 @@ function Test-QuietScriptsTestsApplicable {
     return $false
 }
 
-Export-ModuleMember -Function Get-QuietScriptsTestPlan,Resolve-QuietScriptsTestPath,Get-QuietScriptsCoverageTargets,New-QuietScriptsPesterConfiguration,ConvertTo-QuietScriptsTestReport,New-QuietScriptsTestStatus,Update-QuietScriptsTestStatus,Get-QuietScriptsTestExitCode,Test-QuietScriptsTestsApplicable
+Export-ModuleMember -Function ConvertTo-QuietScriptsXmlText,Protect-QuietScriptsTestResult,Get-QuietScriptsTestPlan,Resolve-QuietScriptsTestPath,Get-QuietScriptsCoverageTargets,New-QuietScriptsPesterConfiguration,ConvertTo-QuietScriptsTestReport,New-QuietScriptsTestStatus,Update-QuietScriptsTestStatus,Get-QuietScriptsTestExitCode,Test-QuietScriptsTestsApplicable

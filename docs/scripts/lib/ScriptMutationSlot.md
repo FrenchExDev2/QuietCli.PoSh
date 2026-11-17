@@ -15,7 +15,8 @@ Persistent test workers of [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutatio
 | `Restore-QuietScriptsMutationSlotState` | Restores a captured state: removes added environment variables and restores changed ones, and removes created globals unless constant or read-only. It also unloads every module imported from under the given roots, so nested imports are reloaded from the slot sources. Returns the number of modules removed. |
 | `Invoke-QuietScriptsMutationSlotJob` | Worker side of one job: restores the state, runs Pester on the job's files and saves the result. When the worker no longer holds exactly the pinned Pester, it returns `Corrupted` without running anything. `-PesterModules` replaces `Get-Module Pester` for that check. The tests pass it instead of mocking, because `Mock -ModuleName ScriptMutationSlot` is ambiguous inside a slot that already loaded the trusted copy of this module. |
 | `Test-QuietScriptsMutationSlotPester` | True when exactly one Pester module is loaded and it is the pinned 6.2.0. Shared by the job check and the worker start, which throws `ScriptsTestPesterVersionMismatch`. |
-| `Invoke-QuietScriptsMutationSlotWorker` | Worker body. It runs the jobs in order until a stop request, or until its parent process exits. |
+| `Test-QuietScriptsMutationSlotParent` | True while the recorded parent still runs: the process exists, has not exited, and started within one second of the recorded start time. On Linux, .NET recomputes a process start time from the boot time in each process, with a few milliseconds of drift, so an exact comparison would stop every worker after its first job. |
+| `Invoke-QuietScriptsMutationSlotWorker` | Worker body. It runs the jobs in order until a stop request, or until its parent process exits (`Test-QuietScriptsMutationSlotParent`). |
 
 ## Dependencies and side effects
 

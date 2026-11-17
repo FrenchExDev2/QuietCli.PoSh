@@ -128,11 +128,19 @@ Describe 'Get-QuietScriptsTestPlan' {
 Describe 'Resolve-QuietScriptsTestPath' {
     It 'returns the full path of <Selector>' -ForEach @(
         @{Selector='unit/a.Tests.ps1';Relative='unit/a.Tests.ps1'}
-        @{Selector='unit\sub';Relative='unit/sub'}
         @{Selector='unit/sub/';Relative='unit/sub/'}
         @{Selector='integration';Relative='integration'}
     ) {
         Resolve-QuietScriptsTestPath -Path $Selector -TestsRoot $root|Should -BeExactly ([IO.Path]::GetFullPath([IO.Path]::Combine($root,$Relative)))
+    }
+
+    It 'reads a backslash as a separator on Windows only' {
+        if($IsWindows){
+            Resolve-QuietScriptsTestPath -Path 'unit\sub' -TestsRoot $root|Should -BeExactly ([IO.Path]::GetFullPath([IO.Path]::Combine($root,'unit/sub')))
+        }else{
+            # Elsewhere a backslash is an ordinary file name character, so unit\sub names a missing entry.
+            {Resolve-QuietScriptsTestPath -Path 'unit\sub' -TestsRoot $root}|Should -Throw -ExpectedMessage 'ScriptsTestPathInvalid: missing'
+        }
     }
 
     It 'accepts an absolute path inside the root unchanged' {
@@ -257,6 +265,74 @@ Describe 'Get-QuietScriptsCoverageTargets' {
     }
     It 'reports a missing targets file' {
         {Get-QuietScriptsCoverageTargets -TestsRoot $empty -ScriptsRoot $scripts}|Should -Throw -ExpectedMessage 'ScriptsTestCoverageTargetsMissing'
+    }
+}
+
+Describe 'ConvertTo-QuietScriptsXmlText' {
+    It 'turns <Case> into the expected text' -ForEach @(
+        @{Case='null';Text=$null;Expected=''}
+        @{Case='an empty string';Text='';Expected=''}
+        @{Case='plain text';Text='plain text';Expected='plain text'}
+        @{Case='tab, line feed and carriage return';Text="a`tb`nc`rd";Expected="a`tb`nc`rd"}
+        @{Case='ANSI colors';Text="`e[31;1mred`e[0m text";Expected='red text'}
+        @{Case='an ANSI sequence with an intermediate byte';Text="a`e[1 qb";Expected='ab'}
+        @{Case='a lone escape';Text="a`ex";Expected='aU+001Bx'}
+        @{Case='NUL and bell';Text=('a'+[char]0+'b'+[char]7);Expected='aU+0000bU+0007'}
+        @{Case='the last control character';Text=[string][char]0x1F;Expected='U+001F'}
+        @{Case='the first printable character';Text=' ';Expected=' '}
+        @{Case='the last valid BMP character';Text=[string][char]0xFFFD;Expected=[string][char]0xFFFD}
+        @{Case='U+FFFE';Text=[string][char]0xFFFE;Expected='U+FFFE'}
+        @{Case='U+FFFF';Text=[string][char]0xFFFF;Expected='U+FFFF'}
+        @{Case='a character outside the BMP';Text=('x'+[char]::ConvertFromUtf32(0x1F600));Expected=('x'+[char]::ConvertFromUtf32(0x1F600))}
+        @{Case='the first character outside the BMP';Text=[char]::ConvertFromUtf32(0x10000);Expected=[char]::ConvertFromUtf32(0x10000)}
+        @{Case='a lone surrogate';Text=('a'+[char]0xD800+'b');Expected=('a'+[char]0xFFFD+'b')}
+    ) {
+        ConvertTo-QuietScriptsXmlText -Text $Text|Should -BeExactly $Expected
+    }
+
+    It 'always returns text an XML document can hold, on fuzzed input' {
+        $random=[Random]::new([int]$env:QUIETCLI_TEST_SEED)
+        for($i=0;$i -lt 200;$i++){
+            $text=-join @(for($j=$random.Next(0,40);$j -gt 0;$j--){[char]$random.Next(0,0x10000)})
+            $safe=ConvertTo-QuietScriptsXmlText -Text $text
+            {[Xml.XmlConvert]::VerifyXmlChars($safe)}|Should -Not -Throw -Because ('seed '+$env:QUIETCLI_TEST_SEED+', case '+$i)
+        }
+    }
+}
+
+Describe 'Protect-QuietScriptsTestResult' {
+    BeforeAll {
+        $record={param($message,$stack)[pscustomobject]@{DisplayErrorMessage=$message;DisplayStackTrace=$stack}}
+    }
+
+    It 'cleans test paths and the messages and stack traces of tests and containers, and counts the changes' {
+        $testError=& $record ("`e[31mtest failed`e[0m") ('at'+[char]0)
+        $containerError=& $record ('setup'+[char]7) 'clean'
+        $result=[pscustomobject]@{
+            Tests=@([pscustomobject]@{ExpandedPath=('d.n'+[char]0+'x');ErrorRecord=@($testError)},[pscustomobject]@{ExpandedPath='d.ok';ErrorRecord=@()})
+            Containers=@([pscustomobject]@{ErrorRecord=@($containerError)})
+        }
+        Protect-QuietScriptsTestResult -Result $result|Should -Be 4
+        $result.Tests[0].ExpandedPath|Should -BeExactly 'd.nU+0000x'
+        $result.Tests[1].ExpandedPath|Should -BeExactly 'd.ok'
+        $testError.DisplayErrorMessage|Should -BeExactly 'test failed'
+        $testError.DisplayStackTrace|Should -BeExactly 'atU+0000'
+        $containerError.DisplayErrorMessage|Should -BeExactly 'setupU+0007'
+        $containerError.DisplayStackTrace|Should -BeExactly 'clean'
+    }
+
+    It 'leaves values that are not strings alone' {
+        $nonText=& $record $null 42
+        $result=[pscustomobject]@{Tests=@([pscustomobject]@{ExpandedPath=$null;ErrorRecord=@($nonText)});Containers=$null}
+        Protect-QuietScriptsTestResult -Result $result|Should -Be 0
+        $null -eq $result.Tests[0].ExpandedPath|Should -BeTrue
+        $null -eq $nonText.DisplayErrorMessage|Should -BeTrue
+        $nonText.DisplayStackTrace|Should -BeOfType [int]
+        $nonText.DisplayStackTrace|Should -Be 42
+    }
+
+    It 'accepts a result without tests or containers' {
+        Protect-QuietScriptsTestResult -Result ([pscustomobject]@{})|Should -Be 0
     }
 }
 

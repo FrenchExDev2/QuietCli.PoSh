@@ -7,7 +7,7 @@
         @{
             Name = 'ScriptsTests'
             Module = 'lib/ScriptsTests.psm1'
-            Functions = @('Get-QuietScriptsTestPlan','Get-QuietScriptsTestValue','Test-QuietScriptsPathWithin','Resolve-QuietScriptsTestPath','Get-QuietScriptsCoverageTargets','New-QuietScriptsPesterConfiguration','ConvertTo-QuietScriptsTestCount','ConvertTo-QuietScriptsTestReport','New-QuietScriptsTestStatus','Update-QuietScriptsTestStatus','Get-QuietScriptsTestExitCode','Test-QuietScriptsTestsApplicable')
+            Functions = @('ConvertTo-QuietScriptsXmlText','Protect-QuietScriptsTestResult','Get-QuietScriptsTestPlan','Get-QuietScriptsTestValue','Test-QuietScriptsPathWithin','Resolve-QuietScriptsTestPath','Get-QuietScriptsCoverageTargets','New-QuietScriptsPesterConfiguration','ConvertTo-QuietScriptsTestCount','ConvertTo-QuietScriptsTestReport','New-QuietScriptsTestStatus','Update-QuietScriptsTestStatus','Get-QuietScriptsTestExitCode','Test-QuietScriptsTestsApplicable')
             UnitTestFiles = @('unit/lib/ScriptsTests.Tests.ps1')
             Break = 80
             Equivalent = @(
@@ -110,7 +110,7 @@
             # Start, the worker loop and the success path of a job need real processes: integration/lib covers them.
             Name = 'ScriptMutationSlot'
             Module = 'lib/ScriptMutationSlot.psm1'
-            Functions = @('Test-QuietScriptsMutationSlotPester','Restore-QuietScriptsMutationSlotState','Submit-QuietScriptsMutationJob','Receive-QuietScriptsMutationJob','Wait-QuietScriptsMutationJob','Stop-QuietScriptsMutationSlot')
+            Functions = @('Test-QuietScriptsMutationSlotPester','Test-QuietScriptsMutationSlotParent','Restore-QuietScriptsMutationSlotState','Submit-QuietScriptsMutationJob','Receive-QuietScriptsMutationJob','Wait-QuietScriptsMutationJob','Stop-QuietScriptsMutationSlot')
             UnitTestFiles = @('unit/lib/ScriptMutationSlot.Tests.ps1')
             Break = 80
             Equivalent = @(

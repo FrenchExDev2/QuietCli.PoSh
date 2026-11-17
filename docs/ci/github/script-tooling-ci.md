@@ -1,6 +1,6 @@
 # tooling-ci.yml
 
-<!-- workflow-source-sha256: 089E3C9D1AEC06768191C024443B4C47F7830719D982012C2666D1A6FF11490F -->
+<!-- workflow-source-sha256: C63B1F9209D6B91AE56A7C6AAB75D54EAE948360615FEBB50C9C62875B060BD3 -->
 
 ## Purpose
 
@@ -19,7 +19,7 @@ Run-profile mutation uses two independent matrix shards, each with two isolated 
 
 ## Script tests and script mutation
 
-The `script-tests` job runs [Invoke-ScriptsTests](../../scripts/Invoke-ScriptsTests.md) once on Windows and once on Linux. It runs with `-Headless -Coverage` and no filter, because a filtered run is partial and never qualifies. Its tools come from [Initialize-TestTools](../../scripts/Initialize-TestTools.md), after the `cache-test-tools` action has restored the pinned archives (keyed by OS and the hash of `scripts/lib/RunToolCache.psm1`; each SHA-256 is re-verified before extraction). It uploads the report, JUnit, coverage and log.
+The `script-tests` job runs [Invoke-ScriptsTests](../../scripts/Invoke-ScriptsTests.md) once on Windows and once on Linux. It runs with `-Headless -Coverage` and no filter, because a filtered run is partial and never qualifies. Its tools come from [Initialize-TestTools](../../scripts/Initialize-TestTools.md), after the `cache-test-tools` action has restored the pinned archives (keyed by OS and the hash of `scripts/lib/RunToolCache.psm1`; each SHA-256 is re-verified before extraction). Before the tests, it restores the workspace and builds the Git suite, which includes Core ([Build-Workspace](../../scripts/Build-Workspace.md) `-Suite Git`), because the [Start-QuietWorkBranch](../../scripts/Start-QuietWorkBranch.md) integration tests drive git through `quiet`. It uploads the report, JUnit, coverage and log.
 
 The `script-mutation` matrix has one job per target of `test/scripts/mutation.targets.psd1`, with `fail-fast: false`. Each job runs [Invoke-ScriptsMutation](../../scripts/Invoke-ScriptsMutation.md) `-Offline -PruneCache -Target <name>` and uploads an artifact named for the SHA, target and attempt.
 
@@ -123,7 +123,7 @@ flowchart TD
 | run-profiles-mutation | runner windows-latest |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1 |
 | script-mutation | runner ubuntu-latest |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-TestTools.ps1, ./scripts/Invoke-ScriptsMutation.ps1 |
 | script-mutation-complete | runner ubuntu-latest | script-mutation | ${{ always() && !cancelled() }} | ./scripts/Assert-ScriptMutationShards.ps1 |
-| script-tests | runner ${{ matrix.os }} |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-TestTools.ps1, ./scripts/Invoke-ScriptsTests.ps1 |
+| script-tests | runner ${{ matrix.os }} |  | default success condition | ./scripts/Build-Workspace.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-TestTools.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-ScriptsTests.ps1 |
 | tooling | runner windows-latest |  | default success condition | ./scripts/Build-Workspace.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/Test-CoreIndependence.ps1 |
 
 <!-- workflow-generated:end -->

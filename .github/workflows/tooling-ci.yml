@@ -206,7 +206,7 @@ jobs:
     # Pester 6 unit and integration tests of scripts/ and scripts/lib (test/scripts), on both host families.
     name: Script tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -218,6 +218,12 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            Directory.Packages.props
+            Directory.Build.props
+            global.json
       - uses: ./.github/actions/cache-resources
       - uses: ./.github/actions/cache-test-tools
       - uses: ./.github/actions/setup-powershell
@@ -226,6 +232,12 @@ jobs:
         run: |
           ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
           ./scripts/Initialize-TestTools.ps1 -Confirm:$false
+      - name: Build Core and Git for the entry points that run quiet git
+        # Start-QuietWorkBranch.ps1 drives git through quiet, which needs the built engine.
+        shell: pwsh
+        run: |
+          ./scripts/Initialize-Workspace.ps1 -Restore
+          ./scripts/Build-Workspace.ps1 -Suite Git
       - name: Run every script test with coverage
         id: script_tests
         shell: pwsh

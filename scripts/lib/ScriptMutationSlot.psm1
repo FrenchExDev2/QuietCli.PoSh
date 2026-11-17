@@ -206,6 +206,24 @@ function Test-QuietScriptsMutationSlotPester {
     $Modules.Count -eq 1 -and $Modules[0].Version -eq [version]'6.2.0'
 }
 
+function Test-QuietScriptsMutationSlotParent {
+    <#
+    .SYNOPSIS
+    True while the recorded parent still runs: the process exists, has not exited, and started within one second of the recorded start.
+    .DESCRIPTION
+    On Linux, .NET derives a process start time from the boot time, which another process computes again with a few
+    milliseconds of drift, so an exact comparison would make every worker exit after its first job. The tolerance
+    still tells a reused process id apart, because its new owner started after the parent exited.
+    .PARAMETER Process
+    Process found under the recorded id, or $null when none was found.
+    .PARAMETER StartTicks
+    Recorded parent start time, in UTC ticks.
+    #>
+    param([AllowNull()]$Process,[Parameter(Mandatory)][long]$StartTicks)
+    if($null -eq $Process -or $Process.HasExited){return $false}
+    [Math]::Abs($Process.StartTime.ToUniversalTime().Ticks-$StartTicks) -le [TimeSpan]::TicksPerSecond
+}
+
 function Invoke-QuietScriptsMutationSlotJob {
     <#
     .SYNOPSIS
@@ -275,7 +293,7 @@ function Invoke-QuietScriptsMutationSlotWorker {
             $lastParentCheck.Restart()
             $parent=$null
             try{$parent=[Diagnostics.Process]::GetProcessById([int]$request.ParentProcessId)}catch{$parent=$null}
-            if($null -eq $parent -or $parent.HasExited -or $parent.StartTime.ToUniversalTime().Ticks -ne [long]$request.ParentStartTicks){return}
+            if(!(Test-QuietScriptsMutationSlotParent -Process $parent -StartTicks ([long]$request.ParentStartTicks))){return}
         }
         $jobPath=[IO.Path]::Combine($request.Directory,'job-'+$sequence+'.json')
         if(![IO.File]::Exists($jobPath)){[void][Threading.Tasks.Task]::Delay(20).GetAwaiter().GetResult();continue}
@@ -286,4 +304,4 @@ function Invoke-QuietScriptsMutationSlotWorker {
     }
 }
 
-Export-ModuleMember -Function Test-QuietScriptsMutationSlotPester,Get-QuietScriptsMutationSlotState,Restore-QuietScriptsMutationSlotState,Start-QuietScriptsMutationSlot,Submit-QuietScriptsMutationJob,Receive-QuietScriptsMutationJob,Wait-QuietScriptsMutationJob,Stop-QuietScriptsMutationSlot,Invoke-QuietScriptsMutationSlotJob,Invoke-QuietScriptsMutationSlotWorker
+Export-ModuleMember -Function Test-QuietScriptsMutationSlotPester,Test-QuietScriptsMutationSlotParent,Get-QuietScriptsMutationSlotState,Restore-QuietScriptsMutationSlotState,Start-QuietScriptsMutationSlot,Submit-QuietScriptsMutationJob,Receive-QuietScriptsMutationJob,Wait-QuietScriptsMutationJob,Stop-QuietScriptsMutationSlot,Invoke-QuietScriptsMutationSlotJob,Invoke-QuietScriptsMutationSlotWorker

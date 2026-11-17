@@ -347,6 +347,39 @@ Describe 'Test-QuietScriptsMutationSlotPester' {
     }
 }
 
+Describe 'Test-QuietScriptsMutationSlotParent' {
+    BeforeAll {$recorded=[datetime]::new(2026,1,2,3,4,5,[DateTimeKind]::Utc)}
+
+    It 'is <Expected> for <Case>' -ForEach @(
+        @{Case='no process';Process=$null;Offset=0;Expected=$false}
+        @{Case='an exited parent';Process=@{HasExited=$true};Offset=0;Expected=$false}
+        @{Case='the exact start time';Process=@{HasExited=$false};Offset=0;Expected=$true}
+        @{Case='a few milliseconds of Linux drift later';Process=@{HasExited=$false};Offset=27464;Expected=$true}
+        @{Case='a few milliseconds of Linux drift earlier';Process=@{HasExited=$false};Offset=-27464;Expected=$true}
+        @{Case='exactly one second later';Process=@{HasExited=$false};Offset=10000000;Expected=$true}
+        @{Case='just over one second later';Process=@{HasExited=$false};Offset=10000001;Expected=$false}
+        @{Case='just over one second earlier';Process=@{HasExited=$false};Offset=-10000001;Expected=$false}
+    ) {
+        $double=if($null -eq $Process){$null}else{[pscustomobject]@{HasExited=$Process.HasExited;StartTime=$recorded.AddTicks($Offset)}}
+        $actual=Test-QuietScriptsMutationSlotParent -Process $double -StartTicks $recorded.Ticks
+        $actual|Should -BeOfType [bool]
+        $actual|Should -Be $Expected
+    }
+
+    It 'compares in UTC whatever the kind of the start time' {
+        $double=[pscustomobject]@{HasExited=$false;StartTime=$recorded.AddHours(3).ToLocalTime()}
+        Test-QuietScriptsMutationSlotParent -Process $double -StartTicks $recorded.Ticks|Should -BeFalse
+        $double.StartTime=$recorded.ToLocalTime()
+        Test-QuietScriptsMutationSlotParent -Process $double -StartTicks $recorded.Ticks|Should -BeTrue
+    }
+
+    It 'holds for the running process, seen again through its id' {
+        $current=[Diagnostics.Process]::GetCurrentProcess()
+        $again=[Diagnostics.Process]::GetProcessById($current.Id)
+        try{Test-QuietScriptsMutationSlotParent -Process $again -StartTicks $current.StartTime.ToUniversalTime().Ticks|Should -BeTrue}finally{$again.Dispose()}
+    }
+}
+
 Describe 'Invoke-QuietScriptsMutationSlotJob on a run that cannot start' {
     # The job exports the run variables into the current process: put them back for the other test files.
     BeforeEach {$saved=@{};foreach($name in 'QUIETCLI_TEST_SEED','QUIETCLI_SCRIPTS_ROOT','QUIETCLI_WORKSPACE_ROOT'){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}}

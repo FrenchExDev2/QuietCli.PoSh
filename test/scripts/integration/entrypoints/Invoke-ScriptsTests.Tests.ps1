@@ -13,6 +13,11 @@ Describe 'fixture ok' {
     $null=New-QuietTestFile ([IO.Path]::Combine($fixture,'integration','ko.Tests.ps1')) @'
 Describe 'fixture ko' { It 'fails' { 1 | Should -Be 2 } }
 '@
+    # A colored message, as captured from a child pwsh, and a NUL in a test name are not valid XML as they are.
+    $unsafe=[IO.Path]::Combine($TestDrive,'unsafe')
+    $null=New-QuietTestFile ([IO.Path]::Combine($unsafe,'unit','unsafe.Tests.ps1')) @'
+Describe 'fixture unsafe' { It ('fails with a NUL'+[char]0+'in its name') { throw ("colored `e[31mred`e[0m and a bell"+[char]7) } }
+'@
     $slow=[IO.Path]::Combine($TestDrive,'slow')
     $null=New-QuietTestFile ([IO.Path]::Combine($slow,'unit','slow.Tests.ps1')) @'
 Describe 'fixture slow' { It 'outlives the timeout' { Start-Sleep -Seconds 120 } }
@@ -72,6 +77,19 @@ Describe 'Invoke-ScriptsTests.ps1' {
         $report.Failed|Should -Be 1
         $report.Seed|Should -BeGreaterThan 0
         (& $readJson $directory 'status.json').State|Should -BeExactly 'Failed'
+    }
+
+    It 'saves a valid JUnit report for a failure message and a test name that XML cannot hold as they are' {
+        $directory=& $newRun
+        $outcome=& $run @('-TestsRoot',$unsafe,'-Kind','Unit','-RunDirectory',$directory)
+        $outcome.ExitCode|Should -Be 1
+        $report=& $readJson $directory 'report.json'
+        $report.Incomplete|Should -BeFalse
+        $report.Failed|Should -Be 1
+        $junit=[xml](Get-Content -LiteralPath ([IO.Path]::Combine($directory,'results.junit.xml')) -Raw -Encoding utf8)
+        $case=$junit.SelectSingleNode('//testcase')
+        $case.name|Should -BeExactly 'fixture unsafe.fails with a NULU+0000in its name'
+        $case.SelectSingleNode('failure').message|Should -BeLike '*colored red and a bellU+0007*'
     }
 
     It 'marks a path-filtered run partial' {

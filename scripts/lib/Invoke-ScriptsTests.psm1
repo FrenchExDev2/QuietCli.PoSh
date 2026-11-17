@@ -95,11 +95,19 @@ function Invoke-QuietScriptsTestWorker {
         if($loaded.Count -ne 1 -or $loaded[0].Version -ne [version]'6.2.0'){throw 'ScriptsTestPesterVersionMismatch'}
         Write-Host ("Seed: $($request.Seed) (replay with -Seed $($request.Seed))")
         $configuration=New-PesterConfiguration -Hashtable $request.Configuration
+        # The JUnit report is written below, once its texts are XML-safe: Pester's own export fails the whole run on
+        # a control character, such as the ANSI colors of an error captured from a child process.
+        $junitPath=if($configuration.TestResult.Enabled.Value){$configuration.TestResult.OutputPath.Value}else{$null}
+        $configuration.TestResult.Enabled=$false
         # Pester runs the test files in its caller's session state. Calling it from this module would let
         # the trusted libraries imported here shadow the ones the tests import from QUIETCLI_SCRIPTS_ROOT,
         # so it is called from an empty dynamic module whose command lookup falls through to the global scope.
         $testScope=New-Module -Name QuietScriptsTestScope -ScriptBlock {}
         $result=& $testScope { param($InvokePester,$Configuration) & $InvokePester -Configuration $Configuration } (Get-Command Invoke-Pester) $configuration
+        if($null -ne $junitPath -and $null -ne $result){
+            $null=Protect-QuietScriptsTestResult -Result $result
+            Export-JUnitReport -Result $result -Path $junitPath
+        }
         $report=ConvertTo-QuietScriptsTestReport -Result $result -Plan $request.Plan -Seed ([int]$request.Seed) -CoverageTarget $request.CoverageTarget
         Write-WorkspaceJson ([IO.Path]::Combine($runDirectory,'report.json')) $report
         $status=Update-QuietScriptsTestStatus -Status $status -Report $report
