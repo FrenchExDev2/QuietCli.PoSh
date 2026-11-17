@@ -101,15 +101,24 @@ function Submit-QuietScriptsMutationJob {
     Test files relative to the tests root.
     .PARAMETER Bail
     Stops the run at its first failed test (Pester Run.SkipRemainingOnFailure = Run).
+    .PARAMETER Phases
+    Pester FullName filters run one after the other, each a list of patterns; omitted or empty, the files run once
+    unfiltered. With Bail, a failing phase skips the next ones.
     .PARAMETER TimeoutSeconds
     Deadline after which the watchdog kills the worker.
     #>
-    param([Parameter(Mandatory)]$Slot,[Parameter(Mandatory)][string]$Name,[Parameter(Mandatory)][string[]]$UnitTestFiles,[switch]$Bail,[Parameter(Mandatory)][ValidateRange(1,86400)][int]$TimeoutSeconds)
+    param([Parameter(Mandatory)]$Slot,[Parameter(Mandatory)][string]$Name,[Parameter(Mandatory)][string[]]$UnitTestFiles,[switch]$Bail,[AllowEmptyCollection()][object[]]$Phases=@(),[Parameter(Mandatory)][ValidateRange(1,86400)][int]$TimeoutSeconds)
     if(!$Slot.Alive){throw 'ScriptMutationSlotDead'}
     if($null -ne $Slot.Job){throw 'ScriptMutationSlotBusy'}
+    $filters=[Collections.Generic.List[object]]::new()
+    foreach($phase in $Phases){
+        $patterns=[string[]]@(@($phase)|Where-Object {![string]::IsNullOrWhiteSpace($_)})
+        if($patterns.Count -eq 0){throw 'ScriptMutationSlotPhaseEmpty'}
+        $filters.Add($patterns)
+    }
     $Slot.Sequence=[int]$Slot.Sequence+1
     $now=[DateTimeOffset]::UtcNow
-    Write-WorkspaceJson ([IO.Path]::Combine($Slot.Directory,'job-'+$Slot.Sequence+'.json')) ([ordered]@{Sequence=$Slot.Sequence;Name=$Name;UnitTestFiles=[string[]]$UnitTestFiles;Bail=[bool]$Bail})
+    Write-WorkspaceJson ([IO.Path]::Combine($Slot.Directory,'job-'+$Slot.Sequence+'.json')) ([ordered]@{Sequence=$Slot.Sequence;Name=$Name;UnitTestFiles=[string[]]$UnitTestFiles;Bail=[bool]$Bail;Phases=$filters.ToArray()})
     $Slot.Job=[pscustomobject]@{Sequence=$Slot.Sequence;Name=$Name;Started=$now;Deadline=$now.AddSeconds($TimeoutSeconds)}
 }
 
@@ -227,10 +236,11 @@ function Test-QuietScriptsMutationSlotParent {
 function Invoke-QuietScriptsMutationSlotJob {
     <#
     .SYNOPSIS
-    Runs one job in the current process: resets the state, runs Pester on the job's files and returns the saved result.
+    Runs one job in the current process: resets the state, runs Pester on the job's files, phase by phase, and returns the saved result.
     .DESCRIPTION
     State is Corrupted, without running anything, when the worker no longer holds exactly the pinned Pester: the
-    caller restarts the slot and runs the job again instead of blaming its mutant.
+    caller restarts the slot and runs the job again instead of blaming its mutant. Passed and Failed add up over the
+    phases run, and State is Failed when any of them fails; with Bail, a failing phase is the last one run.
     .PARAMETER Request
     Slot request (slot.json).
     .PARAMETER Job
@@ -256,15 +266,24 @@ function Invoke-QuietScriptsMutationSlotJob {
         $env:QUIETCLI_TEST_SEED=[string]$Request.Seed
         $env:QUIETCLI_SCRIPTS_ROOT=$Request.ScriptsRoot
         $env:QUIETCLI_WORKSPACE_ROOT=$Request.WorkspaceRoot
-        $plan=Get-QuietScriptsTestPlan -TestsRoot $Request.TestsRoot -Kind Unit -Path ([string[]]@($Job.UnitTestFiles))
-        $settings=New-QuietScriptsPesterConfiguration -Plan $plan -RunDirectory $Request.Directory
-        $settings.TestResult.Enabled=$false
-        $settings.Output.Verbosity='None'
-        if($Job.Bail){$settings.Run.SkipRemainingOnFailure='Run'}
-        $configuration=New-PesterConfiguration -Hashtable $settings
-        $result=& $Scope { param($InvokePester,$Configuration) & $InvokePester -Configuration $Configuration } (Get-Command Invoke-Pester) $configuration
-        $report=ConvertTo-QuietScriptsTestReport -Result $result -Plan $plan -Seed ([int]$Request.Seed)
-        [ordered]@{Sequence=$Job.Sequence;State=[string]$report.State;Passed=[int]$report.Passed;Failed=[int]$report.Failed;Seconds=[Math]::Round($started.Elapsed.TotalSeconds,1);Error=$null}
+        # No phase runs the files once unfiltered; phases run in order in the same state, as the blocks of one run would.
+        $phases=[Collections.Generic.List[string[]]]::new()
+        foreach($phase in @($Job['Phases'])){if($null -ne $phase){$phases.Add([string[]]@($phase))}}
+        if($phases.Count -eq 0){$phases.Add([string[]]@())}
+        $verdict='Success';$passed=0;$failed=0
+        foreach($filter in $phases){
+            $plan=Get-QuietScriptsTestPlan -TestsRoot $Request.TestsRoot -Kind Unit -Path ([string[]]@($Job.UnitTestFiles)) -FullNameFilter $filter
+            $settings=New-QuietScriptsPesterConfiguration -Plan $plan -RunDirectory $Request.Directory
+            $settings.TestResult.Enabled=$false
+            $settings.Output.Verbosity='None'
+            if($Job.Bail){$settings.Run.SkipRemainingOnFailure='Run'}
+            $configuration=New-PesterConfiguration -Hashtable $settings
+            $result=& $Scope { param($InvokePester,$Configuration) & $InvokePester -Configuration $Configuration } (Get-Command Invoke-Pester) $configuration
+            $report=ConvertTo-QuietScriptsTestReport -Result $result -Plan $plan -Seed ([int]$Request.Seed)
+            $passed+=[int]$report.Passed;$failed+=[int]$report.Failed
+            if([string]$report.State -cne 'Success'){$verdict=[string]$report.State;if($Job.Bail){break}}
+        }
+        [ordered]@{Sequence=$Job.Sequence;State=$verdict;Passed=$passed;Failed=$failed;Seconds=[Math]::Round($started.Elapsed.TotalSeconds,1);Error=$null}
     }catch{
         [ordered]@{Sequence=$Job.Sequence;State='Crash';Passed=0;Failed=1;Seconds=[Math]::Round($started.Elapsed.TotalSeconds,1);Error=$_.Exception.Message}
     }

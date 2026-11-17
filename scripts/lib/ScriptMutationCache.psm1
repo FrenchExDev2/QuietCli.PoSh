@@ -355,7 +355,10 @@ function Get-QuietScriptMutationBaselineKey {
 function Read-QuietScriptMutationBaseline {
     <#
     .SYNOPSIS
-    Returns the recorded baseline {Passed, Seconds} of a key, or nothing on a miss or an unusable document.
+    Returns the recorded baseline {Passed, Seconds, Focus} of a key, or nothing on a miss or an unusable document.
+    .DESCRIPTION
+    Focus lists the functions whose focused split was proven on the baseline; it is empty when the document has none,
+    and a Focus that is not a list of names makes the document unusable.
     .PARAMETER Directory
     Cache root.
     .PARAMETER Key
@@ -368,13 +371,15 @@ function Read-QuietScriptMutationBaseline {
     $passed=0;$seconds=0.0
     if(![int]::TryParse([string](Get-QuietScriptMutationCacheValue $document 'Passed'),[Globalization.NumberStyles]::None,[Globalization.CultureInfo]::InvariantCulture,[ref]$passed) -or $passed -lt 1){return}
     if(![double]::TryParse([string](Get-QuietScriptMutationCacheValue $document 'Seconds'),[Globalization.NumberStyles]::Float,[Globalization.CultureInfo]::InvariantCulture,[ref]$seconds) -or ![double]::IsFinite($seconds) -or $seconds -lt 0){return}
-    [pscustomobject][ordered]@{Passed=$passed;Seconds=$seconds}
+    $focus=@(Get-QuietScriptMutationCacheValue $document 'Focus')
+    if(@($focus|Where-Object {$_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_)}).Count){return}
+    [pscustomobject][ordered]@{Passed=$passed;Seconds=$seconds;Focus=[string[]]$focus}
 }
 
 function Write-QuietScriptMutationBaseline {
     <#
     .SYNOPSIS
-    Records a passing baseline (test count and duration) and returns true when written.
+    Records a passing baseline (test count, duration and proven focused functions) and returns true when written.
     .DESCRIPTION
     Only a baseline with at least one passed test and a finite, non-negative duration is stored: anything else would
     let a later campaign skip a baseline that never proved its tests pass.
@@ -386,12 +391,14 @@ function Write-QuietScriptMutationBaseline {
     Passed test count of the baseline.
     .PARAMETER Seconds
     Baseline duration, which sets the mutant timeout.
+    .PARAMETER Focus
+    Functions whose focused split (Get-QuietScriptMutationFocus) passed with the baseline's test count.
     #>
-    param([Parameter(Mandatory)][string]$Directory,[Parameter(Mandatory)][string]$Key,[Parameter(Mandatory)][int]$Passed,[Parameter(Mandatory)][double]$Seconds)
+    param([Parameter(Mandatory)][string]$Directory,[Parameter(Mandatory)][string]$Key,[Parameter(Mandatory)][int]$Passed,[Parameter(Mandatory)][double]$Seconds,[AllowEmptyCollection()][string[]]$Focus=@())
     $path=Get-QuietScriptMutantCachePath -Directory $Directory -Key $Key
     if($Passed -lt 1 -or ![double]::IsFinite($Seconds) -or $Seconds -lt 0){return $false}
     [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))
-    Write-WorkspaceJson $path ([ordered]@{SchemaVersion=1;Kind='Baseline';Key=$Key;Passed=$Passed;Seconds=[Math]::Round($Seconds,1)})
+    Write-WorkspaceJson $path ([ordered]@{SchemaVersion=1;Kind='Baseline';Key=$Key;Passed=$Passed;Seconds=[Math]::Round($Seconds,1);Focus=[string[]]@($Focus)})
     $true
 }
 

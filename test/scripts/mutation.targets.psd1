@@ -37,7 +37,7 @@
         @{
             Name = 'ScriptMutation'
             Module = 'lib/ScriptMutation.psm1'
-            Functions = @('Get-QuietScriptMutants','New-QuietScriptMutantSource','Get-QuietScriptMutantStatus','Get-QuietScriptMutantTimeout','Measure-QuietScriptMutationScore','Read-QuietScriptMutationTargets','Select-QuietScriptMutationEquivalents','New-QuietScriptMutationReport','ConvertTo-QuietScriptMutationMarkdown','Assert-QuietScriptMutationShards')
+            Functions = @('Get-QuietScriptMutants','New-QuietScriptMutantSource','Get-QuietScriptMutantStatus','Get-QuietScriptMutantTimeout','Get-QuietScriptMutationFocus','Measure-QuietScriptMutationScore','Read-QuietScriptMutationTargets','Select-QuietScriptMutationEquivalents','New-QuietScriptMutationReport','ConvertTo-QuietScriptMutationMarkdown','Assert-QuietScriptMutationShards')
             UnitTestFiles = @('unit/lib/ScriptMutation.Tests.ps1','unit/lib/ScriptMutators.Tests.ps1')
             Break = 80
         }

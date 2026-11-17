@@ -148,6 +148,108 @@ Describe 'Get-QuietScriptMutantTimeout' {
     }
 }
 
+Describe 'Get-QuietScriptMutationFocus' {
+    It 'runs each function''s own top-level blocks first and every other top-level block after' {
+        $one=@'
+Describe 'Get-A' { It a { } ; Context 'Get-B inside' { It b { } } }
+Describe 'Get-A and Get-B' { It ab { } }
+Describe 'Get-AB' { It x { } }
+'@
+        $two="Context 'Get-B over a graph' { It c { } }`nDescribe -Name 'Set-C' { It d { } }`nDescribe 'misc' { It e { } }`n"
+        $focus=Get-QuietScriptMutationFocus -Sources @($one,$two) -Functions @('Get-A','Get-B','Set-C','Get-Z')
+        @($focus.Keys)|Should -Be @('Get-A','Get-B','Set-C')
+        $focus['Get-A'].Focus|Should -Be @('Get-A','Get-A and Get-B')
+        $focus['Get-A'].Rest|Should -Be @('Get-AB','Get-B over a graph','Set-C','misc')
+        $focus['Get-B'].Focus|Should -Be @('Get-A and Get-B','Get-B over a graph') -Because 'a nested Context does not count, a top-level one does'
+        $focus['Get-B'].Rest|Should -Be @('Get-A','Get-AB','Set-C','misc')
+        $focus['Set-C'].Focus|Should -Be @('Set-C')
+        ,$focus['Set-C'].Rest|Should -BeOfType [string[]]
+        ,$focus['Set-C'].Focus|Should -BeOfType [string[]]
+    }
+
+    It 'escapes the wildcard characters of a block name' {
+        $focus=Get-QuietScriptMutationFocus -Sources @("Describe 'Get-A [x]*?' { It a { } }`nDescribe 'b?' { It b { } }") -Functions @('Get-A')
+        $focus['Get-A'].Focus|Should -Be @('Get-A `[x`]`*`?')
+        $focus['Get-A'].Rest|Should -Be @('b`?')
+        'Get-A [x]*?' -like $focus['Get-A'].Focus[0]|Should -BeTrue
+        'Get-A [x]*?!' -like $focus['Get-A'].Focus[0]|Should -BeFalse
+    }
+
+    It 'merges block names that differ only by case, as Pester filters ignore case' {
+        $focus=Get-QuietScriptMutationFocus -Sources @("Describe 'Get-A' { It a { } }","Describe 'get-a' { It b { } }`nDescribe 'other' { It c { } }") -Functions @('Get-A')
+        $focus['Get-A'].Focus|Should -Be @('Get-A')
+        $focus['Get-A'].Rest|Should -Be @('other')
+    }
+
+    It 'gives no entry to <Case>' -ForEach @(
+        @{Case='a function without its own block';Sources=@("Describe 'Get-A' { It a { } }`nDescribe 'b' { It b { } }");Function='Get-Z'}
+        @{Case='a function that owns every block';Sources=@("Describe 'Get-A' { It a { } }`nDescribe 'Get-A edge cases' { It b { } }");Function='Get-A'}
+        @{Case='a name that only starts the same';Sources=@("Describe 'Get-AB' { It a { } }`nDescribe 'b' { It b { } }");Function='Get-A'}
+        @{Case='a name that only ends the same';Sources=@("Describe 'X-Get-A' { It a { } }`nDescribe 'b' { It b { } }");Function='Get-A'}
+        @{Case='a name in another case';Sources=@("Describe 'get-a' { It a { } }`nDescribe 'b' { It b { } }");Function='Get-A'}
+    ) {
+        $focus=Get-QuietScriptMutationFocus -Sources $Sources -Functions @($Function)
+        $focus.Count|Should -Be 0
+    }
+
+    It 'splits nothing when <Case>, because the other blocks could not be listed' -ForEach @(
+        @{Case='a source does not parse';Source="Describe 'Get-A' { It a { } }`nDescribe 'b' { It b { } }`n`$x=("}
+        @{Case='a block name is expanded';Source="Describe 'Get-A' { It a { } }`nDescribe `"b `$x`" { It b { } }"}
+        @{Case='a block name is a variable';Source="Describe 'Get-A' { It a { } }`nDescribe `$name { It b { } }"}
+        @{Case='a block name follows another parameter';Source="Describe 'Get-A' { It a { } }`nDescribe -Tag t 'b' { It b { } }"}
+        @{Case='a named block name is expanded';Source="Describe 'Get-A' { It a { } }`nDescribe -Name `"b`$x`" { It b { } }"}
+    ) {
+        $focus=Get-QuietScriptMutationFocus -Sources @($Source) -Functions @('Get-A')
+        $focus -is [Collections.Specialized.OrderedDictionary]|Should -BeTrue -Because 'the worker looks functions up in the map'
+        $focus.Count|Should -Be 0
+    }
+
+    It 'counts a top-level block declared inside a script block, so Rest does not miss its tests' {
+        $focus=Get-QuietScriptMutationFocus -Sources @("Describe 'Get-A' { It a { } }`n& { Describe 'b' { It b { } } }") -Functions @('Get-A')
+        $focus['Get-A'].Rest|Should -Be @('b')
+    }
+
+    It 'reads a name given as -Name:value' {
+        $focus=Get-QuietScriptMutationFocus -Sources @("Describe -Name:'Get-A' { It a { } }`nDescribe 'b' { It b { } }") -Functions @('Get-A')
+        $focus['Get-A'].Focus|Should -Be @('Get-A')
+    }
+
+    It 'returns an empty map for no source or no function' {
+        (Get-QuietScriptMutationFocus -Sources @() -Functions @('Get-A')).Count|Should -Be 0
+        (Get-QuietScriptMutationFocus -Sources @("Describe 'Get-A' { It a { } }`nDescribe 'b' { }") -Functions @()).Count|Should -Be 0
+    }
+
+    It 'partitions the top-level blocks for any catalogue of names' {
+        $null=Invoke-QuietProperty -Name 'focus partition' -Seed $seed -Count 150 -Generator {param($random)
+            $functions=@(1..$random.Next(1,5)|ForEach-Object {'Get-F'+$_})
+            $words=@($functions)+@('edge','cases','and','[x]','*','Get-F1x')
+            $names=@(1..$random.Next(1,8)|ForEach-Object {(@(1..$random.Next(1,4)|ForEach-Object {Get-QuietRandomItem $random $words}) -join ' ')})
+            $files=$random.Next(1,4)
+            $sources=@(foreach($file in 1..$files){(@($names|Where-Object {$file -eq 1 -or $random.Next(0,2) -eq 0})|ForEach-Object {"Describe '$_' { It t { } }"}) -join "`n"})
+            [pscustomobject]@{Functions=$functions;Sources=$sources}
+        } -Property {param($case)
+            $all=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+            foreach($text in $case.Sources){foreach($match in [regex]::Matches($text,"Describe '([^']*)'")){[void]$all.Add($match.Groups[1].Value)}}
+            $focus=Get-QuietScriptMutationFocus -Sources $case.Sources -Functions $case.Functions
+            foreach($function in $case.Functions){
+                $word='(?<![\w-])'+[regex]::Escape($function)+'(?![\w-])'
+                $own=@($all|Where-Object {$_ -cmatch $word})
+                if($focus.Contains($function) -ne ($own.Count -gt 0 -and $own.Count -lt $all.Count)){return $false}
+                if(!$focus.Contains($function)){continue}
+                $entry=$focus[$function]
+                foreach($name in $all){
+                    # Every block is selected by exactly one pattern, in Focus exactly when it names the function.
+                    $inFocus=@($entry.Focus|Where-Object {$name -like $_}).Count
+                    $inRest=@($entry.Rest|Where-Object {$name -like $_}).Count
+                    if($inFocus+$inRest -ne 1){return $false}
+                    if(($inFocus -eq 1) -ne ($name -cin $own)){return $false}
+                }
+            }
+            $true
+        }
+    }
+}
+
 Describe 'Measure-QuietScriptMutationScore' {
     It 'counts every status, ignores compile errors in the score and passes exactly at the break' {
         $null=Invoke-QuietProperty -Name 'score model' -Seed $seed -Count 300 -Generator {param($random)

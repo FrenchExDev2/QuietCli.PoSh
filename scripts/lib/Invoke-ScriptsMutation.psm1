@@ -129,7 +129,9 @@ function Invoke-QuietScriptsMutationWorker {
     Each slot owns a scripts copy and one reused pwsh worker (ScriptMutationSlot.psm1). A mutant is written into an idle
     slot's copy, run with bail-on-first-failure, then the original bytes are restored. A slot that times out or crashes
     is restarted, and every slot is recycled after RecycleAfter jobs. The second baseline run in the same worker must
-    match the first, which proves that the state reset between runs works for this target. Killed and Survived
+    match the first, which proves that the state reset between runs works for this target. A mutant of a function with
+    its own test blocks runs them first, then the other blocks (Get-QuietScriptMutationFocus), once that split has
+    passed every baseline test on the unmutated sources; the split is recorded with the baseline. Killed and Survived
     outcomes are written to the cache when it is enabled; with PruneCache, a complete campaign then deletes every cache
     document it did not key.
     .PARAMETER RequestPath
@@ -196,6 +198,27 @@ function Invoke-QuietScriptsMutationWorker {
         Submit-QuietScriptsMutationJob -Slot $slots[$Index] -Name $Name -UnitTestFiles $Files -TimeoutSeconds $Timeout
         Wait-QuietScriptsMutationJob -Slot $slots[$Index]
     }
+    # Runs unmutated jobs {Name, Phases} on every slot at once and returns their outcomes by name.
+    $runAll={param([object[]]$Jobs,[string[]]$Files,[int]$Timeout)
+        $pending=[Collections.Generic.Queue[object]]::new($Jobs);$running=@{};$outcomes=@{}
+        while($pending.Count -or $running.Count){
+            for($index=0;$index -lt $count -and $pending.Count;$index++){
+                if($running.ContainsKey($index)){continue}
+                if($null -eq $slots[$index] -or !$slots[$index].Alive -or $slots[$index].Jobs -ge [int]$request.RecycleAfter){& $retireSlot $index;& $startSlot $index}
+                $job=$pending.Dequeue()
+                Submit-QuietScriptsMutationJob -Slot $slots[$index] -Name $job.Name -UnitTestFiles $Files -Phases $job.Phases -TimeoutSeconds $Timeout
+                $running[$index]=$job
+            }
+            foreach($index in @($running.Keys)){
+                $outcome=Receive-QuietScriptsMutationJob -Slot $slots[$index]
+                if($null -eq $outcome){continue}
+                if($outcome.State -cin @('Crash','Corrupted')){$slots[$index].Alive=$false}
+                $outcomes[$running[$index].Name]=$outcome;$running.Remove($index)
+            }
+            if($running.Count){[void][Threading.Tasks.Task]::Delay(20).GetAwaiter().GetResult()}
+        }
+        $outcomes
+    }
     try{
         Write-Host ("Seed: $($request.Seed) (replay with -Seed $($request.Seed))")
         Write-Host ('Cache: '+$(if($cache){$cache}else{'disabled'}))
@@ -207,6 +230,8 @@ function Invoke-QuietScriptsMutationWorker {
             $current=[string]$targetEntry.Name
             $relative=[string]$targetEntry.Module
             $files=[string[]]@($targetEntry.UnitTestFiles)
+            # Each function's own test blocks run first, then the others: a killed mutant usually stops early.
+            $focus=Get-QuietScriptMutationFocus -Sources @($files|ForEach-Object {[IO.File]::ReadAllText([IO.Path]::Combine($request.TestsRoot,$_))}) -Functions @($targetEntry.Functions)
             $original=[IO.File]::ReadAllBytes([IO.Path]::Combine($request.ScriptsRoot,$relative))
             $text=[Text.UTF8Encoding]::new($false).GetString($original)
             if($text.Length -and $text[0] -eq [char]0xFEFF){$text=$text.Substring(1)}
@@ -235,7 +260,8 @@ function Invoke-QuietScriptsMutationWorker {
             $known=if($baselineKey){Read-QuietScriptMutationBaseline -Directory $cache -Key $baselineKey}else{$null}
             if($null -ne $known){
                 $timeout=Get-QuietScriptMutantTimeout $known.Seconds
-                Write-Host ("Progress: Baseline $($targetEntry.Name) reused | passed=$($known.Passed) seconds=$($known.Seconds) mutant timeout=${timeout}s")
+                $proven=@($known.Focus|Where-Object {$focus.Contains($_)})
+                Write-Host ("Progress: Baseline $($targetEntry.Name) reused | passed=$($known.Passed) seconds=$($known.Seconds) mutant timeout=${timeout}s focused=$($proven.Count)")
             }else{
                 $status.Case=('Baseline {0} ({1} mutants, {2} cached)' -f $targetEntry.Name,$mutants.Count,$reused);Write-WorkspaceJson $statusPath $status
                 Write-Host ("Progress: Baseline $($targetEntry.Name) | mutants=$($mutants.Count) cached=$reused")
@@ -245,8 +271,18 @@ function Invoke-QuietScriptsMutationWorker {
                 if($reuse.State -cne 'Success' -or $reuse.Failed -ne 0 -or $reuse.Passed -ne $baseline.Passed){throw ("ScriptMutationSlotStateLeak: {0} first={1} second={2} state={3}; {4}" -f $targetEntry.Name,$baseline.Passed,$reuse.Passed,$reuse.State,$reuse.Error)}
                 $seconds=[Math]::Max($baseline.Seconds,$reuse.Seconds)
                 $timeout=Get-QuietScriptMutantTimeout $seconds
-                if($baselineKey){$null=Write-QuietScriptMutationBaseline -Directory $cache -Key $baselineKey -Passed $baseline.Passed -Seconds $seconds}
-                Write-Host ("Progress: Baseline $($targetEntry.Name) passed | passed=$($baseline.Passed) seconds=$($baseline.Seconds) reuse=$($reuse.Seconds) mutant timeout=${timeout}s")
+                # A split is used only once it runs every baseline test and passes: a block that needs another to run
+                # first would otherwise fail and falsely kill the mutants of that function.
+                $checks=@($focus.Keys|ForEach-Object {[pscustomobject]@{Name=$_;Phases=@($focus[$_].Focus,$focus[$_].Rest)}})
+                $outcomes=if($checks.Count){& $runAll $checks $files $timeout}else{@{}}
+                $proven=[Collections.Generic.List[string]]::new()
+                foreach($check in $checks){
+                    $outcome=$outcomes[$check.Name]
+                    if($outcome.State -ceq 'Success' -and $outcome.Failed -eq 0 -and $outcome.Passed -eq $baseline.Passed){$proven.Add($check.Name);continue}
+                    Write-Host ("Progress: Focus dropped $($targetEntry.Name) | $($check.Name) state=$($outcome.State) passed=$($outcome.Passed) failed=$($outcome.Failed) expected=$($baseline.Passed)")
+                }
+                if($baselineKey){$null=Write-QuietScriptMutationBaseline -Directory $cache -Key $baselineKey -Passed $baseline.Passed -Seconds $seconds -Focus $proven.ToArray()}
+                Write-Host ("Progress: Baseline $($targetEntry.Name) passed | passed=$($baseline.Passed) seconds=$($baseline.Seconds) reuse=$($reuse.Seconds) mutant timeout=${timeout}s focused=$($proven.Count)/$($focus.Count)")
             }
             $active=@{};$done=0;$total=$queue.Count;$tally=@{Killed=0;Survived=0;Timeout=0}
             while($queue.Count -or $active.Count){
@@ -255,7 +291,8 @@ function Invoke-QuietScriptsMutationWorker {
                     if($null -eq $slots[$slot] -or !$slots[$slot].Alive -or $slots[$slot].Jobs -ge [int]$request.RecycleAfter){& $retireSlot $slot;& $startSlot $slot}
                     $item=$queue.Dequeue()
                     [IO.File]::WriteAllText([IO.Path]::Combine($roots[$slot],$relative),$item.Text,[Text.UTF8Encoding]::new($false))
-                    Submit-QuietScriptsMutationJob -Slot $slots[$slot] -Name $item.Mutant.Id -UnitTestFiles $files -Bail -TimeoutSeconds $timeout
+                    $phases=if($proven -ccontains $item.Mutant.Function){@($focus[$item.Mutant.Function].Focus,$focus[$item.Mutant.Function].Rest)}else{@()}
+                    Submit-QuietScriptsMutationJob -Slot $slots[$slot] -Name $item.Mutant.Id -UnitTestFiles $files -Bail -Phases $phases -TimeoutSeconds $timeout
                     $active[$slot]=$item
                 }
                 foreach($slot in @($active.Keys)){

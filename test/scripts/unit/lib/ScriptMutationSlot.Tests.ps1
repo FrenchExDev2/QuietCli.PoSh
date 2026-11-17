@@ -43,6 +43,31 @@ Describe 'Submit-QuietScriptsMutationJob' {
         (Get-Content -LiteralPath ([IO.Path]::Combine($slot.Directory,'job-2.json')) -Raw|ConvertFrom-Json).Bail|Should -BeFalse
     }
 
+    It 'records no phase by default and each phase as a list of patterns, in order' {
+        $slot=& $newSlot
+        & $submit $slot
+        $job=Get-Content -LiteralPath ([IO.Path]::Combine($slot.Directory,'job-1.json')) -Raw|ConvertFrom-Json -AsHashtable
+        @($job.Phases).Count|Should -Be 0
+        $slot.Job=$null
+        Submit-QuietScriptsMutationJob -Slot $slot -Name 'm2' -UnitTestFiles @('unit/A.Tests.ps1') -Bail -Phases @(@('Get-A'),@('Get-B','c `[x`]')) -TimeoutSeconds 60
+        $job=Get-Content -LiteralPath ([IO.Path]::Combine($slot.Directory,'job-2.json')) -Raw|ConvertFrom-Json -AsHashtable
+        @($job.Phases).Count|Should -Be 2
+        @($job.Phases[0])|Should -Be @('Get-A')
+        @($job.Phases[1])|Should -Be @('Get-B','c `[x`]')
+    }
+
+    It 'drops blank patterns and rejects a phase with none left, which would run every test' -ForEach @(
+        @{Case='empty';Phase=@()}
+        @{Case='blank';Phase=@('',' ')}
+    ) {
+        $slot=& $newSlot
+        {Submit-QuietScriptsMutationJob -Slot $slot -Name 'm' -UnitTestFiles @('unit/A.Tests.ps1') -Phases @(@('Get-A'),$Phase) -TimeoutSeconds 60}|Should -Throw -ExpectedMessage 'ScriptMutationSlotPhaseEmpty'
+        $slot.Sequence|Should -Be 0
+        & $files $slot|Should -BeNullOrEmpty
+        Submit-QuietScriptsMutationJob -Slot $slot -Name 'm' -UnitTestFiles @('unit/A.Tests.ps1') -Phases @(,@('Get-A',' ')) -TimeoutSeconds 60
+        @((Get-Content -LiteralPath ([IO.Path]::Combine($slot.Directory,'job-1.json')) -Raw|ConvertFrom-Json -AsHashtable).Phases[0])|Should -Be @('Get-A')
+    }
+
     It 'rejects a busy slot without writing a job' {
         $slot=& $newSlot
         & $submit $slot

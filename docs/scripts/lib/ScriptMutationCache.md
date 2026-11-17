@@ -19,8 +19,8 @@ Content-addressed outcome cache of [Invoke-ScriptsMutation.ps1](../Invoke-Script
 | `Read-QuietScriptMutantCache` | `{Status, Seconds, Seed}` of a key, or `$null` on a miss. A document that does not parse, or carries another schema, key or status, is a miss and is overwritten by the next run. |
 | `Write-QuietScriptMutantCache` | Records `Killed` or `Survived` and returns `$true`. `Timeout` depends on machine load and `CompileError` is recomputed for free, so neither is stored (`$false`). |
 | `Get-QuietScriptMutationBaselineKey` | 64-hex key of a target's baseline. It hashes the baseline kind, its schema, the engine fingerprint, the target fingerprint and a machine identity (`-Machine`, the engine passes the host name and processor count). A baseline duration only holds on the machine that measured it, so a cache restored elsewhere never reuses it. |
-| `Read-QuietScriptMutationBaseline` | `{Passed, Seconds}` of a baseline key, or nothing on a miss. A document that does not parse, or carries another schema, kind or key, a passed count that is not a plain integer of at least 1, or a duration that is not finite and non-negative, is a miss. |
-| `Write-QuietScriptMutationBaseline` | Records `{Kind = 'Baseline', Passed, Seconds}` (seconds rounded to 0.1) and returns `$true`. A baseline without a passed test, or with a negative or non-finite duration, is never stored (`$false`). |
+| `Read-QuietScriptMutationBaseline` | `{Passed, Seconds, Focus}` of a baseline key, or nothing on a miss. `Focus` lists the functions whose focused split was proven with the baseline, empty when the document has none; a `Focus` that is not a list of non-blank names is a miss. A document that does not parse, or carries another schema, kind or key, a passed count that is not a plain integer of at least 1, or a duration that is not finite and non-negative, is a miss. |
+| `Write-QuietScriptMutationBaseline` | Records `{Kind = 'Baseline', Passed, Seconds, Focus}` (seconds rounded to 0.1, `-Focus` empty by default) and returns `$true`. A baseline without a passed test, or with a negative or non-finite duration, is never stored (`$false`). |
 | `Remove-QuietScriptMutantCacheUnused` | Deletes the `<two hex>/<64 hex>.json` documents whose key is not in `-Keys`, removes the shard directories left empty, and returns the count. Any other file and every link is left alone. A missing directory returns 0. |
 
 The private helpers are mutation targets too:
@@ -58,7 +58,7 @@ Tests: `test/scripts/unit/lib/ScriptMutationCache.Tests.ps1`, on a fixture repos
 - removal and rename, regex escaping and order independence of `Inputs`;
 - key stability and sensitivity;
 - unreadable or mismatched documents;
-- baseline keys, the baseline round trip, its boundaries (one test, zero seconds), the values it refuses to write, and every malformed baseline document;
+- baseline keys, the baseline round trip with and without proven focused functions, its boundaries (one test, zero seconds), the values it refuses to write, and every malformed baseline document, including a malformed `Focus`;
 - pruning: exact keep set, idempotence, a missing directory and unrelated files.
 
 The library is itself a mutation target.

@@ -14,6 +14,7 @@ BeforeAll {
         'unit/Leak.Tests.ps1'="Describe 'state' { It 'starts clean' { `$Global:QuietSlotLeak | Should -BeNullOrEmpty; `$env:QUIETCLI_SLOT_LEAK | Should -BeNullOrEmpty; `$Global:QuietSlotLeak=1; `$env:QUIETCLI_SLOT_LEAK='1' } }`n"
         'unit/Seed.Tests.ps1'="Describe 'seed' { It 'is exported' { `$env:QUIETCLI_TEST_SEED | Should -BeExactly '31' } }`n"
         'unit/Unload.Tests.ps1'="Describe 'sabotage' { It 'passes' { 1 | Should -Be 1 } }`nAfterAll { Remove-Module Pester -Force }`n"
+        'unit/Phases.Tests.ps1'=$import+"Describe 'one' { It 'is constant' { 1 | Should -Be 1 } }`nDescribe 'two' { It 'value <N>' -ForEach @(@{N=1},@{N=2}) { Get-Value | Should -Be 1 } }`nDescribe 'three' { It 'is constant' { 3 | Should -Be 3 } }`n"
         'unit/Slow.Tests.ps1'="Describe 'slow' { It 'sleeps' { Start-Sleep -Seconds 120 } }`n"
     }
     $newSlot={
@@ -23,8 +24,8 @@ BeforeAll {
         foreach($entry in $tests.GetEnumerator()){$null=New-QuietTestFile ([IO.Path]::Combine($testsRoot,$entry.Key)) $entry.Value}
         Start-QuietScriptsMutationSlot -Index 0 -Directory ([IO.Path]::Combine($root,'control')) -ScriptsRoot $scripts -TestsRoot $testsRoot -WorkspaceRoot $repository -PesterModulePath $pester -Seed 31
     }
-    $runJob={param($Slot,[string[]]$Files,[switch]$Bail,[int]$Timeout=120)
-        Submit-QuietScriptsMutationJob -Slot $Slot -Name 'job' -UnitTestFiles $Files -Bail:$Bail -TimeoutSeconds $Timeout
+    $runJob={param($Slot,[string[]]$Files,[switch]$Bail,[int]$Timeout=120,[object[]]$Phases=@())
+        Submit-QuietScriptsMutationJob -Slot $Slot -Name 'job' -UnitTestFiles $Files -Bail:$Bail -Phases $Phases -TimeoutSeconds $Timeout
         Wait-QuietScriptsMutationJob -Slot $Slot
     }
     $diagnosis={param($Slot)
@@ -80,6 +81,36 @@ Describe 'Persistent mutation slot worker (Start-QuietScriptsMutationSlot, Invok
         $bailed.State|Should -BeExactly 'Failed'
         $bailed.Failed|Should -Be 1
         $bailed.Passed|Should -Be 0
+    }
+
+    It 'runs the phases one after the other and adds up their counts' {
+        $slot=& $newSlot
+        $split=& $runJob $slot @('unit/Phases.Tests.ps1') -Phases @(@('two'),@('one','three'))
+        $split.State|Should -BeExactly 'Success' -Because ((& $diagnosis $slot) -join "`n")
+        $split.Passed|Should -Be 4
+        $split.Failed|Should -Be 0
+        $full=& $runJob $slot @('unit/Phases.Tests.ps1')
+        $full.Passed|Should -Be $split.Passed -Because 'the phases select every test once'
+    }
+
+    It 'skips the next phases after a failing one with bail, and runs them all without it' {
+        $slot=& $newSlot
+        [IO.File]::WriteAllText([IO.Path]::Combine($slot.ScriptsRoot,'lib','Value.psm1'),"function Get-Value { 2 }`nExport-ModuleMember -Function Get-Value`n")
+        $bailed=& $runJob $slot @('unit/Phases.Tests.ps1') -Bail -Phases @(@('two'),@('one','three'))
+        $bailed.State|Should -BeExactly 'Failed' -Because ((& $diagnosis $slot) -join "`n")
+        $bailed.Failed|Should -Be 1
+        $bailed.Passed|Should -Be 0
+        $all=& $runJob $slot @('unit/Phases.Tests.ps1') -Phases @(@('one'),@('two'),@('three'))
+        $all.State|Should -BeExactly 'Failed'
+        $all.Failed|Should -Be 2
+        $all.Passed|Should -Be 2 -Because 'the phase after the failing one still runs'
+    }
+
+    It 'fails a phase that selects no test instead of passing it' {
+        $slot=& $newSlot
+        $empty=& $runJob $slot @('unit/Phases.Tests.ps1') -Phases @(@('one'),@('missing'))
+        $empty.State|Should -BeExactly 'Failed' -Because ((& $diagnosis $slot) -join "`n")
+        $empty.Passed|Should -Be 1
     }
 
     It 'reports a crash for an unloadable test plan and keeps serving jobs' {
