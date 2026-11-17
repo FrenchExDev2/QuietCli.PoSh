@@ -16,6 +16,8 @@ public sealed class QuietRuntime
 
     /// <summary>Sends one bounded exchange to the engine; replaceable by a session-level Send-QuietRequest function in tests.</summary>
     internal Func<Hashtable, byte[], EngineReply>? Exchange { get; set; }
+    /// <summary>Resolved telemetry policy, copied into native start metadata without business data.</summary>
+    internal bool PrepareMeasurements { get; set; }
 
     /// <summary>Unique identity of this invocation.</summary>
     public string InvocationId { get; internal set; } = "";
@@ -261,6 +263,7 @@ public sealed class QuietRuntime
             ["TimeoutSeconds"] = Convert.ToDouble(QuietRuntime.Unwrap(request["TimeoutSeconds"]), CultureInfo.InvariantCulture),
             ["SuccessExitCodes"] = ((IEnumerable)request["SuccessExitCodes"]!).Cast<object>().ToArray(),
             ["KeepInputOpen"] = request.ContainsKey("InputBytes") || request.ContainsKey("InputText") || request.ContainsKey("Interaction"),
+            ["PrepareMeasurements"] = PrepareMeasurements,
         };
         if (request.ContainsKey("InputPath"))
         {
@@ -407,6 +410,7 @@ public abstract class RuntimeCmdlet : EngineCmdlet
             InvocationId = id, ParentId = parent?.InvocationId, RootId = parent?.RootId ?? id, SessionId = sessionId, Request = request,
             Context = request.ContainsKey("Context") ? request["Context"] : parent?.Context,
             State = request.ContainsKey("State") ? request["State"] : new Hashtable(),
+            PrepareMeasurements = LanguagePrimitives.IsTrue(Setting("telemetry.enabled")),
         };
         if (request.ContainsKey("Data")) runtime.Data = request["Data"];
         runtime.CollectEvents = request.ContainsKey("CollectEvents") && LanguagePrimitives.IsTrue(request["CollectEvents"]);

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using System.Runtime.ExceptionServices;
 using FrenchExDev2.QuietCli.Storage;
 
 namespace FrenchExDev2.QuietCli;
@@ -13,13 +14,74 @@ internal sealed class MeasurementStore : IAsyncDisposable
     private readonly Task worker;
     /// <summary>Native path contract used by the isolated runtime.</summary>
     private readonly string path;
+    /// <summary>Creates the writer on its serialized worker; injectable for lifecycle assertions.</summary>
+    private readonly Func<string, Database> openWriter;
+    /// <summary>Connection used only by worker-owned write operations.</summary>
+    private Database? writer;
+    /// <summary>A failed initialization is reported by later saves without an implicit retry.</summary>
+    private ExceptionDispatchInfo? initializationError;
+    /// <summary>Serializes the single optional preparation request.</summary>
+    private readonly object preparationGate = new();
+    /// <summary>True once preparation was accepted by the bounded worker queue.</summary>
+    private bool preparationQueued;
+    /// <summary>Constant invocation upsert, prepared once per writer connection.</summary>
+    private const string InvocationInsert = "INSERT INTO quiet2_events(id,kind,timestamp_ms,parent_id,root_id,session_id,context,role,command,outcome,payload) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,outcome=excluded.outcome";
+    /// <summary>Constant idempotent delivery insert.</summary>
+    private const string DeliveryInsert = "INSERT INTO quiet2_events(id,kind,timestamp_ms,parent_id,root_id,session_id,context,role,command,outcome,payload) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING";
+    /// <summary>Reads the original delivery identity before accepting a repeated delivery.</summary>
+    private const string DeliverySelect = "SELECT kind,payload FROM quiet2_events WHERE id=?";
+    /// <summary>Stores one exact token measurement.</summary>
+    private const string TokenInsert = "INSERT INTO quiet2_delivery_tokens(delivery_id,token_profile,token_version,output_tokens) VALUES(?,?,?,?) ON CONFLICT(delivery_id,token_profile,token_version) DO NOTHING";
+    /// <summary>Checks the existing value when a token identity already exists.</summary>
+    private const string TokenSelect = "SELECT output_tokens FROM quiet2_delivery_tokens WHERE delivery_id=? AND token_profile=? AND token_version=?";
 
     /// <summary>Initializes the worker without creating a database until an operation requests it.</summary>
     /// <param name="path">Explicit filesystem location.</param>
-    internal MeasurementStore(string path)
+    /// <param name="openWriter">Optional connection factory; executed only by the writer worker.</param>
+    internal MeasurementStore(string path, Func<string, Database>? openWriter = null)
     {
         this.path = path;
-        worker = Task.Run(async () => { await foreach (var item in work.Reader.ReadAllAsync()) await item(); });
+        this.openWriter = openWriter ?? (value => new Database(value, true, cacheStatements: true));
+        worker = Task.Run(async () => {
+            try { await foreach (var item in work.Reader.ReadAllAsync()) await item(); }
+            finally { writer?.Dispose(); }
+        });
+    }
+
+    /// <summary>Queues one best-effort preparation without waiting for disk access or retaining an unobserved faulted task.</summary>
+    internal void BeginPreparation()
+    {
+        lock (preparationGate)
+        {
+            if (preparationQueued) return;
+            preparationQueued = work.Writer.TryWrite(() => {
+                try { _ = Writer(); } catch (Exception) { /* Writer retains the initialization error for the next save. */ }
+                return Task.CompletedTask;
+            });
+        }
+    }
+
+    /// <summary>Opens, initializes and prepares one writer; called exclusively on the serialized worker.</summary>
+    private Database Writer()
+    {
+        initializationError?.Throw();
+        if (writer is not null) return writer;
+        Database? candidate = null;
+        try
+        {
+            candidate = openWriter(path);
+            candidate.Execute("CREATE TABLE IF NOT EXISTS quiet2_delivery_tokens(delivery_id TEXT NOT NULL,token_profile TEXT NOT NULL,token_version TEXT NOT NULL,output_tokens INTEGER NOT NULL CHECK(output_tokens>=0),PRIMARY KEY(delivery_id,token_profile,token_version))", []);
+            foreach (string sql in new[] { InvocationInsert, DeliveryInsert, DeliverySelect, TokenInsert, TokenSelect })
+                candidate.PrepareStatement(sql);
+            writer = candidate;
+            return writer;
+        }
+        catch (Exception error)
+        {
+            candidate?.Dispose();
+            initializationError = ExceptionDispatchInfo.Capture(error);
+            throw;
+        }
     }
 
     /// <summary>Executes one database operation without concurrent connection use.</summary>
@@ -51,27 +113,26 @@ internal sealed class MeasurementStore : IAsyncDisposable
         // Reads one nullable scalar metadata field, never business Data.
         string? Value(string name) => metadata.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null ? value.GetString() : null;
         string id = kind == "delivery" ? Value("DeliveryId")! : Value("InvocationId")!;
-        using var database = new Database(path, true);
+        var database = Writer();
         if (kind == "delivery") {
             var record = metadata.Deserialize<MeasurementRecord>()!;
             database.Execute("BEGIN IMMEDIATE", []);
             try {
-                database.Execute("CREATE TABLE IF NOT EXISTS quiet2_delivery_tokens(delivery_id TEXT NOT NULL,token_profile TEXT NOT NULL,token_version TEXT NOT NULL,output_tokens INTEGER NOT NULL CHECK(output_tokens>=0),PRIMARY KEY(delivery_id,token_profile,token_version))", []);
-                database.Execute("INSERT INTO quiet2_events(id,kind,timestamp_ms,parent_id,root_id,session_id,context,role,command,outcome,payload) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING",
+                database.Execute(DeliveryInsert,
                     [id, kind, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), Value("ParentId")!, Value("RootId")!, Value("SessionId")!, Value("Context")!, Value("Role")!, Value("Command")!, Value("Outcome")!, metadata.GetRawText()]);
-                var existing = database.Query("SELECT kind,payload FROM quiet2_events WHERE id=?", [id])[0];
+                var existing = database.Query(DeliverySelect, [id])[0];
                 var original = MeasurementProjection.Read((string)existing["payload"]).Deserialize<MeasurementRecord>()!;
                 if ((string)existing["kind"] != "delivery" || original.InvocationId != record.InvocationId || original.OutputBytes != record.OutputBytes || original.Format != record.Format) throw new InvalidDataException("DeliveryIdentityConflict");
                 foreach (var token in record.TokenMeasurements ?? []) {
-                    database.Execute("INSERT INTO quiet2_delivery_tokens(delivery_id,token_profile,token_version,output_tokens) VALUES(?,?,?,?) ON CONFLICT(delivery_id,token_profile,token_version) DO NOTHING", [id, token.TokenProfile, token.TokenVersion, token.OutputTokens]);
-                    var stored = database.Query("SELECT output_tokens FROM quiet2_delivery_tokens WHERE delivery_id=? AND token_profile=? AND token_version=?", [id, token.TokenProfile, token.TokenVersion])[0];
+                    database.Execute(TokenInsert, [id, token.TokenProfile, token.TokenVersion, token.OutputTokens]);
+                    var stored = database.Query(TokenSelect, [id, token.TokenProfile, token.TokenVersion])[0];
                     if ((long)stored["output_tokens"] != token.OutputTokens) throw new InvalidDataException("TokenMeasurementConflict");
                 }
                 database.Execute("COMMIT", []);
             } catch { database.TryRollback(); throw; }
             return true;
         }
-        database.Execute("INSERT INTO quiet2_events(id,kind,timestamp_ms,parent_id,root_id,session_id,context,role,command,outcome,payload) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,outcome=excluded.outcome",
+        database.Execute(InvocationInsert,
             [id, kind, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), Value("ParentId")!, Value("RootId")!, Value("SessionId")!, Value("Context")!, Value("Role")!, Value("Command")!, Value("Outcome")!, metadata.GetRawText()]);
         return true;
     });

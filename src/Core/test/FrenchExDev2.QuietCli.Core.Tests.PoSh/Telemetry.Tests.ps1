@@ -1,3 +1,60 @@
+function Test-QuietSqlitePreparation {
+    <#
+    .SYNOPSIS
+    Verifies telemetry preparation while a native child is waiting for input, in both engine hosts.
+    .PARAMETER WorkspaceRoot
+    Built monorepo and fixture root.
+    .PARAMETER RunDirectory
+    Owned report directory containing isolated databases.
+    #>
+    param([string]$WorkspaceRoot,[string]$RunDirectory)
+    $fixture=[IO.Path]::Combine($WorkspaceRoot,'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture/QuietCli.Fixture.dll')
+    $dotnet=(Get-Command dotnet -CommandType Application|Select-Object -First 1).Source
+    $values=(Get-QuietTestConfiguration).Values
+    $previous=@{Mode=$values['engine.hosting'];Enabled=$values['telemetry.enabled'];Database=$values['telemetry.database']}
+    [void][IO.Directory]::CreateDirectory($RunDirectory)
+    try{
+        foreach($mode in @('InProcess','Process')){
+            Stop-QuietEngine
+            $database=[IO.Path]::Combine($RunDirectory,($mode+'.sqlite'))
+            $values['engine.hosting']=$mode;$values['telemetry.database']=$database;$values['telemetry.enabled']=$false
+            $null=Get-QuietEngine
+            if([IO.File]::Exists($database)){throw 'EngineInspectionCreatedDatabase'}
+            $disabled=quiet -AsObject -Complete {param($runtime) 'disabled'} $dotnet $fixture emit 1
+            Assert-QuietEqual $disabled.Outcome Success
+            if([IO.File]::Exists($database)){throw 'DisabledTelemetryPreparedDatabase'}
+            $values['telemetry.enabled']=$true
+            $prepared=quiet -AsObject -State @{Database=$database} -Data @{ObservedReady=$false} -Output {param($event,$runtime)} -Interaction {
+                param($runtime)
+                try{
+                    $deadline=[DateTimeOffset]::UtcNow.AddSeconds(10)
+                    while(![IO.File]::Exists($runtime.State.Database)){
+                        if([DateTimeOffset]::UtcNow -gt $deadline){throw 'PreparationDidNotOverlapNativeExecution'}
+                        [Threading.Tasks.Task]::Delay(20).GetAwaiter().GetResult()
+                    }
+                    $runtime.Data.ObservedReady=$runtime.NativeStarted -and !$runtime.Completed
+                }finally{$runtime.CompleteInput()}
+            } $dotnet $fixture copy
+            Assert-QuietEqual $prepared.Outcome Success
+            Assert-QuietEqual $prepared.Data.ObservedReady $true
+            Assert-QuietEqual $prepared.Measurement.StorageError $null
+            if((Get-QuietCliGain).Invocations -lt 1){throw 'PreparationLostImmediateMeasurementVisibility'}
+            Stop-QuietEngine
+            $parent=[IO.Path]::Combine($RunDirectory,($mode+'-blocked'))
+            [IO.File]::WriteAllText($parent,'fixture',[Text.UTF8Encoding]::new($false))
+            $values['telemetry.database']=[IO.Path]::Combine($parent,'cannot-create.sqlite')
+            $failedStorage=quiet -AsObject -Complete {param($runtime) 'business-completed'} $dotnet $fixture emit 1
+            Assert-QuietEqual $failedStorage.Outcome Success
+            Assert-QuietEqual $failedStorage.Data 'business-completed'
+            Assert-QuietEqual $failedStorage.Measurement.Status StorageUnavailable
+            if(!$failedStorage.Measurement.StorageError){throw 'PreparationFailureWasNotReported'}
+        }
+    }finally{
+        Stop-QuietEngine
+        $values['engine.hosting']=$previous.Mode;$values['telemetry.enabled']=$previous.Enabled;$values['telemetry.database']=$previous.Database
+    }
+}
+
 function Test-QuietAllocationTelemetry {
     <#
     .SYNOPSIS

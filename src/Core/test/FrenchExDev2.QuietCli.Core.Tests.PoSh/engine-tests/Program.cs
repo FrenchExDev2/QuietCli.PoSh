@@ -41,6 +41,7 @@ internal static class Program
             await ConfigurationCmdletCases.RunAsync(Case, moduleRoot);
             await DeliveryCmdletCases.RunAsync(Case, moduleRoot);
             await UiRendererCases.RunAsync(Case);
+            await SqlitePersistenceCases.RunAsync(Case);
             Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Partial = caseFilter is not null, Incomplete = stoppedAt is not null, StoppedAt = stoppedAt, Skipped = skipped, Cases = results }));
             return failed == 0 ? 0 : 1;
         }
@@ -111,12 +112,14 @@ internal static class Program
         if (arguments.Contains("--telemetry-only"))
         {
             await TelemetryCases.RunAsync(Case, store);
+            await SqlitePersistenceCases.RunAsync(Case);
             Console.WriteLine(JsonSerializer.Serialize(new { Passed = passed, Failed = failed, Partial = caseFilter is not null, Incomplete = stoppedAt is not null, StoppedAt = stoppedAt, Skipped = skipped, Cases = results }));
             return failed == 0 ? 0 : 1;
         }
         await SecondPassCases.RunAsync(Case, store, directory);
         await RecallCases.RunAsync(Case);
         await TelemetryCases.RunAsync(Case, store);
+        await SqlitePersistenceCases.RunAsync(Case);
         await CoreMigrationCases.RunAsync(Case, directory, Path.GetFullPath(Path.Combine(arguments[0], "../../../../..")));
         await FacadeOptionCases.RunAsync(Case);
         await ProtocolClientCases.RunAsync(Case);

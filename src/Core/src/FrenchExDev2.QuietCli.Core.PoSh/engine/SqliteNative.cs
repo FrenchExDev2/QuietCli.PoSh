@@ -79,6 +79,15 @@ namespace FrenchExDev2.QuietCli.Storage {
         /// <param name="statement">Statement handle to release.</param>
         /// <returns>SQLite finalization code.</returns>
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int sqlite3_finalize(IntPtr statement);
+        /// <summary>Resets execution without clearing the bound values.</summary>
+        /// <param name="statement">Owned prepared statement.</param>
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int sqlite3_reset(IntPtr statement);
+        /// <summary>Releases all values retained by a prepared statement.</summary>
+        /// <param name="statement">Owned prepared statement.</param>
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int sqlite3_clear_bindings(IntPtr statement);
+        /// <summary>Returns the number of positional bindings required by a statement.</summary>
+        /// <param name="statement">Owned prepared statement.</param>
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int sqlite3_bind_parameter_count(IntPtr statement);
         /// <summary>Advances a SQLite statement.</summary>
         /// <remarks>Internal P/Invoke declaration for the SQLite C API; handles are owned by Database and no sqlite3 executable is launched.</remarks>
         /// <param name="statement">Prepared and bound statement to advance.</param>
@@ -156,11 +165,22 @@ namespace FrenchExDev2.QuietCli.Storage {
         public static string NativeDirectory = "";
         /// <summary>Native db contract used by the isolated runtime.</summary>
         IntPtr db;
+        /// <summary>Opt-in, bounded statement ownership for a serialized writer.</summary>
+        private readonly Dictionary<string, IntPtr> statements = new(StringComparer.Ordinal);
+        /// <summary>Zero retains the one-shot behavior used by independent readers.</summary>
+        private readonly int statementCapacity;
         /// <summary>Opens a QuietCli database and initializes its schema when permitted.</summary>
         /// <remarks>Uses FULLMUTEX and a 2000 ms busy timeout. When creating, rejects a foreign database, then transactionally initializes QuietCli2 schema 1. Read-only mode requires QuietCli2 schema 1. Closes the handle on error.</remarks>
         /// <param name="path">Path to the SQLite file to open.</param>
         /// <param name="create">True permits reading, writing, creation and migration; false enforces read-only access.</param>
-        public Database(string path, bool create) {
+        public Database(string path, bool create) : this(path, create, false) { }
+
+        /// <summary>Opens a connection with optional bounded statement reuse for a serialized owner.</summary>
+        /// <param name="path">Path to the SQLite file to open.</param>
+        /// <param name="create">Whether writing and schema initialization are permitted.</param>
+        /// <param name="cacheStatements">Keeps at most sixteen prepared statements until connection disposal; requires serialized access.</param>
+        public Database(string path, bool create, bool cacheStatements) {
+            statementCapacity = cacheStatements ? 16 : 0;
             try {
                 if (create) Protect(path);
                 Check(Sqlite.sqlite3_open_v2(path, out db, (create ? 6 : 1) | 0x10000, IntPtr.Zero));
@@ -205,15 +225,46 @@ namespace FrenchExDev2.QuietCli.Storage {
             if (code != 0) throw new InvalidOperationException("SQLite " + code + ": " +
                 (db == IntPtr.Zero ? "cannot open database" : Marshal.PtrToStringUTF8(Sqlite.sqlite3_errmsg(db))));
         }
-        /// <summary>Prepares a query and binds positional values.</summary>
-        /// <remarks>Unwraps PSObject; binds null, UTF-8 text, floating-point values or integers according to type. Finalizes the statement if preparation or binding fails. The caller must finalize the returned handle.</remarks>
+        /// <summary>Compiles one statement or obtains its connection-owned cached handle.</summary>
+        /// <param name="sql">Constant SQL text, never an interpolated business value.</param>
+        internal IntPtr PrepareCached(string sql) {
+            ObjectDisposedException.ThrowIf(db == IntPtr.Zero, this);
+            if (statements.TryGetValue(sql, out var cached)) return cached;
+            IntPtr statement = IntPtr.Zero;
+            try {
+                Check(Sqlite.sqlite3_prepare_v2(db, sql, -1, out statement, IntPtr.Zero));
+                if (statement == IntPtr.Zero) throw new InvalidOperationException("EmptySqlStatement");
+            } catch { if (statement != IntPtr.Zero) Sqlite.sqlite3_finalize(statement); throw; }
+            if (statements.Count < statementCapacity) statements.Add(sql, statement);
+            return statement;
+        }
+        /// <summary>Primes a reusable statement, finalizing it if the bounded cache cannot retain it.</summary>
+        /// <param name="sql">Constant SQL text to compile before the first write.</param>
+        internal void PrepareStatement(string sql) {
+            var statement = PrepareCached(sql);
+            Release(sql, statement, true);
+        }
+        /// <summary>Resets cached handles and releases bindings, or finalizes a one-shot handle.</summary>
+        /// <param name="sql">Statement cache key.</param>
+        /// <param name="statement">Owned handle.</param>
+        /// <param name="succeeded">Cleanup errors may be reported only if no earlier operation failed.</param>
+        private void Release(string sql, IntPtr statement, bool succeeded) {
+            if (statements.TryGetValue(sql, out var cached) && cached == statement) {
+                int reset = Sqlite.sqlite3_reset(statement);
+                int clear = Sqlite.sqlite3_clear_bindings(statement);
+                if (succeeded) { Check(reset); Check(clear); }
+            } else Sqlite.sqlite3_finalize(statement);
+        }
+        /// <summary>Prepares a query and binds every positional value without retaining earlier values.</summary>
+        /// <remarks>Unwraps PSObject; binds null, UTF-8 text, floating-point values or integers. Failed operations release their bindings before reuse.</remarks>
         /// <param name="sql">Query with positional ? parameters.</param>
         /// <param name="values">Values to bind in order, using SQLite indices starting at one.</param>
         /// <returns>Prepared statement handle.</returns>
         IntPtr Prepare(string sql, object[] values) {
             IntPtr statement = IntPtr.Zero;
             try {
-                Check(Sqlite.sqlite3_prepare_v2(db, sql, -1, out statement, IntPtr.Zero));
+                statement = PrepareCached(sql);
+                if (Sqlite.sqlite3_bind_parameter_count(statement) != values.Length) throw new ArgumentException("SqliteBindingCountMismatch");
                 for (int i = 0; i < values.Length; i++) {
                     object value = values[i]; int code;
                 if (value is not null && value.GetType().FullName == "System.Management.Automation.PSObject") value = value.GetType().GetProperty("BaseObject").GetValue(value);
@@ -227,7 +278,7 @@ namespace FrenchExDev2.QuietCli.Storage {
                     Check(code);
                 }
                 return statement;
-            } catch { if (statement != IntPtr.Zero) Sqlite.sqlite3_finalize(statement); throw; }
+            } catch { if (statement != IntPtr.Zero) Release(sql, statement, false); throw; }
         }
         /// <summary>Ends a failed or read-only transaction; a rollback error must not replace the original outcome.</summary>
         public void TryRollback() {
@@ -235,21 +286,23 @@ namespace FrenchExDev2.QuietCli.Storage {
             catch (Exception) { /* The caller reports the original failure; a failed rollback leaves nothing more to undo. */ }
         }
         /// <summary>Executes a SQL statement and ignores any rows it returns.</summary>
-        /// <remarks>Advances to SQLITE_DONE (101), checks other outcomes and always finalizes the statement. Queries are prepared with bound values.</remarks>
+        /// <remarks>Advances to SQLITE_DONE (101), checks other outcomes and releases or resets the statement.</remarks>
         /// <param name="sql">SQL statement to execute.</param>
         /// <param name="values">Values bound to positional parameters.</param>
         public void Execute(string sql, object[] values) {
             IntPtr statement = Prepare(sql, values);
-            try { int code; do { code = Sqlite.sqlite3_step(statement); } while (code == 100); if (code != 101) Check(code); }
-            finally { Sqlite.sqlite3_finalize(statement); }
+            bool succeeded = false;
+            try { int code; do { code = Sqlite.sqlite3_step(statement); } while (code == 100); if (code != 101) Check(code); succeeded = true; }
+            finally { Release(sql, statement, succeeded); }
         }
         /// <summary>Reads rows from a parameterized query.</summary>
-        /// <remarks>Converts SQLite columns to Int64, Double, null or UTF-8 text according to type. Always finalizes the statement and propagates read errors.</remarks>
+        /// <remarks>Converts columns to Int64, Double, null or UTF-8 text. Always releases or resets the statement and propagates read errors.</remarks>
         /// <param name="sql">SQL read query.</param>
         /// <param name="values">Values bound to positional parameters.</param>
         /// <returns>List of dictionaries indexed by column name.</returns>
         public List<Dictionary<string, object>> Query(string sql, object[] values) {
             var rows = new List<Dictionary<string, object>>(); IntPtr statement = Prepare(sql, values);
+            bool succeeded = false;
             try {
                 int code;
                 while ((code = Sqlite.sqlite3_step(statement)) == 100) {
@@ -264,11 +317,16 @@ namespace FrenchExDev2.QuietCli.Storage {
                     rows.Add(row);
                 }
                 if (code != 101) Check(code);
-            } finally { Sqlite.sqlite3_finalize(statement); }
+                succeeded = true;
+            } finally { Release(sql, statement, succeeded); }
             return rows;
         }
         /// <summary>Closes the SQLite handle still held.</summary>
         /// <remarks>Uses sqlite3_close_v2, then resets the handle to zero; subsequent calls have no effect.</remarks>
-        public void Dispose() { if (db != IntPtr.Zero) { Sqlite.sqlite3_close_v2(db); db = IntPtr.Zero; } }
+        public void Dispose() {
+            foreach (var statement in statements.Values) Sqlite.sqlite3_finalize(statement);
+            statements.Clear();
+            if (db != IntPtr.Zero) { Sqlite.sqlite3_close_v2(db); db = IntPtr.Zero; }
+        }
     }
 }

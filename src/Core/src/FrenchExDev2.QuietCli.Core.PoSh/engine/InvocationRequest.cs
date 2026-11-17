@@ -18,7 +18,8 @@ namespace FrenchExDev2.QuietCli;
 /// <param name="SuccessCodes">Accepted native exit codes.</param>
 /// <param name="KeepInputOpen">Caller will feed input interactively.</param>
 /// <param name="InputPath">Optional explicit input file.</param>
-internal sealed record InvocationRequest(string Id, string FilePath, string[] Arguments, string Directory, IDictionary Environment, string Transport, int Columns, int Rows, double TimeoutSeconds, double DrainTimeoutSeconds, int ReadBlockBytes, int[] SuccessCodes, bool KeepInputOpen, string? InputPath)
+/// <param name="PrepareMeasurements">Enqueues storage preparation after native startup when telemetry is enabled.</param>
+internal sealed record InvocationRequest(string Id, string FilePath, string[] Arguments, string Directory, IDictionary Environment, string Transport, int Columns, int Rows, double TimeoutSeconds, double DrainTimeoutSeconds, int ReadBlockBytes, int[] SuccessCodes, bool KeepInputOpen, string? InputPath, bool PrepareMeasurements = false)
 {
     /// <summary>Validates the whole start request before any native process is created.</summary>
     /// <param name="request">Control header; contains no caller business object.</param>
@@ -39,7 +40,8 @@ internal sealed record InvocationRequest(string Id, string FilePath, string[] Ar
         var environment = new Hashtable();
         foreach (var entry in request.GetProperty("Environment").EnumerateObject()) environment[entry.Name] = entry.Value.ValueKind == JsonValueKind.Null ? null : entry.Value.GetString();
         string? input = request.TryGetProperty("InputPath", out var inputValue) && inputValue.ValueKind == JsonValueKind.String ? inputValue.GetString() : null;
-        return new(id, request.GetProperty("FilePath").GetString()!, request.GetProperty("ArgumentList").EnumerateArray().Select(x => x.GetString()!).ToArray(), request.GetProperty("WorkingDirectory").GetString()!, environment, transport, columns, rows, timeout, drain, size, request.GetProperty("SuccessExitCodes").EnumerateArray().Select(x => x.GetInt32()).ToArray(), request.GetProperty("KeepInputOpen").GetBoolean(), input);
+        bool prepare = request.TryGetProperty("PrepareMeasurements", out var preparation) && preparation.GetBoolean();
+        return new(id, request.GetProperty("FilePath").GetString()!, request.GetProperty("ArgumentList").EnumerateArray().Select(x => x.GetString()!).ToArray(), request.GetProperty("WorkingDirectory").GetString()!, environment, transport, columns, rows, timeout, drain, size, request.GetProperty("SuccessExitCodes").EnumerateArray().Select(x => x.GetInt32()).ToArray(), request.GetProperty("KeepInputOpen").GetBoolean(), input, prepare);
     }
 
     /// <summary>Validates direct and isolated launch options before any side effect.</summary>
