@@ -64,9 +64,19 @@ Over-inclusion only costs reuse, so a broad glob is safer than a missing one. Ke
 
 ## In CI
 
-[tooling-ci.yml](../../docs/ci/github/script-tooling-ci.md) runs these tests whenever the CI plan selects tooling, which includes every change under `test/scripts/`:
-- `script-tests` runs `Invoke-ScriptsTests.ps1 -Headless -Coverage` on Windows and on Linux, with the pinned tools restored by the `cache-test-tools` action.
-- `script-mutation` runs one job per target of `mutation.targets.psd1`, with `-PruneCache`. Each job restores the newest cache of its own target and saves it afterwards, even after a failure.
-- `script-mutation-complete` then requires every target exactly once, at or above its break, through [Assert-ScriptMutationShards](../../docs/scripts/Assert-ScriptMutationShards.md).
+[tooling-ci.yml](../../docs/ci/github/script-tooling-ci.md) runs these tests in one of two scopes.
+- In the full scope (a tooling or shared change, or a manual `Tooling` or `all` dispatch), everything runs.
+- In the `scripts` scope (only `scripts/` or `test/scripts/` changed), only the test files and targets that the change reaches run. [ScriptsImpact.psm1](../../docs/scripts/lib/ScriptsImpact.md) selects them.
 
-A new target therefore needs no workflow edit beyond its matrix entry. The `ToolingCi` workflow contract test fails until the matrix and the targets file agree.
+The jobs are:
+- `script-tests` runs on Windows and on Linux, with the pinned tools restored by the `cache-test-tools` action. It runs `Invoke-ScriptsTests.ps1 -Headless -Coverage` for every test, or `-Headless -Path <selected files>` for a selection, without coverage.
+- `script-mutation` runs one job per selected target of `mutation.targets.psd1`, with `-PruneCache`. Each job restores the newest cache of its own target and saves it afterwards, even after a failure.
+- `script-mutation-complete` then requires every selected target exactly once, at or above its break, through [Assert-ScriptMutationShards](../../docs/scripts/Assert-ScriptMutationShards.md) `-Target`.
+
+The selection follows the same literal references as the mutation cache, plus two headers, each on a line of its own near the top of a test file:
+- `#ScriptsImpact: AllScripts` selects the file for any script change. Use it for a test that reads every script without naming it, such as an inventory or an analyzer.
+- `#ScriptsImpact: RequiresBuild` makes `script-tests` build Core and Git first. Use it for a test that drives the built `quiet` engine.
+
+A change to the test runner, to a file outside `unit/` and `integration/`, to a data file or a deletion selects everything.
+
+A new target needs no workflow edit: the matrix is the `script-selection` output.

@@ -10,7 +10,7 @@ Write-QuietCiPlanReport -Plan $plan -Base $base -Revision $revision -Directory .
 
 ## Dependencies and side effects
 
-Writes plan.json and impact.md; optional SummaryPath appends Markdown to the planning check summary. Output labels unselected scopes as untested and does not treat a build or smoke as full qualification.
+Writes plan.json and impact.md; optional SummaryPath appends Markdown to the planning check summary. Below the full and smoke suites, impact.md names the tooling scope (`Tooling: full.`, `Tooling: scripts.` or `Tooling: none.`) when the plan carries one. Output labels unselected scopes as untested and does not treat a build or smoke as full qualification.
 
 ## Critical review
 
