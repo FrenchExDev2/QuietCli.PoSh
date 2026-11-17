@@ -93,6 +93,53 @@ function Get-QuietScriptMutantTimeout {
     [int][Math]::Max(60,[Math]::Ceiling(3*$BaselineSeconds+30))
 }
 
+function Get-QuietScriptMutationFocus {
+    <#
+    .SYNOPSIS
+    Maps each target function to {Focus, Rest}: FullName patterns of its own top-level test blocks, then of all the others.
+    .DESCRIPTION
+    A top-level Describe or Context focuses on a function when its name holds the function name as a whole word, as in
+    'Get-A' or 'Get-A and Get-B'. Focus and Rest are escaped block names that together select every test of the files
+    once, so running Focus then Rest with bail kills the same mutants as one full run, but reaches the function's own
+    tests first. A function with no own block, or whose blocks are all the blocks, gets no entry. Nothing is returned
+    when a source does not parse or a top-level block name is not a literal, since Rest could then miss tests.
+    .PARAMETER Sources
+    Text of each unit test file of the target.
+    .PARAMETER Functions
+    Target function names.
+    #>
+    param([Parameter(Mandatory)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Sources,[Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Functions)
+    $focus=[ordered]@{}
+    $names=[Collections.Generic.List[string]]::new()
+    $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $isBlock={param($node)$node -is [Management.Automation.Language.CommandAst] -and $node.GetCommandName() -in @('Describe','Context')}
+    foreach($text in $Sources){
+        $errors=$null
+        $ast=[Management.Automation.Language.Parser]::ParseInput($text,[ref]$null,[ref]$errors)
+        if($errors.Count){return [ordered]@{}}
+        foreach($block in $ast.FindAll($isBlock,$true)){
+            $parent=$block.Parent;$nested=$false
+            while($null -ne $parent -and !$nested){$nested=& $isBlock $parent;$parent=$parent.Parent}
+            if($nested){continue}
+            $name=$block.CommandElements[1]
+            if($name -is [Management.Automation.Language.CommandParameterAst] -and $name.ParameterName -ieq 'Name'){$name=if($null -ne $name.Argument){$name.Argument}else{$block.CommandElements[2]}}
+            if($name -isnot [Management.Automation.Language.StringConstantExpressionAst]){return [ordered]@{}}
+            # Pester matches FullName with -like, which ignores case: names differing only by case are one pattern.
+            if($seen.Add($name.Value)){$names.Add($name.Value)}
+        }
+    }
+    foreach($function in $Functions){
+        $word='(?<![\w-])'+[regex]::Escape($function)+'(?![\w-])'
+        $own=@($names|Where-Object {$_ -cmatch $word})
+        if($own.Count -eq 0 -or $own.Count -eq $names.Count){continue}
+        $focus[$function]=[pscustomobject][ordered]@{
+            Focus=[string[]]@($own|ForEach-Object {[WildcardPattern]::Escape($_)})
+            Rest=[string[]]@($names|Where-Object {$_ -notin $own}|ForEach-Object {[WildcardPattern]::Escape($_)})
+        }
+    }
+    $focus
+}
+
 function Measure-QuietScriptMutationScore {
     <#
     .SYNOPSIS
@@ -345,4 +392,4 @@ function Assert-QuietScriptMutationShards {
     [pscustomobject][ordered]@{SchemaVersion=1;Passed=$true;Targets=@($rows)}
 }
 
-Export-ModuleMember -Function Get-QuietScriptMutants,New-QuietScriptMutantSource,Get-QuietScriptMutantStatus,Get-QuietScriptMutantTimeout,Measure-QuietScriptMutationScore,Read-QuietScriptMutationTargets,Select-QuietScriptMutationEquivalents,New-QuietScriptMutationReport,ConvertTo-QuietScriptMutationMarkdown,Assert-QuietScriptMutationShards
+Export-ModuleMember -Function Get-QuietScriptMutants,New-QuietScriptMutantSource,Get-QuietScriptMutantStatus,Get-QuietScriptMutantTimeout,Get-QuietScriptMutationFocus,Measure-QuietScriptMutationScore,Read-QuietScriptMutationTargets,Select-QuietScriptMutationEquivalents,New-QuietScriptMutationReport,ConvertTo-QuietScriptMutationMarkdown,Assert-QuietScriptMutationShards

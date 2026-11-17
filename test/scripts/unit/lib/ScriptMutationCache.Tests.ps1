@@ -600,6 +600,31 @@ Describe 'Read-QuietScriptMutationBaseline and Write-QuietScriptMutationBaseline
         $baseline=Read-QuietScriptMutationBaseline -Directory $cache -Key $key
         $baseline.Passed|Should -BeExactly 12
         $baseline.Seconds|Should -Be 3.3
+        ,$baseline.Focus|Should -BeOfType [string[]]
+        $baseline.Focus.Count|Should -Be 0 -Because 'a baseline written without a split proves none'
+    }
+
+    It 'round-trips the functions whose split was proven, <Case>' -ForEach @(
+        @{Case='one';Focus=@('Get-A')}
+        @{Case='several, in order';Focus=@('Get-B','Get-A','Set-C')}
+    ) {
+        $cache=& $newCache
+        Write-QuietScriptMutationBaseline -Directory $cache -Key $key -Passed 4 -Seconds 1 -Focus $Focus|Should -BeTrue
+        $baseline=Read-QuietScriptMutationBaseline -Directory $cache -Key $key
+        ,$baseline.Focus|Should -BeOfType [string[]]
+        $baseline.Focus|Should -Be $Focus
+    }
+
+    It 'reads <Case> as no proven split' -ForEach @(
+        @{Case='a document without Focus';Text='{"SchemaVersion":1,"Kind":"Baseline","Key":"KEY","Passed":3,"Seconds":2}'}
+        @{Case='an empty Focus';Text='{"SchemaVersion":1,"Kind":"Baseline","Key":"KEY","Passed":3,"Seconds":2,"Focus":[]}'}
+    ) {
+        $cache=& $newCache
+        & $writeDocument $cache $Text.Replace('KEY',$key)
+        $baseline=Read-QuietScriptMutationBaseline -Directory $cache -Key $key
+        $baseline.Passed|Should -Be 3
+        ,$baseline.Focus|Should -BeOfType [string[]]
+        $baseline.Focus.Count|Should -Be 0
     }
 
     It 'records the smallest valid baseline: one test in no time' {
@@ -656,6 +681,10 @@ Describe 'Read-QuietScriptMutationBaseline and Write-QuietScriptMutationBaseline
         @{Case='an infinite duration';Text='{"SchemaVersion":1,"Kind":"Baseline","Key":"KEY","Passed":1,"Seconds":"Infinity"}'}
         @{Case='a text duration';Text='{"SchemaVersion":1,"Kind":"Baseline","Key":"KEY","Passed":1,"Seconds":"slow"}'}
         @{Case='a missing duration';Text='{"SchemaVersion":1,"Kind":"Baseline","Key":"KEY","Passed":1}'}
+        @{Case='a null Focus';Text='{"SchemaVersion":1,"Kind":"Baseline","Key":"KEY","Passed":1,"Seconds":1,"Focus":null}'}
+        @{Case='a numeric Focus entry';Text='{"SchemaVersion":1,"Kind":"Baseline","Key":"KEY","Passed":1,"Seconds":1,"Focus":["Get-A",3]}'}
+        @{Case='a blank Focus entry';Text='{"SchemaVersion":1,"Kind":"Baseline","Key":"KEY","Passed":1,"Seconds":1,"Focus":["Get-A"," "]}'}
+        @{Case='an object Focus';Text='{"SchemaVersion":1,"Kind":"Baseline","Key":"KEY","Passed":1,"Seconds":1,"Focus":{"Get-A":true}}'}
     ) {
         $cache=& $newCache
         if($null -ne $Text){& $writeDocument $cache $Text.Replace('KEY',$key)}

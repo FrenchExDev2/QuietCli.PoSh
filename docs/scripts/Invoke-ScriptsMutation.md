@@ -62,10 +62,11 @@ flowchart LR
     S --> H{Cached outcome for the mutant key?}
     H -- yes --> K
     H -- no --> Q{Baseline already proven on this machine?}
-    Q -- yes --> M
+    Q -- yes, with its proven splits --> M
     Q -- no --> B{Baseline twice: unmutated unit tests pass, same count?}
     B -- no --> C[Crash: ScriptMutationBaselineFailed, incomplete report of the finished targets]
-    B -- yes --> M[Each mutant: write into an idle slot, run its unit tests with bail, restore]
+    B -- yes --> F[Prove each function's Focus then Rest split on the unmutated tests]
+    F --> M[Each mutant: write into an idle slot, run its function's blocks first, then the rest, with bail, restore]
     M --> K[Killed / Survived / Timeout / CompileError]
     K --> P[report.json, report.md, mutants.json, cache writes, optional prune]
     P --> V{Every target >= Break?}
