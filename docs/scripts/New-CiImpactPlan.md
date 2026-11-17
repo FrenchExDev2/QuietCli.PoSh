@@ -4,6 +4,8 @@ Plans CI for an immutable Base/Revision pair using the complete `git diff --no-r
 
 For pull_request, lib/CiImpact selects affected suites through declared transitive dependencies. Shared/unknown sources require All. Multiple impacted companions share one All matrix. Documentation-only PR changes avoid product runs. Reviewed run-profile command/store/definition paths select tooling only; shared profiler/encoding/report helpers and unknown paths retain All. Mixed paths union requirements. For push, Get-DevelopQualification must verify identical-tree PR evidence before product replay is removed; a miss requires All.
 
+Outputs are written once each, in a stable order: `suite`, `run_products`, `run_tooling`, `image_suites`, `matrix`, `run_distribution`, `run_smokes`, `smoke_suites`. `image_suites` is the compact JSON array of the fully qualified suites; the `images` warm-up job of `companions-ci.yml` passes it to `New-CiSuiteImage.ps1` so every chain of the run is prepared once per RID before qualification. Changes below `test/scripts/` select tooling only. `test/scripts/integration/entrypoints/New-CiImpactPlan.Tests.ps1` runs the script on a fresh Git copy of the working tree for each companion, documentation, script tests and shared automation.
+
 ## Critical review and verdict
 
 scripts/New-CiImpactPlan.ps1:1 fails on incomplete/failed diffs instead of claiming no changes. Both rename sides remain visible. WhatIf performs no native/network/filesystem work. No branch protections or publications are changed. Zero/deleted bases fail rather than silently skipping qualification; normal develop updates use an existing before commit.

@@ -46,6 +46,8 @@ Write-QuietCiPlanReport -Plan $plan -Base $Base -Revision $Revision -Directory $
 $values="suite=$($plan.Suite)`nrun_products=$($plan.RunProducts.ToString().ToLowerInvariant())`nrun_tooling=$($plan.RunTooling.ToString().ToLowerInvariant())`n"
 [IO.File]::AppendAllText($OutputPath,$values,[Text.UTF8Encoding]::new($false))
 $outputs=@{
+    # Every fully qualified suite runs on a Linux image chain that the companions workflow warms once per RID.
+    image_suites=(ConvertTo-Json -InputObject @($plan.FullSuites) -Compress)
     matrix=(@{include=$rows}|ConvertTo-Json -Depth 6 -Compress)
     smoke_suites=(ConvertTo-Json -InputObject @($plan.SmokeSuites) -Compress)
     run_smokes=($plan.SmokeSuites.Count -gt 0).ToString().ToLowerInvariant()

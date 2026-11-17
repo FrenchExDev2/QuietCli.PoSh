@@ -28,6 +28,21 @@ suites on their exact RID/CLR-major target; other declared controls are explicit
 one ephemeral registry credential across layers, clearing it on completion or failure. Registry
 identity, native architecture, integrity and publication-event guards remain in the image engine.
 
+`Invoke-QuietCiSuiteImages` prepares the chains of several suites for one RID in a single job, the
+`images` warm-up of `companions-ci.yml`. Suites that resolve to the same ordered layers share one
+chain; chains run sequentially, shortest first, so a parent is resolved or published before any
+overlay that extends it. It resolves every suite before preparing anything, hands the ephemeral
+registry credential to each chain and clears it on exit or failure. `Fingerprint` is the SHA-256 of
+the sorted `RegistryPath@Fingerprint` identities of the chains, independent of the suite order, and
+`CacheHit` is true only when every chain hit. An empty suite list fails with `CiSuiteImagesEmpty`.
+
+`Assert-QuietCiCompanionImages` enforces the image participation rule before workflows are generated
+(`Sync-QuietCompanionWorkflows`). A companion without its own image (`image: none`) is legitimate and
+runs on its parent's image. A companion whose product module ships `ci/Get-CiImageArguments.ps1` or a
+`Dockerfile`/`Containerfile` must be an `overlay` (`CiCompanionImageMustBeOverlay`), and every overlay
+must ship the contract (`CiCompanionOverlayContractMissing`). Test projects are not inspected: their
+container files are fixtures, not CI images. The base is never rejected.
+
 The YAML contains data and exported command identifiers, never shell fragments. A new companion
 adds a declaration and, when it needs native tools, its existing `ci/Get-CiImageArguments.ps1`
 contract and fetch/lock resources. The shared workflow requires no companion-specific job or
@@ -38,7 +53,7 @@ condition. Image optimization, scheduling limits and hosted qualification remain
 
 Purpose: Topologically orders product dependencies and rejects cycles or unknown references.
 
-Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
+Boundary: **Library**. Preview API: **Library**. Guarded functions: 2.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->

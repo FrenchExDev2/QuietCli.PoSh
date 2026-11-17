@@ -17,6 +17,8 @@ scope/result mismatch in deterministic order. A failed product, tooling and dist
 therefore appear together instead of hiding behind the first rejected result. Any issue still
 throws before producing a successful receipt; skipped or incomplete required work never qualifies.
 
+A job outside the plan's selection, such as the develop image warm-up `images` of companions-ci.yml (skipped on pull requests), may succeed or be skipped. A failed or cancelled one is still rejected (`CiPlanJobFailed: images`).
+
 ## Critical review
 
 - The implementation in scripts/lib/CiPlanResults.psm1 keeps executable orchestration in entry points and helper functions in libraries; imports do not start business operations.

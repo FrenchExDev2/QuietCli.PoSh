@@ -107,6 +107,24 @@ target side effects are not inferred from XML alone.
 Transitive central pinning without a proven resolved consumer graph conservatively
 selects importers; such a package is never silently classified as unused.
 
+## Linux image warm-up
+
+The plan also emits `image_suites`: the selected suites whose Linux execution needs a CI image.
+On develop pushes and manual runs of this repository, companions-ci's `images` job warms them
+before any qualification starts:
+- one job per RID, in the `quietcli2-ci-images-<rid>` group, with `cancel-in-progress: false`;
+- each job probes the registry, then prepares and publishes missing layers sequentially, base first
+  and then each overlay after its parent.
+
+The product matrix waits for it and passes `images_prepared`, so the per-suite `linux-images`
+producer of ci.yml is skipped. A warm-up failure or cancellation blocks the required check. PRs
+and direct calls keep the per-suite producer, which never publishes from a PR. Its concurrency
+group includes the suite, so parallel suites never evict one another.
+
+Image participation per companion is `none` or `overlay` (see
+[Add a companion](../README-add-companion.md)). Test files under `test/scripts/` select the
+tooling workflow only.
+
 The final QuietCli required CI check always runs, including documentation-only PRs.
 It requires successful planning, source/layout checks and every selected campaign.
 Missing, cancelled, failed or wrongly skipped jobs reject the result. This exact

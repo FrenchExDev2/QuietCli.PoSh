@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 9358FF7C965AD471945C008E3F25A67C6EFF387EFC189CBE9AF7119DD5797BDF -->
+<!-- workflow-source-sha256: E48A67D201034D6885E4EC1FC8E8901E2821BFF884B30AF0FCD8DCFE989E1D44 -->
 
 ## Purpose
 
@@ -21,6 +21,8 @@ Uses profile validation, source-bound build preparation, explicit selected quali
 The stable automatic gate requires planning, source checks, generated-layout tests and every selected job. Skipped scopes are untested, not passed. A smoke/build result is not full product or publication qualification. Full native product runs retain their declared host/RID matrix, profiling policy and explicit TTY/Preview exclusions. Cache hits require source/payload/target verification; partial restores rebuild stale distributions.
 
 The Linux image producer serializes per suite and RID (`quietcli2-suite-image-<suite>-<rid>`). GitHub keeps only one pending job per concurrency group, so a group shared by the parallel Core/Git/Vagrant calls from companions-ci.yml cancelled the waiting suites' producers. Concurrent publication of a shared base remains safe because GHCR cache entries are content-addressed by fingerprint.
+
+`images_prepared` (workflow_call, default false) skips that per-suite producer. companions-ci.yml passes it as true when its `images` job warmed every selected chain once per RID; linux-selection already accepts a skipped producer and verifies the final image identity itself. Standalone calls and dispatches keep their own producer.
 
 Local WorkspaceLayout and CompanionSmoke reports exercise the selection and actual integration paths. Hosted matrix results must be inspected for the delivered revision. Authored workflow-source-sha256 receipts are reviewed separately from generated YAML and job graphs.
 
@@ -72,7 +74,7 @@ flowchart TD
 | --- | --- | --- | --- | --- |
 | component-check | reuses ./.github/workflows/workspace-component-ci.yml | validate | inputs.qualification_mode == 'smoke' &#124;&#124; inputs.qualification_mode == 'build' |  |
 | linux | runner ${{ matrix.runner }}; container ${{ matrix.image }} | linux-selection | ${{ !cancelled() && needs.linux-selection.result == 'success' && needs.linux-selection.outputs.has_container == 'true' }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Get-CompanionBuildKey.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/New-CoreEvidenceBundle.ps1, ./scripts/New-CorePerformanceReport.ps1 |
-| linux-images | runner ${{ matrix.runner }} | linux-matrix | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiSuiteImage.ps1 |
+| linux-images | runner ${{ matrix.runner }} | linux-matrix | github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') && !inputs.images_prepared | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiSuiteImage.ps1 |
 | linux-matrix | runner ubuntu-latest | validate | inputs.qualification_mode == '' &#124;&#124; inputs.qualification_mode == 'full' | ./scripts/Initialize-CiCompanions.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/lib/GitHubCi.psm1, ./scripts/Select-PowerShellCiMatrix.ps1 |
 | linux-result | runner ubuntu-latest | linux-selection, linux, linux-test-driver | ${{ always() && !inputs.images_only && (inputs.qualification_mode == '' &#124;&#124; inputs.qualification_mode == 'full') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/lib/GitHubCi.psm1 |
 | linux-selection | runner ubuntu-latest | linux-matrix, linux-images | ${{ always() && !cancelled() && !inputs.images_only && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' &#124;&#124; needs.linux-images.result == 'skipped') }} | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Select-GitHubCiMatrix.ps1 |

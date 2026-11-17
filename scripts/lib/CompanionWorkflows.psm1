@@ -74,8 +74,8 @@ jobs:
 %PRODUCT%
 '@
     foreach($profile in Get-QuietCompanionProfiles $WorkspaceRoot){
-        $product=if($profile.Engine -ceq 'ci.yml'){'      run_tooling: false'+[char]10+'      collect_performance: '+$profile.CollectPerformance.ToString().ToLowerInvariant()}else{''}
-        $packages=if($profile.Engine -ceq 'ci.yml'){'  packages: write'}else{''}
+        $product=if($profile.Engine -ceq 'ci.yml'){'      run_tooling: false'+[char]10+'      collect_performance: '+$profile.CollectPerformance.ToString().ToLowerInvariant()}
+        $packages=if($profile.Engine -ceq 'ci.yml'){'  packages: write'}  # String.Replace with null removes the placeholder
         $content=$template.Replace('%SUITE%',$profile.Suite).Replace('%ENGINE%',$profile.Engine).Replace('%SOLUTION%',$profile.SolutionPath).Replace('%SOURCE%',$profile.SourcePath).Replace('%TEST%',$profile.TestPath).Replace('%PRODUCT%',$product).Replace('%PACKAGES%',$packages).Replace('%MODE%',('$'+'{{ inputs.qualification_mode || ''full'' }}')).TrimEnd()+[char]10
         [pscustomobject]@{Path=$profile.Workflow;Content=$content;Profile=$profile}
     }
@@ -92,6 +92,12 @@ function Sync-QuietCompanionWorkflows {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[switch]$Apply)
+    # The generated workflows warm only overlay images; a companion image outside that contract fails first.
+    # Without a catalogue there is no image to check: profiles then either reject a grouped workspace
+    # (CompanionCiCatalogueRequired) or, for a legacy fixture, declare nothing.
+    if(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/companions.yml'))){
+        $null=Assert-QuietCiCompanionImages -WorkspaceRoot $WorkspaceRoot -Configuration (Read-QuietCiCompanions $WorkspaceRoot)
+    }
     foreach($entry in Get-QuietCompanionWorkflowDefinitions $WorkspaceRoot){
         $path=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $entry.Path)
         if((Test-Path -LiteralPath $path) -and [IO.File]::ReadAllText($path,[Text.Encoding]::UTF8) -ceq $entry.Content){continue}

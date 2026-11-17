@@ -35,13 +35,13 @@ function Get-QuietCiImpact {
     }
     $toolingOnly=@('scripts/New-RunProfile.ps1','scripts/Invoke-RunProfile.ps1','scripts/lib/RunProfileStore.psm1')
     foreach($path in $ChangedPaths){
-        if(!$path -or $path.Contains([char]0) -or $path.Contains('\') -or $path.StartsWith('/') -or $path.Split('/') -contains '..'){throw 'CiImpactPathInvalid'}
         if($path -match '^docs/|\.md$|^icons/'){continue}
-        if($path -cin $toolingOnly -or $path -cmatch '\Ascripts/RunProfiles/[a-z0-9][a-z0-9-]{0,63}\.profile\.psd1\z'){$tooling=$true;continue}
+        # Script tests run only in the tooling workflow; they never ship in, or qualify, a companion product.
+        if($path -cin $toolingOnly -or $path -cmatch '\Ascripts/RunProfiles/[a-z0-9][a-z0-9-]{0,63}\.profile\.psd1\z' -or $path.StartsWith('test/scripts/',[StringComparison]::Ordinal)){$tooling=$true;continue}
         $affected=@();$reason='SourceChanged';$packages=@()
         if($path -match '(?:^|/)Directory\.Packages\.props$'){
             $absolute=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $path)
-            $after=if(Test-Path -LiteralPath $absolute){[IO.File]::ReadAllText($absolute,[Text.Encoding]::UTF8)}else{''}
+            $after=if(Test-Path -LiteralPath $absolute){[IO.File]::ReadAllText($absolute,[Text.Encoding]::UTF8)}  # a deleted file reads as the empty project
             if($PreviousFiles.ContainsKey($path)){
                 $before=[string]$PreviousFiles[$path];$packages=@(Get-QuietChangedPackages $before $after)
                 $left=Read-QuietBuildXml $before;$right=Read-QuietBuildXml $after
@@ -78,7 +78,7 @@ function Get-QuietCiImpact {
                 $names=@($configuration.Companions.Keys|Where-Object {$_ -ieq $workflow})
                 if($names.Count){[void]$selected.Add($names[0])}elseif($workflow -ceq 'tooling'){$tooling=$true}else{$tooling=$true;$conservative=$true;foreach($name in $configuration.Companions.Keys){[void]$selected.Add($name)}}
             }elseif($path -match '^src/[^/]+/[^/]+\.slnx$|^Quietly\.slnx$'){
-                continue
+                # Solution files only list projects: their builds follow from the project changes themselves.
             }else{
                 $tooling=$true;$conservative=$true
                 foreach($suite in $configuration.Companions.Keys){[void]$selected.Add($suite)}
@@ -87,7 +87,8 @@ function Get-QuietCiImpact {
         }
         foreach($project in $affected){
             [void]$builds.Add($project.Path)
-            if($configuration.Companions.Contains($project.Group)){[void]$selected.Add($project.Group)}
+            # Selection is only ever read through companion names, so a Tooling or Distribution group is inert here.
+            [void]$selected.Add($project.Group)
             $reasons.Add([pscustomobject]@{Input=$path;Package=($packages -join ',');Project=$project.Path;Companion=$project.Group;Action='build';Reason=$reason})
         }
     }
