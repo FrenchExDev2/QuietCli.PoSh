@@ -19,7 +19,7 @@
     {
       "Path": "scripts/Invoke-WorkspaceChecks.ps1",
       "Reason": "Check-only ordered registry; guarded parser and pinned analyzer preparation may write prerequisite resource/cache files, including the ScriptAnalyzer cache. No documentation Apply, build, staging, commit or publication; WhatIf propagates.",
-      "SHA256": "70248F085F37DF2E5E9BCB164DA19B7338C49108947B2A2C81E54F9D10D51EA3"
+      "SHA256": "9649BB9A4F53752091AB438E01679E6626C83FAACD09461C2FB0E0B4BCC2EE56"
     },
     {
       "Path": "scripts/Test-Resources.ps1",

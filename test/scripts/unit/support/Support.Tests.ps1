@@ -1,6 +1,6 @@
 #requires -Version 7.6
 BeforeAll {
-    foreach($name in @('TestWorkspace','Generators','Property')){Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support',$name+'.psm1')) -Force -DisableNameChecking -ErrorAction Stop}
+    foreach($name in @('TestWorkspace','Generators','Property','CiFixtures')){Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support',$name+'.psm1')) -Force -DisableNameChecking -ErrorAction Stop}
     $seed=Get-QuietTestSeed
 }
 
@@ -81,5 +81,34 @@ Describe 'TestWorkspace' {
         $result.ExitCode|Should -Be 3
         $result.Output|Should -Match 'got v e'
         $result.TimedOut|Should -BeFalse
+    }
+}
+
+Describe 'CiFixtures' {
+    It 'builds catalogues with Core as the unique base, acyclic requirements and one suite and two projects per companion' {
+        $null=Invoke-QuietProperty -Name 'ci-catalogue' -Seed $seed -Count 50 -Generator {param($random)New-QuietCiCatalogue $random} -Property {param($catalogue)
+            $companions=$catalogue.Configuration.Companions
+            if($catalogue.Configuration.Base -cne 'Core' -or @($companions.Values|Where-Object Image -CEQ base).Name -cne 'Core'){throw 'base'}
+            $seen=[Collections.Generic.List[string]]::new()
+            foreach($name in $companions.Keys){
+                foreach($dependency in $companions[$name].requires){if($dependency -cnotin $seen){throw "forward edge $name>$dependency"}}
+                if($name -cne 'Core' -and 'Core' -cnotin $companions[$name].requires){throw "core $name"}
+                $seen.Add($name)
+                if(@($catalogue.Configuration.Suites.Values|Where-Object Group -CEQ $name).Count -ne 1){throw "suite $name"}
+                if(@($catalogue.Modules|Where-Object SolutionGroup -CEQ $name).Count -ne 2){throw "projects $name"}
+            }
+            foreach($group in 'Tooling','Distribution'){if(@($catalogue.Modules|Where-Object {$_.SolutionGroup -ceq $group -and $_.IsTest}).Count -ne 1){throw $group}}
+            $true
+        }
+    }
+    It 'returns owned paths under one project of the requested companion' {
+        $random=New-QuietRandom 7;$catalogue=New-QuietCiCatalogue $random
+        foreach($index in 1..30){
+            $path=Get-QuietCiOwnedPath $random $catalogue 'Core'
+            $path|Should -Match '\Asrc/Core/(src/FrenchExDev2\.QuietCli\.Core\.PoSh|test/FrenchExDev2\.QuietCli\.Core\.Tests\.PoSh)/[^/]'
+        }
+    }
+    It 'replays the same catalogue for the same seed' {
+        (ConvertTo-Json (New-QuietCiCatalogue (New-QuietRandom 11)) -Depth 6)|Should -BeExactly (ConvertTo-Json (New-QuietCiCatalogue (New-QuietRandom 11)) -Depth 6)
     }
 }

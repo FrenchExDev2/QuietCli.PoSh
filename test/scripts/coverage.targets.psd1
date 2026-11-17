@@ -6,5 +6,12 @@
         'lib/ScriptsTests.psm1'
         'lib/RunToolCache.psm1'
         'lib/ScriptAnalysis.psm1'
+        'lib/ScriptMutation.psm1'
+        'lib/ScriptMutators.psm1'
+        'lib/ScriptsInventory.psm1'
+        'lib/CiImpact.psm1'
+        'lib/CiCompanions.psm1'
+        'lib/CompanionWorkflows.psm1'
+        'lib/CiPlanResults.psm1'
     )
 }

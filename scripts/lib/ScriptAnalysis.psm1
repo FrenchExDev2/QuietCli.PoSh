@@ -78,9 +78,8 @@ function Get-QuietScriptAnalysisFunctionName {
     param([Parameter(Mandatory)][Management.Automation.Language.Ast]$Ast,[int]$StartOffset,[int]$EndOffset)
     $best=$null
     foreach($function in $Ast.FindAll({param($node)$node -is [Management.Automation.Language.FunctionDefinitionAst]},$true)){
-        if($function.Extent.StartOffset -le $StartOffset -and $function.Extent.EndOffset -ge $EndOffset){
-            if($null -eq $best -or ($function.Extent.EndOffset-$function.Extent.StartOffset) -lt ($best.Extent.EndOffset-$best.Extent.StartOffset)){$best=$function}
-        }
+        # FindAll walks the tree in preorder, and enclosing functions nest: the last one found is the innermost.
+        if($function.Extent.StartOffset -le $StartOffset -and $function.Extent.EndOffset -ge $EndOffset){$best=$function}
     }
     if($best){$best.Name}else{''}
 }
@@ -98,8 +97,8 @@ function ConvertTo-QuietScriptAnalysisFinding {
     #>
     param([Parameter(Mandatory)][object]$Record,[Parameter(Mandatory)][string]$RelativePath,[Parameter(Mandatory)][Management.Automation.Language.Ast]$Ast)
     $extent=$Record.Extent
-    $text=if($extent){[string]$extent.Text}else{''}
-    $function=if($extent){Get-QuietScriptAnalysisFunctionName -Ast $Ast -StartOffset ([int]$extent.StartOffset) -EndOffset ([int]$extent.EndOffset)}else{''}
+    $text='';$function=''
+    if($extent){$text=[string]$extent.Text;$function=Get-QuietScriptAnalysisFunctionName -Ast $Ast -StartOffset ([int]$extent.StartOffset) -EndOffset ([int]$extent.EndOffset)}
     [pscustomobject][ordered]@{
         Rule=[string]$Record.RuleName;Path=$RelativePath.Replace('\','/');Function=$function;ExtentSHA256=(Get-QuietScriptAnalysisSha256 $text)
         Line=[int]$Record.Line;Column=[int]$Record.Column;Severity=[string]$Record.Severity;Message=[string]$Record.Message
@@ -137,11 +136,10 @@ function Read-QuietScriptAnalysisBaseline {
     param([Parameter(Mandatory)][string]$Path)
     if(![IO.File]::Exists($Path)){throw 'ScriptAnalysisBaselineMissing'}
     try{$document=[IO.File]::ReadAllText($Path)|ConvertFrom-Json -ErrorAction Stop}catch{throw 'ScriptAnalysisBaselineInvalid: syntax'}
-    if($null -eq $document -or $document -isnot [pscustomobject] -or $document.SchemaVersion -ne 1){throw 'ScriptAnalysisBaselineInvalid: schema'}
+    if($document -isnot [pscustomobject] -or $document.SchemaVersion -ne 1){throw 'ScriptAnalysisBaselineInvalid: schema'}
     $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $entries=[Collections.Generic.List[object]]::new()
     foreach($entry in @($document.Entries)){
-        if($null -eq $entry){continue}
         if($entry -isnot [pscustomobject] -or [string]::IsNullOrWhiteSpace([string]$entry.Rule) -or [string]::IsNullOrWhiteSpace([string]$entry.Path) -or $null -eq $entry.Function){throw 'ScriptAnalysisBaselineInvalid: entry'}
         if([string]$entry.Path -match '(^/|\\|^[A-Za-z]:|(^|/)\.\.(/|$))'){throw 'ScriptAnalysisBaselineInvalid: path'}
         if([string]$entry.ExtentSHA256 -cnotmatch '^[A-F0-9]{64}$'){throw 'ScriptAnalysisBaselineInvalid: hash'}

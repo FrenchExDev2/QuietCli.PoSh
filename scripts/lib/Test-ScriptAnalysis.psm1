@@ -3,6 +3,7 @@
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'ScriptAnalysis.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'RunToolCache.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceJson.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'ScriptsTests.psm1')) -DisableNameChecking -ErrorAction Stop
 
 function Invoke-QuietScriptTestScriptAnalysis {
     <#
@@ -23,6 +24,7 @@ function Invoke-QuietScriptTestScriptAnalysis {
     #>
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$ToolRoot,[string]$CacheDirectory,[switch]$UpdateBaseline,[switch]$Offline,[int]$TimeoutSeconds=900)
     $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot);$ToolRoot=[IO.Path]::GetFullPath($ToolRoot)
+    if(!(Test-QuietScriptsTestsApplicable -WorkspaceRoot $WorkspaceRoot)){return [pscustomobject][ordered]@{Check='ScriptAnalyzer';Applicable=$false}}
     $testsRoot=[IO.Path]::Combine($WorkspaceRoot,'test','scripts')
     $settings=Read-QuietScriptAnalysisSettings ([IO.Path]::Combine($testsRoot,'ScriptAnalyzerSettings.psd1'))
     $baselinePath=[IO.Path]::Combine($testsRoot,'ScriptAnalyzer.baseline.json')

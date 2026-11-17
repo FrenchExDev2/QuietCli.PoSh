@@ -23,6 +23,7 @@ $registry=@(
     @{Name='GitHubWorkflowDocs';Script='Test-GitHubWorkflowDocs.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
     @{Name='ScriptShouldProcess';Script='Test-ScriptShouldProcess.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
     @{Name='ScriptAnalyzer';Script='Test-ScriptAnalysis.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
+    @{Name='ScriptsInventory';Script='Test-ScriptsInventory.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
     @{Name='Resources';Script='Test-Resources.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
     @{Name='ScriptContracts';Script='Test-ScriptContracts.ps1';Arguments=@{WorkspaceRoot=$WorkspaceRoot}},
     @{Name='DocsCredits';Script='Sync-DocsCredits.ps1';Arguments=@{DocsPath=([IO.Path]::Combine($WorkspaceRoot,'docs'));RootPath=$WorkspaceRoot;CreditsPath=([IO.Path]::Combine($WorkspaceRoot,'CREDITS.md'))}},

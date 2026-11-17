@@ -12,6 +12,8 @@
 !/docs/scripts/lib/*.md
 !/test/scripts/unit/lib/
 !/test/scripts/unit/lib/*.ps1
+!/test/scripts/integration/lib/
+!/test/scripts/integration/lib/*.ps1
 /.cache/
 # Third-party binaries restored from NuGet by scripts/Restore-CoreResources.ps1; see
 # resources/dependencies.lock.json and docs/scripts/Restore-CoreResources.md. The quietcli-pty

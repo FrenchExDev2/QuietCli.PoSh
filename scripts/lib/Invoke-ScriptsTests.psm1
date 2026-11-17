@@ -4,6 +4,7 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'ScriptsTests.psm1')) -DisableNa
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'RunToolCache.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceJson.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'ReportPaths.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'ScriptsWorker.psm1')) -DisableNameChecking -ErrorAction Stop
 
 function Invoke-QuietScriptInvokeScriptsTests {
     <#
@@ -58,19 +59,7 @@ function Invoke-QuietScriptInvokeScriptsTests {
     $requestPath=[IO.Path]::Combine($RunDirectory,'request.json')
     Write-WorkspaceJson $requestPath $request
     Write-Host ("Scripts tests: kind=$Kind files=$($plan.Files.Count) seed=$Seed partial=$($plan.Partial) run=$RunDirectory")
-    Import-Module ([IO.Path]::Combine($PSScriptRoot,'Common.psm1')) -DisableNameChecking -ErrorAction Stop
-    $runner=[IO.Path]::Combine($PSHOME,$(if($IsWindows){'pwsh.exe'}else{'pwsh'}))
-    $command="Import-Module '"+([IO.Path]::Combine($PSScriptRoot,'Invoke-ScriptsTests.psm1')).Replace("'","''")+"' -DisableNameChecking -ErrorAction Stop; Invoke-QuietScriptsTestWorker -RequestPath '"+$requestPath.Replace("'","''")+"'"
-    $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
-    $options=@{FilePath=$runner;ArgumentList=@('-NoProfile','-NonInteractive','-EncodedCommand',$encoded);PassThru=$true;RedirectStandardOutput=([IO.Path]::Combine($RunDirectory,'worker.stdout.log'));RedirectStandardError=([IO.Path]::Combine($RunDirectory,'worker.stderr.log'))}
-    if($IsWindows){$options.WindowStyle='Hidden'}
-    $worker=Start-Process @options
-    $monitor=$null
-    if(!$Headless){
-        $monitorPath=[IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),'Watch-Tests.ps1')
-        $monitor=Start-Process -FilePath $runner -WindowStyle Normal -ArgumentList @('-NoProfile','-File',(ConvertTo-CiArgument $monitorPath),'-RunDirectory',(ConvertTo-CiArgument $RunDirectory)) -RedirectStandardError ([IO.Path]::Combine($RunDirectory,'monitor.stderr.log')) -PassThru
-    }
-    $summary=Wait-WorkspaceWorker -Worker $worker -RunDirectory $RunDirectory -WorkspaceRoot $WorkspaceRoot -Runner $runner -Monitor $monitor -TimeoutSeconds $TimeoutSeconds
+    $summary=Invoke-QuietScriptsSupervisedWorker -ModulePath ([IO.Path]::Combine($PSScriptRoot,'Invoke-ScriptsTests.psm1')) -WorkerFunction Invoke-QuietScriptsTestWorker -RequestPath $requestPath -RunDirectory $RunDirectory -WorkspaceRoot $WorkspaceRoot -Headless:$Headless -TimeoutSeconds $TimeoutSeconds
     $state=[string]$summary.State.State
     $reportPath=[IO.Path]::Combine($RunDirectory,'report.json')
     $report=if([IO.File]::Exists($reportPath)){Get-Content -LiteralPath $reportPath -Raw -Encoding utf8|ConvertFrom-Json}else{$null}
@@ -99,12 +88,18 @@ function Invoke-QuietScriptsTestWorker {
         $env:QUIETCLI_TEST_SEED=[string]$request.Seed
         $env:QUIETCLI_SCRIPTS_ROOT=$request.ScriptsRoot
         $env:QUIETCLI_WORKSPACE_ROOT=$request.WorkspaceRoot
-        Import-Module $request.PesterModulePath -Force -DisableNameChecking -ErrorAction Stop
-        $loaded=@(Get-Module Pester)
+        # Global: the test files run outside this module (see below) and must resolve Describe/It to the
+        # pinned Pester; otherwise PowerShell autoloads another Pester from PSModulePath, which starts its own run.
+        Import-Module $request.PesterModulePath -Force -Global -DisableNameChecking -ErrorAction Stop
+        $loaded=@(Get-Module Pester -All)
         if($loaded.Count -ne 1 -or $loaded[0].Version -ne [version]'6.2.0'){throw 'ScriptsTestPesterVersionMismatch'}
         Write-Host ("Seed: $($request.Seed) (replay with -Seed $($request.Seed))")
         $configuration=New-PesterConfiguration -Hashtable $request.Configuration
-        $result=Invoke-Pester -Configuration $configuration
+        # Pester runs the test files in its caller's session state. Calling it from this module would let
+        # the trusted libraries imported here shadow the ones the tests import from QUIETCLI_SCRIPTS_ROOT,
+        # so it is called from an empty dynamic module whose command lookup falls through to the global scope.
+        $testScope=New-Module -Name QuietScriptsTestScope -ScriptBlock {}
+        $result=& $testScope { param($InvokePester,$Configuration) & $InvokePester -Configuration $Configuration } (Get-Command Invoke-Pester) $configuration
         $report=ConvertTo-QuietScriptsTestReport -Result $result -Plan $request.Plan -Seed ([int]$request.Seed) -CoverageTarget $request.CoverageTarget
         Write-WorkspaceJson ([IO.Path]::Combine($runDirectory,'report.json')) $report
         $status=Update-QuietScriptsTestStatus -Status $status -Report $report

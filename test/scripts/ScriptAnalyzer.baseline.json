@@ -241,13 +241,6 @@
       "Count": 1
     },
     {
-      "Rule": "PSAvoidAssignmentToAutomaticVariable",
-      "Path": "scripts/lib/Start-QuietWorkBranch.psm1",
-      "Function": "Invoke-QuietWorkBranchGit",
-      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
-      "Count": 1
-    },
-    {
       "Rule": "PSAvoidUsingEmptyCatchBlock",
       "Path": "scripts/Build-Workspace.ps1",
       "Function": "",

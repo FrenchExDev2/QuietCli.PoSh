@@ -1,6 +1,6 @@
 # scripts-docs-check.yml
 
-<!-- workflow-source-sha256: 29B3008717B4B8ECA0BC4737938E0902B0A634868716195E30507436A0D9FCD0 -->
+<!-- workflow-source-sha256: 82C1E42893E99D551C30A2757B0D3AD0DC917CCF42BECE49C87BA4AFA0136ED8 -->
 
 ## Purpose
 
@@ -10,11 +10,11 @@ Shared automation-contract pipeline for complete Core test classifications, scri
 
 ## Triggers
 
-PR/develop path filters cover scripts, all Core test-project sources, docs/scripts, docs/ci/github, docs/resources, README-resources.md, Core resource declarations, the shared archive-cache action, the ShouldProcess policy and every .github/workflows file; manual dispatch is also available.
+PR/develop path filters cover scripts, test/scripts, all Core test-project sources, docs/scripts, docs/ci/github, docs/resources, README-resources.md, Core resource declarations, every shared action, the ShouldProcess policy and every .github/workflows file; manual dispatch is also available.
 
 ## Checked scope
 
-Runs the shared eight-check registry: case metadata, scripts index, workflow receipts/graphs/index, ShouldProcess policy, resources, script contracts, documentation credits and aggregate credits. Checks are read-only apart from declared consumer preparation of verified resources. They execute no product companion campaign and cannot establish hosted functional or ARM64 qualification. See [the script map](../README.md#script-map).
+Runs the shared check registry of [Invoke-WorkspaceChecks](../../scripts/Invoke-WorkspaceChecks.md), from workspace solutions and companion workflows to ScriptAnalyzer, the scripts inventory, resources, script contracts and credits. Checks are read-only apart from declared consumer preparation of verified resources, the pinned test tools and the ignored `.cache/script-analysis` documents. They execute no product companion campaign and cannot establish hosted functional or ARM64 qualification. See [the script map](../README.md#script-map).
 
 <!-- grouped-layout-review:begin -->
 ## Grouped source layout
@@ -42,7 +42,13 @@ flowchart TD
 
 ## Scripts and effects
 
-After checkout the optional shared cache action reuses NuGet resource archives, keyed by OS and resource-lock hash. Invoke-WorkspaceChecks first runs TestCaseMetadata, then ScriptsReadme, GitHubWorkflowDocs, ScriptShouldProcess, Resources, ScriptContracts, DocsCredits and Credits. The classification gate parses every Core case/metadata declaration without importing Core or running tests; omissions and malformed classifications fail, including cases excluded by a runtime filter. Workflow parsing independently calls Ensure-QuietResource to verify/prepare the pinned YamlDotNet payload; there is no required preceding restore step. Preparation can write only the selected resource and download cache through ShouldProcess. Checks do not Apply documentation, build, stage, commit, push or access Gallery secrets; permissions are contents:read.
+After checkout three caches are restored:
+
+- `cache-resources` reuses the NuGet resource archives, keyed by OS and resource-lock hash;
+- `cache-test-tools` reuses the pinned Pester and PSScriptAnalyzer archives, keyed by OS and the hash of `scripts/lib/RunToolCache.psm1`. [Initialize-TestTools](../../scripts/Initialize-TestTools.md) re-verifies each SHA-256 before extracting;
+- `.cache/script-analysis/*.json` holds the per-file ScriptAnalyzer findings. A new cache is saved for each run attempt, and the newest one is restored by prefix. Each document is keyed by file path, file SHA-256 and analyzer configuration, so an older cache only costs a re-analysis of the edited files, never a stale finding.
+
+The checks then run in registry order, including [Test-ScriptAnalysis](../../scripts/Test-ScriptAnalysis.md) and the scripts inventory ratchet. The classification gate parses every Core case/metadata declaration without importing Core or running tests; omissions and malformed classifications fail, including cases excluded by a runtime filter. Workflow parsing independently calls Ensure-QuietResource to verify/prepare the pinned YamlDotNet payload; there is no required preceding restore step. Preparation can write only the selected resource and download cache through ShouldProcess. Checks do not Apply documentation, build, stage, commit, push or access Gallery secrets; permissions are contents:read.
 
 The shared registry also enforces RAC-PS-004: Verb-Noun entry points, no functions in scripts, libraries under scripts/lib, explicit quiet imports and System.IO.Path composition. AGENTS.md and the automation contract are included in the workflow path filters.
 

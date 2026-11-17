@@ -35,6 +35,19 @@ Describe 'Test-ScriptAnalysis.ps1' {
         $second.Output|Should -Match 'cached=2 to analyze=0'
     }
 
+    It 'reports a flat fixture without test/scripts as not applicable, and fails closed once it has src/' {
+        $workspace=& $newWorkspace @{'scripts/lib/Bad.psm1'="function Get-Thing { Join-Path 'a' 'b' }`nExport-ModuleMember -Function Get-Thing`n"}
+        Remove-Item -LiteralPath ([IO.Path]::Combine($workspace,'test')) -Recurse
+        $skipped=& $run $workspace
+        $skipped.ExitCode|Should -Be 0 -Because ($skipped.Output+$skipped.Error)
+        $skipped.Output|Should -Not -Match 'Progress: Analyze'
+        [IO.Directory]::Exists([IO.Path]::Combine($workspace,'.analysis-cache'))|Should -BeFalse
+        [void][IO.Directory]::CreateDirectory([IO.Path]::Combine($workspace,'src'))
+        $grouped=& $run $workspace
+        $grouped.ExitCode|Should -Be 1
+        ($grouped.Output+$grouped.Error)|Should -Match 'ScriptsTestsRootMissing: test/scripts'
+    }
+
     It 'fails on a new violation of a repository rule and names it' {
         $workspace=& $newWorkspace @{'scripts/lib/Bad.psm1'="function Get-Thing { Join-Path 'a' 'b' }`nExport-ModuleMember -Function Get-Thing`n"}
         $outcome=& $run $workspace

@@ -113,6 +113,8 @@ Describe 'Read-QuietScriptAnalysisBaseline' {
         @{Reason='count';Text=('{"SchemaVersion":1,"Entries":[{"Rule":"R","Path":"a.ps1","Function":"","ExtentSHA256":"'+('C'*64)+'","Count":"1"}]}')}
         @{Reason='count';Text=('{"SchemaVersion":1,"Entries":[{"Rule":"R","Path":"a.ps1","Function":"","ExtentSHA256":"'+('C'*64)+'","Count":1.5}]}')}
         @{Reason='duplicate';Text=('{"SchemaVersion":1,"Entries":[{"Rule":"R","Path":"a.ps1","Function":"","ExtentSHA256":"'+('C'*64)+'","Count":1},{"Rule":"R","Path":"a.ps1","Function":"","ExtentSHA256":"'+('C'*64)+'","Count":2}]}')}
+        @{Reason='entry';Text='{"SchemaVersion":1,"Entries":[null]}'}
+        @{Reason='schema';Text='null'}
     ) {
         $path=& $writeBaseline $Text
         {Read-QuietScriptAnalysisBaseline $path}|Should -Throw -ExpectedMessage "ScriptAnalysisBaseline*: $Reason"
@@ -159,9 +161,16 @@ Describe 'Read-QuietScriptAnalysisSettings' {
         @{Reason='orphan-reason';Text="@{Severity=@('Error');ExclusionReasons=@{A='aaaaaaaaaaaaaaaaaaaaaaaa'}}"}
         @{Reason='duplicate';Text="@{Severity=@('Error');ExcludeRules=@('A');TestExcludeRules=@('A');ExclusionReasons=@{A='aaaaaaaaaaaaaaaaaaaaaaaa'}}"}
         @{Reason='reasons';Text="@{Severity=@('Error');ExclusionReasons='x'}"}
+        @{Reason='reason';Text="@{Severity=@('Error');ExcludeRules=@(' ');ExclusionReasons=@{' '='a reason that is long enough'}}"}
+        @{Reason='reason';Text="@{Severity=@('Error');ExcludeRules=@('A');ExclusionReasons=@{A='1234567890123456789'}}"}
     ) {
         $path=& $writeSettings $Text
         {Read-QuietScriptAnalysisSettings $path}|Should -Throw -ExpectedMessage "ScriptAnalysisSettingsInvalid: $Reason"
+    }
+    It 'accepts the Information severity and a reason of exactly 20 characters' {
+        $settings=Read-QuietScriptAnalysisSettings (& $writeSettings "@{Severity=@('Information');ExcludeRules=@('A');ExclusionReasons=@{A='12345678901234567890'}}")
+        $settings.Settings.Severity|Should -Be @('Information')
+        $settings.Settings.ExcludeRules|Should -Be @('A')
     }
     It 'rejects a missing file' {
         {Read-QuietScriptAnalysisSettings ([IO.Path]::Combine($TestDrive,'none.psd1'))}|Should -Throw -ExpectedMessage 'ScriptAnalysisSettingsMissing'
@@ -185,6 +194,8 @@ Describe 'Findings and keys' {
         Get-QuietScriptAnalysisFunctionName -Ast $ast -StartOffset $join.Extent.StartOffset -EndOffset $join.Extent.EndOffset|Should -BeExactly 'Inner'
         Get-QuietScriptAnalysisFunctionName -Ast $ast -StartOffset $item.Extent.StartOffset -EndOffset $item.Extent.EndOffset|Should -BeExactly 'Outer'
         Get-QuietScriptAnalysisFunctionName -Ast $ast -StartOffset 0 -EndOffset 2|Should -BeExactly ''
+        $outer=$ast.Find({param($n)$n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Outer'},$true)
+        Get-QuietScriptAnalysisFunctionName -Ast $ast -StartOffset $outer.Extent.StartOffset -EndOffset $outer.Extent.EndOffset|Should -BeExactly 'Outer' -Because 'a finding spanning the whole function belongs to it'
     }
     It 'keys a finding independently of line endings, line number and path separators' {
         $ast=[Management.Automation.Language.Parser]::ParseInput('Join-Path a b',[ref]$null,[ref]$null)
@@ -192,10 +203,23 @@ Describe 'Findings and keys' {
         $one=ConvertTo-QuietScriptAnalysisFinding -Record ([pscustomobject]@{RuleName='R';Extent=(& $extent "a`r`nb");Line=1;Column=1;Severity='Warning';Message='m'}) -RelativePath 'scripts\a.ps1' -Ast $ast
         $two=ConvertTo-QuietScriptAnalysisFinding -Record ([pscustomobject]@{RuleName='R';Extent=(& $extent "a`nb");Line=9;Column=4;Severity='Warning';Message='m'}) -RelativePath 'scripts/a.ps1' -Ast $ast
         $one.Path|Should -BeExactly 'scripts/a.ps1'
+        $one.ExtentSHA256|Should -BeExactly (Get-QuietScriptAnalysisSha256 "a
+b")
         Get-QuietScriptAnalysisFindingKey $one|Should -BeExactly (Get-QuietScriptAnalysisFindingKey $two)
     }
+    It 'names the function enclosing a record extent' {
+        $ast=[Management.Automation.Language.Parser]::ParseInput('function F { Join-Path a b }',[ref]$null,[ref]$null)
+        $finding=ConvertTo-QuietScriptAnalysisFinding -Record ([pscustomobject]@{RuleName='R';Extent=[pscustomobject]@{Text='Join-Path a b';StartOffset=13;EndOffset=26};Line=1;Column=14;Severity='Warning';Message='m'}) -RelativePath 'a.ps1' -Ast $ast
+        $finding.Function|Should -BeExactly 'F'
+    }
+    It 'normalizes a lone carriage return like a line feed' {
+        Get-QuietScriptAnalysisSha256 "a`rb`r`nc"|Should -BeExactly (Get-QuietScriptAnalysisSha256 "a`nb`nc")
+    }
+    It 'derives the cache key from the versioned, normalized inputs' {
+        Get-QuietScriptAnalysisCacheKey -RelativePath 'scripts\a.ps1' -ContentSHA256 'ab' -ConfigurationSHA256 'cd'|Should -BeExactly (Get-QuietScriptAnalysisSha256 ('v1'+[char]0x1F+'scripts/a.ps1'+[char]0x1F+'AB'+[char]0x1F+'CD'))
+    }
     It 'accepts a record without extent' {
-        $ast=[Management.Automation.Language.Parser]::ParseInput('1',[ref]$null,[ref]$null)
+        $ast=[Management.Automation.Language.Parser]::ParseInput('function F { 1 }',[ref]$null,[ref]$null)
         $finding=ConvertTo-QuietScriptAnalysisFinding -Record ([pscustomobject]@{RuleName='R';Extent=$null;Line=0;Column=0;Severity='Error';Message='m'}) -RelativePath 'a.ps1' -Ast $ast
         $finding.ExtentSHA256|Should -BeExactly (Get-QuietScriptAnalysisSha256 '')
         $finding.Function|Should -BeExactly ''
@@ -221,6 +245,18 @@ Describe 'Get-QuietScriptAnalysisFiles' {
     }
     It 'returns nothing for a workspace without those areas' {
         @(Get-QuietScriptAnalysisFiles ([IO.Path]::Combine($TestDrive,'empty'))).Count|Should -Be 0
+    }
+    It 'fails on an unreadable directory instead of skipping it' {
+        $root=[IO.Path]::Combine($TestDrive,'locked');$locked=[IO.Path]::Combine($root,'scripts','private');$null=New-QuietTestFile ([IO.Path]::Combine($locked,'a.ps1')) '1'
+        $info=[IO.DirectoryInfo]::new($locked)
+        if($IsWindows){$acl=[IO.FileSystemAclExtensions]::GetAccessControl($info);$rule=[Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.WindowsIdentity]::GetCurrent().User,'ListDirectory','Deny');$acl.AddAccessRule($rule);[IO.FileSystemAclExtensions]::SetAccessControl($info,$acl)}else{[IO.File]::SetUnixFileMode($locked,[IO.UnixFileMode]::None)}
+        try{
+            $denied=try{$null=@([IO.Directory]::GetFiles($locked));$false}catch{$true}
+            if(!$denied){Set-ItResult -Skipped -Because 'this account reads every directory';return}
+            {Get-QuietScriptAnalysisFiles $root}|Should -Throw
+        }finally{
+            if($IsWindows){$acl=[IO.FileSystemAclExtensions]::GetAccessControl($info);[void]$acl.RemoveAccessRule($rule);[IO.FileSystemAclExtensions]::SetAccessControl($info,$acl)}else{[IO.File]::SetUnixFileMode($locked,[IO.UnixFileMode]'UserRead,UserWrite,UserExecute')}
+        }
     }
     It 'skips linked directories' {
         $root=[IO.Path]::Combine($TestDrive,'linked');$null=New-QuietTestFile ([IO.Path]::Combine($root,'scripts','a.ps1')) '1'

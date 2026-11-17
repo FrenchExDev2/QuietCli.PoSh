@@ -26,6 +26,24 @@ Describe 'Get-RunTestToolPackages' {
     }
 }
 
+Describe 'Get-RunProfilerPackages' {
+    It 'pins both diagnostic packages by SHA-256 in catalogue order' {
+        $packages=@(Get-RunProfilerPackages)
+        $packages.Name|Should -Be @('Profiler','dotnet-trace')
+        foreach($package in $packages){
+            $package.SHA256|Should -Match '^[0-9A-F]{64}$'
+            $package.Url|Should -Match ('^https://[^ ]+/'+[regex]::Escape($package.Version)+'(/|$|/dotnet-trace\.)')
+            $package.Entrypoint|Should -Not -BeNullOrEmpty
+        }
+    }
+    It 'selects <Module> once in catalogue order' -ForEach @(@{Module=@('profiler');Names=@('Profiler')};@{Module=@('dottrace');Names=@('dotnet-trace')};@{Module=@('dottrace','profiler');Names=@('Profiler','dotnet-trace')}) {
+        @(Get-RunProfilerPackages -Module $Module).Name|Should -Be $Names
+    }
+    It 'rejects <Case>' -ForEach @(@{Case='an unknown module';Module=@('perfview')};@{Case='three modules';Module=@('profiler','dottrace','profiler')};@{Case='an empty list';Module=@()}) {
+        {Get-RunProfilerPackages -Module $Module}|Should -Throw
+    }
+}
+
 Describe 'Initialize-RunToolCache generic paths' {
     It 'returns every package entrypoint in Paths and keeps the profiler fields' {
         $one=& $newPackage 'Alpha' 'Alpha.psd1';$two=& $newPackage 'Beta' 'tools/Beta.dll'

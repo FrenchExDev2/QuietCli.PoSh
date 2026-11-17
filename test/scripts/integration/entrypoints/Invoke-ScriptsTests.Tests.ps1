@@ -17,6 +17,18 @@ Describe 'fixture ko' { It 'fails' { 1 | Should -Be 2 } }
     $null=New-QuietTestFile ([IO.Path]::Combine($slow,'unit','slow.Tests.ps1')) @'
 Describe 'fixture slow' { It 'outlives the timeout' { Start-Sleep -Seconds 120 } }
 '@
+    # A library the runner itself imports (ScriptsTests) must still resolve to the copy under -ScriptsRoot,
+    # which is what lets the mutation engine test a mutated copy; Pester must be the single pinned instance.
+    $isolation=[IO.Path]::Combine($TestDrive,'isolation')
+    $copy=[IO.Path]::Combine($TestDrive,'scripts-copy')
+    [void][IO.Directory]::CreateDirectory([IO.Path]::Combine($copy,'lib'))
+    [IO.File]::Copy([IO.Path]::Combine((Get-QuietTestScriptsRoot),'lib','ScriptsTests.psm1'),[IO.Path]::Combine($copy,'lib','ScriptsTests.psm1'))
+    $null=New-QuietTestFile ([IO.Path]::Combine($isolation,'unit','isolation.Tests.ps1')) @'
+BeforeAll { Import-Module ([IO.Path]::Combine($env:QUIETCLI_SCRIPTS_ROOT,'lib','ScriptsTests.psm1')) -Force -Global -DisableNameChecking -ErrorAction Stop }
+Describe 'fixture isolation' {
+    It 'resolves the copy' { [IO.File]::WriteAllText($env:QUIETCLI_FIXTURE_PROBE, ((Get-Command Get-QuietScriptsTestExitCode).Module.Path+'|'+@(Get-Module Pester -All).Count)) }
+}
+'@
     $run={param([string[]]$Arguments,[hashtable]$Environment=@{})
         Invoke-QuietTestScript -ScriptPath $entry -ArgumentList (@('-Headless','-Offline','-WorkspaceRoot',$workspace)+$Arguments) -Environment $Environment -TimeoutSeconds 300
     }
@@ -39,6 +51,16 @@ Describe 'Invoke-ScriptsTests.ps1' {
         [xml]$junit=Get-Content -LiteralPath ([IO.Path]::Combine($directory,'results.junit.xml')) -Raw
         [int]$junit.testsuites.tests|Should -Be 2
         [IO.File]::ReadAllText($probe)|Should -BeExactly '4242'
+    }
+
+    It 'runs the tests against the -ScriptsRoot copy even for a library the runner imports, with one pinned Pester' {
+        $directory=& $newRun;$probe=[IO.Path]::Combine($TestDrive,'isolation.txt')
+        $outcome=& $run @('-TestsRoot',$isolation,'-ScriptsRoot',$copy,'-Kind','Unit','-RunDirectory',$directory) @{QUIETCLI_FIXTURE_PROBE=$probe}
+        $outcome.ExitCode|Should -Be 0 -Because $outcome.Output
+        (& $readJson $directory 'report.json').Passed|Should -Be 1
+        $path,$count=[IO.File]::ReadAllText($probe).Split('|')
+        $path|Should -BeExactly ([IO.Path]::GetFullPath([IO.Path]::Combine($copy,'lib','ScriptsTests.psm1')))
+        $count|Should -BeExactly '1'
     }
 
     It 'exits 1 when one selected test fails' {

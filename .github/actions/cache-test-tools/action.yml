@@ -1,0 +1,10 @@
+name: Cache pinned script test tools
+description: Reuse the pinned Pester and PSScriptAnalyzer archives; Initialize-TestTools re-verifies each SHA-256 before extracting.
+runs:
+  using: composite
+  steps:
+    # Only the archives are cached: the extracted modules are rebuilt from verified bytes on every runner.
+    - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: .cache/test-tools/*/*.nupkg
+        key: ${{ runner.os }}-quietcli-test-tools-${{ hashFiles('scripts/lib/RunToolCache.psm1') }}

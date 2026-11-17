@@ -2,7 +2,7 @@
 
 ## Purpose and usage
 
-Blocking PSScriptAnalyzer check of every `.ps1` and `.psm1` under `scripts/` and `test/scripts/`. It is registered as `ScriptAnalyzer` in [Invoke-WorkspaceChecks](Invoke-WorkspaceChecks.md), so it runs in Commit-Workspace and in `scripts-docs-check.yml`. Legacy findings are frozen in a baseline that can only shrink. Any finding outside it fails the check.
+Blocking PSScriptAnalyzer check of every `.ps1` and `.psm1` under `scripts/` and `test/scripts/`. It is registered as `ScriptAnalyzer` in [Invoke-WorkspaceChecks](Invoke-WorkspaceChecks.md), so it runs in Commit-Workspace and in `scripts-docs-check.yml`. Legacy findings are frozen in a baseline that can only shrink. Any finding outside it fails the check. A workspace without `test/scripts/` and without `src/` (an isolated commit fixture) is not applicable: the check returns `{Check, Applicable=$false}` and reads nothing else. A workspace with `src/` must ship `test/scripts/`, otherwise the check fails with `ScriptsTestsRootMissing: test/scripts`, so deleting the test tree never turns it off.
 
 ```powershell
 ./scripts/Test-ScriptAnalysis.ps1                    # analyze the working tree (warm cache: about a second)
@@ -71,7 +71,7 @@ Side effects:
 - **Snapshot safety.** Settings, rules and baseline come from the analyzed tree, so a staged change to them is what gets checked. The tool and cache locations come from the trusted repository.
 - **Limits.** PSScriptAnalyzer is static. It cannot see Pester scopes or dynamic invocations, which is why the two test-only exclusions exist.
 
-Tests: `test/scripts/unit/lib/ScriptAnalysis.Tests.ps1` (baseline properties, fuzzed baseline documents, settings validation, keys, file listing, custom rules) and `test/scripts/integration/entrypoints/Test-ScriptAnalysis.Tests.ps1` (real child process on fixture workspaces: clean pass and cache reuse, new violation, stale entry and prune, shrink-only update, test-only exclusions, invalid baseline, WhatIf).
+Tests: `test/scripts/unit/lib/ScriptAnalysis.Tests.ps1` (baseline properties, fuzzed baseline documents, settings validation, keys, file listing, custom rules) and `test/scripts/integration/entrypoints/Test-ScriptAnalysis.Tests.ps1` (real child process on fixture workspaces: clean pass and cache reuse, new violation, stale entry and prune, shrink-only update, test-only exclusions, invalid baseline, WhatIf, not-applicable flat fixture and fail-closed grouped workspace).
 
 <!-- script-contract:begin -->
 ## Execution contract
