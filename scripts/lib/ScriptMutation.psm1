@@ -221,14 +221,19 @@ function New-QuietScriptMutationReport {
     <#
     .SYNOPSIS
     Builds the run report: one entry per target with its score, break, verdict, survivors and declared equivalents, plus the overall verdict.
+    .DESCRIPTION
+    A campaign that stopped passes Crash and only the targets it finished: the report is then Incomplete, never Passed,
+    and Crash names the target it stopped in (empty outside any target), the error and the targets it never started.
     .PARAMETER Targets
-    Targets from Read-QuietScriptMutationTargets.
+    Targets from Read-QuietScriptMutationTargets; with Crash, only the finished ones (possibly none).
     .PARAMETER Results
     Mutant results: mutant fields plus Target, Status, Reason for an Equivalent and, for a reused outcome, Cached = true.
     .PARAMETER Seed
     Test seed shared by every mutant run.
+    .PARAMETER Crash
+    {Target, Error, NotRun} of a campaign that stopped before its end.
     #>
-    param([Parameter(Mandatory)][object[]]$Targets,[AllowEmptyCollection()][object[]]$Results=@(),[int]$Seed)
+    param([Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Targets,[AllowEmptyCollection()][object[]]$Results=@(),[int]$Seed,$Crash)
     $entries=foreach($target in $Targets){
         $own=@($Results|Where-Object {$null -ne $_ -and [string]$_.Target -ceq $target.Name})
         $score=Measure-QuietScriptMutationScore -Results $own -Break $target.Break
@@ -240,14 +245,16 @@ function New-QuietScriptMutationReport {
         }
     }
     $entries=@($entries)
-    [pscustomobject][ordered]@{SchemaVersion=1;Seed=$Seed;Passed=(@($entries|Where-Object {!$_.Passed}).Count -eq 0);Targets=$entries}
+    $stop=if($null -ne $Crash){[pscustomobject][ordered]@{Target=[string]$Crash.Target;Error=[string]$Crash.Error;NotRun=[string[]]@($Crash.NotRun|Where-Object {$_})}}
+    [pscustomobject][ordered]@{SchemaVersion=1;Seed=$Seed;Passed=($null -eq $stop -and @($entries|Where-Object {!$_.Passed}).Count -eq 0);Incomplete=($null -ne $stop);Crash=$stop;Targets=$entries}
 }
 
 function ConvertTo-QuietScriptMutationMarkdown {
     <#
     .SYNOPSIS
     Renders a mutation report as Markdown: a score table, then each survivor with file:line, mutator and before/after,
-    then each declared equivalent with its reason.
+    then each declared equivalent with its reason. An incomplete report names where it stopped, the error and the
+    targets never run; its table holds only the finished targets.
     .PARAMETER Report
     Result of New-QuietScriptMutationReport.
     #>
@@ -255,7 +262,13 @@ function ConvertTo-QuietScriptMutationMarkdown {
     $escape={param([string]$Value)$Value.Replace('|','\|').Replace("`r",' ').Replace("`n",' ').Replace('`',"'")}
     $lines=[Collections.Generic.List[string]]::new()
     $lines.Add('# Script mutation report');$lines.Add('')
-    $lines.Add('Verdict: **'+$(if($Report.Passed){'passed'}else{'failed'})+'**. Seed: '+$Report.Seed+'.');$lines.Add('')
+    $incomplete=$true -eq $Report.PSObject.Properties['Incomplete']?.Value
+    $lines.Add('Verdict: **'+$(if($incomplete){'incomplete'}elseif($Report.Passed){'passed'}else{'failed'})+'**. Seed: '+$Report.Seed+'.');$lines.Add('')
+    if($incomplete){
+        $crash=$Report.Crash
+        $lines.Add(('Stopped {0} with `{1}`. Not run: {2}. Only the finished targets are scored below.' -f $(if($crash.Target){'in target `'+(& $escape $crash.Target)+'`'}else{'outside any target'}),(& $escape $crash.Error),$(if(@($crash.NotRun).Count){(@($crash.NotRun|ForEach-Object {'`'+(& $escape $_)+'`'}) -join ', ')}else{'none'})))
+        $lines.Add('')
+    }
     $lines.Add('| Target | Module | Mutants | Killed | Timeout | Survived | Compile errors | Equivalent | Cached | Score | Break | Verdict |')
     $lines.Add('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |')
     foreach($target in @($Report.Targets)){
@@ -285,8 +298,9 @@ function Assert-QuietScriptMutationShards {
     .DESCRIPTION
     Every report must be a SchemaVersion 1 report from New-QuietScriptMutationReport. A target missing from every
     report, reported twice, unknown to the targets file, reported for another module or function count, reported with
-    a lower break, without mutants or below its break is an issue. All issues are reported together
-    (ScriptMutationShardReportsMissing, ScriptMutationShardReportInvalid, ScriptMutationShardUnknown,
+    a lower break, without mutants or below its break is an issue, and so is an Incomplete report of a campaign that
+    stopped (ScriptMutationShardIncomplete: <target it stopped in>). All issues are reported together
+    (ScriptMutationShardReportsMissing, ScriptMutationShardReportInvalid, ScriptMutationShardIncomplete, ScriptMutationShardUnknown,
     ScriptMutationShardDuplicate, ScriptMutationShardMissing, ScriptMutationShardStale, ScriptMutationShardBreakLowered,
     ScriptMutationShardFailed). Returns the completion receipt {SchemaVersion, Passed, Targets}.
     .PARAMETER Targets
@@ -303,7 +317,10 @@ function Assert-QuietScriptMutationShards {
     foreach($report in $documents){
         $version=$report.PSObject.Properties['SchemaVersion']
         $entries=$report.PSObject.Properties['Targets']
-        if(!$version -or [string]$version.Value -cne '1' -or !$entries -or @($entries.Value).Count -eq 0){$issues.Add('ScriptMutationShardReportInvalid');continue}
+        if(!$version -or [string]$version.Value -cne '1' -or !$entries){$issues.Add('ScriptMutationShardReportInvalid');continue}
+        # A stopped campaign's finished targets still count; the target it stopped in is then missing too.
+        if($true -eq $report.PSObject.Properties['Incomplete']?.Value){$issues.Add('ScriptMutationShardIncomplete: '+[string]$report.PSObject.Properties['Crash']?.Value?.Target)}
+        elseif(@($entries.Value).Count -eq 0){$issues.Add('ScriptMutationShardReportInvalid')}
         foreach($entry in @($entries.Value)){
             $name=if($null -ne $entry -and $entry.PSObject.Properties['Name']){[string]$entry.Name}  # a nameless entry reports an empty name
             if(!$known.Contains($name)){$issues.Add('ScriptMutationShardUnknown: '+$name);continue}
