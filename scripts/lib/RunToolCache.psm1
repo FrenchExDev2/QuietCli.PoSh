@@ -71,6 +71,54 @@ function Initialize-QuietTestTools {
     [pscustomobject][ordered]@{ PesterModulePath = $cache.Paths['Pester']; ScriptAnalyzerModulePath = $cache.Paths['PSScriptAnalyzer']; Receipt = $cache.Receipt; Directory = $cache.Directory }
 }
 
+function Test-RunToolTransientDownloadError {
+    <#
+    .SYNOPSIS
+    Tells whether a download failure is worth retrying: HTTP 408, 429 or 5xx, a connection failure without a status, or a timeout.
+    .PARAMETER Exception
+    The caught exception; its inner exceptions are searched too, since a .NET call from PowerShell wraps the real one.
+    #>
+    param([Parameter(Mandatory)][AllowNull()][Exception]$Exception)
+    for ($current = $Exception; $null -ne $current; $current = $current.InnerException) {
+        if ($current -is [Net.Http.HttpRequestException]) {
+            if ($null -eq $current.StatusCode) { return $true }
+            $code = [int]$current.StatusCode
+            return ($code -eq 408 -or $code -eq 429 -or ($code -ge 500 -and $code -le 599))
+        }
+        if ($current -is [TimeoutException] -or $current -is [Threading.Tasks.TaskCanceledException]) { return $true }
+    }
+    return $false
+}
+
+function Invoke-RunToolDownload {
+    <#
+    .SYNOPSIS
+    Downloads one package and retries a transient failure after a doubling delay; any other failure, or the last attempt, is rethrown unchanged.
+    .PARAMETER Url
+    Package URL passed to the provider.
+    .PARAMETER Download
+    Byte provider called with the URL.
+    .PARAMETER MaxAttempts
+    Attempts in all, including the first. Defaults to 5, so the delays are 2, 4, 8 and 16 s.
+    .PARAMETER InitialDelayMilliseconds
+    Delay before the second attempt.
+    .PARAMETER Sleep
+    Waits the given number of milliseconds (tests replace it).
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Url, [Parameter(Mandatory)][scriptblock]$Download, [ValidateRange(1,10)][int]$MaxAttempts = 5, [ValidateRange(0,60000)][int]$InitialDelayMilliseconds = 2000, [scriptblock]$Sleep = { param([int]$Milliseconds) Start-Sleep -Milliseconds $Milliseconds })
+    $delay = $InitialDelayMilliseconds
+    for ($attempt = 1; ; $attempt++) {
+        try { return ,[byte[]](& $Download $Url) }
+        catch {
+            if ($attempt -ge $MaxAttempts -or -not (Test-RunToolTransientDownloadError -Exception $_.Exception)) { throw }
+            Write-Warning ('Download of {0} failed (attempt {1} of {2}), retrying in {3} ms: {4}' -f $Url, $attempt, $MaxAttempts, $delay, $_.Exception.Message)
+            & $Sleep $delay
+            $delay *= 2
+        }
+    }
+}
+
 function Initialize-RunToolCache {
     <#
     .SYNOPSIS
@@ -82,7 +130,7 @@ function Initialize-RunToolCache {
     .PARAMETER Offline
     Rejects a cache miss before constructing an HTTP client.
     .PARAMETER DownloadBytes
-    Optional byte provider for an explicit package URL; checksum verification is always applied.
+    Optional byte provider for an explicit package URL; it is retried like a download, and checksum verification is always applied.
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$OutputDirectory, [Parameter(Mandatory)][hashtable[]]$Packages, [switch]$Offline, [scriptblock]$DownloadBytes)
@@ -97,11 +145,13 @@ function Initialize-RunToolCache {
             $archive = [IO.Path]::Combine($directory,($package.Name + '.' + $package.Version + '.nupkg'))
             if (-not [IO.File]::Exists($archive)) {
                 if ($Offline) { throw 'ProfilerOfflineCacheMiss' }
-                if ($DownloadBytes) { $bytes = [byte[]](& $DownloadBytes $package.Url) }
-                else {
+                $fetch = $DownloadBytes
+                if ($null -eq $fetch) {
                     if ($null -eq $client) { $client = [Net.Http.HttpClient]::new() }
-                    $bytes = $client.GetByteArrayAsync($package.Url).GetAwaiter().GetResult()
+                    $http = $client
+                    $fetch = { param([string]$Url) ,$http.GetByteArrayAsync($Url).GetAwaiter().GetResult() }.GetNewClosure()
                 }
+                $bytes = [byte[]](Invoke-RunToolDownload -Url $package.Url -Download $fetch)
                 if ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)) -cne $package.SHA256) { throw 'ProfilerDownloadDigestMismatch' }
                 [void][IO.File]::WriteAllBytesAsync($archive, $bytes).GetAwaiter().GetResult()
             }
@@ -119,4 +169,4 @@ function Initialize-RunToolCache {
     Write-RunTextFile -Path $receipt -Text ((ConvertTo-Json -InputObject @{ Packages = $Packages; ProfilerModulePath = $result.ProfilerModulePath; ClrProfilerPath = $result.ClrProfilerPath; Paths = $paths; GlobalInstallation = $false } -Depth 8) + "`n")
     return [pscustomobject]$result
 }
-Export-ModuleMember -Function Get-RunProfilerPackages, Get-RunTestToolPackages, Get-QuietTestToolDirectory, Initialize-QuietTestTools, Initialize-RunToolCache
+Export-ModuleMember -Function Get-RunProfilerPackages, Get-RunTestToolPackages, Get-QuietTestToolDirectory, Initialize-QuietTestTools, Test-RunToolTransientDownloadError, Invoke-RunToolDownload, Initialize-RunToolCache
