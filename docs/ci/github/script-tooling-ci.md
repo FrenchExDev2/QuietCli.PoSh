@@ -1,6 +1,6 @@
 # tooling-ci.yml
 
-<!-- workflow-source-sha256: 02C60C77FA97EBD140D2E27E277603C4C3BE5504B178A8AB3053119DF93406C8 -->
+<!-- workflow-source-sha256: C63B1F9209D6B91AE56A7C6AAB75D54EAE948360615FEBB50C9C62875B060BD3 -->
 
 ## Purpose
 
@@ -17,12 +17,32 @@ Mutation uses Ci.Process exclusively and performs no product build or import. Fu
 
 Run-profile mutation uses two independent matrix shards, each with two isolated workers and its own successful baseline. `QUIETCLI_MUTATION_SHARD_INDEX`/`QUIETCLI_MUTATION_SHARD_COUNT` configure only the mutation test launcher; local defaults still execute the entire catalogue. Each shard is partial evidence. A dependent completion job downloads only this SHA/attempt's artifacts and requires the exact union of the source-controlled catalogue, matching input hashes and fixed qualification settings. A missing, duplicate, stale, invalid or surviving result blocks the reusable workflow. Sharding changes scheduling, not the catalogue, seeds, iterations or acceptance criteria.
 
+## Script tests and script mutation
+
+The `script-tests` job runs [Invoke-ScriptsTests](../../scripts/Invoke-ScriptsTests.md) once on Windows and once on Linux. It runs with `-Headless -Coverage` and no filter, because a filtered run is partial and never qualifies. Its tools come from [Initialize-TestTools](../../scripts/Initialize-TestTools.md), after the `cache-test-tools` action has restored the pinned archives (keyed by OS and the hash of `scripts/lib/RunToolCache.psm1`; each SHA-256 is re-verified before extraction). Before the tests, it restores the workspace and builds the Git suite, which includes Core ([Build-Workspace](../../scripts/Build-Workspace.md) `-Suite Git`), because the [Start-QuietWorkBranch](../../scripts/Start-QuietWorkBranch.md) integration tests drive git through `quiet`. It uploads the report, JUnit, coverage and log.
+
+The `script-mutation` matrix has one job per target of `test/scripts/mutation.targets.psd1`, with `fail-fast: false`. Each job runs [Invoke-ScriptsMutation](../../scripts/Invoke-ScriptsMutation.md) `-Offline -PruneCache -Target <name>` and uploads an artifact named for the SHA, target and attempt.
+
+Each shard also keeps its own incremental mutation cache in `.cache/script-mutation`:
+
+- `actions/cache/restore` restores the newest cache of the same target (prefix `<os>-quietcli-script-mutation-<target>-`). A pull request can read develop's cache but saves only into its own scope.
+- Outcomes are keyed by the engine, the target's sources, tests and declared `Inputs`, and the mutant itself, so a restored outcome is reused only when nothing its tests observe has changed.
+- `-PruneCache` drops the documents no current mutant uses, once the campaign has keyed every target, so the cache does not grow with each run.
+- `actions/cache/save` stores the cache under a key unique to the run and attempt, even when the campaign failed or timed out: every outcome already written stays valid for its key.
+
+`script-mutation-complete` always runs unless the workflow is cancelled. It first requires the matrix itself to succeed (`ScriptMutationShardJobsRequired`). It then downloads only this SHA and attempt's shard artifacts. Finally, [Assert-ScriptMutationShards](../../scripts/Assert-ScriptMutationShards.md) requires the exact target set, each target at or above its break.
+
 ## Validation and limits
 
-An always-running result job observes core-independence, tooling, mutation shards
-and mutation-complete. It exports functional_result, mutation_result and
-completion_result through workflow_call. Functional results aggregate independence
-and tooling; mutation execution and exact catalogue verification remain distinct.
+An always-running result job observes the seven jobs: core-independence, tooling,
+script-tests, the two mutation matrices and their two completion jobs. It exports
+functional_result, mutation_result and completion_result through workflow_call.
+Each result is the worst of its members:
+- functional covers independence, tooling and script tests;
+- mutation covers both mutation matrices;
+- completion covers both completion jobs.
+
+Mutation execution and exact catalogue verification remain distinct.
 The job writes only closed result strings through Write-ToolingResults.ps1.
 Unknown or absent prerequisite fields become failure. A missing result job/output
 also blocks the caller, which separately requires overall workflow success.
@@ -75,14 +95,23 @@ flowchart TD
     job_mutation_complete["mutation-complete"]
     job_results["results"]
     job_run_profiles_mutation["run-profiles-mutation"]
+    job_script_mutation["script-mutation"]
+    job_script_mutation_complete["script-mutation-complete"]
+    job_script_tests["script-tests"]
     job_tooling["tooling"]
     event --> job_core_independence
     job_run_profiles_mutation --> job_mutation_complete
     job_core_independence --> job_results
     job_tooling --> job_results
+    job_script_tests --> job_results
     job_run_profiles_mutation --> job_results
+    job_script_mutation --> job_results
     job_mutation_complete --> job_results
+    job_script_mutation_complete --> job_results
     event --> job_run_profiles_mutation
+    event --> job_script_mutation
+    job_script_mutation --> job_script_mutation_complete
+    event --> job_script_tests
     event --> job_tooling
 ~~~
 
@@ -90,8 +119,11 @@ flowchart TD
 | --- | --- | --- | --- | --- |
 | core-independence | runner windows-latest |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Test-CoreIndependence.ps1 |
 | mutation-complete | runner ubuntu-latest | run-profiles-mutation | ${{ always() && !cancelled() }} | ./scripts/Assert-RunProfileMutationShards.ps1 |
-| results | runner ubuntu-latest | core-independence, tooling, run-profiles-mutation, mutation-complete | ${{ always() }} | ./scripts/Write-ToolingResults.ps1 |
+| results | runner ubuntu-latest | core-independence, tooling, script-tests, run-profiles-mutation, script-mutation, mutation-complete, script-mutation-complete | ${{ always() }} | ./scripts/Write-ToolingResults.ps1 |
 | run-profiles-mutation | runner windows-latest |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1 |
+| script-mutation | runner ubuntu-latest |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-TestTools.ps1, ./scripts/Invoke-ScriptsMutation.ps1 |
+| script-mutation-complete | runner ubuntu-latest | script-mutation | ${{ always() && !cancelled() }} | ./scripts/Assert-ScriptMutationShards.ps1 |
+| script-tests | runner ${{ matrix.os }} |  | default success condition | ./scripts/Build-Workspace.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-TestTools.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-ScriptsTests.ps1 |
 | tooling | runner windows-latest |  | default success condition | ./scripts/Build-Workspace.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/Test-CoreIndependence.ps1 |
 
 <!-- workflow-generated:end -->

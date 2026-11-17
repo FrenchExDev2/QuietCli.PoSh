@@ -6,46 +6,65 @@ Implements [Start-QuietWorkBranch.ps1](../Start-QuietWorkBranch.md). Exports onl
 
 ## Purpose and usage
 
-Move pending work onto a new work branch based on an updated local base branch.
+Starts a new work branch from the freshly pulled delivery branch and moves pending work onto it.
 
 ```powershell
-./scripts/Start-QuietWorkBranch.ps1 -Branch fix/tag-administration -WhatIf
-./scripts/Start-QuietWorkBranch.ps1 -Branch fix/tag-administration
+./scripts/Start-QuietWorkBranch.ps1 -Kind feature -Name script-tests -WhatIf
+./scripts/Start-QuietWorkBranch.ps1 -Kind fix -Name tag-administration
+./scripts/Start-QuietWorkBranch.ps1 -Branch chore/bump-pester
 ```
 
-`Branch` must be a new `fix/*` or `feature/*` branch. `WorkspaceRoot` defaults to this
-checkout, `BaseBranch` to `develop`, and `Remote` to `origin`. `ShelfName` overrides
-the generated Git stash message. Git still validates both branch names.
+| Option | Role |
+| --- | --- |
+| `-Branch` | Whole new branch, `<kind>/<name>`. |
+| `-Kind`, `-Name` | The same, in two parts. The kind is `fix`, `feature` or `chore`. |
+| `-BaseBranch` | Delivery branch to start from, `develop` by default. A work or release branch (`feature/x`, `release/x`) is refused. |
+| `-Remote` | Remote of the base, `origin` by default. Tags are never fetched. |
+| `-WorkspaceRoot` | Checkout to operate on, this one by default. |
+| `-ShelfName` | Message of the retained stash. A name is generated when it is missing. |
+
+The name, kind and base are validated by [WorkBranch.psm1](WorkBranch.md) before anything else, WhatIf included. Git then checks both names with `check-ref-format --branch`. There is no `release` kind: releases are tags, created with their transient `release/*` branch by `Invoke-QuietRelease.ps1`.
 
 ## Dependencies and side effects
 
-Uses the checkout's built Core/Git modules and the `quiet` facade for every native
-operation. WhatIf returns before product-module imports, filesystem reads, Git calls or network access; the entry point may load its function-only orchestration library.
+Uses the checkout's built Core/Git modules and the `quiet` facade for every native operation. WhatIf returns after the name and base checks and before product-module imports, filesystem reads, Git calls or network access.
 
-Pending tracked and untracked files are stashed together. The local base is switched
-to and pulled with `--ff-only --no-tags`; its resulting commit must equal the remote
-branch. A new work branch is created without tracking the base's upstream. The stash
-is applied by object ID with `--index`, preserving staging, and is retained as a backup.
-The script verifies the restored file hashes and status codes against the initial work.
-It does not commit, push, open a PR, reset an existing branch or recreate tags.
+```mermaid
+flowchart TD
+    V[Validate kind, name and base] --> W{WhatIf?}
+    W -- yes --> Z[Stop]
+    W -- no --> Q[Refuse: branch exists locally or on the remote, base missing, detached, unborn, conflicted, operation in progress]
+    Q --> S[Stash tracked and untracked work]
+    S --> F[Switch to the base, pull --ff-only, compare with ls-remote]
+    F --> C[switch --no-track -c the new branch]
+    C --> A[stash apply --index, compare hashes and statuses]
+    F -. failure .-> R[Back to the original branch, re-apply the stash]
+```
+
+- **Refusals first.** Every refusal happens before the stash, so a refused run leaves the checkout exactly as it was. This covers a branch that exists locally or on the remote, a missing base on either side, a detached, unborn or conflicted checkout, and an in-progress merge, rebase, cherry-pick, revert, am or bisect.
+- **Shelving.** Pending tracked and untracked files are stashed together.
+- **Base.** The local base is switched to and pulled with `--ff-only --no-tags`. Its commit must then equal the remote head.
+- **New branch.** It starts from that commit, never from the branch that was current, and does not track the base.
+- **Restore.** The stash is applied by id with `--index`, which preserves staging, and it is retained as a backup. The restored hashes and statuses are compared path by path with the initial work.
+- **Failure before the branch exists.** If the pull cannot fast-forward, for example, the original branch is checked out again and the stash re-applied. The error says so, and names the stash when that recovery fails too.
+- **Never done.** The script does not commit, push, open a PR, reset an existing branch or create tags.
 
 ## Critical review and verdict
 
-`scripts/lib/Start-QuietWorkBranch.psm1` guards all effects. The preflight at
-`scripts/lib/Start-QuietWorkBranch.psm1` rejects existing work branches and conflicted,
-detached or unborn starting states before shelving. Native failures are not retried;
-the stash is printed immediately after creation and remains available if a later step
-fails. The fast-forward-only pull at `scripts/lib/Start-QuietWorkBranch.psm1` and
-restore conflicts require explicit resolution on failure.
+Native failures are not retried. The remote-base comparison is an observation, not a lock against later remote changes. Submodule worktree changes are not shelved recursively. The final comparison intentionally fails when an automatic merge changes the shelved work; the retained stash holds the original. A failure after the branch is created (the restore) is not rolled back, because switching away would lose the partly applied work; the error names the retained stash.
 
-The remote-base comparison is an observation, not a lock against subsequent remote
-changes. Submodule worktree changes are not recursively shelved. The final byte/status
-comparison intentionally fails when an automatic merge changes the shelved work;
-the retained stash supplies the original. Preview execution is checked with an absent
-checkout, and real transfers verify their own restored content. This is not exhaustive
-qualification of every repository topology or concurrent writer.
+## Tests
 
+[`integration/entrypoints/Start-QuietWorkBranch.Tests.ps1`](../../../test/scripts/integration/entrypoints/Start-QuietWorkBranch.Tests.ps1) runs the entry point in a child `pwsh` on fixture repositories (a bare origin, a clone that moves develop, a work clone). It has 14 tests:
 
+- the branch starts from the pulled remote develop even when started from another work branch, without that branch's commits and without tracking;
+- staged, unstaged and untracked work is restored and the stash retained;
+- a clean checkout is not shelved;
+- each refusal (kind, name, work branch as base, local or remote branch, missing base, detached) leaves branch, HEAD, status, files, stashes and branches unchanged;
+- a merge in progress is refused;
+- WhatIf changes nothing but still validates the name;
+- a diverged develop puts the work back on the original branch;
+- every name the policy accepts is accepted by `git check-ref-format`.
 
 <!-- credits:begin -->
 ## Credits

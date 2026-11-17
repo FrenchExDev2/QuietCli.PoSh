@@ -37,7 +37,9 @@ function Read-QuietCiCompanions {
     if($file.Length -gt 262144 -or $file.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'CiCompanionsFileInvalid'}
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'Resources.psm1')) -DisableNameChecking -ErrorAction Stop
     $null=Ensure-QuietResource -WorkspaceRoot $WorkspaceRoot -RelativePath resources/yaml/YamlDotNet.dll -AssemblyType YamlDotNet.Serialization.DeserializerBuilder
-    $text=[IO.File]::ReadAllText($file.FullName,[Text.UTF8Encoding]::new($false,$true))
+    # Strict UTF-8: an invalid byte fails the read instead of decoding to U+FFFD.
+    $strict=[Text.Encoding]::GetEncoding('utf-8',[Text.EncoderFallback]::ExceptionFallback,[Text.DecoderFallback]::ExceptionFallback)
+    $text=[IO.File]::ReadAllText($file.FullName,$strict)
     $builder=[YamlDotNet.Serialization.DeserializerBuilder]::new().WithDuplicateKeyChecking().WithMaximumRecursion(32).WithAttemptingUnquotedStringTypeDeserialization()
     $document=$builder.Build().Deserialize($text)
     if($document -isnot [Collections.IDictionary] -or $document.Count -ne 3 -or 'schema' -cnotin $document.Keys -or $null -eq $document['schema'] -or $document['schema'].GetType() -notin @([byte],[int16],[int],[long],[uint16],[uint32],[uint64]) -or $document['schema'] -ne 1 -or 'companions' -cnotin $document.Keys -or $document['companions'] -isnot [Collections.IDictionary] -or !$document['companions'].Count -or 'suites' -cnotin $document.Keys -or $document['suites'] -isnot [Collections.IDictionary] -or !$document['suites'].Count){throw 'CiCompanionsSchemaInvalid'}
@@ -69,7 +71,7 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'Resources.psm1')) -DisableNameC
         Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
         $manifestPath=Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath ($entry['test_project']+'/'+$entry['test_project']+'.psd1')
         if(!(Test-Path -LiteralPath $manifestPath -PathType Leaf) -or (Get-Item -LiteralPath $manifestPath -Force).Attributes -band [IO.FileAttributes]::ReparsePoint){throw ('CiSuiteTestProjectMissing: '+$name)}
-        $null=[IO.File]::ReadAllText($manifestPath,[Text.UTF8Encoding]::new($false,$true))
+        $null=[IO.File]::ReadAllText($manifestPath,$strict)
         $manifest=Import-PowerShellDataFile -LiteralPath $manifestPath
         if($manifest.FunctionsToExport -cnotcontains $entry['command']){throw ('CiSuiteCommandNotExported: '+$name)}
         $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -194,4 +196,89 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'CiImages.psm1')) -DisableNameCh
     }finally{$credential=$null;$env:QUIETCLI_REGISTRY_TOKEN=$null}
 }
 
-Export-ModuleMember -Function Read-QuietCiCompanions,Resolve-QuietCiCompanions,Get-QuietCiSuiteImagePlan,Invoke-QuietCiSuiteImage
+function Invoke-QuietCiSuiteImages {
+    <# .SYNOPSIS
+    Prepares the image chains of several suites for one RID, sequentially, shortest chain first, each distinct chain once.
+    .DESCRIPTION
+    Suites that resolve to the same ordered layers share one chain. Chains run one after the other, so a base
+    or parent layer is published before any overlay that extends it is resolved, and a single job owns every
+    registry write for the RID. Fingerprint aggregates the final RegistryPath@Fingerprint identity of every
+    chain independently of the suite order; CacheHit is true only when every chain hit.
+    .PARAMETER WorkspaceRoot
+    Selected checkout.
+    .PARAMETER Configuration
+    Validated companion configuration.
+    .PARAMETER Suite
+    Declared suites or companions whose images are required.
+    .PARAMETER RuntimeIdentifier
+    Native Linux target.
+    .PARAMETER ContainerRuntime
+    Explicit container adapter.
+    .PARAMETER RegistryCache
+    Requests verified registry reuse.
+    .PARAMETER PublishCache
+    Requests publication under the existing develop-only guard.
+    .PARAMETER ResolveOnly
+    Verifies existing registry configurations without pulling layers; a miss still prepares the chain.
+    .PARAMETER ProbeOnly
+    Returns registry hit/miss per chain without preparing images or contacting the container daemon.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param([string]$WorkspaceRoot,[Parameter(Mandatory)]$Configuration,[Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Suite,[string]$RuntimeIdentifier,[string]$ContainerRuntime,[switch]$RegistryCache,[switch]$PublishCache,[switch]$ResolveOnly,[switch]$ProbeOnly)
+    if(!$Suite.Count){throw 'CiSuiteImagesEmpty'}
+    if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Prepare the image chains of the selected suites')){return}
+    $chains=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    foreach($name in $Suite){
+        $selection=Resolve-QuietCiCompanions $Configuration -Suite $name
+        $key=@($selection.Images) -join '>'
+        if(!$chains.ContainsKey($key)){$chains.Add($key,$selection)}
+    }
+    $ordered=@($chains.Keys|Sort-Object -Property @{Expression={$chains[$_].Images.Count}},@{Expression={$_}} -CaseSensitive)
+    $results=[Collections.Generic.List[object]]::new()
+    # Each chain consumes and clears the ephemeral registry credential; hand it to every chain, then clear it.
+    $credential=$env:QUIETCLI_REGISTRY_TOKEN
+    try{
+        foreach($key in $ordered){
+            $selection=$chains[$key]
+            $plan=Get-QuietCiSuiteImagePlan $WorkspaceRoot $selection $RuntimeIdentifier
+            $env:QUIETCLI_REGISTRY_TOKEN=$credential
+            $receipt=Invoke-QuietCiSuiteImage -WorkspaceRoot $WorkspaceRoot -Selection $selection -RuntimeIdentifier $RuntimeIdentifier -ContainerRuntime $ContainerRuntime -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ResolveOnly:$ResolveOnly -ProbeOnly:$ProbeOnly -Confirm:$false
+            $results.Add([pscustomobject]@{Chain=$key;Images=@($selection.Images);Identity=($plan.RegistryPath+'@'+$plan.Fingerprint);CacheHit=($null -ne $receipt -and $receipt.CacheHit -eq $true);Receipt=$receipt})
+        }
+    }finally{$credential=$null;$env:QUIETCLI_REGISTRY_TOKEN=$null}
+    $identities=[string[]]@($results|ForEach-Object Identity|Sort-Object -CaseSensitive -Unique)
+    $bytes=[Text.Encoding]::UTF8.GetBytes(($identities -join "`n"))
+    $fingerprint=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+    [pscustomobject]@{RuntimeIdentifier=$RuntimeIdentifier;Suites=@($Suite);Chains=$results.ToArray();Fingerprint=$fingerprint;CacheHit=(@($results|Where-Object {!$_.CacheHit}).Count -eq 0)}
+}
+
+function Assert-QuietCiCompanionImages {
+    <# .SYNOPSIS
+    Requires a companion that ships a CI image declaration to be an overlay, and every overlay to ship its contract.
+    .DESCRIPTION
+    A companion without its own image (image: none) is legitimate and runs on its parent's image. A companion
+    whose product module carries ci/Get-CiImageArguments.ps1 or a Dockerfile/Containerfile must extend the base
+    as an overlay, so that the CI warm-up job prepares it before qualification. Test projects are not inspected:
+    their container files are fixtures, not CI images. Returns one {Companion, Image, Contract, ContainerFiles}
+    row per companion.
+    .PARAMETER WorkspaceRoot
+    Checkout owning the product modules.
+    .PARAMETER Configuration
+    Validated companion configuration.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)]$Configuration)
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+    foreach($companion in $Configuration.Companions.Values){
+        $moduleRoot=Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath ('FrenchExDev2.QuietCli.'+$companion.Name+'.PoSh')
+        $contract=[IO.File]::Exists([IO.Path]::Combine($moduleRoot,'ci','Get-CiImageArguments.ps1'))
+        $containerFiles=[string[]]@(if([IO.Directory]::Exists($moduleRoot)){
+            [IO.Directory]::EnumerateFiles($moduleRoot,'*',[IO.SearchOption]::AllDirectories)|Where-Object {[IO.Path]::GetFileName($_) -match '\A(?:Dockerfile|Containerfile)(?:\..+)?\z|\.(?:Dockerfile|Containerfile)\z'}|ForEach-Object {[IO.Path]::GetRelativePath($WorkspaceRoot,$_).Replace('\','/')}|Sort-Object -CaseSensitive
+        })
+        if($companion.Image -ceq 'overlay' -and !$contract){throw ('CiCompanionOverlayContractMissing: '+$companion.Name)}
+        if($companion.Image -ceq 'none' -and ($contract -or $containerFiles.Count)){throw ('CiCompanionImageMustBeOverlay: '+$companion.Name)}
+        [pscustomobject]@{Companion=$companion.Name;Image=$companion.Image;Contract=$contract;ContainerFiles=$containerFiles}
+    }
+}
+
+Export-ModuleMember -Function Read-QuietCiCompanions,Resolve-QuietCiCompanions,Get-QuietCiSuiteImagePlan,Invoke-QuietCiSuiteImage,Invoke-QuietCiSuiteImages,Assert-QuietCiCompanionImages

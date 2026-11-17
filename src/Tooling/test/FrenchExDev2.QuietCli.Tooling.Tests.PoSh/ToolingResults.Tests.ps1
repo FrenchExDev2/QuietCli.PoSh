@@ -12,14 +12,24 @@ function Test-QuietToolingResults {
     $oracle={
         param($subject)
         $states=@('success','failure','cancelled','skipped','')
+        $worst={param([string[]]$Values)if(@($Values|Where-Object {$_ -eq '' -or $_ -eq 'failure'}).Count){'failure'}elseif($Values -contains 'cancelled'){'cancelled'}elseif($Values -contains 'skipped'){'skipped'}else{'success'}}
         $count=0
-        foreach($a in $states){foreach($b in $states){foreach($c in $states){foreach($d in $states){
-            $inputJson=@{'core-independence'=@{result=$a};tooling=@{result=$b};'run-profiles-mutation'=@{result=$c};'mutation-complete'=@{result=$d}}|ConvertTo-Json -Compress
-            $actual=& $subject -NeedsJson $inputJson
-            $expected=if($a -eq '' -or $b -eq '' -or $a -eq 'failure' -or $b -eq 'failure'){'failure'}elseif($a -eq 'cancelled' -or $b -eq 'cancelled'){'cancelled'}elseif($a -eq 'skipped' -or $b -eq 'skipped'){'skipped'}else{'success'}
-            if($actual.FunctionalResult -cne $expected -or $actual.MutationResult -cne $(if($c){$c}else{'failure'}) -or $actual.CompletionResult -cne $(if($d){$d}else{'failure'})){throw 'ToolingResultPropertyFailed'}
-            $count++
-        }}}}
+        # Every combination of one group's members, the other groups succeeding: 5^4 legacy jobs, then 5^3 script jobs.
+        $groups=@(@('core-independence','tooling','run-profiles-mutation','mutation-complete'),@('script-tests','script-mutation','script-mutation-complete'))
+        foreach($group in $groups){
+            $total=[Math]::Pow($states.Count,$group.Count)
+            for($index=0;$index -lt $total;$index++){
+                $values=@{};foreach($name in @('core-independence','tooling','script-tests','run-profiles-mutation','script-mutation','mutation-complete','script-mutation-complete')){$values[$name]='success'}
+                $rest=$index;foreach($name in $group){$values[$name]=$states[$rest%$states.Count];$rest=[Math]::Floor($rest/$states.Count)}
+                $needs=@{};foreach($name in $values.Keys){$needs[$name]=@{result=$values[$name]}}
+                $actual=& $subject -NeedsJson ($needs|ConvertTo-Json -Compress)
+                $functional=& $worst @($values['core-independence'],$values['tooling'],$values['script-tests'])
+                $mutation=& $worst @($values['run-profiles-mutation'],$values['script-mutation'])
+                $completion=& $worst @($values['mutation-complete'],$values['script-mutation-complete'])
+                if($actual.FunctionalResult -cne $functional -or $actual.MutationResult -cne $mutation -or $actual.CompletionResult -cne $completion){throw 'ToolingResultPropertyFailed'}
+                $count++
+            }
+        }
         foreach($invalid in @('{}','{"core-independence":{"result":true}}','{"tooling":{"result":"SUCCESS"}}','{"tooling":{"result":"success\nfunctional_result=success"}}')){
             $r=& $subject -NeedsJson $invalid
             if($r.FunctionalResult -cne 'failure' -or $r.MutationResult -cne 'failure' -or $r.CompletionResult -cne 'failure'){throw 'ToolingResultMalformedAccepted'}
@@ -29,8 +39,9 @@ function Test-QuietToolingResults {
     $properties=& $oracle (Get-Command Get-QuietToolingResults)
     $source=(Get-Command Get-QuietToolingResults).Definition
     $mutations=@(
-        @("`$results['tooling'] -ceq `$state",'$false'),
-        @("CompletionResult=`$results['mutation-complete']","CompletionResult='success'"),
+        @("@('core-independence','tooling','script-tests')","@('core-independence','script-tests')"),
+        @("@('run-profiles-mutation','script-mutation')","@('run-profiles-mutation')"),
+        @("CompletionResult=(& `$worst @('mutation-complete','script-mutation-complete'))","CompletionResult='success'"),
         @("else{'failure'}","else{'success'}")
     )
     $killed=0
@@ -70,7 +81,7 @@ function Test-QuietToolingResults {
     $tooling=$parser.Deserialize([IO.File]::ReadAllText([IO.Path]::Combine($WorkspaceRoot,'.github/workflows/tooling-ci.yml'),[Text.Encoding]::UTF8))
     $ci=$parser.Deserialize([IO.File]::ReadAllText([IO.Path]::Combine($WorkspaceRoot,'.github/workflows/ci.yml'),[Text.Encoding]::UTF8))
     $job=$tooling['jobs']['results']
-    if([string]$job['if'] -cne '${{ always() }}' -or (@($job['needs']|Sort-Object) -join ',') -cne 'core-independence,mutation-complete,run-profiles-mutation,tooling'){throw 'ToolingResultPrerequisitesChanged'}
+    if([string]$job['if'] -cne '${{ always() }}' -or (@($job['needs']|Sort-Object) -join ',') -cne 'core-independence,mutation-complete,run-profiles-mutation,script-mutation,script-mutation-complete,script-tests,tooling'){throw 'ToolingResultPrerequisitesChanged'}
     foreach($name in @('functional_result','mutation_result','completion_result')){
         if([string]$tooling['on']['workflow_call']['outputs'][$name]['value'] -cne ('${{ jobs.results.outputs.'+$name+' }}') -or [string]$job['outputs'][$name] -cne ('${{ steps.results.outputs.'+$name+' }}')){throw 'ToolingResultWorkflowOutputChanged'}
     }

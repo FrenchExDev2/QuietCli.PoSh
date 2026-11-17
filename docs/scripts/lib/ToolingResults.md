@@ -2,14 +2,19 @@
 
 ## Purpose and usage
 
-`Get-QuietToolingResults -NeedsJson $json` reads the four authoritative GitHub needs
-entries: core-independence, tooling, run-profiles-mutation and mutation-complete.
-It returns FunctionalResult, MutationResult and CompletionResult without I/O.
+`Get-QuietToolingResults -NeedsJson $json` reads the seven authoritative GitHub needs
+entries and returns three results without I/O:
+
+| Result | Members |
+| --- | --- |
+| FunctionalResult | core-independence, tooling, script-tests |
+| MutationResult | run-profiles-mutation, script-mutation |
+| CompletionResult | mutation-complete, script-mutation-complete |
 
 ## Contract and dependencies
 
-Functional aggregation prioritizes failure, cancellation, then skipped over success.
-The two mutation fields remain independent, so failed execution differs from failed
+Each result is the worst of its members: failure, then cancelled, then skipped, then success.
+Mutation execution and completion remain separate results, so failed execution differs from failed
 catalogue verification. Unknown, empty, incorrectly typed or missing results become
 failure. JSON input is limited to 65,536 characters and depth 16. No product module
 or external dependency is loaded; import defines functions only.

@@ -1,0 +1,419 @@
+#requires -Version 7.6
+BeforeAll {
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -Force -DisableNameChecking -ErrorAction Stop
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','Generators.psm1')) -Force -DisableNameChecking -ErrorAction Stop
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','Property.psm1')) -Force -DisableNameChecking -ErrorAction Stop
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','CiFixtures.psm1')) -Force -DisableNameChecking -ErrorAction Stop
+    $null=Import-QuietTestLibrary -Name CiImpact
+    $seed=Get-QuietTestSeed
+
+    $newCatalogue={param([Random]$Random)New-QuietCiCatalogue $Random}
+    $ownedPath={param([Random]$Random,$Catalogue,[string]$Companion)Get-QuietCiOwnedPath $Random $Catalogue $Companion}
+    # Independent oracle: companions outside Selected whose transitive requirements reach Selected.
+    $expectedSmokes={param($Catalogue,[string[]]$Selected)
+        $map=$Catalogue.Configuration.Companions
+        @(foreach($name in $map.Keys){
+            if($name -cin $Selected){continue}
+            $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal);$stack=[Collections.Generic.Stack[string]]::new()
+            foreach($dependency in $map[$name].requires){$stack.Push($dependency)}
+            while($stack.Count){$current=$stack.Pop();if($seen.Add($current)){foreach($dependency in $map[$current].requires){$stack.Push($dependency)}}}
+            if(@($seen|Where-Object {$_ -cin $Selected}).Count){$name}
+        })|Sort-Object
+    }
+    $impact={param($Catalogue,[string[]]$Paths)
+        $script:catalogue=$Catalogue
+        Get-QuietCiImpact -WorkspaceRoot $TestDrive -ChangedPaths $Paths
+    }
+}
+
+Describe 'Get-QuietCiImpact' {
+    BeforeEach {
+        Mock -ModuleName CiImpact Read-QuietCiCompanions { $script:catalogue.Configuration }
+        Mock -ModuleName CiImpact Get-QuietWorkspaceProjects { $script:catalogue.Modules }
+        Mock -ModuleName CiImpact Get-QuietCiProjectGraph { @() }
+    }
+
+    It 'selects exactly the owners of the changed paths and smokes their reverse dependency closure' {
+        $null=Invoke-QuietProperty -Name 'impact-ownership' -Seed $seed -Count 60 -Generator {param($random)
+            $catalogue=& $newCatalogue $random
+            $owners=[string[]](Get-QuietRandomSubset $random @($catalogue.Configuration.Companions.Keys) 0.4)
+            $paths=@(foreach($owner in $owners){& $ownedPath $random $catalogue $owner})
+            [pscustomobject]@{Catalogue=$catalogue;Owners=$owners;Paths=[string[]]$paths}
+        } -Property {param($case)
+            $result=& $impact $case.Catalogue $case.Paths
+            $order=@($case.Catalogue.Configuration.Companions.Keys|Where-Object {$_ -cin $case.Owners})
+            $smokes=@(& $expectedSmokes $case.Catalogue $case.Owners)
+            if((@($result.FullSuites) -join ',') -cne ($order -join ',')){throw "full: $(@($result.FullSuites) -join ',') expected $($order -join ',')"}
+            if((@($result.SmokeSuites) -join ',') -cne ($smokes -join ',')){throw "smoke: $(@($result.SmokeSuites) -join ',') expected $($smokes -join ',')"}
+            if(@($result.SmokeSuites|Where-Object {$_ -cin @($result.FullSuites)}).Count){throw 'full and smoke overlap'}
+            if($result.RunProducts -ne ($order.Count -gt 0)){throw 'RunProducts'}
+            if($result.ConservativeFull -or $result.RunTooling -or $result.RunDistribution){throw 'unexpected flags'}
+            $expectedSuite=if($order.Count -eq 1){$order[0]}elseif($order.Count){'Selected'}else{'None'}
+            $result.Suite -ceq $expectedSuite
+        }
+    }
+
+    It 'selects nothing for documentation-only changes' {
+        $null=Invoke-QuietProperty -Name 'impact-docs' -Seed $seed -Count 40 -Generator {param($random)
+            $catalogue=& $newCatalogue $random
+            $paths=@(1..$random.Next(1,5)|ForEach-Object {
+                Get-QuietRandomItem $random @(('docs/'+(New-QuietRandomString $random)+'.md'),('icons/'+(New-QuietRandomString $random)+'.svg'),((& $ownedPath $random $catalogue 'Core') -replace '\.[a-z0-9]+$','.md'))
+            })
+            [pscustomobject]@{Catalogue=$catalogue;Paths=[string[]]$paths}
+        } -Property {param($case)
+            $result=& $impact $case.Catalogue $case.Paths
+            @($result.FullSuites).Count -eq 0 -and @($result.SmokeSuites).Count -eq 0 -and !$result.RunProducts -and !$result.RunTooling -and !$result.RunDistribution -and !$result.ConservativeFull -and $result.Suite -ceq 'None'
+        }
+    }
+
+    It 'never removes a selected or smoked suite when a path is added (monotonicity)' {
+        $null=Invoke-QuietProperty -Name 'impact-monotonic' -Seed $seed -Count 50 -Generator {param($random)
+            $catalogue=& $newCatalogue $random
+            $pool=@(foreach($name in $catalogue.Configuration.Companions.Keys){& $ownedPath $random $catalogue $name})+@('docs/x.md','src/Tooling/test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/a.ps1','build/unknown.txt')
+            $paths=[string[]](Get-QuietRandomSubset $random $pool 0.4)
+            [pscustomobject]@{Catalogue=$catalogue;Paths=$paths;Extra=[string](Get-QuietRandomItem $random $pool)}
+        } -Property {param($case)
+            $before=& $impact $case.Catalogue $case.Paths
+            $after=& $impact $case.Catalogue (@($case.Paths)+$case.Extra)
+            $kept=@($before.FullSuites|Where-Object {$_ -cnotin @($after.FullSuites)})
+            $covered=@(@($before.SmokeSuites)|Where-Object {$_ -cnotin (@($after.FullSuites)+@($after.SmokeSuites))})
+            if($kept.Count -or $covered.Count){throw "dropped full=$($kept -join ',') smoke=$($covered -join ',')"}
+            (!$before.RunTooling -or $after.RunTooling) -and (!$before.ConservativeFull -or $after.ConservativeFull)
+        }
+    }
+
+    It 'does not depend on the order of the changed paths' {
+        $null=Invoke-QuietProperty -Name 'impact-order' -Seed $seed -Count 50 -Generator {param($random)
+            $catalogue=& $newCatalogue $random
+            $paths=@(foreach($name in $catalogue.Configuration.Companions.Keys){if($random.Next(0,2)){& $ownedPath $random $catalogue $name}})+@('docs/a.md')
+            [pscustomobject]@{Catalogue=$catalogue;Paths=[string[]]$paths;Shuffled=[string[]](Get-QuietShuffle $random $paths)}
+        } -Property {param($case)
+            $left=& $impact $case.Catalogue $case.Paths
+            $right=& $impact $case.Catalogue $case.Shuffled
+            foreach($name in 'Suite','RunProducts','RunTooling','RunDistribution','ConservativeFull'){if($left.$name -ne $right.$name){throw $name}}
+            (@($left.FullSuites) -join ',') -ceq (@($right.FullSuites) -join ',') -and (@($left.SmokeSuites) -join ',') -ceq (@($right.SmokeSuites) -join ',')
+        }
+    }
+
+    It 'runs every companion and tooling conservatively for an unknown shared input' {
+        $null=Invoke-QuietProperty -Name 'impact-unknown' -Seed $seed -Count 30 -Generator {param($random)
+            [pscustomobject]@{Catalogue=(& $newCatalogue $random);Path=('build/'+(New-QuietRandomString $random)+'.txt')}
+        } -Property {param($case)
+            $result=& $impact $case.Catalogue @($case.Path)
+            $all=@($case.Catalogue.Configuration.Companions.Keys)
+            if(!$result.ConservativeFull -or !$result.RunTooling -or !$result.RunProducts){throw 'flags'}
+            if(@($result.SmokeSuites).Count){throw 'smokes'}
+            if(@($result.Reasons|Where-Object Reason -CEQ 'SharedOrUnknownInput').Count -ne 1){throw 'reason'}
+            (@($result.FullSuites) -join ',') -ceq ($all -join ',')
+        }
+    }
+
+    It 'maps <Path> to its scope' -ForEach @(
+        @{Path='src/Tooling/test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/a.ps1';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='src/Distribution/test/FrenchExDev2.QuietCli.Distribution.Tests.PoSh/a.ps1';Tooling=$false;Distribution=$true;Full='';Conservative=$false}
+        @{Path='.github/workflows/distribution-ci.yml';Tooling=$false;Distribution=$true;Full='';Conservative=$false}
+        @{Path='.github/workflows/tooling-component-ci.yml';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='.github/workflows/tooling-ci.yml';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='.github/workflows/core-ci.yml';Tooling=$false;Distribution=$false;Full='Core';Conservative=$false}
+        @{Path='.github/workflows/zzz-ci.yml';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
+        @{Path='scripts/New-RunProfile.ps1';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='scripts/Invoke-RunProfile.ps1';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='scripts/lib/RunProfileStore.psm1';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='FrenchExDev2.QuietCli.Tooling.Tests.PoSh/a.ps1';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='FrenchExDev2.QuietCli.Tooling.Tests.PoShX/a.ps1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
+        @{Path='src/Tooling/test/FrenchExDev2.QuietCli.Tooling.Tests.PoShX/a.ps1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
+        @{Path='scripts/RunProfiles/my-profile.profile.psd1';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='scripts/RunProfiles/My-Profile.profile.psd1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
+        @{Path='test/scripts/unit/lib/CiImpact.Tests.ps1';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='test/scripts/coverage.inventory.json';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='test/scripts/README.md';Tooling=$false;Distribution=$false;Full='';Conservative=$false}
+        @{Path='Test/scripts/unit/x.Tests.ps1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
+        @{Path='test/scriptsx/a.ps1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
+        @{Path='src/Git/FrenchExDev2.QuietCli.Git.slnx';Tooling=$false;Distribution=$false;Full='';Conservative=$false}
+        @{Path='Quietly.slnx';Tooling=$false;Distribution=$false;Full='';Conservative=$false}
+        @{Path='README.MD';Tooling=$false;Distribution=$false;Full='';Conservative=$false}
+        @{Path='build/x.txt';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
+    ) {
+        $catalogue=[pscustomobject]@{Configuration=[pscustomobject]@{Path='c';SHA256=('0'*64);Base='Core';
+            Companions=[ordered]@{Core=[pscustomobject]@{Name='Core';requires=@();Image='base'};Git=[pscustomobject]@{Name='Git';requires=@('Core');Image='overlay'}}
+            Suites=[ordered]@{Core=[pscustomobject]@{Name='Core';Group='Core';Requires=@('Core');CoreEvidence=$true;Qualification=@();TestsModule='T.Core'};Git=[pscustomobject]@{Name='Git';Group='Git';Requires=@('Git');CoreEvidence=$false;Qualification=@();TestsModule='T.Git'}}}
+            Modules=@((New-QuietCiProject Tooling -Test),(New-QuietCiProject Distribution -Test))}
+        $result=& $impact $catalogue @($Path)
+        # A Tooling or Distribution owner flags its workflow only; it never records a companion reason.
+        if(!$Conservative -and !$Full){@($result.Reasons).Count|Should -Be 0}
+        $result.RunTooling|Should -Be $Tooling
+        $result.RunDistribution|Should -Be $Distribution
+        (@($result.FullSuites) -join ',')|Should -BeExactly $Full
+        $result.ConservativeFull|Should -Be $Conservative
+    }
+
+    It 'smokes a dependent companion when only its dependency is selected through a workflow' {
+        $catalogue=& $newCatalogue ([Random]::new(1))
+        $catalogue.Configuration.Companions.Clear()
+        $catalogue.Configuration.Companions.Add('Core',[pscustomobject]@{Name='Core';requires=@();Image='base'})
+        $catalogue.Configuration.Companions.Add('Git',[pscustomobject]@{Name='Git';requires=@('Core');Image='overlay'})
+        $catalogue.Configuration.Suites.Clear()
+        $catalogue.Configuration.Suites.Add('Core',[pscustomobject]@{Name='Core';Group='Core';Requires=@('Core');CoreEvidence=$true;Qualification=@();TestsModule='T.Core'})
+        $catalogue.Configuration.Suites.Add('Git',[pscustomobject]@{Name='Git';Group='Git';Requires=@('Git');CoreEvidence=$false;Qualification=@();TestsModule='T.Git'})
+        $result=& $impact $catalogue @('.github/workflows/core-ci.yml')
+        $result.Suite|Should -BeExactly 'Core'
+        @($result.SmokeSuites)|Should -Be @('Git')
+        @($result.Reasons|Where-Object Action -CEQ 'smoke').Companion|Should -Be @('Git')
+    }
+
+    It 'rejects malformed changed paths with CiImpactPathInvalid before reading the catalogue' -ForEach @(
+        @{Path=''},@{Path='a\b.ps1'},@{Path='/abs.ps1'},@{Path='src/../x.ps1'},@{Path="a$([char]0)b"},@{Path='..'}
+    ) {
+        $script:catalogue=& $newCatalogue ([Random]::new(2))
+        {Get-QuietCiImpact -WorkspaceRoot $TestDrive -ChangedPaths @('docs/a.md',$Path)}|Should -Throw -ExpectedMessage 'CiImpactPathInvalid'
+        Should -Invoke -ModuleName CiImpact Read-QuietCiCompanions -Times 0 -Exactly
+    }
+
+    It 'fails only with CiImpactPathInvalid on fuzzed paths' {
+        $null=Invoke-QuietProperty -Name 'impact-fuzz' -Seed $seed -Count 150 -Generator {param($random)
+            [pscustomobject]@{Catalogue=(& $newCatalogue $random);Paths=[string[]]@(1..$random.Next(1,4)|ForEach-Object {New-QuietFuzzPath $random})}
+        } -Property {param($case)
+            try{$result=& $impact $case.Catalogue $case.Paths}catch{if($_.Exception.Message -cne 'CiImpactPathInvalid'){throw};return $true}
+            $result.SchemaVersion -eq 2
+        }
+    }
+}
+
+Describe 'Get-QuietCiImpact over the .NET project graph' {
+    BeforeAll {
+        $core='src/Core/src/FrenchExDev2.QuietCli.Core.PoSh';$git='src/Git/src/FrenchExDev2.QuietCli.Git.PoSh'
+        $tool='src/Tooling/test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh'
+        $package={param([string]$Name,[string]$Version='',[string]$Override='')[pscustomobject]@{Name=$Name;Condition='';Version=$Version;VersionOverride=$Override}}
+        $node={param([string]$Path,[string]$Module,[string]$Group,[string[]]$Imports=@(),[object[]]$Packages=@(),[string[]]$References=@(),[string]$Failure)
+            [pscustomobject]@{Path=$Path;Module=$Module;Group=$Group;IsTest=$false;Packages=$Packages;References=$References;Imports=$Imports;Frameworks=@('net10.0');RequiresEvaluation=$false;EvaluationFailure=$(if($Failure){$Failure}else{$null})}
+        }
+        $p=@{
+            Native="$core/Net/Core.Native/Core.Native.csproj";Base="$core/Net/Core.Base/Core.Base.csproj";Nat="$core/Net/Core.Nat/Core.Nat.csproj"
+            Over="$core/Net/Core.Over/Core.Over.csproj";Shadow="$core/Net/Core.Native/Shadow.csproj";Git="$git/Net/Git.Native/Git.Native.csproj";Tool="$tool/Net/Tool/Tool.csproj"
+        }
+        # Order matters: Tool precedes Git.Native and Git.Native precedes Core.Native, so both closures need several passes.
+        $graph=@(
+            (& $node $p.Tool 'FrenchExDev2.QuietCli.Tooling.Tests.PoSh' 'Tooling' @('Directory.Build.props') @() @($p.Git))
+            (& $node $p.Git 'FrenchExDev2.QuietCli.Git.PoSh' 'Git' @('Directory.Packages.props') @((& $package 'Other.Pkg')) @($p.Native))
+            (& $node $p.Native 'FrenchExDev2.QuietCli.Core.PoSh' 'Core' @('Directory.Build.props','Directory.Packages.props') @((& $package 'Foo.Bar')) @($p.Base))
+            (& $node $p.Base 'FrenchExDev2.QuietCli.Core.PoSh' 'Core')
+            (& $node $p.Nat 'FrenchExDev2.QuietCli.Core.PoSh' 'Core' @('Directory.Packages.props') @((& $package 'Foo.Bar' '1.0.0')))
+            (& $node $p.Over 'FrenchExDev2.QuietCli.Core.PoSh' 'Core' @('Directory.Packages.props') @((& $package 'Foo.Bar' '' '2.0.0')))
+            # Same directory as Core.Native but owned by Git, and a central package user that does not import the file.
+            (& $node $p.Shadow 'FrenchExDev2.QuietCli.Git.PoSh' 'Git' @() @((& $package 'Foo.Bar')))
+        )
+        $configuration=[pscustomobject]@{Path='c';SHA256=('0'*64);Base='Core'
+            Companions=[ordered]@{Core=[pscustomobject]@{Name='Core';requires=@();Image='base'};Git=[pscustomobject]@{Name='Git';requires=@('Core');Image='overlay'}}
+            Suites=[ordered]@{Core=[pscustomobject]@{Name='Core';Group='Core';Requires=@('Core');CoreEvidence=$true;Qualification=@();TestsModule='FrenchExDev2.QuietCli.Core.Tests.PoSh'};Git=[pscustomobject]@{Name='Git';Group='Git';Requires=@('Git');CoreEvidence=$false;Qualification=@();TestsModule='FrenchExDev2.QuietCli.Git.Tests.PoSh'}}}
+        $modules=@((New-QuietCiProject Core),(New-QuietCiProject Core -Test),(New-QuietCiProject Git),(New-QuietCiProject Git -Test),(New-QuietCiProject Tooling -Test),(New-QuietCiProject Distribution -Test))
+        $central={param([string]$Items,[string]$Properties='')
+            '<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>'+$Properties+'</PropertyGroup><ItemGroup>'+$Items+'</ItemGroup></Project>'
+        }
+        $baseline=& $central '<PackageVersion Include="Foo.Bar" Version="1.0.0" /><PackageVersion Include="Other.Pkg" Version="3.0.0" />'
+        $smoke='DependencyGraph|<null>|<null>|Git|smoke|ChangedRuntimeDependency'
+        $text={param($Reasons)@(foreach($reason in @($Reasons)){(@($reason.Input,$reason.Package,$reason.Project,$reason.Companion,$reason.Action,$reason.Reason)|ForEach-Object {if($null -eq $_){'<null>'}else{[string]$_}}) -join '|'})}
+        $run={param([string[]]$Paths,[hashtable]$Previous=@{})Get-QuietCiImpact -WorkspaceRoot $TestDrive -ChangedPaths $Paths -PreviousFiles $Previous}
+    }
+    BeforeEach {
+        $script:graph=$graph;$script:evaluated=$null;$script:ciConfiguration=$configuration;$script:ciModules=$modules
+        Mock -ModuleName CiImpact Read-QuietCiCompanions { $script:ciConfiguration }
+        Mock -ModuleName CiImpact Get-QuietWorkspaceProjects { $script:ciModules }
+        Mock -ModuleName CiImpact Get-QuietCiProjectGraph { $script:evaluated=[bool]$Evaluate;$script:graph }
+        $props=[IO.Path]::Combine($TestDrive,'Directory.Packages.props')
+        if(Test-Path -LiteralPath $props){Remove-Item -LiteralPath $props}
+    }
+
+    It 'evaluates MSBuild for <Path> exactly when a C# or build file changes' -ForEach @(
+        @{Path='docs/a.md';Evaluate=$false},@{Path='scripts/a.ps1';Evaluate=$false},@{Path='a/b.cs';Evaluate=$true}
+        @{Path='a/b.csproj';Evaluate=$true},@{Path='Directory.Build.props';Evaluate=$true},@{Path='a/b.targets';Evaluate=$true}
+    ) {
+        $null=& $run @($Path)
+        $script:evaluated|Should -Be $Evaluate
+    }
+
+    It 'runs every companion conservatively when a project cannot be evaluated' {
+        $script:graph=@((& $node $p.Native 'FrenchExDev2.QuietCli.Core.PoSh' 'Core' -Failure 'MSB4025'))
+        $result=& $run @('docs/a.md')
+        (& $text $result.Reasons)|Should -Be @("MSBuildEvaluation|<null>|$($p.Native)|*|full|EvaluationUnavailable: MSB4025")
+        (@($result.FullSuites) -join ',')|Should -BeExactly 'Core,Git'
+        $result.ConservativeFull|Should -BeTrue
+        $result.RunTooling|Should -BeFalse
+    }
+
+    It 'records one shared reason for an unknown input' {
+        (& $text (& $run @('build/x.txt')).Reasons)|Should -Be @('build/x.txt|<null>|<null>|*|full|SharedOrUnknownInput')
+    }
+
+    It 'qualifies the owner without building it for a non C# file beside a project' {
+        $path="$core/Net/Core.Native/run.ps1"
+        $result=& $run @($path)
+        (& $text $result.Reasons)|Should -Be @("$path|<null>|$core|Core|full|SourceChanged",$smoke)
+        @($result.BuildProjects).Count|Should -Be 0
+        (@($result.ChangedPaths) -join ',')|Should -BeExactly $path
+        $result.ConservativeFull|Should -BeFalse
+    }
+
+    It 'builds the owning project of <Leaf>, its reverse and forward closures, without selecting dependents' -ForEach @(
+        @{Leaf='Interop.cs'},@{Leaf='Core.Native.csproj'}
+    ) {
+        $path="$core/Net/Core.Native/$Leaf"
+        $result=& $run @($path)
+        (& $text $result.Reasons)|Should -Be @("$path|<null>|$core|Core|full|SourceChanged","$path||$($p.Native)|Core|build|SourceChanged",$smoke)
+        @($result.BuildProjects)|Should -Be @(@($p.Native,$p.Base,$p.Git,$p.Tool)|Sort-Object)
+        (@($result.FullSuites) -join ',')|Should -BeExactly 'Core'
+        (@($result.SmokeSuites) -join ',')|Should -BeExactly 'Git'
+    }
+
+    It 'follows the forward reference closure transitively' {
+        $result=& $run @("$git/Net/Git.Native/Repository.cs")
+        @($result.BuildProjects)|Should -Be @(@($p.Native,$p.Base,$p.Git,$p.Tool)|Sort-Object)
+        (@($result.FullSuites) -join ',')|Should -BeExactly 'Git'
+        @($result.SmokeSuites).Count|Should -Be 0
+    }
+
+    It 'owns <Path> by module name only up to a separator' -ForEach @(
+        @{Path='FrenchExDev2.QuietCli.Core.PoSh/a.ps1';Full='Core';Conservative=$false}
+        @{Path='FrenchExDev2.QuietCli.Core.PoShX/a.ps1';Full='Core,Git';Conservative=$true}
+        @{Path='src/Core/src/FrenchExDev2.QuietCli.Core.PoShX/a.ps1';Full='Core,Git';Conservative=$true}
+    ) {
+        $result=& $run @($Path)
+        (@($result.FullSuites) -join ',')|Should -BeExactly $Full
+        $result.ConservativeFull|Should -Be $Conservative
+    }
+
+    It 'builds the importers of an inherited build input <Path>' -ForEach @(
+        @{Path='Directory.Build.props';Affected=@('Tool','Native')}
+        @{Path='global.json';Affected=@('Tool','Git','Native','Base','Nat','Over','Shadow')}
+        @{Path='NuGet.Config';Affected=@()}
+    ) {
+        $result=& $run @($Path)
+        $expected=@(foreach($key in $Affected){$project=$graph|Where-Object Path -CEQ $p[$key];"$Path||$($project.Path)|$($project.Group)|build|InheritedBuildInput"})
+        ((& $text @($result.Reasons|Where-Object Action -CEQ 'build')) -join "`n")|Should -BeExactly ($expected -join "`n")
+        $result.ConservativeFull|Should -BeFalse
+        if(!$Affected.Count){@($result.BuildProjects).Count|Should -Be 0}
+    }
+
+    It 'selects the owner suites of the props importers' {
+        $result=& $run @('Directory.Build.props')
+        # Tool (Tooling) and Core.Native import it; Git.Native is only rebuilt as a reverse dependency.
+        (@($result.FullSuites) -join ',')|Should -BeExactly 'Core'
+        @($result.BuildProjects)|Should -Be @(@($p.Native,$p.Base,$p.Git,$p.Tool)|Sort-Object)
+        $result.RunTooling|Should -BeFalse
+    }
+
+    Context 'Directory.Packages.props' {
+        BeforeAll {
+            $write={param([string]$Text)[IO.File]::WriteAllText([IO.Path]::Combine($TestDrive,'Directory.Packages.props'),$Text,[Text.UTF8Encoding]::new($false))}
+            $expectBuilds={param([string[]]$Keys,[string]$Reason,[string]$Package)@(foreach($key in $Keys){$project=$graph|Where-Object Path -CEQ $p[$key];"Directory.Packages.props|$Package|$($project.Path)|$($project.Group)|build|$Reason"})}
+        }
+
+        It 'builds only central consumers of a bumped package without a local version' {
+            & $write (& $central '<PackageVersion Include="Foo.Bar" Version="1.1.0" /><PackageVersion Include="Other.Pkg" Version="3.0.0" />')
+            $result=& $run @('Directory.Packages.props') @{'Directory.Packages.props'=$baseline}
+            (& $text @($result.Reasons|Where-Object Action -CEQ 'build'))|Should -Be (& $expectBuilds @('Native') 'CentralPackageConsumer' 'foo.bar')
+            (@($result.FullSuites) -join ',')|Should -BeExactly 'Core'
+            $result.ConservativeFull|Should -BeFalse
+        }
+
+        It 'joins every bumped package in the build reason' {
+            & $write (& $central '<PackageVersion Include="Foo.Bar" Version="1.1.0" /><PackageVersion Include="Other.Pkg" Version="3.1.0" />')
+            $result=& $run @('Directory.Packages.props') @{'Directory.Packages.props'=$baseline}
+            (& $text @($result.Reasons|Where-Object Action -CEQ 'build'))|Should -Be (& $expectBuilds @('Git','Native') 'CentralPackageConsumer' 'foo.bar,other.pkg')
+            (@($result.FullSuites) -join ',')|Should -BeExactly 'Core,Git'
+        }
+
+        It 'builds every importer conservatively when transitive pinning is enabled' {
+            $pinning='<CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>'
+            & $write (& $central '<PackageVersion Include="Foo.Bar" Version="1.1.0" /><PackageVersion Include="Other.Pkg" Version="3.0.0" />' $pinning)
+            $before=& $central '<PackageVersion Include="Foo.Bar" Version="1.0.0" /><PackageVersion Include="Other.Pkg" Version="3.0.0" />' $pinning
+            $result=& $run @('Directory.Packages.props') @{'Directory.Packages.props'=$before}
+            (& $text @($result.Reasons|Where-Object Action -CEQ 'build'))|Should -Be (& $expectBuilds @('Git','Native','Nat','Over') 'TransitivePinningRequiresResolvedConsumerGraph' 'foo.bar')
+            $result.ConservativeFull|Should -BeTrue
+        }
+
+        It 'treats a disabled transitive pinning <Value> as a plain central bump' -ForEach @(@{Value='false'},@{Value=' False '}) {
+            $pinning="<CentralPackageTransitivePinningEnabled>$Value</CentralPackageTransitivePinningEnabled>"
+            & $write (& $central '<PackageVersion Include="Foo.Bar" Version="1.1.0" /><PackageVersion Include="Other.Pkg" Version="3.0.0" />' $pinning)
+            $before=& $central '<PackageVersion Include="Foo.Bar" Version="1.0.0" /><PackageVersion Include="Other.Pkg" Version="3.0.0" />' $pinning
+            $result=& $run @('Directory.Packages.props') @{'Directory.Packages.props'=$before}
+            (& $text @($result.Reasons|Where-Object Action -CEQ 'build'))|Should -Be (& $expectBuilds @('Native') 'CentralPackageConsumer' 'foo.bar')
+            $result.ConservativeFull|Should -BeFalse
+        }
+
+        It 'builds nothing when pinning is enabled but no package changes' {
+            $pinning='<CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>'
+            & $write (& $central '<PackageVersion Include="Other.Pkg" Version="3.0.0" /><PackageVersion Include="Foo.Bar" Version="1.0.0" />' $pinning)
+            $before=& $central '<PackageVersion Include="Foo.Bar" Version="1.0.0" /><PackageVersion Include="Other.Pkg" Version="3.0.0" />' $pinning
+            $result=& $run @('Directory.Packages.props') @{'Directory.Packages.props'=$before}
+            @($result.Reasons).Count|Should -Be 0
+            @($result.BuildProjects).Count|Should -Be 0
+            $result.ConservativeFull|Should -BeFalse
+            $result.RunProducts|Should -BeFalse
+        }
+
+        It 'builds every importer when the central restore policy changes' {
+            & $write (& $central '<PackageVersion Include="Foo.Bar" Version="1.0.0" /><PackageVersion Include="Other.Pkg" Version="3.0.0" />' '<CentralPackageVersionOverrideEnabled>false</CentralPackageVersionOverrideEnabled>')
+            $result=& $run @('Directory.Packages.props') @{'Directory.Packages.props'=$baseline}
+            (& $text @($result.Reasons|Where-Object Action -CEQ 'build'))|Should -Be (& $expectBuilds @('Git','Native','Nat','Over') 'CentralRestorePolicyChanged' '')
+            $result.ConservativeFull|Should -BeFalse
+        }
+
+        It 'treats a deleted central file as a restore policy change of every removed package' {
+            $result=& $run @('Directory.Packages.props') @{'Directory.Packages.props'=$baseline}
+            (& $text @($result.Reasons|Where-Object Action -CEQ 'build'))|Should -Be (& $expectBuilds @('Git','Native','Nat','Over') 'CentralRestorePolicyChanged' 'foo.bar,other.pkg')
+            $result.ConservativeFull|Should -BeFalse
+        }
+
+        It 'builds every importer conservatively without a baseline' {
+            & $write $baseline
+            $result=& $run @('Directory.Packages.props')
+            (& $text @($result.Reasons|Where-Object Action -CEQ 'build'))|Should -Be (& $expectBuilds @('Git','Native','Nat','Over') 'BaselineUnavailable' '')
+            $result.ConservativeFull|Should -BeTrue
+        }
+    }
+}
+
+Describe 'Test-QuietDevelopReceipt' {
+    BeforeAll {
+        $tree='a'*40
+        $newReceipt={param([bool]$Performance,[bool]$Tooling,[bool]$Mutation)
+            [pscustomobject]@{Tree=$tree;Ready=$true;RunId='17';RunAttempt='2';Windows='success';Linux='success'
+                PerformanceRequired=$Performance;Performance=$(if($Performance){'success'}else{'skipped'})
+                ToolingRequired=$Tooling;Tooling=$(if($Tooling){'success'}else{'skipped'});ToolingMutation=$(if($Tooling){'success'}else{'skipped'})
+                MutationRequired=$Mutation;Mutation=$(if($Mutation){'success'}else{'skipped'})}
+        }
+    }
+
+    It 'accepts every consistent receipt for the exact tree and attempt' -ForEach @(
+        foreach($p in $false,$true){foreach($t in $false,$true){foreach($m in $false,$true){@{P=$p;T=$t;M=$m}}}}
+    ) {
+        Test-QuietDevelopReceipt -Receipt (& $newReceipt $P $T $M) -Tree $tree -RunId '17' -RunAttempt '2'|Should -BeTrue
+    }
+
+    It 'rejects a receipt when any single field is altered' {
+        $null=Invoke-QuietProperty -Name 'receipt-single-change' -Seed $seed -Count 200 -Generator {param($random)
+            $flags=[bool[]]@(($random.Next(0,2) -eq 1),($random.Next(0,2) -eq 1),($random.Next(0,2) -eq 1))
+            $field=Get-QuietRandomItem $random @('Tree','Ready','RunId','RunAttempt','Windows','Linux','PerformanceRequired','Performance','ToolingRequired','Tooling','ToolingMutation','MutationRequired','Mutation')
+            [pscustomobject]@{Flags=$flags;Field=$field;Pick=$random.Next(0,1000)}
+        } -Property {param($case)
+            $receipt=& $newReceipt $case.Flags[0] $case.Flags[1] $case.Flags[2]
+            $value=$receipt.($case.Field)
+            $receipt.($case.Field)=switch($case.Field){
+                'Tree'{'b'*40}
+                {$_ -in 'Ready'}{Get-QuietRandomItem ([Random]::new($case.Pick)) @($false,'true',1,$null)}
+                {$_ -in 'PerformanceRequired','ToolingRequired','MutationRequired'}{Get-QuietRandomItem ([Random]::new($case.Pick)) @((!$value),([string]$value),$null)}
+                {$_ -in 'RunId','RunAttempt'}{Get-QuietRandomItem ([Random]::new($case.Pick)) @('18','0',' 17',$null)}
+                default{Get-QuietRandomItem ([Random]::new($case.Pick)) @($(if($value -ceq 'success'){'skipped'}else{'success'}),'failure','Success',$null)}
+            }
+            $verdict=Test-QuietDevelopReceipt -Receipt $receipt -Tree $tree -RunId '17' -RunAttempt '2'
+            $verdict -is [bool] -and !$verdict
+        }
+    }
+
+    It 'rejects a malformed expected tree' -ForEach @(@{Tree='A'*40},@{Tree='a'*39},@{Tree=''},@{Tree=('a'*40)+"`n"}) {
+        $receipt=& $newReceipt $false $false $false;$receipt.Tree=$Tree
+        $verdict=Test-QuietDevelopReceipt -Receipt $receipt -Tree $Tree -RunId '17' -RunAttempt '2'
+        $verdict|Should -BeOfType [bool]
+        $verdict|Should -BeFalse
+    }
+}

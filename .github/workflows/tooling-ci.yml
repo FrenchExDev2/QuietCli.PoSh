@@ -16,7 +16,7 @@ permissions:
 jobs:
   results:
     name: Report separate tooling qualification results
-    needs: [core-independence, tooling, run-profiles-mutation, mutation-complete]
+    needs: [core-independence, tooling, script-tests, run-profiles-mutation, script-mutation, mutation-complete, script-mutation-complete]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -200,5 +200,138 @@ jobs:
         with:
           name: quietcli-mutation-complete-${{ github.sha }}-attempt${{ github.run_attempt }}
           path: artifacts/mutation-complete
+          if-no-files-found: error
+          retention-days: 14
+  script-tests:
+    # Pester 6 unit and integration tests of scripts/ and scripts/lib (test/scripts), on both host families.
+    name: Script tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            Directory.Packages.props
+            Directory.Build.props
+            global.json
+      - uses: ./.github/actions/cache-resources
+      - uses: ./.github/actions/cache-test-tools
+      - uses: ./.github/actions/setup-powershell
+      - name: Initialize the checkout and the pinned test tools
+        shell: pwsh
+        run: |
+          ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+          ./scripts/Initialize-TestTools.ps1 -Confirm:$false
+      - name: Build Core and Git for the entry points that run quiet git
+        # Start-QuietWorkBranch.ps1 drives git through quiet, which needs the built engine.
+        shell: pwsh
+        run: |
+          ./scripts/Initialize-Workspace.ps1 -Restore
+          ./scripts/Build-Workspace.ps1 -Suite Git
+      - name: Run every script test with coverage
+        id: script_tests
+        shell: pwsh
+        run: ./scripts/Invoke-ScriptsTests.ps1 -Headless -Coverage -RunDirectory ./artifacts/script-tests
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always() && steps.script_tests.outcome != '' && steps.script_tests.outcome != 'skipped'
+        with:
+          name: quietcli-script-tests-${{ matrix.os }}-${{ github.sha }}-attempt${{ github.run_attempt }}
+          path: |
+            artifacts/script-tests/*.json
+            artifacts/script-tests/*.xml
+            artifacts/script-tests/*.log
+          if-no-files-found: error
+          retention-days: 14
+  script-mutation:
+    # One shard per target of test/scripts/mutation.targets.psd1; script-mutation-complete rejects a missing one.
+    name: Script mutation (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ScriptsTests, ScriptAnalysis, ScriptMutation, ScriptMutationCache, ScriptMutationSlot, WorkBranch, ScriptsInventory, CiImpact, CiCompanions, CompanionWorkflows, CiPlanResults]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+      - uses: ./.github/actions/cache-resources
+      - uses: ./.github/actions/cache-test-tools
+      - uses: ./.github/actions/setup-powershell
+      - name: Initialize the checkout and the pinned test tools
+        shell: pwsh
+        run: |
+          ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+          ./scripts/Initialize-TestTools.ps1 -Tool pester -Confirm:$false
+      # Outcomes are keyed by everything the target's tests can observe, so the newest cache of the target is
+      # always safe to reuse; a pull request restores develop's cache but can only save into its own scope.
+      - name: Restore the target's incremental mutation cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .cache/script-mutation
+          key: ${{ runner.os }}-quietcli-script-mutation-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ${{ runner.os }}-quietcli-script-mutation-${{ matrix.target }}-
+      - name: Require the target's mutation score
+        id: script_mutation
+        shell: pwsh
+        env:
+          MUTATION_TARGET: ${{ matrix.target }}
+        run: ./scripts/Invoke-ScriptsMutation.ps1 -Headless -Offline -PruneCache -Target $env:MUTATION_TARGET -ThrottleLimit 4 -TimeoutSeconds 8400 -RunDirectory ./artifacts/script-mutation/$env:MUTATION_TARGET
+      # Saved even after a failed or timed-out campaign: every outcome already written stays valid for its key.
+      - name: Save the target's incremental mutation cache
+        if: always() && steps.script_mutation.outcome != '' && steps.script_mutation.outcome != 'skipped'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .cache/script-mutation
+          key: ${{ runner.os }}-quietcli-script-mutation-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always() && steps.script_mutation.outcome != '' && steps.script_mutation.outcome != 'skipped'
+        with:
+          name: quietcli-script-mutation-${{ github.sha }}-${{ matrix.target }}-attempt${{ github.run_attempt }}
+          path: |
+            artifacts/script-mutation/*/report.json
+            artifacts/script-mutation/*/report.md
+            artifacts/script-mutation/*/mutants.json
+          if-no-files-found: error
+          retention-days: 14
+  script-mutation-complete:
+    name: Require every script mutation target
+    needs: script-mutation
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: quietcli-script-mutation-${{ github.sha }}-*-attempt${{ github.run_attempt }}
+          path: artifacts/script-mutation-shards
+      - name: Verify every target from this revision and attempt
+        shell: pwsh
+        env:
+          SHARD_RESULT: ${{ needs.script-mutation.result }}
+        run: |
+          if($env:SHARD_RESULT -cne 'success'){throw 'ScriptMutationShardJobsRequired'}
+          ./scripts/Assert-ScriptMutationShards.ps1 -ReportRoot ./artifacts/script-mutation-shards -OutputPath ./artifacts/script-mutation-complete/receipt.json -Confirm:$false
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: quietcli-script-mutation-complete-${{ github.sha }}-attempt${{ github.run_attempt }}
+          path: artifacts/script-mutation-complete
           if-no-files-found: error
           retention-days: 14

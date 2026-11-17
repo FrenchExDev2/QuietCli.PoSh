@@ -4,7 +4,8 @@
 
 `./scripts/Write-ToolingResults.ps1 -NeedsJson $env:TOOLING_NEEDS -OutputPath $env:GITHUB_OUTPUT`
 exports independent functional, mutation-shard and catalogue-completeness results.
-The tooling workflow runs its result job with `always()` after all four prerequisites.
+The tooling workflow runs its result job with `always()` after all seven prerequisites:
+the run-profile jobs, plus script-tests, script-mutation and script-mutation-complete.
 This step reports decisions; it never converts a failed prerequisite to success.
 
 ## Dependencies and effects
@@ -18,8 +19,9 @@ failure; invalid or oversized JSON throws without producing outputs.
 
 The result job may itself be unavailable after cancellation or runner failure. The
 calling gate rejects absent outputs and independently checks overall workflow success.
-The existing Tooling release-gate case tests 625 result combinations, malformed input,
-no-write preview, three targeted mutants and independent gate rejection/receipts.
+The existing Tooling release-gate case tests 750 result combinations: 625 over the
+run-profile jobs and 125 over the script jobs. It also covers malformed input, no-write
+preview, four targeted mutants and independent gate rejection/receipts.
 Local fixtures do not qualify GitHub's hosted output propagation after cancellation.
 
 <!-- credits:begin -->

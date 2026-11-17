@@ -2,7 +2,7 @@
 <# .SYNOPSIS
 Resolves or builds the image layers declared for a companion test suite.
 .PARAMETER Suite
-Declared companion or All.
+Declared companions or All; several suites prepare each distinct image chain once, sequentially, and return the aggregate.
 .PARAMETER RuntimeIdentifier
 Native Linux RID.
 .PARAMETER WorkspaceRoot
@@ -21,11 +21,15 @@ Explicit container adapter or the shared environment selection.
 Checks final registry configuration without pulling, building or contacting a container daemon.
 #>
 [CmdletBinding(SupportsShouldProcess)]
-param([string]$Suite='All',[Parameter(Mandatory)][ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$PlanOnly,[switch]$RegistryCache,[switch]$PublishCache,[switch]$ResolveOnly,[switch]$ProbeOnly,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime)
+param([ValidateNotNullOrEmpty()][string[]]$Suite=@('All'),[Parameter(Mandatory)][ValidateSet('linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string]$RuntimeIdentifier,[string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$PlanOnly,[switch]$RegistryCache,[switch]$PublishCache,[switch]$ResolveOnly,[switch]$ProbeOnly,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime)
 $ErrorActionPreference='Stop'
-if(!$PlanOnly -and !$PSCmdlet.ShouldProcess($WorkspaceRoot,('Prepare declared image layers for '+$Suite))){return}
+if(!$PlanOnly -and !$PSCmdlet.ShouldProcess($WorkspaceRoot,('Prepare declared image layers for '+($Suite -join ',')))){return}
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiCompanions.psm1')) -DisableNameChecking
 $configuration=Read-QuietCiCompanions $WorkspaceRoot
-$selection=Resolve-QuietCiCompanions $configuration -Suite $Suite
+if($Suite.Count -gt 1){
+    if($PlanOnly){throw 'CiSuiteImagePlanRequiresOneSuite'}
+    return Invoke-QuietCiSuiteImages -WorkspaceRoot $WorkspaceRoot -Configuration $configuration -Suite $Suite -RuntimeIdentifier $RuntimeIdentifier -ContainerRuntime $ContainerRuntime -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ResolveOnly:$ResolveOnly -ProbeOnly:$ProbeOnly -Confirm:$false
+}
+$selection=Resolve-QuietCiCompanions $configuration -Suite $Suite[0]
 if($PlanOnly){return Get-QuietCiSuiteImagePlan $WorkspaceRoot $selection $RuntimeIdentifier}
 Invoke-QuietCiSuiteImage -WorkspaceRoot $WorkspaceRoot -Selection $selection -RuntimeIdentifier $RuntimeIdentifier -ContainerRuntime $ContainerRuntime -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ResolveOnly:$ResolveOnly -ProbeOnly:$ProbeOnly -Confirm:$false

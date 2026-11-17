@@ -14,7 +14,7 @@ function Assert-QuietCiPlanResults {
     }
     $requirements=[ordered]@{products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';distribution='run_distribution'}
     foreach($name in $requirements.Keys){
-        $flag=if($Needs.Contains('plan') -and $Needs.plan.outputs){$Needs.plan.outputs[$requirements[$name]]}else{$null}
+        $flag=if($Needs.Contains('plan') -and $Needs.plan.outputs){$Needs.plan.outputs[$requirements[$name]]}
         if($flag -cnotin @('true','false')){$issues.Add('CiPlanOutputMissing: '+$requirements[$name])}
         if(!$Needs.Contains($name)){$issues.Add('CiPlanJobMissing: '+$name);continue}
         if($flag -cnotin @('true','false')){continue}

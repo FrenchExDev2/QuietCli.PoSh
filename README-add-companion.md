@@ -113,6 +113,14 @@ Image participation is explicit:
 - `none`: no additional native-tool image layer.
 - `overlay`: prepare the companion-owned, locked tool layer.
 
+A companion that needs no native tool keeps `image: none` and ships no image contract. A companion
+that ships one must declare `overlay`, so its layer is composed on top of its parent. The
+`CompanionWorkflows` check enforces both directions through `Assert-QuietCiCompanionImages`:
+- `CiCompanionOverlayContractMissing`: an overlay without `ci/Get-CiImageArguments.ps1`;
+- `CiCompanionImageMustBeOverlay`: that contract on a `none` companion.
+
+Test fixture Dockerfiles, such as Vagrant's `fixture/Dockerfile.vagrant`, are test data, not images.
+
 Vagrant's current tests use fixtures without installing the Vagrant executable. `image: none`
 describes that scope; it does not qualify real Vagrant execution.
 
@@ -177,11 +185,14 @@ From the monorepo root:
 ./scripts/Initialize-CiCompanions.ps1 -Suite Vagrant
 ./scripts/New-CiSuiteImage.ps1 -Suite Vagrant -RuntimeIdentifier linux-arm64 -PlanOnly
 ./scripts/New-CiSuiteImage.ps1 -Suite Vagrant -RuntimeIdentifier linux-x64 -WhatIf
+./scripts/New-CiSuiteImage.ps1 -Suite Core,Git,Vagrant -RuntimeIdentifier linux-x64 -PlanOnly
 ```
 
 The first command describes the selection. `PlanOnly` computes the final image without native
 execution or registry access; its YAML reader may prepare the pinned parsing resource. Preparation
-with `WhatIf` returns before effects.
+with `WhatIf` returns before effects. Several suites, as the develop warm-up job passes them, are
+prepared one chain at a time: base first, then each overlay after its parent. Each layer is
+prepared once.
 
 Run the focused catalogue regression with the visible monitor:
 
@@ -206,8 +217,9 @@ printed by the monitored launcher.
 
 `companions-ci.yml` covers `FrenchExDev2.QuietCli.*.PoSh/**`, `build/**` and shared sources.
 Vagrant-only changes and future integration test projects therefore reach the common entry.
-It currently requests `All`. Changed-suite selection, image build optimization and test scheduling
-are separate work.
+Its plan selects the changed suites, their dependency smokes and the `image_suites` whose Linux
+images the develop `images` job warms first (see
+[the selective CI contract](docs/README-companion-layout-and-ci.md#linux-image-warm-up)).
 
 The reusable/manual workflow also accepts a declared suite. Image preparation/publication retains
 its existing restrictions. A catalogue entry, a local checkpoint and an unexecuted platform plan

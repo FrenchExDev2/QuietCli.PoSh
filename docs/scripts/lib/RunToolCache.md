@@ -52,6 +52,10 @@ Well-designed and thoroughly tested; no rework needed — if anything is worth d
 
 Get-RunProfilerPackages accepts -Module as a validated string array (profiler, dottrace; both by default). Results preserve catalogue order and contain each selected package once. Initialize-RunToolCache verifies only its explicit Packages argument. An unrequested tool has a null return path and creates no directory in a fresh cache. The latest receipt records only the requested packages. Tests cover independent single-tool offline caches and rejection of missing requested tools.
 
+## Script test tools
+
+`Get-RunTestToolPackages [-Tool pester,scriptanalyzer]` returns the pinned PowerShell Gallery packages Pester 6.2.0 (`E6AC7418…A239`) and PSScriptAnalyzer 1.25.0 (`14E634C8…5D60`) with entrypoints `Pester.psd1` and `PSScriptAnalyzer.psd1`. `Get-QuietTestToolDirectory -WorkspaceRoot` returns `<workspace>/.cache/test-tools` (ignored by Git). `Initialize-QuietTestTools -WorkspaceRoot [-OutputDirectory] [-Tool] [-Offline] [-DownloadBytes]` verifies them through `Initialize-RunToolCache` and returns `PesterModulePath`, `ScriptAnalyzerModulePath`, `Receipt` and `Directory`; unrequested tools return null paths. `Initialize-RunToolCache` now also returns, and records in its receipt, a generic `Paths` map keyed by package name; the profiler fields are unchanged. Entry point: [Initialize-TestTools.ps1](../Initialize-TestTools.md). Tests: `test/scripts/unit/lib/RunToolCache.Tests.ps1`.
+
 <!-- credits:begin -->
 ## Credits
 
@@ -63,7 +67,7 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 
 Purpose: Returns the two checksum-pinned diagnostic packages and their required entrypoints.
 
-Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 0.
+Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->

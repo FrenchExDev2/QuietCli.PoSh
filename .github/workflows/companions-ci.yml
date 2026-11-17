@@ -24,6 +24,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
+      image_suites: ${{ steps.plan.outputs.image_suites }}
       smoke_suites: ${{ steps.plan.outputs.smoke_suites }}
       run_products: ${{ steps.plan.outputs.run_products }}
       run_smokes: ${{ steps.plan.outputs.run_smokes }}
@@ -65,10 +66,70 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with: {name: quietcli-layout-tests, path: artifacts/layout-tests}
+  images:
+    # Single producer per RID for the whole run: every selected suite chain is resolved or built here,
+    # sequentially and base first, before any per-suite qualification starts reading the registry.
+    name: Warm Linux images (${{ matrix.rid }})
+    needs: [plan, source-checks]
+    if: needs.plan.outputs.run_products == 'true' && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    permissions: {contents: read, packages: write}
+    concurrency:
+      group: quietcli2-ci-images-${{ matrix.rid }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {rid: linux-x64, runner: ubuntu-latest}
+          - {rid: linux-musl-x64, runner: ubuntu-latest}
+          - {rid: linux-arm64, runner: ubuntu-24.04-arm}
+          - {rid: linux-musl-arm64, runner: ubuntu-24.04-arm}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - name: Initialize deterministic GitHub environment
+        shell: pwsh
+        run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+      - uses: ./.github/actions/setup-powershell
+      - name: Probe every selected chain before restoring intermediate layers
+        id: image_probe
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+          IMAGE_SUITES: ${{ needs.plan.outputs.image_suites }}
+          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          $probe=./scripts/New-CiSuiteImage.ps1 -Suite ([string[]](ConvertFrom-Json $env:IMAGE_SUITES)) -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -ProbeOnly
+          [IO.File]::AppendAllText($env:GITHUB_OUTPUT,"cache_hit=$($probe.CacheHit.ToString().ToLowerInvariant())`nfingerprint=$($probe.Fingerprint)`n",[Text.UTF8Encoding]::new($false))
+      - uses: ./.github/actions/cache-ci-layers
+        if: steps.image_probe.outputs.cache_hit != 'true'
+        with:
+          mode: restore
+          rid: ${{ matrix.rid }}
+          fingerprint: ${{ steps.image_probe.outputs.fingerprint }}
+      - name: Prepare every selected chain once, base first
+        shell: pwsh
+        env:
+          EXPECTED_RID: ${{ matrix.rid }}
+          IMAGE_SUITES: ${{ needs.plan.outputs.image_suites }}
+          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
+        run: ./scripts/New-CiSuiteImage.ps1 -Suite ([string[]](ConvertFrom-Json $env:IMAGE_SUITES)) -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -PublishCache -ResolveOnly -ContainerRuntime docker
+      - uses: ./.github/actions/cache-ci-layers
+        if: steps.image_probe.outputs.cache_hit != 'true'
+        with:
+          mode: save
+          rid: ${{ matrix.rid }}
+          fingerprint: ${{ steps.image_probe.outputs.fingerprint }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'quietcli2-ci-images-${{ matrix.rid }}', path: artifacts/ci-images, if-no-files-found: ignore}
   products:
     name: Qualify ${{ matrix.suite }}
-    needs: [plan, source-checks, layout-tests]
-    if: needs.plan.outputs.run_products == 'true'
+    needs: [plan, source-checks, layout-tests, images]
+    # The warm-up is skipped outside develop pushes; a failed warm-up blocks qualification instead of racing it.
+    if: ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && needs.layout-tests.result == 'success' && (needs.images.result == 'success' || needs.images.result == 'skipped') && needs.plan.outputs.run_products == 'true' }}
     strategy:
       fail-fast: false
       max-parallel: 4
@@ -84,6 +145,7 @@ jobs:
       build_projects_json: ${{ matrix.build_projects_json }}
       collect_performance: ${{ matrix.collect_performance }}
       run_tooling: false
+      images_prepared: ${{ needs.images.result == 'success' }}
   smokes:
     name: Dependent smoke (${{ matrix.runner }})
     needs: [plan, source-checks, layout-tests]
@@ -108,7 +170,7 @@ jobs:
     uses: ./.github/workflows/distribution-ci.yml
   ci-status:
     name: QuietCli required CI
-    needs: [plan, source-checks, layout-tests, products, smokes, tooling-only, distribution]
+    needs: [plan, source-checks, layout-tests, images, products, smokes, tooling-only, distribution]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

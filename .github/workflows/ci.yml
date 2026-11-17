@@ -45,6 +45,11 @@ on:
         type: boolean
         required: false
         default: true
+      images_prepared:
+        description: The caller already warmed every Linux image layer of this run, once per RID; skip the per-suite producer
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       images_only:
@@ -346,7 +351,8 @@ jobs:
   linux-images:
     name: Suite image (${{ matrix.rid }})
     needs: linux-matrix
-    if: github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    # A caller that warmed the images (companions-ci `images`) owns the single producer per RID.
+    if: github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !inputs.images_prepared
     permissions:
       contents: read
       packages: write

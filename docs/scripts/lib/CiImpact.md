@@ -8,6 +8,8 @@ Test-QuietDevelopReceipt requires explicit booleans, exact tree/run/attempt iden
 
 The reviewed tooling-only boundary is exact: `scripts/New-RunProfile.ps1`, `scripts/Invoke-RunProfile.ps1`, `scripts/lib/RunProfileStore.psm1`, and restricted lowercase `scripts/RunProfiles/<name>.profile.ps1` definitions. These changes still require the complete tooling workflow. Shared profiler/encoding helpers, evidence reports, the impact resolver itself and unknown scripts retain All. Combining a tooling-only path with a product/shared path unions both requirements, independently of path order. CiScalability.Tests exercises generated names, malformed/sibling paths, mixed scopes and a targeted resolver mutation.
 
+Script tests below the exact, case-sensitive `test/scripts/` prefix also select tooling only: they run in the tooling workflow and never ship in, or qualify, a companion product. A sibling such as `test/scriptsx/` or a differently cased `Test/scripts/` stays shared and keeps the conservative full plan. The libraries under test (`scripts/lib/**`) keep their full plan. `test/scripts/unit/lib/CiImpact.Tests.ps1` covers these rows, monotonicity, order invariance and path fuzzing.
+
 ## Critical review and verdict
 
 scripts/lib/CiImpact.psm1:1 favors a conservative full matrix over guessed dependencies. The caller supplies a complete no-rename diff. Companion manifests determine build closure; the YAML determines qualification/image requirements. Tests exercise known scopes, unknown paths, compound scopes, malformed paths, every required receipt field and stale identities. Hosted API and cache transfer behavior still require GitHub execution.

@@ -18,8 +18,8 @@
     },
     {
       "Path": "scripts/Invoke-WorkspaceChecks.ps1",
-      "Reason": "Check-only ordered registry; guarded parser preparation may write prerequisite resource/cache files. No documentation Apply, build, staging, commit or publication; WhatIf propagates.",
-      "SHA256": "A8430BB9A2A23AFF3E753E4629D48FBA0E825B62A15CF841C66D6F212543582B"
+      "Reason": "Check-only ordered registry; guarded parser and pinned analyzer preparation may write prerequisite resource/cache files, including the ScriptAnalyzer cache. No documentation Apply, build, staging, commit or publication; WhatIf propagates.",
+      "SHA256": "9649BB9A4F53752091AB438E01679E6626C83FAACD09461C2FB0E0B4BCC2EE56"
     },
     {
       "Path": "scripts/Test-Resources.ps1",

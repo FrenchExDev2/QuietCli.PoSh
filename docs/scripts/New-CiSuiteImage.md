@@ -16,6 +16,12 @@ Resolves the base and overlays declared by `build/companions.yml` for Suite (def
 | ResolveOnly with RegistryCache | Verify metadata; build only on miss | Existing immutable reference without pulling layers, or newly prepared image. |
 | Normal RegistryCache | Pull verified final hit first; build required parents on miss | Verified local final image. |
 
+Suite accepts several names. With more than one, the script delegates to `Invoke-QuietCiSuiteImages`, which prepares each distinct chain once, sequentially and base first, and returns the aggregate `{RuntimeIdentifier, Suites, Chains, Fingerprint, CacheHit}`. This is the mode used by the `images` warm-up job of `companions-ci.yml`, the single producer per RID of a develop run. PlanOnly accepts one suite only (`CiSuiteImagePlanRequiresOneSuite`); a single name keeps the per-suite result.
+
+```powershell
+./scripts/New-CiSuiteImage.ps1 -Suite Core,Git -RuntimeIdentifier linux-x64 -RegistryCache -ProbeOnly
+```
+
 WhatIf returns before configuration/resource preparation. ContainerRuntime follows the shared explicit/dotenv/Podman-first policy; GitHub uses Docker. PublishCache remains upstream-develop-only. No publication is allowed from PRs.
 
 ```mermaid

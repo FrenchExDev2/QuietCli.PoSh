@@ -142,6 +142,13 @@ function Invoke-QuietWorkspaceLayoutTests {
     $cases['the final gate rejects skipped selected work and failed planning']={
         $needs=@{plan=@{result='success';outputs=@{run_products='true';run_smokes='false';run_tooling='false';run_distribution='false'}};'source-checks'=@{result='success'};'layout-tests'=@{result='success'};products=@{result='success'};smokes=@{result='skipped'};'tooling-only'=@{result='skipped'};distribution=@{result='skipped'}}
         $null=Assert-QuietCiPlanResults $needs
+        # The develop image warm-up is optional (skipped on pull requests) but never allowed to fail silently.
+        foreach($warm in @('success','skipped','failure','cancelled')){
+            $needs.images=@{result=$warm};$rejected=$false
+            try{$null=Assert-QuietCiPlanResults $needs}catch{$rejected=$_.Exception.Message.Contains('CiPlanJobFailed: images')}
+            if($rejected -ne ($warm -cin @('failure','cancelled'))){throw ('ImageWarmupResultMisjudged: '+$warm)};$campaign.Properties++
+        }
+        $needs.Remove('images')
         foreach($failure in @('failed','cancelled','skipped')){
             $needs.products.result=$failure;$rejected=$false
             try{$null=Assert-QuietCiPlanResults $needs}catch{$rejected=$true}

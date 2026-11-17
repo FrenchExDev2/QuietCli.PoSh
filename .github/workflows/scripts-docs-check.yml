@@ -2,7 +2,7 @@ name: QuietCli2 Scripts docs check
 
 # Shared registry: script documentation, workflow source receipts/graphs/index,
 # script layout (Verb-Noun, library functions, imports and IO paths), test classifications,
-# preview contracts, resource dependencies and credits. Parser preparation is self-contained;
+# preview contracts, resource dependencies, credits and ScriptAnalyzer findings. Parser preparation is self-contained;
 # the checks never regenerate documentation, build or commit; see
 # docs/README-scripts-have-docs.md for the why/how and scripts-docs-apply.yml for the companion
 # workflow that writes the fix.
@@ -18,6 +18,7 @@ on:
       - 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/**'
       - '.github/actions/**'
       - 'build/script-shouldprocess.json'
+      - 'test/scripts/**'
       - 'AGENTS.md'
       - 'docs/README-automation-contracts.md'
       - '.github/workflows/**'
@@ -33,12 +34,21 @@ jobs:
   check:
     name: Check test classifications, script docs and automation contracts
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - uses: ./.github/actions/cache-resources
+      - uses: ./.github/actions/cache-test-tools
+      # ScriptAnalyzer findings are cached per file content and analyzer configuration, so the newest cache is always
+      # safe to reuse and only edited files are analyzed again.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .cache/script-analysis/*.json
+          key: ${{ runner.os }}-quietcli-script-analysis-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ${{ runner.os }}-quietcli-script-analysis-
       - name: Check repository automation contracts through the shared registry
         shell: pwsh
         run: ./scripts/Invoke-WorkspaceChecks.ps1
