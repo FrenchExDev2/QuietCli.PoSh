@@ -62,7 +62,8 @@ function Get-QuietScriptsTestValue {
     if($InputObject -is [Collections.IDictionary]){if(([Collections.IDictionary]$InputObject).Contains($Name)){$value=$InputObject[$Name]}}
     elseif($null -ne $InputObject){
         $property=$InputObject.PSObject.Properties[$Name]
-        if($null -ne $property){try{$value=$property.Value}catch{$value=$null}}
+        # PowerShell reads a throwing getter's Value as null instead of raising, so no try/catch is needed.
+        if($null -ne $property){$value=$property.Value}
     }
     return $value
 }
@@ -77,7 +78,8 @@ function Test-QuietScriptsPathWithin {
     Full root directory.
     #>
     param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)][string]$Root)
-    $comparison=if($IsWindows){[StringComparison]::OrdinalIgnoreCase}else{[StringComparison]::Ordinal}
+    # One expression rather than if/else, so coverage sees one command on every platform.
+    $comparison=$IsWindows ? [StringComparison]::OrdinalIgnoreCase : [StringComparison]::Ordinal
     $root=[IO.Path]::TrimEndingDirectorySeparator($Root)
     $candidate=[IO.Path]::TrimEndingDirectorySeparator($Path)
     if([string]::Equals($candidate,$root,$comparison)){return $true}

@@ -376,6 +376,15 @@ Describe 'ConvertTo-QuietScriptsTestReport' {
         $report.Incomplete|Should -BeTrue
         $report.Passed|Should -Be 0
     }
+    It 'reads a property whose getter throws as absent instead of throwing' {
+        $object=& $result 3 0 0
+        $object|Add-Member -MemberType ScriptProperty -Name Result -Value {throw 'getter failure'} -Force
+        $value=& $library {param($Value)Get-QuietScriptsTestValue $Value 'Result'} $object
+        $value|Should -BeNullOrEmpty -Because 'Get-QuietScriptsTestValue relies on PowerShell reading a throwing getter as null'
+        $report=ConvertTo-QuietScriptsTestReport -Result $object -Plan $plan
+        $report.Incomplete|Should -BeTrue -Because 'an unreadable outcome is not a known one'
+        $report.State|Should -BeExactly 'Failed'
+    }
     It 'converts <Raw> to the count <Expected>' -ForEach @(
         @{Raw='7';Expected=7};@{Raw='0';Expected=0};@{Raw='-1';Expected=-1};@{Raw='x';Expected=-1};@{Raw='2147483648';Expected=-1};@{Raw=$null;Expected=-1}
     ) {
