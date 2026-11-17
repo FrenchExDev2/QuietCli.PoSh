@@ -6,14 +6,11 @@ Get-QuietCiImpact reads the validated YAML suite catalogue. Companion changes se
 
 Test-QuietDevelopReceipt requires explicit booleans, exact tree/run/attempt identities and successful required Windows, Linux, performance, tooling and mutation outcomes. Missing fields fail closed.
 
-## Repository scripts select the tooling only
+## Repository scripts select only their script tests
 
-A change below the exact, case-sensitive `scripts/` or `test/scripts/` prefix selects the tooling workflow only, with no product suite, smoke or image. That workflow runs:
-- the script tests and the script mutation shards;
-- Core built and fully qualified on Windows without Git;
-- the repository automation suite and the run-profile suite and mutation.
+A change below the exact, case-sensitive `scripts/` or `test/scripts/` prefix selects no product suite, smoke, image or tooling campaign. The plan lists it in `ScriptPaths` instead. [`New-CiImpactPlan.ps1`](../New-CiImpactPlan.md) then asks [`ScriptsImpact.psm1`](ScriptsImpact.md) which script test files and script mutation targets those paths reach, and only those run.
 
-Repository scripts never ship in a companion product. So a change to a CI library, an entry point or a run profile no longer qualifies every companion on a pull request or a develop push. To qualify companions after such a change, run `companions-ci.yml` manually (see below).
+Repository scripts never ship in a companion product. So a change to a CI library, an entry point or a run profile no longer qualifies every companion, Core without Git or the run profiles on a pull request or a develop push. To qualify them after such a change, run `companions-ci.yml` manually (see below).
 
 Look-alike paths keep the conservative full plan: `Scripts/`, `scriptsx/`, `src/<group>/scripts/` (owned by its group), `Test/scripts/` and `test/scriptsx/`. Combining a tooling path with a product or shared path unions both requirements, independently of path order.
 
@@ -23,10 +20,10 @@ Tests:
 
 ## Manual dispatch
 
-`Get-QuietCiDispatchImpact -Suite` builds the plan of a manual `companions-ci.yml` run without reading a diff. Its input is a list of companion names, as items or comma-separated, matched without case, or `all`.
-- **Selection:** each requested companion is fully qualified, in catalogue order. Unselected companions that depend on one are smoked.
-- **Plan shape:** `RunProducts` is true; `RunTooling`, `RunDistribution` and `ConservativeFull` are false. `ChangedPaths` and `BuildProjects` are empty.
-- **Reasons:** each full suite records `workflow_dispatch|ManualDispatch`.
+`Get-QuietCiDispatchImpact -Suite` builds the plan of a manual `companions-ci.yml` run without reading a diff. Its input is a list of companion names or `Tooling`, as items or comma-separated, matched without case, or `all`.
+- **Selection:** each requested companion is fully qualified, in catalogue order. Unselected companions that depend on one are smoked. `Tooling` selects the full tooling workflow: Core without Git, the run profiles, every script test with coverage and every script mutation target. `all` selects every companion and the full tooling.
+- **Plan shape:** `RunProducts` is true when a companion is selected; `RunTooling` is true for `Tooling` or `all`. `Suite` is the single companion, `Selected` or `None`. `RunDistribution` and `ConservativeFull` are false. `ChangedPaths`, `BuildProjects` and `ScriptPaths` are empty.
+- **Reasons:** each full suite, and the tooling, records `workflow_dispatch|ManualDispatch`.
 - **Errors:** an empty or blank selection fails with `CiDispatchSuiteRequired`. An unknown name fails with `CiDispatchSuiteUnknown: <name>`; no prefix or wildcard is accepted.
 
 The unit tests cover generated catalogues, spellings, duplicates, both input forms and every rejection.

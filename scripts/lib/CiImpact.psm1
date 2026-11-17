@@ -27,6 +27,7 @@ function Get-QuietCiImpact {
     $smokes=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $builds=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $reasons=[Collections.Generic.List[object]]::new()
+    $scripts=[Collections.Generic.List[string]]::new()
     $tooling=$false;$conservative=$false;$distribution=$false
     foreach($project in $graph|Where-Object EvaluationFailure){
         $conservative=$true
@@ -35,9 +36,9 @@ function Get-QuietCiImpact {
     }
     foreach($path in $ChangedPaths){
         if($path -match '^docs/|\.md$|^icons/'){continue}
-        # Repository scripts and their tests never ship in a companion product: the tooling workflow qualifies them
-        # (script tests and mutation, Core without Git, run profiles). Product qualification is a manual dispatch.
-        if($path.StartsWith('scripts/',[StringComparison]::Ordinal) -or $path.StartsWith('test/scripts/',[StringComparison]::Ordinal)){$tooling=$true;continue}
+        # Repository scripts and their tests never ship in a companion product: only the script tests and mutation
+        # targets they reach qualify them (ScriptPaths). Products and the full tooling are a manual dispatch.
+        if($path.StartsWith('scripts/',[StringComparison]::Ordinal) -or $path.StartsWith('test/scripts/',[StringComparison]::Ordinal)){$scripts.Add($path);continue}
         $affected=@();$reason='SourceChanged';$packages=@()
         if($path -match '(?:^|/)Directory\.Packages\.props$'){
             $absolute=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $path)
@@ -107,7 +108,7 @@ function Get-QuietCiImpact {
     }}
     $names=@($configuration.Companions.Keys|Where-Object {$selected.Contains($_)})
     foreach($name in $smokes){$reasons.Add([pscustomobject]@{Input='DependencyGraph';Package=$null;Project=$null;Companion=$name;Action='smoke';Reason='ChangedRuntimeDependency'})}
-    [pscustomobject]@{SchemaVersion=2;Suite=$(if($names.Count -eq 1){$names[0]}elseif($names.Count){'Selected'}else{'None'});RunProducts=($names.Count -gt 0);RunTooling=$tooling;RunDistribution=$distribution;ChangedPaths=@($ChangedPaths);SelectedSuites=$names;FullSuites=$names;SmokeSuites=@($smokes|Sort-Object);BuildProjects=@($builds|Sort-Object);Reasons=$reasons.ToArray();ConservativeFull=$conservative}
+    [pscustomobject]@{SchemaVersion=2;Suite=$(if($names.Count -eq 1){$names[0]}elseif($names.Count){'Selected'}else{'None'});RunProducts=($names.Count -gt 0);RunTooling=$tooling;RunDistribution=$distribution;ChangedPaths=@($ChangedPaths);SelectedSuites=$names;FullSuites=$names;SmokeSuites=@($smokes|Sort-Object);BuildProjects=@($builds|Sort-Object);Reasons=$reasons.ToArray();ConservativeFull=$conservative;ScriptPaths=[string[]]$scripts.ToArray()}
 }
 
 function Get-QuietCiDependentSmokes {
@@ -130,11 +131,12 @@ function Get-QuietCiDependentSmokes {
 function Get-QuietCiDispatchImpact {
     <#
     .SYNOPSIS
-    Selects companion suites for full qualification on an explicit manual dispatch, without reading a diff.
+    Selects companion suites and the full tooling for qualification on an explicit manual dispatch, without reading a diff.
     .PARAMETER WorkspaceRoot
     Checkout owning the inert companion catalogue.
     .PARAMETER Suite
-    Companion names, as items or comma-separated, matched without case; all selects every companion.
+    Companion names or Tooling, as items or comma-separated, matched without case; all selects every companion and
+    the tooling.
     #>
     [CmdletBinding()]
     param([string]$WorkspaceRoot,[AllowEmptyCollection()][AllowNull()][string[]]$Suite)
@@ -144,7 +146,11 @@ function Get-QuietCiDispatchImpact {
     $requested=@(foreach($item in @($Suite)){foreach($part in ([string]$item).Split(',')){if($part.Trim()){$part.Trim()}}})
     if(!$requested.Count){throw 'CiDispatchSuiteRequired'}
     $selected=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $tooling=$false
     foreach($name in $requested){
+        # Tooling is the full repository tooling workflow (Core without Git, run profiles, every script test and target).
+        if($name -ieq 'Tooling'){$tooling=$true;continue}
+        if($name -ieq 'all'){$tooling=$true}
         $match=@(if($name -ieq 'all'){$all}else{$all|Where-Object {$_ -ieq $name}})
         if(!$match.Count){throw ('CiDispatchSuiteUnknown: '+$name)}
         foreach($companion in $match){[void]$selected.Add($companion)}
@@ -153,9 +159,10 @@ function Get-QuietCiDispatchImpact {
     $smokes=@(Get-QuietCiDependentSmokes $configuration $selected)
     $reasons=@(
         foreach($name in $names){[pscustomobject]@{Input='workflow_dispatch';Package=$null;Project=$null;Companion=$name;Action='full';Reason='ManualDispatch'}}
+        if($tooling){[pscustomobject]@{Input='workflow_dispatch';Package=$null;Project=$null;Companion='Tooling';Action='full';Reason='ManualDispatch'}}
         foreach($name in $smokes){[pscustomobject]@{Input='DependencyGraph';Package=$null;Project=$null;Companion=$name;Action='smoke';Reason='ChangedRuntimeDependency'}}
     )
-    [pscustomobject]@{SchemaVersion=2;Suite=$(if($names.Count -eq 1){$names[0]}else{'Selected'});RunProducts=$true;RunTooling=$false;RunDistribution=$false;ChangedPaths=@();SelectedSuites=$names;FullSuites=$names;SmokeSuites=@($smokes|Sort-Object);BuildProjects=@();Reasons=$reasons;ConservativeFull=$false}
+    [pscustomobject]@{SchemaVersion=2;Suite=$(if($names.Count -eq 1){$names[0]}elseif($names.Count){'Selected'}else{'None'});RunProducts=($names.Count -gt 0);RunTooling=$tooling;RunDistribution=$false;ChangedPaths=@();SelectedSuites=$names;FullSuites=$names;SmokeSuites=@($smokes|Sort-Object);BuildProjects=@();Reasons=$reasons;ConservativeFull=$false;ScriptPaths=[string[]]@()}
 }
 
 function Test-QuietDevelopReceipt {

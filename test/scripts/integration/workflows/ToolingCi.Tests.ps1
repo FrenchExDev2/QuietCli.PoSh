@@ -15,13 +15,58 @@ BeforeAll {
     $targets=@(Read-QuietScriptMutationTargets -Path ([IO.Path]::Combine($root,'test','scripts','mutation.targets.psd1')) -ScriptsRoot ([IO.Path]::Combine($root,'scripts')) -TestsRoot ([IO.Path]::Combine($root,'test','scripts')))
 }
 
+Describe 'tooling-ci.yml selection' {
+    It 'defaults every input to the full campaign, so callers without inputs keep it' {
+        $inputs=$workflow['on']['workflow_call']['inputs']
+        (@($inputs.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'scope,script_mutation_targets,script_tests'
+        [string]$inputs['scope']['default']|Should -BeExactly 'full'
+        [string]$inputs['script_tests']['default']|Should -BeExactly 'all'
+        [string]$inputs['script_mutation_targets']['default']|Should -BeExactly 'all'
+    }
+
+    It 'validates the selection once and exposes only booleans and JSON lists' {
+        $job=$jobs['script-selection']
+        $job.ContainsKey('needs')|Should -BeFalse
+        $job.ContainsKey('if')|Should -BeFalse -Because 'an invalid selection must fail the campaign, not skip it'
+        (@($job['outputs'].Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'requires_build,run_mutation,run_tests,targets,tests'
+        $step=@($job['steps']|Where-Object {$_['id'] -ceq 'select'})[0]
+        [string]$step['env']['TOOLING_SCOPE']|Should -BeExactly '${{ inputs.scope }}'
+        [string]$step['env']['SCRIPT_TESTS']|Should -BeExactly '${{ inputs.script_tests }}'
+        [string]$step['env']['SCRIPT_MUTATION_TARGETS']|Should -BeExactly '${{ inputs.script_mutation_targets }}'
+        [string]$step['run']|Should -Match ([regex]::Escape('Resolve-QuietScriptsCiSelection -WorkspaceRoot . -Scope $env:TOOLING_SCOPE -Tests $env:SCRIPT_TESTS -Targets $env:SCRIPT_MUTATION_TARGETS'))
+    }
+
+    It 'runs <Job> only for the full scope' -ForEach @(
+        @{Job='core-independence';Condition='inputs.scope == ''full'''}
+        @{Job='tooling';Condition='inputs.scope == ''full'''}
+        @{Job='run-profiles-mutation';Condition='inputs.scope == ''full'''}
+        @{Job='mutation-complete';Condition='${{ always() && !cancelled() && inputs.scope == ''full'' }}'}
+    ) {
+        [string]$jobs[$Job]['if']|Should -BeExactly $Condition
+    }
+}
+
 Describe 'tooling-ci.yml script tests' {
-    It 'runs every script test with coverage on Windows and Linux' {
-        (@($jobs['script-tests']['strategy']['matrix']['os'])|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'ubuntu-latest,windows-latest'
-        $commands=& $runs $jobs['script-tests']
+    It 'runs every script test with coverage, or only the selected files, on Windows and Linux' {
+        $job=$jobs['script-tests']
+        (@($job['strategy']['matrix']['os'])|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'ubuntu-latest,windows-latest'
+        [string]$job['needs']|Should -BeExactly 'script-selection'
+        [string]$job['if']|Should -BeExactly 'needs.script-selection.outputs.run_tests == ''true'''
+        $commands=& $runs $job
         $commands|Should -Match ([regex]::Escape('./scripts/Initialize-TestTools.ps1'))
-        $commands|Should -Match ([regex]::Escape('./scripts/Invoke-ScriptsTests.ps1 -Headless -Coverage'))
-        $commands|Should -Not -Match '-Kind|-Path|-FullNameFilter|-Tag' -Because 'a filtered run is partial and never qualifies'
+        $step=@($job['steps']|Where-Object {$_['id'] -ceq 'script_tests'})[0]
+        [string]$step['env']['SCRIPT_TESTS']|Should -BeExactly '${{ needs.script-selection.outputs.tests }}'
+        $lines=@(([string]$step['run']).Split("`n",[StringSplitOptions]::RemoveEmptyEntries))
+        $lines.Count|Should -Be 2
+        $lines[0]|Should -BeExactly "if(`$env:SCRIPT_TESTS -ceq 'all'){./scripts/Invoke-ScriptsTests.ps1 -Headless -Coverage -RunDirectory ./artifacts/script-tests}"
+        $lines[1]|Should -BeExactly 'else{./scripts/Invoke-ScriptsTests.ps1 -Headless -Path ([string[]](ConvertFrom-Json $env:SCRIPT_TESTS)) -RunDirectory ./artifacts/script-tests}'
+        $commands|Should -Not -Match '-Kind|-FullNameFilter|-Tag' -Because 'only the impact selection may make a run partial'
+    }
+
+    It 'builds the engine only when a selected test declares it' {
+        $build=@($jobs['script-tests']['steps']|Where-Object {([string]$_['run']).Contains('./scripts/Build-Workspace.ps1')})
+        $build.Count|Should -Be 1
+        [string]$build[0]['if']|Should -BeExactly 'needs.script-selection.outputs.requires_build == ''true'''
     }
 
     It 'restores the pinned test tool archives before initializing them' -ForEach @(@{Job='script-tests'},@{Job='script-mutation'}) {
@@ -33,8 +78,11 @@ Describe 'tooling-ci.yml script tests' {
 }
 
 Describe 'tooling-ci.yml script mutation' {
-    It 'shards exactly the configured targets, one job each' {
-        (@($jobs['script-mutation']['strategy']['matrix']['target'])|Sort-Object -CaseSensitive) -join ','|Should -BeExactly ((@($targets.Name)|Sort-Object -CaseSensitive) -join ',')
+    It 'shards exactly the selected targets, one job each' {
+        @($targets).Count|Should -BeGreaterThan 0
+        [string]$jobs['script-mutation']['needs']|Should -BeExactly 'script-selection'
+        [string]$jobs['script-mutation']['if']|Should -BeExactly 'needs.script-selection.outputs.run_mutation == ''true'''
+        [string]$jobs['script-mutation']['strategy']['matrix']['target']|Should -BeExactly '${{ fromJson(needs.script-selection.outputs.targets) }}' -Because 'Resolve-QuietScriptsCiSelection expands all to the catalogue'
         [string]$jobs['script-mutation']['strategy']['fail-fast']|Should -BeExactly 'false'
         $commands=& $runs $jobs['script-mutation']
         $commands|Should -Match ([regex]::Escape('./scripts/Invoke-ScriptsMutation.ps1 -Headless -Offline -PruneCache -Target $env:MUTATION_TARGET'))
@@ -64,15 +112,16 @@ Describe 'tooling-ci.yml script mutation' {
 
     It 'requires every shard of this revision and attempt before accepting the campaign' {
         $complete=$jobs['script-mutation-complete']
-        @($complete['needs'])|Should -Be @('script-mutation')
-        [string]$complete['if']|Should -BeExactly '${{ always() && !cancelled() }}'
+        @($complete['needs'])|Should -Be @('script-selection','script-mutation')
+        [string]$complete['if']|Should -BeExactly '${{ always() && !cancelled() && needs.script-selection.outputs.run_mutation != ''false'' }}' -Because 'a failed selection must still fail here'
+        [string]@($complete['steps']|Where-Object {$_['env'] -and $_['env'].ContainsKey('MUTATION_TARGETS')})[0]['env']['MUTATION_TARGETS']|Should -BeExactly '${{ needs.script-selection.outputs.targets }}'
         $download=@($complete['steps']|Where-Object {([string]$_['uses']).StartsWith('actions/download-artifact@',[StringComparison]::Ordinal)})[0]
         [string]$download['with']['pattern']|Should -BeExactly 'quietcli-script-mutation-${{ github.sha }}-*-attempt${{ github.run_attempt }}'
         $upload=@($jobs['script-mutation']['steps']|Where-Object {([string]$_['uses']).StartsWith('actions/upload-artifact@',[StringComparison]::Ordinal)})[0]
         [string]$upload['with']['name']|Should -BeExactly 'quietcli-script-mutation-${{ github.sha }}-${{ matrix.target }}-attempt${{ github.run_attempt }}'
         $commands=& $runs $complete
         $commands|Should -Match "if\(\`$env:SHARD_RESULT -cne 'success'\)\{throw 'ScriptMutationShardJobsRequired'\}"
-        $commands|Should -Match ([regex]::Escape('./scripts/Assert-ScriptMutationShards.ps1 -ReportRoot ./artifacts/script-mutation-shards'))
+        $commands|Should -Match ([regex]::Escape('./scripts/Assert-ScriptMutationShards.ps1 -ReportRoot ./artifacts/script-mutation-shards -Target ([string[]](ConvertFrom-Json $env:MUTATION_TARGETS))'))
     }
 }
 

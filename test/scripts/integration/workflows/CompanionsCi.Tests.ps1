@@ -142,6 +142,42 @@ Describe 'companions-ci.yml qualification ordering' {
     }
 }
 
+Describe 'companions-ci.yml script-only plans' {
+    It 'exposes the plan output <Name> from the plan step' -ForEach @(
+        @{Name='run_layout'},@{Name='tooling_scope'},@{Name='script_tests'},@{Name='script_mutation_targets'},@{Name='run_tooling'}
+    ) {
+        [string]$companions['jobs']['plan']['outputs'][$Name]|Should -BeExactly ('${{ steps.plan.outputs.'+$Name+' }}')
+    }
+
+    It 'runs the layout tests only when the plan asks for them' {
+        $layout=$companions['jobs']['layout-tests']
+        @($layout['needs']) -join ','|Should -BeExactly 'plan'
+        [string]$layout['if']|Should -BeExactly 'needs.plan.outputs.run_layout == ''true'''
+    }
+
+    It 'starts the tooling after the layout tests, or without them only when the plan skipped them' {
+        $tooling=$companions['jobs']['tooling-only']
+        (@($tooling['needs'])|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'layout-tests,plan,source-checks'
+        $guard=[string]$tooling['if']
+        foreach($clause in @('always()','!cancelled()',"needs.plan.result == 'success'","needs.source-checks.result == 'success'","needs.layout-tests.result == 'success' || (needs.layout-tests.result == 'skipped' && needs.plan.outputs.run_layout == 'false')","needs.plan.outputs.run_tooling == 'true'")){
+            $guard.Contains($clause)|Should -BeTrue -Because $clause
+        }
+        $guard|Should -Not -Match "needs\.layout-tests\.result == 'failure'"
+    }
+
+    It 'passes the planned selection <Name> to tooling-ci.yml' -ForEach @(
+        @{Name='scope';Source='tooling_scope'},@{Name='script_tests';Source='script_tests'},@{Name='script_mutation_targets';Source='script_mutation_targets'}
+    ) {
+        $with=$companions['jobs']['tooling-only']['with']
+        (@($with.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'scope,script_mutation_targets,script_tests'
+        [string]$with[$Name]|Should -BeExactly ('${{ needs.plan.outputs.'+$Source+' }}')
+    }
+
+    It 'keeps every product, smoke and distribution job behind the layout tests' -ForEach @(@{Job='products'},@{Job='smokes'},@{Job='distribution'}) {
+        @($companions['jobs'][$Job]['needs'])|Should -Contain 'layout-tests'
+    }
+}
+
 Describe 'ci.yml per-suite producer' {
     It 'declares images_prepared as an optional boolean defaulting to false' {
         $declared=$engine['on']['workflow_call']['inputs']['images_prepared']

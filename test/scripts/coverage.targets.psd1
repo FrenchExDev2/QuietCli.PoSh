@@ -13,5 +13,6 @@
         'lib/CiCompanions.psm1'
         'lib/CompanionWorkflows.psm1'
         'lib/CiPlanResults.psm1'
+        'lib/ScriptsImpact.psm1'
     )
 }

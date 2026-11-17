@@ -140,7 +140,7 @@ function Invoke-QuietWorkspaceLayoutTests {
         $campaign.Properties+=3
     }
     $cases['the final gate rejects skipped selected work and failed planning']={
-        $needs=@{plan=@{result='success';outputs=@{run_products='true';run_smokes='false';run_tooling='false';run_distribution='false'}};'source-checks'=@{result='success'};'layout-tests'=@{result='success'};products=@{result='success'};smokes=@{result='skipped'};'tooling-only'=@{result='skipped'};distribution=@{result='skipped'}}
+        $needs=@{plan=@{result='success';outputs=@{run_products='true';run_smokes='false';run_tooling='false';run_distribution='false';run_layout='true'}};'source-checks'=@{result='success'};'layout-tests'=@{result='success'};products=@{result='success'};smokes=@{result='skipped'};'tooling-only'=@{result='skipped'};distribution=@{result='skipped'}}
         $null=Assert-QuietCiPlanResults $needs
         # The develop image warm-up is optional (skipped on pull requests) but never allowed to fail silently.
         foreach($warm in @('success','skipped','failure','cancelled')){
@@ -257,6 +257,9 @@ Export-ModuleMember -Function *
     }
     $cases['the scope-expansion mutant is killed']={
         $body='function Get-QuietCiImpact {'+(Get-Command Get-QuietCiImpact).Definition+'}'
+        # The mutant module also carries the module's other functions, so private helpers stay resolvable.
+        $source=[Management.Automation.Language.Parser]::ParseFile((Get-Command Get-QuietCiImpact).Module.Path,[ref]$null,[ref]$null)
+        foreach($helper in @($source.EndBlock.Statements|Where-Object {$_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -cne 'Get-QuietCiImpact'})){$body+="`n"+$helper.Extent.Text}
         $anchor='$names=@($configuration.Companions.Keys|Where-Object {$selected.Contains($_)})'
         if(!$body.Contains($anchor)){throw 'SelectionMutationAnchorMissing'}
         $module=New-Module -Name SelectionMutant -ScriptBlock ([scriptblock]::Create($body.Replace($anchor,'$names=@($configuration.Suites.Keys)')))

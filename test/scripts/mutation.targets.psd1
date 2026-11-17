@@ -95,9 +95,16 @@
             Break = 80
         }
         @{
+            Name = 'ScriptsImpact'
+            Module = 'lib/ScriptsImpact.psm1'
+            Functions = @('Get-QuietScriptsTestFiles','Get-QuietScriptsImpact','Resolve-QuietScriptsCiSelection')
+            UnitTestFiles = @('unit/lib/ScriptsImpact.Tests.ps1')
+            Break = 80
+        }
+        @{
             Name = 'ScriptMutationCache'
             Module = 'lib/ScriptMutationCache.psm1'
-            Functions = @('Get-QuietScriptMutationSha256','Get-QuietScriptMutationFilesDigest','Get-QuietScriptMutationTreeFiles','Get-QuietScriptMutationTestFingerprint','Get-QuietScriptMutationSourceFingerprint','Get-QuietScriptMutationInputsFingerprint','Get-QuietScriptMutationTargetFingerprint','Get-QuietScriptMutantCacheKeys','Get-QuietScriptMutantCachePath','Read-QuietScriptMutationCacheDocument','Get-QuietScriptMutationCacheValue','Read-QuietScriptMutantCache','Write-QuietScriptMutantCache','Get-QuietScriptMutationBaselineKey','Read-QuietScriptMutationBaseline','Write-QuietScriptMutationBaseline','Remove-QuietScriptMutantCacheUnused')
+            Functions = @('Get-QuietScriptMutationSha256','Get-QuietScriptMutationFilesDigest','Get-QuietScriptMutationTreeFiles','Get-QuietScriptMutationTestFingerprint','Get-QuietScriptMutationSourceFingerprint','Get-QuietScriptMutationSourceFiles','Get-QuietScriptMutationInputsFingerprint','Get-QuietScriptMutationInputFiles','Get-QuietScriptMutationTargetFingerprint','Get-QuietScriptMutantCacheKeys','Get-QuietScriptMutantCachePath','Read-QuietScriptMutationCacheDocument','Get-QuietScriptMutationCacheValue','Read-QuietScriptMutantCache','Write-QuietScriptMutantCache','Get-QuietScriptMutationBaselineKey','Read-QuietScriptMutationBaseline','Write-QuietScriptMutationBaseline','Remove-QuietScriptMutantCacheUnused')
             UnitTestFiles = @('unit/lib/ScriptMutationCache.Tests.ps1')
             Break = 80
             Equivalent = @(

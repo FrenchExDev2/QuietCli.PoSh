@@ -37,7 +37,7 @@ function Test-QuietCiScalability {
         @{Path='src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/src/Commands.ps1';Suite='Vagrant';Products=$true;Tooling=$false},
         @{Path='src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/engine/Program.cs';Suite='Core';Products=$true;Tooling=$false},
         @{Path='src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Script.Tests.ps1';Suite='Core';Products=$true;Tooling=$false},
-        @{Path='scripts/Build-Workspace.ps1';Suite='None';Products=$false;Tooling=$true},
+        @{Path='scripts/Build-Workspace.ps1';Suite='None';Products=$false;Tooling=$false;Scripts=$true},
         @{Path='new-unknown-input';Suite='Selected';Products=$true;Tooling=$true},
         @{Path='docs/README.md';Suite='None';Products=$false;Tooling=$false},
         @{Path='src/Tooling/test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/README.md';Suite='None';Products=$false;Tooling=$false}
@@ -47,11 +47,12 @@ function Test-QuietCiScalability {
         Assert-QuietEqual $plan.Suite $vector.Suite $vector.Path
         Assert-QuietEqual $plan.RunProducts $vector.Products $vector.Path
         Assert-QuietEqual $plan.RunTooling $vector.Tooling $vector.Path
+        Assert-QuietEqual (@($plan.ScriptPaths) -join ',') $(if($vector.ContainsKey('Scripts')){$vector.Path}else{''}) $vector.Path
     }
     $combined=Get-QuietCiImpact -WorkspaceRoot $WorkspaceRoot -ChangedPaths @($vectors[0].Path,$vectors[2].Path)
     Assert-QuietEqual $combined.Suite Selected
     Assert-QuietEqual $combined.SelectedSuites.Count 2
-    # Independent boundary oracle: repository scripts and their tests select only the tooling; look-alike
+    # Independent boundary oracle: repository scripts and their tests select only their script tests; look-alike
     # prefixes and mixed shared changes cannot inherit that scope.
     $toolingPaths=@('scripts/New-RunProfile.ps1','scripts/lib/RunProfiler.psm1','scripts/New-CorePerformanceReport.ps1','scripts/lib/CiImpact.psm1','scripts/RunProfiles/coldstart-100.profile.psd1','test/scripts/unit/lib/CiImpact.Tests.ps1')
     $sharedPaths=@('new-unknown-input','build/x.txt','tools/scripts/x.ps1')
@@ -59,7 +60,8 @@ function Test-QuietCiScalability {
     foreach($path in $toolingPaths){
         $plan=Get-QuietCiImpact $WorkspaceRoot @($path)
         Assert-QuietEqual $plan.RunProducts $false $path
-        Assert-QuietEqual $plan.RunTooling $true $path
+        Assert-QuietEqual $plan.RunTooling $false $path
+        Assert-QuietEqual (@($plan.ScriptPaths) -join ',') $path $path
         foreach($bad in @($path.ToUpperInvariant(),('x'+$path),('build/'+$path))){
             Assert-QuietEqual (Get-QuietCiImpact $WorkspaceRoot @($bad)).RunProducts $true $bad
         }
@@ -75,7 +77,8 @@ function Test-QuietCiScalability {
     foreach($iteration in 1..64){
         $plan=Get-QuietCiImpact $WorkspaceRoot @('scripts/RunProfiles/profile-'+$impactRandom.Next(100000)+'.profile.psd1')
         Assert-QuietEqual $plan.RunProducts $false
-        Assert-QuietEqual $plan.RunTooling $true
+        Assert-QuietEqual $plan.RunTooling $false
+        Assert-QuietEqual @($plan.ScriptPaths).Count 1
         $impactProperties++
     }
     $impactModule=Get-Module CiImpact

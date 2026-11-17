@@ -10,7 +10,17 @@ Assert-QuietCiPlanResults -Needs $needs
 
 ## Dependencies and side effects
 
-Planning outputs are closed boolean strings. The stable gate requires success for selected jobs and skipped for unselected jobs, while preserving source and layout checks independently of expensive product campaigns.
+Planning outputs are closed boolean strings. The stable gate requires success from `plan` and `source-checks`, then success for each selected job and skipped for each unselected one.
+
+| Job | Plan flag |
+| --- | --- |
+| `layout-tests` | `run_layout` |
+| `products` | `run_products` |
+| `smokes` | `run_smokes` |
+| `tooling-only` | `run_tooling` |
+| `distribution` | `run_distribution` |
+
+`run_layout` is false only for a plan whose sole work is the script tests (see [`New-CiImpactPlan.md`](../New-CiImpactPlan.md)). `scripts-docs-check.yml` still runs every workspace check for such a change.
 
 Failure diagnostics collect every missing prerequisite, invalid planning flag, absent job and
 scope/result mismatch in deterministic order. A failed product, tooling and distribution job

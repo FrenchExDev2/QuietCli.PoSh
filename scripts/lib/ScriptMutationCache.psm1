@@ -82,11 +82,7 @@ function Get-QuietScriptMutationSourceFingerprint {
     .SYNOPSIS
     Hashes the scripts side of a target: its module plus every scripts file reachable from it or from its tests.
     .DESCRIPTION
-    The closure starts from the module, the libraries its unit test files and the support modules name, then follows
-    every '<name>.psm1' or '<name>.ps1' file name that ends a quoted literal (with or without a path before it) and every
-    Import-QuietTestLibrary name found in the included files,
-    resolved under lib/ and the scripts root. Over-inclusion only costs reuse; a dependency the scan cannot see (a name
-    built at run time) is the one way to miss an edit, so libraries import each other by literal file name.
+    Digest of Get-QuietScriptMutationSourceFiles, with paths relative to the scripts root.
     .PARAMETER ScriptsRoot
     Unmutated scripts root.
     .PARAMETER Module
@@ -97,9 +93,32 @@ function Get-QuietScriptMutationSourceFingerprint {
     Unit test files of the target, relative to the tests root.
     #>
     param([Parameter(Mandatory)][string]$ScriptsRoot,[Parameter(Mandatory)][string]$Module,[Parameter(Mandatory)][string]$TestsRoot,[Parameter(Mandatory)][string[]]$UnitTestFiles)
+    Get-QuietScriptMutationFilesDigest -Root ([IO.Path]::GetFullPath($ScriptsRoot)) -Paths @(Get-QuietScriptMutationSourceFiles -ScriptsRoot $ScriptsRoot -Module $Module -TestsRoot $TestsRoot -UnitTestFiles $UnitTestFiles)
+}
+
+function Get-QuietScriptMutationSourceFiles {
+    <#
+    .SYNOPSIS
+    Returns, as full paths in ordinal order, the module plus every scripts file reachable from it or from the given tests.
+    .DESCRIPTION
+    The closure starts from the module, the libraries the given test files and the support modules name, then follows
+    every '<name>.psm1' or '<name>.ps1' file name that ends a quoted literal (with or without a path before it) and every
+    Import-QuietTestLibrary name found in the included files,
+    resolved under lib/ and the scripts root. Over-inclusion only costs reuse; a dependency the scan cannot see (a name
+    built at run time) is the one way to miss an edit, so libraries import each other by literal file name.
+    .PARAMETER ScriptsRoot
+    Unmutated scripts root.
+    .PARAMETER Module
+    Starting script or module, relative to the scripts root; empty starts from the test files alone.
+    .PARAMETER TestsRoot
+    Tests root.
+    .PARAMETER UnitTestFiles
+    Test files whose references join the closure, relative to the tests root; may be empty.
+    #>
+    param([Parameter(Mandatory)][string]$ScriptsRoot,[Parameter(Mandatory)][AllowEmptyString()][string]$Module,[Parameter(Mandatory)][string]$TestsRoot,[Parameter(Mandatory)][AllowEmptyCollection()][string[]]$UnitTestFiles)
     $ScriptsRoot=[IO.Path]::GetFullPath($ScriptsRoot);$TestsRoot=[IO.Path]::GetFullPath($TestsRoot)
-    $modulePath=[IO.Path]::GetFullPath([IO.Path]::Combine($ScriptsRoot,$Module))
-    if(![IO.File]::Exists($modulePath)){throw "ScriptMutationCacheModuleMissing: $Module"}
+    $modulePath=if($Module){[IO.Path]::GetFullPath([IO.Path]::Combine($ScriptsRoot,$Module))}
+    if($Module -and ![IO.File]::Exists($modulePath)){throw "ScriptMutationCacheModuleMissing: $Module"}
     # A file name ends a quoted literal and starts it or follows a path separator: 'A.psm1', "../B.ps1", "$PSScriptRoot/C.psm1".
     $pattern=[regex]::new('[''"/\\]([A-Za-z0-9][A-Za-z0-9._-]*)\.(psm1|ps1)[''"]|Import-QuietTestLibrary\s+(?:-Name\s+)?[''"]?([A-Za-z0-9][A-Za-z0-9._-]*)')
     $referenced={param([string]$Path)
@@ -112,7 +131,7 @@ function Get-QuietScriptMutationSourceFingerprint {
     }
     $included=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $pending=[Collections.Generic.Queue[string]]::new()
-    [void]$included.Add($modulePath);$pending.Enqueue($modulePath)
+    if($modulePath){[void]$included.Add($modulePath);$pending.Enqueue($modulePath)}
     $roots=@(foreach($relative in $UnitTestFiles){
         $path=[IO.Path]::GetFullPath([IO.Path]::Combine($TestsRoot,$relative))
         if(![IO.File]::Exists($path)){throw "ScriptMutationCacheTestMissing: $relative"}
@@ -120,7 +139,8 @@ function Get-QuietScriptMutationSourceFingerprint {
     })+@(Get-QuietScriptMutationTreeFiles ([IO.Path]::Combine($TestsRoot,'support')))
     foreach($root in $roots){foreach($path in & $referenced $root){if($included.Add($path)){$pending.Enqueue($path)}}}
     while($pending.Count){foreach($path in & $referenced $pending.Dequeue()){if($included.Add($path)){$pending.Enqueue($path)}}}
-    Get-QuietScriptMutationFilesDigest -Root $ScriptsRoot -Paths @($included)
+    $files=[string[]]@($included);[Array]::Sort($files,[StringComparer]::Ordinal)
+    $files
 }
 
 function Get-QuietScriptMutationInputsFingerprint {
@@ -128,9 +148,26 @@ function Get-QuietScriptMutationInputsFingerprint {
     .SYNOPSIS
     Hashes the repository files a target's unit tests read, named by the target's Inputs globs.
     .DESCRIPTION
+    Digest of Get-QuietScriptMutationInputFiles. A pattern without a match still contributes its text, so adding the
+    first matching file changes the fingerprint.
+    .PARAMETER WorkspaceRoot
+    Repository root the patterns are relative to.
+    .PARAMETER Inputs
+    Validated patterns from the targets file.
+    #>
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[AllowEmptyCollection()][string[]]$Inputs=@())
+    $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot)
+    $files=@(Get-QuietScriptMutationInputFiles -WorkspaceRoot $WorkspaceRoot -Inputs $Inputs)
+    Get-QuietScriptMutationSha256 ((@($Inputs|Sort-Object -CaseSensitive) -join "`n")+[char]0x1E+(Get-QuietScriptMutationFilesDigest -Root $WorkspaceRoot -Paths $files))
+}
+
+function Get-QuietScriptMutationInputFiles {
+    <#
+    .SYNOPSIS
+    Returns the full paths of the repository files that a target's Inputs globs name.
+    .DESCRIPTION
     '*' matches within one path segment and '**' across segments. Each pattern only walks the directory before its
-    first wildcard. A pattern without a match still contributes its text, so adding the first matching file changes
-    the fingerprint. Links are skipped.
+    first wildcard. Links are skipped.
     .PARAMETER WorkspaceRoot
     Repository root the patterns are relative to.
     .PARAMETER Inputs
@@ -156,7 +193,7 @@ function Get-QuietScriptMutationInputsFingerprint {
         $candidates=if($fixed.Count -eq $segments.Count){if([IO.File]::Exists($base)){$base}}else{Get-QuietScriptMutationTreeFiles $base}
         foreach($path in $candidates){if($regex.IsMatch([IO.Path]::GetRelativePath($WorkspaceRoot,$path).Replace('\','/'))){$files.Add($path)}}
     }
-    Get-QuietScriptMutationSha256 ((@($Inputs|Sort-Object -CaseSensitive) -join "`n")+[char]0x1E+(Get-QuietScriptMutationFilesDigest -Root $WorkspaceRoot -Paths $files.ToArray()))
+    $files.ToArray()
 }
 
 function Get-QuietScriptMutationTargetFingerprint {
@@ -387,4 +424,4 @@ function Remove-QuietScriptMutantCacheUnused {
     $removed
 }
 
-Export-ModuleMember -Function Get-QuietScriptMutationSha256,Get-QuietScriptMutationTestFingerprint,Get-QuietScriptMutationSourceFingerprint,Get-QuietScriptMutationInputsFingerprint,Get-QuietScriptMutationTargetFingerprint,Get-QuietScriptMutantCacheKeys,Get-QuietScriptMutantCachePath,Read-QuietScriptMutantCache,Write-QuietScriptMutantCache,Get-QuietScriptMutationBaselineKey,Read-QuietScriptMutationBaseline,Write-QuietScriptMutationBaseline,Remove-QuietScriptMutantCacheUnused
+Export-ModuleMember -Function Get-QuietScriptMutationSha256,Get-QuietScriptMutationTreeFiles,Get-QuietScriptMutationTestFingerprint,Get-QuietScriptMutationSourceFingerprint,Get-QuietScriptMutationSourceFiles,Get-QuietScriptMutationInputsFingerprint,Get-QuietScriptMutationInputFiles,Get-QuietScriptMutationTargetFingerprint,Get-QuietScriptMutantCacheKeys,Get-QuietScriptMutantCachePath,Read-QuietScriptMutantCache,Write-QuietScriptMutantCache,Get-QuietScriptMutationBaselineKey,Read-QuietScriptMutationBaseline,Write-QuietScriptMutationBaseline,Remove-QuietScriptMutantCacheUnused

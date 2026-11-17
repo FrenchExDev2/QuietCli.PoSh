@@ -1,6 +1,24 @@
 name: QuietCli repository tooling
 on:
   workflow_call:
+    # Callers without inputs run every campaign. The companions plan passes scope scripts when only scripts/ or
+    # test/scripts/ changed: then only the script test files and mutation targets those changes reach run.
+    inputs:
+      scope:
+        description: full runs every tooling campaign; scripts runs only the selected script tests and mutation targets
+        type: string
+        required: false
+        default: full
+      script_tests:
+        description: all, or a JSON array of test files relative to test/scripts
+        type: string
+        required: false
+        default: all
+      script_mutation_targets:
+        description: all, or a JSON array of mutation target names from test/scripts/mutation.targets.psd1
+        type: string
+        required: false
+        default: all
     outputs:
       functional_result:
         description: Aggregate Core independence and functional tooling job result
@@ -34,8 +52,39 @@ jobs:
         env:
           TOOLING_NEEDS: ${{ toJson(needs) }}
         run: ./scripts/Write-ToolingResults.ps1 -NeedsJson $env:TOOLING_NEEDS -OutputPath $env:GITHUB_OUTPUT
+  script-selection:
+    # Validates the caller's selection against the catalogues; the script jobs below read only these outputs.
+    name: Select script tests and mutation targets
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tests: ${{ steps.select.outputs.tests }}
+      run_tests: ${{ steps.select.outputs.run_tests }}
+      requires_build: ${{ steps.select.outputs.requires_build }}
+      targets: ${{ steps.select.outputs.targets }}
+      run_mutation: ${{ steps.select.outputs.run_mutation }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-powershell
+      - name: Expand and validate the selection
+        id: select
+        shell: pwsh
+        env:
+          TOOLING_SCOPE: ${{ inputs.scope }}
+          SCRIPT_TESTS: ${{ inputs.script_tests }}
+          SCRIPT_MUTATION_TARGETS: ${{ inputs.script_mutation_targets }}
+        run: |
+          Import-Module ./scripts/lib/ScriptsImpact.psm1 -DisableNameChecking -ErrorAction Stop
+          $selection=Resolve-QuietScriptsCiSelection -WorkspaceRoot . -Scope $env:TOOLING_SCOPE -Tests $env:SCRIPT_TESTS -Targets $env:SCRIPT_MUTATION_TARGETS
+          $tests=if($selection.AllTests){'all'}else{ConvertTo-Json -InputObject @($selection.TestFiles) -Compress}
+          $flag={param([bool]$Value)$Value.ToString().ToLowerInvariant()}
+          $values=[ordered]@{tests=$tests;run_tests=(& $flag $selection.TestFiles.Count);requires_build=(& $flag $selection.RequiresBuild);targets=(ConvertTo-Json -InputObject @($selection.MutationTargets) -Compress);run_mutation=(& $flag $selection.MutationTargets.Count)}
+          foreach($key in $values.Keys){[IO.File]::AppendAllText($env:GITHUB_OUTPUT,$key+'='+$values[$key]+"`n",[Text.UTF8Encoding]::new($false))}
   core-independence:
     name: Core builds and qualifies without the Git companion
+    if: inputs.scope == 'full'
     runs-on: windows-latest
     timeout-minutes: 25
     steps:
@@ -75,6 +124,7 @@ jobs:
           retention-days: 14
   tooling:
     name: Repository automation, distribution independence and run-profile behavior
+    if: inputs.scope == 'full'
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
@@ -144,6 +194,7 @@ jobs:
           compression-level: 1
   run-profiles-mutation:
     name: Run-profile mutation (shard ${{ matrix.shard }}, two isolated workers)
+    if: inputs.scope == 'full'
     runs-on: windows-latest
     timeout-minutes: 45
     strategy:
@@ -178,7 +229,7 @@ jobs:
   mutation-complete:
     name: Require the exact complete mutation catalogue
     needs: run-profiles-mutation
-    if: ${{ always() && !cancelled() }}
+    if: ${{ always() && !cancelled() && inputs.scope == 'full' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -205,6 +256,8 @@ jobs:
   script-tests:
     # Pester 6 unit and integration tests of scripts/ and scripts/lib (test/scripts), on both host families.
     name: Script tests (${{ matrix.os }})
+    needs: script-selection
+    if: needs.script-selection.outputs.run_tests == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -233,15 +286,21 @@ jobs:
           ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
           ./scripts/Initialize-TestTools.ps1 -Confirm:$false
       - name: Build Core and Git for the entry points that run quiet git
-        # Start-QuietWorkBranch.ps1 drives git through quiet, which needs the built engine.
+        # Start-QuietWorkBranch.ps1 drives git through quiet, which needs the built engine; its tests declare it.
+        if: needs.script-selection.outputs.requires_build == 'true'
         shell: pwsh
         run: |
           ./scripts/Initialize-Workspace.ps1 -Restore
           ./scripts/Build-Workspace.ps1 -Suite Git
-      - name: Run every script test with coverage
+      # Every test runs once with the global coverage threshold; a selection is a partial run, so it skips coverage.
+      - name: Run the selected script tests
         id: script_tests
         shell: pwsh
-        run: ./scripts/Invoke-ScriptsTests.ps1 -Headless -Coverage -RunDirectory ./artifacts/script-tests
+        env:
+          SCRIPT_TESTS: ${{ needs.script-selection.outputs.tests }}
+        run: |
+          if($env:SCRIPT_TESTS -ceq 'all'){./scripts/Invoke-ScriptsTests.ps1 -Headless -Coverage -RunDirectory ./artifacts/script-tests}
+          else{./scripts/Invoke-ScriptsTests.ps1 -Headless -Path ([string[]](ConvertFrom-Json $env:SCRIPT_TESTS)) -RunDirectory ./artifacts/script-tests}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always() && steps.script_tests.outcome != '' && steps.script_tests.outcome != 'skipped'
         with:
@@ -253,14 +312,16 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   script-mutation:
-    # One shard per target of test/scripts/mutation.targets.psd1; script-mutation-complete rejects a missing one.
+    # One shard per selected target of test/scripts/mutation.targets.psd1; script-mutation-complete rejects a missing one.
     name: Script mutation (${{ matrix.target }})
+    needs: script-selection
+    if: needs.script-selection.outputs.run_mutation == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 150
     strategy:
       fail-fast: false
       matrix:
-        target: [ScriptsTests, ScriptAnalysis, ScriptMutation, ScriptMutationCache, ScriptMutationSlot, RunToolCache, WorkBranch, ScriptsInventory, CiImpact, CiCompanions, CompanionWorkflows, CiPlanResults]
+        target: ${{ fromJson(needs.script-selection.outputs.targets) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -310,8 +371,9 @@ jobs:
           retention-days: 14
   script-mutation-complete:
     name: Require every script mutation target
-    needs: script-mutation
-    if: ${{ always() && !cancelled() }}
+    needs: [script-selection, script-mutation]
+    # Runs unless the selection succeeded with no target, so a failed selection still fails the campaign here.
+    if: ${{ always() && !cancelled() && needs.script-selection.outputs.run_mutation != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -322,13 +384,14 @@ jobs:
         with:
           pattern: quietcli-script-mutation-${{ github.sha }}-*-attempt${{ github.run_attempt }}
           path: artifacts/script-mutation-shards
-      - name: Verify every target from this revision and attempt
+      - name: Verify every selected target from this revision and attempt
         shell: pwsh
         env:
           SHARD_RESULT: ${{ needs.script-mutation.result }}
+          MUTATION_TARGETS: ${{ needs.script-selection.outputs.targets }}
         run: |
           if($env:SHARD_RESULT -cne 'success'){throw 'ScriptMutationShardJobsRequired'}
-          ./scripts/Assert-ScriptMutationShards.ps1 -ReportRoot ./artifacts/script-mutation-shards -OutputPath ./artifacts/script-mutation-complete/receipt.json -Confirm:$false
+          ./scripts/Assert-ScriptMutationShards.ps1 -ReportRoot ./artifacts/script-mutation-shards -Target ([string[]](ConvertFrom-Json $env:MUTATION_TARGETS)) -OutputPath ./artifacts/script-mutation-complete/receipt.json -Confirm:$false
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: quietcli-script-mutation-complete-${{ github.sha }}-attempt${{ github.run_attempt }}

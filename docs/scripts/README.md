@@ -201,6 +201,7 @@ file by hand, run:
 - [`lib/ScriptMutators.psm1`](../../scripts/lib/ScriptMutators.psm1) -> [documentation](lib/ScriptMutators.md)
 - [`lib/ScriptReview.psm1`](../../scripts/lib/ScriptReview.psm1) -> [documentation](lib/ScriptReview.md)
 - [`lib/ScriptShouldProcess.psm1`](../../scripts/lib/ScriptShouldProcess.psm1) -> [documentation](lib/ScriptShouldProcess.md)
+- [`lib/ScriptsImpact.psm1`](../../scripts/lib/ScriptsImpact.psm1) -> [documentation](lib/ScriptsImpact.md)
 - [`lib/ScriptsInventory.psm1`](../../scripts/lib/ScriptsInventory.psm1) -> [documentation](lib/ScriptsInventory.md)
 - [`lib/ScriptsTests.psm1`](../../scripts/lib/ScriptsTests.psm1) -> [documentation](lib/ScriptsTests.md)
 - [`lib/ScriptsWorker.psm1`](../../scripts/lib/ScriptsWorker.psm1) -> [documentation](lib/ScriptsWorker.md)

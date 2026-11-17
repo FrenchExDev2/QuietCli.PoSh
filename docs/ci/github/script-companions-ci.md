@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: FB7F446D0C3C83C74020927595E8F2F1EF5180B0595FF0CDBC0C768C190B8F64 -->
+<!-- workflow-source-sha256: F2188FBEE2EF13E6EF1052DD7266908C58A262D5100A26593D65A86BEE42BC4B -->
 
 ## Purpose
 
@@ -8,9 +8,15 @@ One automatic PR/develop entry point reads the complete diff and publishes the p
 
 ## Triggers
 
-Every pull request and develop push. The planner selects work from the complete diff, and a change limited to repository scripts (`scripts/**`, `test/scripts/**`) runs only the tooling workflow.
+Every pull request and develop push. The planner selects work from the complete diff. A change limited to repository scripts (`scripts/**`, `test/scripts/**`) runs only the script tests and the script mutation targets it reaches:
+- `tooling-only` calls `tooling-ci.yml` with `scope: scripts` and the planned `script_tests` and `script_mutation_targets`;
+- `layout-tests`, products, smokes, images and distribution are skipped;
+- `scripts-docs-check.yml` still runs every workspace check.
 
-A manual `workflow_dispatch` on any branch qualifies the companions of its `suites` input in full: comma-separated names, or `all` by default. It reads no diff and runs neither tooling nor distribution. Dependents of the chosen companions get their usual smoke. On develop, the run also warms and publishes the Linux images. See [New-CiImpactPlan](../../scripts/New-CiImpactPlan.md#manual-dispatch).
+A manual `workflow_dispatch` on any branch takes a `suites` input: comma-separated companion names, `Tooling`, or `all` by default.
+- It qualifies the named companions in full and reads no diff. Distribution never runs.
+- `Tooling` runs the full tooling workflow: Core without Git, run profiles, every script test with coverage and every script mutation target. Use it after a change to qualification scripts.
+- `all` runs every companion plus the full tooling. Dependents of the chosen companions get their usual smoke. On develop, the run also warms and publishes the Linux images. See [New-CiImpactPlan](../../scripts/New-CiImpactPlan.md#manual-dispatch).
 
 ## Scripts and effects
 
@@ -22,7 +28,7 @@ Uses profile validation, source-bound build preparation, explicit selected quali
 
 ## Validation and limits
 
-The stable automatic gate requires planning, source checks, generated-layout tests and every selected job. Skipped scopes are untested, not passed. A smoke/build result is not full product or publication qualification. Full native product runs retain their declared host/RID matrix, profiling policy and explicit TTY/Preview exclusions. Cache hits require source/payload/target verification; partial restores rebuild stale distributions.
+The stable automatic gate requires planning, source checks and every selected job. Generated-layout tests are selected (`run_layout`) unless script tests are the whole plan. `tooling-only` waits for them, or for their planned skip. Skipped scopes are untested, not passed. A smoke/build result is not full product or publication qualification. Full native product runs retain their declared host/RID matrix, profiling policy and explicit TTY/Preview exclusions. Cache hits require source/payload/target verification; partial restores rebuild stale distributions.
 
 Local WorkspaceLayout and CompanionSmoke reports exercise the selection and actual integration paths. Hosted matrix results must be inspected for the delivered revision. Authored workflow-source-sha256 receipts are reviewed separately from generated YAML and job graphs.
 
@@ -56,7 +62,7 @@ flowchart TD
     job_layout_tests --> job_distribution
     job_plan --> job_images
     job_source_checks --> job_images
-    event --> job_layout_tests
+    job_plan --> job_layout_tests
     event --> job_plan
     job_plan --> job_products
     job_source_checks --> job_products
@@ -76,12 +82,12 @@ flowchart TD
 | ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, images, products, smokes, tooling-only, distribution | ${{ always() }} | ./scripts/Assert-CiPlanResults.ps1 |
 | distribution | reuses ./.github/workflows/distribution-ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_distribution == 'true' |  |
 | images | runner ${{ matrix.runner }} | plan, source-checks | needs.plan.outputs.run_products == 'true' && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiSuiteImage.ps1 |
-| layout-tests | runner windows-latest |  | default success condition | ./scripts/Invoke-WorkspaceChecks.ps1, ./scripts/Invoke-WorkspaceCi.ps1 |
+| layout-tests | runner windows-latest | plan | needs.plan.outputs.run_layout == 'true' | ./scripts/Invoke-WorkspaceChecks.ps1, ./scripts/Invoke-WorkspaceCi.ps1 |
 | plan | runner ubuntu-latest |  | default success condition | ./scripts/New-CiImpactPlan.ps1 |
 | products | reuses ./.github/workflows/ci.yml | plan, source-checks, layout-tests, images | ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && needs.layout-tests.result == 'success' && (needs.images.result == 'success' &#124;&#124; needs.images.result == 'skipped') && needs.plan.outputs.run_products == 'true' }} |  |
 | smokes | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_smokes == 'true' |  |
 | source-checks | runner ubuntu-latest |  | default success condition | ./scripts/Invoke-WorkspaceChecks.ps1 |
-| tooling-only | reuses ./.github/workflows/tooling-ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_tooling == 'true' |  |
+| tooling-only | reuses ./.github/workflows/tooling-ci.yml | plan, source-checks, layout-tests | ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && (needs.layout-tests.result == 'success' &#124;&#124; (needs.layout-tests.result == 'skipped' && needs.plan.outputs.run_layout == 'false')) && needs.plan.outputs.run_tooling == 'true' }} |  |
 
 <!-- workflow-generated:end -->
 

@@ -3,12 +3,13 @@ on:
   pull_request:
   push:
     branches: [develop]
-  # A pull request or a push selects work from its diff; repository scripts select only the tooling. This manual
-  # run qualifies chosen companions in full on any branch, for example after a change to qualification scripts.
+  # A pull request or a push selects work from its diff; repository scripts select only the script tests and
+  # mutation targets they reach. This manual run qualifies chosen companions in full on any branch, Tooling for the
+  # whole repository tooling, for example after a change to qualification scripts.
   workflow_dispatch:
     inputs:
       suites:
-        description: Companions to qualify in full, comma-separated (for example Core,Git), or all
+        description: Companions to qualify in full, comma-separated (for example Core,Git), Tooling, or all
         type: string
         required: false
         default: all
@@ -39,6 +40,10 @@ jobs:
       run_smokes: ${{ steps.plan.outputs.run_smokes }}
       run_tooling: ${{ steps.plan.outputs.run_tooling }}
       run_distribution: ${{ steps.plan.outputs.run_distribution }}
+      run_layout: ${{ steps.plan.outputs.run_layout }}
+      tooling_scope: ${{ steps.plan.outputs.tooling_scope }}
+      script_tests: ${{ steps.plan.outputs.script_tests }}
+      script_mutation_targets: ${{ steps.plan.outputs.script_mutation_targets }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: {fetch-depth: 0, persist-credentials: false}
@@ -62,6 +67,9 @@ jobs:
         with: {name: quietcli-ci-plan, path: artifacts/ci-plan, retention-days: 14}
   layout-tests:
     name: Verify generated layout and selective planning
+    # Skipped only when script tests are the whole plan; scripts-docs-check still runs every workspace check.
+    needs: plan
+    if: needs.plan.outputs.run_layout == 'true'
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
@@ -174,8 +182,13 @@ jobs:
       runner: ${{ matrix.runner }}
   tooling-only:
     needs: [plan, source-checks, layout-tests]
-    if: needs.plan.outputs.run_tooling == 'true'
+    # A scripts-only plan skips layout-tests; any other plan still requires it to pass first.
+    if: ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && (needs.layout-tests.result == 'success' || (needs.layout-tests.result == 'skipped' && needs.plan.outputs.run_layout == 'false')) && needs.plan.outputs.run_tooling == 'true' }}
     uses: ./.github/workflows/tooling-ci.yml
+    with:
+      scope: ${{ needs.plan.outputs.tooling_scope }}
+      script_tests: ${{ needs.plan.outputs.script_tests }}
+      script_mutation_targets: ${{ needs.plan.outputs.script_mutation_targets }}
   distribution:
     needs: [plan, source-checks, layout-tests]
     if: needs.plan.outputs.run_distribution == 'true'

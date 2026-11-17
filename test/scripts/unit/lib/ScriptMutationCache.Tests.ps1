@@ -246,6 +246,59 @@ Describe 'Get-QuietScriptMutationTestFingerprint' {
     }
 }
 
+Describe 'Get-QuietScriptMutationSourceFiles' {
+    BeforeAll {
+        $filesOf={param($Fixture,[string]$Module,[string[]]$Files)
+            [string[]]@(Get-QuietScriptMutationSourceFiles -ScriptsRoot $Fixture.Scripts -Module $Module -TestsRoot $Fixture.Tests -UnitTestFiles $Files|ForEach-Object {[IO.Path]::GetRelativePath($Fixture.Scripts,$_).Replace('\','/')})
+        }
+    }
+
+    It 'returns the closure of <Case> as full paths, in ordinal order' -ForEach @(
+        @{Case='a module and its unit test';Module='lib/A.psm1';Files=@('unit/A.Tests.ps1');Expected='Entry.ps1,Up.ps1,lib/A.psm1,lib/B.psm1,lib/Helper.psm1,lib/Pathed.psm1,lib/Slashed.psm1,lib/Transitive.psm1'}
+        @{Case='a module without test file';Module='lib/B.psm1';Files=@();Expected='lib/A.psm1,lib/B.psm1,lib/Helper.psm1,lib/Pathed.psm1,lib/Slashed.psm1,lib/Transitive.psm1,Up.ps1'}
+        @{Case='test files alone';Module='';Files=@('unit/Other.Tests.ps1');Expected='lib/Helper.psm1,lib/Unrelated.psm1'}
+        @{Case='the support modules alone';Module='';Files=@();Expected='lib/Helper.psm1'}
+    ) {
+        $fixture=& $newFixture
+        $closure=@(Get-QuietScriptMutationSourceFiles -ScriptsRoot $fixture.Scripts -Module $Module -TestsRoot $fixture.Tests -UnitTestFiles $Files)
+        foreach($path in $closure){[IO.Path]::IsPathFullyQualified($path)|Should -BeTrue;[IO.File]::Exists($path)|Should -BeTrue}
+        $sorted=[string[]]@($closure);[Array]::Sort($sorted,[StringComparer]::Ordinal)
+        ($closure -join '|')|Should -BeExactly ($sorted -join '|')
+        ((& $filesOf $fixture $Module $Files)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly (($Expected.Split(',')|Sort-Object -CaseSensitive) -join ',')
+    }
+
+    It 'is the file list its fingerprint digests' {
+        $fixture=& $newFixture
+        $files=@(Get-QuietScriptMutationSourceFiles -ScriptsRoot $fixture.Scripts -Module 'lib/A.psm1' -TestsRoot $fixture.Tests -UnitTestFiles @('unit/A.Tests.ps1'))
+        $digest=& (Get-Module ScriptMutationCache) {param($Root,$Paths)Get-QuietScriptMutationFilesDigest -Root $Root -Paths $Paths} $fixture.Scripts $files
+        & $sourceOf $fixture|Should -BeExactly $digest
+    }
+
+    It 'rejects <Case>' -ForEach @(
+        @{Case='a missing module';Module='lib/Gone.psm1';Files=@();Expected='ScriptMutationCacheModuleMissing: lib/Gone.psm1'}
+        @{Case='a missing test file without module';Module='';Files=@('unit/Gone.Tests.ps1');Expected='ScriptMutationCacheTestMissing: unit/Gone.Tests.ps1'}
+    ) {
+        $fixture=& $newFixture
+        {Get-QuietScriptMutationSourceFiles -ScriptsRoot $fixture.Scripts -Module $Module -TestsRoot $fixture.Tests -UnitTestFiles $Files}|Should -Throw -ExpectedMessage $Expected
+    }
+}
+
+Describe 'Get-QuietScriptMutationInputFiles' {
+    It 'returns the full paths that <Pattern> names' -ForEach @(
+        @{Pattern=@('build/*.yml');Expected='build/companions.yml,build/other.yml'}
+        @{Pattern=@('build/companions.yml');Expected='build/companions.yml'}
+        @{Pattern=@('src/*/ci/**');Expected='src/Git/ci/Get-CiImageArguments.ps1'}
+        @{Pattern=@('.github/containers/**');Expected='.github/containers/base/deep/layer.sh,.github/containers/base/Dockerfile'}
+        @{Pattern=@('build/absent.yml','missing/**');Expected=''}
+        @{Pattern=@();Expected=''}
+    ) {
+        $fixture=& $newFixture
+        $files=@(Get-QuietScriptMutationInputFiles -WorkspaceRoot $fixture.Root -Inputs $Pattern)
+        foreach($path in $files){[IO.Path]::IsPathFullyQualified($path)|Should -BeTrue}
+        (@($files|ForEach-Object {[IO.Path]::GetRelativePath($fixture.Root,$_).Replace('\','/')}|Sort-Object -CaseSensitive) -join ',')|Should -BeExactly ((@($Expected.Split(',',[StringSplitOptions]::RemoveEmptyEntries))|Sort-Object -CaseSensitive) -join ',')
+    }
+}
+
 Describe 'Get-QuietScriptMutationInputsFingerprint' {
     It 'is the same for no input and an empty list, and stable' {
         $fixture=& $newFixture

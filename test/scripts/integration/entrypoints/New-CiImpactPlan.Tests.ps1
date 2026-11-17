@@ -90,6 +90,10 @@ Describe 'New-CiImpactPlan.ps1' {
         $observed.Values['run_tooling']|Should -BeExactly 'false'
         $observed.Values['run_distribution']|Should -BeExactly 'false'
         $observed.Values['run_smokes']|Should -BeExactly $(if($expectedSmokes.Count){'true'}else{'false'})
+        $observed.Values['run_layout']|Should -BeExactly 'true'
+        $observed.Values['tooling_scope']|Should -BeExactly 'none'
+        $observed.Values['script_tests']|Should -BeExactly '[]'
+        $observed.Values['script_mutation_targets']|Should -BeExactly '[]'
         $row=($observed.Values['matrix']|ConvertFrom-Json).include[0]
         $row.solution_path|Should -BeExactly "src/$Companion/$Companion.slnx"
         $row.test_path|Should -BeExactly "src/$Companion/test"
@@ -102,29 +106,47 @@ Describe 'New-CiImpactPlan.ps1' {
         $observed.Values['run_products']|Should -BeExactly 'false'
         $observed.Values['run_tooling']|Should -BeExactly 'false'
         $observed.Values['run_smokes']|Should -BeExactly 'false'
+        $observed.Values['tooling_scope']|Should -BeExactly 'none'
         @(& $suites $observed.Values).Count|Should -Be 0
         @(& $images $observed.Values).Count|Should -Be 0
     }
 
-    It 'runs only the tooling when a script test changes' {
-        $observed=& $plan (& $commit 'test/scripts/unit/lib/ImpactFixture.Tests.ps1')
-        $observed.Run.ExitCode|Should -Be 0 -Because ($observed.Run.Output+$observed.Run.Error)
-        $observed.Values['run_tooling']|Should -BeExactly 'true'
-        $observed.Values['run_products']|Should -BeExactly 'false'
-        @(& $suites $observed.Values).Count|Should -Be 0
-        @(& $images $observed.Values).Count|Should -Be 0
-    }
-
-    It 'runs only the tooling when <Path> changes' -ForEach @(
-        @{Path='scripts/lib/ImpactFixture.psm1'},@{Path='scripts/Invoke-ImpactFixture.ps1'}
+    It 'runs only the script tests <Tests> and mutation targets <Targets> when <Path> changes' -ForEach @(
+        @{Path='test/scripts/unit/lib/ImpactFixture.Tests.ps1';Tests='unit/lib/ImpactFixture.Tests.ps1';Targets=''}
+        @{Path='scripts/lib/ImpactFixture.psm1';Tests='';Targets=''}
+        @{Path='scripts/Invoke-ImpactFixture.ps1';Tests='';Targets=''}
+        @{Path='scripts/lib/CiPlanResults.psm1';Tests='unit/lib/CiPlanResults.Tests.ps1';Targets='CiPlanResults'}
     ) {
         $observed=& $plan (& $commit $Path)
         $observed.Run.ExitCode|Should -Be 0 -Because ($observed.Run.Output+$observed.Run.Error)
+        $observed.Values['tooling_scope']|Should -BeExactly 'scripts'
         $observed.Values['run_tooling']|Should -BeExactly 'true'
+        $observed.Values['run_layout']|Should -BeExactly 'false' -Because 'script tests are the whole plan'
         $observed.Values['run_products']|Should -BeExactly 'false'
         $observed.Values['run_smokes']|Should -BeExactly 'false'
+        $observed.Values['run_distribution']|Should -BeExactly 'false'
         @(& $suites $observed.Values).Count|Should -Be 0 -Because 'companion qualification after a script change is a manual dispatch'
         @(& $images $observed.Values).Count|Should -Be 0
+        $selectedTests=[string[]](ConvertFrom-Json $observed.Values['script_tests'])
+        $selectedTargets=[string[]](ConvertFrom-Json $observed.Values['script_mutation_targets'])
+        foreach($name in @(([string]$Tests).Split(',',[StringSplitOptions]::RemoveEmptyEntries))){$selectedTests|Should -Contain $name}
+        $selectedTests|Should -Contain 'unit/quality/Inventory.Tests.ps1' -Because 'the inventory reads every script'
+        $selectedTests|Should -Not -Contain 'unit/lib/CiImpact.Tests.ps1' -Because 'nothing it reaches changed'
+        (@($selectedTargets) -join ',')|Should -BeExactly ([string]$Targets)
+    }
+
+    It 'runs every script test with coverage and every target when the test runner <Path> changes' -ForEach @(
+        @{Path='scripts/lib/ScriptsTests.psm1'}
+    ) {
+        $observed=& $plan (& $commit $Path)
+        $observed.Run.ExitCode|Should -Be 0 -Because ($observed.Run.Output+$observed.Run.Error)
+        $observed.Values['tooling_scope']|Should -BeExactly 'scripts'
+        $observed.Values['script_tests']|Should -BeExactly 'all'
+        $observed.Values['script_mutation_targets']|Should -BeExactly 'all'
+        $observed.Values['run_layout']|Should -BeExactly 'false'
+        $report=[IO.File]::ReadAllText([IO.Path]::Combine($workspace,'artifacts','ci-plan','impact.md'))
+        $report|Should -Match 'Tooling: scripts\.'
+        $report|Should -Match ('\| '+[regex]::Escape($Path)+' \|  \| unit/lib/CiImpact\.Tests\.ps1 \| Scripts \| script-test \| TestRunnerChanged \|')
     }
 
     It 'runs every companion and the tooling when an unknown shared input changes' {
@@ -133,16 +155,21 @@ Describe 'New-CiImpactPlan.ps1' {
         (& $suites $observed.Values) -join ','|Should -BeExactly ((@($catalogue.Companions.Keys)|Sort-Object -CaseSensitive) -join ',')
         (& $images $observed.Values) -join ','|Should -BeExactly ((& $suites $observed.Values) -join ',')
         $observed.Values['run_tooling']|Should -BeExactly 'true'
+        $observed.Values['tooling_scope']|Should -BeExactly 'full'
+        $observed.Values['script_tests']|Should -BeExactly 'all'
+        $observed.Values['script_mutation_targets']|Should -BeExactly 'all'
+        $observed.Values['run_layout']|Should -BeExactly 'true'
         @(& $smokes $observed.Values).Count|Should -Be 0 -Because 'a fully selected suite is never smoked'
     }
 
     It 'writes every output key once, in a stable order' {
         $observed=& $plan (& $commit 'docs/README-impact-keys.md')
-        @($observed.Values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,run_distribution,run_smokes,smoke_suites'
+        @($observed.Values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,run_distribution,run_layout,run_smokes,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
     }
 
     It 'qualifies <Expected> in full on a manual dispatch of <Suite>, without reading a diff' -ForEach @(
-        @{Suite='all';Expected='*'},@{Suite='core';Expected='Core'},@{Suite=' Git , Core ';Expected='Core,Git'}
+        @{Suite='all';Expected='*';Tooling='full'},@{Suite='core';Expected='Core';Tooling='none'},@{Suite=' Git , Core ';Expected='Core,Git';Tooling='none'}
+        @{Suite='Tooling';Expected='';Tooling='full'},@{Suite='core,tooling';Expected='Core';Tooling='full'}
     ) {
         $revision=& $commit 'docs/README-impact-dispatch.md'
         $outputPath=[IO.Path]::Combine($TestDrive,'dispatch-'+[guid]::NewGuid().ToString('N')+'.txt')
@@ -154,10 +181,14 @@ Describe 'New-CiImpactPlan.ps1' {
         $full=if($Expected -ceq '*'){$all}else{$Expected}
         (& $suites $values) -join ','|Should -BeExactly $full
         (& $images $values) -join ','|Should -BeExactly $full
-        $values['run_products']|Should -BeExactly 'true'
-        $values['run_tooling']|Should -BeExactly 'false'
+        $values['run_products']|Should -BeExactly $(if($full){'true'}else{'false'})
+        $values['run_tooling']|Should -BeExactly $(if($Tooling -ceq 'full'){'true'}else{'false'})
+        $values['tooling_scope']|Should -BeExactly $Tooling
+        $values['script_tests']|Should -BeExactly $(if($Tooling -ceq 'full'){'all'}else{'[]'})
+        $values['script_mutation_targets']|Should -BeExactly $(if($Tooling -ceq 'full'){'all'}else{'[]'})
+        $values['run_layout']|Should -BeExactly 'true'
         $values['run_distribution']|Should -BeExactly 'false'
-        @($values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,run_distribution,run_smokes,smoke_suites'
+        @($values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,run_distribution,run_layout,run_smokes,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
         $report=[IO.File]::ReadAllText([IO.Path]::Combine($workspace,'artifacts','ci-plan','impact.md'))
         $report|Should -Match 'Base: manual-dispatch;'
         $report|Should -Match '\| workflow_dispatch \|.*\| full \| ManualDispatch \|'
