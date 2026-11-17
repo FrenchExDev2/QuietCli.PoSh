@@ -22,7 +22,7 @@ $r = quiet -AsObject -WorkingDirectory $vagrantfileDirectory -Listeners { param(
 quiet -UI -WorkingDirectory $vagrantfileDirectory vagrant up
 ```
 
-With `-CollectEvents`, `$r.Events` carries every parsed `--machine-readable` line for the run (`Timestamp`/`Machine`/`Type`/`Fields`), plus a synthetic `ProvisionerStarted` event (`Machine`/`Provisioner`/`Timestamp`) whenever Vagrant itself emits a `Running provisioner: ...` line -- which it never does under `--no-provision`, so that flag needs no special handling here: forward it in your own `ArgumentList` as you would to plain `vagrant up` and the absence of `ProvisionerStarted` follows automatically. The listener example above explicitly retains its own list; it does not request the result's optional snapshot.
+With `-CollectEvents`, `$r.Events` carries `QuietCli2.Event` envelopes for every parsed `--machine-readable` line. `Type` holds the native event type and `Data` holds `Timestamp`/`Machine`/`Type`/`Fields`; read machine names through `$event.Data.Machine`. A synthetic event with `Type = 'ProvisionerStarted'` carries `Machine`/`Provisioner`/`Timestamp` in `Data` whenever Vagrant itself emits a `Running provisioner: ...` line -- which it never does under `--no-provision`, so that flag needs no special handling here: forward it in your own `ArgumentList` as you would to plain `vagrant up` and the absence of `ProvisionerStarted` follows automatically. The listener example above explicitly retains its own list; it does not request the result's optional snapshot.
 
 ## Coverage and limits
 

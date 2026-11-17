@@ -172,7 +172,7 @@ Executes independent native byte and object invariants in a companion module.
 
     $cases['explicit event collection compiled properties and targeted mutations']={
         . (Join-Path $PSScriptRoot ConfigurationDelivery.Mutation.ps1)
-        $result=Invoke-QuietConfigurationDeliveryEngine -WorkspaceRoot $WorkspaceRoot -RunDirectory (Join-Path $RunDirectory event-collection) -Mutation -MutationName @('emit-events-not-recorded','emit-unrequested-recording') -OnProgress {param($name,$state,$passed,$failed)Write-Host ('Mutation: '+$name+'; state='+$state+'; assertions='+$passed+'; failures='+$failed)}
+        $result=Invoke-QuietConfigurationDeliveryEngine -WorkspaceRoot $WorkspaceRoot -RunDirectory (Join-Path $RunDirectory event-collection) -Mutation -MutationName @('emit-events-not-recorded','emit-unrequested-recording','emit-type-lost','emit-data-lost') -OnProgress {param($name,$state,$passed,$failed)Write-Host ('Mutation: '+$name+'; state='+$state+'; assertions='+$passed+'; failures='+$failed)}
         Write-WorkspaceJson (Join-Path $RunDirectory event-collection/campaign.json) $result
         if($result.Failed){throw 'ExplicitEventCollectionMutationFailed'}
     }

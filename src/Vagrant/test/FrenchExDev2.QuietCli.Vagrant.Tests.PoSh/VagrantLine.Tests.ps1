@@ -37,7 +37,7 @@ function New-QuietVagrantFakeRuntime {
         Ui      = $Ui
         Events  = [Collections.Generic.List[object]]::new()
     }
-    Add-Member -InputObject $runtime -MemberType ScriptMethod -Name Emit -Value { param($evt) $this.Events.Add($evt) }
+    Add-Member -InputObject $runtime -MemberType ScriptMethod -Name Emit -Value { param($kind,$data) $this.Events.Add([pscustomobject]@{Type=$kind;Data=$data}) }
     $runtime
 }
 
@@ -195,10 +195,10 @@ function Get-QuietVagrantLineCases {
         Assert-QuietEqual (($report.Machines | Sort-Object) -join ',') 'db,web'
         # 3 valid lines + 1 synthetic ProvisionerStarted
         Assert-QuietEqual $runtime.Events.Count 4
-        $provisioner = @($runtime.Events | Where-Object { $_.PSObject.Properties['Kind'] -and $_.Kind -eq 'ProvisionerStarted' })
+        $provisioner = @($runtime.Events | Where-Object Type -EQ 'ProvisionerStarted')
         Assert-QuietEqual $provisioner.Count 1
-        Assert-QuietEqual $provisioner[0].Machine 'web'
-        Assert-QuietEqual $provisioner[0].Provisioner 'shell'
+        Assert-QuietEqual $provisioner[0].Data.Machine 'web'
+        Assert-QuietEqual $provisioner[0].Data.Provisioner 'shell'
         Assert-QuietEqual $ui.Headers.Count 1
         Assert-QuietEqual $ui.Headers[0][3] 'Mode: docker'
         # one Write per machine-tagged event (3 generic + 1 provisioner), all with the lane keyed by machine
@@ -234,15 +234,15 @@ function Get-QuietVagrantLineCases {
         $runtime1 = New-QuietVagrantFakeRuntime -FilePath $dotnet -Arguments @($fixture, 'chunks', '3', $withoutProvisioning) -WorkingDirectory $RootDirectory -Ui $ui1
         $report1 = Invoke-QuietVagrantMachineReadableRun -Runtime $runtime1 -Command 'up'
         Assert-QuietEqual $report1.Lines 4
-        Assert-QuietEqual (@($runtime1.Events | Where-Object { $_.PSObject.Properties['Kind'] -and $_.Kind -eq 'ProvisionerStarted' })).Count 0
+        Assert-QuietEqual (@($runtime1.Events | Where-Object Type -EQ 'ProvisionerStarted')).Count 0
 
         $withProvisioning = ($machines | ForEach-Object { "170000004{0},{1},ui,info,Running provisioner: shell..." -f ([array]::IndexOf($machines, $_)), $_ }) -join "`n"
         $ui2 = New-QuietVagrantRecordingUi
         $runtime2 = New-QuietVagrantFakeRuntime -FilePath $dotnet -Arguments @($fixture, 'chunks', '4', $withProvisioning) -WorkingDirectory $RootDirectory -Ui $ui2
         $report2 = Invoke-QuietVagrantMachineReadableRun -Runtime $runtime2 -Command 'up'
-        $started = @($runtime2.Events | Where-Object { $_.PSObject.Properties['Kind'] -and $_.Kind -eq 'ProvisionerStarted' })
+        $started = @($runtime2.Events | Where-Object Type -EQ 'ProvisionerStarted')
         Assert-QuietEqual $started.Count 4
-        Assert-QuietEqual (($started | Select-Object -ExpandProperty Machine | Sort-Object) -join ',') (($machines | Sort-Object) -join ',')
+        Assert-QuietEqual (($started.Data | Select-Object -ExpandProperty Machine | Sort-Object) -join ',') (($machines | Sort-Object) -join ',')
         # Same function, same code path, zero branching on --no-provision: the only difference between the two
         # runs above is which lines Vagrant itself would have written -- nothing in Invoke-QuietVagrantMachineReadableRun
         # inspects an ArgumentList flag to decide whether to emit ProvisionerStarted.
@@ -288,6 +288,9 @@ function Get-QuietVagrantLineCases {
                 Assert-QuietEqual $result.Completeness.Analysis $true
                 Assert-QuietEqual $seen.Count 3
                 Assert-QuietEqual $result.Events.Count 3
+                Assert-QuietEqual ($seen.Type -join ',') 'ui,ProvisionerStarted,ui'
+                Assert-QuietEqual $seen[1].Data.Provisioner 'shell'
+                Assert-QuietEqual $seen[2].Data.Machine 'db'
                 Assert-QuietEqual $result.Error.Count 1
                 Assert-QuietEqual $result.Error[0].Code 'ListenerFailed'
                 Assert-QuietEqual $result.Data.Command $command

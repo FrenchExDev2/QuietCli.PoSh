@@ -15,17 +15,17 @@ function Test-QuietEmitListeners {
     $options=@{
         AsObject=$true; CollectEvents=$true; RecordDelimiter="`n"; Data=[Collections.Generic.List[string]]::new()
         Listeners=@(
-            {param($event,$runtime) [void]$seen.Add($event.Text)},
+            {param($event,$runtime) [void]$seen.Add($event.Data.Text)},
             {param($event,$runtime) throw 'ObserverFixtureFailure'}
         )
         Output={param($event,$runtime)
             if($event.Stream -eq 'stdout'){
                 $line=$event.Text.TrimEnd("`r","`n")
                 [void]$runtime.Data.Add($line)
-                $runtime.Emit([pscustomobject]@{Text=$line})
+                $runtime.Emit('Line',[pscustomobject]@{Text=$line})
             }
         }
-        Complete={param($runtime) $runtime.Emit([pscustomobject]@{Text='completed'}); [pscustomobject]@{Lines=$runtime.Data.Count}}
+        Complete={param($runtime) $runtime.Emit('Completed',[pscustomobject]@{Text='completed'}); [pscustomobject]@{Lines=$runtime.Data.Count}}
         FilePath=$dotnet; ArgumentList=@($fixture,'chunks','20261108',$text)
     }
     $result=quiet @options
@@ -45,10 +45,10 @@ function Test-QuietEmitListeners {
             try{$decoded=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build().Deserialize[object]($reader)}finally{$reader.Dispose()}
         }
         if($format -eq 'AsJson'){
-            $events=$decoded.Events;$first=$events[0].Text;$second=$events[1].Text;$truncated=$decoded.Truncation.Applied
+            $events=$decoded.Events;$first=$events[0].Data.Text;$second=$events[1].Data.Text;$truncated=$decoded.Truncation.Applied
         }else{
             # YamlDotNet's untyped dictionary has object keys, which require explicit indexers in PowerShell.
-            $events=$decoded['Events'];$first=$events[0]['Text'];$second=$events[1]['Text'];$truncated=[bool]::Parse($decoded['Truncation']['Applied'])
+            $events=$decoded['Events'];$first=$events[0]['Data']['Text'];$second=$events[1]['Data']['Text'];$truncated=[bool]::Parse($decoded['Truncation']['Applied'])
         }
         if($events.Count -ne 2 -or $first -cne 'été' -or $second -cne '漢字' -or !$truncated){throw "EmitDeliveryBudgetLost: $format"}
     }
@@ -58,7 +58,7 @@ function Test-QuietEmitListeners {
         $run=@{};foreach($key in $options.Keys){$run[$key]=$options[$key]}
         $run.CollectEvents=$enabled;$run.Data=[Collections.Generic.List[string]]::new()
         if($mode -ceq 'omitted'){$run.Remove('CollectEvents')}
-        $run.Complete={param($runtime)$runtime.Emit([pscustomobject]@{Text='last'});[pscustomobject]@{Retained=$runtime.Events.Count}}
+        $run.Complete={param($runtime)$runtime.Emit('Completed',[pscustomobject]@{Text='last'});[pscustomobject]@{Retained=$runtime.Events.Count}}
         $before=$seen.Count
         $observed=quiet @run
         if($seen.Count-$before -ne 5){throw 'UncollectedEventsNotDeliveredToListeners'}
@@ -73,13 +73,13 @@ function Test-QuietEmitListeners {
     $nested=@{};foreach($key in $options.Keys){$nested[$key]=$options[$key]}
     $nested.Remove('Listeners');$nested.Data=[Collections.Generic.List[string]]::new()
     $nested.Complete={param($runtime)
-        $inner=quiet -AsObject -FilePath $dotnet -ArgumentList @($fixture,'chunks','20261108','inner') -Output {param($event,$runtime)} -Complete {param($runtime)$runtime.Emit('inner');$runtime.Events.Count}
+        $inner=quiet -AsObject -FilePath $dotnet -ArgumentList @($fixture,'chunks','20261108','inner') -Output {param($event,$runtime)} -Complete {param($runtime)$runtime.Emit('Line','inner');$runtime.Events.Count}
         [pscustomobject]@{OuterRetained=$runtime.Events.Count;InnerRetained=$inner.Data;InnerHasEvents=[bool]$inner.PSObject.Properties['Events'];InnerOutcome=$inner.Outcome}
     }
     $result=quiet @nested
     if($result.Outcome -ne 'Success' -or $result.Data.OuterRetained -ne 4 -or $result.Data.InnerOutcome -ne 'Success' -or $result.Data.InnerRetained -ne 0 -or $result.Data.InnerHasEvents){throw 'EmitCollectionInheritedByNestedInvocation'}
     foreach($enabled in @($false,$true)){
-        $call=@{AsObject=$true;CollectEvents=$enabled;RecordDelimiter="`n";FilePath=$dotnet;ArgumentList=@($fixture,'chunks','20261108','saved');Script=(Join-Path $RunDirectory ('saved-events-'+$enabled+'.ps1'));Output={param($event,$runtime)if($event.Stream -eq 'stdout'){$runtime.Emit($event.Text)}};Complete={param($runtime)$runtime.Events.Count}}
+        $call=@{AsObject=$true;CollectEvents=$enabled;RecordDelimiter="`n";FilePath=$dotnet;ArgumentList=@($fixture,'chunks','20261108','saved');Script=(Join-Path $RunDirectory ('saved-events-'+$enabled+'.ps1'));Output={param($event,$runtime)if($event.Stream -eq 'stdout'){$runtime.Emit('Line',$event.Text)}};Complete={param($runtime)$runtime.Events.Count}}
         $definition=quiet @call
         if((Get-Content $definition.FullName -Encoding utf8 -TotalCount 1) -like '#Objective: *'){throw 'SavedCallUnexpectedObjectiveHeader'}
         $saved=& $definition.FullName

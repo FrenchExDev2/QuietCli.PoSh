@@ -56,7 +56,8 @@ function Get-QuietVagrantFuzzCases {
                 if ($report.Lines -ne $entries.Count) { throw "Expected $($entries.Count) parsed lines, observed $($report.Lines)" }
                 if ($runtime.Events.Count -ne $entries.Count) { throw "Expected $($entries.Count) emitted events, observed $($runtime.Events.Count)" }
                 for ($i = 0; $i -lt $entries.Count; $i++) {
-                    $expected = $entries[$i]; $actual = $runtime.Events[$i]
+                    $expected = $entries[$i]; $actual = $runtime.Events[$i].Data
+                    if ($runtime.Events[$i].Type -cne $expected.Type) { throw "Event type mismatch at line $i" }
                     if ($actual.Machine -cne $expected.Machine) { throw "Machine mismatch at line $i`: expected $($expected.Machine), observed $($actual.Machine)" }
                     if ($actual.Type -cne $expected.Type) { throw "Type mismatch at line $i`: expected $($expected.Type), observed $($actual.Type)" }
                     if ((@($actual.Fields) -join "`u{1}") -cne (@($expected.Fields) -join "`u{1}")) { throw "Fields mismatch at line $i`: expected [$($expected.Fields -join '|')], observed [$($actual.Fields -join '|')]" }

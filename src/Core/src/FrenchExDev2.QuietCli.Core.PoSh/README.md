@@ -12,7 +12,7 @@
 
 - **Native execution:** process startup, streamed stdout/stderr, stdin, cancellation, timeouts and terminal transports.
 - **Business callbacks:** `-Output` accumulates caller-local data; `-Complete` returns the business result.
-- **Business events:** `$runtime.Emit(...)` notifies per-call `-Listeners`; explicit `-CollectEvents` retains ordered events and adds an `Events` snapshot to the result. Default invocations retain none. `-UI` exposes explicit live presentation lanes.
+- **Business events:** `$runtime.Emit($kind, $data)` creates a `QuietCli2.Event` with `Type = $kind` and customizable `Data`, then notifies per-call `-Listeners`. Explicit `-CollectEvents` retains ordered events and adds an `Events` snapshot to the result. Default invocations retain none. `-UI` exposes explicit live presentation lanes.
 - **Explicit results:** `Outcome`, `Execution`, `Completeness` and errors distinguish success from incomplete or failed work.
 - **Controlled delivery:** local objects with `-AsObject`, or bounded JSON/YAML views with measured delivery sizes.
 - **Reusable analysis:** script generation, handler registration, companion-module scaffolding and opt-in Recall evidence.
