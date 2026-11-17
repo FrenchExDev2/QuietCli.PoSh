@@ -45,8 +45,10 @@ BeforeAll {
     $start={param($Fixture,[string[]]$Arguments)
         $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList (@('-WorkspaceRoot',$Fixture.Work)+$Arguments) -TimeoutSeconds 300
         $run.TimedOut|Should -BeFalse
-        # pwsh wraps an error message at the console width, which differs per host: compare with whitespace collapsed.
-        $run|Add-Member -NotePropertyName Text -NotePropertyValue (($run.Output+"`n"+$run.Error) -replace '\s+',' ') -PassThru
+        # pwsh wraps an error message at the console width and colors each wrapped line, which differs per host:
+        # compare without ANSI sequences and with whitespace collapsed.
+        $text=($run.Output+"`n"+$run.Error) -replace '\x1B\[[0-?]*[ -/]*[@-~]','' -replace '\s+',' '
+        $run|Add-Member -NotePropertyName Text -NotePropertyValue $text -PassThru
     }
     $snapshot={param($Fixture)
         [pscustomobject]@{
