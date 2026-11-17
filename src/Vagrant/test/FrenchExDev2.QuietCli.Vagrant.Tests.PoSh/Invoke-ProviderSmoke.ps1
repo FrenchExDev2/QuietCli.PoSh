@@ -109,7 +109,7 @@ try{
     foreach($step in @(@{Name='up-no-provision';Args=@('up','--provider=docker','--no-provision','--no-parallel','--no-install-provider')},@{Name='provision';Args=@('provision')})){
         $state.Case=$step.Name;Write-WorkspaceJson $statusPath $state
         $seen=[Collections.Generic.List[object]]::new()
-        $listener={param($event,$runtime) if($seen.Count -ge 5000){throw 'SmokeEventLimit'};[void]$seen.Add($event);$description=if($event.PSObject.Properties['Fields']){$event.Fields -join ' '}else{$event.Kind};$state.Case=$step.Name+': '+$seen.Count+' events | '+$description.Substring(0,[Math]::Min(120,$description.Length));Write-WorkspaceJson $statusPath $state}
+        $listener={param($event,$runtime) if($seen.Count -ge 5000){throw 'SmokeEventLimit'};[void]$seen.Add($event);$description=if($event.Data.PSObject.Properties['Fields']){$event.Data.Fields -join ' '}else{$event.Type};$state.Case=$step.Name+': '+$seen.Count+' events | '+$description.Substring(0,[Math]::Min(120,$description.Length));Write-WorkspaceJson $statusPath $state}
         $attempted=$true
         $result=quiet -AsObject -CollectEvents -Ui -FilePath 'vagrant' -ArgumentList $step.Args -WorkingDirectory $fixture -Environment $environment -TimeoutSeconds 600 -Listeners $listener
         Write-WorkspaceJson (Join-Path $RunDirectory ($step.Name+'.json')) @{Outcome=$result.Outcome;Execution=$result.Execution;Completeness=$result.Completeness;Error=$result.Error;Data=$result.Data;Events=$seen.ToArray()}
@@ -117,15 +117,15 @@ try{
         $ordered=$seen.Count -eq $result.Events.Count -and $seen.Count -gt 0
         for($index=0;$ordered -and $index -lt $seen.Count;$index++){$ordered=[object]::ReferenceEquals($seen[$index],$result.Events[$index])}
         Assert-ProviderCase ($step.Name+' preserves listener/collected event order') $ordered
-        $machines=@($seen | ForEach-Object {if($_.PSObject.Properties['Machine'] -and $_.Machine){$_.Machine}} | Select-Object -Unique)
+        $machines=@($seen.Data | ForEach-Object {if($_.PSObject.Properties['Machine'] -and $_.Machine){$_.Machine}} | Select-Object -Unique)
         Assert-ProviderCase ($step.Name+' observes both machines') ('web' -in $machines -and 'db' -in $machines)
-        $starts=@($seen | Where-Object {$_.PSObject.Properties['Kind'] -and $_.Kind -eq 'ProvisionerStarted'})
+        $starts=@($seen | Where-Object Type -EQ 'ProvisionerStarted')
         if($step.Name -eq 'up-no-provision'){
             Assert-ProviderCase 'No-provision emits no provisioner-start event' ($starts.Count -eq 0)
         }else{
             foreach($machine in 'web','db'){
-                Assert-ProviderCase ($machine+' shell provisioner is observed') (@($starts | Where-Object Machine -eq $machine).Count -ge 1)
-                Assert-ProviderCase ($machine+' shell output contains the fixture sentinel') (@($seen | Where-Object {$_.Machine -eq $machine -and $_.PSObject.Properties['Fields'] -and ($_.Fields -join ' ') -match "provisioning $machine"}).Count -ge 1)
+                Assert-ProviderCase ($machine+' shell provisioner is observed') (@($starts.Data | Where-Object Machine -eq $machine).Count -ge 1)
+                Assert-ProviderCase ($machine+' shell output contains the fixture sentinel') (@($seen.Data | Where-Object {$_.Machine -eq $machine -and $_.PSObject.Properties['Fields'] -and ($_.Fields -join ' ') -match "provisioning $machine"}).Count -ge 1)
             }
         }
     }

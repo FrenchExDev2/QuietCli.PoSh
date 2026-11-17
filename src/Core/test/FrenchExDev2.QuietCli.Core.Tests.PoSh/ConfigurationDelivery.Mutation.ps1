@@ -102,6 +102,8 @@ function Invoke-QuietConfigurationDeliveryEngine {
             @{Name='scaffold-module-identity';File='Scaffolding/ModuleScaffold.cs';From='[(QuietSession.ModuleName, "0.2.0")]';To='[("FrenchExDev2.QuietCli.Core.PoSh", "0.2.0")]'},
             @{Name='emit-events-not-recorded';File='Cmdlets/RuntimeCommands.cs';From='Events.Add(value);';To='_ = value;'},
             @{Name='emit-unrequested-recording';File='Cmdlets/RuntimeCommands.cs';From='if (CollectEvents) Events.Add(value);';To='Events.Add(value);'},
+            @{Name='emit-type-lost';File='Cmdlets/RuntimeCommands.cs';From='new PSNoteProperty("Type", kind)';To='new PSNoteProperty("Type", "Other")'},
+            @{Name='emit-data-lost';File='Cmdlets/RuntimeCommands.cs';From='new PSNoteProperty("Data", Normalize(data))';To='new PSNoteProperty("Data", null)'},
             @{Name='emit-listener-not-disabled-after-failure';File='Cmdlets/RuntimeCommands.cs';From='(disabledListeners ??= []).Add(i);';To=';'},
             @{Name='emit-listener-skip-check-removed';File='Cmdlets/RuntimeCommands.cs';From='if (disabledListeners?.Contains(i) == true) continue;';To='if (false) continue;'},
             @{Name='emit-nested-inherits-listeners';File='Cmdlets/RuntimeCommands.cs';From='runtime.Listeners = request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : [];';To='runtime.Listeners = parent?.Listeners ?? (request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : []);'},

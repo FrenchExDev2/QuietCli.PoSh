@@ -40,7 +40,7 @@ The [agent failure table](docs/agents/AGENTS.md) lists what to do for each non-s
 
 ## Callback pitfalls
 
-`-Listeners` accepts one scriptblock or an array of scriptblocks. Call `$runtime.Emit($event)` from
+`-Listeners` accepts one scriptblock or an array of scriptblocks. Call `$runtime.Emit($kind, $data)` from
 `-Output`, `-Complete` or a handler to invoke every listener with `(event, runtime)`
 in registration order. Listener callbacks produce no pipeline output. A failing listener is disabled for
 that call and adds `ListenerFailed` to `Error`; other listeners and business analysis continue. Events
@@ -51,6 +51,17 @@ automatic item cap, so select only the business events you need. It never record
 Nested calls have their own listeners and collection settings; collection is not inherited.
 JSON/YAML deliveries include `Events` only when requested, apply `MaxItems`, and report omitted
 items without altering the local array. Live listeners and UI do not require collection.
+
+Each emission creates a `QuietCli2.Event` object with `Type = $kind` and `Data = $data`.
+The type is a caller-defined string; Data can be a custom object, dictionary, array, scalar or null.
+Listeners and collection receive the same envelope. Data stays local by reference, without
+enumeration or serialization during emission. Read payload fields through `$event.Data`.
+
+```powershell
+# Inside an Output or Complete callback:
+$runtime.Emit('Progress', [pscustomobject]@{ File = 'rapport.txt'; Percent = 75 })
+# A listener receives: $event.Type == 'Progress', $event.Data.Percent == 75
+```
 
 `-UI` provides a live presentation surface through `$runtime.Ui.Write($event, $lane)` and
 `$runtime.Ui.NewLine($lane)`. `-MaxLines` selects the positive history depth per lane and requires

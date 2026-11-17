@@ -83,7 +83,7 @@ public sealed class QuietRuntime
     public ScriptBlock[] Listeners { get; internal set; } = [];
     /// <summary>True only when this invocation explicitly requests in-memory business-event collection.</summary>
     public bool CollectEvents { get; internal set; }
-    /// <summary>Values explicitly collected by -CollectEvents; otherwise remains empty.</summary>
+    /// <summary>Type/Data events explicitly collected by -CollectEvents; otherwise remains empty.</summary>
     public List<object?> Events { get; } = [];
     /// <summary>Indexes into <see cref="Listeners"/> that failed and are skipped for the remainder of this call.</summary>
     private HashSet<int>? disabledListeners;
@@ -333,11 +333,15 @@ public sealed class QuietRuntime
         finally { CallbackMs += watch.Elapsed.TotalMilliseconds; }
     }
 
-    /// <summary>Pushes one transient event to listeners and retains it only with -CollectEvents; never changes analysis completeness.</summary>
-    /// <param name="evt">Caller-owned event value; normalized the same way as a callback return value.</param>
-    public void Emit(object? evt)
+    /// <summary>Pushes one Type/Data event to listeners and retains it only with -CollectEvents; never changes analysis completeness.</summary>
+    /// <param name="kind">Caller-defined event type.</param>
+    /// <param name="data">Caller-owned payload, preserved locally without enumeration or serialization.</param>
+    public void Emit(string kind, object? data)
     {
-        object? value = Normalize(evt);
+        var value = new PSObject();
+        value.TypeNames.Insert(0, "QuietCli2.Event");
+        value.Properties.Add(new PSNoteProperty("Type", kind));
+        value.Properties.Add(new PSNoteProperty("Data", Normalize(data)));
         if (CollectEvents) Events.Add(value);
         if (Listeners.Length == 0) return;
         for (int i = 0; i < Listeners.Length; i++)

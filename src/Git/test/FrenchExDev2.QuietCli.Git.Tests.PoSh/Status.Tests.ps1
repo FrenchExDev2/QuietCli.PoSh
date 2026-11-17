@@ -239,11 +239,11 @@ function Get-QuietGitStatusCases {
         $path=& $factory $RootDirectory $Environment
         & $write (Join-Path $path 'file.txt') "changed`n"
         $events=[Collections.Generic.List[object]]::new()
-        $listener={param($e)if("$($e.Kind)" -like 'GitStatus*'){$events.Add($e)}}.GetNewClosure()
+        $listener={param($e)if("$($e.Type)" -like 'GitStatus*'){$events.Add($e)}}.GetNewClosure()
         $r=quiet -AsObject -WorkingDirectory $path -Environment $Environment -Listeners $listener git status
         & $success $r
-        & $assert (@($events|ForEach-Object Kind) -join ',') 'GitStatusRepository,GitStatusSummary,GitStatusEntry'
-        & $assert $events[1].Mode List;& $assert $events[1].Counts.Unstaged 1;& $assert $events[2].Entry.Path file.txt
+        & $assert (@($events|ForEach-Object Type) -join ',') 'GitStatusRepository,GitStatusSummary,GitStatusEntry'
+        & $assert $events[1].Data.Mode List;& $assert $events[1].Data.Counts.Unstaged 1;& $assert $events[2].Data.Entry.Path file.txt
     }.GetNewClosure()
     return $cases
 }

@@ -106,7 +106,7 @@ function Invoke-QuietVagrantMachineReadableRun {
             $parsed = ConvertFrom-QuietVagrantMachineReadableLine $e.Text.TrimEnd("`r")
             if ($null -eq $parsed) { return }   # malformed/unrecognized line -- forward-compatible: never throw on an unknown shape
             [void]$r.Data.Add($parsed)
-            $Runtime.Emit($parsed)   # outer runtime captured by closure, not $r (the nested call's own runtime)
+            $Runtime.Emit($parsed.Type,$parsed)   # outer runtime captured by closure, not $r (the nested call's own runtime)
 
             # Lane model: each machine gets its own lane, keyed by name. Writing to a lane never disturbs any
             # other machine's lane, so interleaved output from several machines never blends onto one line.
@@ -119,7 +119,7 @@ function Invoke-QuietVagrantMachineReadableRun {
                 # there is no `if (-not $noProvision)` here: the absence of this event IS how --no-provision
                 # shows up, with zero branching in this handler.
                 $provisioner = [pscustomobject]@{ Kind = 'ProvisionerStarted'; Machine = $parsed.Machine; Provisioner = $provisionerName; Timestamp = $parsed.Timestamp }
-                $Runtime.Emit($provisioner)
+                $Runtime.Emit('ProvisionerStarted',$provisioner)
                 if ($Runtime.Ui -and $parsed.Machine) { $Runtime.Ui.Write($provisioner, $parsed.Machine) }   # same lane, just overwrites that machine's displayed line
             }
         } -Complete { param($r) ,$r.Data.ToArray() }

@@ -147,7 +147,7 @@ Hot paths are disjoint directories, files or a `Rest` remainder, and together th
 
 **Presentation.** The handler publishes the view without changing Core:
 
-- `-Listeners` receives `GitStatusRepository`, `GitStatusOperation`, `GitStatusSummary`, `GitStatusHotPath` or `GitStatusEntry`, then `GitStatusDiagnostic` events;
+- `-Listeners` receives `QuietCli2.Event` objects whose `Type` is `GitStatusRepository`, `GitStatusOperation`, `GitStatusSummary`, `GitStatusHotPath` or `GitStatusEntry`, then `GitStatusDiagnostic`; business fields are under `Data` (for example `$event.Data.Counts` for a summary);
 - `-UI` draws a three-line header (repository, branch, profile) and one lane per operation, hot path or entry.
 
 ```powershell

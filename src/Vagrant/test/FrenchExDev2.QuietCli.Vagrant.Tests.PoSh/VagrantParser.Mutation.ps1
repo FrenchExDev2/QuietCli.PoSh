@@ -56,7 +56,7 @@ function Invoke-QuietVagrantParserMutation {
                     'provisioner-trigger-anchor-broken' {
                         $runtime = New-QuietVagrantFakeRuntime -FilePath $dotnet -Arguments @($fixture, 'chunks', '99', '1700000012,web,ui,info,Running provisioner: shell...') -WorkingDirectory $destination
                         $null = Invoke-QuietVagrantMachineReadableRun -Runtime $runtime -Command 'up'
-                        (@($runtime.Events | Where-Object { $_.PSObject.Properties['Kind'] -and $_.Kind -eq 'ProvisionerStarted' })).Count -ne 1
+                        (@($runtime.Events | Where-Object Type -EQ 'ProvisionerStarted')).Count -ne 1
                     }
                     'real-machine-prefix-not-stripped' {
                         (Get-QuietVagrantProvisionerName ([pscustomobject]@{Machine='web';Type='ui';Fields=@('info','==> web: Running provisioner: shell...')})) -cne 'shell'

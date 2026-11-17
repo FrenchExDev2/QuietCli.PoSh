@@ -115,16 +115,48 @@ internal static class InvocationCmdletCases
             return Task.CompletedTask;
         });
 
+        await run("property: Emit preserves Type and arbitrary Data references without inspecting payloads", () =>
+        {
+            var random = new Random(Seed);
+            string[] kinds = ["Progress", "été漢字🙂", "", "line\nwith\ttabs", "'{}[]:,$"];
+            var custom = new PSObject();
+            custom.Properties.Add(new PSNoteProperty("Type", "payload-type"));
+            custom.Properties.Add(new PSScriptProperty("Forbidden", ScriptBlock.Create("throw 'EventPayloadInspected'")));
+            object?[] payloads = [null, 0, false, "", "été漢字🙂", new object?[] { 1, null, "two" }, new Hashtable { ["Type"] = "payload-type", ["Data"] = 42 }, custom];
+            Register(runspace, "probe-emit-payload", binary, "$rt.Emit($global:quietEventKind,$global:quietEventPayload); 'ok'");
+            foreach (string kind in kinds)
+            {
+                foreach (object? payload in payloads.OrderBy(_ => random.Next()))
+                {
+                    runspace.SessionStateProxy.SetVariable("quietEventKind", kind);
+                    runspace.SessionStateProxy.SetVariable("quietEventPayload", payload);
+                    var result = Call(runspace, path, "@{HandlerId='probe-emit-payload';CollectEvents=$true;Listeners={param($e,$rt) $global:quietEventObserved=$e}}");
+                    Require(Text(result, "Outcome") == "Success", "Event emission failed: " + Dump(result));
+                    var observed = PSObject.AsPSObject(((IEnumerable)Member(result, "Events")!).Cast<object>().Single());
+                    Require(ReferenceEquals(observed, runspace.SessionStateProxy.GetVariable("quietEventObserved")), "Listener and collection received different envelopes");
+                    Require(observed.TypeNames[0] == "QuietCli2.Event", "Event type name lost");
+                    Require(observed.Properties.Select(p => p.Name).SequenceEqual(["Type", "Data"]), "Event envelope fields changed");
+                    Require(Text(observed, "Type") == kind, "Event Type changed");
+                    object? actual = Member(observed, "Data");
+                    Require(payload is null ? actual is null : payload.GetType().IsValueType ? Equals(payload, actual) : ReferenceEquals(payload, actual), "Event payload was replaced, enumerated or serialized");
+                }
+            }
+            var untouched = DeliveryCmdletCases.Script(runspace, "$p=[pscustomobject]@{Type='custom';Data='nested'}; $p.PSObject.Properties.Add([System.Management.Automation.PSScriptProperty]::new('Forbidden',{throw 'EventPayloadInspected'})); $r=[FrenchExDev2.QuietCli.Cmdlets.QuietRuntime]::new(); $r.Emit('Custom',$p); if($r.Events.Count){throw 'EventRetainedWithoutCollection'}; 'ok'").Single();
+            Require(Convert.ToString(untouched) == "ok", "Transient event inspected its payload");
+            DeliveryCmdletCases.Script(runspace, "Unregister-QuietHandler probe-emit-payload; $global:quietEventKind=$null; $global:quietEventPayload=$null; $global:quietEventObserved=$null");
+            return Task.CompletedTask;
+        });
+
         await run("Emit distributes to every listener in registration order and CollectEvents explicitly records emitted values independently from listeners", () =>
         {
-            Register(runspace, "probe-emit-order", binary, "$rt.Emit('a'); $rt.Emit('b'); $rt.Emit('c'); 'ok'");
+            Register(runspace, "probe-emit-order", binary, "$rt.Emit('Item','a'); $rt.Emit('Item','b'); $rt.Emit('Item','c'); 'ok'");
             var order = new List<string>();
             runspace.SessionStateProxy.SetVariable("quietEmitOrder", order);
             try
             {
-                var result = Call(runspace, path, "@{HandlerId='probe-emit-order';CollectEvents=$true;Listeners=@({param($e,$rt) $global:quietEmitOrder.Add('L1:'+$e)},{param($e,$rt) $global:quietEmitOrder.Add('L2:'+$e)})}");
+                var result = Call(runspace, path, "@{HandlerId='probe-emit-order';CollectEvents=$true;Listeners=@({param($e,$rt) $global:quietEmitOrder.Add('L1:'+$e.Data)},{param($e,$rt) $global:quietEmitOrder.Add('L2:'+$e.Data)})}");
                 Require(Text(result, "Outcome") == "Success", "Emit with listeners changed Outcome: " + Dump(result));
-                string[] events = ((IEnumerable)Member(result, "Events")!).Cast<object?>().Select(e => Convert.ToString(e)!).ToArray();
+                string[] events = ((IEnumerable)Member(result, "Events")!).Cast<object>().Select(e => Text(e, "Data")).ToArray();
                 Require(events.SequenceEqual(["a", "b", "c"]), "Events did not record every emitted value in order: " + string.Join(",", events));
                 Require(order.SequenceEqual(["L1:a", "L2:a", "L1:b", "L2:b", "L1:c", "L2:c"]), "Listener distribution order wrong: " + string.Join(",", order));
             }
@@ -138,7 +170,7 @@ internal static class InvocationCmdletCases
             for (int round = 0; round < 32; round++)
             {
                 int count = random.Next(0, 20);
-                Register(runspace, "probe-emit-opt-in", binary, $"for($i=0;$i -lt {count};$i++){{$rt.Emit($i)}}; $rt.Events.Count");
+                Register(runspace, "probe-emit-opt-in", binary, $"for($i=0;$i -lt {count};$i++){{$rt.Emit('Item',$i)}}; $rt.Events.Count");
                 try
                 {
                     foreach (bool collect in new[] { false, true })
@@ -157,12 +189,12 @@ internal static class InvocationCmdletCases
 
         await run("a throwing listener is disabled after its first failure, without affecting other listeners, the Outcome or AnalysisComplete", () =>
         {
-            Register(runspace, "probe-emit-fail", binary, "$rt.Emit('a'); $rt.Emit('b'); $rt.Emit('c'); 'ok'");
+            Register(runspace, "probe-emit-fail", binary, "$rt.Emit('Item','a'); $rt.Emit('Item','b'); $rt.Emit('Item','c'); 'ok'");
             var survivorCalls = new List<string>();
             runspace.SessionStateProxy.SetVariable("quietEmitSurvivor", survivorCalls);
             try
             {
-                var result = Call(runspace, path, "@{HandlerId='probe-emit-fail';Listeners=@({param($e,$rt) throw 'boom'},{param($e,$rt) $global:quietEmitSurvivor.Add($e)})}");
+                var result = Call(runspace, path, "@{HandlerId='probe-emit-fail';Listeners=@({param($e,$rt) throw 'boom'},{param($e,$rt) $global:quietEmitSurvivor.Add($e.Data)})}");
                 Require(Text(result, "Outcome") == "Success", "A listener failure changed Outcome: " + Dump(result));
                 Require((bool)Member(Member(result, "Completeness")!, "Analysis")!, "A listener failure marked the analysis incomplete: " + Dump(result));
                 Require(survivorCalls.Count == 3, "Surviving listener was not called for every emitted event: " + survivorCalls.Count);
@@ -175,7 +207,7 @@ internal static class InvocationCmdletCases
 
         await run("-Listeners accepts a lone ScriptBlock or a sequence of ScriptBlocks and rejects every other generated shape", () =>
         {
-            Register(runspace, "probe-emit-shape", binary, "$rt.Emit('x'); 'ok'");
+            Register(runspace, "probe-emit-shape", binary, "$rt.Emit('Item','x'); 'ok'");
             try
             {
                 var lone = Call(runspace, path, "@{HandlerId='probe-emit-shape';Listeners={param($e,$rt) $null}}");
@@ -201,20 +233,20 @@ internal static class InvocationCmdletCases
 
         await run("a nested invocation does not inherit the parent's -Listeners unless explicitly re-passed", () =>
         {
-            Register(runspace, "probe-emit-inner", binary, "$rt.Emit('inner'); 'okInner'");
-            Register(runspace, "probe-emit-outer", binary, "$rt.Emit('outer'); Invoke-QuietCall @{FilePath=$rt.Request['FilePath'];Environment=@{};AsObject=$true;HandlerId='probe-emit-inner'}");
+            Register(runspace, "probe-emit-inner", binary, "$rt.Emit('Item','inner'); 'okInner'");
+            Register(runspace, "probe-emit-outer", binary, "$rt.Emit('Item','outer'); Invoke-QuietCall @{FilePath=$rt.Request['FilePath'];Environment=@{};AsObject=$true;HandlerId='probe-emit-inner'}");
             var outerHits = new List<string>();
             runspace.SessionStateProxy.SetVariable("quietEmitOuterHits", outerHits);
             try
             {
-                var outer = Call(runspace, path, "@{HandlerId='probe-emit-outer';Listeners={param($e,$rt) $global:quietEmitOuterHits.Add($e)}}");
+                var outer = Call(runspace, path, "@{HandlerId='probe-emit-outer';Listeners={param($e,$rt) $global:quietEmitOuterHits.Add($e.Data)}}");
                 var inner = Member(outer, "Data");
                 Require(Text(outer, "Outcome") == "Success" && inner is not null, "Outer invocation with a nested call failed: " + Dump(outer));
                 Require(PSObject.AsPSObject(outer).Properties["Events"] is null && PSObject.AsPSObject(inner!).Properties["Events"] is null, "Nested calls collected events without opting in");
                 Require(outerHits.SequenceEqual(["outer"]), "The nested call's Emit reached the parent's listener although -Listeners was not re-passed: " + string.Join(",", outerHits));
-                Register(runspace, "probe-emit-outer-forwarded", binary, "$rt.Emit('outer'); Invoke-QuietCall @{FilePath=$rt.Request['FilePath'];Environment=@{};AsObject=$true;HandlerId='probe-emit-inner';Listeners=$rt.Listeners}");
+                Register(runspace, "probe-emit-outer-forwarded", binary, "$rt.Emit('Item','outer'); Invoke-QuietCall @{FilePath=$rt.Request['FilePath'];Environment=@{};AsObject=$true;HandlerId='probe-emit-inner';Listeners=$rt.Listeners}");
                 outerHits.Clear();
-                var forwarded = Call(runspace, path, "@{HandlerId='probe-emit-outer-forwarded';Listeners={param($e,$rt) $global:quietEmitOuterHits.Add($e)}}");
+                var forwarded = Call(runspace, path, "@{HandlerId='probe-emit-outer-forwarded';Listeners={param($e,$rt) $global:quietEmitOuterHits.Add($e.Data)}}");
                 Require(Text(forwarded, "Outcome") == "Success" && outerHits.SequenceEqual(["outer", "inner"]), "Explicitly forwarded listeners were not attached to the nested call");
             }
             finally { DeliveryCmdletCases.Script(runspace, "Unregister-QuietHandler probe-emit-outer; Unregister-QuietHandler probe-emit-outer-forwarded; Unregister-QuietHandler probe-emit-inner; $global:quietEmitOuterHits=$null"); }
@@ -229,7 +261,7 @@ internal static class InvocationCmdletCases
                 int emitCount = random.Next(1, 7);
                 int listenerCount = random.Next(1, 4);
                 string id = "probe-emit-property-" + round;
-                string execute = string.Join("; ", Enumerable.Range(0, emitCount).Select(i => $"$rt.Emit({i})")) + "; 'ok'";
+                string execute = string.Join("; ", Enumerable.Range(0, emitCount).Select(i => $"$rt.Emit('Item',{i})")) + "; 'ok'";
                 Register(runspace, id, binary, execute);
                 var counts = new int[listenerCount];
                 runspace.SessionStateProxy.SetVariable("quietEmitCounts", counts);
@@ -258,10 +290,10 @@ internal static class InvocationCmdletCases
                 int[] calls = new int[listenerCount];
                 runspace.SessionStateProxy.SetVariable("quietFailureCounts", calls);
                 string id = "probe-emit-failure-property";
-                Register(runspace, id, binary, string.Join(";", Enumerable.Range(0, emitCount).Select(i => $"$rt.Emit({i})")) + ";'ok'");
+                Register(runspace, id, binary, string.Join(";", Enumerable.Range(0, emitCount).Select(i => $"$rt.Emit('Item',{i})")) + ";'ok'");
                 try
                 {
-                    string listeners = string.Join(",", Enumerable.Range(0, listenerCount).Select(i => $"{{param($e,$rt) $global:quietFailureCounts[{i}]++; if($e -eq {failureAt[i]}){{throw 'generated'}}}}"));
+                    string listeners = string.Join(",", Enumerable.Range(0, listenerCount).Select(i => $"{{param($e,$rt) $global:quietFailureCounts[{i}]++; if($e.Data -eq {failureAt[i]}){{throw 'generated'}}}}"));
                     var result = Call(runspace, path, $"@{{HandlerId='{id}';CollectEvents=$true;Listeners=@({listeners})}}");
                     Require(Text(result, "Outcome") == "Success" && (bool)Member(Member(result, "Completeness"), "Analysis")!, $"Round {round}: an observer changed analysis");
                     for (int i = 0; i < listenerCount; i++) Require(calls[i] == Math.Min(emitCount, failureAt[i] + 1), $"Seed {Seed}, round {round}, listener {i}: failure boundary changed");
@@ -287,7 +319,7 @@ internal static class InvocationCmdletCases
 
         await run("event delivery applies item budgets without altering the local event sequence", () =>
         {
-            Register(runspace, "probe-emit-delivery", binary, "$rt.Emit('a'); $rt.Emit('b'); $rt.Emit('c'); 'ok'");
+            Register(runspace, "probe-emit-delivery", binary, "$rt.Emit('Item','a'); $rt.Emit('Item','b'); $rt.Emit('Item','c'); 'ok'");
             try
             {
                 var result = Call(runspace, path, "@{HandlerId='probe-emit-delivery';CollectEvents=$true}");
@@ -295,7 +327,7 @@ internal static class InvocationCmdletCases
                 string json = Convert.ToString(DeliveryCmdletCases.Script(runspace, "ConvertTo-QuietJson $quietEventDelivery -MaxItems 2 -MaxOutputBytes 16384 -Tokenizer off").Single())!;
                 using var doc = System.Text.Json.JsonDocument.Parse(json);
                 var events = doc.RootElement.GetProperty("Events");
-                Require(events.GetArrayLength() == 2 && events[0].GetString() == "a" && events[1].GetString() == "b", "Delivered event prefix changed: " + json);
+                Require(events.GetArrayLength() == 2 && events[0].GetProperty("Type").GetString() == "Item" && events[0].GetProperty("Data").GetString() == "a" && events[1].GetProperty("Data").GetString() == "b", "Delivered event prefix changed: " + json);
                 Require(doc.RootElement.GetProperty("Truncation").GetProperty("Applied").GetBoolean(), "Event omissions were hidden");
                 Require(((IEnumerable)Member(result, "Events")!).Cast<object>().Count() == 3, "Delivery mutated the local events");
             }

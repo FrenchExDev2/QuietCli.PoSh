@@ -328,12 +328,12 @@ function Write-QuietGitStatusPresentation {
     #>
     param($Runtime,$Data)
     $view=Format-QuietGitStatusLines $Data
-    $Runtime.Emit([pscustomobject]@{Kind='GitStatusRepository';Repository=$Data.Repository})
-    foreach($operation in @($Data.Operations)){$Runtime.Emit([pscustomobject]@{Kind='GitStatusOperation';Operation=$operation})}
-    $Runtime.Emit([pscustomobject]@{Kind='GitStatusSummary';Branch=$Data.Branch;Upstream=$Data.Upstream;Ahead=$Data.Ahead;Behind=$Data.Behind;UpstreamGone=$Data.UpstreamGone;Counts=$Data.Counts;Mode=$Data.Digest.Mode;Profile=$Data.Profile;AnswerComplete=$Data.AnswerComplete})
-    if($Data.Digest.Mode -ceq 'HotPaths'){foreach($hot in @($Data.Digest.HotPaths)){$Runtime.Emit([pscustomobject]@{Kind='GitStatusHotPath';HotPath=$hot})}}
-    foreach($entry in @($Data.Digest.Listed)){if($null -ne $entry){$Runtime.Emit([pscustomobject]@{Kind='GitStatusEntry';Entry=$entry})}}
-    foreach($diagnostic in @($Data.Diagnostics)+@($(if($Data.Profile){$Data.Profile.Hints}))){if($null -ne $diagnostic){$Runtime.Emit([pscustomobject]@{Kind='GitStatusDiagnostic';Diagnostic=$diagnostic})}}
+    $Runtime.Emit('GitStatusRepository',[pscustomobject]@{Repository=$Data.Repository})
+    foreach($operation in @($Data.Operations)){$Runtime.Emit('GitStatusOperation',[pscustomobject]@{Operation=$operation})}
+    $Runtime.Emit('GitStatusSummary',[pscustomobject]@{Branch=$Data.Branch;Upstream=$Data.Upstream;Ahead=$Data.Ahead;Behind=$Data.Behind;UpstreamGone=$Data.UpstreamGone;Counts=$Data.Counts;Mode=$Data.Digest.Mode;Profile=$Data.Profile;AnswerComplete=$Data.AnswerComplete})
+    if($Data.Digest.Mode -ceq 'HotPaths'){foreach($hot in @($Data.Digest.HotPaths)){$Runtime.Emit('GitStatusHotPath',[pscustomobject]@{HotPath=$hot})}}
+    foreach($entry in @($Data.Digest.Listed)){if($null -ne $entry){$Runtime.Emit('GitStatusEntry',[pscustomobject]@{Entry=$entry})}}
+    foreach($diagnostic in @($Data.Diagnostics)+@($(if($Data.Profile){$Data.Profile.Hints}))){if($null -ne $diagnostic){$Runtime.Emit('GitStatusDiagnostic',[pscustomobject]@{Diagnostic=$diagnostic})}}
     if($Runtime.Ui){
         $Runtime.Ui.SetHeader([string[]]$view.Header)
         foreach($item in $view.Items){$Runtime.Ui.Write($item.Text,$item.Lane)}
