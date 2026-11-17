@@ -354,13 +354,6 @@
     },
     {
       "Rule": "PSReviewUnusedParameter",
-      "Path": "scripts/New-CiImpactPlan.ps1",
-      "Function": "",
-      "ExtentSHA256": "0D6B2C8568CD36E63F41E4C20859C94EEF8813ADE0410566FA370A968DC9906A",
-      "Count": 1
-    },
-    {
-      "Rule": "PSReviewUnusedParameter",
       "Path": "scripts/New-RunProfile.ps1",
       "Function": "",
       "ExtentSHA256": "2FCF86D941C99E4222A5E1A19896DFD4B3E89BBCB1CBD0EC7F200E598B7CCF30",

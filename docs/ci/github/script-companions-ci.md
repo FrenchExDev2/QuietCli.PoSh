@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: A8F01C0BC586B520E6DF3087B4CAD65D4782237452EDDBBDCC0EC71642837396 -->
+<!-- workflow-source-sha256: FB7F446D0C3C83C74020927595E8F2F1EF5180B0595FF0CDBC0C768C190B8F64 -->
 
 ## Purpose
 
@@ -8,7 +8,9 @@ One automatic PR/develop entry point reads the complete diff and publishes the p
 
 ## Triggers
 
-Every pull request and develop push. The planner selects work from the complete diff.
+Every pull request and develop push. The planner selects work from the complete diff, and a change limited to repository scripts (`scripts/**`, `test/scripts/**`) runs only the tooling workflow.
+
+A manual `workflow_dispatch` on any branch qualifies the companions of its `suites` input in full: comma-separated names, or `all` by default. It reads no diff and runs neither tooling nor distribution. Dependents of the chosen companions get their usual smoke. On develop, the run also warms and publishes the Linux images. See [New-CiImpactPlan](../../scripts/New-CiImpactPlan.md#manual-dispatch).
 
 ## Scripts and effects
 
@@ -31,7 +33,7 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 
 ~~~mermaid
 flowchart TD
-    event["Triggers: pull_request, push"]
+    event["Triggers: pull_request, push, workflow_dispatch"]
     job_ci_status["ci-status"]
     job_distribution["distribution"]
     job_images["images"]

@@ -123,7 +123,13 @@ Describe 'Get-QuietCiImpact' {
         @{Path='FrenchExDev2.QuietCli.Tooling.Tests.PoShX/a.ps1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
         @{Path='src/Tooling/test/FrenchExDev2.QuietCli.Tooling.Tests.PoShX/a.ps1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
         @{Path='scripts/RunProfiles/my-profile.profile.psd1';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
-        @{Path='scripts/RunProfiles/My-Profile.profile.psd1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
+        @{Path='scripts/RunProfiles/My-Profile.profile.psd1';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='scripts/lib/RunToolCache.psm1';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='scripts/Build-Workspace.ps1';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='scripts/nested/data/x.json';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
+        @{Path='Scripts/lib/x.psm1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
+        @{Path='scriptsx/a.ps1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
+        @{Path='src/Core/scripts/a.ps1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
         @{Path='test/scripts/unit/lib/CiImpact.Tests.ps1';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
         @{Path='test/scripts/coverage.inventory.json';Tooling=$true;Distribution=$false;Full='';Conservative=$false}
         @{Path='test/scripts/README.md';Tooling=$false;Distribution=$false;Full='';Conservative=$false}
@@ -176,6 +182,87 @@ Describe 'Get-QuietCiImpact' {
             try{$result=& $impact $case.Catalogue $case.Paths}catch{if($_.Exception.Message -cne 'CiImpactPathInvalid'){throw};return $true}
             $result.SchemaVersion -eq 2
         }
+    }
+}
+
+Describe 'Get-QuietCiDispatchImpact' {
+    BeforeAll {
+        $dispatch={param($Catalogue,[string[]]$Suite)
+            $script:catalogue=$Catalogue
+            Get-QuietCiDispatchImpact -WorkspaceRoot $TestDrive -Suite $Suite
+        }
+        # Every manual plan qualifies products only, never reads a diff, and explains each selected suite.
+        $assertShape={param($Result,[string[]]$Full)
+            $Result.SchemaVersion|Should -Be 2
+            $Result.RunProducts|Should -BeTrue
+            $Result.RunTooling|Should -BeFalse
+            $Result.RunDistribution|Should -BeFalse
+            $Result.ConservativeFull|Should -BeFalse
+            @($Result.ChangedPaths).Count|Should -Be 0
+            @($Result.BuildProjects).Count|Should -Be 0
+            (@($Result.SelectedSuites) -join ',')|Should -BeExactly ($Full -join ',')
+            $Result.Suite|Should -BeExactly $(if($Full.Count -eq 1){$Full[0]}else{'Selected'})
+            (@($Result.Reasons|Where-Object Action -CEQ 'full'|ForEach-Object {$_.Input+'|'+$_.Companion+'|'+$_.Reason}) -join ',')|Should -BeExactly ((@($Full|ForEach-Object {'workflow_dispatch|'+$_+'|ManualDispatch'})) -join ',')
+            (@($Result.Reasons|Where-Object Action -CEQ 'smoke'|ForEach-Object Companion|Sort-Object) -join ',')|Should -BeExactly (@($Result.SmokeSuites) -join ',')
+        }
+    }
+    BeforeEach {
+        Mock -ModuleName CiImpact Read-QuietCiCompanions { $script:catalogue.Configuration }
+    }
+
+    It 'qualifies every companion for all, in catalogue order, without smokes' {
+        $null=Invoke-QuietProperty -Name 'dispatch-all' -Seed $seed -Count 30 -Generator {param($random)
+            [pscustomobject]@{Catalogue=(& $newCatalogue $random);Spelling=(Get-QuietRandomItem $random @('all','ALL','All',' all '))}
+        } -Property {param($case)
+            $result=& $dispatch $case.Catalogue @($case.Spelling)
+            & $assertShape $result ([string[]]@($case.Catalogue.Configuration.Companions.Keys))
+            @($result.SmokeSuites).Count -eq 0
+        }
+    }
+
+    It 'qualifies the named companions and smokes their unselected dependents' {
+        $null=Invoke-QuietProperty -Name 'dispatch-named' -Seed $seed -Count 60 -Generator {param($random)
+            $catalogue=& $newCatalogue $random
+            $names=[string[]](Get-QuietRandomSubset $random @($catalogue.Configuration.Companions.Keys) 0.4)
+            if(!$names.Count){$names=[string[]]@(Get-QuietRandomItem $random @($catalogue.Configuration.Companions.Keys))}
+            # Each name is spelled in a random case, possibly repeated, as items or as one comma-separated value.
+            $spelled=@(foreach($name in [string[]](Get-QuietShuffle $random ([string[]]$names+[string[]](Get-QuietRandomSubset $random $names 0.3)))){if($random.Next(0,2)){$name.ToLowerInvariant()}else{$name.ToUpperInvariant()}})
+            $suite=if($random.Next(0,2)){[string[]]$spelled}else{[string[]]@(($spelled|ForEach-Object {' '+$_+' '}) -join ',')}
+            [pscustomobject]@{Catalogue=$catalogue;Names=$names;Suite=$suite}
+        } -Property {param($case)
+            $result=& $dispatch $case.Catalogue $case.Suite
+            $order=[string[]]@($case.Catalogue.Configuration.Companions.Keys|Where-Object {$_ -cin $case.Names})
+            & $assertShape $result $order
+            (@($result.SmokeSuites) -join ',') -ceq (@(& $expectedSmokes $case.Catalogue $order) -join ',')
+        }
+    }
+
+    It 'rejects <Name> with <Error> before planning anything' -ForEach @(
+        @{Name='no value';Suite=$null;Error='CiDispatchSuiteRequired'}
+        @{Name='an empty list';Suite=@();Error='CiDispatchSuiteRequired'}
+        @{Name='blank items';Suite=@('',' ',' , ');Error='CiDispatchSuiteRequired'}
+        @{Name='an unknown companion';Suite=@('Core','Nope');Error='CiDispatchSuiteUnknown: Nope'}
+        @{Name='a companion prefix';Suite=@('Cor');Error='CiDispatchSuiteUnknown: Cor'}
+        @{Name='a wildcard';Suite=@('*');Error='CiDispatchSuiteUnknown: `*'}
+    ) {
+        $catalogue=& $newCatalogue ([Random]::new(3))
+        $catalogue.Configuration.Companions.Clear()
+        $catalogue.Configuration.Companions.Add('Core',[pscustomobject]@{Name='Core';requires=@();Image='base'})
+        {& $dispatch $catalogue $Suite}|Should -Throw -ExpectedMessage $Error
+    }
+
+    It 'smokes Git when only Core is dispatched' {
+        $catalogue=& $newCatalogue ([Random]::new(4))
+        $catalogue.Configuration.Companions.Clear()
+        $catalogue.Configuration.Companions.Add('Core',[pscustomobject]@{Name='Core';requires=@();Image='base'})
+        $catalogue.Configuration.Companions.Add('Git',[pscustomobject]@{Name='Git';requires=@('Core');Image='overlay'})
+        $catalogue.Configuration.Suites.Clear()
+        $catalogue.Configuration.Suites.Add('Core',[pscustomobject]@{Name='Core';Group='Core';Requires=@('Core');CoreEvidence=$true;Qualification=@();TestsModule='T.Core'})
+        $catalogue.Configuration.Suites.Add('Git',[pscustomobject]@{Name='Git';Group='Git';Requires=@('Git');CoreEvidence=$false;Qualification=@();TestsModule='T.Git'})
+        $result=& $dispatch $catalogue @('core')
+        & $assertShape $result ([string[]]@('Core'))
+        @($result.SmokeSuites)|Should -Be @('Git')
+        @($result.Reasons|Where-Object Action -CEQ 'smoke'|ForEach-Object {$_.Input+'|'+$_.Reason})|Should -Be @('DependencyGraph|ChangedRuntimeDependency')
     }
 }
 

@@ -115,8 +115,20 @@ Describe 'New-CiImpactPlan.ps1' {
         @(& $images $observed.Values).Count|Should -Be 0
     }
 
-    It 'runs every companion and the tooling when shared automation changes' {
-        $observed=& $plan (& $commit 'scripts/lib/ImpactFixture.psm1')
+    It 'runs only the tooling when <Path> changes' -ForEach @(
+        @{Path='scripts/lib/ImpactFixture.psm1'},@{Path='scripts/Invoke-ImpactFixture.ps1'}
+    ) {
+        $observed=& $plan (& $commit $Path)
+        $observed.Run.ExitCode|Should -Be 0 -Because ($observed.Run.Output+$observed.Run.Error)
+        $observed.Values['run_tooling']|Should -BeExactly 'true'
+        $observed.Values['run_products']|Should -BeExactly 'false'
+        $observed.Values['run_smokes']|Should -BeExactly 'false'
+        @(& $suites $observed.Values).Count|Should -Be 0 -Because 'companion qualification after a script change is a manual dispatch'
+        @(& $images $observed.Values).Count|Should -Be 0
+    }
+
+    It 'runs every companion and the tooling when an unknown shared input changes' {
+        $observed=& $plan (& $commit 'build/impact-fixture.txt')
         $observed.Run.ExitCode|Should -Be 0 -Because ($observed.Run.Output+$observed.Run.Error)
         (& $suites $observed.Values) -join ','|Should -BeExactly ((@($catalogue.Companions.Keys)|Sort-Object -CaseSensitive) -join ',')
         (& $images $observed.Values) -join ','|Should -BeExactly ((& $suites $observed.Values) -join ',')
@@ -127,6 +139,44 @@ Describe 'New-CiImpactPlan.ps1' {
     It 'writes every output key once, in a stable order' {
         $observed=& $plan (& $commit 'docs/README-impact-keys.md')
         @($observed.Values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,run_distribution,run_smokes,smoke_suites'
+    }
+
+    It 'qualifies <Expected> in full on a manual dispatch of <Suite>, without reading a diff' -ForEach @(
+        @{Suite='all';Expected='*'},@{Suite='core';Expected='Core'},@{Suite=' Git , Core ';Expected='Core,Git'}
+    ) {
+        $revision=& $commit 'docs/README-impact-dispatch.md'
+        $outputPath=[IO.Path]::Combine($TestDrive,'dispatch-'+[guid]::NewGuid().ToString('N')+'.txt')
+        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @('-WorkspaceRoot',$workspace,'-Revision',$revision,'-Event','workflow_dispatch','-Suite',$Suite,'-OutputPath',$outputPath) -Environment @{GITHUB_STEP_SUMMARY=''} -TimeoutSeconds 300
+        $run.ExitCode|Should -Be 0 -Because ($run.Output+$run.Error)
+        $values=[ordered]@{}
+        foreach($line in [IO.File]::ReadAllLines($outputPath)){$index=$line.IndexOf('=');$values[$line.Substring(0,$index)]=$line.Substring($index+1)}
+        $all=(@($catalogue.Companions.Keys)|Sort-Object -CaseSensitive) -join ','
+        $full=if($Expected -ceq '*'){$all}else{$Expected}
+        (& $suites $values) -join ','|Should -BeExactly $full
+        (& $images $values) -join ','|Should -BeExactly $full
+        $values['run_products']|Should -BeExactly 'true'
+        $values['run_tooling']|Should -BeExactly 'false'
+        $values['run_distribution']|Should -BeExactly 'false'
+        @($values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,run_distribution,run_smokes,smoke_suites'
+        $report=[IO.File]::ReadAllText([IO.Path]::Combine($workspace,'artifacts','ci-plan','impact.md'))
+        $report|Should -Match 'Base: manual-dispatch;'
+        $report|Should -Match '\| workflow_dispatch \|.*\| full \| ManualDispatch \|'
+    }
+
+    It 'rejects <Name> with <Error> and writes no outputs' -ForEach @(
+        @{Name='a dispatch with a base';Arguments=@('-Event','workflow_dispatch','-Suite','all','-Base','BASE');Error='CiImpactDispatchTakesNoBase'}
+        @{Name='a diff event without a base';Arguments=@('-Event','push');Error='CiImpactBaseRequired'}
+        @{Name='a suite outside a dispatch';Arguments=@('-Event','pull_request','-Base','BASE','-Suite','Core');Error='CiImpactSuiteRequiresDispatch'}
+        @{Name='a dispatch without a suite';Arguments=@('-Event','workflow_dispatch');Error='CiDispatchSuiteRequired'}
+        @{Name='a dispatch of an unknown companion';Arguments=@('-Event','workflow_dispatch','-Suite','Nope');Error='CiDispatchSuiteUnknown: Nope'}
+    ) {
+        $revision=& $commit 'docs/README-impact-reject.md'
+        $outputPath=[IO.Path]::Combine($TestDrive,'reject-'+[guid]::NewGuid().ToString('N')+'.txt')
+        $arguments=@($Arguments|ForEach-Object {if($_ -ceq 'BASE'){$baseRevision}else{$_}})
+        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList (@('-WorkspaceRoot',$workspace,'-Revision',$revision,'-OutputPath',$outputPath)+$arguments) -Environment @{GITHUB_STEP_SUMMARY=''} -TimeoutSeconds 300
+        $run.ExitCode|Should -Not -Be 0
+        ($run.Output+$run.Error)|Should -Match ([regex]::Escape($Error))
+        [IO.File]::Exists($outputPath)|Should -BeFalse
     }
 
     It 'fails with CiImpactCompleteDiffRequired when the base revision is unknown' {

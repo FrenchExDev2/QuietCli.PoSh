@@ -51,11 +51,12 @@
         @{
             Name = 'CiImpact'
             Module = 'lib/CiImpact.psm1'
-            Functions = @('Get-QuietCiImpact','Test-QuietDevelopReceipt')
+            Functions = @('Get-QuietCiImpact','Get-QuietCiDependentSmokes','Get-QuietCiDispatchImpact','Test-QuietDevelopReceipt')
             UnitTestFiles = @('unit/lib/CiImpact.Tests.ps1')
             Break = 80
             Equivalent = @(
                 @{Function = 'Get-QuietCiImpact'; Mutator = 'StringLiteral'; Original = "'Stop'"; Replacement = "''"; Reason = 'Every failure in the function is a terminating throw or a -ErrorAction Stop call, so no non-terminating error reaches the preference.'}
+                @{Function = 'Get-QuietCiDispatchImpact'; Mutator = 'StringLiteral'; Original = "'Stop'"; Replacement = "''"; Reason = 'Every failure in the function is a terminating throw, so no non-terminating error reaches the preference.'}
             )
         }
         @{

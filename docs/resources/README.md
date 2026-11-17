@@ -90,7 +90,7 @@ References are extracted from PowerShell/C# source text. Dynamic module copies a
 | src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/engine/EngineSession.cs | Database.NativeDirectory = Path.Combine(moduleRoot, &quot;resources&quot;, &quot;runtime&quot;, &quot;runtimes&quot;, System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier, &quot;native&quot;); | 895794034067BA59D6024D0E1217D0DA5B37DFEEA6965617EC063E26680ECA68 |
 | src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/engine/ResourceVerifier.cs | [GeneratedRegex(&quot;^resources/(?:runtime/runtimes&#124;transport)/([^/]+)/&quot;)]<br>[GeneratedRegex(&quot;^resources/[A-Za-z0-9_./-]+$&quot;)]<br>/// &lt;param name=&quot;Path&quot;&gt;Module-relative path under &lt;c&gt;resources/&lt;/c&gt;.&lt;/param&gt;<br>var info = new FileInfo(Path.Combine(root, &quot;resources&quot;, &quot;dependencies.lock.json&quot;)); | 0B780BA4731B8405303C6078FB9B076CD83895321A5D2211F410CB4E4403C7BD |
 | src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/engine/TerminalBridge.cs | string bundled = Path.Combine(moduleRoot, &quot;resources&quot;, &quot;transport&quot;, System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier, &quot;quietcli-pty&quot;); | 6876BE0EB53D5CC3A785509E73D7CE78A955D935CC073FD5CED3B1C15F313048 |
-| test/scripts/integration/entrypoints/New-CiImpactPlan.Tests.ps1 | $yaml=&#39;src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll&#39; | 9DAD91F74A6DB0D68C98A981319F4819A000D9AEFBC53472A05C5CA8892C787C |
+| test/scripts/integration/entrypoints/New-CiImpactPlan.Tests.ps1 | $yaml=&#39;src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll&#39; | A185723E528378FEB88BC3EA269E3848A600C7D6A152E35A8787E86A97D1D2AE |
 
 ## Scope and verification
 
