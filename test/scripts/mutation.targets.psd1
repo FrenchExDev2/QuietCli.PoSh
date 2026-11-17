@@ -12,11 +12,8 @@
             Break = 80
             Equivalent = @(
                 @{Function = 'Get-QuietScriptsTestValue'; Mutator = 'ConditionalExpression'; Original = '$null -ne $property'; Replacement = '$true'; Reason = 'Outside strict mode the Value of a null property reads as null, the value already held; the guard keeps strict-mode callers safe.'}
-                @{Function = 'Get-QuietScriptsTestValue'; Mutator = 'BlockStatement'; Original = '{$value=$null}'; Replacement = '{}'; Reason = 'The value is still the null it was initialized to when the property getter throws.'}
                 @{Function = 'Test-QuietScriptsPathWithin'; Mutator = 'ConditionalExpression'; Original = '$IsWindows'; Replacement = '$true'; Reason = 'On Windows $IsWindows is already true, so forcing it changes nothing.'; Platform = 'Windows'}
-                @{Function = 'Test-QuietScriptsPathWithin'; Mutator = 'BlockStatement'; Original = '{[StringComparison]::Ordinal}'; Replacement = '{}'; Reason = 'The Ordinal branch only runs off Windows; on Windows it is unreachable.'; Platform = 'Windows'}
                 @{Function = 'Test-QuietScriptsPathWithin'; Mutator = 'ConditionalExpression'; Original = '$IsWindows'; Replacement = '$false'; Reason = 'Off Windows $IsWindows is already false, so forcing it changes nothing.'; Platform = 'Linux'}
-                @{Function = 'Test-QuietScriptsPathWithin'; Mutator = 'BlockStatement'; Original = '{[StringComparison]::OrdinalIgnoreCase}'; Replacement = '{}'; Reason = 'The OrdinalIgnoreCase branch only runs on Windows; elsewhere it is unreachable.'; Platform = 'Linux'}
             )
         }
 
