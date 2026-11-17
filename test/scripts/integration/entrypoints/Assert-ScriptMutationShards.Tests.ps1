@@ -53,6 +53,29 @@ Describe 'Assert-ScriptMutationShards.ps1' {
         [IO.File]::Exists($output)|Should -BeFalse
     }
 
+    It 'requires only the selected target when -Target narrows the campaign' {
+        $root=& $download @(@{Shard=0;Name='Size';Break=90})
+        $output=[IO.Path]::Combine($TestDrive,'selected','receipt.json')
+        $run=& $assert $root $output @('-Target','Size')
+        $run.ExitCode|Should -Be 0 -Because ($run.Output+$run.Error)
+        $receipt=[IO.File]::ReadAllText($output)|ConvertFrom-Json
+        (@($receipt.Targets.Name) -join ',')|Should -BeExactly 'Size'
+    }
+
+    It 'fails without a receipt for a selected <Case>' -ForEach @(
+        @{Case='unknown target';Rows=@(@{Shard=0;Name='Sign';Break=80});Target='Nope';Issue='ScriptMutationTargetUnknown: Nope'}
+        @{Case='target in another case';Rows=@(@{Shard=0;Name='Sign';Break=80});Target='sign';Issue='ScriptMutationTargetUnknown: sign'}
+        @{Case='missing shard';Rows=@(@{Shard=0;Name='Sign';Break=80});Target='Size';Issue='ScriptMutationShardMissing: Size'}
+        @{Case='unselected shard';Rows=@(@{Shard=0;Name='Sign';Break=80},@{Shard=1;Name='Size';Break=90});Target='Size';Issue='ScriptMutationShardUnknown: Sign'}
+    ) {
+        $root=& $download $Rows
+        $output=[IO.Path]::Combine($TestDrive,'selected-'+[guid]::NewGuid().ToString('N'),'receipt.json')
+        $run=& $assert $root $output @('-Target',$Target)
+        $run.ExitCode|Should -Not -Be 0 -Because $Case
+        ($run.Output+$run.Error)|Should -Match ([regex]::Escape($Issue))
+        [IO.File]::Exists($output)|Should -BeFalse
+    }
+
     It 'refuses to overwrite an existing receipt' {
         $root=& $download @(@{Shard=0;Name='Sign';Break=80},@{Shard=1;Name='Size';Break=90})
         $output=New-QuietTestFile ([IO.Path]::Combine($TestDrive,'existing','receipt.json')) 'previous'

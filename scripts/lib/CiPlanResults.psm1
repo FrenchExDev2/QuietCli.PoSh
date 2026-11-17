@@ -9,10 +9,11 @@ function Assert-QuietCiPlanResults {
     [CmdletBinding()]
     param([Parameter(Mandatory)][Collections.IDictionary]$Needs)
     $issues=[Collections.Generic.List[string]]::new()
-    foreach($name in @('plan','source-checks','layout-tests')){
+    foreach($name in @('plan','source-checks')){
         if(!$Needs.Contains($name) -or $Needs[$name].result -cne 'success'){$issues.Add('CiPlanPrerequisiteRequired: '+$name)}
     }
-    $requirements=[ordered]@{products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';distribution='run_distribution'}
+    # The generated-layout campaign follows run_layout: a scripts-only change skips it, every other plan requires it.
+    $requirements=[ordered]@{'layout-tests'='run_layout';products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';distribution='run_distribution'}
     foreach($name in $requirements.Keys){
         $flag=if($Needs.Contains('plan') -and $Needs.plan.outputs){$Needs.plan.outputs[$requirements[$name]]}
         if($flag -cnotin @('true','false')){$issues.Add('CiPlanOutputMissing: '+$requirements[$name])}
@@ -22,7 +23,7 @@ function Assert-QuietCiPlanResults {
         if($Needs[$name].result -cne $expected){$issues.Add('CiPlanScopeResultMismatch: '+$name+' expected '+$expected+'; observed '+$Needs[$name].result)}
     }
     foreach($name in @($Needs.Keys|Sort-Object)){
-        if($name -cnotin @('plan','source-checks','layout-tests') -and !$requirements.Contains($name) -and $Needs[$name].result -cnotin @('success','skipped')){$issues.Add('CiPlanJobFailed: '+$name)}
+        if($name -cnotin @('plan','source-checks') -and !$requirements.Contains($name) -and $Needs[$name].result -cnotin @('success','skipped')){$issues.Add('CiPlanJobFailed: '+$name)}
     }
     if($issues.Count){throw ($issues -join "`n")}
     [pscustomobject]@{SchemaVersion=2;Ready=$true;QualificationMode='selected';Jobs=$Needs}

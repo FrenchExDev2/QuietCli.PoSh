@@ -14,6 +14,7 @@ Accepts the script mutation campaign only when the downloaded shard reports cove
 | `OutputPath` | New completion receipt. An existing file fails with `ScriptMutationCompletionReceiptExists`. |
 | `WorkspaceRoot` | Checkout that supplies the authoritative targets file. Defaults to the parent of `scripts/`. |
 | `TargetsPath` | Targets file. Defaults to `<workspace>/test/scripts/mutation.targets.psd1`. |
+| `Target` | Selected target names. Only their shards are required, and a shard of any other target is `ScriptMutationShardUnknown`. An empty selection fails with `ScriptMutationTargetSelectionEmpty`, and a name outside the targets file (case-sensitive) with `ScriptMutationTargetUnknown: <name>`. Omitted, every configured target is required. |
 
 Each report is checked against the targets file by `Assert-QuietScriptMutationShards` ([ScriptMutation.psm1](lib/ScriptMutation.md)). All issues are reported together in one error, separated by semicolons:
 
@@ -36,7 +37,7 @@ Imports only `lib/ScriptMutation.psm1`. Reads the targets file and the bounded U
 
 ## Critical review and verdict
 
-The workflow downloads only artifacts named for the current SHA and attempt. This script then checks that the union of shards is exactly the configured target set. A shard that fails, times out or is cancelled therefore cannot be replaced by an older report. A target whose outcomes came, in part or in full, from the incremental cache is accepted like any other: its cache keys cover every input its tests observe (see [ScriptMutationCache.psm1](lib/ScriptMutationCache.md)), so a reused outcome is the outcome a fresh run would give. Shard job success is also required separately, through `ScriptMutationShardJobsRequired` in the workflow.
+The workflow downloads only artifacts named for the current SHA and attempt. This script then checks that the union of shards is exactly the configured target set, or the selected one: the workflow passes the targets that `script-selection` expanded. A shard that fails, times out or is cancelled therefore cannot be replaced by an older report. A target whose outcomes came, in part or in full, from the incremental cache is accepted like any other: its cache keys cover every input its tests observe (see [ScriptMutationCache.psm1](lib/ScriptMutationCache.md)), so a reused outcome is the outcome a fresh run would give. Shard job success is also required separately, through `ScriptMutationShardJobsRequired` in the workflow.
 
 Tests:
 - `test/scripts/unit/lib/ScriptMutation.Tests.ps1`:

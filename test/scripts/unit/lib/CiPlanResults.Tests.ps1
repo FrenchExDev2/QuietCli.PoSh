@@ -5,8 +5,8 @@ BeforeAll {
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','Property.psm1')) -Force -DisableNameChecking -ErrorAction Stop
     $null=Import-QuietTestLibrary -Name CiPlanResults
     $seed=Get-QuietTestSeed
-    $prerequisites=@('plan','source-checks','layout-tests')
-    $scoped=[ordered]@{products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';distribution='run_distribution'}
+    $prerequisites=@('plan','source-checks')
+    $scoped=[ordered]@{'layout-tests'='run_layout';products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';distribution='run_distribution'}
     $results=@('success','skipped','failure','cancelled','Success',$null)
     $flags=@('true','false','True','',$null,'<absent>')
     # Builds a needs object; '<absent>' removes the job or the flag.
@@ -45,9 +45,9 @@ BeforeAll {
 
 Describe 'Assert-QuietCiPlanResults' {
     It 'accepts every consistent selective plan' -ForEach @(
-        foreach($mask in 0..15){@{Mask=$mask}}
+        foreach($mask in 0..31){@{Mask=$mask}}
     ) {
-        $prerequisite=@{plan='success';'source-checks'='success';'layout-tests'='success'}
+        $prerequisite=@{plan='success';'source-checks'='success'}
         $flag=@{};$result=@{};$index=0
         foreach($name in $scoped.Keys){$on=($Mask -shr $index) -band 1;$flag[$name]=if($on){'true'}else{'false'};$result[$name]=if($on){'success'}else{'skipped'};$index++}
         $receipt=Assert-QuietCiPlanResults -Needs (& $newNeeds $prerequisite $flag $result @{images='skipped';'extra-checks'='success'})
@@ -56,9 +56,9 @@ Describe 'Assert-QuietCiPlanResults' {
     }
 
     It 'reports exactly the issues of <Job> with flag <FlagValue> and result <ResultValue>' -ForEach @(
-        foreach($job in 'products','smokes','tooling-only','distribution'){foreach($f in 'true','false','True','',$null,'<absent>'){foreach($r in 'success','skipped','failure','cancelled','<absent>'){@{Job=$job;FlagValue=$f;ResultValue=$r}}}}
+        foreach($job in 'layout-tests','products','smokes','tooling-only','distribution'){foreach($f in 'true','false','True','',$null,'<absent>'){foreach($r in 'success','skipped','failure','cancelled','<absent>'){@{Job=$job;FlagValue=$f;ResultValue=$r}}}}
     ) {
-        $prerequisite=@{plan='success';'source-checks'='success';'layout-tests'='success'}
+        $prerequisite=@{plan='success';'source-checks'='success'}
         $flag=@{};$result=@{};foreach($name in $scoped.Keys){$flag[$name]='false';$result[$name]='skipped'}
         $flag[$Job]=$FlagValue;$result[$Job]=$ResultValue
         $observed=& $observedIssues (& $newNeeds $prerequisite $flag $result)

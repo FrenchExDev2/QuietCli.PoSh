@@ -1,4 +1,5 @@
 #requires -Version 7.6
+#ScriptsImpact: RequiresBuild
 # Runs the real entry point in a child pwsh against fixture repositories: a bare origin, a seed clone that moves
 # develop forward, and the work clone the script operates on.
 BeforeAll {

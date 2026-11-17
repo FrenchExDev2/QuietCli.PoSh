@@ -24,7 +24,9 @@ function Write-QuietCiPlanReport {
     $lines.Add('# QuietCli selective CI');$lines.Add('')
     $lines.Add('Base: '+$Base+'; candidate: '+$Revision+'.');$lines.Add('')
     $lines.Add('Full suites: '+(@($Plan.FullSuites) -join ', ')+'.')
-    $lines.Add('Smoke suites: '+(@($Plan.SmokeSuites) -join ', ')+'.');$lines.Add('')
+    $lines.Add('Smoke suites: '+(@($Plan.SmokeSuites) -join ', ')+'.')
+    if($Plan.PSObject.Properties['ToolingScope']){$lines.Add('Tooling: '+$Plan.ToolingScope+'.')}
+    $lines.Add('')
     $lines.Add('| Changed input | Package | Consumer project | Companion | Action | Reason |')
     $lines.Add('|---|---|---|---|---|---|')
     foreach($reason in $Plan.Reasons){

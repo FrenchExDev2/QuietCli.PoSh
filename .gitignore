@@ -27,3 +27,4 @@ global.json.bak-*
 *.json.bak-*
 *.csproj.bak-*
 *.props.bak-*
+docs/roadmaps/
