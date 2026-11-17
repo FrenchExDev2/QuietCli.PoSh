@@ -1,14 +1,35 @@
 # CiImpact.psm1
 
-Exports Get-QuietCiImpact and Test-QuietDevelopReceipt. Import is inert; no product module or native process starts.
+Exports Get-QuietCiImpact, Get-QuietCiDispatchImpact and Test-QuietDevelopReceipt. Import is inert; no product module or native process starts.
 
-Get-QuietCiImpact reads the validated YAML suite catalogue. Companion changes select all suites whose transitive requirements include that product. Core and shared/unknown changes select All plus tooling. Multiple affected suites share one matrix. Tooling.Tests belongs to its own campaign. Existing FrenchExDev application modules consume Core and separate executable companions; application membership does not qualify a CLI handler.
+Get-QuietCiImpact reads the validated YAML suite catalogue. Companion changes select all suites whose transitive requirements include that product. Core changes select Core and smoke its dependents; shared or unknown changes select All plus tooling. Multiple affected suites share one matrix. Tooling.Tests belongs to its own campaign. Existing FrenchExDev application modules consume Core and separate executable companions; application membership does not qualify a CLI handler.
 
 Test-QuietDevelopReceipt requires explicit booleans, exact tree/run/attempt identities and successful required Windows, Linux, performance, tooling and mutation outcomes. Missing fields fail closed.
 
-The reviewed tooling-only boundary is exact: `scripts/New-RunProfile.ps1`, `scripts/Invoke-RunProfile.ps1`, `scripts/lib/RunProfileStore.psm1`, and restricted lowercase `scripts/RunProfiles/<name>.profile.ps1` definitions. These changes still require the complete tooling workflow. Shared profiler/encoding helpers, evidence reports, the impact resolver itself and unknown scripts retain All. Combining a tooling-only path with a product/shared path unions both requirements, independently of path order. CiScalability.Tests exercises generated names, malformed/sibling paths, mixed scopes and a targeted resolver mutation.
+## Repository scripts select the tooling only
 
-Script tests below the exact, case-sensitive `test/scripts/` prefix also select tooling only: they run in the tooling workflow and never ship in, or qualify, a companion product. A sibling such as `test/scriptsx/` or a differently cased `Test/scripts/` stays shared and keeps the conservative full plan. The libraries under test (`scripts/lib/**`) keep their full plan. `test/scripts/unit/lib/CiImpact.Tests.ps1` covers these rows, monotonicity, order invariance and path fuzzing.
+A change below the exact, case-sensitive `scripts/` or `test/scripts/` prefix selects the tooling workflow only, with no product suite, smoke or image. That workflow runs:
+- the script tests and the script mutation shards;
+- Core built and fully qualified on Windows without Git;
+- the repository automation suite and the run-profile suite and mutation.
+
+Repository scripts never ship in a companion product. So a change to a CI library, an entry point or a run profile no longer qualifies every companion on a pull request or a develop push. To qualify companions after such a change, run `companions-ci.yml` manually (see below).
+
+Look-alike paths keep the conservative full plan: `Scripts/`, `scriptsx/`, `src/<group>/scripts/` (owned by its group), `Test/scripts/` and `test/scriptsx/`. Combining a tooling path with a product or shared path unions both requirements, independently of path order.
+
+Tests:
+- `CiScalability.Tests` exercises generated profile names, look-alike prefixes, mixed scopes and a targeted resolver mutation;
+- `test/scripts/unit/lib/CiImpact.Tests.ps1` covers these rows, monotonicity, order invariance and path fuzzing.
+
+## Manual dispatch
+
+`Get-QuietCiDispatchImpact -Suite` builds the plan of a manual `companions-ci.yml` run without reading a diff. Its input is a list of companion names, as items or comma-separated, matched without case, or `all`.
+- **Selection:** each requested companion is fully qualified, in catalogue order. Unselected companions that depend on one are smoked.
+- **Plan shape:** `RunProducts` is true; `RunTooling`, `RunDistribution` and `ConservativeFull` are false. `ChangedPaths` and `BuildProjects` are empty.
+- **Reasons:** each full suite records `workflow_dispatch|ManualDispatch`.
+- **Errors:** an empty or blank selection fails with `CiDispatchSuiteRequired`. An unknown name fails with `CiDispatchSuiteUnknown: <name>`; no prefix or wildcard is accepted.
+
+The unit tests cover generated catalogues, spellings, duplicates, both input forms and every rejection.
 
 ## Critical review and verdict
 

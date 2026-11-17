@@ -2,9 +2,30 @@
 
 Plans CI for an immutable Base/Revision pair using the complete `git diff --no-renames --name-only -z` path set. Native orchestration uses Ci.Process, without the product engine. It writes artifacts/ci-plan/plan.json and suite/run_products/run_tooling GitHub outputs.
 
-For pull_request, lib/CiImpact selects affected suites through declared transitive dependencies. Shared/unknown sources require All. Multiple impacted companions share one All matrix. Documentation-only PR changes avoid product runs. Reviewed run-profile command/store/definition paths select tooling only; shared profiler/encoding/report helpers and unknown paths retain All. Mixed paths union requirements. For push, Get-DevelopQualification must verify identical-tree PR evidence before product replay is removed; a miss requires All.
+For pull_request, lib/CiImpact selects affected suites through declared transitive dependencies. Shared/unknown sources require All. Multiple impacted companions share one All matrix. Documentation-only PR changes avoid product runs. Repository scripts (`scripts/**`) and their tests (`test/scripts/**`) select tooling only; unknown paths retain All. Mixed paths union requirements. For push, Get-DevelopQualification must verify identical-tree PR evidence before product replay is removed; a miss requires All.
 
-Outputs are written once each, in a stable order: `suite`, `run_products`, `run_tooling`, `image_suites`, `matrix`, `run_distribution`, `run_smokes`, `smoke_suites`. `image_suites` is the compact JSON array of the fully qualified suites; the `images` warm-up job of `companions-ci.yml` passes it to `New-CiSuiteImage.ps1` so every chain of the run is prepared once per RID before qualification. Changes below `test/scripts/` select tooling only. `test/scripts/integration/entrypoints/New-CiImpactPlan.Tests.ps1` runs the script on a fresh Git copy of the working tree for each companion, documentation, script tests and shared automation.
+Outputs are written once each, in a stable order: `suite`, `run_products`, `run_tooling`, `image_suites`, `matrix`, `run_distribution`, `run_smokes`, `smoke_suites`. `image_suites` is the compact JSON array of the fully qualified suites; the `images` warm-up job of `companions-ci.yml` passes it to `New-CiSuiteImage.ps1` so every chain of the run is prepared once per RID before qualification. `test/scripts/integration/entrypoints/New-CiImpactPlan.Tests.ps1` runs the script on a fresh Git copy of the working tree. It covers each companion, documentation, script tests, repository scripts, an unknown shared input, manual dispatches and every parameter rejection.
+
+## Manual dispatch
+
+With `-Event workflow_dispatch`, the plan reads no diff, and `-Base` is rejected. `-Suite` is a list of companion names, as items or comma-separated, or `all`. [Get-QuietCiDispatchImpact](lib/CiImpact.md#manual-dispatch) turns it into a full qualification of those companions and smokes of their dependents, without tooling or distribution. The report records `Base: manual-dispatch`.
+
+`companions-ci.yml` passes its `suites` input, which defaults to `all`. To qualify every companion on a pushed branch, run this from the workspace root:
+
+```powershell
+./scripts/Invoke-RemoteWorkflow.ps1 -Repository FrenchExDev2/QuietCli.PoSh -Workflow companions-ci.yml -Ref <branch>
+```
+
+For a subset such as `Core,Git`, use the **Run workflow** form of *QuietCli2 Companions* in GitHub Actions. [Invoke-RemoteWorkflow](Invoke-RemoteWorkflow.md) exposes no workflow inputs.
+
+| Rejection | Cause |
+| --- | --- |
+| `CiImpactDispatchTakesNoBase` | `-Base` with `workflow_dispatch` |
+| `CiImpactBaseRequired` | `pull_request` or `push` without `-Base` |
+| `CiImpactSuiteRequiresDispatch` | `-Suite` outside `workflow_dispatch` |
+| `CiDispatchSuiteRequired`, `CiDispatchSuiteUnknown: <name>` | an empty or unknown selection |
+
+Every rejection happens before any output is written.
 
 ## Critical review and verdict
 

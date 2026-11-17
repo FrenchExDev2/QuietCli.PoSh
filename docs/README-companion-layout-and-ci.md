@@ -62,7 +62,9 @@ GitHub workflow files remain under the root .github/workflows directory:
 Each entry point explicitly passes suite, solution_path, source_path, test_path and
 qualification_mode through uses/with. Modes are full, smoke and build. Individual
 entry points support workflow_call and workflow_dispatch; automatic PR/develop work
-uses a matrix of the shared engine from those same generated profiles.
+uses a matrix of the shared engine from those same generated profiles. A change limited to repository
+scripts (`scripts/**`, `test/scripts/**`) runs only the tooling workflow; a manual run of
+companions-ci.yml qualifies the companions of its `suites` input (default `all`) with the same matrix.
 
 This keeps product requirements readable while avoiding a caller tree containing
 one unique reusable workflow for every future companion. GitHub limits such a tree
