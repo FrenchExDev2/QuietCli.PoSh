@@ -43,7 +43,7 @@ jobs:
       mutation_result: ${{ steps.results.outputs.mutation_result }}
       completion_result: ${{ steps.results.outputs.completion_result }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Export authoritative prerequisite results even after failure
@@ -64,7 +64,7 @@ jobs:
       targets: ${{ steps.select.outputs.targets }}
       run_mutation: ${{ steps.select.outputs.run_mutation }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-powershell
@@ -88,10 +88,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
           cache: true
@@ -110,7 +110,7 @@ jobs:
       - name: Build only Core and run its entire suite with Git source absent
         shell: pwsh
         run: ./scripts/Test-CoreIndependence.ps1
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: quietcli-core-independence
@@ -128,10 +128,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
           cache: true
@@ -165,7 +165,7 @@ jobs:
         id: run_profiles
         shell: pwsh
         run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfiles -SkipBuild -MaxConcurrency 2 -RunDirectory ./artifacts/run-profiles/tests
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && ((steps.tooling_tests.outcome != '' && steps.tooling_tests.outcome != 'skipped') || (steps.run_profiles.outcome != '' && steps.run_profiles.outcome != 'skipped'))
         with:
           name: quietcli-tooling-${{ github.sha }}
@@ -183,7 +183,7 @@ jobs:
           retention-days: 14
       - name: Preserve tooling fixtures only after a failed campaign
         if: failure() && (steps.tooling_tests.outcome == 'failure' || steps.run_profiles.outcome == 'failure')
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: quietcli-failed-tooling-fixtures-${{ github.sha }}
           path: |
@@ -202,7 +202,7 @@ jobs:
       matrix:
         shard: [0, 1]
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/cache-resources
@@ -219,7 +219,7 @@ jobs:
           QUIETCLI_MUTATION_SHARD_INDEX: ${{ matrix.shard }}
           QUIETCLI_MUTATION_SHARD_COUNT: 2
         run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfilesMutation -SkipBuild -MaxConcurrency 2 -RunDirectory ./artifacts/run-profiles/mutation
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.run_profiles_mutation.outcome != '' && steps.run_profiles_mutation.outcome != 'skipped'
         with:
           name: quietcli-run-profiles-mutation-${{ github.sha }}-shard${{ matrix.shard }}-attempt${{ github.run_attempt }}
@@ -233,10 +233,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: quietcli-run-profiles-mutation-${{ github.sha }}-shard*-attempt${{ github.run_attempt }}
           path: artifacts/mutation-shards
@@ -247,7 +247,7 @@ jobs:
         run: |
           if($env:SHARD_RESULT -cne 'success'){throw 'MutationShardJobsRequired'}
           ./scripts/Assert-RunProfileMutationShards.ps1 -ReportRoot ./artifacts/mutation-shards -Revision $env:GITHUB_SHA -OutputPath ./artifacts/mutation-complete/receipt.json
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: quietcli-mutation-complete-${{ github.sha }}-attempt${{ github.run_attempt }}
           path: artifacts/mutation-complete
@@ -265,10 +265,10 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest]
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
           cache: true
@@ -301,7 +301,7 @@ jobs:
         run: |
           if($env:SCRIPT_TESTS -ceq 'all'){./scripts/Invoke-ScriptsTests.ps1 -Headless -Coverage -RunDirectory ./artifacts/script-tests}
           else{./scripts/Invoke-ScriptsTests.ps1 -Headless -Path ([string[]](ConvertFrom-Json $env:SCRIPT_TESTS)) -RunDirectory ./artifacts/script-tests}
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.script_tests.outcome != '' && steps.script_tests.outcome != 'skipped'
         with:
           name: quietcli-script-tests-${{ matrix.os }}-${{ github.sha }}-attempt${{ github.run_attempt }}
@@ -323,10 +323,10 @@ jobs:
       matrix:
         target: ${{ fromJson(needs.script-selection.outputs.targets) }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
       - uses: ./.github/actions/cache-resources
@@ -340,7 +340,7 @@ jobs:
       # Outcomes are keyed by everything the target's tests can observe, so the newest cache of the target is
       # always safe to reuse; a pull request restores develop's cache but can only save into its own scope.
       - name: Restore the target's incremental mutation cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .cache/script-mutation
           key: ${{ runner.os }}-quietcli-script-mutation-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -355,11 +355,11 @@ jobs:
       # Saved even after a failed or timed-out campaign: every outcome already written stays valid for its key.
       - name: Save the target's incremental mutation cache
         if: always() && steps.script_mutation.outcome != '' && steps.script_mutation.outcome != 'skipped'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .cache/script-mutation
           key: ${{ runner.os }}-quietcli-script-mutation-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.script_mutation.outcome != '' && steps.script_mutation.outcome != 'skipped'
         with:
           name: quietcli-script-mutation-${{ github.sha }}-${{ matrix.target }}-attempt${{ github.run_attempt }}
@@ -377,10 +377,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: quietcli-script-mutation-${{ github.sha }}-*-attempt${{ github.run_attempt }}
           path: artifacts/script-mutation-shards
@@ -392,7 +392,7 @@ jobs:
         run: |
           if($env:SHARD_RESULT -cne 'success'){throw 'ScriptMutationShardJobsRequired'}
           ./scripts/Assert-ScriptMutationShards.ps1 -ReportRoot ./artifacts/script-mutation-shards -Target ([string[]](ConvertFrom-Json $env:MUTATION_TARGETS)) -OutputPath ./artifacts/script-mutation-complete/receipt.json -Confirm:$false
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: quietcli-script-mutation-complete-${{ github.sha }}-attempt${{ github.run_attempt }}
           path: artifacts/script-mutation-complete

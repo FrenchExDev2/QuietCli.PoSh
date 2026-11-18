@@ -14,5 +14,9 @@
         'lib/CompanionWorkflows.psm1'
         'lib/CiPlanResults.psm1'
         'lib/ScriptsImpact.psm1'
+        'lib/GitHubActionReferences.psm1'
+        'lib/GitHubActionReleases.psm1'
+        'lib/GitHubActionUpdates.psm1'
+        'lib/Update-GitHubActions.psm1'
     )
 }

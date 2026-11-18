@@ -149,5 +149,26 @@
             UnitTestFiles = @('unit/lib/WorkBranch.Tests.ps1')
             Break = 80
         }
+        @{
+            Name = 'GitHubActionReferences'
+            Module = 'lib/GitHubActionReferences.psm1'
+            Functions = @('Get-QuietGitHubActionFiles','ConvertFrom-QuietGitHubActionUses','Get-QuietGitHubActionRefKind','Format-QuietGitHubActionUses','Get-QuietGitHubActionRewrittenText')
+            UnitTestFiles = @('unit/lib/GitHubActionReferences.Tests.ps1')
+            Break = 80
+        }
+        @{
+            Name = 'GitHubActionReleases'
+            Module = 'lib/GitHubActionReleases.psm1'
+            Functions = @('Invoke-QuietGitHubActionApi','Get-QuietGitHubActionLatestRelease','Assert-QuietGitHubActionTag','Read-QuietGitHubActionReleaseCatalog','Resolve-QuietGitHubActionReleases')
+            UnitTestFiles = @('unit/lib/GitHubActionReleases.Tests.ps1')
+            Break = 80
+        }
+        @{
+            Name = 'GitHubActionUpdates'
+            Module = 'lib/GitHubActionUpdates.psm1'
+            Functions = @('ConvertTo-QuietGitHubActionVersion','Get-QuietGitHubActionComment','Get-QuietGitHubActionCurrentVersion','Get-QuietGitHubActionUpdate','Get-QuietGitHubActionWorkflowDocumentPath','Get-QuietGitHubActionReceiptText')
+            UnitTestFiles = @('unit/lib/GitHubActionUpdates.Tests.ps1')
+            Break = 80
+        }
     )
 }
