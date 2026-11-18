@@ -145,7 +145,9 @@ Describe 'Get-QuietPerformanceWorkloadCatalog' {
         @(Get-QuietPerformanceWorkloadCatalog|ForEach-Object {$_.Workload+' / '+$_.Measure})|Should -Be @(
             'ImportFirstCall / Fresh-process import','ImportFirstCall / Import minus paired baseline','ImportFirstCall / First call, cold engine','ImportFirstCall / Engine startup'
             'GitTransport / Warm call','GitTransport / Warm execution','GitTransport / Warm callbacks','GitTransport / 8 MiB transport'
-            'Framing / 1 MiB framing','Metadata / Outside execution','Events / Emit loop'
+            'Framing / 1 MiB framing','Metadata / Outside execution'
+            'ImportFirstCall / Fresh-process startup import','ImportFirstCall / Fresh-process first short call','ImportFirstCall / Fresh-process warm short call'
+            'Metadata / Diagnostic short call','Metadata / Result construction','Metadata / Metadata projection','Metadata / Save round-trip','Metadata / Writer queue wait','Metadata / Write gate wait','Metadata / Metadata validation and JSON','Metadata / Writer preparation','Metadata / SQLite write','Events / Emit loop'
         )
     }
 }
@@ -171,7 +173,7 @@ Describe 'Get-QuietPerformanceWorkloadRows' {
         (& $find $rows 'Outside execution')[0].Statistics.Min|Should -Be 2
         (& $find $rows 'Emit loop' 'listeners=4, collect=on')[0].Statistics.Median|Should -Be 10
         (& $find $rows 'Emit loop' 'listeners=0, collect=off')[0].Statistics.Count|Should -Be 1
-        @($rows|Where-Object Instrumented).Count|Should -Be 0
+        @($rows|Where-Object {$_.Instrumented -and $null -ne $_.Statistics}).Count|Should -Be 0
         @($rows|Where-Object {$_.Host -cne 'host'}).Count|Should -Be 0
     }
 
@@ -186,7 +188,7 @@ Describe 'Get-QuietPerformanceWorkloadRows' {
     It 'adds instrumented rows for profiled workloads and counts their invalid samples' {
         $profiled=@(@{Name='Events';Scope='s';SamplesMs=@(4,2,'x',3)},@{Name='Framing';Scope='f';SamplesMs=@()},$null)
         $result=Get-QuietPerformanceWorkloadRows -Label 'host' -Core $null -ProfiledWorkloads $profiled
-        $instrumented=@($result.Rows|Where-Object Instrumented)
+        $instrumented=@($result.Rows|Where-Object {$_.Measure -ceq 'Instrumented iteration'})
         $instrumented.Workload|Should -Be @('Events','Framing')
         $instrumented[0].Statistics.Median|Should -Be 3
         $instrumented[0].Measure|Should -BeExactly 'Instrumented iteration'
@@ -234,5 +236,26 @@ Describe 'Get-QuietPerformanceRuntimeNote' {
     It 'says that nothing can be compared without environments' {
         Get-QuietPerformanceRuntimeNote @()|Should -BeLike 'No environment*'
         Get-QuietPerformanceRuntimeNote $null|Should -BeLike 'No environment*'
+    }
+}
+
+Describe 'Fresh-process phase selectors' {
+    It 'keeps telemetry arms, first/warm stages and diagnostic controls separate' {
+        $startup=@{Kind='FreshProcessStartup';Samples=@(foreach($timers in @($false,$true)){foreach($telemetry in @($false,$true)){
+            @{MeasurePhases=$timers;TelemetryEnabled=$telemetry;ImportMs=100;Calls=@(
+                @{Stage='FirstCall';InvocationMs=20;ResultConstructionMs=2;SqliteWriteMs=$(if($timers -and $telemetry){7})}
+                @{Stage='WarmCall';InvocationMs=10;ResultConstructionMs=1;SqliteWriteMs=$(if($timers -and $telemetry){3})}
+            )}
+        }})}
+        $rows=(Get-QuietPerformanceWorkloadRows -Label h -Core @{Performance=@($startup)} -ProfiledWorkloads @()).Rows
+        $ordinary=@($rows|Where-Object Measure -CEQ 'Fresh-process first short call')
+        $ordinary.Count|Should -Be 2
+        @($ordinary|Where-Object Instrumented).Count|Should -Be 0
+        @($ordinary|Where-Object {$_.Statistics.Count -ne 1 -or $_.Statistics.Median -ne 20}).Count|Should -Be 0
+        $write=@($rows|Where-Object {$_.Measure -ceq 'SQLite write' -and $_.Variant -ceq 'telemetry=on, FirstCall'})
+        $write[0].Statistics.Median|Should -Be 7
+        $write[0].Instrumented|Should -BeTrue
+        @($rows|Where-Object {$_.Measure -ceq 'SQLite write' -and $_.Variant -like 'telemetry=off*' -and $null -ne $_.Statistics}).Count|Should -Be 0
+        @($rows|Where-Object {$_.Measure -ceq 'Diagnostic short call'}).Count|Should -Be 4
     }
 }

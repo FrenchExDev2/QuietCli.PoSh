@@ -21,7 +21,7 @@ This module reads a Core suite summary and the profiler line evidence of one env
 | `New-QuietPerformanceGroup` | Returns one `{Variant, Values}` group. The variant is `-` when there is only one. |
 | `Get-QuietPerformanceHumanSamples` | Returns the human `git status` samples of one kind across every controlled Git state. |
 | `Get-QuietPerformanceVariantGroups` | Groups items by a computed label, in ordinal label order. |
-| `Get-QuietPerformanceWorkloadCatalog` | The 11 uninstrumented measures. Each one has a phase, a source path, its limits and a `Select` block. |
+| `Get-QuietPerformanceWorkloadCatalog` | The ordinary and explicit diagnostic measures. Each one has a phase, a source path, its limits and a `Select` block. |
 | `Get-QuietPerformanceWorkloadRows` | Returns `{Rows, Rejected}`. A measure without data still yields a row with null `Statistics`, so a gap stays visible. |
 | `Get-QuietPerformanceRuntimeNote` | Names each `PowerShell <version> on <CLR>` group with its RIDs and states that a difference between rows is not causal and not an OS ranking. It says so even when every environment shares one runtime. |
 
@@ -56,6 +56,12 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+## Startup timer series
+
+The catalogue also reads `Performance[FreshProcessStartup].Samples`: ordinary fresh-process import, first and warm short calls, plus explicit diagnostic short-call totals and eight invocation/storage phase measures. Selectors keep telemetry on/off and FirstCall/WarmCall apart; diagnostic rows carry `Instrumented=true`. A nullable timer is translated into an absent observation, never a zero or malformed numeric sample. Malformed present nonnumeric values still increment Rejected. Save round-trip is inclusive of worker phases.
+
+Review: `Get-QuietPerformanceWorkloadCatalog` maps only declared scalar timer fields; `Get-QuietPerformanceWorkloadRows` keeps their measurement method. No business objects or files are queried. Unit fixtures check distinct first/warm and telemetry arms, missing values, generated numeric rejection and catalogue order. Verdict: diagnostic wall timers support localization, not additive CPU attribution or an OS ranking.
 
 <!-- credits:begin -->
 ## Credits

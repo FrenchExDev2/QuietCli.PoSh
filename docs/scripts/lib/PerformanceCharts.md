@@ -71,6 +71,10 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
 
+## Diagnostic coverage labels
+
+The instrumented overview lane is labelled Diagnostics and profiling because phase-timer rows and line-profiler rows are separate methods within it. Each series retains its measure and variant; the lane is a coverage overview, never a total duration or additive cost partition. Golden Markdown and SVG fixtures cover this label.
+
 <!-- credits:begin -->
 ## Credits
 

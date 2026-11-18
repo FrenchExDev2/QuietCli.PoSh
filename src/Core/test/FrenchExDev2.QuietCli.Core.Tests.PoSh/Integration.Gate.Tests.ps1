@@ -20,7 +20,12 @@ function Test-QuietCoreIntegrationGate {
             })
             $good=@{Failed=0;Performance=@(
                 @{Kind='FreshSessionImport';Samples=@(1..14);Iterations=7;Validation=@{MutantsKilled=4}},
-                @{Kind='ImportDiagnostics';Count=10;Samples=@(@{Mode='Import'},@{Mode='Import'},@{Mode='Import'},@{Mode='CmdletOperations'},@{Mode='PreloadManagement'},@{Mode='PreloadUtility'},@{Mode='PreloadBoth'},@{Mode='Read'},@{Mode='Parse'},@{Mode='DotSource'})}
+                @{Kind='ImportDiagnostics';Count=10;Samples=@(@{Mode='Import'},@{Mode='Import'},@{Mode='Import'},@{Mode='CmdletOperations'},@{Mode='PreloadManagement'},@{Mode='PreloadUtility'},@{Mode='PreloadBoth'},@{Mode='Read'},@{Mode='Parse'},@{Mode='DotSource'})},
+                @{Kind='FreshProcessStartup';Iterations=7;Samples=@(foreach($telemetry in @($false,$true)){foreach($timers in @($false,$true)){foreach($repeat in 1..7){
+                    @{TelemetryEnabled=$telemetry;MeasurePhases=$timers;DatabaseCreated=$telemetry;Calls=@(foreach($call in 0..3){
+                        @{Stage=$(if($call){'WarmCall'}else{'FirstCall'});InvocationMs=20;ExecutionMs=10;NativeMs=8;ResultConstructionMs=1;MetadataProjectionMs=1;SaveRoundTripMs=$(if($telemetry){5}else{$null});QueueWaitMs=1;WriteGateWaitMs=1;ValidationMs=1;WriterPreparationMs=1;SqliteWriteMs=1}
+                    })}
+                }}})}
             );Integration=@(@{Kind='ControlledGitStatus';Passed=8;Failed=0;GitModuleLoaded=$false;RegisteredHandlers=0;RuntimeIdentifier='linux-x64';Scenarios=$scenarios;Validation=@{ValidCases=32;DamagedCases=448;Mutations=@(1..5|ForEach-Object {@{State='Killed'}})}})}
             $valid=$good|ConvertTo-Json -Depth 20|ConvertFrom-Json
             & $Candidate -Summary $valid
@@ -28,6 +33,10 @@ function Test-QuietCoreIntegrationGate {
                 {param($r)$r.Failed=1}, {param($r)$r.Performance=@()},
                 {param($r)$r.Performance[0].Samples=@(1)}, {param($r)$r.Performance[1].Count=9},
                 {param($r)$r.Performance[1].Samples[9].Mode='Unknown'}, {param($r)$r.Integration=@()},
+                {param($r)$r.Performance[2].Samples=@()},
+                {param($r)$r.Performance[2].Samples[-1].Calls[0].SqliteWriteMs=$null},
+                {param($r)$r.Performance[2].Samples[-1].Calls[0].QueueWaitMs=-1},
+                {param($r)$r.Performance[2].Samples[0].Calls[0].SaveRoundTripMs=1},
                 {param($r)$r.Integration[0].GitModuleLoaded=$true}, {param($r)$r.Integration[0].Passed=9},
                 {param($r)$r.Integration[0].Scenarios[0].GitModuleLoaded=$true},
                 {param($r)$r.Integration[0].Scenarios[0].EngineRid='wrong'},
@@ -54,5 +63,5 @@ function Test-QuietCoreIntegrationGate {
         if(!$detected){throw 'CoreIntegrationGateMutantSurvived'}
         @{Original=$mutation[0];Replacement=$mutation[1];State='Killed'}
     })
-    [pscustomobject]@{Seed=73596;ValidCases=8;DamagedCases=128;Mutations=$outcomes}
+    [pscustomobject]@{Seed=73596;ValidCases=8;DamagedCases=160;Mutations=$outcomes}
 }

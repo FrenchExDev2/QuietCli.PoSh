@@ -135,7 +135,12 @@ function Test-QuietMatrixHtmlEvidence {
             @{Category='UserCallbacksAndWorkload';Path='synthetic-workload.ps1';Line=3;Hits=2;SelfMs=0.25;InclusiveMs=0.5}
         )}
         $scenarios=@(foreach($scenario in 1..8){@{Name=('Synthetic '+$scenario);Human=@{Samples=@(@{Kind='First';InvocationMs=4;ReferenceMs=2;CallbackMs=1},@{Kind='WarmEngine';InvocationMs=3;ReferenceMs=2;CallbackMs=1})};Samples=@(1,2)}})
-        $core=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Performance=@(@{Kind='FreshSessionImport';Statistics=@{ElapsedMs=@{Import=@{Median=2;P95=3}};AllocatedBytes=@{PairedDelta=@{Median=1024}}}});Integration=@(@{Kind='ControlledGitStatus';Scenarios=$scenarios})}
+        $startup=@{Kind='FreshProcessStartup';Iterations=7;Samples=@(foreach($telemetry in @($false,$true)){foreach($timers in @($false,$true)){foreach($repeat in 1..7){
+            @{MeasurePhases=$timers;TelemetryEnabled=$telemetry;ImportMs=2;Calls=@(foreach($call in 0..3){
+                @{Stage=$(if($call){'WarmCall'}else{'FirstCall'});InvocationMs=4;ResultConstructionMs=0.1;MetadataProjectionMs=$(if($telemetry){0.1});SaveRoundTripMs=$(if($telemetry){1});QueueWaitMs=$(if($telemetry){0.1});WriteGateWaitMs=$(if($telemetry){0.1});ValidationMs=$(if($telemetry){0.1});WriterPreparationMs=$(if($telemetry){0.1});SqliteWriteMs=$(if($telemetry){0.5})}
+            })}
+        }}})}
+        $core=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Performance=@(@{Kind='FreshSessionImport';Statistics=@{ElapsedMs=@{Import=@{Median=2;P95=3}};AllocatedBytes=@{PairedDelta=@{Median=1024}}}},$startup);Integration=@(@{Kind='ControlledGitStatus';Scenarios=$scenarios})}
         Write-WorkspaceJson (Join-Path $job summary.json) @{SyntheticIntegrityFixture=$true;State=@{State='Success';Platform=$target[0];Passed=1;Failed=0};Suites=@($core);Profiling=$syntheticProfile;EngineIdentity=@{Mode=$target[2]};PowerShellVersion=$target[1];HostRuntime='10.0.14'}
         $index++
     }

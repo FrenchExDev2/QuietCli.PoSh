@@ -293,10 +293,10 @@ public abstract class DeliveryCmdlet : RuntimeCmdlet
 
     /// <summary>Sends one save request; a session-level Send-QuietRequest function (test seam) takes precedence over the cmdlet.</summary>
     /// <param name="header">Save request header.</param>
-    internal void SaveMetadata(Hashtable header)
+    internal object? SaveMetadata(Hashtable header)
     {
-        if (FindFunction("Send-QuietRequest") is { } seam) { seam.ScriptBlock.Invoke(header); return; }
-        EngineClient.Send(QuietSession.Engine ?? EnsureEngine(), header, [], IpcTimeout);
+        if (FindFunction("Send-QuietRequest") is { } seam) { seam.ScriptBlock.Invoke(header); return null; }
+        return PropertyReader.Get(EngineClient.Send(QuietSession.Engine ?? EnsureEngine(), header, [], IpcTimeout).Header, "Data");
     }
 
     /// <summary>Mirrors the value of a script block invocation: nothing, one value or an array.</summary>

@@ -87,14 +87,21 @@ internal sealed class MeasurementStore : IAsyncDisposable
     /// <summary>Executes one database operation without concurrent connection use.</summary>
     /// <param name="operation">One serialized database operation.</param>
     /// <param name="write">Coordinates initialization and writes with other stores targeting the same file.</param>
-    private async Task<T> ExecuteAsync<T>(Func<T> operation, bool write = false)
+    /// <param name="timer">Optional diagnostic counters of this save, never persisted.</param>
+    private async Task<T> ExecuteAsync<T>(Func<T> operation, bool write = false, MeasurementSaveTimer? timer = null)
     {
         var result = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
         await work.Writer.WriteAsync(async () => {
+            if (timer is not null) timer.QueueWaitMs = System.Diagnostics.Stopwatch.GetElapsedTime(timer.Enqueued).TotalMilliseconds;
             try
             {
                 T value;
-                using (var lease = write ? await MeasurementWriteGate.EnterAsync(path) : null) value = operation();
+                long gateStarted = timer is null ? 0 : System.Diagnostics.Stopwatch.GetTimestamp();
+                using (var lease = write ? await MeasurementWriteGate.EnterAsync(path) : null)
+                {
+                    if (timer is not null) timer.WriteGateWaitMs = System.Diagnostics.Stopwatch.GetElapsedTime(gateStarted).TotalMilliseconds;
+                    value = operation();
+                }
                 result.SetResult(value);
             }
             catch (Exception error) { result.SetException(error); }
@@ -112,17 +119,32 @@ internal sealed class MeasurementStore : IAsyncDisposable
     /// <param name="kind">Invocation or delivery.</param>
     internal Task SaveAsync(MeasurementRecord metadata, string kind) => SaveValidatedAsync(() => MeasurementModels.Validate(metadata, kind), kind);
 
+    /// <summary>Measures one save using the same persistence path as an ordinary save.</summary>
+    /// <param name="metadata">Closed metadata, never business Data.</param>
+    /// <param name="kind">Invocation or delivery.</param>
+    internal Task<MeasurementSaveTimings?> MeasureSaveAsync(MeasurementRecord metadata, string kind) => SaveValidatedAsync(() => MeasurementModels.Validate(metadata, kind), kind, new MeasurementSaveTimer());
+
+    /// <summary>Measures the isolated-host metadata path without changing its JSON validation.</summary>
+    /// <param name="metadata">Closed wire metadata.</param>
+    /// <param name="kind">Invocation or delivery.</param>
+    internal Task<MeasurementSaveTimings?> MeasureSaveAsync(JsonElement metadata, string kind) => SaveValidatedAsync(() => MeasurementModels.Validate(metadata, kind), kind, new MeasurementSaveTimer());
+
     /// <summary>Validates once on the worker, then stores only the approved representation.</summary>
     /// <param name="validate">Closed validation operation, not caller business code.</param>
     /// <param name="kind">Storage kind.</param>
-    private Task SaveValidatedAsync(Func<JsonElement> validate, string kind) => ExecuteAsync(() =>
+    /// <param name="timer">Optional explicit phase measurement.</param>
+    private Task<MeasurementSaveTimings?> SaveValidatedAsync(Func<JsonElement> validate, string kind, MeasurementSaveTimer? timer = null) => ExecuteAsync<MeasurementSaveTimings?>(() =>
     {
+        long started = timer is null ? 0 : System.Diagnostics.Stopwatch.GetTimestamp();
         var metadata = validate();
         if (System.Text.Encoding.UTF8.GetByteCount(metadata.GetRawText()) > Protocol.HeaderLimit - 4096) throw new InvalidDataException("MeasurementRowTooLarge");
+        if (timer is not null) timer.ValidationMs = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         // Reads one nullable scalar metadata field, never business Data.
         string? Value(string name) => metadata.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null ? value.GetString() : null;
         string id = kind == "delivery" ? Value("DeliveryId")! : Value("InvocationId")!;
+        if (timer is not null) { timer.WriterAlreadyPrepared = writer is not null; started = System.Diagnostics.Stopwatch.GetTimestamp(); }
         var database = Writer();
+        if (timer is not null) { timer.WriterPreparationMs = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds; started = System.Diagnostics.Stopwatch.GetTimestamp(); }
         if (kind == "delivery") {
             var record = metadata.Deserialize<MeasurementRecord>()!;
             database.Execute("BEGIN IMMEDIATE", []);
@@ -139,12 +161,14 @@ internal sealed class MeasurementStore : IAsyncDisposable
                 }
                 database.Execute("COMMIT", []);
             } catch { database.TryRollback(); throw; }
-            return true;
+            if (timer is not null) timer.SqliteWriteMs = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            return timer?.Snapshot();
         }
         database.Execute(InvocationInsert,
             [id, kind, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), Value("ParentId")!, Value("RootId")!, Value("SessionId")!, Value("Context")!, Value("Role")!, Value("Command")!, Value("Outcome")!, metadata.GetRawText()]);
-        return true;
-    }, write: true);
+        if (timer is not null) timer.SqliteWriteMs = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        return timer?.Snapshot();
+    }, write: true, timer: timer);
 
     /// <summary>Reads bounded metadata by context/session/time without creating missing databases.</summary>
     /// <param name="request">Validated execution metadata, never the business object.</param>

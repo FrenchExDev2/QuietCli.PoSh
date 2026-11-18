@@ -216,3 +216,15 @@ Local development validation on 6 November 2026 used an isolated source snapshot
 ```
 
 All four contexts produced the required source-line profile and raw/converted CLR evidence. Evidence copying, trace checksums, per-context Markdown and the combined Markdown/JSON report were exercised locally. YAML and every embedded PowerShell block were parsed, and the six Windows/four Linux matrix rows plus report dependency were checked. These are local x64 observations, not remote GitHub or ARM64 execution. Real workflow artifacts are published when CI runs the delivered revision.
+
+## Fresh-process startup and invocation phase diagnostics
+
+Core/All and focused Integration execute seven retained fresh processes for each of four arms, after one discarded process per arm: telemetry enabled/disabled crossed with diagnostic timers enabled/disabled. Arm order rotates. Each subject imports the exact built Core once, invokes the same `git --version` command once with a fresh engine, then repeats three warm calls. A private configuration and database are created under that run's `startup` directory. Filesystem caches stay warm; no disk-cold claim is made.
+
+Each probe's PID must match the native child launched by its parent invocation. Sequential children may reuse a PID after termination; campaign-wide PID uniqueness is not required. Identity failures name the mismatched field and its actual/expected values, iteration and arm. Deterministic regressions reject incorrect child/host/arm identities and accept sequential PID reuse.
+
+`FreshProcessStartup` keeps import and invocation samples separate from the eight controlled Git repository states. Normal timing samples use no phase timers. Explicit `-MeasurePhases` samples expose result construction, metadata projection, inclusive save round-trip, worker queue, write-gate wait, validation/metadata JSON, writer preparation and SQLite write. Startup and diagnostic-arm totals let readers assess instrumentation overhead. Save round-trip includes its worker phases and adaptation/IPC. Queue wait may include prior background preparation; writer preparation measures only what remains in that save. An invocation uses SQLite's implicit transaction. SQL timing also includes bindings, reset and lock waits, so it is not pure disk time. Missing storage timers with telemetry disabled remain unknown.
+
+`PERFORMANCES_RESULTS.md`, HTML/SVG and JSON include separate series by telemetry arm and first/warm stage, sample counts, median, quartiles and p95. The Core evidence gate requires all 28 retained processes and finite applicable timers; the report refuses completeness when required phase series are missing. The common Core path runs on selected pull requests and develop pushes through `companions-ci.yml` and `ci.yml`. A change outside the selectively qualified Core scope does not force a new Core campaign. This wiring does not claim hosted qualification of unpushed changes.
+
+Import and startup here are measured wall intervals. Existing CLR and PowerShell collectors still attach after startup; these new timers do not turn that gap into a claimed startup CPU profile.

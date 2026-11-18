@@ -96,6 +96,7 @@
     <File Path="test/FrenchExDev2.QuietCli.Core.Tests.PoSh/RuntimeDiagnosis.Tests.ps1" />
     <File Path="test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Script.Tests.ps1" />
     <File Path="test/FrenchExDev2.QuietCli.Core.Tests.PoSh/SecondPass.Tests.ps1" />
+    <File Path="test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Startup.Probe.ps1" />
     <File Path="test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Status.Aggregation.ps1" />
     <File Path="test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Status.Assertions.ps1" />
     <File Path="test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Status.Controlled.Tests.ps1" />

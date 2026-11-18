@@ -179,6 +179,15 @@ foreach($manifestFile in $manifests){
             $measured=Get-QuietPerformanceWorkloadRows -Label $label -Core $(if($core.Count){$core[0]}else{$null}) -ProfiledWorkloads $profiledWorkloads -Catalog $definitions
             foreach($workloadRow in $measured.Rows){$workloads.Add($workloadRow)}
             if($measured.Rejected){$gaps.Add('Workload values that are not finite numbers: '+$measured.Rejected+' in '+$label)}
+            $startup=@(Get-QuietPerformanceItems @(Get-QuietPerformanceMember $(if($core.Count){$core[0]}else{$null}) 'Performance') 'FreshProcessStartup')
+            if($startup.Count -ne 1 -or @(Get-QuietPerformanceMember $startup[0] 'Samples').Count -ne 28){$gaps.Add('Fresh-process startup/timer evidence incomplete: '+$label)}
+            foreach($definition in $definitions|Where-Object {[bool](Get-QuietPerformanceMember $_ 'Instrumented')}){
+                foreach($stage in @('FirstCall','WarmCall')){
+                    $phaseRows=@($measured.Rows|Where-Object {$_.Measure -ceq $definition.Measure -and $_.Variant -ceq ('telemetry=on, '+$stage)})
+                    $expected=if($stage -ceq 'FirstCall'){7}else{21}
+                    if($phaseRows.Count -ne 1 -or $null -eq $phaseRows[0].Statistics -or $phaseRows[0].Statistics.Count -ne $expected){$gaps.Add('Required phase timer incomplete: '+$definition.Measure+' / '+$stage+' in '+$label)}
+                }
+            }
         }
         if($Suite -ne 'Git' -and (!$import -or !$controlled -or $row.Profiling -ne 'Success')){$gaps.Add('Mandatory integration/profiling incomplete: '+$label)}
         if($row.State -ne 'Success' -or $row.Passed -le 0){$gaps.Add('Functional run did not succeed or contained no passing tests: '+$label)}
@@ -213,8 +222,12 @@ $runtimeNote=Get-QuietPerformanceRuntimeNote @($rows)
 if($Suite -ne 'Git'){
     [void]$text.AppendLine()
     [void]$text.AppendLine('## Workloads')
+    [void]$text.AppendLine('')
+    [void]$text.AppendLine('Fresh-process startup uses four independent arms: telemetry on/off, diagnostic timers on/off, with rotating order and seven retained fresh processes per arm. Each process measures its real import, first git --version and three warm calls. The 21 warm observations belong to seven process subjects, not 21 independent fresh processes. This fixed workload is separate from the eight Git states. No user configuration or database is used.')
+    [void]$text.AppendLine('')
+    [void]$text.AppendLine('Phase timers measure result construction, caller metadata projection, save round-trip, writer queue wait, same-path write-gate wait, schema validation plus metadata JSON encoding, writer preparation/lookup and SQLite write. Save round-trip includes the worker phases and IPC/adaptation: never add it to those phases. Queue wait may include earlier background preparation; a near-zero writer preparation timer can mean preparation already completed. SQLite write includes binding, stepping, reset, locks and implicit transaction durability, not disk time alone. Telemetry-off save timings stay unavailable, never zero. Timers contain no business Data and are not stored in SQLite. Diagnostic short-call totals provide a control for timer overhead.')
     [void]$text.AppendLine()
-    [void]$text.AppendLine('Each workload is measured on its own. N is the number of observations behind the row. Quartiles and p95 use the nearest rank. A p95 marked **(max)** is the largest observation, which is always the case below 20 observations: it describes the worst run, not a stable tail. Q1–Q3 is the dispersion of the middle half. Instrumented rows run under the line profiler and are only comparable with each other. `-` means no observation, never zero.')
+    [void]$text.AppendLine('Each workload is measured on its own. N is the number of observations behind the row. Quartiles and p95 use the nearest rank. A p95 marked **(max)** is the largest observation, which is always the case below 20 observations: it describes the worst run, not a stable tail. Q1–Q3 is the dispersion of the middle half. Instrumented rows use explicit phase timers or the line profiler; compare only matching methods and arms. `-` means no observation, never zero.')
     [void]$text.AppendLine()
     [void]$text.AppendLine('### Coverage at a glance')
     [void]$text.AppendLine()
