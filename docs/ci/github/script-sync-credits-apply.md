@@ -1,6 +1,6 @@
 # sync-credits-apply.yml
 
-<!-- workflow-source-sha256: 3EA943830C7BF4B1EAEBC64932352DD5595189FB60A53F99F0721AD661DC5C13 -->
+<!-- workflow-source-sha256: D2CFAC81599F411B8FDF577BA485CAD4BFBFBF61D73F02BDAE19071EC9C0539F -->
 
 ## Purpose
 
@@ -33,7 +33,7 @@ flowchart TD
 
 ## Scripts and effects
 
-Sync-Credits -Apply writes CREDITS.md; Sync-DocsCredits -Apply writes docs/root README credits blocks. The final bot step stages the documented paths, commits if changed and pushes to the dispatched branch using contents:write and persisted credentials.
+`Sync-Credits -Apply` writes CREDITS.md. `Sync-DocsCredits -Apply` updates credits blocks in docs, root READMEs and `readmes/` guides. The final bot step stages these paths, commits if changed and pushes to the dispatched branch using contents:write and persisted credentials.
 
 ## Validation and limits
 

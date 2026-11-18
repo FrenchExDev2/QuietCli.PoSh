@@ -11,7 +11,7 @@ Keep reviewed versions, origins, licenses and integrity hashes for inputs obtain
 repository. Existing contracts include Core's `resources/dependencies.lock.json`, the SDK/image
 and workstation locks under `build/`, and `build/powershell-hosts.lock.json`. SDK and NuGet
 declarations remain in `global.json` and `Directory.Packages.props`; those declarations alone
-are not a checksum lock of every transitive package. See [resource integrity](../README-resources.md)
+are not a checksum lock of every transitive package. See [resource integrity](../readmes/README-resources.md)
 for the download and verification boundaries.
 
 Vendored upstream sources also retain their original provenance and license evidence, even when

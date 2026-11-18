@@ -7,7 +7,7 @@ Source file: [`Install-DotNet.ps1`](../../scripts/Install-DotNet.ps1)
 ## Purpose
 
 Install a verified portable SDK and its included runtimes; optionally pull images,
-update exact SDK pins and activate this process. [Complete guide](../../README-dotnet-and-global-dot-json.md).
+update exact SDK pins and activate this process. [Complete guide](../../readmes/README-dotnet-and-global-dot-json.md).
 
 ## Usage and parameters
 

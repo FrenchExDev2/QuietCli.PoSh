@@ -11,6 +11,6 @@ The manifest cap is two. The six pure parser cases opt into IsolatedProcess exec
 ./scripts/Invoke-WorkspaceCi.ps1 -Suite Vagrant -SkipBuild -Case '[Ca]*line*' -MaxConcurrency 2
 ```
 
-The second command is a partial, monitored development run selecting three pure parser cases. Case filters and stop-on-first-failure retain explicit Partial/Incomplete scope. See [classification and concurrency](../../../../docs/README-test-classification-and-concurrency.md) and [qualification](../../../../README-qualification-when-where-how.md). License attribution is recorded in [CREDITS.md](../../../../CREDITS.md).
+The second command is a partial, monitored development run selecting three pure parser cases. Case filters and stop-on-first-failure retain explicit Partial/Incomplete scope. See [classification and concurrency](../../../../docs/README-test-classification-and-concurrency.md) and [qualification](../../../../readmes/README-qualification-when-where-how.md). License attribution is recorded in [CREDITS.md](../../../../CREDITS.md).
 
 FragmentedTranscripts/MalformedInputs report completed campaign counts only after their corresponding fuzz case succeeds; they remain null for unexecuted or incomplete campaigns. A filtered parser run must not claim the full native fuzz corpus ran.

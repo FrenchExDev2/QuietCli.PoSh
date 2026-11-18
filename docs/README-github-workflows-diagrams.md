@@ -1139,8 +1139,8 @@ Jobs · [apply](#workflow-scripts-docs-apply-yml-15-job-j0)
 
 | Déclencheur | Filtres déclarés |
 | --- | --- |
-| pull_request | <code>{"paths"&#58;&#91;"scripts/&#42;&#42;","FrenchExDev2.QuietCli.&#42;.Tests.PoSh/&#42;&#42;","docs/scripts/&#42;&#42;","docs/ci/github/&#42;&#42;","docs/resources/&#42;&#42;","docs/README-github-workflows-diagrams.md","README-github-workflows.md","README-resources.md","src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/&#42;&#42;",".github/actions/&#42;&#42;","build/script-shouldprocess.json","test/scripts/&#42;&#42;","AGENTS.md","docs/README-automation-contracts.md",".github/workflows/&#42;&#42;"&#93;}</code> |
-| push | <code>{"branches"&#58;&#91;"develop"&#93;,"paths"&#58;&#91;"scripts/&#42;&#42;","FrenchExDev2.QuietCli.&#42;.Tests.PoSh/&#42;&#42;","docs/scripts/&#42;&#42;","docs/ci/github/&#42;&#42;","docs/resources/&#42;&#42;","docs/README-github-workflows-diagrams.md","README-github-workflows.md","README-resources.md","src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/&#42;&#42;",".github/actions/&#42;&#42;","build/script-shouldprocess.json","test/scripts/&#42;&#42;","AGENTS.md","docs/README-automation-contracts.md",".github/workflows/&#42;&#42;"&#93;}</code> |
+| pull_request | <code>{"paths"&#58;&#91;"scripts/&#42;&#42;","FrenchExDev2.QuietCli.&#42;.Tests.PoSh/&#42;&#42;","docs/scripts/&#42;&#42;","docs/ci/github/&#42;&#42;","docs/resources/&#42;&#42;","docs/README-github-workflows-diagrams.md","readmes/README-github-workflows.md","readmes/README-resources.md","src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/&#42;&#42;",".github/actions/&#42;&#42;","build/script-shouldprocess.json","test/scripts/&#42;&#42;","AGENTS.md","docs/README-automation-contracts.md",".github/workflows/&#42;&#42;"&#93;}</code> |
+| push | <code>{"branches"&#58;&#91;"develop"&#93;,"paths"&#58;&#91;"scripts/&#42;&#42;","FrenchExDev2.QuietCli.&#42;.Tests.PoSh/&#42;&#42;","docs/scripts/&#42;&#42;","docs/ci/github/&#42;&#42;","docs/resources/&#42;&#42;","docs/README-github-workflows-diagrams.md","readmes/README-github-workflows.md","readmes/README-resources.md","src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/&#42;&#42;",".github/actions/&#42;&#42;","build/script-shouldprocess.json","test/scripts/&#42;&#42;","AGENTS.md","docs/README-automation-contracts.md",".github/workflows/&#42;&#42;"&#93;}</code> |
 | workflow_dispatch |  |
 
 ~~~mermaid
@@ -1217,7 +1217,7 @@ Jobs · [apply](#workflow-sync-credits-apply-yml-17-job-j0)
 | ---: | --- | --- | --- |
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
 | 2 | Regenerate CREDITS.md from every module's LICENSE&#95;CREDITS.md | [scripts/Sync-Credits.ps1](scripts/Sync-Credits.md) |  |
-| 3 | Write the credits footer into every docs/&#42;.md and root README&#42;.md file | [scripts/Sync-DocsCredits.ps1](scripts/Sync-DocsCredits.md) |  |
+| 3 | Update docs and README credits footers | [scripts/Sync-DocsCredits.ps1](scripts/Sync-DocsCredits.md) |  |
 | 4 | Commit and push the result, if anything changed | `run` |  |
 
 <a name="workflow-sync-credits-check-yml-18"></a>
@@ -1228,8 +1228,8 @@ Jobs · [apply](#workflow-sync-credits-apply-yml-17-job-j0)
 
 | Déclencheur | Filtres déclarés |
 | --- | --- |
-| pull_request | <code>{"paths"&#58;&#91;"docs/&#42;&#42;","README.md","README-&#42;.md","&#42;&#42;/LICENSE&#95;CREDITS.md","CREDITS.md","scripts/Sync-Credits.ps1","scripts/Sync-DocsCredits.ps1","scripts/lib/WorkspaceProjects.psm1",".github/workflows/sync-credits-check.yml",".github/workflows/sync-credits-apply.yml"&#93;}</code> |
-| push | <code>{"branches"&#58;&#91;"develop"&#93;,"paths"&#58;&#91;"docs/&#42;&#42;","README.md","README-&#42;.md","&#42;&#42;/LICENSE&#95;CREDITS.md","CREDITS.md","scripts/Sync-Credits.ps1","scripts/Sync-DocsCredits.ps1","scripts/lib/WorkspaceProjects.psm1",".github/workflows/sync-credits-check.yml",".github/workflows/sync-credits-apply.yml"&#93;}</code> |
+| pull_request | <code>{"paths"&#58;&#91;"docs/&#42;&#42;","README.md","README-&#42;.md","readmes/README-&#42;.md","&#42;&#42;/LICENSE&#95;CREDITS.md","CREDITS.md","scripts/Sync-Credits.ps1","scripts/Sync-DocsCredits.ps1","scripts/lib/Sync-DocsCredits.psm1","scripts/lib/WorkspaceProjects.psm1",".github/workflows/sync-credits-check.yml",".github/workflows/sync-credits-apply.yml"&#93;}</code> |
+| push | <code>{"branches"&#58;&#91;"develop"&#93;,"paths"&#58;&#91;"docs/&#42;&#42;","README.md","README-&#42;.md","readmes/README-&#42;.md","&#42;&#42;/LICENSE&#95;CREDITS.md","CREDITS.md","scripts/Sync-Credits.ps1","scripts/Sync-DocsCredits.ps1","scripts/lib/Sync-DocsCredits.psm1","scripts/lib/WorkspaceProjects.psm1",".github/workflows/sync-credits-check.yml",".github/workflows/sync-credits-apply.yml"&#93;}</code> |
 | workflow_dispatch |  |
 
 ~~~mermaid
@@ -1251,7 +1251,7 @@ Jobs · [check](#workflow-sync-credits-check-yml-18-job-j0)
 | ---: | --- | --- | --- |
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
 | 2 | Check module credits aggregation (CREDITS.md) | [scripts/Sync-Credits.ps1](scripts/Sync-Credits.md) |  |
-| 3 | Check docs/&#42;.md and root README&#42;.md credits footers | [scripts/Sync-DocsCredits.ps1](scripts/Sync-DocsCredits.md) |  |
+| 3 | Check docs and README credits footers | [scripts/Sync-DocsCredits.ps1](scripts/Sync-DocsCredits.md) |  |
 
 <a name="workflow-tooling-ci-yml-19"></a>
 

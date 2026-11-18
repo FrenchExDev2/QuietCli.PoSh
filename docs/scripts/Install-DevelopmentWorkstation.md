@@ -9,7 +9,7 @@ Source file: [`Install-DevelopmentWorkstation.ps1`](../../scripts/Install-Develo
 Prepare or inspect a QuietCli developer workstation using engine-independent provisioning.
 The installer selects the native Windows/Linux host, resolves reviewed artifacts and returns one
 report with `Ready`, `NeedsInstallation`, `RestartRequired` or `Failed`. It never runs workflows.
-See the [workstation guide](../../README-development-workstation.md) and
+See the [workstation guide](../../readmes/README-development-workstation.md) and
 [wrkflw helper backlog](README-wrkflw-plan.md).
 
 ## Usage

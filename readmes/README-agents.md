@@ -1,8 +1,8 @@
 # QuietCli with AI agents
 
-[Back to the QuietCli overview](README.md)
+[Back to the QuietCli overview](../README.md)
 
-Install the QuietCli instructions for Codex, Claude Code or another agent. Related: [agent documents](docs/agents/README.md), [Streaming and callbacks](README-streaming.md).
+Install the QuietCli instructions for Codex, Claude Code or another agent. Related: [agent documents](../docs/agents/README.md), [Streaming and callbacks](README-streaming.md).
 
 QuietCli ships one set of production instructions for agents: `AGENTS.md` (rules, every command, tested examples,
 failure table) and `SKILL.md` (the same text with skill front matter). `Add-QuietAgentInstruction` copies both into
@@ -43,11 +43,11 @@ target, and you can start the agent in the project and ask it which instruction 
 Start the agent's shell with its normal PowerShell profile so that `quiet` and UTF-8 initialization are available.
 
 Guides for each client, an example with a non-Git executable and a troubleshooting table are indexed in
-[agent documents](docs/agents/README.md): [Claude Code](docs/agents/claude.md), [Codex](docs/agents/codex.md),
-[troubleshooting](docs/agents/troubleshooting.md).
+[agent documents](../docs/agents/README.md): [Claude Code](../docs/agents/claude.md), [Codex](../docs/agents/codex.md),
+[troubleshooting](../docs/agents/troubleshooting.md).
 
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

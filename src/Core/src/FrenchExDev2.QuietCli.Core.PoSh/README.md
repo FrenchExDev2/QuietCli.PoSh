@@ -30,7 +30,7 @@ Command-specific parsing belongs in callbacks or companion modules. Core does no
 | Isolated hosting | `Process` requires the pinned .NET 11 runtime for the selected architecture |
 | Native tools | Install the executables you intend to invoke separately |
 
-A built module needs no SDK to import or use. Import does not compile C#, start the engine or run a native command. Distributed targets and executed qualification are separate; see [tests and qualification](../../../../README-qualification.md).
+A built module needs no SDK to import or use. Import does not compile C#, start the engine or run a native command. Distributed targets and executed qualification are separate; see [tests and qualification](../../../../readmes/README-qualification.md).
 
 ## Installation
 
@@ -144,7 +144,7 @@ Data: {SdkVersion: "11.0.100"}
 Completeness: {Source: true, Analysis: true}
 ```
 
-The native version line becomes a typed object with one `SdkVersion` property. `Outcome`, `Completeness` and errors describe whether that object can be trusted. See [streaming, callbacks and results](../../../../README-streaming.md).
+The native version line becomes a typed object with one `SdkVersion` property. `Outcome`, `Completeness` and errors describe whether that object can be trusted. See [streaming, callbacks and results](../../../../readmes/README-streaming.md).
 
 ## Contract
 
@@ -154,7 +154,7 @@ The native version line becomes a typed object with one `SdkVersion` property. `
 
 Native streams are consumed once through bounded buffers. Without explicit Recall capture/recording, there is no cumulative raw capture, spool or content history. Byte events expose transient `Bytes` and `ByteCount`; strict incremental UTF-8 decoding and delimiter framing reject invalid input, incomplete characters and oversized records.
 
-`-AsObject` returns the envelope without traversing, serializing or transferring business `Data` to the engine. `ConvertTo-QuietJson`, `ConvertTo-QuietYaml` and `Out-QuietResult` apply item, structural and encoded-byte budgets. `Deliveries[0]` contains the most recent delivered text and identifier; successive delivery strings do not accumulate. See [streaming, callbacks and results](../../../../README-streaming.md).
+`-AsObject` returns the envelope without traversing, serializing or transferring business `Data` to the engine. `ConvertTo-QuietJson`, `ConvertTo-QuietYaml` and `Out-QuietResult` apply item, structural and encoded-byte budgets. `Deliveries[0]` contains the most recent delivered text and identifier; successive delivery strings do not accumulate. See [streaming, callbacks and results](../../../../readmes/README-streaming.md).
 
 ## Hosting, runtime and transports
 
@@ -166,7 +166,7 @@ The six architecture-specific publications under `lib/engine/<RID>` serve isolat
 
 The callback runtime exposes `Request`, `Data`, `State`, `Execution`, `Children`, identifiers and `WriteBytes`, `WriteText`, `CompleteInput`, `ReadEvent`, `Resize`, `Cancel`. Pipes distinguish stdout/stderr; PTY merges output into `TerminalBytesRead`, with separate stream counts unknown. Windows uses ConPTY; Linux uses the verified bridge. Ending terminal input is not a pipe half-close.
 
-Nested calls inherit the measurement context and return an object by default; their failures remain visible even when results are assigned. `quiet -C name` does not change later independent calls. See [hosting and native transports](../../../../README-hosting.md).
+Nested calls inherit the measurement context and return an object by default; their failures remain visible even when results are assigned. `quiet -C name` does not change later independent calls. See [hosting and native transports](../../../../readmes/README-hosting.md).
 
 ## Live dashboard (`-UI` / `-MaxLines`)
 
@@ -189,7 +189,7 @@ Explicit invocation options override the session YAML snapshot, then built-in de
 
 Explicit `-Recall -AsObject` retains bounded in-memory native evidence. `-RecallMaxBytes` accepts integral bytes, IEC sizes or `All`; `-RecallPolicy` selects `Head`, `Tail` or `HeadAndTail`. `Invoke-QuietRecall` analyzes retained evidence without executing the native command again.
 
-`-SaveRecall` writes a durable journal during execution. `-RecallName`, `Get-QuietSavedRecall` and `quiet -RecallId` support later sessions with new callbacks and projections. Default export is a streaming working directory; explicit `-Zip -Compress 0..9` selects ZIP64 transport. Evidence stays outside ordinary deliveries and SQLite. See [Recall usage](../../../../README-recall.md) and the [full contract](../../../../docs/README-recall.md).
+`-SaveRecall` writes a durable journal during execution. `-RecallName`, `Get-QuietSavedRecall` and `quiet -RecallId` support later sessions with new callbacks and projections. Default export is a streaming working directory; explicit `-Zip -Compress 0..9` selects ZIP64 transport. Evidence stays outside ordinary deliveries and SQLite. See [Recall usage](../../../../readmes/README-recall.md) and the [full contract](../../../../docs/README-recall.md).
 
 ## Reusable scripts and business factories
 
@@ -307,30 +307,30 @@ For the concrete mechanics behind every rule in this section, and how a companio
 
 ## Companion modules and agent integration
 
-`Register-QuietHandler`, `Get-QuietHandler` and `Unregister-QuietHandler` manage reusable handlers. `New-QuietModule` scaffolds a companion module; executable semantics and independent assertions belong in that module and its test companion. The Git module is an example under development, with explicit coverage limits. See [companion modules](../../../../README-modules.md).
+`Register-QuietHandler`, `Get-QuietHandler` and `Unregister-QuietHandler` manage reusable handlers. `New-QuietModule` scaffolds a companion module; executable semantics and independent assertions belong in that module and its test companion. The Git module is an example under development, with explicit coverage limits. See [companion modules](../../../../readmes/README-modules.md).
 
 To install agent instructions after Core is installed, use `Add-QuietAgentInstruction -Path ./project -Agents`. It copies the distributed rules/skill into the project's `.skills` directory and adds a managed reference to `AGENTS.md`, preserving existing text outside that block. `-WhatIf` previews changes; `Get-QuietAgentInstruction` reads the rules without writing files or starting the engine. These commands return text or file metadata, not native execution envelopes.
 
-See [agent integration](../../../../README-agents.md), the [Codex guide](../../../../docs/agents/codex.md) and the [agent documentation index](../../../../docs/agents/README.md).
+See [agent integration](../../../../readmes/README-agents.md), the [Codex guide](../../../../docs/agents/codex.md) and the [agent documentation index](../../../../docs/agents/README.md).
 
 ## Tests and dependencies
 
-[Qualification: when, where and how](../../../../README-qualification-when-where-how.md) explains when Core tests run, which runners/containers execute them and how to inspect actual test evidence.
+[Qualification: when, where and how](../../../../readmes/README-qualification-when-where-how.md) explains when Core tests run, which runners/containers execute them and how to inspect actual test evidence.
 
 Tests live in `FrenchExDev2.QuietCli.Core.Tests.PoSh`, with independent C# assertions and PowerShell scenarios. The SDK/runtime are pinned in `global.json` and the C# projects. Companion tests verify matching build inputs and binaries, including with `-SkipBuild`; supplied RIDs do not establish qualification of unexecuted platforms.
 
 From the monorepo root, `./scripts/Invoke-WorkspaceCi.ps1 -Suite Core -SkipBuild` runs Core with the shared visible monitor. `-Suite All` also validates the dependent Git companion. Focused `Import`, `Integration`, `RealStatus`, `Script`, Recall and other suites establish only their executed scope. Property, fuzzing and targeted mutation results remain distinct from platform/release qualification.
 
-See [tests and qualification](../../../../README-qualification.md) for local campaigns, profiling, R2R comparisons, GitHub workflows, exclusions and report locations; [Core performance evidence](PERFORMANCES.md) defines controlled workloads and measurements.
+See [tests and qualification](../../../../readmes/README-qualification.md) for local campaigns, profiling, R2R comparisons, GitHub workflows, exclusions and report locations; [Core performance evidence](PERFORMANCES.md) defines controlled workloads and measurements.
 
 ## Further reading
 
 | Topic | Guide |
 | --- | --- |
 | Product overview and first examples | [QuietCli](../../../../README.md) |
-| Callbacks, results and bounded delivery | [Streaming](../../../../README-streaming.md) |
-| Engine selection, process isolation and PTY | [Hosting](../../../../README-hosting.md) |
-| Measurements, allocation and retention | [Measurements and privacy](../../../../README-measurements.md), [allocation metrics](../../../../docs/README-allocation-and-delivery-metrics.md) |
+| Callbacks, results and bounded delivery | [Streaming](../../../../readmes/README-streaming.md) |
+| Engine selection, process isolation and PTY | [Hosting](../../../../readmes/README-hosting.md) |
+| Measurements, allocation and retention | [Measurements and privacy](../../../../readmes/README-measurements.md), [allocation metrics](../../../../docs/README-allocation-and-delivery-metrics.md) |
 | Compiled framing and PowerShell/C# responsibilities | [Hosting details](../../../../docs/README-performance-and-hosting.md), [component boundaries](../../../../docs/README-powershell-csharp-boundaries.md) |
 | All guides, CI references and dated evidence | [Documentation index](../../../../docs/README.md) |
 

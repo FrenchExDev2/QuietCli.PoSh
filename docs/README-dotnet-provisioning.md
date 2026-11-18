@@ -1,6 +1,6 @@
 # .NET provisioning and SDK pins
 
-The complete user guide is [README-dotnet-and-global-dot-json.md](../README-dotnet-and-global-dot-json.md).
+The complete user guide is [README-dotnet-and-global-dot-json.md](../readmes/README-dotnet-and-global-dot-json.md).
 
 ```powershell
 ./scripts/Install-DotNet.ps1 -Channel 11.0 -UpdateGlobalJson -ActivateSession -WhatIf

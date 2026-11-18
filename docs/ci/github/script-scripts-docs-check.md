@@ -1,6 +1,6 @@
 # scripts-docs-check.yml
 
-<!-- workflow-source-sha256: 1B56BA0F5096ED45208117A3F6EB7B36F93E73DC6C2CA04C7BF91B08FFD2C0E0 -->
+<!-- workflow-source-sha256: 43EBA931767F844ECA4073CA14ADDEB6D25C28578E9A3780E1D81DF57D9B5E40 -->
 
 ## Purpose
 
@@ -10,7 +10,7 @@ Shared automation-contract pipeline for Core test classifications, script docs, 
 
 ## Triggers
 
-Pull requests and pushes to `develop` use the same path filters. They cover `scripts/`, `test/scripts/`, the workflow guide and generated map, workflow and local action YAML, and the other documentation and automation inputs declared in the workflow. Manual dispatch is also available.
+Pull requests and pushes to `develop` use the same path filters. They cover `scripts/`, `test/scripts/`, the workflow guide, generated map and resource guide, workflow and local action YAML, and the other documentation and automation inputs declared in the workflow. Manual dispatch is also available.
 
 ## Checked scope
 

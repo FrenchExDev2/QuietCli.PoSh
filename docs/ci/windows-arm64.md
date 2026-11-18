@@ -43,7 +43,7 @@ On an actual prepared Windows ARM64 host, the local launcher can build and run a
 
 A Windows x64 workstation cannot establish this result. Investigate ARM64 failures through the individual hosted job's setup/build/test logs and artifacts. GitHub passes `-SkipTty` in every product row; terminal campaigns are excluded on both architectures. Run-profile tooling runs separately on Windows x64 and cannot replace an ARM64 row.
 
-See [qualification and evidence](../../README-qualification-when-where-how.md) and the [source-change landmarks](README.md#source-change-landmarks).
+See [qualification and evidence](../../readmes/README-qualification-when-where-how.md) and the [source-change landmarks](README.md#source-change-landmarks).
 
 <!-- credits:begin -->
 ## Credits

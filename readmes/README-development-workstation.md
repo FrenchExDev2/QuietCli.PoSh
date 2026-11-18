@@ -1,6 +1,6 @@
 # Development workstation
 
-[Development workflow](README-development.md) · [Tests and qualification](README-qualification.md) · [Qualification: when, where and how](README-qualification-when-where-how.md) · [Documentation index](docs/README.md)
+[Development workflow](README-development.md) · [Tests and qualification](README-qualification.md) · [Qualification: when, where and how](README-qualification-when-where-how.md) · [Documentation index](../docs/README.md)
 
 Install **PowerShell Core 7.6 or later first**, obtain this repository, then run
 `scripts/Install-DevelopmentWorkstation.ps1`. The installer prepares a complete workstation by default.
@@ -61,7 +61,7 @@ After activation, 0.8.0 supports listing with `list --jobs`, definition checks w
 execution with `run --runtime podman`, and interactive use with `tui --runtime podman`.
 It has no `plan`, general JSON output or MCP interface. Emulation runs commands and is not a dry run.
 The planned PowerShell helpers and their `-WhatIf` contract are documented in
-[scripts to create](docs/scripts/README-wrkflw-plan.md); they are not implemented commands.
+[scripts to create](../docs/scripts/README-wrkflw-plan.md); they are not implemented commands.
 Installing or checking wrkflw does not launch any workflow, container or remote run. Existing test
 monitors, CI images and release qualification remain required for actual execution.
 
@@ -197,10 +197,10 @@ see [Remote Development with Linux](https://code.visualstudio.com/docs/remote/li
 
 ### Vagrant (Windows/Debian/Ubuntu/Fedora only)
 
-The [Vagrant companion module](src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) is optional and installed
+The [Vagrant companion module](../src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) is optional and installed
 separately from the main workstation pipeline above, via
 `./scripts/Install-ModuleWorkstation.ps1 -Modules Vagrant` (see [that script's own
-documentation](scripts/Install-ModuleWorkstation.ps1) for `-CheckOnly`/`-Download`/`-WhatIf`). It targets
+documentation](../scripts/Install-ModuleWorkstation.ps1) for `-CheckOnly`/`-Download`/`-WhatIf`). It targets
 **development-workstation hosts only** -- Windows, Debian, Ubuntu and Fedora -- not Alpine/musl, which this
 repository only uses as a CI/container target (`EditorMode='Remote'`), never as a Vagrant host.
 
@@ -217,7 +217,7 @@ Install Vagrant itself from HashiCorp's own official channels:
 
 A container provider (Docker or Podman) is **not redocumented here**: it is the same `Containers` component
 (`podman`) already covered above and probed by `Get-DevelopmentInventory`. See the Vagrant module's own
-[fixture documentation](src/Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/fixture/README.md) for the Docker-provider
+[fixture documentation](../src/Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/fixture/README.md) for the Docker-provider
 choice and the Podman "sans plugin" (`DOCKER_HOST`) alternative.
 
 ### Clone once, then select the workstation
@@ -236,9 +236,9 @@ For an existing checkout, change to its root and skip the clone.
 
 ## Install the workstation
 
-Editor setup installs/updates the saved [Insiders extension inventory](build/vscode-extensions.json)
+Editor setup installs/updates the saved [Insiders extension inventory](../build/vscode-extensions.json)
 through `Sync-DevelopmentEditorExtensions.ps1 -Update`. See the [extension export and synchronization
-guide](docs/README-development-editor-extensions.md) for `-Export`, `-Update`, `-WhatIf`, release preferences
+guide](../docs/README-development-editor-extensions.md) for `-Export`, `-Update`, `-WhatIf`, release preferences
 and standalone Stable/Insiders examples. Use `-ExtensionManifest` to select another inventory.
 
 ```powershell
@@ -355,7 +355,7 @@ No installer restarts the machine; MSI code 3010 reports `RestartRequired`.
 Vagrant readiness also requires a working `docker info` client. For the documented Podman socket
 wiring, provide a Docker-compatible client and set `DOCKER_HOST`; installing Podman alone does not
 establish provider readiness. These scripts do not configure a container engine. See the
-[Vagrant fixture guide](src/Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/fixture/README.md) for provider setup
+[Vagrant fixture guide](../src/Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/fixture/README.md) for provider setup
 and manual multi-machine checks. `State` describes readiness; `Action` and `CachePath` separately
 record what download/install mode did. Real installation tests are manual; automated tests trap
 all download/install effects.
@@ -429,5 +429,5 @@ installations under LocalAppData or `~/.local/share` are never treated as dispos
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

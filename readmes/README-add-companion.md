@@ -18,7 +18,7 @@ From the QuietCli repository, supply the native tool's reviewed license referenc
 ./scripts/New-QuietCompanion.ps1 -Name Packer -LicenseCreditsPath ./packer-credits.md
 ~~~
 
-The script creates `companion/packer` from updated `develop`. Add `-WithCSharp` for a parser project targeting .NET 10 and 11. Use `-GitBranch packer-parser` to select a name or `-NoGitBranch` when already on a companion branch. The initial suite checks module loading and the package starts with publication disabled. See the [generator reference](docs/scripts/New-QuietCompanion.md).
+The script creates `companion/packer` from updated `develop`. Add `-WithCSharp` for a parser project targeting .NET 10 and 11. Use `-GitBranch packer-parser` to select a name or `-NoGitBranch` when already on a companion branch. The initial suite checks module loading and the package starts with publication disabled. See the [generator reference](../docs/scripts/New-QuietCompanion.md).
 
 ## 1. Define the business boundary
 
@@ -26,10 +26,10 @@ Choose the supported commands, argument forms and tool versions. Describe the bu
 returned to callers and how native failures, incomplete streams and unsupported forms are reported.
 A command inventory is separate from semantic support.
 
-Use [Vagrant](src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) as the pure PowerShell example and
-[Git](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md) for compiled parsers and a broader command catalogue.
+Use [Vagrant](../src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) as the pure PowerShell example and
+[Git](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md) for compiled parsers and a broader command catalogue.
 See [companion modules](README-modules.md), [streaming](README-streaming.md) and
-[PowerShell/C# boundaries](docs/README-powershell-csharp-boundaries.md).
+[PowerShell/C# boundaries](../docs/README-powershell-csharp-boundaries.md).
 
 ## 2. Add the product and test projects
 
@@ -50,7 +50,7 @@ progress contract. Imports must not rebuild, download dependencies or execute a 
 For a pure PowerShell companion, no compiled output is needed. For compiled code, add the project
 to the companion group and regenerate its solutions. Declare its `PrivateData.QuietCli.BuildProjects` outputs. The shared build and
 binary identity checks consume the same declarations:
-[compiled distributions](docs/README-workspace-projects.md#compiled-distributions).
+[compiled distributions](../docs/README-workspace-projects.md#compiled-distributions).
 
 Stay in the monorepo. Do not create a child repository or an independent module history.
 
@@ -81,11 +81,11 @@ qualification, and running separate product suites does not establish cross-prod
 ## 5. CI
 
 The generator registers the companion and generates its individual CI entry point from the catalogue. The shared
-[companions-ci.yml](.github/workflows/companions-ci.yml) entry calls
-[ci.yml](.github/workflows/ci.yml). [build/companions.yml](build/companions.yml) declares companions,
+[companions-ci.yml](../.github/workflows/companions-ci.yml) entry calls
+[ci.yml](../.github/workflows/ci.yml). [build/companions.yml](../build/companions.yml) declares companions,
 image requirements and independent test suites.
 
-The entry scripts delegate to [scripts/lib/CiCompanions.psm1](scripts/lib/CiCompanions.psm1).
+The entry scripts delegate to [scripts/lib/CiCompanions.psm1](../scripts/lib/CiCompanions.psm1).
 The library validates YAML, resolves dependencies and composes image plans. Existing image scripts
 retain hash, architecture, identity and publication guards.
 
@@ -167,7 +167,7 @@ suites:
 This is a **future registration example**. The delivered catalogue does not claim this integration
 suite already exists. Missing projects and unexported commands are rejected. Follow the existing
 runners' summary/progress contract consumed by
-[Invoke-TestWorker.ps1](scripts/Invoke-TestWorker.ps1).
+[Invoke-TestWorker.ps1](../scripts/Invoke-TestWorker.ps1).
 
 The test requirement belongs to the integration suite. Core's product dependencies remain unchanged.
 Two independently successful functional suites do not replace a joint integration test.
@@ -176,7 +176,7 @@ Two independently successful functional suites do not replace a joint integratio
 
 If future assertions need the real Vagrant executable, provide a native, verified layer and change
 its participation to `image: overlay`. The
-[module-specific CI container reference](docs/README-module-specific-ci-container.md)
+[module-specific CI container reference](../docs/README-module-specific-ci-container.md)
 owns the file layout, contract fields, stage syntax, parent composition and fingerprint rules.
 Follow that reference rather than duplicating image-building logic in a workflow.
 
@@ -226,7 +226,7 @@ printed by the monitored launcher.
 The same common entry sees owned product and test projects.
 Its plan selects the changed suites, their dependency smokes and the `image_suites` whose Linux
 images the develop `images` job warms first (see
-[the selective CI contract](docs/README-companion-layout-and-ci.md#linux-image-warm-up)).
+[the selective CI contract](../docs/README-companion-layout-and-ci.md#linux-image-warm-up)).
 
 The reusable/manual workflow also accepts a declared suite. Image preparation/publication retains
 its existing restrictions. A catalogue entry, a local checkpoint and an unexecuted platform plan
@@ -256,7 +256,7 @@ in the catalogue uses the existing workflow generator.
 
 Internal projects are discovered from their Git-tracked manifests; no workspace source lock is
 generated. Change dedicated external dependency locks only when their reviewed inputs change.
-See [source identity](docs/README-source-identity.md).
+See [source identity](../docs/README-source-identity.md).
 
 Run the required qualification for the delivered revision before claiming release readiness.
 A commit does not authorize pushing, and a push does not authorize publication.
@@ -264,5 +264,5 @@ A commit does not authorize pushing, and a push does not authorize publication.
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

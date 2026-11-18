@@ -130,7 +130,7 @@ and direct calls keep the per-suite producer, which never publishes from a PR. I
 group includes the suite, so parallel suites never evict one another.
 
 Image participation per companion is `none` or `overlay` (see
-[Add a companion](../README-add-companion.md)). Test files under `test/scripts/` select the
+[Add a companion](../readmes/README-add-companion.md)). Test files under `test/scripts/` select the
 tooling workflow only.
 
 The final QuietCli required CI check always runs, including documentation-only PRs.

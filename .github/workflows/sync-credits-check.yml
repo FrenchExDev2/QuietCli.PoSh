@@ -1,7 +1,7 @@
 name: QuietCli2 Credits sync check
 
 # Report-only: verifies that CREDITS.md still matches every module's LICENSE_CREDITS.md and that
-# every docs/*.md and root README*.md file still carries its mandatory credits footer. Never
+# every covered Markdown document still carries its mandatory credits footer. Never
 # writes anything; see docs/README-credits-and-syncing.md for the why/how and sync-credits-apply.yml
 # for the companion workflow that writes the fix.
 on:
@@ -10,10 +10,12 @@ on:
       - 'docs/**'
       - 'README.md'
       - 'README-*.md'
+      - 'readmes/README-*.md'
       - '**/LICENSE_CREDITS.md'
       - 'CREDITS.md'
       - 'scripts/Sync-Credits.ps1'
       - 'scripts/Sync-DocsCredits.ps1'
+      - 'scripts/lib/Sync-DocsCredits.psm1'
       - 'scripts/lib/WorkspaceProjects.psm1'
       - '.github/workflows/sync-credits-check.yml'
       - '.github/workflows/sync-credits-apply.yml'
@@ -37,6 +39,6 @@ jobs:
       - name: Check module credits aggregation (CREDITS.md)
         shell: pwsh
         run: ./scripts/Sync-Credits.ps1
-      - name: Check docs/*.md and root README*.md credits footers
+      - name: Check docs and README credits footers
         shell: pwsh
         run: ./scripts/Sync-DocsCredits.ps1

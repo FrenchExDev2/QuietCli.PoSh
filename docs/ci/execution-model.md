@@ -1,6 +1,6 @@
 # CI execution model and local boundaries
 
-[CI map and source dates](README.md) · [Qualification guide](../../README-qualification-when-where-how.md) · [Workflow contracts](github/README.md)
+[CI map and source dates](README.md) · [Qualification guide](../../readmes/README-qualification-when-where-how.md) · [Workflow contracts](github/README.md)
 
 ## Execution paths
 

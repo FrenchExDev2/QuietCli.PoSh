@@ -1,6 +1,6 @@
 # sync-credits-check.yml
 
-<!-- workflow-source-sha256: BE4D482AB222DEC4D6378B1721480BFAC78827A69B052A004512017E192C928B -->
+<!-- workflow-source-sha256: 3C01691F0C36EE381E88F195AF62C84B6FA56EAA75207F35FBF78927D7781454 -->
 
 ## Purpose
 
@@ -8,7 +8,7 @@ Read-only validation of aggregate credits and mandatory documentation footers.
 
 ## Triggers
 
-PR/develop path filters cover documentation, READMEs, module license credits, CREDITS.md, the relevant generator/project scripts and these credits workflows; manual dispatch is supported.
+PR/develop path filters cover documentation, root READMEs, `readmes/README-*.md` guides, module license credits, CREDITS.md, the relevant generator/project scripts and these credits workflows. Manual dispatch is available.
 
 <!-- workflow-generated:begin -->
 

@@ -8,7 +8,7 @@ Source file: [`lib/DotNetReadiness.psm1`](../../../scripts/lib/DotNetReadiness.p
 
 Share release selection, manifest checks and typed native inventories for .NET tooling.
 Exports Get-DotNetReadiness, Get-DotNetSdkRelease, Get-DotNetRuntimeRelease, Get-DotNetInstallation and
-Invoke-DotNetContainerPull. [User guide](../../../README-dotnet-and-global-dot-json.md).
+Invoke-DotNetContainerPull. [User guide](../../../readmes/README-dotnet-and-global-dot-json.md).
 
 ## Usage and parameters
 

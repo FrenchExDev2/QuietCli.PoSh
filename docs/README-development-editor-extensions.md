@@ -1,6 +1,6 @@
 # Development editor extensions
 
-[Workstation setup](../README-development-workstation.md) · [Documentation index](README.md)
+[Workstation setup](../readmes/README-development-workstation.md) · [Documentation index](README.md)
 
 The repository snapshot [build/vscode-extensions.json](../build/vscode-extensions.json) contains the
 37 user extensions exported from VS Code Insiders, including observed versions and six prerelease

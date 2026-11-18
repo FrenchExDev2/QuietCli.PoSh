@@ -88,7 +88,7 @@ A new script, a renamed script, or a script moved to a different `scripts/` subd
 
 ### [`scripts-docs-check.yml`](../.github/workflows/scripts-docs-check.yml)
 
-Uses `permissions: contents: read`. The shared registry runs `Sync-ScriptsReadme.ps1` without `-Apply` and checks that the mirrored docs exist, use LF and have current source links, and that the index is current. A separate job generates the workflow diagrams in its checkout, uploads them as an artifact and compares them with the tracked map. The workflow runs on path-filtered pull requests and pushes to `develop`, including changes to `scripts/**` and `test/scripts/**`. It also supports manual dispatch. [GitHub workflows](../README-github-workflows.md)
+Uses `permissions: contents: read`. The shared registry runs `Sync-ScriptsReadme.ps1` without `-Apply` and checks that the mirrored docs exist, use LF and have current source links, and that the index is current. A separate job generates the workflow diagrams in its checkout, uploads them as an artifact and compares them with the tracked map. The workflow runs on path-filtered pull requests and pushes to `develop`, including changes to `scripts/**` and `test/scripts/**`. It also supports manual dispatch. [GitHub workflows](../readmes/README-github-workflows.md)
 
 ### [`scripts-docs-apply.yml`](../.github/workflows/scripts-docs-apply.yml)
 

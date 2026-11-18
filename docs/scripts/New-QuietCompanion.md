@@ -15,7 +15,7 @@ Provide a UTF-8 Markdown file with a level-two heading and links to the native t
 
 The script creates `companion/packer` from updated `origin/develop` via [Start-QuietWorkBranch](Start-QuietWorkBranch.md). Use `-GitBranch packer-parser` or `-GitBranch companion/packer-parser` to choose a different branch. For an active `companion/*` branch, use `-NoGitBranch` to skip branch creation. The two options belong to separate parameter sets.
 
-Use `-WithCSharp` to declare a parser project for both supported .NET targets. The generated suite checks local module loading. The generated README records that scope. See the [companion guide](../../README-add-companion.md) for adding handlers and tests.
+Use `-WithCSharp` to declare a parser project for both supported .NET targets. The generated suite checks local module loading. The generated README records that scope. See the [companion guide](../../readmes/README-add-companion.md) for adding handlers and tests.
 
 ## Effects and recovery
 

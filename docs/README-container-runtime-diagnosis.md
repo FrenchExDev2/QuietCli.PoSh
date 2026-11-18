@@ -21,8 +21,8 @@ You need:
 - Network access from the build environment to fetch base images, locked tool archives and distribution
   packages, plus disk space for image layers and build caches. A warm cache is optional.
 
-For workstation setup, see [the installation guide](../README-development-workstation.md), especially
-[Windows WSL2 and Podman](../README-development-workstation.md#windows-wsl2-and-podman).
+For workstation setup, see [the installation guide](../readmes/README-development-workstation.md), especially
+[Windows WSL2 and Podman](../readmes/README-development-workstation.md#windows-wsl2-and-podman).
 The image build downloads its SDK inside the build stages; the diagnostic does not require importing
 or compiling the QuietCli engine on the host.
 
@@ -283,7 +283,7 @@ For contributors with the engine and companion fixture already built, the focuse
 ./scripts/Invoke-WorkspaceCi.ps1 -Suite Core -Case '*container runtime diagnosis*' -SkipBuild
 ```
 
-If the fixture is not built, follow [workspace build instructions](../README-qualification.md#local-suites)
+If the fixture is not built, follow [workspace build instructions](../readmes/README-qualification.md#local-suites)
 first. That test preparation is separate from building the container image. The focused suite includes
 independent examples, generated architecture/RID cases, malformed report inputs, single-element-array
 regressions and targeted mutants. Its filtered result is partial and does not replace release qualification.

@@ -8,19 +8,19 @@
 
 A C# engine starts the native process and streams its output once, through bounded buffers. Your own PowerShell callbacks, which stay in your process, turn that stream into business data. You then inspect the data directly or deliver a bounded JSON/YAML view of it.
 
-Start here: [Gallery installation](#from-powershell-gallery) · [.NET SDK and global.json](README-dotnet-and-global-dot-json.md) · [Local checkout, build and first command](#from-a-source-checkout) · [Git companion](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md#quick-start).
+Start here: [Gallery installation](#from-powershell-gallery) · [.NET SDK and global.json](readmes/README-dotnet-and-global-dot-json.md) · [Local checkout, build and first command](#from-a-source-checkout) · [Git companion](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md#quick-start).
 
 Browse the [documentation index](docs/README.md) for usage guides, technical contracts, agent instructions, CI, profiling and dated audit evidence.
 
-Follow triggers, jobs and reusable calls in the generated Mermaid map. [GitHub workflows](README-github-workflows.md)
+Follow triggers, jobs and reusable calls in the generated Mermaid map. [GitHub workflows](readmes/README-github-workflows.md)
 
-Read [Qualification: when, where and how](README-qualification-when-where-how.md) for PR triggers, Windows runners, Linux containers, executed test suites, local commands and evidence limits.
+Read [Qualification: when, where and how](readmes/README-qualification-when-where-how.md) for PR triggers, Windows runners, Linux containers, executed test suites, local commands and evidence limits.
 
 ## Resources
 
-[Resource preparation and integrity](README-resources.md) explains pinned payloads, on-demand automation preparation and optional GitHub caching. The [generated resource inventory](docs/resources/README.md) maps declared files to source consumers. Resource documentation and the [complete script preview review](docs/scripts/preview-support.md) are checked by the shared workspace/commit pipeline.
+[Resource preparation and integrity](readmes/README-resources.md) explains pinned payloads, on-demand automation preparation and optional GitHub caching. The [generated resource inventory](docs/resources/README.md) maps declared files to source consumers. Resource documentation and the [complete script preview review](docs/scripts/preview-support.md) are checked by the shared workspace/commit pipeline.
 
-> **Status: preview (`0.2.0-preview`).** The engine is under active development and its API may change. The Git companion module is a work in progress and is presented here as an example only. Nothing in this repository is a release qualification unless a report says so; see [Tests and qualification](README-qualification.md).
+> **Status: preview (`0.2.0-preview`).** The engine is under active development and its API may change. The Git companion module is a work in progress and is presented here as an example only. Nothing in this repository is a release qualification unless a report says so; see [Tests and qualification](readmes/README-qualification.md).
 
 ## How projection works
 
@@ -36,7 +36,7 @@ Events are transient by default. Explicit `-CollectEvents` retains them in order
 lets `-Complete` read them, and adds a snapshot under the finished result's top-level `Events` field,
 alongside `Data`. Without this switch, the runtime list stays empty and the result omits `Events`.
 `-UI` exposes a separate live presentation surface. The
-[streaming guide](README-streaming.md) explains these contracts, and the
+[streaming guide](readmes/README-streaming.md) explains these contracts, and the
 [Vagrant companion](src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) uses both for per-machine progress.
 
 ```powershell
@@ -73,7 +73,7 @@ QuietCli is meant to grow along one path, each step adding reuse without discard
 3. **Module** — a companion module (like the Git module) with registered handlers, tests, and a documented coverage/limits matrix.
 4. **Ecosystem** — a family of modules sharing conventions, scaffolding and qualification tooling.
 
-Each step up this path can opt into a stricter dev pipeline style — Minimal, Standard (basic tests), or Hardened (property, fuzz and mutation testing) — so a one-off script stays light while a published module can be qualified to the same rigor as QuietCli's own handlers. See [Tests and qualification](README-qualification.md) for what "qualified" means today.
+Each step up this path can opt into a stricter dev pipeline style — Minimal, Standard (basic tests), or Hardened (property, fuzz and mutation testing) — so a one-off script stays light while a published module can be qualified to the same rigor as QuietCli's own handlers. See [Tests and qualification](readmes/README-qualification.md) for what "qualified" means today.
 
 ## What QuietCli gives you
 
@@ -93,14 +93,14 @@ Each step up this path can opt into a stricter dev pipeline style — Minimal, S
 | PowerShell | Core 7.6 or later |
 | Operating systems | Windows and Linux (glibc and musl) |
 | Architectures | x64 and ARM64 |
-| Hosting | Automatic: the integrated build matching the PowerShell CLR (.NET 10 or .NET 11+). The isolated `Process` host needs the pinned .NET 11 runtime. See [Hosting](README-hosting.md) |
+| Hosting | Automatic: the integrated build matching the PowerShell CLR (.NET 10 or .NET 11+). The isolated `Process` host needs the pinned .NET 11 runtime. See [Hosting](readmes/README-hosting.md) |
 | Native tools | Installed separately; QuietCli never installs the executables you call |
 
-Configured platforms are not the same as qualified platforms. See [Tests and qualification](README-qualification.md) for what has actually been executed.
+Configured platforms are not the same as qualified platforms. See [Tests and qualification](readmes/README-qualification.md) for what has actually been executed.
 
 ## .NET SDK and global.json
 
-The [.NET SDK and global.json guide](README-dotnet-and-global-dot-json.md) explains release and image availability checks, verified portable SDK installation with its runtimes, optional Docker/Podman image downloads, and SDK pin updates with backups. All operations support standard `-WhatIf`/`-Confirm`.
+The [.NET SDK and global.json guide](readmes/README-dotnet-and-global-dot-json.md) explains release and image availability checks, verified portable SDK installation with its runtimes, optional Docker/Podman image downloads, and SDK pin updates with backups. All operations support standard `-WhatIf`/`-Confirm`.
 
 From this checkout:
 
@@ -134,7 +134,7 @@ is the fallback. See [local/GitHub environment initialization](docs/ci/environme
 
 Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100`). Build before importing the local modules. Rebuilds stage new distributions before replacing files, including assemblies already loaded by PowerShell. Existing sessions keep their old assemblies; restart them to use the new build. Locked previous files are retained with a warning until their owning sessions close; see [build publication](docs/scripts/lib/WorkspacePublication.md).
 
-For SDK/runtimes installation, container image downloads and SDK pin updates, see [the .NET and global.json guide](README-dotnet-and-global-dot-json.md).
+For SDK/runtimes installation, container image downloads and SDK pin updates, see [the .NET and global.json guide](readmes/README-dotnet-and-global-dot-json.md).
 
 **1. Check out and build.**
 
@@ -254,7 +254,7 @@ Completeness: {Source: true, Analysis: true}
 
 The raw native output is a version string. The completed business object has one `SdkVersion` property; the YAML envelope adds execution outcome and completeness. Reject an incomplete result before using `Data`. QuietCli options precede the executable, and native arguments follow verbatim.
 
-See [streaming, callbacks and results](README-streaming.md) for callback rules and [a non-Git example](docs/agents/non-git-example.md) for a larger parser.
+See [streaming, callbacks and results](readmes/README-streaming.md) for callback rules and [a non-Git example](docs/agents/non-git-example.md) for a larger parser.
 
 ## Bounded delivery, measured
 
@@ -265,7 +265,7 @@ The point of a delivery budget is that the size of what you hand to a human or a
 | 40 modified and 20 untracked files | 1,883 bytes | 2,973 bytes |
 | 1,500 modified files | 33,640 bytes | 2,795 bytes (1,480 of 1,500 entries reported as omitted) |
 
-On a small repository the structured JSON is larger than the raw text, because it carries typed fields. On a large one it stays bounded and states explicitly what it left out (`Truncation.Applied`). A caller-defined projection can be much smaller still, as in the counters example below. These are byte counts, not model tokens or cost: byte reduction alone establishes neither context-window use nor financial savings. See [Measurements and privacy](README-measurements.md) and the [comparison with RTK](QUIET_VS_RTK_MEASURES.md) for definitions and limits.
+On a small repository the structured JSON is larger than the raw text, because it carries typed fields. On a large one it stays bounded and states explicitly what it left out (`Truncation.Applied`). A caller-defined projection can be much smaller still, as in the counters example below. These are byte counts, not model tokens or cost: byte reduction alone establishes neither context-window use nor financial savings. See [Measurements and privacy](readmes/README-measurements.md) and the [comparison with RTK](QUIET_VS_RTK_MEASURES.md) for definitions and limits.
 
 ## Use QuietCli with an AI agent
 
@@ -280,7 +280,7 @@ Add-QuietAgentInstruction -Path $project -Claude -WhatIf    # Claude Code: CLAUD
 Add-QuietAgentInstruction -Path $project -Agents -WhatIf    # Codex and AGENTS.md readers
 ```
 
-Commands for each agent, the skill form, options and verification steps are in [QuietCli with AI agents](README-agents.md).
+Commands for each agent, the skill form, options and verification steps are in [QuietCli with AI agents](readmes/README-agents.md).
 
 ## Example: a companion module (Git, under development)
 
@@ -360,7 +360,7 @@ Data: {Branch: develop, Staged: 0, Unstaged: 1, Untracked: 1}
 
 The handler builds the complete local status object; `$statusView` selects the delivered fields without changing `$result.Data`. Counts depend on the selected repository.
 
-The module's handler goes further than this sketch: it reads NUL-delimited porcelain v2 and reports the branch, HEAD, initial or detached state, divergence from local references, entries and counters, and it keeps the short forms and pathspec filters. QuietCli options precede `git`; Git arguments follow it. To build a module for another executable, see [Companion modules](README-modules.md).
+The module's handler goes further than this sketch: it reads NUL-delimited porcelain v2 and reports the branch, HEAD, initial or detached state, divergence from local references, entries and counters, and it keeps the short forms and pathspec filters. QuietCli options precede `git`; Git arguments follow it. To build a module for another executable, see [Companion modules](readmes/README-modules.md).
 
 ## Go deeper
 
@@ -369,18 +369,18 @@ The [documentation index](docs/README.md) groups all guides and technical refere
 | Topic | Read |
 | --- | --- |
 | Package installation, runtime and platform requirements | [PowerShell Gallery installation](docs/README-PSGallery.md) |
-| Outcome, completeness, callbacks, reusable scripts | [Streaming, callbacks and results](README-streaming.md) |
-| Capturing native evidence and analyzing it later | [Recall](README-recall.md) |
-| Integrated and isolated engine, pipes and PTY, platforms | [Hosting and native transports](README-hosting.md) |
-| YAML configuration and the single environment override | [Configuration](README-configuration.md) |
-| What is measured, stored and never stored | [Measurements and privacy](README-measurements.md) |
-| Using QuietCli with Codex, Claude Code or another agent | [QuietCli with AI agents](README-agents.md) |
+| Outcome, completeness, callbacks, reusable scripts | [Streaming, callbacks and results](readmes/README-streaming.md) |
+| Capturing native evidence and analyzing it later | [Recall](readmes/README-recall.md) |
+| Integrated and isolated engine, pipes and PTY, platforms | [Hosting and native transports](readmes/README-hosting.md) |
+| YAML configuration and the single environment override | [Configuration](readmes/README-configuration.md) |
+| What is measured, stored and never stored | [Measurements and privacy](readmes/README-measurements.md) |
+| Using QuietCli with Codex, Claude Code or another agent | [QuietCli with AI agents](readmes/README-agents.md) |
 | Production agent rules, examples and troubleshooting | [Agent documentation index](docs/agents/README.md) |
-| Registered handlers and writing a module | [Companion modules](README-modules.md) |
-| Working from a source checkout, building | [Development](README-development.md) |
-| Property, fuzzing and mutation campaigns, CI matrix | [Tests and qualification](README-qualification.md) |
+| Registered handlers and writing a module | [Companion modules](readmes/README-modules.md) |
+| Working from a source checkout, building | [Development](readmes/README-development.md) |
+| Property, fuzzing and mutation campaigns, CI matrix | [Tests and qualification](readmes/README-qualification.md) |
 | Performance evidence and reproducible profiling campaigns | [Core performance evidence](src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md), [Run profiles](docs/README-run-profiles.md) |
-| Packaging, publication gates, repository layout | [Repository and distribution](README-distribution.md) |
+| Packaging, publication gates, repository layout | [Repository and distribution](readmes/README-distribution.md) |
 | Preview identities, artifact preparation and publication | [Preview versions and GitHub publication](docs/README-preview-releases.md) |
 | Repository rules for contributors and agents | [AGENTS.md](AGENTS.md) |
 

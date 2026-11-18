@@ -8,6 +8,8 @@ Source file: [`Sync-DocsCredits.ps1`](../../scripts/Sync-DocsCredits.ps1)
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Sync-DocsCredits.psm1](lib/Sync-DocsCredits.md). See that library for the full operation, dependencies, examples, effects and validation limits.
 
+The scan includes docs/**/*.md, root README*.md, and readmes/README-*.md.
+
 ## Dependencies and effects
 
 Imports its local library using `-DisableNameChecking -ErrorAction Stop` and invokes `Invoke-QuietScriptSyncDocsCredits`. The library retains the original operation guards and output contract. Import alone does not run the operation.
@@ -15,7 +17,7 @@ Imports its local library using `-DisableNameChecking -ErrorAction Stop` and inv
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Checks or writes the mandatory CREDITS.md credits paragraph at the end of every docs/**/*.md and root README*.md file.
+Purpose: Checks or writes the mandatory CREDITS.md paragraph in docs, root READMEs and readmes/ guides.
 
 Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 

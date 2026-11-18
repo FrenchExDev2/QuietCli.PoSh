@@ -32,7 +32,7 @@ the native binary. Going native would not remove this PowerShell-side glue, only
 (see [README-configuration.md](README-configuration.md) and the root `AGENTS.md`: "Never add a
 business-object serialization step to the direct read path"). That guarantee depends on `Core`
 and its caller sharing one `EngineSession` inside the same CLR — the `InProcess` hosting mode
-described in [README-hosting.md](../README-hosting.md).
+described in [README-hosting.md](../readmes/README-hosting.md).
 
 A standalone native `quiet.exe` is always a separate process from the caller's `pwsh`. Every
 result would have to cross a process boundary as text (JSON/YAML), which is precisely the
@@ -53,7 +53,7 @@ app, not an AOT one. There is no supported way to host a PowerShell binary modul
 
 The engine already ships ReadyToRun builds selected by `Auto` hosting: `lib/inprocess` (net10.0,
 for CLR 10) and `lib/engine` (net11.0, for CLR 11+), as documented in the root `AGENTS.md` and
-[README-hosting.md](../README-hosting.md). R2R pre-JITs the module's own IL to native code without
+[README-hosting.md](../readmes/README-hosting.md). R2R pre-JITs the module's own IL to native code without
 giving up reflection or dynamic binding, so it is compatible with PowerShell's binary-module model
 and is the lever actually available for reducing import/first-call latency — see
 [README-readytorun_profiling.md](README-readytorun_profiling.md) for comparison methodology.
