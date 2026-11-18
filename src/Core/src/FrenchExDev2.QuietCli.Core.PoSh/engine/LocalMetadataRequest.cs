@@ -148,10 +148,11 @@ internal static class ClosedRecord
 /// <param name="InputPath">Optional input file.</param>
 /// <param name="ReadBlockBytes">Native block size.</param>
 /// <param name="DrainTimeoutSeconds">Drain deadline.</param>
-internal sealed record StartOptions(string InvocationId, string FilePath, string[] ArgumentList, string WorkingDirectory, IDictionary Environment, string Transport, int Columns, int Rows, double TimeoutSeconds, int[] SuccessExitCodes, bool KeepInputOpen, string? InputPath = null, int? ReadBlockBytes = null, double DrainTimeoutSeconds = 30)
+/// <param name="PrepareMeasurements">Optional background preparation; omitted controls never create telemetry storage.</param>
+internal sealed record StartOptions(string InvocationId, string FilePath, string[] ArgumentList, string WorkingDirectory, IDictionary Environment, string Transport, int Columns, int Rows, double TimeoutSeconds, int[] SuccessExitCodes, bool KeepInputOpen, string? InputPath = null, int? ReadBlockBytes = null, double DrainTimeoutSeconds = 30, bool PrepareMeasurements = false)
 {
     /// <summary>Applies the same validation as the isolated JSON transport before any process exists.</summary>
-    internal InvocationRequest ToInvocation() => new InvocationRequest(InvocationId, FilePath, ArgumentList, WorkingDirectory, Environment, Transport, Columns, Rows, TimeoutSeconds, DrainTimeoutSeconds, ReadBlockBytes ?? Protocol.BlockSize, SuccessExitCodes, KeepInputOpen, InputPath).Validated();
+    internal InvocationRequest ToInvocation() => new InvocationRequest(InvocationId, FilePath, ArgumentList, WorkingDirectory, Environment, Transport, Columns, Rows, TimeoutSeconds, DrainTimeoutSeconds, ReadBlockBytes ?? Protocol.BlockSize, SuccessExitCodes, KeepInputOpen, InputPath, PrepareMeasurements).Validated();
 }
 
 /// <summary>Closed aggregate filters, independent of JSON request lifetime.</summary>

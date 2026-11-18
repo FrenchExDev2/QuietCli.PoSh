@@ -97,6 +97,7 @@ internal sealed class EngineSession : IAsyncDisposable
         string bridge = request.Transport == "Pty" && !OperatingSystem.IsWindows() ? await terminalBridge.GetAsync(moduleRoot) : "";
         var invocation = await Invocation.StartAsync(request, new ProcessChannelFactory(bridge));
         invocations.Add(request.Id, invocation);
+        if (request.PrepareMeasurements) store.BeginPreparation();
         return new { invocation.ProcessId };
     }
 

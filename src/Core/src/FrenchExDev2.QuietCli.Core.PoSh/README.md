@@ -275,6 +275,8 @@ Native token counts remain unknown. Exact tokenization applies to the final deli
 
 SQLite stores only metadata and counters. `telemetry.database` selects the database; `telemetry.enabled: false` disables writes. Storage errors remain separate from the business result.
 
+When telemetry is enabled, native startup queues background preparation of a session-owned writer connection and its reusable SQL statements. Saves still complete before the result returns, so measurement reports see committed writes immediately. The bounded worker drains accepted operations and closes its statements and connection at engine shutdown. Import and engine inspection create no database; disabled telemetry performs no preparation. Initialization failures are reported as storage errors on saves without retrying the native command or reopening a failed writer automatically. Active initialization, saves and explicit scrubs targeting the same full database path are coordinated asynchronously within one process. Idle writers retain no coordination lease; different database paths remain independent. Other processes still use SQLite locking and its existing two-second busy timeout. Journal mode and commit durability are unchanged.
+
 ## Limits, integrity and privacy
 
 `-DrainTimeoutSeconds` bounds the wait for EOF after the process exits (30 s by default). A drain cutoff makes the source incomplete, even if the main process has already finished. `engine.ipcTimeoutSeconds` bounds each exchange with the engine (30 s by default, between 0.05 and 300 s). A transport failure closes the owned engine and preserves the unknown effect of an unconfirmed startup. A new independent root call may start a new engine; the interrupted call is never repeated.

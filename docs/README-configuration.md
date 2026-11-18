@@ -86,7 +86,7 @@ SQLite keeps one `quiet2_events` delivery row, preserving its initial tokenizer 
 
 `Get-QuietCliGain` reports `DeliveredTokensByProfile`: measured tokens, measured/unmeasured deliveries and completeness for each encoding/version. These totals never mix encodings or treat missing measurements as zero. `NativeTokens` remains unknown: this feature does not tokenize native streams. The gain report's own JSON/YAML representations remain excluded from delivery tracking.
 
-Existing databases remain readable without rewriting their events. The token table is created transactionally on a delivery write, not a read. Historical deliveries are neither retokenized nor retroactively deduplicated; their missing measurements remain explicit coverage gaps. Conversion records a unique produced representation, not proof that a person or model received it.
+Existing databases remain readable without rewriting their events. With telemetry enabled, a successfully started native invocation queues background preparation of the writer connection, schema and reusable statements. The token table is created during that preparation or the first write, never by an ordinary read. Import, engine inspection and telemetry-disabled calls do not prepare a database. Historical deliveries are neither retokenized nor retroactively deduplicated; their missing measurements remain explicit coverage gaps. Conversion records a unique produced representation, not proof that a person or model received it.
 
 ## Focused development validation
 
