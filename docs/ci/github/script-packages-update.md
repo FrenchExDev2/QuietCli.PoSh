@@ -29,7 +29,7 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| apply | runner ubuntu-latest | report | ${{ inputs.apply }} | [`./scripts/Update-Packages.ps1`](../../scripts/Update-Packages.md) |
+| apply | runner ubuntu-latest | report | <code>&#36;{{ inputs.apply }}</code> | [`./scripts/Update-Packages.ps1`](../../scripts/Update-Packages.md) |
 | report | runner ubuntu-latest |  | default success condition | [`./scripts/Update-Packages.ps1`](../../scripts/Update-Packages.md) |
 
 <!-- workflow-generated:end -->

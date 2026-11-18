@@ -14,7 +14,7 @@
         @{
             Name = 'WorkflowDocumentation'
             Module = 'lib/WorkflowDocumentation.psm1'
-            Functions = @('Get-QuietWorkflowScriptPaths')
+            Functions = @('Get-QuietWorkflowScriptPaths','Format-QuietWorkflowLiteral')
             UnitTestFiles = @('unit/lib/GitHubWorkflowMap.Tests.ps1')
             Break = 80
         }

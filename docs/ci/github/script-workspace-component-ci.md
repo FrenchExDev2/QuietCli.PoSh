@@ -43,8 +43,8 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| component | runner ${{ inputs.runner }} | validate | inputs.suite != 'Tooling' &#124;&#124; inputs.qualification_mode != 'full' | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Get-CompanionBuildKey.ps1`](../../scripts/Get-CompanionBuildKey.md), [`./scripts/Invoke-ComponentCheck.ps1`](../../scripts/Invoke-ComponentCheck.md) |
-| tooling | reuses ./.github/workflows/tooling-ci.yml | validate | inputs.suite == 'Tooling' && inputs.qualification_mode == 'full' |  |
+| component | <code>runner &#36;{{ inputs.runner }}</code> | validate | <code>inputs.suite != 'Tooling' &#124;&#124; inputs.qualification&#95;mode != 'full'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Get-CompanionBuildKey.ps1`](../../scripts/Get-CompanionBuildKey.md), [`./scripts/Invoke-ComponentCheck.ps1`](../../scripts/Invoke-ComponentCheck.md) |
+| tooling | reuses ./.github/workflows/tooling-ci.yml | validate | <code>inputs.suite == 'Tooling' &#38;&#38; inputs.qualification&#95;mode == 'full'</code> |  |
 | validate | runner ubuntu-latest |  | default success condition | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Invoke-ComponentCheck.ps1`](../../scripts/Invoke-ComponentCheck.md) |
 
 <!-- workflow-generated:end -->

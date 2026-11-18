@@ -31,7 +31,7 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| preview | reuses ./.github/workflows/publish-psgallery.yml |  | ${{ github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' }} |  |
+| preview | reuses ./.github/workflows/publish-psgallery.yml |  | <code>&#36;{{ github.repository == 'FrenchExDev2/QuietCli.PoSh' &#38;&#38; github.ref == 'refs/heads/develop' }}</code> |  |
 
 <!-- workflow-generated:end -->
 

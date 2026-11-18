@@ -38,9 +38,9 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| github-release | runner ubuntu-latest | plan, release | needs.release.result == 'success' && needs.plan.outputs.is_leader == 'true' | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Publish-QuietGitHubRelease.ps1`](../../scripts/Publish-QuietGitHubRelease.md) |
-| plan | runner ubuntu-latest |  | github.repository == 'FrenchExDev2/QuietCli.PoSh' | [`./scripts/Get-QuietReleasePlan.ps1`](../../scripts/Get-QuietReleasePlan.md) |
-| release | reuses ./.github/workflows/publish-psgallery.yml | plan | needs.plan.outputs.is_leader == 'true' |  |
+| github-release | runner ubuntu-latest | plan, release | <code>needs.release.result == 'success' &#38;&#38; needs.plan.outputs.is&#95;leader == 'true'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Publish-QuietGitHubRelease.ps1`](../../scripts/Publish-QuietGitHubRelease.md) |
+| plan | runner ubuntu-latest |  | <code>github.repository == 'FrenchExDev2/QuietCli.PoSh'</code> | [`./scripts/Get-QuietReleasePlan.ps1`](../../scripts/Get-QuietReleasePlan.md) |
+| release | reuses ./.github/workflows/publish-psgallery.yml | plan | <code>needs.plan.outputs.is&#95;leader == 'true'</code> |  |
 
 <!-- workflow-generated:end -->
 

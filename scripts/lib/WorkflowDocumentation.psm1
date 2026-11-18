@@ -1,4 +1,20 @@
 #requires -Version 7.6
+function Format-QuietWorkflowLiteral {
+    <#
+    .SYNOPSIS
+    Renders a literal workflow value as inline code in Markdown prose or a table cell.
+    .PARAMETER Text
+    Condition, matrix, runner declaration or other literal workflow value.
+    #>
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return '' }
+    $line = $Text -replace '\r\n?|\n',' '
+    # Encode Markdown punctuation and the math delimiter before the viewer parses the document.
+    $escaped = [regex]::Replace($line,'[&<>$|`\[\]*_~\\:@]', { param($character) '&#'+[int][char]$character.Value+';' })
+    '<code>'+$escaped+'</code>'
+}
+
 function Get-QuietWorkflowYamlParser {
     <#
     .SYNOPSIS
@@ -108,8 +124,10 @@ function Get-QuietWorkflowDocumentation {
                     '[`./'+$scriptPath+'`](../../'+(($docPath.Substring(5).Split('/') | ForEach-Object {[uri]::EscapeDataString($_)}) -join '/')+')'
                 }else{'`./'+$scriptPath+'`'}
             })
-            $cells=@($name,$execution,(@($job['needs']) -join ', '),$(if($job['if']){$job['if']}else{'default success condition'}),($scripts -join ', '))
-            $cells=@($cells|ForEach-Object {([string]$_).Replace('|','&#124;').Replace("`r",'').Replace("`n",'<br>')})
+            if($execution.Contains('${{')){$execution=Format-QuietWorkflowLiteral $execution}
+            else{$execution=$execution.Replace('|','&#124;').Replace("`r",'').Replace("`n",'<br>')}
+            $condition=if($job['if']){Format-QuietWorkflowLiteral $job['if']}else{'default success condition'}
+            $cells=@($name,$execution,(@($job['needs']) -join ', '),$condition,($scripts -join ', '))
             $lines.Add('| '+($cells -join ' | ')+' |')
         }
         $lines.Add('')
@@ -138,4 +156,4 @@ function Get-QuietWorkflowReadme {
     return (($lines -join "`n")+"`n")
 }
 
-Export-ModuleMember -Function 'Get-QuietWorkflowDocumentation','Get-QuietWorkflowReadme','Get-QuietWorkflowYamlParser','Get-QuietWorkflowScriptPaths'
+Export-ModuleMember -Function 'Get-QuietWorkflowDocumentation','Get-QuietWorkflowReadme','Get-QuietWorkflowYamlParser','Get-QuietWorkflowScriptPaths','Format-QuietWorkflowLiteral'

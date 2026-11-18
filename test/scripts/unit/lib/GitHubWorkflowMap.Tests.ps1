@@ -42,3 +42,19 @@ Describe 'Get-QuietWorkflowScriptPaths' {
     }
 
 }
+
+Describe 'Format-QuietWorkflowLiteral' {
+    It 'encodes math and Markdown delimiters before parsing while preserving literal display' {
+        $value = '${{ a_b && (x || y) && g(''https://test.invalid/[path]*~''<`>\@) }}'
+        $encoded = Format-QuietWorkflowLiteral $value
+        $encoded | Should -BeExactly '<code>&#36;{{ a&#95;b &#38;&#38; (x &#124;&#124; y) &#38;&#38; g(''https&#58;//test.invalid/&#91;path&#93;&#42;&#126;''&#60;&#96;&#62;&#92;&#64;) }}</code>'
+        $html = (ConvertFrom-Markdown -InputObject $encoded).Html
+        $html | Should -Match '<code>\$\{\{ a_b &amp;&amp; \(x \|\| y\)'
+    }
+
+    It 'leaves missing values empty and folds only line breaks' {
+        (Format-QuietWorkflowLiteral '') | Should -BeExactly ''
+        (Format-QuietWorkflowLiteral '  ') | Should -BeExactly ''
+        (Format-QuietWorkflowLiteral "a  b`r`nc`rd`ne") | Should -BeExactly '<code>a  b c d e</code>'
+    }
+}

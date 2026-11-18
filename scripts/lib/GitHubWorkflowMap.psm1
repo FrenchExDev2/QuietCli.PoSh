@@ -103,7 +103,7 @@ function Get-QuietWorkflowMapStepRows {
             })
             if ($scripts.Count) { $scripts -join ', ' } else { '`run`' }
         }
-        '| '+$number+' | '+(Format-QuietWorkflowMapText $label)+' | '+$effects+' | '+(Format-QuietWorkflowMapText $step['if'])+' |'
+        '| '+$number+' | '+(Format-QuietWorkflowMapText $label)+' | '+$effects+' | '+(Format-QuietWorkflowLiteral $step['if'])+' |'
     }
 }
 
@@ -207,7 +207,7 @@ function New-QuietGitHubWorkflowMap {
             foreach ($eventName in $entry.Events.Keys) {
                 $eventOptions = $entry.Events[$eventName]
                 $filter = if ($eventOptions -and $eventName -cnotin @('workflow_call','workflow_dispatch')) {
-                    Format-QuietWorkflowMapText (ConvertTo-Json -InputObject $eventOptions -Compress -Depth 30)
+                    Format-QuietWorkflowLiteral (ConvertTo-Json -InputObject $eventOptions -Compress -Depth 30)
                 }
                 $lines.Add('| '+$eventName+' | '+$filter+' |')
             }
@@ -251,10 +251,11 @@ function New-QuietGitHubWorkflowMap {
         foreach ($jobName in $jobs.Keys) {
             $job = $jobs[$jobName]
             $lines.AddRange([string[]]@('### '+$jobName,''))
-            if ($job['if']) { $lines.AddRange([string[]]@('Condition · '+(Format-QuietWorkflowMapText $job['if']),'')) }
+            if ($job['if']) { $lines.AddRange([string[]]@('Condition · '+(Format-QuietWorkflowLiteral $job['if']),'')) }
             if ($job['strategy'] -is [Collections.IDictionary] -and $job['strategy'].Keys -ccontains 'matrix') {
-                $matrix = Format-QuietWorkflowMapText (ConvertTo-Json -InputObject $job['strategy']['matrix'] -Compress -Depth 30)
-                $lines.AddRange([string[]]@('Matrice déclarée · '+$matrix,''))
+                $matrix = $job['strategy']['matrix']
+                if ($matrix -isnot [string]) { $matrix = ConvertTo-Json -InputObject $matrix -Compress -Depth 30 }
+                $lines.AddRange([string[]]@('Matrice déclarée · '+(Format-QuietWorkflowLiteral $matrix),''))
             }
             if ($job['uses']) {
                 $reference = Format-QuietWorkflowMapReference -Reference $job['uses'] -Entries $entries

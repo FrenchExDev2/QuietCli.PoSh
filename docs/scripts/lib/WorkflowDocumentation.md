@@ -11,13 +11,13 @@ Located at `scripts/lib/WorkflowDocumentation.psm1`. Load with `Import-Module ([
 Explicit export surface:
 
 ```powershell
-Export-ModuleMember -Function 'Get-QuietWorkflowDocumentation','Get-QuietWorkflowReadme','Get-QuietWorkflowYamlParser','Get-QuietWorkflowScriptPaths'
+Export-ModuleMember -Function 'Get-QuietWorkflowDocumentation','Get-QuietWorkflowReadme','Get-QuietWorkflowYamlParser','Get-QuietWorkflowScriptPaths','Format-QuietWorkflowLiteral'
 ```
 
 
 ## Purpose and usage
 
-`Get-QuietWorkflowDocumentation -WorkspaceRoot <root>` parses workflow jobs and triggers, validates dependency targets and renders Mermaid with source links and script documentation. `Get-QuietWorkflowReadme -Entries <catalogue>` renders the index. The workflow map shares `Get-QuietWorkflowYamlParser` and `Get-QuietWorkflowScriptPaths`.
+`Get-QuietWorkflowDocumentation -WorkspaceRoot <root>` parses workflow jobs and triggers, validates dependency targets and renders Mermaid with source links and script documentation. `Get-QuietWorkflowReadme -Entries <catalogue>` renders the index. The workflow map shares `Get-QuietWorkflowYamlParser`, `Get-QuietWorkflowScriptPaths` and `Format-QuietWorkflowLiteral`.
 
 ## Parser prerequisite
 
@@ -29,7 +29,8 @@ Requires the checksum-verified YamlDotNet assembly, prepared on demand through R
 
 ## Critical review
 
-- `scripts/lib/WorkflowDocumentation.psm1:34` derives job IDs and `needs` edges from parsed YAML. Basename and diagram ID collisions and missing dependencies fail explicitly.
+- `scripts/lib/WorkflowDocumentation.psm1:93` derives job IDs and `needs` edges from parsed YAML. Basename and diagram ID collisions and missing dependencies fail explicitly.
+- Workflow conditions and dynamic runners render as literal inline code. Encoding `$` prevents Markdown math parsing, while encoding `|` keeps logical OR within its table cell.
 - Generated edges describe declared needs, not unconditional runtime execution: job conditions may skip nodes. Matrix expansion, expressions and scripts require their own semantic review and actual GitHub qualification.
 - AutomationContracts.Tests.ps1 verifies a literal build-to-verify edge and rejects graph drift. Source receipts bind the reviewed prose to the YAML bytes; a hash is not proof of prose accuracy.
 
@@ -46,7 +47,7 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Returns the verified YAML parser used by the workflow documentation generators.
+Purpose: Renders a literal workflow value as inline code in Markdown prose or a table cell.
 
 Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 

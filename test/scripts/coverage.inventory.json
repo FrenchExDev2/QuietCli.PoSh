@@ -254,7 +254,6 @@
     "lib/ToolingResults.psm1::Get-QuietToolingResults",
     "lib/Update-Packages.psm1::Invoke-QuietScriptUpdatePackages",
     "lib/Watch-Tests.psm1::Invoke-QuietScriptWatchTests",
-    "lib/WorkflowDocumentation.psm1::Get-QuietWorkflowDocumentation",
     "lib/WorkflowDocumentation.psm1::Get-QuietWorkflowReadme",
     "lib/WorkspaceLayout.psm1::Move-QuietWorkspaceProjects",
     "lib/WorkspaceLayout.psm1::Repair-QuietWorkspaceReferences",

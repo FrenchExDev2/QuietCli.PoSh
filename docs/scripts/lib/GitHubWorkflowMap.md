@@ -15,7 +15,7 @@ Uses [GitHubActionReferences](GitHubActionReferences.md) to discover workflows a
 ## Findings
 
 - `scripts/lib/GitHubWorkflowMap.psm1:132` builds a case-sensitive catalogue for local `uses` links. Local references outside `.github/actions`, remote actions and remote workflows remain references without inspecting their implementation.
-- A job flowchart links dependencies and local calls. A composite action sequence diagram reads steps in declaration order. `if` and matrix entries show their declarations in the report.
+- A job flowchart links dependencies and local calls. A composite action sequence diagram reads steps in declaration order. Conditions and matrices render as inline code to preserve GitHub Actions expressions in Markdown previews.
 - Property tests exercise repeated links and generated names. Fixture tests cover trigger syntax, job dependencies, filters, local calls and links. GitHub execution remains outside this validation.
 
 ## Verdict

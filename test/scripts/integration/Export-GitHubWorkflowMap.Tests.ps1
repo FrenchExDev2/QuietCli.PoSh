@@ -16,18 +16,21 @@ jobs:
     steps:
       - name: Préparer | vérifier
         run: ./scripts/Run-Thing.ps1
+        if: ${{ always() && (!inputs.images_only || inputs.retry) }}
       - uses: ./.github/actions/setup
       - uses: actions/checkout@v4
   verify:
     needs: prepare
-    if: ${{ always() }}
+    if: ${{ always() && !inputs.images_only }}
     uses: ./.github/workflows/verify.yaml
 '@
     $null = New-QuietTestFile ([IO.Path]::Combine($root,'.github/workflows/verify.yaml')) @'
 on: workflow_call
 jobs:
   first:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix: ${{ fromJson(inputs.windows_matrix) }}
   second:
     runs-on: ubuntu-latest
     needs: [first]
@@ -73,6 +76,23 @@ Describe 'Export-GitHubWorkflowMap.ps1' {
         foreach ($link in [regex]::Matches($report,'\]\(#([^\)]+)\)')) {
             $report.Contains('<a name="'+$link.Groups[1].Value+'"></a>') | Should -BeTrue
         }
+    }
+
+    It 'renders adjacent GitHub expressions and logical operators as literal HTML code' {
+        $report = New-QuietGitHubWorkflowMap -WorkspaceRoot $root -OutputPath ([IO.Path]::Combine($root,'map.md'))
+        $report.Markdown | Should -Not -Match '\$\{\{'
+        $html = (ConvertFrom-Markdown -InputObject $report.Markdown).Html
+        $html.Contains('Condition · <code>${{ always() &amp;&amp; !inputs.images_only }}</code>') | Should -BeTrue
+        $html.Contains('Matrice déclarée · <code>${{ fromJson(inputs.windows_matrix) }}</code>') | Should -BeTrue
+        $html.Contains('<td><code>${{ always() &amp;&amp; (!inputs.images_only || inputs.retry) }}</code></td>') | Should -BeTrue
+
+        $docs = @(Get-QuietWorkflowDocumentation -WorkspaceRoot $root)
+        $entry = ($docs | Where-Object Name -CEQ 'entry.yml').Generated
+        $reusable = ($docs | Where-Object Name -CEQ 'verify.yaml').Generated
+        $conditionHtml = (ConvertFrom-Markdown -InputObject $entry).Html
+        $runnerHtml = (ConvertFrom-Markdown -InputObject $reusable).Html
+        $conditionHtml.Contains('<td><code>${{ always() &amp;&amp; !inputs.images_only }}</code></td>') | Should -BeTrue
+        $runnerHtml.Contains('<td><code>runner ${{ matrix.runner }}</code></td>') | Should -BeTrue
     }
 
     It 'previews an absent report and preserves an existing report on input failure' {
