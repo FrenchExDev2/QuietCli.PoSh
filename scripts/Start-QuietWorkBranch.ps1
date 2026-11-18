@@ -3,12 +3,12 @@
 .SYNOPSIS
 Shelves pending work, fast-forwards the base branch and restores the shelf on a new work branch.
 .DESCRIPTION
-Creates a fix/, feature/ or chore/ branch from the freshly pulled delivery branch (develop by default),
+Creates a fix/, feature/, chore/ or companion/ branch from the freshly pulled delivery branch (develop by default),
 never from the current branch, without tracking it. Pending changes follow through a retained stash.
 .PARAMETER Branch
 New work branch, for example feature/script-tests; an existing branch is never reset.
 .PARAMETER Kind
-Work branch kind (fix, feature or chore; releases are tags), used with Name instead of Branch.
+Work branch kind (fix, feature, chore or companion), used with Name instead of Branch.
 .PARAMETER Name
 Branch name after the kind, for example script-tests.
 .PARAMETER WorkspaceRoot
@@ -27,7 +27,7 @@ Optional message identifying the retained Git stash.
 [CmdletBinding(SupportsShouldProcess,DefaultParameterSetName='Branch')]
 param(
     [Parameter(Mandatory,ParameterSetName='Branch')][string]$Branch,
-    [Parameter(Mandatory,ParameterSetName='Kind')][ArgumentCompletions('fix','feature','chore')][string]$Kind,
+    [Parameter(Mandatory,ParameterSetName='Kind')][ArgumentCompletions('fix','feature','chore','companion')][string]$Kind,
     [Parameter(Mandatory,ParameterSetName='Kind')][string]$Name,
     [string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),
     [string]$BaseBranch='develop',

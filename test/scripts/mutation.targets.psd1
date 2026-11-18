@@ -5,6 +5,14 @@
 @{
     Targets = @(
         @{
+            Name = 'NewQuietCompanion'
+            Module = 'lib/New-QuietCompanion.psm1'
+            Functions = @('Resolve-NewCompanionBranch','Add-QuietCompanionRegistration')
+            UnitTestFiles = @('unit/lib/New-QuietCompanion.Tests.ps1')
+            Break = 80
+        }
+
+        @{
             Name = 'ScriptsTests'
             Module = 'lib/ScriptsTests.psm1'
             Functions = @('ConvertTo-QuietScriptsXmlText','Protect-QuietScriptsTestResult','Get-QuietScriptsTestPlan','Get-QuietScriptsTestValue','Test-QuietScriptsPathWithin','Resolve-QuietScriptsTestPath','Get-QuietScriptsCoverageTargets','New-QuietScriptsPesterConfiguration','ConvertTo-QuietScriptsTestCount','ConvertTo-QuietScriptsTestReport','New-QuietScriptsTestStatus','Update-QuietScriptsTestStatus','Get-QuietScriptsTestExitCode','Test-QuietScriptsTestsApplicable')

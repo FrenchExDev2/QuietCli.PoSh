@@ -17,7 +17,7 @@ Starts a new work branch from the freshly pulled delivery branch and moves pendi
 | Option | Role |
 | --- | --- |
 | `-Branch` | Whole new branch, `<kind>/<name>`. |
-| `-Kind`, `-Name` | The same, in two parts. The kind is `fix`, `feature` or `chore`. |
+| `-Kind`, `-Name` | The same, in two parts. The kind is `fix`, `feature`, `chore` or `companion`. |
 | `-BaseBranch` | Delivery branch to start from, `develop` by default. A work or release branch (`feature/x`, `release/x`) is refused. |
 | `-Remote` | Remote of the base, `origin` by default. Tags are never fetched. |
 | `-WorkspaceRoot` | Checkout to operate on, this one by default. |

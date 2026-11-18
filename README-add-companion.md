@@ -9,6 +9,17 @@ supported-version policy and independent assertions in the companion and its tes
 This guide covers source integration, tests and CI. It does not authorize a push, image publication,
 Gallery publication or release. A successful build or catalogue entry does not qualify a platform.
 
+## Generate the source group
+
+From the QuietCli repository, supply the native tool's reviewed license references as UTF-8 Markdown.
+
+~~~powershell
+./scripts/New-QuietCompanion.ps1 -Name Packer -LicenseCreditsPath ./packer-credits.md -WhatIf
+./scripts/New-QuietCompanion.ps1 -Name Packer -LicenseCreditsPath ./packer-credits.md
+~~~
+
+The script creates `companion/packer` from updated `develop`. Add `-WithCSharp` for a parser project targeting .NET 10 and 11. Use `-GitBranch packer-parser` to select a name or `-NoGitBranch` when already on a companion branch. The initial suite checks module loading and the package starts with publication disabled. See the [generator reference](docs/scripts/New-QuietCompanion.md).
+
 ## 1. Define the business boundary
 
 Choose the supported commands, argument forms and tool versions. Describe the business objects
@@ -22,18 +33,14 @@ See [companion modules](README-modules.md), [streaming](README-streaming.md) and
 
 ## 2. Add the product and test projects
 
-Use top-level workspace directories:
+Use a group with separate source and test directories:
 
-```text
-FrenchExDev2.QuietCli.<Name>.PoSh/
-  FrenchExDev2.QuietCli.<Name>.PoSh.psd1
-  FrenchExDev2.QuietCli.<Name>.PoSh.psm1
-  README.md
-FrenchExDev2.QuietCli.<Name>.Tests.PoSh/
-  FrenchExDev2.QuietCli.<Name>.Tests.PoSh.psd1
-  FrenchExDev2.QuietCli.<Name>.Tests.PoSh.psm1
-  README.md
-```
+~~~text
+src/<Name>/
+  <Name>.slnx
+  src/FrenchExDev2.QuietCli.<Name>.PoSh/
+  test/FrenchExDev2.QuietCli.<Name>.Tests.PoSh/
+~~~
 
 Keep product dependencies in the manifests' `RequiredModules`. Product modules contain no tests.
 The product manifest's `PrivateData.QuietCli` identifies its binary, test module and publication
@@ -41,7 +48,7 @@ eligibility. Test projects export their actual runner, following existing compan
 progress contract. Imports must not rebuild, download dependencies or execute a native tool.
 
 For a pure PowerShell companion, no compiled output is needed. For compiled code, add the project
-to `Quietly.slnx` and declare its `PrivateData.QuietCli.BuildProjects` outputs. The shared build and
+to the companion group and regenerate its solutions. Declare its `PrivateData.QuietCli.BuildProjects` outputs. The shared build and
 binary identity checks consume the same declarations:
 [compiled distributions](docs/README-workspace-projects.md#compiled-distributions).
 
@@ -73,7 +80,7 @@ qualification, and running separate product suites does not establish cross-prod
 
 ## 5. CI
 
-**Do not add a GitHub workflow file for each companion.** The shared
+The generator registers the companion and generates its individual CI entry point from the catalogue. The shared
 [companions-ci.yml](.github/workflows/companions-ci.yml) entry calls
 [ci.yml](.github/workflows/ci.yml). [build/companions.yml](build/companions.yml) declares companions,
 image requirements and independent test suites.
@@ -215,8 +222,8 @@ printed by the monitored launcher.
 
 ### Understand triggers and qualification
 
-`companions-ci.yml` covers `FrenchExDev2.QuietCli.*.PoSh/**`, `build/**` and shared sources.
-Vagrant-only changes and future integration test projects therefore reach the common entry.
+`companions-ci.yml` plans changes across `src/**`, `build/**` and shared sources.
+The same common entry sees owned product and test projects.
 Its plan selects the changed suites, their dependency smokes and the `image_suites` whose Linux
 images the develop `images` job warms first (see
 [the selective CI contract](docs/README-companion-layout-and-ci.md#linux-image-warm-up)).
@@ -225,7 +232,7 @@ The reusable/manual workflow also accepts a declared suite. Image preparation/pu
 its existing restrictions. A catalogue entry, a local checkpoint and an unexecuted platform plan
 are not qualification evidence.
 
-The shared entry replaces the old Core/Git entry workflows. Any required-check names in branch
+The automatic entry uses the shared matrix. Any required-check names in branch
 protection must match that entry; repository scripts do not modify remote branch protection.
 
 Core's suite declares its pinned Git tool requirement because the Git companion's supported range
@@ -245,7 +252,7 @@ Review the documentation affected by the actual change. Regenerate the relevant 
 
 A real workflow edit also requires reviewing its `docs/ci/github/` contract, updating its SHA-256
 receipt and running `Sync-GitHubWorkflowsReadme.ps1 -Apply`. Registering another companion or suite
-in the catalogue does not require another workflow file.
+in the catalogue uses the existing workflow generator.
 
 Internal projects are discovered from their Git-tracked manifests; no workspace source lock is
 generated. Change dedicated external dependency locks only when their reviewed inputs change.

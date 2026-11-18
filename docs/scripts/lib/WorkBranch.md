@@ -6,7 +6,7 @@ The work branch policy of [Start-QuietWorkBranch.ps1](../Start-QuietWorkBranch.m
 
 | Export | Contract |
 | --- | --- |
-| `Get-QuietWorkBranchKinds` | `fix`, `feature`, `chore`: the first segment of every work branch. There is no `release` kind: releases are tags, and the transient `release/*` branches with version commits belong to `Invoke-QuietRelease.ps1`. |
+| `Get-QuietWorkBranchKinds` | `fix`, `feature`, `chore`, `companion`: the first segment of every work branch. There is no `release` kind: releases are tags, and the transient `release/*` branches with version commits belong to `Invoke-QuietRelease.ps1`. |
 | `Resolve-QuietWorkBranchName` | Accepts either `-Branch feature/x` or `-Kind feature -Name x` and returns `{Branch, Kind, Name}`. The kind is compared case-sensitively. The name has at most 100 characters and one or more `/`-separated segments. Each segment starts and ends with a letter or a digit, may contain `.`, `_` and `-`, never contains `..` and never ends with `.lock`. Anything else throws `WorkBranchKindInvalid` or `WorkBranchNameInvalid`. |
 | `Assert-QuietWorkBranchBase` | A base is a plain branch name, never a work or release branch: `feature/x` or `release/x` as base throws `WorkBranchBaseIsWorkBranch`, a malformed name throws `WorkBranchBaseInvalid`. This is the rule that keeps a feature from starting on a fix branch. |
 | `Get-QuietWorkBranchStatusProblems` | Reads the data of `quiet git status` and lists, in a fixed order, `Detached`, `Unborn`, `Conflicted` and one `Operation:<name>` per in-progress merge, rebase, cherry-pick, revert, am or bisect. A missing status is `Unavailable`. Pending changes are not a problem: they are shelved. |

@@ -8,7 +8,7 @@ This entry point preserves its parameters and defaults and forwards explicitly b
 ./scripts/Start-QuietWorkBranch.ps1 -Kind feature -Name script-tests
 ```
 
-The kind is `fix`, `feature` or `chore`; releases are tags, created by `Invoke-QuietRelease.ps1`. The branch always starts from the freshly pulled `develop` (or `-BaseBranch`, never a work branch), not from the current branch. Pending work follows through a retained stash.
+The kind is `fix`, `feature`, `chore` or `companion`; releases are tags, created by `Invoke-QuietRelease.ps1`. The branch always starts from the freshly pulled `develop` (or `-BaseBranch`, never a work branch), not from the current branch. Pending work follows through a retained stash.
 
 ## Dependencies and effects
 

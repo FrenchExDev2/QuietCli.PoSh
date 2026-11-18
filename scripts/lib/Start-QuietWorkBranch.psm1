@@ -1,4 +1,4 @@
-#Objective: Starts a fix, feature or chore branch from the freshly pulled delivery branch and carries pending work over through a retained stash.
+#Objective: Starts a fix, feature, chore or companion branch from the freshly pulled delivery branch and carries pending work over through a retained stash.
 #requires -Version 7.6
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkBranch.psm1')) -DisableNameChecking -ErrorAction Stop
@@ -10,7 +10,7 @@ function Invoke-QuietScriptStartQuietWorkBranch {
     .DESCRIPTION
     The new branch always starts from the base branch (develop by default) after a fast-forward-only pull,
     checked against the remote head, and never tracks it. It never starts from the current branch.
-    The name, the kind (fix, feature or chore) and the base are validated before anything runs,
+    The name, the kind (fix, feature, chore or companion) and the base are validated before anything runs,
     including under WhatIf. The checkout must be on a branch, without conflicts or an in-progress merge,
     rebase, cherry-pick, revert, am or bisect. The branch must not already exist locally or on the remote.
     Pending tracked and untracked changes are shelved in a stash, then applied with --index on the new
@@ -19,7 +19,7 @@ function Invoke-QuietScriptStartQuietWorkBranch {
     .PARAMETER Branch
     New work branch, for example feature/script-tests; an existing branch is never reset.
     .PARAMETER Kind
-    Work branch kind (fix, feature or chore; releases are tags), used with Name instead of Branch.
+    Work branch kind (fix, feature, chore or companion), used with Name instead of Branch.
     .PARAMETER Name
     Branch name after the kind, for example script-tests.
     .PARAMETER WorkspaceRoot

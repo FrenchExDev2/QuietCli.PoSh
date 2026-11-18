@@ -16,7 +16,7 @@ PowerShell block invoked once with Runtime as its first positional argument.
 .PARAMETER Runtime
 Optional non-null caller-owned context, passed by reference without serialization.
 .PARAMETER Companion
-Optional local business handlers loaded after Core. Supported values are Git and Vagrant.
+Optional local business companions loaded after Core.
 .PARAMETER ForceReload
 Passes Force to each selected local module import. Does not replace loaded assemblies.
 .EXAMPLE
@@ -31,20 +31,34 @@ Returns the native result object. Supply an Output callback to analyze native ou
 param(
     [Parameter(Mandatory)][ValidateNotNull()][scriptblock]$Code,
     [ValidateNotNull()][object]$Runtime = [pscustomobject]@{ Data = @{}; State = @{} },
-    [ValidateSet('Git','Vagrant')][string[]]$Companion = @(),
+    [ArgumentCompleter({
+        param($commandName, $parameterName, $wordToComplete, $commandAst)
+        if ($parameterName -ne 'Companion') { return }
+        $entry = Get-Command -Name ($commandAst.GetCommandName() ?? $commandName) -CommandType ExternalScript -ErrorAction SilentlyContinue
+        if (!$entry) { return }
+        $scriptDirectory = [IO.Path]::GetDirectoryName($entry.Path)
+        Import-Module ([IO.Path]::Combine($scriptDirectory,'lib/WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
+        Get-QuietWorkspaceProjects ([IO.Path]::GetDirectoryName($scriptDirectory)) |
+            Where-Object { !$_.IsTest -and $_.Suite -cne 'Core' -and $_.Suite -like "$wordToComplete*" } |
+            ForEach-Object Suite
+    })][string[]]$Companion = @(),
     [switch]$ForceReload
 )
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
-
-
-if (!$PSCmdlet.ShouldProcess($PSCommandPath, ('Import local QuietCli Core{0} and execute Code' -f $(if($Companion.Count){' with '+($Companion -join ', ')}else{''})))) { return }
 $ErrorActionPreference = 'Stop'
 $workspaceRoot = Split-Path $PSScriptRoot -Parent
 $moduleNames = [Collections.Generic.List[string]]::new()
 $moduleNames.Add('FrenchExDev2.QuietCli.Core.PoSh')
-foreach($name in @($Companion | Select-Object -Unique)){
-    $moduleNames.Add('FrenchExDev2.QuietCli.'+$name+'.PoSh')
+if($Companion.Count){
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
+    $available=@(Get-QuietWorkspaceProjects $workspaceRoot | Where-Object { !$_.IsTest -and $_.Suite -cne 'Core' })
+    foreach($name in $Companion){
+        $match=@($available | Where-Object Suite -IEQ $name)
+        if($match.Count -ne 1){throw ('QuietLocalCompanionUnknown: '+$name)}
+        if(!$moduleNames.Contains($match[0].Name)){$moduleNames.Add($match[0].Name)}
+    }
 }
+if (!$PSCmdlet.ShouldProcess($PSCommandPath, ('Import local QuietCli Core{0} and execute Code' -f $(if($Companion.Count){' with '+($Companion -join ', ')}else{''})))) { return }
 $introduced=[Collections.Generic.List[string]]::new()
 $reloaded=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 if($ForceReload){
