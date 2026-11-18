@@ -3,9 +3,7 @@ name: QuietCli2 Scripts docs check
 # Shared registry: script documentation, workflow source receipts/graphs/index,
 # script layout (Verb-Noun, library functions, imports and IO paths), test classifications,
 # preview contracts, resource dependencies, credits and ScriptAnalyzer findings. Parser preparation is self-contained;
-# the checks never regenerate documentation, build or commit; see
-# docs/README-scripts-have-docs.md for the why/how and scripts-docs-apply.yml for the companion
-# workflow that writes the fix.
+# the registry checks the tracked docs and the diagrams job regenerates the workflow map in its checkout.
 on:
   pull_request:
     paths: &scripts_docs_paths
@@ -14,6 +12,8 @@ on:
       - 'docs/scripts/**'
       - 'docs/ci/github/**'
       - 'docs/resources/**'
+      - 'docs/README-github-workflows-diagrams.md'
+      - 'README-github-workflows.md'
       - 'README-resources.md'
       - 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/**'
       - '.github/actions/**'
@@ -52,3 +52,35 @@ jobs:
       - name: Check repository automation contracts through the shared registry
         shell: pwsh
         run: ./scripts/Invoke-WorkspaceChecks.ps1
+
+  diagrams:
+    name: Generate GitHub workflow diagrams
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/cache-resources
+      - name: Generate the workflow map
+        id: generate
+        shell: pwsh
+        run: |
+          $path = './docs/README-github-workflows-diagrams.md'
+          $tracked = if (Test-Path -LiteralPath $path -PathType Leaf) {
+            (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+          }
+          ./scripts/Export-GitHubWorkflowMap.ps1 -OutputPath $path -Confirm:$false
+          $generated = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+          $matchesVersionedMap = ($tracked -ceq $generated).ToString().ToLowerInvariant()
+          [IO.File]::AppendAllText($env:GITHUB_OUTPUT, "matches=$matchesVersionedMap`n", [Text.UTF8Encoding]::new($false))
+      - name: Upload the generated workflow map
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: github-workflows-diagrams
+          path: docs/README-github-workflows-diagrams.md
+          if-no-files-found: error
+      - name: Check that the tracked workflow map is current
+        if: steps.generate.outputs.matches != 'true'
+        shell: pwsh
+        run: throw 'Workflow map is missing or stale. Run ./scripts/Export-GitHubWorkflowMap.ps1 -OutputPath ./docs/README-github-workflows-diagrams.md and include the result in the change.'

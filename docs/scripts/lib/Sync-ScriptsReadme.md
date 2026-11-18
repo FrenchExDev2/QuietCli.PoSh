@@ -30,7 +30,7 @@ Default mode reports `ScriptsDocsMissing` for missing docs, `ScriptsDocSourceLin
 ## Dependencies and side effects
 
 Uses PowerShell filesystem commands, path operations and asynchronous UTF-8 file I/O. No native
-process, engine, download or Git mutation is involved. Approved `-Apply` writes the index and the managed source link in each affected document with LF line endings.
+process, engine, download or Git mutation is involved. Approved `-Apply` writes the index and the managed source link in each affected document with LF line endings. The index uses the shared credits formatter. [Sync-DocsCredits.psm1](Sync-DocsCredits.md)
 
 `Commit-Workspace.ps1` calls this gate before committing. Under `-NoAll`, it checks a temporary
 export of staged sources and documents; unstaged files are outside that snapshot's scope.
@@ -59,7 +59,7 @@ their existing side-effect boundary; working-tree and staged-snapshot checks use
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

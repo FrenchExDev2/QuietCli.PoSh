@@ -1,3 +1,5 @@
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'Sync-DocsCredits.psm1')) -DisableNameChecking -ErrorAction Stop
+
 function Invoke-QuietScriptSyncScriptsReadme {
 #requires -Version 7.6
 <#
@@ -123,14 +125,7 @@ function New-ScriptsReadmeCreditsBlock {
     $moduleRoot = Split-Path (Split-Path $DocsRoot -Parent) -Parent
     $creditsPath = [IO.Path]::Combine($moduleRoot,'CREDITS.md')
     $creditsRelative = [System.IO.Path]::GetRelativePath($DocsRoot, $creditsPath).Replace('\', '/')
-    $lines = @(
-        '<!-- credits:begin -->',
-        '## Credits',
-        '',
-        "This document is covered by the mandatory [CREDITS.md]($creditsRelative), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).",
-        '<!-- credits:end -->'
-    )
-    return ($lines -join "`n")
+    Format-QuietDocsCreditsBlock -Link $creditsRelative
 }
 
 function New-ScriptsReadmeContent {

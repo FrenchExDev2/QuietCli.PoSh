@@ -10,10 +10,11 @@ Generate a navigable Markdown document from `.github/workflows` and `.github/act
 
 ```powershell
 ./scripts/Export-GitHubWorkflowMap.ps1
+./scripts/Export-GitHubWorkflowMap.ps1 -OutputPath ./docs/README-github-workflows-diagrams.md
 ./scripts/Export-GitHubWorkflowMap.ps1 -OutputPath ./artifacts/ci-map.md -WhatIf
 ```
 
-The default output is `artifacts/github-workflows.md` under the selected `-WorkspaceRoot`. An explicit relative `-OutputPath` is resolved from the current PowerShell location. Open the report in a Markdown renderer with Mermaid support. Use the table of contents to open a workflow, then follow the links to the YAML, reusable workflows, local actions and script documentation.
+The default output is `artifacts/github-workflows.md` under the selected `-WorkspaceRoot`. An explicit relative `-OutputPath` is resolved from the current PowerShell location. The tracked map uses the second command. Open it in a Markdown renderer with Mermaid support and follow the table of contents to YAML, reusable workflows, local actions and script documentation. [GitHub workflow map](../../README-github-workflows-diagrams.md)
 
 ## Dependencies and effects
 
@@ -42,5 +43,5 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

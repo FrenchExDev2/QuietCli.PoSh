@@ -13,6 +13,7 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -Di
 
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkflowDocumentation.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Sync-DocsCredits.psm1')) -DisableNameChecking -ErrorAction Stop
 $entries=@(Get-QuietWorkflowDocumentation $WorkspaceRoot -WhatIf:$WhatIfPreference)
 $updates=[Collections.Generic.List[object]]::new()
 foreach($entry in $entries){
@@ -33,7 +34,7 @@ $readme=[IO.Path]::Combine($WorkspaceRoot,'docs/ci/github/README.md')
 $expected=Get-QuietWorkflowReadme $entries
 # Credits are shared with the existing documentation generator, and remain part of the index contract.
 $relative=[IO.Path]::GetRelativePath((Split-Path $readme -Parent),([IO.Path]::Combine($WorkspaceRoot,'CREDITS.md'))).Replace('\','/')
-$credits=@('<!-- credits:begin -->','## Credits','',"This document is covered by the mandatory [CREDITS.md]($relative), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).",'<!-- credits:end -->') -join "`n"
+$credits=Format-QuietDocsCreditsBlock -Link $relative
 $expected+="`n"+$credits+"`n"
 $current=if(Test-Path -LiteralPath $readme){[IO.File]::ReadAllTextAsync($readme,[Text.Encoding]::UTF8).GetAwaiter().GetResult().Replace("`r`n","`n")}else{$null}
 if($current -cne $expected){$updates.Add(@{Path=$readme;Content=$expected})}

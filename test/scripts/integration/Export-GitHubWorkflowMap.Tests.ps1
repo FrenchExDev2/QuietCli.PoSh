@@ -66,6 +66,11 @@ Describe 'Export-GitHubWorkflowMap.ps1' {
         $report | Should -Match 'flowchart TD[\s\S]*?j0 --> j1[\s\S]*?j1 -\.-> cj1\["\./\.github/workflows/verify\.yaml"\]'
         $report | Should -Match 'j0 -\.-> n0'
         $report | Should -Match 'sequenceDiagram[\s\S]*?A->>A: Commencer[\s\S]*?A->>A: actions/checkout@v4'
+        $report | Should -Match '(?m)^    participant A as setup$'
+        $html = (ConvertFrom-Markdown -InputObject $report).Html
+        $html | Should -Match '<h2[^>]*>Sommaire</h2>'
+        $html | Should -Match '<h2[^>]*>entry\.yml</h2>'
+        $html | Should -Match '<h2[^>]*>Action locale · setup</h2>'
         $report | Should -Match '\[scripts/Run-Thing\.ps1\]\(\.\./scripts/Run-Thing\.md\)'
         $report | Should -Match '\[Documentation du workflow\]\(\.\./ci/github/script-entry\.md\)'
         $report | Should -Match '\[YAML source\]\(\.\./\.\./\.github/workflows/entry\.yml\)'

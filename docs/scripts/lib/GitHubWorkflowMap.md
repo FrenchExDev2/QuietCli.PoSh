@@ -10,13 +10,13 @@ Source file: [`lib/GitHubWorkflowMap.psm1`](../../../scripts/lib/GitHubWorkflowM
 
 ## Dependencies and effects
 
-Uses [GitHubActionReferences](GitHubActionReferences.md) to discover workflows and local actions and [WorkflowDocumentation](WorkflowDocumentation.md) to obtain the verified parser and identify literal script paths. Reads YAML and checks whether link targets exist. The same resource preparation rules apply as for the workflow documentation generator.
+Uses GitHubActionReferences to discover workflows and local actions and WorkflowDocumentation to obtain the verified parser and identify literal script paths. Reads YAML and checks whether link targets exist. When the checkout contains `CREDITS.md`, the map includes a standard credits block with a link relative to the output. [GitHubActionReferences](GitHubActionReferences.md) · [WorkflowDocumentation](WorkflowDocumentation.md) · [Sync-DocsCredits](Sync-DocsCredits.md)
 
 ## Findings
 
 - `scripts/lib/GitHubWorkflowMap.psm1:132` builds a case-sensitive catalogue for local `uses` links. Local references outside `.github/actions`, remote actions and remote workflows remain references without inspecting their implementation.
 - A job flowchart links dependencies and local calls. A composite action sequence diagram reads steps in declaration order. Conditions and matrices render as inline code to preserve GitHub Actions expressions in Markdown previews.
-- Property tests exercise repeated links and generated names. Fixture tests cover trigger syntax, job dependencies, filters, local calls and links. GitHub execution remains outside this validation.
+- Property tests exercise repeated links and generated names. Fixture tests cover trigger syntax, job dependencies, filters, local calls, rendered section headings and complete Mermaid participant declarations. GitHub execution remains outside this validation.
 
 ## Verdict
 
@@ -35,5 +35,5 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

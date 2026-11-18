@@ -5,6 +5,13 @@
 @{
     Targets = @(
         @{
+            Name = 'DocsCreditsBlock'
+            Module = 'lib/Sync-DocsCredits.psm1'
+            Functions = @('Format-QuietDocsCreditsBlock')
+            UnitTestFiles = @('unit/lib/Sync-DocsCredits.Tests.ps1')
+            Break = 80
+        }
+        @{
             Name = 'GitHubWorkflowMap'
             Module = 'lib/GitHubWorkflowMap.psm1'
             Functions = @('Get-QuietWorkflowMapTarget','Format-QuietWorkflowMapText')

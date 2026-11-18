@@ -87,11 +87,7 @@ A new script, a renamed script, or a script moved to a different `scripts/` subd
 
 ### [`scripts-docs-check.yml`](../.github/workflows/scripts-docs-check.yml)
 
-Report-only, read-only (`permissions: contents: read`). Runs `Sync-ScriptsReadme.ps1` without
-`-Apply`, so it fails the run if any script has no doc or the index is stale. Triggers on
-`pull_request` and on `push` to `main`, both path-filtered to `scripts/**`, `docs/scripts/**` and the
-two workflow files; also available on `workflow_dispatch` for an ad hoc check. This is the gate: it
-never writes, so it is safe to run automatically on every pull request.
+Uses `permissions: contents: read`. The shared registry runs `Sync-ScriptsReadme.ps1` without `-Apply` and fails if a script document, its source link or the index is stale. A separate job generates the workflow diagrams in its checkout, uploads them as an artifact and compares them with the tracked map. The workflow runs on path-filtered pull requests and pushes to `develop`, including changes to `scripts/**` and `test/scripts/**`. It also supports manual dispatch. [GitHub workflows](../README-github-workflows.md)
 
 ### [`scripts-docs-apply.yml`](../.github/workflows/scripts-docs-apply.yml)
 
@@ -107,5 +103,5 @@ Use it from the Actions tab on the branch that needs fixing once every script al
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

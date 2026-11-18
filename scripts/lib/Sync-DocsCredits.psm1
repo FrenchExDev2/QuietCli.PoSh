@@ -60,24 +60,6 @@ if (-not (Test-Path -LiteralPath $CreditsPath)) { throw "CreditsFileMissing: $Cr
 $creditsFullPath = (Resolve-Path -LiteralPath $CreditsPath).Path
 $creditsName = Split-Path -Leaf $CreditsPath
 
-function New-CreditsBlock {
-    <#
-    .SYNOPSIS
-    Builds the regex-identifiable credits block for one docs/*.md file.
-    .PARAMETER RelativePath
-    Relative credits path, or the public absolute URL for distributed agent documents.
-    #>
-    param([Parameter(Mandatory)][string]$RelativePath)
-    $lines = @(
-        $beginMarker,
-        '## Credits',
-        '',
-        "This document is covered by the mandatory [CREDITS.md]($RelativePath), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).",
-        $endMarker
-    )
-    return ($lines -join "`n")
-}
-
 $files = @(
     Get-ChildItem -LiteralPath $DocsPath -Filter '*.md' -File -Recurse:(-not $NoRecurse)
     Get-ChildItem -LiteralPath $RootPath -Filter 'README*.md' -File
@@ -91,7 +73,7 @@ $report = foreach ($file in $files) {
     $creditsTarget = if ($file.FullName -in $portableAgentDocs) {
         'https://github.com/FrenchExDev2/QuietCli.PoSh/blob/HEAD/CREDITS.md'
     } else { $creditsRelative }
-    $expectedBlock = New-CreditsBlock -RelativePath $creditsTarget
+    $expectedBlock = Format-QuietDocsCreditsBlock -Link $creditsTarget
 
     $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
     $match = $blockRegex.Match($content)
@@ -119,4 +101,23 @@ if ($nonCompliant) {
 }
 
 }
-Export-ModuleMember -Function 'Invoke-QuietScriptSyncDocsCredits'
+
+function Format-QuietDocsCreditsBlock {
+    <#
+    .SYNOPSIS
+    Formats the repository's standard Markdown credits block with LF line endings.
+    .PARAMETER Link
+    Markdown link destination for CREDITS.md, relative to the document or absolute.
+    #>
+    param([Parameter(Mandatory)][string]$Link)
+
+    @(
+        '<!-- credits:begin -->',
+        '## Credits',
+        '',
+        "This document is covered by the mandatory [CREDITS.md]($Link), which records the licenses of all softwares which have QuietCli companions",
+        '<!-- credits:end -->'
+    ) -join "`n"
+}
+
+Export-ModuleMember -Function 'Invoke-QuietScriptSyncDocsCredits','Format-QuietDocsCreditsBlock'

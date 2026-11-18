@@ -45,6 +45,7 @@ The [agent documentation index](agents/README.md) identifies distributed instruc
 
 ## Development, CI and distribution
 
+- [GitHub workflows](../README-github-workflows.md) and the [generated Mermaid diagrams](README-github-workflows-diagrams.md).
 - [CI map and source-change landmarks](ci/README.md): workflow routing, dates/commits, script responsibilities and evidence boundaries.
 
 - [Scalable companion qualification](ci/scalable-companions.md): consumer boundaries, Core independence, affected suites, intermediate caches, bounded mutation and verified develop reuse.
@@ -110,5 +111,5 @@ These reports describe their recorded revisions, environments and executed scope
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

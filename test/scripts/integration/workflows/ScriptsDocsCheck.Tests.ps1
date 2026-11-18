@@ -8,9 +8,66 @@ BeforeAll {
     $null=Read-QuietCiCompanions -WorkspaceRoot $root
     $read={param([string[]]$Segments)[YamlDotNet.Serialization.DeserializerBuilder]::new().Build().Deserialize([IO.File]::ReadAllText([IO.Path]::Combine([string[]](@($root)+$Segments)),[Text.Encoding]::UTF8))}
     $action=& $read @('.github','actions','cache-test-tools','action.yml')
-    $check=(& $read @('.github','workflows','scripts-docs-check.yml'))['jobs']['check']
+    $workflow=& $read @('.github','workflows','scripts-docs-check.yml')
+    $check=$workflow['jobs']['check']
+    $diagrams=$workflow['jobs']['diagrams']
     $indexOf={param($Job,$Step)[Array]::IndexOf(@($Job['steps']),$Step)}
     $checks=@($check['steps']|Where-Object {([string]$_['run']).Contains('./scripts/Invoke-WorkspaceChecks.ps1')})
+}
+
+Describe 'scripts-docs-check.yml workflow diagrams' {
+    It 'runs the diagrams job for script and test changes and uploads the canonical map before checking freshness' {
+        foreach ($eventName in @('pull_request','push')) {
+            $workflow['on'][$eventName]['paths'] | Should -Contain 'scripts/**'
+            $workflow['on'][$eventName]['paths'] | Should -Contain 'test/scripts/**'
+            $workflow['on'][$eventName]['paths'] | Should -Contain '.github/workflows/**'
+            $workflow['on'][$eventName]['paths'] | Should -Contain 'docs/README-github-workflows-diagrams.md'
+        }
+        @($workflow['on']['push']['branches']) | Should -Be @('develop')
+        [string]$workflow['permissions']['contents'] | Should -BeExactly 'read'
+        $steps = @($diagrams['steps'])
+        $generate = $steps | Where-Object { $_['id'] -ceq 'generate' }
+        $upload = $steps | Where-Object { $_['uses'] -like 'actions/upload-artifact@*' }
+        $freshness = $steps | Where-Object { $_['if'] -ceq "steps.generate.outputs.matches != 'true'" }
+        [string]$upload['with']['name'] | Should -BeExactly 'github-workflows-diagrams'
+        [string]$upload['with']['path'] | Should -BeExactly 'docs/README-github-workflows-diagrams.md'
+        [string]$upload['with']['if-no-files-found'] | Should -BeExactly 'error'
+        (& $indexOf $diagrams $generate) | Should -BeLessThan (& $indexOf $diagrams $upload)
+        (& $indexOf $diagrams $upload) | Should -BeLessThan (& $indexOf $diagrams $freshness)
+    }
+
+    It 'executes the real generation step on missing, matching and stale fixtures' {
+        $fixture = [IO.Path]::Combine($TestDrive,'workflow-map-checkout')
+        $null = New-QuietTestFile ([IO.Path]::Combine($fixture,'.github/workflows/fixture.yml')) @'
+on: workflow_dispatch
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+'@
+        $null = New-QuietTestFile ([IO.Path]::Combine($fixture,'CREDITS.md')) '# Credits'
+        $null = New-QuietTestFile ([IO.Path]::Combine($fixture,'scripts/Export-GitHubWorkflowMap.ps1')) @'
+[CmdletBinding(SupportsShouldProcess)]
+param([string]$OutputPath)
+& $env:QUIETCLI_TEST_WORKFLOW_MAP_EXPORTER -WorkspaceRoot (Get-Location).Path -OutputPath $OutputPath -Confirm:$false
+'@
+        $generate = $diagrams['steps'] | Where-Object { $_['id'] -ceq 'generate' }
+        $prologue = '$ErrorActionPreference = ''Stop''', 'Set-Location -LiteralPath $env:QUIETCLI_TEST_MAP_CHECKOUT'
+        $step = New-QuietTestFile ([IO.Path]::Combine($TestDrive,'Generate-WorkflowMapFixture.ps1')) (($prologue + $generate['run']) -join "`n")
+        $mapPath = [IO.Path]::Combine($fixture,'docs/README-github-workflows-diagrams.md')
+        foreach ($scenario in @('missing','matching','stale')) {
+            if ($scenario -ceq 'stale') { $null = New-QuietTestFile $mapPath '# Stale' }
+            $output = [IO.Path]::Combine($TestDrive,"$scenario-output")
+            $result = Invoke-QuietTestScript -ScriptPath $step -Environment @{
+                GITHUB_OUTPUT = $output
+                QUIETCLI_TEST_MAP_CHECKOUT = $fixture
+                QUIETCLI_TEST_WORKFLOW_MAP_EXPORTER = [IO.Path]::Combine((Get-QuietTestScriptsRoot),'Export-GitHubWorkflowMap.ps1')
+            }
+            $result.ExitCode | Should -Be 0 -Because $result.Error
+            $expected = ($scenario -ceq 'matching').ToString().ToLowerInvariant()
+            [IO.File]::ReadAllText($output,[Text.Encoding]::UTF8) | Should -BeExactly "matches=$expected`n"
+            [IO.File]::ReadAllText($mapPath,[Text.Encoding]::UTF8) | Should -Match '\[CREDITS\.md\]\(\.\./CREDITS\.md\)'
+        }
+    }
 }
 
 Describe 'cache-test-tools action' {

@@ -11,8 +11,9 @@ Writes generated documentation through ShouldProcess.
 param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[switch]$Apply)
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/ResourceDocumentation.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Sync-DocsCredits.psm1')) -DisableNameChecking -ErrorAction Stop
 $expected=Get-QuietResourceDocumentation $WorkspaceRoot
-$credits=@('<!-- credits:begin -->','## Credits','',"This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).",'<!-- credits:end -->') -join "`n"
+$credits=Format-QuietDocsCreditsBlock -Link '../../CREDITS.md'
 $expected+="`n"+$credits+"`n"
 $path=[IO.Path]::Combine($WorkspaceRoot,'docs/resources/README.md')
 $current=if(Test-Path $path){[IO.File]::ReadAllTextAsync($path,[Text.Encoding]::UTF8).GetAwaiter().GetResult().Replace("`r`n","`n")}else{$null}

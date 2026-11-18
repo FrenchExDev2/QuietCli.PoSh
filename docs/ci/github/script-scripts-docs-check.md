@@ -1,16 +1,16 @@
 # scripts-docs-check.yml
 
-<!-- workflow-source-sha256: 05E5BCF3617BFD9869CF4FADACCE101467CF14532FC0179E3AF60990EC623E8B -->
+<!-- workflow-source-sha256: 1B56BA0F5096ED45208117A3F6EB7B36F93E73DC6C2CA04C7BF91B08FFD2C0E0 -->
 
 ## Purpose
 
 All .github/actions changes now trigger the shared checks, including the Docker CI intermediate-cache action. Localhost may use Podman; GitHub execution explicitly selects Docker.
 
-Shared automation-contract pipeline for complete Core test classifications, script docs, workflow docs, resources, objectives and preview support.
+Shared automation-contract pipeline for Core test classifications, script docs, workflow docs, resources, objectives and preview support. The `diagrams` job regenerates the navigable Mermaid map, uploads it and checks the tracked copy.
 
 ## Triggers
 
-PR/develop path filters cover scripts, test/scripts, all Core test-project sources, docs/scripts, docs/ci/github, docs/resources, README-resources.md, Core resource declarations, every shared action, the ShouldProcess policy and every .github/workflows file; manual dispatch is also available.
+Pull requests and pushes to `develop` use the same path filters. They cover `scripts/`, `test/scripts/`, the workflow guide and generated map, workflow and local action YAML, and the other documentation and automation inputs declared in the workflow. Manual dispatch is also available.
 
 ## Checked scope
 
@@ -34,12 +34,15 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 flowchart TD
     event["Triggers: pull_request, push, workflow_dispatch"]
     job_check["check"]
+    job_diagrams["diagrams"]
     event --> job_check
+    event --> job_diagrams
 ~~~
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
 | check | runner ubuntu-latest |  | default success condition | [`./scripts/Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.md) |
+| diagrams | runner ubuntu-latest |  | default success condition | [`./scripts/Export-GitHubWorkflowMap.ps1`](../../scripts/Export-GitHubWorkflowMap.md) |
 
 <!-- workflow-generated:end -->
 
@@ -55,6 +58,8 @@ The checks then run in registry order, including [Test-ScriptAnalysis](../../scr
 
 The shared registry also enforces RAC-PS-004: Verb-Noun entry points, no functions in scripts, libraries under scripts/lib, explicit quiet imports and System.IO.Path composition. AGENTS.md and the automation contract are included in the workflow path filters.
 
+The `diagrams` job restores the resource cache and runs the exporter against the checked-out workflow and action YAML. It writes `docs/README-github-workflows-diagrams.md` in the job checkout and uploads it as `github-workflows-diagrams`. The job fails when the newly generated file differs from the checked-in copy or the copy was missing. [Exporter documentation](../../scripts/Export-GitHubWorkflowMap.md)
+
 ## Validation and limits
 
 Path filters include every FrenchExDev2.QuietCli.*.Tests.PoSh project. The shared metadata gate discovers each owning companion's manifest and local .psm1/helper declarations, including independent optional registration guards and active-case completeness. No product module or SDK is needed for these checks.
@@ -66,5 +71,5 @@ A missing/stale workflow receipt, generated graph/index, script doc, credits blo
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
