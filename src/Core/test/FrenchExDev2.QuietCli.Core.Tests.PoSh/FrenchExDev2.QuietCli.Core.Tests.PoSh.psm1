@@ -199,7 +199,7 @@ Executes independent native byte and object invariants in a companion module.
         $nativeDirectory=Join-Path $WorkspaceRoot ('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/'+[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier+'/native')
         $r=quiet -AsObject -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} $dotnet $assembly $nativeDirectory
         Assert-QuietEqual $r.Outcome Success
-        Assert-QuietEqual $r.Data.Passed 77
+        Assert-QuietEqual $r.Data.Passed 79
         Assert-QuietEqual $r.Data.Failed 0
     }
     $cases['SQLite preparation overlaps native execution and preserves telemetry policy']={
@@ -208,7 +208,7 @@ Executes independent native byte and object invariants in a companion module.
     }
     $cases['SQLite persistence compiled properties and targeted mutations']={
         . ([IO.Path]::Combine($PSScriptRoot,'ConfigurationDelivery.Mutation.ps1'))
-        $result=Invoke-QuietConfigurationDeliveryEngine -WorkspaceRoot $WorkspaceRoot -RunDirectory ([IO.Path]::Combine($RunDirectory,'sqlite-persistence')) -Mutation -MutationName @('sqlite-writer-reuse','sqlite-prepare-queue','sqlite-initialization-retry','sqlite-worker-disposal','sqlite-bindings-retained','sqlite-statement-reset','sqlite-cache-bound','sqlite-start-policy') -OnProgress {param($name,$state,$passed,$failed) Write-Host ('SQLite mutation: '+$name+'; state='+$state+'; assertions='+$passed+'; failures='+$failed)}
+        $result=Invoke-QuietConfigurationDeliveryEngine -WorkspaceRoot $WorkspaceRoot -RunDirectory ([IO.Path]::Combine($RunDirectory,'sqlite-persistence')) -Mutation -MutationName @('sqlite-writer-reuse','sqlite-prepare-queue','sqlite-initialization-retry','sqlite-worker-disposal','sqlite-bindings-retained','sqlite-statement-reset','sqlite-cache-bound','sqlite-start-policy','sqlite-write-gate-exclusion','sqlite-write-gate-path','sqlite-write-gate-cleanup','sqlite-store-write-gate') -OnProgress {param($name,$state,$passed,$failed) Write-Host ('SQLite mutation: '+$name+'; state='+$state+'; assertions='+$passed+'; failures='+$failed)}
         Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'sqlite-persistence','campaign.json')) $result
         if($result.Failed){throw 'SqlitePersistenceMutationFailed'}
     }

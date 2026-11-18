@@ -54,9 +54,9 @@ internal sealed class MeasurementStore : IAsyncDisposable
         lock (preparationGate)
         {
             if (preparationQueued) return;
-            preparationQueued = work.Writer.TryWrite(() => {
-                try { _ = Writer(); } catch (Exception) { /* Writer retains the initialization error for the next save. */ }
-                return Task.CompletedTask;
+            preparationQueued = work.Writer.TryWrite(async () => {
+                try { using var lease = await MeasurementWriteGate.EnterAsync(path); _ = Writer(); }
+                catch (Exception) { /* Writer retains the initialization error for the next save. */ }
             });
         }
     }
@@ -86,10 +86,19 @@ internal sealed class MeasurementStore : IAsyncDisposable
 
     /// <summary>Executes one database operation without concurrent connection use.</summary>
     /// <param name="operation">One serialized database operation.</param>
-    private async Task<T> ExecuteAsync<T>(Func<T> operation)
+    /// <param name="write">Coordinates initialization and writes with other stores targeting the same file.</param>
+    private async Task<T> ExecuteAsync<T>(Func<T> operation, bool write = false)
     {
         var result = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
-        await work.Writer.WriteAsync(() => { try { result.SetResult(operation()); } catch (Exception error) { result.SetException(error); } return Task.CompletedTask; });
+        await work.Writer.WriteAsync(async () => {
+            try
+            {
+                T value;
+                using (var lease = write ? await MeasurementWriteGate.EnterAsync(path) : null) value = operation();
+                result.SetResult(value);
+            }
+            catch (Exception error) { result.SetException(error); }
+        });
         return await result.Task;
     }
 
@@ -135,7 +144,7 @@ internal sealed class MeasurementStore : IAsyncDisposable
         database.Execute(InvocationInsert,
             [id, kind, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), Value("ParentId")!, Value("RootId")!, Value("SessionId")!, Value("Context")!, Value("Role")!, Value("Command")!, Value("Outcome")!, metadata.GetRawText()]);
         return true;
-    });
+    }, write: true);
 
     /// <summary>Reads bounded metadata by context/session/time without creating missing databases.</summary>
     /// <param name="request">Validated execution metadata, never the business object.</param>
@@ -244,7 +253,7 @@ internal sealed class MeasurementStore : IAsyncDisposable
         if (!File.Exists(path)) return 0;
         using var database = new Database(path, true);
         return MeasurementProjection.Scrub(database);
-    });
+    }, write: true);
 
     /// <summary>Flushes accepted writes and closes the worker normally.</summary>
     public async ValueTask DisposeAsync() { work.Writer.TryComplete(); await worker; }

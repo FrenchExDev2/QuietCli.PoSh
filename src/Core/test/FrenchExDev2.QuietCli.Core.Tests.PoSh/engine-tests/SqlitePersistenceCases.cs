@@ -129,15 +129,90 @@ internal static class SqlitePersistenceCases
                 finally { database.Dispose(); }
                 return Task.CompletedTask;
             });
+            await run("SQLite write coordination normalizes paths, isolates databases and releases idle registrations", async () =>
+            {
+                int before = GateUsers();
+                var random = new Random(186204);
+                for (int i = 0; i < 24; i++)
+                {
+                    string file = Path.Combine(directory, "gate-" + random.NextInt64() + ".sqlite");
+                    string alias = Path.Combine(directory, ".", Path.GetFileName(file));
+                    if (OperatingSystem.IsWindows()) alias = alias.ToUpperInvariant();
+                    var owner = await MeasurementWriteGate.EnterAsync(file);
+                    var waiting = MeasurementWriteGate.EnterAsync(alias).AsTask();
+                    try
+                    {
+                        Require(!waiting.IsCompleted, "Equivalent paths admitted concurrent writes");
+                        using var independent = await MeasurementWriteGate.EnterAsync(file + ".other").AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+                        Require(!File.Exists(file), "Coordination created a database");
+                    }
+                    finally { owner.Dispose(); owner.Dispose(); using var successor = await waiting.WaitAsync(TimeSpan.FromSeconds(5)); }
+                }
+                foreach (string? malformed in new[] { null, "", "\0", "bad\0.sqlite" })
+                {
+                    bool rejected = false;
+                    try { using var unexpected = await MeasurementWriteGate.EnterAsync(malformed!); }
+                    catch (ArgumentException) { rejected = true; }
+                    Require(rejected, "Malformed database path was accepted");
+                }
+                Require(GateUsers() == before, "Idle database registrations were retained");
+            });
+            await run("SQLite stores await shared writer ownership before opening a contending connection", async () =>
+            {
+                string file = Path.Combine(directory, "coordinated.sqlite");
+                using var release = new ManualResetEventSlim();
+                var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var secondOpened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                await using var first = new MeasurementStore(file, value => {
+                    var database = new Database(value, true, cacheStatements: true);
+                    try
+                    {
+                        database.Execute("BEGIN IMMEDIATE", []);
+                        entered.SetResult();
+                        if (!release.Wait(TimeSpan.FromSeconds(15))) throw new TimeoutException("Fixture writer was not released");
+                        database.Execute("ROLLBACK", []);
+                        return database;
+                    }
+                    catch { database.Dispose(); throw; }
+                });
+                await using var second = new MeasurementStore(Path.Combine(directory, ".", "coordinated.sqlite"), value => {
+                    secondOpened.SetResult();
+                    return new Database(value, true, cacheStatements: true);
+                });
+                Task? secondSave = null;
+                try
+                {
+                    first.BeginPreparation();
+                    await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                    secondSave = second.SaveAsync(new MeasurementRecord("coordinated-second"), "invocation");
+                    using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    while (GateUsers(file) < 2 && !secondOpened.Task.IsCompleted) await Task.Delay(1, deadline.Token);
+                    Require(!secondOpened.Task.IsCompleted && !secondSave.IsCompleted, "A contending store opened SQLite before obtaining ownership");
+                }
+                finally { release.Set(); if (secondSave is not null) await secondSave.WaitAsync(TimeSpan.FromSeconds(10)); }
+                await first.SaveAsync(new MeasurementRecord("coordinated-first"), "invocation");
+                using var independent = new Database(file, false);
+                Require((long)independent.Query("SELECT COUNT(*) AS n FROM quiet2_events", [])[0]["n"] == 2, "Coordinated writers lost committed rows");
+            });
             await run("SQLite independent persistent writers preserve committed rows without holding idle locks", async () =>
             {
-                string file = Path.Combine(directory, "writers.sqlite");
-                await using var first = new MeasurementStore(file);
-                await using var second = new MeasurementStore(file);
-                first.BeginPreparation(); second.BeginPreparation();
-                await Task.WhenAll(Enumerable.Range(0, 64).Select(i => (i % 2 == 0 ? first : second).SaveAsync(new MeasurementRecord("writer-" + i), "invocation")));
-                using var independent = new Database(file, false);
-                Require((long)independent.Query("SELECT COUNT(*) AS n FROM quiet2_events", [])[0]["n"] == 64, "Independent writers lost or duplicated committed rows");
+                var random = new Random(186205);
+                foreach (int count in new[] { 2, 3, 4 })
+                {
+                    string file = Path.Combine(directory, "writers-" + count + ".sqlite");
+                    var stores = Enumerable.Range(0, count).Select(_ => new MeasurementStore(file)).ToArray();
+                    var expected = Enumerable.Range(0, 64).Select(i => "writer-" + i).ToArray();
+                    try
+                    {
+                        foreach (var store in stores) store.BeginPreparation();
+                        await Task.WhenAll(expected.Select(id => stores[random.Next(count)].SaveAsync(new MeasurementRecord(id), "invocation")));
+                        using var independent = new Database(file, false);
+                        var actual = independent.Query("SELECT id FROM quiet2_events ORDER BY id", []).Select(row => (string)row["id"]);
+                        Require(actual.SequenceEqual(expected.Order(StringComparer.Ordinal)), "Independent writers lost or duplicated committed rows");
+                        independent.Execute("BEGIN", []); independent.Execute("COMMIT", []);
+                    }
+                    finally { foreach (var store in stores) await store.DisposeAsync(); }
+                }
             });
             await run("SQLite preparation flag has identical direct and wire defaults and rejects malformed types", () =>
             {
@@ -181,6 +256,21 @@ internal static class SqlitePersistenceCases
 
     /// <summary>Reads the complete owned fixture interval.</summary>
     private static JsonElement Query() => JsonSerializer.SerializeToElement(new { From = 0L, To = long.MaxValue });
+
+    /// <summary>Observes ownership only to synchronize the regression without timing-based absence assertions.</summary>
+    /// <param name="path">Optional full-path registration; null counts all retained users.</param>
+    private static int GateUsers(string? path = null)
+    {
+        var type = typeof(MeasurementWriteGate);
+        var sync = type.GetField("sync", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
+        lock (sync)
+        {
+            var entries = (IDictionary)type.GetField("entries", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
+            if (path is null) return entries.Count;
+            var entry = entries[Path.GetFullPath(path)];
+            return entry is null ? 0 : (int)entry.GetType().GetField("Users", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(entry)!;
+        }
+    }
 
     /// <summary>Checks an independently known persistence or lifecycle invariant.</summary>
     /// <param name="condition">Required condition.</param>
