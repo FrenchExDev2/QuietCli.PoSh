@@ -201,6 +201,25 @@ The report separates Core import, first call with a cold engine, three calls reu
 
 `SecondPass.Tests.ps1` verifies gain group paging and report cleanup, then compares the former PowerShell aggregation with C# in both engine modes. It also measures short-record and long-fragment framing with independent expected counts. `Gain.Baseline.ps1` is test-only. Timing scope, request counts and actual pipe bytes are retained in `Suites[].Performance`; see [the migration review](../../../../docs/README-powershell-csharp-boundaries.md).
 
+`Performance.Tests.ps1` `Measure-QuietEventEmission` (case `business events measure Emit with listeners and explicit collection`) times 512 `Emit('Sample', …)` calls inside `-Complete`. The payloads are allocated before the call. It runs a grid of 0, 1 and 4 counting listeners × `-CollectEvents` off and on, with one warm-up and three iterations in a Fisher–Yates order drawn from seed 73601. The oracles are:
+
+- every call succeeds;
+- every listener receives every event, in emission order;
+- events are retained only when collection is explicitly requested, and in order.
+
+Samples go to `Suites[].Performance` as `EventEmission {Listeners, CollectEvents, Events, EmitMs, InvocationMs}`. The case uses Core only: the Git companion is never loaded. The listeners only count, so real listeners add their own cost. The case is `Exclusive` so that other campaigns do not overlap its timings.
+
+`Profiler.Target.ps1` profiles four Core-only workloads one at a time after the collectors attach, through `Profiler.Workload.ps1`:
+
+| Workload | Iterations | What runs |
+| --- | ---: | --- |
+| GitTransport | 8 | bulk porcelain-v2 bytes |
+| Framing | 8 | 128 × 16 KiB blocks of 64-byte NUL records, checked against an exact record count |
+| Metadata | 4 | `quiet git --version` calls and 16 `Get-QuietEngine` queries |
+| Events | 4 | 256 events with 0 listeners, 1 listener with collection, and 4 listeners |
+
+Each workload writes `powershell.<Workload>.speedscope.json` and its own line rows, and records its instrumented iteration times under `powershell-lines.json` `Workloads`. Import and the first call are listed under `NotProfiled`, because they happen before the collectors attach.
+
 `Control.Tests.ps1` verifies an exact 1 MiB + 7 byte duplex copy in both hosting modes, rejected controls followed by a usable session, input/identity bounds, and direct-versus-JSON request accounting. Its timing samples compare identical 1 MiB stdin/hash workloads through local JSON or typed controls. Startup, hashing and drainage are included; actual pipe traffic is zero for both local samples.
 
 `InputBackpressureCases.cs` uses a controlled input sink with no native stdout. Once the full queue becomes writable, the next event poll must complete immediately instead of waiting for unrelated output. This assertion uses explicit synchronization rather than a timing speed threshold. Both possible channel waits are canceled and observed before the normal bounded poll finishes.

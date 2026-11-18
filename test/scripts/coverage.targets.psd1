@@ -18,5 +18,9 @@
         'lib/GitHubActionReleases.psm1'
         'lib/GitHubActionUpdates.psm1'
         'lib/Update-GitHubActions.psm1'
+        'lib/PerformanceStatistics.psm1'
+        'lib/PerformanceWorkloads.psm1'
+        'lib/PerformanceCharts.psm1'
+        'lib/New-CorePerformanceReport.psm1'
     )
 }

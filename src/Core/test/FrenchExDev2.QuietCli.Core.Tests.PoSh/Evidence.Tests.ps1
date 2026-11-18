@@ -150,6 +150,10 @@ function Test-QuietMatrixHtmlEvidence {
     $html=[IO.File]::ReadAllText($result.Html,[Text.Encoding]::UTF8)
     foreach($needle in @('PowerShell line hotspots','CLR trace provenance','linux-musl-arm64','CorePowerShellFacade','1.25','7.7.0-preview.5','Content-Security-Policy','&lt;script&gt;')){if(!$html.Contains($needle)){throw ('MatrixHtmlDetailMissing: '+$needle)}}
     if($html.Contains('<script>') -or $html -match '<(?:script|link|img)\b'){throw 'MatrixHtmlAllowsActiveOrExternalContent'}
+    # Legacy line evidence without per-workload traces still yields the workload overview: SVG in HTML, Mermaid in Markdown.
+    foreach($needle in @('Coverage at a glance','Charts by workload','<svg ','not CPU percentages')){if(!$html.Contains($needle)){throw ('MatrixHtmlWorkloadDetailMissing: '+$needle)}}
+    $markdownText=[IO.File]::ReadAllText($result.Markdown,[Text.Encoding]::UTF8)
+    if(!$markdownText.Contains('```mermaid') -or $markdownText.Contains('<svg') -or $markdownText.Contains('quiet-chart:')){throw 'MatrixMarkdownChartsInvalid'}
     # Copying the same successful subject ten times must never pass cardinality as a complete matrix.
     $job0=Get-Content (Join-Path $inputRoot job-0/summary.json) -Raw -Encoding utf8|ConvertFrom-Json
     Write-WorkspaceJson (Join-Path $inputRoot job-1/summary.json) $job0

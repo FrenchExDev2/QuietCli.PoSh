@@ -18,6 +18,7 @@
    'Core migration preserves metadata and compares local helper costs'=@{Mode='Exclusive';Reason='Engine restart and local timing measurements require exclusive test execution.'}
    'typed controls measure local JSON avoidance with identical stdin'=@{Mode='Exclusive';Reason='Paired native and serialization timing measurements require exclusive execution.'}
    'compiled framing and direct engine measure local overhead independently'=@{Mode='Exclusive';Reason='Overhead measurements must not overlap competing test campaigns.'}
+   'business events measure Emit with listeners and explicit collection'=@{Mode='Exclusive';Reason='Emit timing samples must not overlap competing test campaigns.'}
    'cold engine and warm block-size measurements retain no business output'=@{Mode='Exclusive';Reason='Cold engine restart and warm timing samples require exclusive execution.'}
    'large output retains only bounded transport blocks'=@{Mode='Exclusive';Reason='Process-wide allocation measurements must not overlap other test cases.'}
   }

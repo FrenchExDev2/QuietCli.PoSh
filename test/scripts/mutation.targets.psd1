@@ -170,5 +170,26 @@
             UnitTestFiles = @('unit/lib/GitHubActionUpdates.Tests.ps1')
             Break = 80
         }
+        @{
+            Name = 'PerformanceStatistics'
+            Module = 'lib/PerformanceStatistics.psm1'
+            Functions = @('Get-QuietPerformanceRank','Get-QuietPerformanceStatistics')
+            UnitTestFiles = @('unit/lib/PerformanceStatistics.Tests.ps1')
+            Break = 80
+        }
+        @{
+            Name = 'PerformanceWorkloads'
+            Module = 'lib/PerformanceWorkloads.psm1'
+            Functions = @('Get-QuietPerformanceMember','Get-QuietPerformanceItems','Get-QuietPerformanceNumbers','New-QuietPerformanceGroup','Get-QuietPerformanceHumanSamples','Get-QuietPerformanceVariantGroups','Get-QuietPerformanceWorkloadCatalog','Get-QuietPerformanceWorkloadRows','Get-QuietPerformanceRuntimeNote')
+            UnitTestFiles = @('unit/lib/PerformanceWorkloads.Tests.ps1')
+            Break = 80
+        }
+        @{
+            Name = 'PerformanceCharts'
+            Module = 'lib/PerformanceCharts.psm1'
+            Functions = @('ConvertTo-QuietChartText','ConvertTo-QuietChartXml','Format-QuietChartNumber','Get-QuietPerformanceChartSeries','Get-QuietPerformanceChartTitle','ConvertTo-QuietPerformanceMermaidChart','Get-QuietPerformanceChartCaption','ConvertTo-QuietPerformanceSvgChart','Get-QuietPerformanceWorkloadCoverage','Get-QuietCoverageText','ConvertTo-QuietPerformanceMermaidOverview','ConvertTo-QuietPerformanceSvgOverview')
+            UnitTestFiles = @('unit/lib/PerformanceCharts.Tests.ps1')
+            Break = 80
+        }
     )
 }

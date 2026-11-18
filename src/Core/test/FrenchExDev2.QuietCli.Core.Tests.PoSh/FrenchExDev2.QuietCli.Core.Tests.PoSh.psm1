@@ -169,6 +169,9 @@ Executes independent native byte and object invariants in a companion module.
     $cases['compiled framing and direct engine measure local overhead independently']={
         foreach($sample in Measure-QuietLocalOverhead -Fixture $fixture -Dotnet $dotnet){$performance.Add($sample)}
     }
+    $cases['business events measure Emit with listeners and explicit collection']={
+        foreach($sample in Measure-QuietEventEmission -Fixture $fixture -Dotnet $dotnet){$performance.Add($sample)}
+    }
 
     $cases['explicit event collection compiled properties and targeted mutations']={
         . (Join-Path $PSScriptRoot ConfigurationDelivery.Mutation.ps1)
@@ -456,6 +459,7 @@ Register-QuietHandler -Id 'Sample.QuietStatus.PoSh' -Definition @{
         'compiled text framing and gain reports preserve their contracts'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'managed target follows the actual CLR including preview and future hosts'=@{TestKind='Integration';Dependencies=@('FileSystem','EngineState')}
         'compiled framing and direct engine measure local overhead independently'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'business events measure Emit with listeners and explicit collection'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'explicit event collection compiled properties and targeted mutations'=@{TestKind='Integration';Dependencies=@('FileSystem','DotNetBuild','NativeProcess')}
         'cold engine and warm block-size measurements retain no business output'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'C# protocol and concurrent SQLite assertions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
