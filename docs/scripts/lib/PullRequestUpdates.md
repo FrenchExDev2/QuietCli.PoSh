@@ -22,9 +22,9 @@ An explicit `-Description <markdown>` replaces the existing PR body through `gh 
 `Send-QuietPullRequestUpdate -WorkspaceRoot $root -Remote origin -Branch fix/example [-Body $markdown]`
 implements RAC-PR-001 for `Push-Workspace.ps1`. It resolves the selected GitHub remote, reads the one
 existing open PR, verifies its head matches the local branch, and adds a checkpoint-marked comment
-with GitHub CLI `pr comment --body-file`. Only `feature/*`, `fix/*` and `release/*` branches are
-reported; non-GitHub remotes, other branch families, missing PRs and
-already-commented checkpoints are explicit skips. Ambiguous PRs and changed heads are errors.
+with GitHub CLI `pr comment --body-file` for `feature/*`, `fix/*`, `release/*` and
+`companion/*` branches. Non-GitHub remotes, other branch families, missing PRs and already-commented
+checkpoints are explicit skips. Ambiguous PRs and changed heads are errors.
 
 The default body lists the PR's current commits without claiming test success. Callers can supply
 a reviewed body explaining concrete changes and actual validation. It never creates a PR or edits
@@ -40,9 +40,11 @@ read from `.env`, installed or changed. Comment writes use the explicitly select
 
 ## Review and validation limits
 
-The Core companion uses a scoped native adapter to check seeded feature/fix/companion/release branches, exact repository
-routing, Unicode summaries, previews, absent/ambiguous PRs, checkpoint races, duplicate suppression,
-hostile remote URLs and native failures. These are offline contract tests; they do not qualify GitHub
+The Tooling suite uses a scoped native adapter to check one comment per eligible checkpoint across
+seeded feature, fix, companion and release branches. It also checks that ineligible branch names
+make no native calls. Other cases cover exact repository routing, Unicode summaries, previews,
+absent or ambiguous PRs, checkpoint races, duplicate suppression, hostile remote URLs and native
+failures. These are offline contract tests; they do not qualify GitHub
 authentication or network availability. A network failure after GitHub accepts a comment may report
 failure despite the posted comment; the checkpoint marker prevents duplication on a later attempt.
 

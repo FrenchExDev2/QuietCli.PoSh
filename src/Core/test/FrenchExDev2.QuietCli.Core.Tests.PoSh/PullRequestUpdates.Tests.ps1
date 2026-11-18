@@ -51,19 +51,24 @@ function Test-QuietPullRequestUpdates {
         [pscustomobject]@{Outcome=$(if($fixture.Fail){'Failure'}else{'Success'})}
     }
     Send-QuietPullRequestUpdate $WorkspaceRoot origin $fixture.Branch -WhatIf
-    Send-QuietPullRequestUpdate $WorkspaceRoot origin develop -Confirm:$false
+    foreach($branch in @('develop','companions/fixture','feature-fixture','Feature/fixture')){
+        Send-QuietPullRequestUpdate $WorkspaceRoot origin $branch -Confirm:$false
+    }
     if($fixture.Calls){throw 'PrUpdatePreviewOrUnrelatedBranchInvokedNativeTool'}
     $source=(Get-Command Send-QuietPullRequestUpdate).ScriptBlock.ToString()
-    $anchor="if(`$Branch -cnotmatch '^(feature|fix|release)/'){return}"
+    $anchor="if(`$Branch -cnotmatch '^(feature|fix|release|companion)/'){return}"
     if(!$source.Contains($anchor)){throw 'PrBranchMutationAnchorMissing'}
     $mutant=[scriptblock]::Create($source.Replace($anchor,''))
     try{& $mutant $WorkspaceRoot origin develop -Confirm:$false}catch{}
     if(!$fixture.Calls){throw 'PrBranchGuardMutationSurvived'}
     $fixture.Calls=0
     $seed=20261110;$random=[Random]::new($seed)
+    $branchPrefixes=@('fix/','feature/','release/','companion/')
     foreach($index in 1..16){
-        $fixture.Branch=@('fix/','feature/','release/')[$index%3]+'fixture-'+$random.Next()
+        $fixture.Branch=$branchPrefixes[($index-1)%$branchPrefixes.Count]+'fixture-'+$random.Next()
+        $before=$fixture.Comments
         Send-QuietPullRequestUpdate $WorkspaceRoot origin $fixture.Branch -Confirm:$false
+        if($fixture.Comments -ne ($before+1)){throw ('PrExpectedOneCheckpointComment: '+$fixture.Branch)}
         if(!$fixture.Body.Contains('Synthetic Unicode é漢 change') -or !$fixture.Body.Contains($fixture.Head) -or !$fixture.Body.Contains('does not assert success')){throw 'PrCommitSummaryPropertyFailed'}
     }
     $count=$fixture.Comments;$fixture.Duplicate=$true
