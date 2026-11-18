@@ -53,8 +53,9 @@ export of the prepared Git index, as used by `Commit-Workspace.ps1 -NoAll`.
   - Otherwise throws `ScriptsReadmeNonCompliant` if `docs/scripts/README.md` is missing or stale
     (a script was added, removed, or moved to a different subdirectory since it was last generated).
   - Throws `ScriptsDocSourceLinksStale` when mirrored documents need their source links refreshed.
+  - Throws `ScriptsDocLineEndingsStale` when a mirrored document contains CRLF or CR line endings.
   - This is what the check workflow runs.
-- `-Apply` synchronizes the index and the source link blocks in mirrored docs. Missing documents must be authored first.
+- `-Apply` synchronizes the index and source link blocks and normalizes mirrored docs to LF. Missing documents must be authored first.
 - `-Apply -WhatIf`: previews exactly what `-Apply` would write, without writing it.
 - The generated file already carries the mandatory [`CREDITS.md`](../CREDITS.md) footer (see
   [credits and syncing](README-credits-and-syncing.md)), computed with the same regex-identifiable
@@ -87,7 +88,7 @@ A new script, a renamed script, or a script moved to a different `scripts/` subd
 
 ### [`scripts-docs-check.yml`](../.github/workflows/scripts-docs-check.yml)
 
-Uses `permissions: contents: read`. The shared registry runs `Sync-ScriptsReadme.ps1` without `-Apply` and fails if a script document, its source link or the index is stale. A separate job generates the workflow diagrams in its checkout, uploads them as an artifact and compares them with the tracked map. The workflow runs on path-filtered pull requests and pushes to `develop`, including changes to `scripts/**` and `test/scripts/**`. It also supports manual dispatch. [GitHub workflows](../README-github-workflows.md)
+Uses `permissions: contents: read`. The shared registry runs `Sync-ScriptsReadme.ps1` without `-Apply` and checks that the mirrored docs exist, use LF and have current source links, and that the index is current. A separate job generates the workflow diagrams in its checkout, uploads them as an artifact and compares them with the tracked map. The workflow runs on path-filtered pull requests and pushes to `develop`, including changes to `scripts/**` and `test/scripts/**`. It also supports manual dispatch. [GitHub workflows](../README-github-workflows.md)
 
 ### [`scripts-docs-apply.yml`](../.github/workflows/scripts-docs-apply.yml)
 

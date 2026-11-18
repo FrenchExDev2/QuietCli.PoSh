@@ -22,10 +22,10 @@ Check that every PowerShell script and run profile under `scripts/` has a mirror
 
 - `-ScriptsPath` selects the source directory scanned recursively for `*.ps1`, `*.psm1` and `*.profile.psd1`.
 - `-DocsPath` selects the mirrored documentation root and generated `README.md` destination.
-- `-Apply` regenerates stale source links and the index once all script documents exist.
+- `-Apply` synchronizes stale source links, converts mirrored documentation to LF and regenerates the index once all script documents exist.
 - `-WhatIf` and `-Confirm` preview or approve each write.
 
-Default mode reports `ScriptsDocsMissing` for missing docs, `ScriptsDocSourceLinksStale` for missing or stale links and `ScriptsReadmeNonCompliant` for a stale index. Malformed marker pairs report `ScriptsDocSourceBlockInvalid`. The result includes `Path`, `State`, `DocumentedScriptCount` and `SourceLinksToSync`.
+Default mode reports `ScriptsDocsMissing` for missing docs, `ScriptsDocSourceLinksStale` for missing or stale links, `ScriptsDocLineEndingsStale` for mirrored documents containing CR and `ScriptsReadmeNonCompliant` for a stale index, including one with CRLF. Malformed marker pairs report `ScriptsDocSourceBlockInvalid`. The result includes `Path`, `State`, `DocumentedScriptCount`, `SourceLinksToSync` and `LineEndingsToSync`. The last two fields count affected mirrored documents.
 
 ## Dependencies and side effects
 

@@ -196,19 +196,32 @@ $currentContent = if (Test-Path -LiteralPath $readmePath) {
 }
 
 $state = if ($null -eq $currentContent) { 'Missing' }
-         elseif ($currentContent.Replace("`r`n", "`n") -ne $expectedContent) { 'Stale' }
+         elseif ($currentContent -ne $expectedContent) { 'Stale' }
          else { 'UpToDate' }
 
-$sourceUpdates = @(foreach ($entry in $entries) {
-    $before = [IO.File]::ReadAllText($entry.DocFullPath,$utf8NoBom).Replace("`r`n","`n")
-    $expected = Set-QuietScriptsDocSourceLink -Text $before -Entry $entry
-    if ($expected -cne $before) { [pscustomobject]@{ Entry = $entry; Content = $expected } }
+$docUpdates = @(foreach ($entry in $entries) {
+    $before = [IO.File]::ReadAllText($entry.DocFullPath,$utf8NoBom)
+    $normalized = $before.Replace("`r`n","`n").Replace("`r","`n")
+    $expected = Set-QuietScriptsDocSourceLink -Text $normalized -Entry $entry
+    if ($expected -cne $before) {
+        [pscustomobject]@{
+            Entry = $entry
+            Content = $expected
+            LinkChanged = $expected -cne $normalized
+            LineEndingsChanged = $before -cne $normalized
+        }
+    }
 })
-if (!$Apply -and $sourceUpdates.Count) {
-    throw ('ScriptsDocSourceLinksStale: '+(($sourceUpdates | ForEach-Object { $_.Entry.DocRelative }) -join ', '))
+$sourceLinks = @($docUpdates | Where-Object LinkChanged | ForEach-Object { $_.Entry.DocRelative })
+$lineEndings = @($docUpdates | Where-Object LineEndingsChanged | ForEach-Object { $_.Entry.DocRelative })
+if (!$Apply -and $sourceLinks.Count) {
+    throw ('ScriptsDocSourceLinksStale: '+($sourceLinks -join ', '))
 }
-foreach ($update in $sourceUpdates) {
-    if ($PSCmdlet.ShouldProcess($update.Entry.DocFullPath,'Synchronize script source link')) {
+if (!$Apply -and $lineEndings.Count) {
+    throw ('ScriptsDocLineEndingsStale: '+($lineEndings -join ', '))
+}
+foreach ($update in $docUpdates) {
+    if ($PSCmdlet.ShouldProcess($update.Entry.DocFullPath,'Synchronize script source link and LF line endings')) {
         [IO.File]::WriteAllText($update.Entry.DocFullPath,$update.Content,$utf8NoBom)
     }
 }
@@ -219,7 +232,13 @@ if ($state -ne 'UpToDate' -and $Apply -and $PSCmdlet.ShouldProcess($readmePath, 
     $state = "$state (Applied)"
 }
 
-[pscustomobject]@{ Path = $readmePath; State = $state; DocumentedScriptCount = $entries.Count; SourceLinksToSync = $sourceUpdates.Count }
+[pscustomobject]@{
+    Path = $readmePath
+    State = $state
+    DocumentedScriptCount = $entries.Count
+    SourceLinksToSync = $sourceLinks.Count
+    LineEndingsToSync = $lineEndings.Count
+}
 
 if (!$Apply -and $state -ne 'UpToDate') {
     throw "ScriptsReadmeNonCompliant: $readmePath ($state)"
