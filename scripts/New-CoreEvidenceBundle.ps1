@@ -52,7 +52,16 @@ foreach($path in $profileReports){
     if($profileEvidence.State -ne 'Success'){continue}
     $base=Split-Path $path -Parent
     $valid=$profileEvidence.ProfilerVersion -eq '4.3.0' -and $profileEvidence.ClrProfilerVersion -eq '10.0.750501'
-    $valid=$valid -and (Test-Path ([IO.Path]::Combine($base,'powershell-lines.json'))) -and (Test-Path ([IO.Path]::Combine($base,'powershell.speedscope.json')))
+    $linesPath=[IO.Path]::Combine($base,'powershell-lines.json')
+    $speedscopes=@('powershell.speedscope.json')
+    if(Test-Path $linesPath){
+        # Per-workload traces replace the single legacy trace; every declared one must be present.
+        try{$declared=@((Get-Content $linesPath -Raw -Encoding utf8|ConvertFrom-Json).PSObject.Properties['Workloads']?.Value|Where-Object {$null -ne $_}|ForEach-Object {[string]$_.Speedscope})}catch{$declared=@('')}
+        if($declared.Count){$speedscopes=$declared}
+    }else{$valid=$false}
+    foreach($speedscope in $speedscopes){
+        if(!$speedscope -or [IO.Path]::GetFileName($speedscope) -cne $speedscope -or !(Test-Path -LiteralPath ([IO.Path]::Combine($base,$speedscope)))){$valid=$false}
+    }
     foreach($collector in $profileEvidence.Collectors){
         $trace=[IO.Path]::Combine($base,$collector.Trace)
         if(!(Test-Path $trace) -or !(Test-Path ([IO.Path]::Combine($base,$collector.Speedscope)))){$valid=$false;continue}

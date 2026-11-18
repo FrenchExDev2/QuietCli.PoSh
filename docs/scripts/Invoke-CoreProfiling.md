@@ -36,6 +36,12 @@ Example:
 
 ## Side effects
 
+- Profiles four named Core-only workloads one at a time: `GitTransport`, `Framing`, `Metadata` and `Events` (see `Profiler.Workload.ps1`).
+  - Each gets its own `powershell.<Workload>.speedscope.json`, its own line rows tagged with `Workload`, and its instrumented iteration times in `powershell-lines.json` `Workloads[]`.
+  - Import and the first call are recorded as `NotProfiled`, because the collectors attach after them.
+  - The CLR traces cover the whole run, not one workload.
+  - `summary.json` gains `PowerShellWorkloads`.
+  - With the local pinned tools, the four workloads take about 6 s of the 120 s budget.
 - Writes `powershell-lines.json` (via `Profiler.Target.ps1`, not written by this script directly), `target-ready.json`, `target-result.json`, per-collector `.nettrace`/`.ready`/`.stdout.log`/`.stderr.log` files, a `release` signal file (line 54), per-collector `.collector.json`, Speedscope-converted JSON, and finally `summary.json` (line 88) under `$RunDirectory/profiling`.
 - Starts and later force-kills (`$process.Kill($true)`, line 87, in `finally` for any not-yet-exited owned process) multiple background OS processes.
 - Writes the `release` signal file as UTF-8-no-BOM via `[IO.File]::WriteAllTextAsync(...).GetAwaiter().GetResult()` (line 54) — correct async-then-block pattern per `AGENTS.md`.

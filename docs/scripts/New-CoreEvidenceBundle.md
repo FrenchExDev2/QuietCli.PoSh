@@ -14,7 +14,7 @@ ReportRoot is the owned test/container report tree. OutputDirectory must be outs
 
 Loads Common; uses filesystem streams, literal-path byte/hash checks and JSON, without network/native processes. Copies JSON, traces, logs, text, XML and CSV while excluding staged workspace, Git internals, tool/build/library trees and reparse points. Hidden evidence files remain included and hash-checked. WhatIf returns before directories or copies.
 
-The manifest records file paths, bytes, SHA-256, revision, repository, run/attempt, runner identity and gaps. Profiling validation checks pinned collector versions, line/speedscope files and trace hashes. Process hosting requires both owned target collectors; integrated hosting requires one. Copy/link/read failures remain explicit and fail collection. Required profiling gaps fail after saving the manifest.
+The manifest records file paths, bytes, SHA-256, revision, repository, run/attempt, runner identity and gaps. Profiling validation checks pinned collector versions, line/speedscope files and trace hashes. `powershell-lines.json` is required. When it declares `Workloads`, every declared `Speedscope` must be a plain file name that exists beside it. Older evidence without `Workloads` still needs the single `powershell.speedscope.json`. Process hosting requires both owned target collectors; integrated hosting requires one. Copy/link/read failures remain explicit and fail collection. Required profiling gaps fail after saving the manifest.
 
 Only the prepared evidence tree is uploaded, with hidden files explicitly enabled there. This is distinct from the bounded redacted failure exporter and tooling's separate failed-fixture artifact.
 

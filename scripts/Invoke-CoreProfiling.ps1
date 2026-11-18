@@ -59,6 +59,7 @@ try{
     }
     $targetResult=Get-Content ([IO.Path]::Combine($directory,'target-result.json')) -Raw -Encoding utf8|ConvertFrom-Json
     if($targetResult.State -cne 'Success' -or $targetResult.GitModuleLoaded){throw 'ProfiledTargetFailed'}
+    $report.PowerShellWorkloads=@($targetResult.Workloads)
     $reports=@(foreach($collector in $collectors){
         $execution=Get-Content ($collector.Trace+'.collector.json') -Raw -Encoding utf8|ConvertFrom-Json
         if(!$execution.Ready -or $execution.Execution.Outcome -cne 'Success'){throw 'ClrCollectionIncomplete'}
@@ -80,7 +81,7 @@ try{
     if($identity.EngineMode -eq 'Process' -and $reports.Count -ne 2){throw 'IsolatedEngineClrTraceMissing'}
     if($identity.EngineMode -eq 'InProcess' -and $reports.Count -ne 1){throw 'IntegratedClrTraceIdentityMismatch'}
     $report.Collectors=$reports;$report.State='Success'
-    $report.Limits='PS line self/inclusive wall time and CLR sampled stacks are different observations. Frame-name buckets identify code origins, not additive CPU percentages. CLR conversion preserves raw traces and sample timelines; unresolved/native Git work is not relabeled as C#.'
+    $report.Limits='PS line self/inclusive wall time and CLR sampled stacks are different observations. PS lines and iteration times are split by workload; CLR traces cover all workloads together. Import and the first call happen before the collectors attach. Frame-name buckets identify code origins, not additive CPU percentages. CLR conversion preserves raw traces and sample timelines; unresolved/native Git work is not relabeled as C#.'
 }catch{
     $report.State='Failed';$report.Error=$_.Exception.Message
     throw
