@@ -133,6 +133,30 @@ function Get-QuietPerformanceWorkloadCatalog {
     #>
     [CmdletBinding()]
     param()
+    $startupSelect={
+        param($context)
+        $items=@(foreach($campaign in @(Get-QuietPerformanceItems $context.Performance 'FreshProcessStartup')){
+            foreach($sample in @(Get-QuietPerformanceMember $campaign 'Samples')){
+                if([bool](Get-QuietPerformanceMember $sample 'MeasurePhases') -ne $context.Definition.Instrumented){continue}
+                $telemetry=if(Get-QuietPerformanceMember $sample 'TelemetryEnabled'){'on'}else{'off'}
+                if($context.Definition.StartupMetric -ceq 'ImportMs'){
+                    $item=@{Variant=('telemetry='+$telemetry)}
+                    $raw=Get-QuietPerformanceMember $sample 'ImportMs'
+                    if($null -ne $raw){$item.Value=$raw}
+                    $item;continue
+                }
+                foreach($call in @(Get-QuietPerformanceMember $sample 'Calls')){
+                    $stage=[string](Get-QuietPerformanceMember $call 'Stage')
+                    if($context.Definition.Stage -and $stage -cne $context.Definition.Stage){continue}
+                    $item=@{Variant=('telemetry='+$telemetry+', '+$stage)}
+                    $raw=Get-QuietPerformanceMember $call $context.Definition.StartupMetric
+                    if($null -ne $raw){$item.Value=$raw}
+                    $item
+                }
+            }
+        })
+        Get-QuietPerformanceVariantGroups $items {param($item)$item.Variant} 'Value' $context
+    }
     @(
         [pscustomobject]@{Workload='ImportFirstCall';Measure='Fresh-process import';Phase='Import-Module in a new pwsh, warm file cache, no profile';Source='Performance[FreshSessionImport].Samples[Mode=Import].ElapsedMs';Limits='Excludes engine start and the first command.'
             Select={param($context)
@@ -168,6 +192,18 @@ function Get-QuietPerformanceWorkloadCatalog {
                 }
                 New-QuietPerformanceGroup -Values $values.ToArray()
             }}
+        [pscustomobject]@{Workload='ImportFirstCall';Measure='Fresh-process startup import';StartupMetric='ImportMs';Instrumented=$false;Stage='';Phase='Actual Import-Module followed by short calls in each fresh process; warm filesystem caches.';Source='Performance[FreshProcessStartup].Samples.ImportMs';Limits='Diagnostic and ordinary arms remain separate. Missing values stay unknown. Save round-trip includes its storage phases.';Select=$startupSelect}
+        [pscustomobject]@{Workload='ImportFirstCall';Measure='Fresh-process first short call';StartupMetric='InvocationMs';Instrumented=$false;Stage='FirstCall';Phase='First quiet git --version in a fresh module/engine; native launch and telemetry included.';Source='Performance[FreshProcessStartup].Samples.Calls.InvocationMs';Limits='Diagnostic and ordinary arms remain separate. Missing values stay unknown. Save round-trip includes its storage phases.';Select=$startupSelect}
+        [pscustomobject]@{Workload='ImportFirstCall';Measure='Fresh-process warm short call';StartupMetric='InvocationMs';Instrumented=$false;Stage='WarmCall';Phase='Three short calls after the first in each fresh process; separate telemetry arms.';Source='Performance[FreshProcessStartup].Samples.Calls.InvocationMs';Limits='Diagnostic and ordinary arms remain separate. Missing values stay unknown. Save round-trip includes its storage phases.';Select=$startupSelect}
+        [pscustomobject]@{Workload='Metadata';Measure='Diagnostic short call';StartupMetric='InvocationMs';Instrumented=$true;Stage='';Phase='Whole diagnostic invocation; compare to ordinary short-call arm for timer overhead.';Source='Performance[FreshProcessStartup].Samples.Calls.InvocationMs';Limits='Diagnostic and ordinary arms remain separate. Missing values stay unknown. Save round-trip includes its storage phases.';Select=$startupSelect}
+        [pscustomobject]@{Workload='Metadata';Measure='Result construction';StartupMetric='ResultConstructionMs';Instrumented=$true;Stage='';Phase='Final source flags and result envelope, before metadata projection and save; no business Data traversal.';Source='Performance[FreshProcessStartup].Samples.Calls.ResultConstructionMs';Limits='Diagnostic and ordinary arms remain separate. Missing values stay unknown. Save round-trip includes its storage phases.';Select=$startupSelect}
+        [pscustomobject]@{Workload='Metadata';Measure='Metadata projection';StartupMetric='MetadataProjectionMs';Instrumented=$true;Stage='';Phase='Caller closed metadata projection before sending the save request; absent when telemetry is disabled.';Source='Performance[FreshProcessStartup].Samples.Calls.MetadataProjectionMs';Limits='Diagnostic and ordinary arms remain separate. Missing values stay unknown. Save round-trip includes its storage phases.';Select=$startupSelect}
+        [pscustomobject]@{Workload='Metadata';Measure='Save round-trip';StartupMetric='SaveRoundTripMs';Instrumented=$true;Stage='';Phase='Caller save exchange including adaptation/IPC, queue, validation and SQLite; inclusive, never add nested phases.';Source='Performance[FreshProcessStartup].Samples.Calls.SaveRoundTripMs';Limits='Diagnostic and ordinary arms remain separate. Missing values stay unknown. Save round-trip includes its storage phases.';Select=$startupSelect}
+        [pscustomobject]@{Workload='Metadata';Measure='Writer queue wait';StartupMetric='QueueWaitMs';Instrumented=$true;Stage='';Phase='Queue admission and wait until worker starts; may include earlier background preparation.';Source='Performance[FreshProcessStartup].Samples.Calls.QueueWaitMs';Limits='Diagnostic and ordinary arms remain separate. Missing values stay unknown. Save round-trip includes its storage phases.';Select=$startupSelect}
+        [pscustomobject]@{Workload='Metadata';Measure='Write gate wait';StartupMetric='WriteGateWaitMs';Instrumented=$true;Stage='';Phase='Worker wait for same-path writers in this process; excludes other processes SQLite lock wait.';Source='Performance[FreshProcessStartup].Samples.Calls.WriteGateWaitMs';Limits='Diagnostic and ordinary arms remain separate. Missing values stay unknown. Save round-trip includes its storage phases.';Select=$startupSelect}
+        [pscustomobject]@{Workload='Metadata';Measure='Metadata validation and JSON';StartupMetric='ValidationMs';Instrumented=$true;Stage='';Phase='Closed schema validation and metadata JSON encoding on the worker; no business serialization.';Source='Performance[FreshProcessStartup].Samples.Calls.ValidationMs';Limits='Diagnostic and ordinary arms remain separate. Missing values stay unknown. Save round-trip includes its storage phases.';Select=$startupSelect}
+        [pscustomobject]@{Workload='Metadata';Measure='Writer preparation';StartupMetric='WriterPreparationMs';Instrumented=$true;Stage='';Phase='Writer lookup or open/schema/statements if still needed; background preparation can already have completed.';Source='Performance[FreshProcessStartup].Samples.Calls.WriterPreparationMs';Limits='Diagnostic and ordinary arms remain separate. Missing values stay unknown. Save round-trip includes its storage phases.';Select=$startupSelect}
+        [pscustomobject]@{Workload='Metadata';Measure='SQLite write';StartupMetric='SqliteWriteMs';Instrumented=$true;Stage='';Phase='Binding, stepping, reset and SQLite lock/durability waits; implicit invocation transaction, not pure disk time.';Source='Performance[FreshProcessStartup].Samples.Calls.SqliteWriteMs';Limits='Diagnostic and ordinary arms remain separate. Missing values stay unknown. Save round-trip includes its storage phases.';Select=$startupSelect}
         [pscustomobject]@{Workload='Events';Measure='Emit loop';Phase='Emit calls inside -Complete, payloads allocated before the call';Source='Performance[EventEmission].EmitMs';Limits='These listeners only count; real listeners add their own cost.'
             Select={param($context)Get-QuietPerformanceVariantGroups @(Get-QuietPerformanceItems $context.Performance 'EventEmission') {param($item)'listeners='+(Get-QuietPerformanceMember $item 'Listeners')+', collect='+$(if(Get-QuietPerformanceMember $item 'CollectEvents'){'on'}else{'off'})} 'EmitMs' $context}}
     )
@@ -193,13 +229,14 @@ function Get-QuietPerformanceWorkloadRows {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Label,[AllowNull()]$Core,[AllowNull()][AllowEmptyCollection()][object[]]$ProfiledWorkloads,[object[]]$Catalog=@(Get-QuietPerformanceWorkloadCatalog))
     $rejected=0
-    $context=[pscustomobject]@{Performance=@(Get-QuietPerformanceMember $Core 'Performance');Integration=@(Get-QuietPerformanceMember $Core 'Integration');Rejected=[ref]$rejected}
+    $context=[pscustomobject]@{Performance=@(Get-QuietPerformanceMember $Core 'Performance');Integration=@(Get-QuietPerformanceMember $Core 'Integration');Rejected=[ref]$rejected;Definition=$null}
     $rows=[Collections.Generic.List[object]]::new()
     foreach($definition in $Catalog){
+        $context.Definition=$definition
         $groups=@(& $definition.Select $context)
         if(!$groups.Count){$groups=@(New-QuietPerformanceGroup)}
         foreach($group in $groups){
-            $rows.Add([pscustomobject]@{Host=$Label;Workload=$definition.Workload;Measure=$definition.Measure;Variant=$group.Variant;Phase=$definition.Phase;Instrumented=$false;Source=$definition.Source;Limits=$definition.Limits;Statistics=(Get-QuietPerformanceStatistics -Values $group.Values)})
+            $rows.Add([pscustomobject]@{Host=$Label;Workload=$definition.Workload;Measure=$definition.Measure;Variant=$group.Variant;Phase=$definition.Phase;Instrumented=[bool](Get-QuietPerformanceMember $definition 'Instrumented');Source=$definition.Source;Limits=$definition.Limits;Statistics=(Get-QuietPerformanceStatistics -Values $group.Values)})
         }
     }
     foreach($workload in @($ProfiledWorkloads)){

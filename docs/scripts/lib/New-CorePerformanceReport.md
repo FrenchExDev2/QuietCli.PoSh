@@ -58,6 +58,12 @@ Loads Common, PerformanceStatistics, PerformanceWorkloads and PerformanceCharts,
 
 
 
+## Required startup and storage timings
+
+Core reports require the FreshProcessStartup campaign and seven first-call / 21 warm-call observations for each applicable telemetry-on phase. Missing or malformed phase evidence produces an explicit gap and PerformanceReportEvidenceIncomplete after partial output is saved. The Markdown and self-contained HTML contain separate charts and definitions for result construction, metadata projection, save round-trip, queue wait, same-path gate wait, validation/metadata JSON, writer preparation and SQLite write. Ordinary and diagnostic totals are separate controls. Telemetry-off storage values remain unavailable.
+
+Review: missing timer series are checked independently of the success flag in the supplied summary. Tests supply deterministic complete/missing/nonfinite fixtures and verify Markdown/Mermaid, HTML/SVG, JSON and no-write WhatIf. Verdict: complete supplied timing evidence does not establish a causal performance improvement; that requires a matched before/after campaign.
+
 <!-- credits:begin -->
 ## Credits
 

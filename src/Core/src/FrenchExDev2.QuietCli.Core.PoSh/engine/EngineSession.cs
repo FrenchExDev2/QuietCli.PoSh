@@ -71,7 +71,11 @@ internal sealed class EngineSession : IAsyncDisposable
             case "cancel": data = await ControlAsync(LocalControl.Cancel, invocationId, input); break;
             case "resize": data = await ControlAsync(LocalControl.Resize, invocationId, input, request.GetProperty("Columns").GetInt32(), request.GetProperty("Rows").GetInt32()); break;
             case "release": data = await ControlAsync(LocalControl.Release, invocationId, input); break;
-            case "save": await store.SaveAsync(request.GetProperty("Metadata"), request.GetProperty("Kind").GetString()!); break;
+            case "save":
+                if (request.TryGetProperty("MeasurePhases", out var measured) && measured.GetBoolean())
+                    data = await store.MeasureSaveAsync(request.GetProperty("Metadata"), request.GetProperty("Kind").GetString()!);
+                else await store.SaveAsync(request.GetProperty("Metadata"), request.GetProperty("Kind").GetString()!);
+                break;
             case "query": data = await store.QueryAsync(request); break;
             case "gain": data = await StartGainAsync(GainSelection.Parse(request)); break;
             case "gain-poll": data = await ReadGainAsync(request.GetProperty("ReportId").GetString()!, 0); break;
@@ -120,7 +124,9 @@ internal sealed class EngineSession : IAsyncDisposable
             case "hello": return Information();
             case "allocations": return ProcessAllocationSnapshot.Capture(request.Precise);
             case "start": return await StartAsync(request.Start!);
-            case "save": await store.SaveAsync(request.Measurement!, request.Kind!); return null;
+            case "save":
+                if (request.MeasurePhases) return await store.MeasureSaveAsync(request.Measurement!, request.Kind!);
+                await store.SaveAsync(request.Measurement!, request.Kind!); return null;
             case "gain": return await StartGainAsync(request.Selection!);
             case "gain-poll": return await ReadGainAsync(request.ReportId!, 0);
             case "gain-next": return await ReadGainAsync(request.ReportId!, request.After);

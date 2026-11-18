@@ -27,6 +27,9 @@ public sealed class LocalMetadataRequest
     /// <summary>Explicit high-cost precision opt-in for process diagnostics.</summary>
     internal bool Precise { get; }
 
+    /// <summary>Explicit save phase diagnostics; never stored in the measurement record.</summary>
+    internal bool MeasurePhases { get; }
+
     /// <summary>Maps only explicit action fields and closed nested telemetry records.</summary>
     /// <param name="header">Facade metadata header, never a result or business object.</param>
     /// <param name="adapt">Caller-thread adaptation of PowerShell metadata property bags.</param>
@@ -47,7 +50,9 @@ public sealed class LocalMetadataRequest
             case "start":
                 Start = ClosedRecord.Read<StartOptions>(fields, adapt).ToInvocation(); break;
             case "save":
-                ClosedRecord.Check(fields, ["Kind", "Metadata"]);
+                ClosedRecord.Check(fields, ["Kind", "Metadata", "MeasurePhases"]);
+                if (fields.Contains("MeasurePhases") && fields["MeasurePhases"] is not bool) throw new InvalidDataException("InvalidPhaseMeasurement");
+                MeasurePhases = fields["MeasurePhases"] is true;
                 Kind = (string)fields["Kind"]!;
                 Measurement = ClosedRecord.Read<MeasurementRecord>(fields["Metadata"]!, adapt); break;
             case "gain": Selection = ClosedRecord.Read<GainSelection>(fields, adapt); break;

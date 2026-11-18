@@ -138,7 +138,10 @@ Executes independent native byte and object invariants in a companion module.
         } (Join-Path $PSScriptRoot 'ProtocolSpecification.Tests.ps1') $WorkspaceRoot))
     }
     $cases['direct status callbacks preserve generated Unicode record digests']={$performance.Add((Test-QuietStatusAggregation))}
-    $cases['fresh sessions measure inert Core import against a paired baseline']={$performance.Add((Invoke-QuietImportIntegration -WorkspaceRoot $WorkspaceRoot))}
+    $cases['fresh sessions measure inert Core import against a paired baseline']={
+        $performance.Add((Invoke-QuietImportIntegration -WorkspaceRoot $WorkspaceRoot))
+        $performance.Add((Invoke-QuietStartupIntegration -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory))
+    }
 
     $cases['import diagnostics retain independent first-use controls']={$performance.Add((Invoke-QuietImportDiagnostics -WorkspaceRoot $WorkspaceRoot))}
     $cases['owned complex repositories use only Core callbacks and exact state oracles']={$integration.Add((Invoke-QuietControlledStatusIntegration -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory))}
@@ -460,7 +463,7 @@ Register-QuietHandler -Id 'Sample.QuietStatus.PoSh' -Definition @{
         'Recall capture and offline analysis regressions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'protocol configuration preserves bounds using host .NET APIs'=@{TestKind='Integration';Dependencies=@('FileSystem','EngineState')}
         'direct status callbacks preserve generated Unicode record digests'=@{TestKind='Unit';Dependencies=@()}
-        'fresh sessions measure inert Core import against a paired baseline'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'fresh sessions measure inert Core import against a paired baseline'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'import diagnostics retain independent first-use controls'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'owned complex repositories use only Core callbacks and exact state oracles'=@{TestKind='Integration';Dependencies=@('FileSystem','GitProcess','NativeProcess','EngineState')}
         'Core migration preserves metadata and compares local helper costs'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}

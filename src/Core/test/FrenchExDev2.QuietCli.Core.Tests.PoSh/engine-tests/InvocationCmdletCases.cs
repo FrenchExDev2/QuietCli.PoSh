@@ -34,6 +34,11 @@ internal static class InvocationCmdletCases
                 foreach (string name in new[] { "Execution", "Completeness" })
                     ExpectFailure(() => DeliveryCmdletCases.Script(runspace, "param($r) $r." + name + " = 1", result), "Final property " + name + " is writable");
                 Require(QuietCallState.Depth == 0, "Call stack leaked");
+                Require(Member(Member(result, "Measurement"), "Phases") is null, "Ordinary invocation enabled diagnostic timers");
+                var measured = Call(runspace, path, "@{MeasurePhases=$true}");
+                var phases = Member(Member(measured, "Measurement"), "Phases");
+                Require(phases is not null && Convert.ToDouble(Member(phases, "ResultConstructionMs")) >= 0, "Explicit result construction timer missing");
+                Require(Member(phases, "SaveRoundTripMs") is null && Member(phases, "Storage") is null, "Disabled telemetry measured a fictitious save");
             }
             finally { DeliveryCmdletCases.Script(runspace, "Unregister-QuietHandler probe-ok"); }
             return Task.CompletedTask;

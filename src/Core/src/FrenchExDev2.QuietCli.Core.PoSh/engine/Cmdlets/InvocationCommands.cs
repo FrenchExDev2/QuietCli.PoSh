@@ -164,6 +164,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
     /// <param name="original">Validated facade options.</param>
     private object? Run(Hashtable original)
     {
+        bool measurePhases = original.ContainsKey("MeasurePhases") && LanguagePrimitives.IsTrue(original["MeasurePhases"]);
         if (original.ContainsKey("RecallId")) return RunSavedRecall(original);
         if (QuietCallState.RecallDepth > 0) throw new InvalidOperationException("NativeExecutionUnavailableDuringRecall");
         Hashtable request = ApplyFactories(original);
@@ -247,6 +248,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
             foreach (object child in runtime.Children)
                 if (Members.Get(Members.Get(child, "Internal"), "Sources") is IDictionary sources)
                     foreach (object key in sources.Keys) runtime.Sources[key] = sources[key];
+            long constructionStarted = measurePhases ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
             bool sourceComplete = (runtime.Execution is null || Flag(runtime.Execution, "SourceComplete")) && runtime.Children.All(child => LanguagePrimitives.IsTrue(Members.Get(Members.Get(child, "Completeness"), "Source")));
             bool analysisComplete = runtime.AnalysisComplete && runtime.Children.All(child => LanguagePrimitives.IsTrue(Members.Get(Members.Get(child, "Completeness"), "Analysis")));
             if (runtime.Lifecycle == "Running") runtime.Transition("Draining");
@@ -293,7 +295,16 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
             else if (runtime.RecallCollector is { } memory)
                 FinalProperties.Set(result, "Recall", memory.Snapshot(Flag(runtime.Execution, "SourceComplete"), RecallSettings(request), StatusOf(runtime.Execution)));
             Members.SetNote(measurement, "Allocation", allocation.Stop());
-            SaveInvocationMetadata(result, measurement);
+            Hashtable? phases = null;
+            if (measurePhases)
+            {
+                phases = new Hashtable(StringComparer.Ordinal) {
+                    ["ResultConstructionMs"] = System.Diagnostics.Stopwatch.GetElapsedTime(constructionStarted).TotalMilliseconds,
+                    ["MetadataProjectionMs"] = null, ["SaveRoundTripMs"] = null, ["Storage"] = null,
+                };
+                Members.SetNote(measurement, "Phases", phases);
+            }
+            SaveInvocationMetadata(result, measurement, phases);
         }
         finally
         {
@@ -326,10 +337,19 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
     }
 
     /// <summary>Saves counters without serializing or enumerating Result.Data.</summary>
-    private void SaveInvocationMetadata(PSObject result, PSObject measurement)
+    private void SaveInvocationMetadata(PSObject result, PSObject measurement, Hashtable? phases = null)
     {
         if (!LanguagePrimitives.IsTrue(Setting("telemetry.enabled"))) return;
-        try { SaveMetadata(new Hashtable { ["Action"] = "save", ["Kind"] = "invocation", ["Metadata"] = ResultMetadata.Get(result) }); }
+        try
+        {
+            long started = phases is null ? 0 : System.Diagnostics.Stopwatch.GetTimestamp();
+            IDictionary metadata = ResultMetadata.Get(result);
+            if (phases is not null) phases["MetadataProjectionMs"] = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            var header = new Hashtable { ["Action"] = "save", ["Kind"] = "invocation", ["Metadata"] = metadata };
+            if (phases is not null) { header["MeasurePhases"] = true; started = System.Diagnostics.Stopwatch.GetTimestamp(); }
+            object? storage = SaveMetadata(header);
+            if (phases is not null) { phases["SaveRoundTripMs"] = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds; phases["Storage"] = storage; }
+        }
         catch (Exception error) when (error is not PipelineStoppedException)
         {
             Members.SetNote(measurement, "StorageError", StorageMessage(error));

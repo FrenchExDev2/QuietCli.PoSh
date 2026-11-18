@@ -36,6 +36,12 @@ None beyond throwing on failure. This is a pure validation gate.
 
 Functionally sound and comparatively well tested, but the dense block of unexplained magic numbers (lines 15, 17, 21, 34) is the single highest-priority fix: extract them into named, documented constants so a future maintainer can distinguish "required minimum" from "today's incidental snapshot."
 
+## Mandatory fresh-process timing evidence
+
+The gate additionally requires one FreshProcessStartup record with seven iterations and 28 retained process samples: telemetry on/off crossed with timers on/off. Every sample must have exactly one first call and three warm calls. Applicable elapsed and phase counters must be present, finite and nonnegative. Telemetry-disabled calls must not claim a storage round-trip. The producer uses owned configurations/databases, and the gate validates their creation receipt against the arm.
+
+The common Core/All worker enforces this for selected PR and develop qualification; focused filtered development runs remain partial. Integration.Gate.Tests.ps1 covers absent arms, missing SQLite timers, negative queue duration and fictitious disabled-storage measurements. No machine-dependent timing threshold is used.
+
 <!-- credits:begin -->
 ## Credits
 

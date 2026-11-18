@@ -127,6 +127,60 @@ function Invoke-QuietImportIntegration {
     }
 }
 
+function Invoke-QuietStartupIntegration {
+    <#
+    .SYNOPSIS
+    Measures import and first/warm calls in fresh owned processes with telemetry and timers independently toggled.
+    .PARAMETER WorkspaceRoot
+    Built monorepo; uses its exact Core manifest.
+    .PARAMETER RunDirectory
+    Owned campaign directory, never the user's configuration or database.
+    .PARAMETER Iterations
+    Retained repetitions per arm after one discarded warm-up process per arm.
+    #>
+    param([string]$WorkspaceRoot,[string]$RunDirectory,[ValidateRange(3,30)][int]$Iterations=7)
+    $manifest=[IO.Path]::Combine($WorkspaceRoot,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
+    $probe=[IO.Path]::Combine($PSScriptRoot,'Startup.Probe.ps1')
+    $runner=[IO.Path]::Combine($PSHOME,$(if($IsWindows){'pwsh.exe'}else{'pwsh'}))
+    $executable=(Get-Command git -CommandType Application -ErrorAction Stop|Select-Object -First 1).Source
+    $samples=[Collections.Generic.List[object]]::new();$pids=[Collections.Generic.HashSet[int]]::new()
+    $arms=@(@{Telemetry=$false;Timers=$false},@{Telemetry=$true;Timers=$false},@{Telemetry=$false;Timers=$true},@{Telemetry=$true;Timers=$true})
+    for($iteration=0;$iteration -le $Iterations;$iteration++){
+        foreach($offset in 0..3){
+            $arm=$arms[($iteration+$offset)%4]
+            $directory=[IO.Path]::Combine($RunDirectory,'startup',([guid]::NewGuid().ToString('N')))
+            [void][IO.Directory]::CreateDirectory($directory)
+            $hosting=if($env:QUIETCLI_EXPECT_ENGINE_MODE){$env:QUIETCLI_EXPECT_ENGINE_MODE}else{'Auto'}
+            $yaml="schemaVersion: 1`ntelemetry:`n  enabled: $(([string]$arm.Telemetry).ToLowerInvariant())`n  database: measurements.sqlite`nengine:`n  hosting: $hosting`n"
+            [IO.File]::WriteAllText([IO.Path]::Combine($directory,'config.yaml'),$yaml,[Text.UTF8Encoding]::new($false))
+            $arguments=@('-NoLogo','-NoProfile','-NonInteractive','-File',$probe,'-Manifest',$manifest,'-Executable',$executable,'-ConfigurationDirectory',$directory)
+            if($arm.Timers){$arguments+='-MeasurePhases'}
+            $diagnostic=@{Diagnostic=''}
+            $result=quiet -AsObject -Role Infrastructure -TimeoutSeconds 90 -State $diagnostic -Data ([Text.StringBuilder]::new()) -Output {
+                param($event,$runtime)
+                if($event.Stream -eq 'stdout'){
+                    if($runtime.Data.Length+$event.Text.Length -gt 32768){throw 'StartupProbeOutputLimit'}
+                    [void]$runtime.Data.Append($event.Text)
+                }
+                elseif($runtime.State.Diagnostic.Length -lt 4096){$runtime.State.Diagnostic+=$event.Text}
+            } -Complete {param($runtime)if($runtime.State.Diagnostic){throw $runtime.State.Diagnostic};$runtime.Data.ToString()|ConvertFrom-Json} -FilePath $runner -ArgumentList $arguments
+            if($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis){throw ('StartupProbeFailed: outcome='+$result.Outcome+'; exit='+$result.Execution.Native.ExitCode+'; '+$diagnostic.Diagnostic+'; '+(($result.Error|ForEach-Object Message) -join '; '))}
+            $sample=$result.Data
+            if(!$pids.Add([int]$sample.ProcessId) -or $sample.RuntimeIdentifier -cne [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier -or $sample.Calls.Count -ne 4 -or $sample.MeasurePhases -ne $arm.Timers -or $sample.DatabaseCreated -ne $arm.Telemetry){throw 'StartupProbeIdentityMismatch'}
+            if($hosting -cne 'Auto' -and $sample.EngineMode -cne $hosting){throw 'StartupProbeHostingMismatch'}
+            foreach($call in $sample.Calls){
+                if($call.InvocationMs -lt 0 -or ![double]::IsFinite($call.InvocationMs)){throw 'StartupProbeTimingInvalid'}
+                if($arm.Timers -and $arm.Telemetry -and $null -eq $call.SqliteWriteMs){throw 'StartupStorageTimersMissing'}
+                if(!$arm.Telemetry -and $null -ne $call.SaveRoundTripMs){throw 'DisabledStartupStorageMeasured'}
+            }
+            $sample|Add-Member TelemetryEnabled $arm.Telemetry
+            $sample|Add-Member Iteration $iteration
+            if($iteration){$samples.Add($sample)}
+        }
+    }
+    [pscustomobject]@{Kind='FreshProcessStartup';Iterations=$Iterations;WarmupPerArm=1;Samples=$samples.ToArray();Limits='Fresh process/module/engine; warm filesystem caches. Fixed git --version, three warm calls after the first. Telemetry and diagnostic timers are independent arms with rotating order. Timers add overhead; no speed threshold or causal OS comparison. Queue wait may include prior background preparation. Save round-trip includes the nested storage phases; do not add it to them. SQLite write includes binding, stepping and implicit transaction durability, not pure disk time.'}
+}
+
 function Invoke-QuietImportDiagnostics {
     <#
     .SYNOPSIS

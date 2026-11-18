@@ -25,7 +25,8 @@ function Invoke-QuietCoreIntegrationTests {
     $import=Invoke-QuietImportIntegration -WorkspaceRoot $WorkspaceRoot
     if($OnProgress){& $OnProgress 'Import diagnostics' Running 2 0}
     $diagnostics=Invoke-QuietImportDiagnostics -WorkspaceRoot $WorkspaceRoot
-    $summary=[pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=3;Failed=0;Performance=@($import,$diagnostics);Integration=@($controlled);GateValidation=$gateValidation;EvidenceValidation=$evidenceValidation}
+    $startup=Invoke-QuietStartupIntegration -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+    $summary=[pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=3;Failed=0;Performance=@($import,$diagnostics,$startup);Integration=@($controlled);GateValidation=$gateValidation;EvidenceValidation=$evidenceValidation}
     & (Join-Path $WorkspaceRoot 'scripts/Assert-CoreIntegrationEvidence.ps1') -Summary $summary
     if($OnProgress){& $OnProgress 'Mandatory Core integration evidence verified' Passed 3 0}
     return $summary

@@ -35,6 +35,11 @@ BeforeAll {
                 @{Kind='WarmEngine';InvocationMs=(& $n 12 6);ExecutionMs=(& $n 9 3);ReferenceMs=2;CallbackMs=(& $n 0.4 0.3)}
             )};Samples=@(1,2)}})
             $performance=@(
+                @{Kind='FreshProcessStartup';Iterations=7;Samples=@(foreach($telemetry in @($false,$true)){foreach($timers in @($false,$true)){foreach($repeat in 1..7){
+                    @{MeasurePhases=$timers;TelemetryEnabled=$telemetry;ImportMs=150;Calls=@(foreach($call in 0..3){
+                        @{Stage=$(if($call){'WarmCall'}else{'FirstCall'});InvocationMs=20;ResultConstructionMs=1;MetadataProjectionMs=$(if($telemetry){1});SaveRoundTripMs=$(if($telemetry){8});QueueWaitMs=$(if($telemetry){2});WriteGateWaitMs=$(if($telemetry){0.5});ValidationMs=$(if($telemetry){1});WriterPreparationMs=$(if($telemetry){0.2});SqliteWriteMs=$(if($telemetry){3})}
+                    })}
+                }}})}
                 @{Kind='FreshSessionImport';Samples=@(1..7|ForEach-Object {@{Mode='Import';ElapsedMs=(& $n 400 120)};@{Mode='Baseline';ElapsedMs=(& $n 250 40)}});Pairs=@(1..7|ForEach-Object {@{ElapsedMs=(& $n 150 60)}});Statistics=@{ElapsedMs=@{Import=@{Count=7;Median=450;P95=510;Max=510}};AllocatedBytes=@{PairedDelta=@{Median=4MB}}}}
                 @{Kind='EngineStartup';Mode=$target[2];ElapsedMs=(& $n 60 10)}
                 @(1..3|ForEach-Object {@{Kind='EngineTransport';Mode=$target[2];ElapsedMs=(& $n 180 40)}})
@@ -52,7 +57,7 @@ BeforeAll {
         $bundle
     }
     $render={param([string]$Bundle,[string]$Output,[string]$Suite='All',[int]$Expected=3)
-        Invoke-QuietScriptNewCorePerformanceReport -EvidenceRoot $Bundle -OutputDirectory $Output -Revision $revision -ExpectedReports $Expected -Suite $Suite -Confirm:$false
+        try { Invoke-QuietScriptNewCorePerformanceReport -EvidenceRoot $Bundle -OutputDirectory $Output -Revision $revision -ExpectedReports $Expected -Suite $Suite -Confirm:$false } catch { $diagnostic=[IO.Path]::Combine($Output,'PERFORMANCES_RESULTS.json'); if(Test-Path -LiteralPath $diagnostic){Write-Host ((Get-Content -LiteralPath $diagnostic -Raw -Encoding utf8|ConvertFrom-Json).EvidenceGaps -join '; ')}; throw }
     }
     $readText={param([string]$Path)[IO.File]::ReadAllText($Path,[Text.UTF8Encoding]::new($false))}
     $root=[IO.Path]::Combine($TestDrive,'complete')
@@ -65,6 +70,24 @@ BeforeAll {
 }
 
 Describe 'Invoke-QuietScriptNewCorePerformanceReport' {
+    It 'publishes separate diagnostic phase charts and states their inclusive boundaries' {
+        foreach($measure in @('Result construction','Metadata projection','Save round-trip','Writer queue wait','Write gate wait','Metadata validation and JSON','Writer preparation','SQLite write')){
+            $phase=@($data.Workloads|Where-Object {$_.Measure -ceq $measure -and $_.Variant -ceq 'telemetry=on, FirstCall'})
+            $phase.Count|Should -Be 3
+            @($phase|Where-Object {$_.Count -ne 7 -or !$_.Instrumented}).Count|Should -Be 0
+            $md|Should -Match ([regex]::Escape($measure))
+        }
+        @($data.Workloads|Where-Object {$_.Measure -ceq 'SQLite write' -and $_.Variant -like 'telemetry=off*' -and $_.Count -gt 0}).Count|Should -Be 0
+        $md|Should -Match 'never add it to those phases'
+        $md|Should -Match 'Telemetry-off save timings stay unavailable, never zero'
+    }
+
+    It 'rejects a report without the new startup timers instead of claiming complete evidence' {
+        $badRoot=[IO.Path]::Combine($TestDrive,'no-startup')
+        $badBundle=& $newBundle $badRoot {param($Index,$Summary,$Lines)$Summary.Suites[0].Performance=@($Summary.Suites[0].Performance|Where-Object Kind -NE 'FreshProcessStartup')}
+        {& $render $badBundle ([IO.Path]::Combine($badRoot,'out'))}|Should -Throw 'PerformanceReportEvidenceIncomplete'
+    }
+
     It 'reads every environment of a complete synthetic bundle without gaps' {
         $result.Rows|Should -Be 3
         $result.Gaps|Should -Be 0

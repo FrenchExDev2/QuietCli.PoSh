@@ -239,7 +239,7 @@ function ConvertTo-QuietPerformanceMermaidOverview {
     $text=[Text.StringBuilder]::new()
     [void]$text.AppendLine('```mermaid')
     [void]$text.AppendLine('flowchart LR')
-    $lanes=@(@{Id='U';Instrumented=$false;Title='Uninstrumented timing (Core tests)'},@{Id='P';Instrumented=$true;Title='Instrumented (Profiler 4.3.0 + dotnet-trace)'})
+    $lanes=@(@{Id='U';Instrumented=$false;Title='Uninstrumented timing (Core tests)'},@{Id='P';Instrumented=$true;Title='Diagnostics and profiling'})
     foreach($lane in $lanes){
         [void]$text.AppendLine('    subgraph '+$lane.Id+'["'+$lane.Title+'"]')
         [void]$text.AppendLine('        direction TB')
@@ -267,7 +267,7 @@ function ConvertTo-QuietPerformanceSvgOverview {
     [CmdletBinding()]
     [OutputType([string])]
     param([AllowEmptyCollection()][object[]]$Coverage)
-    $lanes=@(@{Instrumented=$false;Title='Uninstrumented timing (Core tests)'},@{Instrumented=$true;Title='Instrumented (Profiler 4.3.0 + dotnet-trace)'})
+    $lanes=@(@{Instrumented=$false;Title='Uninstrumented timing (Core tests)'},@{Instrumented=$true;Title='Diagnostics and profiling'})
     $columns=[Math]::Max(1,[Math]::Max(@($Coverage|Where-Object {!$_.Instrumented}).Count,@($Coverage|Where-Object {$_.Instrumented}).Count))
     $boxWidth=148;$gap=10;$boxHeight=54;$laneHeight=$boxHeight+34
     $width=[Math]::Max(480,$columns*($boxWidth+$gap)-$gap);$height=$lanes.Count*$laneHeight

@@ -21,6 +21,29 @@ BeforeAll {
     }
 }
 
+Describe 'Core performance evidence on PR and develop' {
+    It 'routes both automatic events through the same qualification and performance steps' {
+        $companions['on'].ContainsKey('pull_request')|Should -BeTrue
+        @($companions['on']['push']['branches'])|Should -Contain 'develop'
+        $products=@($companions['jobs'].Values|Where-Object {[string]$_['uses'] -ceq './.github/workflows/ci.yml'})
+        $products.Count|Should -Be 1
+        [string]$products[0]['with']['collect_performance']|Should -BeExactly '${{ matrix.collect_performance }}'
+        [string]$products[0]['if']|Should -Not -Match 'github.event_name.*push'
+        $calls=(& $runs $engine['jobs']['windows']) -join "`n"
+        $calls|Should -Match 'Invoke-GitHubCi.ps1'
+        $calls|Should -Not -Match 'github.event_name'
+        @($engine['jobs']['performance-results']['steps']|Where-Object {([string]$_['run']).Contains('New-CorePerformanceReport.ps1')}).Count|Should -Be 1
+    }
+
+    It 'keeps startup WhatIf inert without a manifest, executable or configuration directory' {
+        $directory=[IO.Path]::Combine($TestDrive,'startup-preview')
+        $probe=[IO.Path]::Combine($root,'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Startup.Probe.ps1')
+        $result=Invoke-QuietTestScript -ScriptPath $probe -ArgumentList @('-Manifest','missing.psd1','-Executable','missing.exe','-ConfigurationDirectory',$directory,'-MeasurePhases','-WhatIf') -TimeoutSeconds 60
+        $result.ExitCode|Should -Be 0 -Because ($result.Output+$result.Error)
+        Test-Path -LiteralPath $directory|Should -BeFalse
+    }
+}
+
 Describe 'companions-ci.yml image warm-up' {
     It 'runs once per RID after planning, only for develop pushes or dispatches that qualify products' {
         $warm|Should -Not -BeNullOrEmpty

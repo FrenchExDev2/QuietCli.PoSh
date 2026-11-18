@@ -24,6 +24,15 @@ internal static class SqlitePersistenceCases
                 try { await store.SaveAsync(JsonSerializer.SerializeToElement(new { InvocationId = "unsafe", Data = "private" }), "invocation"); throw new Exception("Unsafe metadata accepted"); }
                 catch (InvalidDataException) { }
                 Require(!File.Exists(file), "Rejected metadata created storage");
+                var first = await store.MeasureSaveAsync(new MeasurementRecord("timed-first"), "invocation");
+                var second = await store.MeasureSaveAsync(new MeasurementRecord("timed-second"), "invocation");
+                Require(first is { WriterAlreadyPrepared: false } && second is { WriterAlreadyPrepared: true }, "Save timers lost writer preparation/reuse identity");
+                foreach (var timing in new[] { first!, second! })
+                    foreach (double value in new[] { timing.QueueWaitMs, timing.WriteGateWaitMs, timing.ValidationMs, timing.WriterPreparationMs, timing.SqliteWriteMs })
+                        Require(double.IsFinite(value) && value >= 0, "Save timer invented an invalid duration");
+                using var reader = new Database(file, false);
+                var rows = reader.Query("SELECT payload FROM quiet2_events", []);
+                Require(rows.Count == 2 && rows.All(row => !((string)row["payload"]).Contains("QueueWaitMs", StringComparison.Ordinal)), "Diagnostic save changed persistence cardinality or leaked timers into storage");
             });
             await run("SQLite preparation is nonblocking serialized once and drained before disposal", async () =>
             {
@@ -46,15 +55,18 @@ internal static class SqlitePersistenceCases
                     await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
                     for (int i = 0; i < 32; i++) store.BeginPreparation();
                     var saves = Enumerable.Range(0, 40).Select(i => store.SaveAsync(new MeasurementRecord("prepared-" + i, Context: "prepared"), "invocation")).ToArray();
+                    var measured = store.MeasureSaveAsync(new MeasurementRecord("prepared-measured"), "invocation");
                     Require(saves.All(task => !task.IsCompleted), "Save bypassed pending initialization");
                     var disposal = store.DisposeAsync().AsTask();
                     Require(!disposal.IsCompleted, "Disposal abandoned accepted writes");
                     release.Set();
                     await Task.WhenAll(saves).WaitAsync(TimeSpan.FromSeconds(15));
+                    var measuredResult = await measured.WaitAsync(TimeSpan.FromSeconds(15));
+                    Require(measuredResult is { WriterAlreadyPrepared: true, QueueWaitMs: > 0 }, "Measured save bypassed worker preparation or queue");
                     await disposal.WaitAsync(TimeSpan.FromSeconds(15));
                     Require(opens == 1, "Preparation or later writes opened another connection");
                     using var independent = new Database(file, false);
-                    Require((long)independent.Query("SELECT COUNT(*) AS n FROM quiet2_events", [])[0]["n"] == 40, "Accepted writes were lost");
+                    Require((long)independent.Query("SELECT COUNT(*) AS n FROM quiet2_events", [])[0]["n"] == 41, "Accepted writes were lost");
                     try { connection!.Execute("SELECT 1", []); throw new Exception("Writer survived disposal"); }
                     catch (ObjectDisposedException) { }
                 }
