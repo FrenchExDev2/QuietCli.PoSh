@@ -1,5 +1,9 @@
 # Get-QuietReleasePlan.ps1
 
+<!-- script-source:begin -->
+Source file: [`Get-QuietReleasePlan.ps1`](../../scripts/Get-QuietReleasePlan.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Get-QuietReleasePlan.psm1](lib/Get-QuietReleasePlan.md). See that library for the full operation, dependencies, examples, effects and validation limits.

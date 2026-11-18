@@ -1,5 +1,9 @@
 # RunLog.psm1 (lib)
 
+<!-- script-source:begin -->
+Source file: [`lib/RunLog.psm1`](../../../scripts/lib/RunLog.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Provides leveled logging with named counters for the run-profile tooling, separating the event model (`RunLogger`), the destinations (`RunLogSink` strategy classes: console/file/memory), and the factory (`New-RunLogger`). It solves the need for consistent, filterable, multi-destination logging where every emitted event is counted (even when suppressed by the level filter), so a run's final counters table accurately reflects what the code actually did regardless of verbosity — this is exactly what `Invoke-RunProfile.ps1` relies on for its `profile.*` counters and final `Format-RunCounters` summary (confirmed: `Invoke-RunProfile.ps1` line 44 does `using module ./lib/RunLog.psm1` and uses `$logger.Increment`/`.Time`/`.Snapshot` throughout).

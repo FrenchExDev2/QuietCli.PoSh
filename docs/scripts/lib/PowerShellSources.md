@@ -1,5 +1,9 @@
 # PowerShellSources.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/PowerShellSources.psm1`](../../../scripts/lib/PowerShellSources.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 `Test-QuietPowerShellSources -WorkspaceRoot $root` discovers inert module declarations

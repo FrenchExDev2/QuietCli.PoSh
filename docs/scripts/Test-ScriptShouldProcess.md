@@ -1,5 +1,9 @@
 # Test-ScriptShouldProcess.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-ScriptShouldProcess.ps1`](../../scripts/Test-ScriptShouldProcess.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Read-only RaC gate: ./scripts/Test-ScriptShouldProcess.ps1 [-WorkspaceRoot <root>]. Loads ScriptShouldProcess.ps1 and applies build/script-shouldprocess.json. A new unclassified executable script fails; missing/stale exception metadata fails.

@@ -1,5 +1,9 @@
 # Invoke-Quiet.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-Quiet.ps1`](../../scripts/Invoke-Quiet.ps1)
+<!-- script-source:end -->
+
 Runs a PowerShell scriptblock in the current process after importing the exact local
 Core manifest and optional selected companion manifests relative to `$PSScriptRoot`. Run from a built source checkout:
 

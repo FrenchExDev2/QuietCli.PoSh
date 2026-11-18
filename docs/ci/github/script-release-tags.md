@@ -17,6 +17,9 @@ Push tags matching FrenchExDev2.QuietCli.*.PoSh/v*. The wildcard supplies routin
 The plan validates tag owner/version/publication eligibility and annotated batch membership. A batch leader shares one All qualification and one packaging build; other tag planning runs do not each repeat the expensive matrix. Prepared packages are published in dependency order after validation. Branch/PR/cache-only evidence cannot authorize this path. See [publication boundaries](../execution-model.md#gallery-publication) and [source-change landmarks](../README.md#source-change-landmarks).
 
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/release-tags.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.
@@ -35,8 +38,8 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| github-release | runner ubuntu-latest | plan, release | needs.release.result == 'success' && needs.plan.outputs.is_leader == 'true' | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Publish-QuietGitHubRelease.ps1 |
-| plan | runner ubuntu-latest |  | github.repository == 'FrenchExDev2/QuietCli.PoSh' | ./scripts/Get-QuietReleasePlan.ps1 |
+| github-release | runner ubuntu-latest | plan, release | needs.release.result == 'success' && needs.plan.outputs.is_leader == 'true' | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Publish-QuietGitHubRelease.ps1`](../../scripts/Publish-QuietGitHubRelease.md) |
+| plan | runner ubuntu-latest |  | github.repository == 'FrenchExDev2/QuietCli.PoSh' | [`./scripts/Get-QuietReleasePlan.ps1`](../../scripts/Get-QuietReleasePlan.md) |
 | release | reuses ./.github/workflows/publish-psgallery.yml | plan | needs.plan.outputs.is_leader == 'true' |  |
 
 <!-- workflow-generated:end -->

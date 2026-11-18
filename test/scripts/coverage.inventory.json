@@ -238,7 +238,6 @@
     "lib/Start-QuietWorkBranch.psm1::Invoke-QuietScriptStartQuietWorkBranch",
     "lib/Sync-Credits.psm1::Invoke-QuietScriptSyncCredits",
     "lib/Sync-DocsCredits.psm1::Invoke-QuietScriptSyncDocsCredits",
-    "lib/Sync-ScriptsReadme.psm1::Invoke-QuietScriptSyncScriptsReadme",
     "lib/Test-ScriptAnalysis.psm1::Invoke-QuietScriptAnalysisProcess",
     "lib/Test-ScriptAnalysis.psm1::Invoke-QuietScriptAnalysisWorker",
     "lib/Test-ScriptAnalysis.psm1::Invoke-QuietScriptTestScriptAnalysis",

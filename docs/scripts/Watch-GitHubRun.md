@@ -1,5 +1,9 @@
 # Watch-GitHubRun.ps1
 
+<!-- script-source:begin -->
+Source file: [`Watch-GitHubRun.ps1`](../../scripts/Watch-GitHubRun.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Lets a developer or an automated qualification step observe an *already-dispatched* GitHub Actions

@@ -1,5 +1,9 @@
 # New-CorePerformanceReport.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/New-CorePerformanceReport.psm1`](../../../scripts/lib/New-CorePerformanceReport.psm1)
+<!-- script-source:end -->
+
 Implements [New-CorePerformanceReport.ps1](../New-CorePerformanceReport.md). Exports only "Invoke-QuietScriptNewCorePerformanceReport". Imported without name checking; import defines the command without running the operation.
 
 # New-CorePerformanceReport.ps1

@@ -1,5 +1,9 @@
 # Sync-DevelopmentEditorExtensions.ps1
 
+<!-- script-source:begin -->
+Source file: [`Sync-DevelopmentEditorExtensions.ps1`](../../scripts/Sync-DevelopmentEditorExtensions.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Keeps a developer's VS Code (Stable or Insiders) extension set reproducible across machines by

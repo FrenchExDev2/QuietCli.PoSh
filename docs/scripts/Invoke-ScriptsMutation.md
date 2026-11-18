@@ -1,5 +1,9 @@
 # Invoke-ScriptsMutation.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-ScriptsMutation.ps1`](../../scripts/Invoke-ScriptsMutation.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Stryker-style mutation testing of the `scripts/lib` libraries listed in `test/scripts/mutation.targets.psd1`. For each target, the engine generates mutants of the named functions, such as `-eq` replaced by `-ne` or a removed `throw`. It then runs the target's unit tests once per mutant, on persistent `pwsh` workers that each own an isolated copy of `scripts/`. Outcomes are cached by content, so a second run reruns only the mutants whose observable inputs changed. A mutant that no test detects survives. The score is the share of detected mutants, and a target below its `Break` fails the run.

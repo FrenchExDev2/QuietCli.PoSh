@@ -1,5 +1,9 @@
 # Update-Packages.ps1
 
+<!-- script-source:begin -->
+Source file: [`Update-Packages.ps1`](../../scripts/Update-Packages.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Update-Packages.psm1](lib/Update-Packages.md). See that library for the full operation, dependencies, examples, effects and validation limits.

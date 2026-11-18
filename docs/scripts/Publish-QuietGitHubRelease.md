@@ -1,5 +1,9 @@
 # Publish-QuietGitHubRelease.ps1
 
+<!-- script-source:begin -->
+Source file: [`Publish-QuietGitHubRelease.ps1`](../../scripts/Publish-QuietGitHubRelease.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Create one GitHub Release per independently versioned module tag after successful Gallery publication. The workflow calls this entry point with the qualified revision and downloaded package/publication artifacts. No build or Gallery publication is repeated.

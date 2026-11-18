@@ -1,5 +1,9 @@
 # PowerShellReleases.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/PowerShellReleases.psm1`](../../../scripts/lib/PowerShellReleases.psm1)
+<!-- script-source:end -->
+
 ## Purpose and exports
 
 Engine-independent PowerShell release/resource verification and lock planning. Import only declares functions and strict mode.

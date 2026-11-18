@@ -1,5 +1,9 @@
 # Push-Workspace.ps1
 
+<!-- script-source:begin -->
+Source file: [`Push-Workspace.ps1`](../../scripts/Push-Workspace.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 `-PrDescriptionBodyFile <utf8.md>` explicitly replaces the verified existing PR description with `gh pr edit --body-file` after pushing. Both Markdown files are validated before the push. Description editing and commenting use the same selected remote, branch and exact head verification; WhatIf performs neither. Omitting the new option preserves comment-only behavior. Failures are reported separately from the successful push.

@@ -1,5 +1,9 @@
 # RunToolCache.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/RunToolCache.psm1`](../../../scripts/lib/RunToolCache.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Provides a verified, offline-capable local cache for the two checksum-pinned diagnostic tool packages the run-profile tooling needs (PSProfiler 4.3.0 and `dotnet-trace` 10.0.750501), so profiling can happen without a global/system install and with cryptographic proof that a cached or freshly-downloaded archive matches an exact expected SHA-256. It is the download/verification layer beneath `RunProfiler.psm1`'s `Resolve-RunProfilerModule` convention (same `%TEMP%/QuietCli2` cache root) and is presumably invoked by `scripts/Initialize-Profilers.ps1`. Directly exercised by `RunProfiles.Profiler.Tests.ps1` and targeted by eight mutation cases in `RunProfiles.Mutation.ps1` (lines 140-147) covering digest bypass, layout-check removal, re-extraction-skip, and the offline/version-drift guards.

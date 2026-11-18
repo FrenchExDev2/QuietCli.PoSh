@@ -1,5 +1,9 @@
 # ScriptMutators.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptMutators.psm1`](../../../scripts/lib/ScriptMutators.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Mutators of [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). Each mutator `<Name>` is one function `Find-QuietScriptMutant<Name> -Ast <FunctionBody>`, which emits candidates `{Mutator, StartOffset, EndOffset, Line, Column, Original, Replacement}`. `Get-QuietScriptMutatorCatalog` lists the names in application order. Adding a mutator means adding one function and its name in the catalog, and the engine does not change (open/closed).

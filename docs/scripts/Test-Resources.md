@@ -1,5 +1,9 @@
 # Resource documentation gate
 
+<!-- script-source:begin -->
+Source file: [`Test-Resources.ps1`](../../scripts/Test-Resources.ps1)
+<!-- script-source:end -->
+
 ## Usage
 
 `./scripts/Test-Resources.ps1 -WorkspaceRoot <root>`.

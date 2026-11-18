@@ -1,5 +1,9 @@
 # Remove-DevelopmentWorkstationRun.ps1
 
+<!-- script-source:begin -->
+Source file: [`Remove-DevelopmentWorkstationRun.ps1`](../../scripts/Remove-DevelopmentWorkstationRun.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Garbage-collects expired, registered "workstation smoke run" directories (and the disposable Podman resources they own) that other scripts in this ecosystem create during local, interactive development/testing — without ever touching active, foreign, unmanaged, or unverifiable runs, and without touching real product installations under `LocalAppData`/`~/.local/share` (explicitly out of scope per its own `.DESCRIPTION`, line 9). It solves the housekeeping problem of disk/container cruft accumulating from repeated local smoke-test runs. It is a standalone maintenance entry point; no other script in `scripts/` was found to call it, implying it is meant to be run manually (or on a schedule) by a developer or CI housekeeping job, consistent with its `ConfirmImpact='High'` destructive classification.

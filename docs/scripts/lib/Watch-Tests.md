@@ -1,5 +1,9 @@
 # Watch-Tests.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Watch-Tests.psm1`](../../../scripts/lib/Watch-Tests.psm1)
+<!-- script-source:end -->
+
 Implements [Watch-Tests.ps1](../Watch-Tests.md). Exports only "Invoke-QuietScriptWatchTests". Imported without name checking; import defines the command without running the operation.
 
 # Watch-Tests.ps1

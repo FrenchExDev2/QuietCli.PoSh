@@ -1,5 +1,9 @@
 # Sync-SkillDocument.ps1
 
+<!-- script-source:begin -->
+Source file: [`Sync-SkillDocument.ps1`](../../scripts/Sync-SkillDocument.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Regenerates the distributed `docs/agents/SKILL.md` file from the canonical `docs/agents/AGENTS.md`

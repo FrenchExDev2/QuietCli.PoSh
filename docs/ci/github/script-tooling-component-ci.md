@@ -21,6 +21,9 @@ The stable automatic gate requires planning, source checks, generated-layout tes
 Local WorkspaceLayout and CompanionSmoke reports exercise the selection and actual integration paths. Hosted matrix results must be inspected for the delivered revision. Authored workflow-source-sha256 receipts are reviewed separately from generated YAML and job graphs.
 
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/tooling-component-ci.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.

@@ -1,5 +1,9 @@
 # Commit-Workspace.ps1
 
+<!-- script-source:begin -->
+Source file: [`Commit-Workspace.ps1`](../../scripts/Commit-Workspace.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Commit-Workspace.psm1](lib/Commit-Workspace.md). See that library for the full operation, dependencies, examples, effects and validation limits.

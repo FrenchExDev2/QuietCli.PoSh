@@ -1,5 +1,9 @@
 # Script boilerplate and full preview review gate
 
+<!-- script-source:begin -->
+Source file: [`Test-ScriptContracts.ps1`](../../scripts/Test-ScriptContracts.ps1)
+<!-- script-source:end -->
+
 ## Usage
 
 `./scripts/Test-ScriptContracts.ps1 -WorkspaceRoot <root>`.

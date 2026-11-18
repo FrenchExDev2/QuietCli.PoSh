@@ -1,5 +1,9 @@
 # DotNetLocks.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/DotNetLocks.psm1`](../../../scripts/lib/DotNetLocks.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Maintain external SDK/CI dependency locks and runtime project pins through explicit metadata and file

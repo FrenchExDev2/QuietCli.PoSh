@@ -1,16 +1,19 @@
 # scripts-docs-apply.yml
 
-<!-- workflow-source-sha256: 6662FF447FA8F6AC34E80FD54F8793D86E6D3A6C252E800C3A4A24255F0F77E2 -->
+<!-- workflow-source-sha256: E289236E238B57C4AFDADEF28947A711E18E423EC8E04002EF9C378A2E17E14A -->
 
 ## Purpose
 
-Regenerate the existing scripts documentation index and commit/push that result on explicit dispatch.
+Regenerate the scripts documentation index and managed source links on explicit dispatch, then commit and push the result.
 
 ## Triggers
 
 Manual workflow_dispatch only. Dispatch is the existing workflow authorization for writing its branch; it is never invoked automatically on PR/push.
 
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/scripts-docs-apply.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.
@@ -24,13 +27,13 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| apply | runner ubuntu-latest |  | default success condition | ./scripts/Sync-ScriptsReadme.ps1 |
+| apply | runner ubuntu-latest |  | default success condition | [`./scripts/Sync-ScriptsReadme.ps1`](../../scripts/Sync-ScriptsReadme.md) |
 
 <!-- workflow-generated:end -->
 
 ## Scripts and effects
 
-Sync-ScriptsReadme -Apply regenerates docs/scripts/README.md only after every script already has a document. The final step stages that index and uses the GitHub bot identity to commit and push if changed. contents:write and persisted checkout credentials are intentional for this manual operation.
+`Sync-ScriptsReadme -Apply` checks that every script has a document, then updates stale source links and the index. The final step stages `docs/scripts` and uses the GitHub bot identity to commit and push any changes. The workflow uses `contents: write` and persisted checkout credentials for that step.
 
 ## Validation and limits
 

@@ -1,5 +1,9 @@
 # Invoke-GitHubCi.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.ps1)
+<!-- script-source:end -->
+
 WorkspaceRoot and explicit RunDirectory values are normalized against the caller location before any worker runs. Product builds remain native-RID-only; Tooling, Distribution and GalleryPreview retain full IL distribution inputs. RunProfilesMutation skips product compilation. GitHub rejects Partial or Incomplete suite summaries even when their terminal state says Success.
 
 ## Scoped CI execution

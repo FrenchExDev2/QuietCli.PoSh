@@ -1,5 +1,9 @@
 # New-CiModuleImage.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-CiModuleImage.ps1`](../../scripts/New-CiModuleImage.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Builds a declared companion overlay over a verified Core or explicit preceding image. Suite composition normally uses [New-CiSuiteImage](New-CiSuiteImage.md).

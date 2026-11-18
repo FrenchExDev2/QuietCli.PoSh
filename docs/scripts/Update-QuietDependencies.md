@@ -1,5 +1,9 @@
 # Update-QuietDependencies.ps1
 
+<!-- script-source:begin -->
+Source file: [`Update-QuietDependencies.ps1`](../../scripts/Update-QuietDependencies.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Establishes (or refreshes) `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json` — a

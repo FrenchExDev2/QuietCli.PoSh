@@ -1,5 +1,9 @@
 # Test-TestCaseMetadata.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-TestCaseMetadata.ps1`](../../scripts/Test-TestCaseMetadata.ps1)
+<!-- script-source:end -->
+
 ## All companion catalogues
 
 The default Suite is All: discover every test project manifest through WorkspaceProjects, then read that companion's own TestCatalogue/RootModule and local `.psm1` metadata. No Core-owned Git/Vagrant case registry is introduced. `-Suite Core|Git|Vagrant` narrows validation; `-Plan` resolves currently active cases and the selected worker budget without running them. Output includes declared/active counts, optional campaigns not requested, kinds, isolation opt-ins and the manifest cap. Every discovered test companion must declare its catalogue; missing or orphan metadata, unsafe sources and mismatched optional registration conditions fail.

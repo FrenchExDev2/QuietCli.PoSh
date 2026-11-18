@@ -1,5 +1,9 @@
 # Show-ColdStartMatrixReport.ps1
 
+<!-- script-source:begin -->
+Source file: [`Show-ColdStartMatrixReport.ps1`](../../scripts/Show-ColdStartMatrixReport.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Show-ColdStartMatrixReport.psm1](lib/Show-ColdStartMatrixReport.md). See that library for the full operation, dependencies, examples, effects and validation limits.

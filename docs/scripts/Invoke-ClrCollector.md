@@ -1,5 +1,9 @@
 # Invoke-ClrCollector.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-ClrCollector.ps1`](../../scripts/Invoke-ClrCollector.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Collects exactly one pinned EventPipe (`dotnet-trace`) trace against an already-running, owned

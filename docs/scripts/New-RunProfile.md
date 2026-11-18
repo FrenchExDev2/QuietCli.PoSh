@@ -1,5 +1,9 @@
 # New-RunProfile.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-RunProfile.ps1`](../../scripts/New-RunProfile.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Creates a named, data-only "run profile" — a `<Name>.profile.psd1` file under `scripts/RunProfiles/` that binds a target script to a fixed set of default arguments (e.g. `coldstart-100` binds `Measure-ColdStart.ps1` to `Runs = 100`, `Warmup = 5`, etc.). This solves the problem of repeatable, named measurement/benchmark configurations without requiring every caller to remember and retype long argument lists. The resulting profile is later read and executed by `Invoke-RunProfile.ps1` (confirmed by `coldstart-100.profile.psd1`'s and `coldstart-1000.profile.psd1`'s own header comment: "Data only: parsed in restricted language mode, never executed", and by `Invoke-RunProfile.ps1` existing alongside it in `scripts/`). It is itself exercised by `FrenchExDev2.QuietCli.Core.Tests.PoSh\RunProfiles.Tests.ps1` and `RunProfiles.Mutation.ps1`.

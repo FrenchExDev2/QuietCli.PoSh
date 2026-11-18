@@ -1,5 +1,9 @@
 # Sync-WorkspaceSolutions.ps1
 
+<!-- script-source:begin -->
+Source file: [`Sync-WorkspaceSolutions.ps1`](../../scripts/Sync-WorkspaceSolutions.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Checks or regenerates the global solution and one local solution per declared SolutionGroup.

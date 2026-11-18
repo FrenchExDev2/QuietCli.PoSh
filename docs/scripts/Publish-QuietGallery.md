@@ -1,5 +1,9 @@
 # Publish-QuietGallery.ps1
 
+<!-- script-source:begin -->
+Source file: [`Publish-QuietGallery.ps1`](../../scripts/Publish-QuietGallery.ps1)
+<!-- script-source:end -->
+
 Annotated multi-module releases use [Invoke-QuietGalleryRelease](Invoke-QuietGalleryRelease.md) to validate all packages first, then call this unchanged single-module publication boundary in dependency order. Each module retains its own publication receipt; no cross-run qualification or dependency bypass is introduced.
 
 ## Purpose and usage

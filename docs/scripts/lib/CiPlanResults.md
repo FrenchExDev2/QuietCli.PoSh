@@ -1,5 +1,9 @@
 # CiPlanResults.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/CiPlanResults.psm1`](../../../scripts/lib/CiPlanResults.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Checks that every actual workflow result agrees with the exact selective plan.

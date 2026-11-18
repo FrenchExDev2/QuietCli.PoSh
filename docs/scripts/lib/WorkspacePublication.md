@@ -1,5 +1,9 @@
 # WorkspacePublication.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/WorkspacePublication.psm1`](../../../scripts/lib/WorkspacePublication.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 `Invoke-WorkspacePublication -Arguments $publishArguments -WorkspaceRoot $root` prepares

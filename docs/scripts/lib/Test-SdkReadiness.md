@@ -1,5 +1,9 @@
 # Test-SdkReadiness.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Test-SdkReadiness.psm1`](../../../scripts/lib/Test-SdkReadiness.psm1)
+<!-- script-source:end -->
+
 Implements [Test-SdkReadiness.ps1](../Test-SdkReadiness.md). Exports only "Invoke-QuietScriptTestSdkReadiness". Imported without name checking; import defines the command without running the operation.
 
 # Test-SdkReadiness.ps1

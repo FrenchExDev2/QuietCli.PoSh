@@ -1,5 +1,9 @@
 # TestCaseScheduling.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/TestCaseScheduling.psm1`](../../../scripts/lib/TestCaseScheduling.psm1)
+<!-- script-source:end -->
+
 Case workers accept the owning declared SuiteName, defaulting to Core for existing callers. Git and Vagrant consume their own policies and write their own plans. Git currently has no isolated case opt-in because of shared fixtures/history; Vagrant explicitly opts in six pure parser cases. Both manifest caps are two. Ordered/Exclusive barriers apply within the owning suite. The All suite coordinator separately divides its shared budget among concurrent companion suites; an isolated individual case always receives one internal worker.
 
 ## Purpose and usage

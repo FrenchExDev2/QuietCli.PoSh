@@ -1,5 +1,9 @@
 # New-QuietCompanion.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/New-QuietCompanion.psm1`](../../../scripts/lib/New-QuietCompanion.psm1)
+<!-- script-source:end -->
+
 `Invoke-QuietScriptNewQuietCompanion` implements [New-QuietCompanion.ps1](../New-QuietCompanion.md). Importing the library loads only workspace helpers.
 
 Get-QuietCompanionScaffoldPlan validates the inputs and lists the branch and exact destination paths without writing.

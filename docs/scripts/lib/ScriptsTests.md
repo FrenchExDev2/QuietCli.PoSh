@@ -1,5 +1,9 @@
 # ScriptsTests.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptsTests.psm1`](../../../scripts/lib/ScriptsTests.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Pure functions behind [Invoke-ScriptsTests.ps1](../Invoke-ScriptsTests.md). Import is inert. Nothing here starts a process, imports Pester or writes a file.

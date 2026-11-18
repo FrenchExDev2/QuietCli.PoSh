@@ -1,5 +1,9 @@
 # Update-DotNetRuntimeFrameworkVersion.ps1
 
+<!-- script-source:begin -->
+Source file: [`Update-DotNetRuntimeFrameworkVersion.ps1`](../../scripts/Update-DotNetRuntimeFrameworkVersion.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Update RuntimeFrameworkVersion properties for a selected framework without changing

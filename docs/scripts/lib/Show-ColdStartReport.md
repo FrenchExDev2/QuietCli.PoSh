@@ -1,5 +1,9 @@
 # Show-ColdStartReport.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Show-ColdStartReport.psm1`](../../../scripts/lib/Show-ColdStartReport.psm1)
+<!-- script-source:end -->
+
 Implements [Show-ColdStartReport.ps1](../Show-ColdStartReport.md). Exports only "Invoke-QuietScriptShowColdStartReport". Imported without name checking; import defines the command without running the operation.
 
 # Show-ColdStartReport.ps1

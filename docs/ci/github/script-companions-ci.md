@@ -33,6 +33,9 @@ The stable automatic gate requires planning, source checks and every selected jo
 Local WorkspaceLayout and CompanionSmoke reports exercise the selection and actual integration paths. Hosted matrix results must be inspected for the delivered revision. Authored workflow-source-sha256 receipts are reviewed separately from generated YAML and job graphs.
 
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/companions-ci.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.
@@ -79,14 +82,14 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, images, products, smokes, tooling-only, distribution | ${{ always() }} | ./scripts/Assert-CiPlanResults.ps1 |
+| ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, images, products, smokes, tooling-only, distribution | ${{ always() }} | [`./scripts/Assert-CiPlanResults.ps1`](../../scripts/Assert-CiPlanResults.md) |
 | distribution | reuses ./.github/workflows/distribution-ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_distribution == 'true' |  |
-| images | runner ${{ matrix.runner }} | plan, source-checks | needs.plan.outputs.run_products == 'true' && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/New-CiSuiteImage.ps1 |
-| layout-tests | runner windows-latest | plan | needs.plan.outputs.run_layout == 'true' | ./scripts/Invoke-WorkspaceChecks.ps1, ./scripts/Invoke-WorkspaceCi.ps1 |
-| plan | runner ubuntu-latest |  | default success condition | ./scripts/New-CiImpactPlan.ps1 |
+| images | runner ${{ matrix.runner }} | plan, source-checks | needs.plan.outputs.run_products == 'true' && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' &#124;&#124; github.event_name == 'workflow_dispatch') | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/New-CiSuiteImage.ps1`](../../scripts/New-CiSuiteImage.md) |
+| layout-tests | runner windows-latest | plan | needs.plan.outputs.run_layout == 'true' | [`./scripts/Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.md), [`./scripts/Invoke-WorkspaceCi.ps1`](../../scripts/Invoke-WorkspaceCi.md) |
+| plan | runner ubuntu-latest |  | default success condition | [`./scripts/New-CiImpactPlan.ps1`](../../scripts/New-CiImpactPlan.md) |
 | products | reuses ./.github/workflows/ci.yml | plan, source-checks, layout-tests, images | ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && needs.layout-tests.result == 'success' && (needs.images.result == 'success' &#124;&#124; needs.images.result == 'skipped') && needs.plan.outputs.run_products == 'true' }} |  |
 | smokes | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests | needs.plan.outputs.run_smokes == 'true' |  |
-| source-checks | runner ubuntu-latest |  | default success condition | ./scripts/Invoke-WorkspaceChecks.ps1 |
+| source-checks | runner ubuntu-latest |  | default success condition | [`./scripts/Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.md) |
 | tooling-only | reuses ./.github/workflows/tooling-ci.yml | plan, source-checks, layout-tests | ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && (needs.layout-tests.result == 'success' &#124;&#124; (needs.layout-tests.result == 'skipped' && needs.plan.outputs.run_layout == 'false')) && needs.plan.outputs.run_tooling == 'true' }} |  |
 
 <!-- workflow-generated:end -->

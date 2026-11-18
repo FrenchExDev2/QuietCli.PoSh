@@ -1,5 +1,9 @@
 # Start-QuietWorkBranch.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Start-QuietWorkBranch.psm1`](../../../scripts/lib/Start-QuietWorkBranch.psm1)
+<!-- script-source:end -->
+
 Implements [Start-QuietWorkBranch.ps1](../Start-QuietWorkBranch.md). Exports only "Invoke-QuietScriptStartQuietWorkBranch". Imported without name checking; import defines the command without running the operation.
 
 # Start-QuietWorkBranch.ps1

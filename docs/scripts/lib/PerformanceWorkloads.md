@@ -1,5 +1,9 @@
 # PerformanceWorkloads.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/PerformanceWorkloads.psm1`](../../../scripts/lib/PerformanceWorkloads.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This module reads a Core suite summary and the profiler line evidence of one environment. It turns them into one statistics row per workload, measure and variant for [New-CorePerformanceReport.ps1](../New-CorePerformanceReport.md). The workloads are kept apart: a Git transport number is never pooled with a framing or event number.

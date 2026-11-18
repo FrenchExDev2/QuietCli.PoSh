@@ -1,5 +1,9 @@
 # GitHubRelease.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/GitHubRelease.psm1`](../../../scripts/lib/GitHubRelease.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 `Publish-QuietGitHubRelease -Tag <module/vVersion> -Version <Version> -Revision <sha> -Assets <paths>` implements the GitHub release lifecycle. The owning Publish-QuietGitHubRelease entry point supplies validated Gallery packages/receipts and checks workflow context; direct library use alone does not establish qualification or Gallery publication.

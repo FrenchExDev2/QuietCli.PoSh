@@ -1,14 +1,16 @@
 # Sync-ScriptsReadme.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Sync-ScriptsReadme.psm1`](../../../scripts/lib/Sync-ScriptsReadme.psm1)
+<!-- script-source:end -->
+
 Implements [Sync-ScriptsReadme.ps1](../Sync-ScriptsReadme.md). Exports only "Invoke-QuietScriptSyncScriptsReadme". Imported without name checking; import defines the command without running the operation.
 
 # Sync-ScriptsReadme.ps1
 
 ## Purpose
 
-Check that every PowerShell script under `scripts/` has a mirrored Markdown document, and generate
-the navigable [scripts index](../README.md). This includes `Sync-ScriptsReadme.ps1` and this document.
-The gate never invents missing script documentation.
+Check that every PowerShell script and run profile under `scripts/` has a mirrored Markdown document with a link to its source. Generate the navigable index. [Scripts documentation index](../README.md)
 
 ## Usage
 
@@ -18,26 +20,24 @@ The gate never invents missing script documentation.
 ./scripts/Sync-ScriptsReadme.ps1 -Apply
 ```
 
-- `-ScriptsPath`: source directory scanned recursively for `*.ps1` and `*.psm1`.
-- `-DocsPath`: mirrored documentation root and destination of the generated `README.md`.
-- `-Apply`: regenerate a missing or stale index once all script documents exist.
-- `-WhatIf` / `-Confirm`: preview or approve the generated index write.
+- `-ScriptsPath` selects the source directory scanned recursively for `*.ps1`, `*.psm1` and `*.profile.psd1`.
+- `-DocsPath` selects the mirrored documentation root and generated `README.md` destination.
+- `-Apply` regenerates stale source links and the index once all script documents exist.
+- `-WhatIf` and `-Confirm` preview or approve each write.
 
-Default mode writes nothing. Missing script documentation throws `ScriptsDocsMissing` in every
-mode. A missing or stale index throws `ScriptsReadmeNonCompliant` unless `-Apply` actually fixes it.
-The report includes `Path`, `State` and `DocumentedScriptCount`.
+Default mode reports `ScriptsDocsMissing` for missing docs, `ScriptsDocSourceLinksStale` for missing or stale links and `ScriptsReadmeNonCompliant` for a stale index. Malformed marker pairs report `ScriptsDocSourceBlockInvalid`. The result includes `Path`, `State`, `DocumentedScriptCount` and `SourceLinksToSync`.
 
 ## Dependencies and side effects
 
 Uses PowerShell filesystem commands, path operations and asynchronous UTF-8 file I/O. No native
-process, engine, download or Git mutation is involved. Approved `-Apply` only writes the generated
-`docs/scripts/README.md`, with LF line endings and its mandatory credits footer.
+process, engine, download or Git mutation is involved. Approved `-Apply` writes the index and the managed source link in each affected document with LF line endings.
 
 `Commit-Workspace.ps1` calls this gate before committing. Under `-NoAll`, it checks a temporary
 export of staged sources and documents; unstaged files are outside that snapshot's scope.
 
 ## Findings
 
+- `scripts/lib/Sync-ScriptsReadme.psm1:72` derives the link from each document's own directory, including nested libraries and run profiles. It refreshes exactly one managed block per doc and rejects ambiguous markers before writing.
 - **Missing document fixed:** this file supplies the generator's previously missing mirrored doc,
   following the same rule as every other script.
 - **Scope consistency fixed:** `scripts/lib/Sync-ScriptsReadme.psm1` previously excluded its own physical

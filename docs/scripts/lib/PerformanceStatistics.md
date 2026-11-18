@@ -1,5 +1,9 @@
 # PerformanceStatistics.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/PerformanceStatistics.psm1`](../../../scripts/lib/PerformanceStatistics.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This module holds the descriptive statistics behind every number in [New-CorePerformanceReport.ps1](../New-CorePerformanceReport.md). It exports two pure functions.

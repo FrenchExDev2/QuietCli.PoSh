@@ -1,5 +1,9 @@
 # Test-WorkspacePackage.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Test-WorkspacePackage.psm1`](../../../scripts/lib/Test-WorkspacePackage.psm1)
+<!-- script-source:end -->
+
 Implements [Test-WorkspacePackage.ps1](../Test-WorkspacePackage.md). Exports only "Invoke-QuietScriptTestWorkspacePackage". Imported without name checking; import defines the command without running the operation.
 
 # Test-WorkspacePackage.ps1

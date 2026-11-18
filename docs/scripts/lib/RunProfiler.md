@@ -1,5 +1,9 @@
 # RunProfiler.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/RunProfiler.psm1`](../../../scripts/lib/RunProfiler.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Wraps the checksum-pinned `PSProfiler` (Profiler 4.3.0) module so run-profile tooling can profile an arbitrary PowerShell script block and export a top-50-lines/top-50-functions self-duration report as JSON. It solves the "where did the cold-start/import time go inside PowerShell code" problem: PSProfiler only sees managed PowerShell execution (native child processes show up only as the line that waits on them), so this module is the PowerShell-side half of a profiling story that is paired with a CLR-side `dotnet-trace` collector elsewhere in the repo. It is invoked by `scripts/Measure-ColdStart.ps1` (via `Invoke-RunProfiled`, when `-ProfileImport` is passed) to profile module import, and is covered directly by `FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Profiler.Tests.ps1` and the mutation catalogue in `RunProfiles.Mutation.ps1`.

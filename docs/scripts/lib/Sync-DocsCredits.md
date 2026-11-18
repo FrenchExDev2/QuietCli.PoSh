@@ -1,5 +1,9 @@
 # Sync-DocsCredits.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Sync-DocsCredits.psm1`](../../../scripts/lib/Sync-DocsCredits.psm1)
+<!-- script-source:end -->
+
 Implements [Sync-DocsCredits.ps1](../Sync-DocsCredits.md). Exports only "Invoke-QuietScriptSyncDocsCredits". Imported without name checking; import defines the command without running the operation.
 
 # Sync-DocsCredits.ps1

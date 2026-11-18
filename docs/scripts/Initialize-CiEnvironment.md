@@ -1,5 +1,9 @@
 # Initialize-CiEnvironment.ps1
 
+<!-- script-source:begin -->
+Source file: [`Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.ps1)
+<!-- script-source:end -->
+
 Creates or updates the selected checkout's ignored `.env` through the shared safe editor.
 `-Target Local` writes Podman on Windows and Linux. `-Target GitHub` writes Docker.
 An explicit `-ContainerRuntime podman|docker` overrides the preset without querying installed

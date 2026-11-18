@@ -1,5 +1,9 @@
 # TestConfiguration.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/TestConfiguration.psm1`](../../../scripts/lib/TestConfiguration.psm1)
+<!-- script-source:end -->
+
 ## Library boundary
 
 Located at `scripts/lib/TestConfiguration.psm1`. Load with `Import-Module ([IO.Path]::Combine($root,'scripts/lib/TestConfiguration.psm1')) -DisableNameChecking -ErrorAction Stop`. Import defines functions and explicit dependencies without running business operations. Paths use `System.IO.Path`. Effects remain owned by the calling operation and its preview contract.

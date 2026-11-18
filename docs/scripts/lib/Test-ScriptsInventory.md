@@ -1,5 +1,9 @@
 # Test-ScriptsInventory.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Test-ScriptsInventory.psm1`](../../../scripts/lib/Test-ScriptsInventory.psm1)
+<!-- script-source:end -->
+
 Implements [Test-ScriptsInventory.ps1](../Test-ScriptsInventory.md). It exports `Invoke-QuietScriptTestScriptsInventory`. Importing it defines the command without running anything.
 
 ## Purpose and usage

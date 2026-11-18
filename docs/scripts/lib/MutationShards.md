@@ -1,5 +1,9 @@
 # MutationShards.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/MutationShards.psm1`](../../../scripts/lib/MutationShards.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Exports `Get-QuietMutationShard`, `Get-QuietRunProfileMutationIdentity`, `Assert-QuietMutationShard` and `Assert-QuietMutationShards`. Import is inert and has no product-engine dependency. Ordered catalogue entries are partitioned by ordinal modulo shard count; defaults select the full catalogue.

@@ -1,5 +1,9 @@
 # Test-PowerShellSources.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-PowerShellSources.ps1`](../../scripts/Test-PowerShellSources.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 `./scripts/Test-PowerShellSources.ps1` checks syntax and readable function synopsis

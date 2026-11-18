@@ -1,5 +1,9 @@
 # Get-QuietReleasePlan.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Get-QuietReleasePlan.psm1`](../../../scripts/lib/Get-QuietReleasePlan.psm1)
+<!-- script-source:end -->
+
 Implements [Get-QuietReleasePlan.ps1](../Get-QuietReleasePlan.md). Exports only "Invoke-QuietScriptGetQuietReleasePlan". Imported without name checking; import defines the command without running the operation.
 
 # Get-QuietReleasePlan.ps1

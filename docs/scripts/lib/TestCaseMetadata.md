@@ -1,5 +1,9 @@
 # TestCaseMetadata.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/TestCaseMetadata.psm1`](../../../scripts/lib/TestCaseMetadata.psm1)
+<!-- script-source:end -->
+
 ## Companion ownership and optional registrations
 
 Each test companion declares its own metadata in its own RootModule `.psm1`, with `PrivateData.QuietCli.TestCatalogue={Runner;Sources}` in its manifest. `Get-QuietCompanionTestInventory` reads that inert declaration and the explicitly scoped case-factory helper sources; no product code is imported. The generic parser's RunnerName/CaseSources parameters replace the earlier Core-only assumption. Source paths cannot escape the owning directory, repeat or resolve through file links. Dynamic composition is limited to the reviewed `$cases[$entry.Key]=$entry.Value` merge shape with declared helper sources; dynamic registrations remain rejected.

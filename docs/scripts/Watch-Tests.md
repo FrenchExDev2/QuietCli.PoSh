@@ -1,5 +1,9 @@
 # Watch-Tests.ps1
 
+<!-- script-source:begin -->
+Source file: [`Watch-Tests.ps1`](../../scripts/Watch-Tests.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Watch-Tests.psm1](lib/Watch-Tests.md). See that library for the full operation, dependencies, examples, effects and validation limits.

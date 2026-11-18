@@ -1,5 +1,9 @@
 # Watch-DotNetTests.ps1
 
+<!-- script-source:begin -->
+Source file: [`Watch-DotNetTests.ps1`](../../scripts/Watch-DotNetTests.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Reopen the shared read-only monitor for a saved .NET tooling run.

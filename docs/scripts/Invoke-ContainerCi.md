@@ -1,5 +1,9 @@
 # Invoke-ContainerCi.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-ContainerCi.ps1`](../../scripts/Invoke-ContainerCi.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Local supervisor for tests in an already prepared Linux image, using a background transport worker and the visible read-only monitor. It does not pull an image, install the host toolchain or start a daemon. GitHub fallback uses Invoke-GitHubCi/Invoke-ContainerWorker directly.

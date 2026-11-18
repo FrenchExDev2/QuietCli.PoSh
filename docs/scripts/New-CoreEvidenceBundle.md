@@ -1,5 +1,9 @@
 # New-CoreEvidenceBundle.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-CoreEvidenceBundle.ps1`](../../scripts/New-CoreEvidenceBundle.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Copies allowed report types into an integrity-checked evidence tree, records exact revision/run identity and exposes missing required profiles as gaps.

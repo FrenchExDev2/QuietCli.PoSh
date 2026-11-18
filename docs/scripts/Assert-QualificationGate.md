@@ -1,5 +1,9 @@
 # Assert-QualificationGate.ps1
 
+<!-- script-source:begin -->
+Source file: [`Assert-QualificationGate.ps1`](../../scripts/Assert-QualificationGate.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Writes a revision-bound decision and emits `qualified_sha` only when every declared requirement succeeds. This is a scope-specific gate, not an authorization to publish by itself.

@@ -1,5 +1,9 @@
 # Invoke-QuietGalleryRelease.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-QuietGalleryRelease.ps1`](../../scripts/Invoke-QuietGalleryRelease.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Prepare, validate or publish a validated annotated release batch after one shared All qualification. Each module keeps its independent package/version/tag, while one leader owns the matrix and packaging build.

@@ -1,5 +1,9 @@
 # Probe-ContainerRuntime.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Probe-ContainerRuntime.psm1`](../../../scripts/lib/Probe-ContainerRuntime.psm1)
+<!-- script-source:end -->
+
 Implements [Probe-ContainerRuntime.ps1](../Probe-ContainerRuntime.md). Exports only "Invoke-QuietScriptProbeContainerRuntime". Imported without name checking; import defines the command without running the operation.
 
 # Probe-ContainerRuntime.ps1

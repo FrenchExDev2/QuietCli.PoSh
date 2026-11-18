@@ -13,20 +13,17 @@ each doc is written by whoever reviews the script - but it is both the gate that
 is missing and the generator of docs/scripts/README.md, the navigable index grouping every documented
 script by its subdirectory.
 
-Default (no -Apply) mode only reports: it throws ScriptsDocsMissing the moment any script has no doc,
-and otherwise throws ScriptsReadmeNonCompliant if docs/scripts/README.md is missing or stale. It never
-writes. -Apply regenerates docs/scripts/README.md when stale, honoring -WhatIf/-Confirm through
-SupportsShouldProcess - but it still throws ScriptsDocsMissing first: a missing doc is never silently
-tolerated, Apply or not, because the index cannot claim full coverage while it is false.
+Default mode checks documentation coverage, source links and index freshness without writing.
+-Apply synchronizes the index and the managed link from each document to its source file.
+Both modes reject missing documents. Apply supports -WhatIf and -Confirm.
 .PARAMETER ScriptsPath
-Directory scanned for *.ps1/*.psm1 files, recursively. Defaults to this script's own directory
+Directory scanned for *.ps1, *.psm1 and *.profile.psd1 files, recursively. Defaults to this script's own directory
 (scripts/). Includes this script, which has its own mirrored documentation.
 .PARAMETER DocsPath
 Directory the table of contents (README.md) is read from/written to, and under which each script's
 mirrored doc is expected. Defaults to docs/scripts under this repository root.
 .PARAMETER Apply
-Writes docs/scripts/README.md when it is missing or stale. Without this switch the script only
-reports and writes nothing.
+Updates docs/scripts/README.md and the source links in existing mirrored documents.
 .EXAMPLE
 ./scripts/Sync-ScriptsReadme.ps1
 Reports documentation-coverage gaps and whether docs/scripts/README.md is up to date; writes nothing.
@@ -36,7 +33,7 @@ This is what the check workflow runs.
 Previews exactly what -Apply would write, without writing it.
 .EXAMPLE
 ./scripts/Sync-ScriptsReadme.ps1 -Apply
-Writes docs/scripts/README.md when it is missing or stale.
+Synchronizes docs/scripts/README.md and links from the documents to their source files.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
@@ -77,8 +74,41 @@ function New-ScriptsDocEntry {
         Group          = $relativeDir
         DocRelative    = $docRelative
         DocFullPath    = $docFullPath
-        DocExists      = Test-Path -LiteralPath $docFullPath
+        DocExists      = Test-Path -LiteralPath $docFullPath -PathType Leaf
+        ScriptFullPath = $File.FullName
     }
+}
+
+function Set-QuietScriptsDocSourceLink {
+    <#
+    .SYNOPSIS
+    Adds or refreshes the managed source link while preserving authored Markdown.
+    .PARAMETER Text
+    Current Markdown document with LF line endings.
+    .PARAMETER Entry
+    Mirrored documentation and script paths.
+    #>
+    param([AllowEmptyString()][string]$Text,[psobject]$Entry)
+
+    $relative = [IO.Path]::GetRelativePath([IO.Path]::GetDirectoryName($Entry.DocFullPath),$Entry.ScriptFullPath)
+    $link = ($relative.Replace('\','/').Split('/') | ForEach-Object { [uri]::EscapeDataString($_) }) -join '/'
+    $begin = '<!-- script-source:begin -->'
+    $end = '<!-- script-source:end -->'
+    $block = @($begin,('Source file: [`'+$Entry.ScriptRelative+'`]('+$link+')'),$end) -join "`n"
+    $pattern = '(?ms)^<!-- script-source:begin -->\n.*?^<!-- script-source:end -->$'
+    $markerCount = [regex]::Matches($Text,'(?m)^<!-- script-source:(begin|end) -->$').Count
+    if ($markerCount) {
+        $sourceBlock = [regex]::Match($Text,$pattern)
+        if ($markerCount -ne 2 -or !$sourceBlock.Success) {
+            throw ('ScriptsDocSourceBlockInvalid: '+$Entry.DocRelative)
+        }
+        return $Text.Remove($sourceBlock.Index,$sourceBlock.Length).Insert($sourceBlock.Index,$block)
+    }
+    $heading = [regex]::Match($Text,'\A# [^\n]+')
+    if ($heading.Success) {
+        return $Text.Substring(0,$heading.Length)+"`n`n"+$block+"`n`n"+$Text.Substring($heading.Length).TrimStart("`n")
+    }
+    $block+"`n`n"+$Text
 }
 
 function New-ScriptsReadmeCreditsBlock {
@@ -174,15 +204,29 @@ $state = if ($null -eq $currentContent) { 'Missing' }
          elseif ($currentContent.Replace("`r`n", "`n") -ne $expectedContent) { 'Stale' }
          else { 'UpToDate' }
 
+$sourceUpdates = @(foreach ($entry in $entries) {
+    $before = [IO.File]::ReadAllText($entry.DocFullPath,$utf8NoBom).Replace("`r`n","`n")
+    $expected = Set-QuietScriptsDocSourceLink -Text $before -Entry $entry
+    if ($expected -cne $before) { [pscustomobject]@{ Entry = $entry; Content = $expected } }
+})
+if (!$Apply -and $sourceUpdates.Count) {
+    throw ('ScriptsDocSourceLinksStale: '+(($sourceUpdates | ForEach-Object { $_.Entry.DocRelative }) -join ', '))
+}
+foreach ($update in $sourceUpdates) {
+    if ($PSCmdlet.ShouldProcess($update.Entry.DocFullPath,'Synchronize script source link')) {
+        [IO.File]::WriteAllText($update.Entry.DocFullPath,$update.Content,$utf8NoBom)
+    }
+}
+
 if ($state -ne 'UpToDate' -and $Apply -and $PSCmdlet.ShouldProcess($readmePath, "Write scripts README ($state)")) {
     if (-not (Test-Path -LiteralPath $DocsPath)) { New-Item -ItemType Directory -Path $DocsPath -Force | Out-Null }
     [void][IO.File]::WriteAllTextAsync($readmePath, $expectedContent, $utf8NoBom).GetAwaiter().GetResult()
     $state = "$state (Applied)"
 }
 
-[pscustomobject]@{ Path = $readmePath; State = $state; DocumentedScriptCount = $entries.Count }
+[pscustomobject]@{ Path = $readmePath; State = $state; DocumentedScriptCount = $entries.Count; SourceLinksToSync = $sourceUpdates.Count }
 
-if ($state -notin 'UpToDate' -and $state -notlike '* (Applied)') {
+if (!$Apply -and $state -ne 'UpToDate') {
     throw "ScriptsReadmeNonCompliant: $readmePath ($state)"
 }
 

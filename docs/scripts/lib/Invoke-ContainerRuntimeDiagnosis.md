@@ -1,5 +1,9 @@
 # Invoke-ContainerRuntimeDiagnosis.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Invoke-ContainerRuntimeDiagnosis.psm1`](../../../scripts/lib/Invoke-ContainerRuntimeDiagnosis.psm1)
+<!-- script-source:end -->
+
 Implements [Invoke-ContainerRuntimeDiagnosis.ps1](../Invoke-ContainerRuntimeDiagnosis.md). Exports only "Invoke-QuietScriptInvokeContainerRuntimeDiagnosis". Imported without name checking; import defines the command without running the operation.
 
 # Invoke-ContainerRuntimeDiagnosis.ps1

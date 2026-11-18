@@ -23,6 +23,9 @@ Reviewed module/test paths use src/<group>/src and src/<group>/test. Module iden
 <!-- grouped-layout-review:end -->
 
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/scripts-docs-check.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.
@@ -36,7 +39,7 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| check | runner ubuntu-latest |  | default success condition | ./scripts/Invoke-WorkspaceChecks.ps1 |
+| check | runner ubuntu-latest |  | default success condition | [`./scripts/Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.md) |
 
 <!-- workflow-generated:end -->
 

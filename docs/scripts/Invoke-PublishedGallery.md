@@ -1,5 +1,9 @@
 # Invoke-PublishedGallery.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-PublishedGallery.ps1`](../../scripts/Invoke-PublishedGallery.ps1)
+<!-- script-source:end -->
+
 With `-Headless`, CI starts no desktop monitor and prints no `Watch-Tests.ps1` reopen command.
 The package-validation worker remains isolated and supervised with its saved reports and timeout.
 Local runs keep their visible monitor and its reopen instruction.

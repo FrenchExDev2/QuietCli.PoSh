@@ -1,5 +1,9 @@
 # ScriptAnalysis.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptAnalysis.psm1`](../../../scripts/lib/ScriptAnalysis.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Pure functions behind [Test-ScriptAnalysis.ps1](../Test-ScriptAnalysis.md). Import is inert. Nothing here loads PSScriptAnalyzer, starts a process or writes a file.

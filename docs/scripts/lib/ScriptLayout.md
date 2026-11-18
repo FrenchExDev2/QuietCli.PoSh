@@ -1,5 +1,9 @@
 # ScriptLayout.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptLayout.psm1`](../../../scripts/lib/ScriptLayout.psm1)
+<!-- script-source:end -->
+
 ## Purpose and exported command
 
 `Test-QuietScriptLayout -WorkspaceRoot <checkout>` implements RAC-PS-004 for the

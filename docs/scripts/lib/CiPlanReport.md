@@ -1,5 +1,9 @@
 # CiPlanReport.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/CiPlanReport.psm1`](../../../scripts/lib/CiPlanReport.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Writes the changed input to package to project to companion to action reason chain for PR review.

@@ -1,5 +1,9 @@
 # Test-ScriptAnalysis.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Test-ScriptAnalysis.psm1`](../../../scripts/lib/Test-ScriptAnalysis.psm1)
+<!-- script-source:end -->
+
 Implements [Test-ScriptAnalysis.ps1](../Test-ScriptAnalysis.md). It exports `Invoke-QuietScriptTestScriptAnalysis` (check), `Invoke-QuietScriptAnalysisProcess` (worker launcher) and `Invoke-QuietScriptAnalysisWorker` (worker body). Import defines the commands without running anything.
 
 ## Purpose and usage

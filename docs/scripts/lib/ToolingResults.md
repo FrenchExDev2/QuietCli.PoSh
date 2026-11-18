@@ -1,5 +1,9 @@
 # ToolingResults.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ToolingResults.psm1`](../../../scripts/lib/ToolingResults.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 `Get-QuietToolingResults -NeedsJson $json` reads the seven authoritative GitHub needs

@@ -1,5 +1,9 @@
 # Get-DevelopQualification.ps1
 
+<!-- script-source:begin -->
+Source file: [`Get-DevelopQualification.ps1`](../../scripts/Get-DevelopQualification.ps1)
+<!-- script-source:end -->
+
 Reads GitHub PRs associated with an immutable develop Revision and successful companions-ci.yml PR runs. Uses GH_TOKEN only as an HTTP authorization header. Requires a merged PR targeting develop, exact merge commit, successful authoritative workflow run/attempt, a bounded nonexpired qualification artifact and an identical Git tree.
 
 Returns Reused=false on missing credentials, stale/mismatched evidence or an API failure. Callers then run full qualification. The artifact is read in memory; no ZIP extraction, publication, retry or profile modification occurs. WhatIf performs no HTTP or native work.

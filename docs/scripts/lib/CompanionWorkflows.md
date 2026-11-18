@@ -1,5 +1,9 @@
 # CompanionWorkflows.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/CompanionWorkflows.psm1`](../../../scripts/lib/CompanionWorkflows.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Derives explicit companion profiles, renders workflow wrappers and validates caller paths.

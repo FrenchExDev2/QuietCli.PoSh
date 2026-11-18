@@ -1,5 +1,9 @@
 # Assert-QualificationReceipt.ps1
 
+<!-- script-source:begin -->
+Source file: [`Assert-QualificationReceipt.ps1`](../../scripts/Assert-QualificationReceipt.ps1)
+<!-- script-source:end -->
+
 Reused All receipts must additionally contain Performance=success and boolean PerformanceRequired=true. Legacy receipts without these fields and reports skipped/failed for the same revision are rejected. Same-run/attempt identity, complete All scope, platform results and explicit TTY exclusion remain mandatory. The optimization regression covers damaged performance fields alongside revision/attempt mismatches; accepting an old unprofiled receipt cannot bypass the restored matrix report gate.
 
 ## Purpose

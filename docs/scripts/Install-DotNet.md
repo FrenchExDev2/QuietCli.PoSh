@@ -1,5 +1,9 @@
 # Install-DotNet.ps1
 
+<!-- script-source:begin -->
+Source file: [`Install-DotNet.ps1`](../../scripts/Install-DotNet.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Install a verified portable SDK and its included runtimes; optionally pull images,

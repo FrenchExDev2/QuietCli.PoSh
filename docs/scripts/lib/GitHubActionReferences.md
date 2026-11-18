@@ -1,5 +1,9 @@
 # GitHubActionReferences.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/GitHubActionReferences.psm1`](../../../scripts/lib/GitHubActionReferences.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 The reading and writing of `uses:` references for [Update-GitHubActions.ps1](../Update-GitHubActions.md). It has no knowledge of releases or policy. Import is inert. Only `Get-QuietGitHubActionFiles` touches the file system, and it only lists files.

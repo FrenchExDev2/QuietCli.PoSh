@@ -1,5 +1,9 @@
 # ScriptsWorker.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptsWorker.psm1`](../../../scripts/lib/ScriptsWorker.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Shared supervised launch for [Invoke-ScriptsTests.ps1](../Invoke-ScriptsTests.md) and [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). `Invoke-QuietScriptsSupervisedWorker -ModulePath -WorkerFunction -RequestPath -RunDirectory -WorkspaceRoot [-Headless] -TimeoutSeconds` performs these steps:

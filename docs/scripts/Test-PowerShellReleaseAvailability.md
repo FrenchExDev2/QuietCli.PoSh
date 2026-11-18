@@ -1,5 +1,9 @@
 # Test-PowerShellReleaseAvailability.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-PowerShellReleaseAvailability.ps1`](../../scripts/Test-PowerShellReleaseAvailability.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Reads current Microsoft GA/next-preview metadata and checks native archive, NuGet and Alpine package availability. It changes no lock, installation or image.

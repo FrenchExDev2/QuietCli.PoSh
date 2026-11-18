@@ -1,5 +1,9 @@
 # Import-DotNetTooling.ps1
 
+<!-- script-source:begin -->
+Source file: [`Import-DotNetTooling.ps1`](../../scripts/Import-DotNetTooling.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Perform the initial copy of the shared .NET tooling into this repository's entry-point,

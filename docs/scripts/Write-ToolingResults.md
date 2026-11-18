@@ -1,5 +1,9 @@
 # Write-ToolingResults.ps1
 
+<!-- script-source:begin -->
+Source file: [`Write-ToolingResults.ps1`](../../scripts/Write-ToolingResults.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 `./scripts/Write-ToolingResults.ps1 -NeedsJson $env:TOOLING_NEEDS -OutputPath $env:GITHUB_OUTPUT`

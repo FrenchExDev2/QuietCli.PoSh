@@ -1,5 +1,9 @@
 # Restore-CoreResources.ps1
 
+<!-- script-source:begin -->
+Source file: [`Restore-CoreResources.ps1`](../../scripts/Restore-CoreResources.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Populates Core's pinned managed and native third-party resources — SQLite's `e_sqlite3` for eight

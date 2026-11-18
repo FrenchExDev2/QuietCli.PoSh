@@ -1,5 +1,9 @@
 # Invoke-QuietRelease.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Invoke-QuietRelease.psm1`](../../../scripts/lib/Invoke-QuietRelease.psm1)
+<!-- script-source:end -->
+
 Implements [Invoke-QuietRelease.ps1](../Invoke-QuietRelease.md). Exports only `Invoke-QuietScriptInvokeQuietRelease`. Imported without name checking; import defines the command without running the operation.
 
 ## Purpose and usage

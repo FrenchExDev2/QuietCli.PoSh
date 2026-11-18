@@ -1,5 +1,9 @@
 # Test-ScriptsInventory.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-ScriptsInventory.ps1`](../../scripts/Test-ScriptsInventory.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Blocking ratchet over the script test platform. Every function exported by a `scripts/lib/*.psm1` module must be named by at least one `test/scripts/**/*.Tests.ps1` file. The exceptions are the legacy exports listed in `test/scripts/coverage.inventory.json`, and that list can only shrink. The check is registered as `ScriptsInventory` in [Invoke-WorkspaceChecks](Invoke-WorkspaceChecks.md), so it runs in Commit-Workspace and in `scripts-docs-check.yml`. `test/scripts/unit/quality/Inventory.Tests.ps1` asserts the same rule inside [Invoke-ScriptsTests](Invoke-ScriptsTests.md). A workspace without `test/scripts/` and without `src/` (an isolated commit fixture) is not applicable: the check returns `{Check, Applicable=$false}` and reads nothing else. A workspace with `src/` must ship `test/scripts/`, otherwise the check fails with `ScriptsTestsRootMissing: test/scripts`, so deleting the test tree never turns it off.

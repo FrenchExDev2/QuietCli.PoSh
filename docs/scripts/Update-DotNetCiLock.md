@@ -1,5 +1,9 @@
 # Update-DotNetCiLock.ps1
 
+<!-- script-source:begin -->
+Source file: [`Update-DotNetCiLock.ps1`](../../scripts/Update-DotNetCiLock.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Synchronize exact .NET SDK archive hashes with global.json and optionally resolve current

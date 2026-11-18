@@ -1,5 +1,9 @@
 # DotNetProvisioning.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/DotNetProvisioning.psm1`](../../../scripts/lib/DotNetProvisioning.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Share SDK-pin planning/updating and verified portable SDK installation. Exports

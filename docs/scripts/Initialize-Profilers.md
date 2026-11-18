@@ -1,5 +1,9 @@
 # Initialize-Profilers.ps1
 
+<!-- script-source:begin -->
+Source file: [`Initialize-Profilers.ps1`](../../scripts/Initialize-Profilers.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Downloads and verifies two checksum-pinned diagnostic tools — a PowerShell line profiler and a CLR

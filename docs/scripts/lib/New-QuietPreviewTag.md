@@ -1,5 +1,9 @@
 # New-QuietPreviewTag.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/New-QuietPreviewTag.psm1`](../../../scripts/lib/New-QuietPreviewTag.psm1)
+<!-- script-source:end -->
+
 Implements [New-QuietPreviewTag.ps1](../New-QuietPreviewTag.md). Exports only "Invoke-QuietScriptNewQuietPreviewTag". Imported without name checking; import defines the command without running the operation.
 
 ## New-QuietPreviewTag.ps1

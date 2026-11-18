@@ -1,5 +1,9 @@
 # New-CiImpactPlan.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-CiImpactPlan.ps1`](../../scripts/New-CiImpactPlan.ps1)
+<!-- script-source:end -->
+
 Plans CI for an immutable Base/Revision pair using the complete `git diff --no-renames --name-only -z` path set. Native orchestration uses Ci.Process, without the product engine. It writes artifacts/ci-plan/plan.json and suite/run_products/run_tooling GitHub outputs.
 
 For pull_request, lib/CiImpact selects affected suites through declared transitive dependencies. Shared/unknown sources require All. Multiple impacted companions share one All matrix. Documentation-only PR changes avoid product runs. Unknown paths retain All. Mixed paths union requirements. For push, Get-DevelopQualification must verify identical-tree PR evidence before product replay is removed; a miss requires All.

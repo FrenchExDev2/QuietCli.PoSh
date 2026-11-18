@@ -1,5 +1,9 @@
 # DevelopmentWorkstation.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/DevelopmentWorkstation.psm1`](../../../scripts/lib/DevelopmentWorkstation.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Detect native hosts, resolve reviewed toolchain artifacts, inspect component readiness and provision

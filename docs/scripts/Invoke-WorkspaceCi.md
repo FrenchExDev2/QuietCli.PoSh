@@ -1,5 +1,9 @@
 # Invoke-WorkspaceCi.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-WorkspaceCi.ps1`](../../scripts/Invoke-WorkspaceCi.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Local build/test supervisor with a background worker and visible read-only monitor. GitHub product jobs use [Invoke-GitHubCi](Invoke-GitHubCi.md) directly, without this desktop launcher. Both share the same worker and owning test runners.

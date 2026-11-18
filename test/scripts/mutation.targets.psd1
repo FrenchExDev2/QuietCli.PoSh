@@ -5,6 +5,28 @@
 @{
     Targets = @(
         @{
+            Name = 'GitHubWorkflowMap'
+            Module = 'lib/GitHubWorkflowMap.psm1'
+            Functions = @('Get-QuietWorkflowMapTarget','Format-QuietWorkflowMapText')
+            UnitTestFiles = @('unit/lib/GitHubWorkflowMap.Tests.ps1')
+            Break = 80
+        }
+        @{
+            Name = 'WorkflowDocumentation'
+            Module = 'lib/WorkflowDocumentation.psm1'
+            Functions = @('Get-QuietWorkflowScriptPaths')
+            UnitTestFiles = @('unit/lib/GitHubWorkflowMap.Tests.ps1')
+            Break = 80
+        }
+        @{
+            Name = 'ScriptsDocsLinks'
+            Module = 'lib/Sync-ScriptsReadme.psm1'
+            Functions = @('Set-QuietScriptsDocSourceLink')
+            UnitTestFiles = @('unit/lib/Sync-ScriptsReadme.Tests.ps1')
+            Break = 80
+        }
+
+        @{
             Name = 'NewQuietCompanion'
             Module = 'lib/New-QuietCompanion.psm1'
             Functions = @('Resolve-NewCompanionBranch','Add-QuietCompanionRegistration')

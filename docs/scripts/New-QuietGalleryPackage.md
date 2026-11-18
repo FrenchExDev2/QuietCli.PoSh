@@ -1,5 +1,9 @@
 # New-QuietGalleryPackage.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-QuietGalleryPackage.ps1`](../../scripts/New-QuietGalleryPackage.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Prepares one selected publishable business-module nupkg and its SHA-256 publication plan, without contacting PSGallery. Module defaults to Core; -Module Git selects FrenchExDev2.QuietCli.Git.PoSh. Workspace manifests and the shared reader derive eligibility/name/version, preserving existing filenames, GUID and dependencies. Core keeps its six RID payloads; Git keeps its declared net10.0/net11.0 parser outputs and Core dependency.

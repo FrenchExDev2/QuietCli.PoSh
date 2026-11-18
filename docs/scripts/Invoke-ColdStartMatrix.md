@@ -1,5 +1,9 @@
 # Invoke-ColdStartMatrix.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-ColdStartMatrix.ps1`](../../scripts/Invoke-ColdStartMatrix.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Single entry point that builds the baseline and every requested ReadyToRun candidate, then runs the

@@ -1,5 +1,9 @@
 # Gallery.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Gallery.psm1`](../../../scripts/lib/Gallery.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Shared package preparation and verification functions for Core and publishable companions. Consumers import `scripts/lib/Gallery.psm1`; the former `scripts/Gallery.ps1` entry is removed.

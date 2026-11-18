@@ -1,5 +1,9 @@
 # Start-QuietWorkBranch.ps1
 
+<!-- script-source:begin -->
+Source file: [`Start-QuietWorkBranch.ps1`](../../scripts/Start-QuietWorkBranch.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Start-QuietWorkBranch.psm1](lib/Start-QuietWorkBranch.md). See that library for the full operation, dependencies, examples, effects and validation limits.

@@ -1,5 +1,9 @@
 # Assert-ScriptMutationShards.ps1
 
+<!-- script-source:begin -->
+Source file: [`Assert-ScriptMutationShards.ps1`](../../scripts/Assert-ScriptMutationShards.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Accepts the script mutation campaign only when the downloaded shard reports cover every configured target, each at or above its break. The `script-mutation-complete` job of [tooling-ci.yml](../ci/github/script-tooling-ci.md) runs it after the `script-mutation` matrix. Each shard runs [Invoke-ScriptsMutation](Invoke-ScriptsMutation.md) on one target.

@@ -1,5 +1,9 @@
 # RunFormat.psm1 (lib)
 
+<!-- script-source:begin -->
+Source file: [`lib/RunFormat.psm1`](../../../scripts/lib/RunFormat.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Shared presentation helpers for the run-profile tooling: compact human-readable durations and data sizes, Unicode box-drawing table rendering with dynamic column shrinking, a counters-to-table convenience wrapper, and safe PowerShell single-quoted string-literal generation. It solves "every script that prints a report or a table should look the same and not duplicate the same padding/truncation/box-drawing logic." It directly backs the repository's mandated terminal-table conventions (literal `│`/`┌`/`┬`/etc. box-drawing characters, a `Duration`-style compact-unit column) and is imported by `Invoke-RunProfile.ps1` (confirmed: that script's line 59 imports `RunFormat` from `lib/`) for its `-List` table and final counters table.

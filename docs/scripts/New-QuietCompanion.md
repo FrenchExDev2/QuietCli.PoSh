@@ -1,5 +1,9 @@
 # New-QuietCompanion.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-QuietCompanion.ps1`](../../scripts/New-QuietCompanion.ps1)
+<!-- script-source:end -->
+
 ## Create a companion
 
 ~~~powershell

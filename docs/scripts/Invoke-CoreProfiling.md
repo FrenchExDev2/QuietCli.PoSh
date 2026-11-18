@@ -1,5 +1,9 @@
 # Invoke-CoreProfiling.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-CoreProfiling.ps1`](../../scripts/Invoke-CoreProfiling.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Runs a separate, dedicated PowerShell line-profiling pass and real CLR EventPipe collection for every

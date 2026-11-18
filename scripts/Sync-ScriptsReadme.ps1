@@ -12,20 +12,17 @@ each doc is written by whoever reviews the script - but it is both the gate that
 is missing and the generator of docs/scripts/README.md, the navigable index grouping every documented
 script by its subdirectory.
 
-Default (no -Apply) mode only reports: it throws ScriptsDocsMissing the moment any script has no doc,
-and otherwise throws ScriptsReadmeNonCompliant if docs/scripts/README.md is missing or stale. It never
-writes. -Apply regenerates docs/scripts/README.md when stale, honoring -WhatIf/-Confirm through
-SupportsShouldProcess - but it still throws ScriptsDocsMissing first: a missing doc is never silently
-tolerated, Apply or not, because the index cannot claim full coverage while it is false.
+Default mode checks documentation coverage, source links and index freshness without writing.
+-Apply synchronizes the index and the managed link from each document to its source file.
+Both modes reject missing documents. Apply supports -WhatIf and -Confirm.
 .PARAMETER ScriptsPath
-Directory scanned for *.ps1/*.psm1 files, recursively. Defaults to this script's own directory
+Directory scanned for *.ps1, *.psm1 and *.profile.psd1 files, recursively. Defaults to this script's own directory
 (scripts/). Includes this script, which has its own mirrored documentation.
 .PARAMETER DocsPath
 Directory the table of contents (README.md) is read from/written to, and under which each script's
 mirrored doc is expected. Defaults to docs/scripts under this repository root.
 .PARAMETER Apply
-Writes docs/scripts/README.md when it is missing or stale. Without this switch the script only
-reports and writes nothing.
+Updates docs/scripts/README.md and the source links in existing mirrored documents.
 .EXAMPLE
 ./scripts/Sync-ScriptsReadme.ps1
 Reports documentation-coverage gaps and whether docs/scripts/README.md is up to date; writes nothing.
@@ -35,7 +32,7 @@ This is what the check workflow runs.
 Previews exactly what -Apply would write, without writing it.
 .EXAMPLE
 ./scripts/Sync-ScriptsReadme.ps1 -Apply
-Writes docs/scripts/README.md when it is missing or stale.
+Synchronizes docs/scripts/README.md and links from the documents to their source files.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(

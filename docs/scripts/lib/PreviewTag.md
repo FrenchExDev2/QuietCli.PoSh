@@ -1,5 +1,9 @@
 # PreviewTag.psm1 (lib)
 
+<!-- script-source:begin -->
+Source file: [`lib/PreviewTag.psm1`](../../../scripts/lib/PreviewTag.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 A tiny, single-function utility module that deterministically generates a preview release tag name (e.g. `v2.45.0-preview20261109T153045123456789Z`) from a numeric semantic-style version and a UTC timestamp. It solves the need for a consistent, sortable, collision-resistant tag naming scheme for preview releases, separate from stable version tags. It is consumed by `New-QuietPreviewTag.ps1` (the end-user-facing script that actually creates the tag in Git) and is the logic tested directly by `PreviewTag.Tests.ps1`.

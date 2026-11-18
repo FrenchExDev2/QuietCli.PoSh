@@ -1,5 +1,9 @@
 # ModulePackage.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ModulePackage.psm1`](../../../scripts/lib/ModulePackage.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 `Get-QuietModulePackageIdentity -Path <module.psm1> [-RequireManifest]` implements the shared package identity reader behind [Get-ModulePackageName](../Get-ModulePackageName.md), Gallery staging/validation and release-tag resolution. The package name follows the script-module basename; no Core/Git name mapping or short-name substitution is performed.

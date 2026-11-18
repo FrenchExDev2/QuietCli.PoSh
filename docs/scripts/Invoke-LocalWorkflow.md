@@ -1,5 +1,9 @@
 # Invoke-LocalWorkflow.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-LocalWorkflow.ps1`](../../scripts/Invoke-LocalWorkflow.ps1)
+<!-- script-source:end -->
+
 Runs a selected definition check or job with an existing verified **wrkflw 0.8.0** binary.
 No installation, credentials, remote dispatch, hook or publication is implicit. `-WhatIf` performs
 no native launch or report-directory creation. Execution requires an explicit `-Job` and uses Podman

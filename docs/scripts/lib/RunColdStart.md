@@ -1,5 +1,9 @@
 # RunColdStart.psm1 (lib)
 
+<!-- script-source:begin -->
+Source file: [`lib/RunColdStart.psm1`](../../../scripts/lib/RunColdStart.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Primitives shared by Measure-ColdStart.ps1: ConvertFrom-RunColdSample validates exactly three finite, nonnegative invariant-culture durations; Get-RunModuleFootprintBytes sums all module files; Get-RunModuleHostedPathBytes measures the active engine slot; Get-RunModulePackageBytes measures an actual Compress-PSResource nupkg.

@@ -1,5 +1,9 @@
 # ScriptMutationSlot.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptMutationSlot.psm1`](../../../scripts/lib/ScriptMutationSlot.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Persistent test workers of [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). Each slot is one hidden `pwsh` that imports the pinned Pester once and then runs every job it is handed. That replaces one process per mutant. The parent and the worker talk only through files in the slot's control directory.

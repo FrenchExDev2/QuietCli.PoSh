@@ -1,5 +1,9 @@
 # Initialize-PowerShellHost.ps1
 
+<!-- script-source:begin -->
+Source file: [`Initialize-PowerShellHost.ps1`](../../scripts/Initialize-PowerShellHost.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Prepares a checksum-pinned side-by-side host without a machine installation or profile change. Stable currently selects GA 7.7.0 / CLR 11. Supported RIDs are win-x64, win-arm64, linux-x64 and linux-arm64; Linux musl stays under its separate native-image policy.

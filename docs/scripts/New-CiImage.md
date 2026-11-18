@@ -1,5 +1,9 @@
 # New-CiImage.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-CiImage.ps1`](../../scripts/New-CiImage.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Prepares Core's native Linux toolchain image for one RID. Main workflows normally enter through [New-CiSuiteImage](New-CiSuiteImage.md), which checks the final suite cache before preparing any parent.

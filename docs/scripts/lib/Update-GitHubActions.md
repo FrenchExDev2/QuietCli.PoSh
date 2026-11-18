@@ -1,5 +1,9 @@
 # Update-GitHubActions.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Update-GitHubActions.psm1`](../../../scripts/lib/Update-GitHubActions.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Implements [Update-GitHubActions.ps1](../Update-GitHubActions.md). Exports only `Invoke-QuietScriptUpdateGitHubActions`. Import defines the command without running the operation.

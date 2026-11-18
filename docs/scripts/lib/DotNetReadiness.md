@@ -1,5 +1,9 @@
 # DotNetReadiness.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/DotNetReadiness.psm1`](../../../scripts/lib/DotNetReadiness.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Share release selection, manifest checks and typed native inventories for .NET tooling.

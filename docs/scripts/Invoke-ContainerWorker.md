@@ -1,5 +1,9 @@
 # Invoke-ContainerWorker.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-ContainerWorker.ps1`](../../scripts/Invoke-ContainerWorker.ps1)
+<!-- script-source:end -->
+
 The dynamic `Suite` block precedes executable imports so PowerShell binds companion selection before
 execution. The layout campaign checks real Core, Git, Vagrant and Mutation bindings with `-WhatIf`.
 The independent native probe uses the grouped Core test path inside `/workspace/src/Core/test/`.

@@ -1,5 +1,9 @@
 # WorkspaceLayout.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/WorkspaceLayout.psm1`](../../../scripts/lib/WorkspaceLayout.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Resolves module identities independently of grouped physical paths and provides explicit migration helpers.

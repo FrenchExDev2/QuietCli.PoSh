@@ -1,5 +1,9 @@
 # WorkspaceJson.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/WorkspaceJson.psm1`](../../../scripts/lib/WorkspaceJson.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Exports `Write-WorkspaceJson -Path <file> -Value <metadata>` to publish UTF-8 JSON with LF

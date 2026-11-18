@@ -21,6 +21,7 @@ dependencies and known gaps live only in its author's head. The rule is simple a
   `scripts/Baz.ps1` at `docs/scripts/Baz.md`.
 - That doc must be reachable from [`docs/scripts/README.md`](scripts/README.md) - the single table of
   contents a reader starts from. A doc nobody can find from the index does not count as documented.
+- Each mirrored document includes a managed relative link to its `.ps1`, `.psm1` or `.profile.psd1` source.
 - Each doc documents the script's purpose, usage/parameters, dependencies, side effects, and - this is
   the part that actually earns its keep - a critical **Findings** review: bugs, convention violations
   (against this repository's [`AGENTS.md`](../AGENTS.md)), design smells, missing validation, and
@@ -51,9 +52,9 @@ export of the prepared Git index, as used by `Commit-Workspace.ps1 -NoAll`.
     fires whether or not `-Apply` is passed. A missing doc is never silently tolerated.
   - Otherwise throws `ScriptsReadmeNonCompliant` if `docs/scripts/README.md` is missing or stale
     (a script was added, removed, or moved to a different subdirectory since it was last generated).
+  - Throws `ScriptsDocSourceLinksStale` when mirrored documents need their source links refreshed.
   - This is what the check workflow runs.
-- `-Apply`: writes the regenerated `docs/scripts/README.md` when it is missing or stale. Still throws
-  `ScriptsDocsMissing` first - `-Apply` can fix a stale index, it cannot invent a missing review.
+- `-Apply` synchronizes the index and the source link blocks in mirrored docs. Missing documents must be authored first.
 - `-Apply -WhatIf`: previews exactly what `-Apply` would write, without writing it.
 - The generated file already carries the mandatory [`CREDITS.md`](../CREDITS.md) footer (see
   [credits and syncing](README-credits-and-syncing.md)), computed with the same regex-identifiable
@@ -97,13 +98,11 @@ never writes, so it is safe to run automatically on every pull request.
 `workflow_dispatch` only - it never runs on `pull_request` or `push`. Running it is the explicit,
 human-triggered approval to write and push, consistent with this repository's rule that no commit or
 push is implicit in an automated run. It runs `Sync-ScriptsReadme.ps1 -Apply`, then, only if that
-produced an actual diff, commits (`github-actions[bot]` identity) and pushes straight to the branch
+produced an actual diff under `docs/scripts`, commits (`github-actions[bot]` identity) and pushes straight to the branch
 the run was dispatched on (`HEAD:${{ github.ref }}`) - never to a hardcoded branch, and never with
 `--force`. If there is nothing to commit, the step says so and the run ends cleanly without pushing.
 
-It cannot fix a missing doc - only the index's own staleness. Use it from the Actions tab, on the
-branch that needs fixing, once every script already has its doc and the only remaining failure is
-`ScriptsReadmeNonCompliant`.
+Use it from the Actions tab on the branch that needs fixing once every script already has its doc and the remaining failures concern the index or source links.
 
 <!-- credits:begin -->
 ## Credits

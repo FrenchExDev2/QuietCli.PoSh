@@ -1,5 +1,9 @@
 # Measure-ColdStart.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Measure-ColdStart.psm1`](../../../scripts/lib/Measure-ColdStart.psm1)
+<!-- script-source:end -->
+
 Implements [Measure-ColdStart.ps1](../Measure-ColdStart.md). Exports only "Invoke-QuietScriptMeasureColdStart". Imported without name checking; import defines the command without running the operation.
 
 # Measure-ColdStart.ps1

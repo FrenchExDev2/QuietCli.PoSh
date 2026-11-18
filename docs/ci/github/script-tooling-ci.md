@@ -118,6 +118,9 @@ The mutation campaign can run four workers across two runners. Its 92 definition
 
 The GitHub entry accepts only source-validated RunProfilesMutation partitions under explicit shard controls. Each summary and the entry result remain Partial=true; product partial/incomplete reports remain rejected. Bounded report reads, exact partition/source/SHA checks, green baselines, fixed settings and consistent successful counters precede intermediate acceptance. The completion job still requires both successful shard jobs and the exact complete union. See [the shared entry contract and regression](../../scripts/Invoke-GitHubCi.md#shard-execution-and-completion).
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/tooling-ci.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.
@@ -154,15 +157,15 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| core-independence | runner windows-latest |  | inputs.scope == 'full' | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Test-CoreIndependence.ps1 |
-| mutation-complete | runner ubuntu-latest | run-profiles-mutation | ${{ always() && !cancelled() && inputs.scope == 'full' }} | ./scripts/Assert-RunProfileMutationShards.ps1 |
-| results | runner ubuntu-latest | core-independence, tooling, script-tests, run-profiles-mutation, script-mutation, mutation-complete, script-mutation-complete | ${{ always() }} | ./scripts/Write-ToolingResults.ps1 |
-| run-profiles-mutation | runner windows-latest |  | inputs.scope == 'full' | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1 |
-| script-mutation | runner ubuntu-latest | script-selection | needs.script-selection.outputs.run_mutation == 'true' | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-TestTools.ps1, ./scripts/Invoke-ScriptsMutation.ps1 |
-| script-mutation-complete | runner ubuntu-latest | script-selection, script-mutation | ${{ always() && !cancelled() && needs.script-selection.outputs.run_mutation != 'false' }} | ./scripts/Assert-ScriptMutationShards.ps1 |
-| script-selection | runner ubuntu-latest |  | default success condition | ./scripts/lib/ScriptsImpact.psm1 |
-| script-tests | runner ${{ matrix.os }} | script-selection | needs.script-selection.outputs.run_tests == 'true' | ./scripts/Build-Workspace.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-TestTools.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-ScriptsTests.ps1 |
-| tooling | runner windows-latest |  | inputs.scope == 'full' | ./scripts/Build-Workspace.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Profilers.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/Test-CoreIndependence.ps1 |
+| core-independence | runner windows-latest |  | inputs.scope == 'full' | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Test-CoreIndependence.ps1`](../../scripts/Test-CoreIndependence.md) |
+| mutation-complete | runner ubuntu-latest | run-profiles-mutation | ${{ always() && !cancelled() && inputs.scope == 'full' }} | [`./scripts/Assert-RunProfileMutationShards.ps1`](../../scripts/Assert-RunProfileMutationShards.md) |
+| results | runner ubuntu-latest | core-independence, tooling, script-tests, run-profiles-mutation, script-mutation, mutation-complete, script-mutation-complete | ${{ always() }} | [`./scripts/Write-ToolingResults.ps1`](../../scripts/Write-ToolingResults.md) |
+| run-profiles-mutation | runner windows-latest |  | inputs.scope == 'full' | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.md) |
+| script-mutation | runner ubuntu-latest | script-selection | needs.script-selection.outputs.run_mutation == 'true' | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-TestTools.ps1`](../../scripts/Initialize-TestTools.md), [`./scripts/Invoke-ScriptsMutation.ps1`](../../scripts/Invoke-ScriptsMutation.md) |
+| script-mutation-complete | runner ubuntu-latest | script-selection, script-mutation | ${{ always() && !cancelled() && needs.script-selection.outputs.run_mutation != 'false' }} | [`./scripts/Assert-ScriptMutationShards.ps1`](../../scripts/Assert-ScriptMutationShards.md) |
+| script-selection | runner ubuntu-latest |  | default success condition | [`./scripts/lib/ScriptsImpact.psm1`](../../scripts/lib/ScriptsImpact.md) |
+| script-tests | runner ${{ matrix.os }} | script-selection | needs.script-selection.outputs.run_tests == 'true' | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-TestTools.ps1`](../../scripts/Initialize-TestTools.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/Invoke-ScriptsTests.ps1`](../../scripts/Invoke-ScriptsTests.md) |
+| tooling | runner windows-latest |  | inputs.scope == 'full' | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.md), [`./scripts/Test-CoreIndependence.ps1`](../../scripts/Test-CoreIndependence.md), [`./scripts/Initialize-Profilers.ps1`](../../scripts/Initialize-Profilers.md) |
 
 <!-- workflow-generated:end -->
 

@@ -1,5 +1,9 @@
 # ScriptMutation.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptMutation.psm1`](../../../scripts/lib/ScriptMutation.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Pure model of [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). Import is inert. Nothing here starts a process or writes a file.

@@ -1,5 +1,9 @@
 # WorkspaceSolutions.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/WorkspaceSolutions.psm1`](../../../scripts/lib/WorkspaceSolutions.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Builds inert global/local solution definitions from module manifests and source files.

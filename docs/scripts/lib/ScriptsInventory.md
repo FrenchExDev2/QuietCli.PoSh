@@ -1,5 +1,9 @@
 # ScriptsInventory.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptsInventory.psm1`](../../../scripts/lib/ScriptsInventory.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Pure functions behind [Test-ScriptsInventory.ps1](../Test-ScriptsInventory.md). Importing the module has no side effect. Nothing here starts a process or writes a file.

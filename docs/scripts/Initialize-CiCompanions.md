@@ -1,5 +1,9 @@
 # Initialize-CiCompanions.ps1
 
+<!-- script-source:begin -->
+Source file: [`Initialize-CiCompanions.ps1`](../../scripts/Initialize-CiCompanions.ps1)
+<!-- script-source:end -->
+
 Reads `build/companions.yml` through `scripts/lib/CiCompanions.psm1` and returns selected tests,
 product/tool closure, image layers, Core-evidence policy and configuration SHA-256. It starts no
 tests or native tools. Missing pinned parser resources are prepared by the consumer.

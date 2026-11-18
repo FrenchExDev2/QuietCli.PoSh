@@ -1,8 +1,12 @@
 # Sync-GitHubWorkflowsReadme.ps1
 
+<!-- script-source:begin -->
+Source file: [`Sync-GitHubWorkflowsReadme.ps1`](../../scripts/Sync-GitHubWorkflowsReadme.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
-Checks or regenerates docs/ci/github/README.md and generated job/dependency blocks in script-<workflow-basename>.md.
+Checks or regenerates `docs/ci/github/README.md` and generated job/dependency blocks in `script-<workflow-basename>.md`. Each block links to its workflow YAML and to documentation for the literal scripts it identifies.
 
 ```powershell
 ./scripts/Sync-GitHubWorkflowsReadme.ps1
@@ -18,7 +22,7 @@ WorkflowDocumentation calls Ensure-QuietResource to verify and, if necessary, se
 
 ## Dependencies and side effects
 
-Uses WorkflowDocumentation.ps1 and its checksum-pinned restored YamlDotNet resource. Apply writes UTF-8/LF Markdown only. It validates every document before starting writes. WhatIf reports pending generated writes; no directory/file, Git mutation, build or publication is created.
+Uses the WorkflowDocumentation library and its checksum-pinned YamlDotNet resource. Apply writes UTF-8/LF Markdown only. It validates every document before starting writes. WhatIf reports pending generated writes. [WorkflowDocumentation](lib/WorkflowDocumentation.md)
 
 ## Critical review
 

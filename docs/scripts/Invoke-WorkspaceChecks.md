@@ -1,5 +1,9 @@
 # Invoke-WorkspaceChecks.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Read-only ordered registry used by standalone checks, Commit-Workspace and scripts-docs-check.yml.

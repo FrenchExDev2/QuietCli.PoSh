@@ -1,5 +1,9 @@
 # Select-PowerShellCiMatrix.ps1
 
+<!-- script-source:begin -->
+Source file: [`Select-PowerShellCiMatrix.ps1`](../../scripts/Select-PowerShellCiMatrix.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Produces the Windows matrix from the reviewed host lock instead of duplicating version numbers in YAML.

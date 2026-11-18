@@ -11,6 +11,9 @@ Report, per package and target framework, which Directory.Packages.props pins ha
 Manual workflow_dispatch only, with two boolean inputs: `apply` (default false) and `prerelease` (default false). No automatic PR/push trigger.
 
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/packages-update.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.
@@ -26,8 +29,8 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| apply | runner ubuntu-latest | report | ${{ inputs.apply }} | ./scripts/Update-Packages.ps1 |
-| report | runner ubuntu-latest |  | default success condition | ./scripts/Update-Packages.ps1 |
+| apply | runner ubuntu-latest | report | ${{ inputs.apply }} | [`./scripts/Update-Packages.ps1`](../../scripts/Update-Packages.md) |
+| report | runner ubuntu-latest |  | default success condition | [`./scripts/Update-Packages.ps1`](../../scripts/Update-Packages.md) |
 
 <!-- workflow-generated:end -->
 

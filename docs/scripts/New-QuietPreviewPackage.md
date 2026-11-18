@@ -1,5 +1,9 @@
 # New-QuietPreviewPackage.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-QuietPreviewPackage.ps1`](../../scripts/New-QuietPreviewPackage.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Prepares a uniquely versioned, Core-only preview without publishing. The public identity remains FrenchExDev2.QuietCli.Core.PoSh, inferred from its .psm1 and matching manifest; staging does not rename it to QuietCli. Numbered release previews (preview1, preview2, ...) belong to New-QuietPreviewTag.ps1 -Version -NextPreview; this artifact-only helper retains its run/attempt labels.

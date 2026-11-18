@@ -1,5 +1,9 @@
 # Invoke-ScriptsTests.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Invoke-ScriptsTests.psm1`](../../../scripts/lib/Invoke-ScriptsTests.psm1)
+<!-- script-source:end -->
+
 Implements [Invoke-ScriptsTests.ps1](../Invoke-ScriptsTests.md). It exports `Invoke-QuietScriptInvokeScriptsTests` (launcher) and `Invoke-QuietScriptsTestWorker` (worker body). Import defines both commands without running anything.
 
 ## Purpose and usage

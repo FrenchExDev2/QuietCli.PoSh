@@ -1,5 +1,9 @@
 # Install-DevelopmentWorkstation.ps1
 
+<!-- script-source:begin -->
+Source file: [`Install-DevelopmentWorkstation.ps1`](../../scripts/Install-DevelopmentWorkstation.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Prepare or inspect a QuietCli developer workstation using engine-independent provisioning.

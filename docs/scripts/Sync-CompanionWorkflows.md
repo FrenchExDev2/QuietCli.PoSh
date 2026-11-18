@@ -1,5 +1,9 @@
 # Sync-CompanionWorkflows.ps1
 
+<!-- script-source:begin -->
+Source file: [`Sync-CompanionWorkflows.ps1`](../../scripts/Sync-CompanionWorkflows.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Checks or regenerates readable workflow entry points from the same companion profiles used by automatic PR matrices.

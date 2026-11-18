@@ -1,5 +1,9 @@
 # WorkBranch.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/WorkBranch.psm1`](../../../scripts/lib/WorkBranch.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 The work branch policy of [Start-QuietWorkBranch.ps1](../Start-QuietWorkBranch.md), kept separate from its Git effects so every rule is unit tested without a process. Import is inert and no export reads or writes anything.

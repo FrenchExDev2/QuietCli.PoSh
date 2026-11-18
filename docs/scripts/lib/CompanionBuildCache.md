@@ -1,5 +1,9 @@
 # CompanionBuildCache.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/CompanionBuildCache.psm1`](../../../scripts/lib/CompanionBuildCache.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Fingerprints selected compiled closures and validates reusable distributions.

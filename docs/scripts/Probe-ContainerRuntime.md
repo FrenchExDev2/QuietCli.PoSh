@@ -1,5 +1,9 @@
 # Probe-ContainerRuntime.ps1
 
+<!-- script-source:begin -->
+Source file: [`Probe-ContainerRuntime.ps1`](../../scripts/Probe-ContainerRuntime.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Probe-ContainerRuntime.psm1](lib/Probe-ContainerRuntime.md). See that library for the full operation, dependencies, examples, effects and validation limits.

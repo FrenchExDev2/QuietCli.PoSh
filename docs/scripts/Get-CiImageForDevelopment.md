@@ -1,5 +1,9 @@
 # Get-CiImageForDevelopment.ps1
 
+<!-- script-source:begin -->
+Source file: [`Get-CiImageForDevelopment.ps1`](../../scripts/Get-CiImageForDevelopment.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Pull-only developer helper for an existing Core CI image at the checkout's exact fingerprint. It does not build images. Main GitHub suite preparation uses New-CiSuiteImage instead.

@@ -23,6 +23,9 @@ The stable automatic gate requires planning, source checks, generated-layout tes
 Local WorkspaceLayout and CompanionSmoke reports exercise the selection and actual integration paths. Hosted matrix results must be inspected for the delivered revision. Authored workflow-source-sha256 receipts are reviewed separately from generated YAML and job graphs.
 
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/workspace-component-ci.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.
@@ -40,9 +43,9 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| component | runner ${{ inputs.runner }} | validate | inputs.suite != 'Tooling' &#124;&#124; inputs.qualification_mode != 'full' | ./scripts/Get-CompanionBuildKey.ps1, ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-ComponentCheck.ps1 |
+| component | runner ${{ inputs.runner }} | validate | inputs.suite != 'Tooling' &#124;&#124; inputs.qualification_mode != 'full' | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Get-CompanionBuildKey.ps1`](../../scripts/Get-CompanionBuildKey.md), [`./scripts/Invoke-ComponentCheck.ps1`](../../scripts/Invoke-ComponentCheck.md) |
 | tooling | reuses ./.github/workflows/tooling-ci.yml | validate | inputs.suite == 'Tooling' && inputs.qualification_mode == 'full' |  |
-| validate | runner ubuntu-latest |  | default success condition | ./scripts/Initialize-CiEnvironment.ps1, ./scripts/Invoke-ComponentCheck.ps1 |
+| validate | runner ubuntu-latest |  | default success condition | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Invoke-ComponentCheck.ps1`](../../scripts/Invoke-ComponentCheck.md) |
 
 <!-- workflow-generated:end -->
 

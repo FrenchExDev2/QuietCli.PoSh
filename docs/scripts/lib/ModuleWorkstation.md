@@ -1,5 +1,9 @@
 # ModuleWorkstation.psm1 (lib)
 
+<!-- script-source:begin -->
+Source file: [`lib/ModuleWorkstation.psm1`](../../../scripts/lib/ModuleWorkstation.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Provides per-module (currently `Git` or `Vagrant`) tool-installation status checking and installation, as a lighter-weight sibling to the full workstation installer in `DevelopmentWorkstation.psm1`. It solves the narrower problem of "does this one module's companion native tool (e.g. a Vagrant-backed test harness) have what it needs, and if not, fetch/install just that tool into a per-user module cache" — without running the full workstation provisioning flow. It is consumed by `Install-ModuleWorkstation.ps1` (the end-user-facing script for this narrower scope).

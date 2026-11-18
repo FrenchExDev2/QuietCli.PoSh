@@ -1,5 +1,9 @@
 # ReleaseFlow.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ReleaseFlow.psm1`](../../../scripts/lib/ReleaseFlow.psm1)
+<!-- script-source:end -->
+
 Resumable release phases behind [Invoke-QuietRelease](../Invoke-QuietRelease.md). All effects go through injected callbacks (Git, commit, branch push, GitHub CLI), so the same code runs against the real tools and against owned test doubles.
 
 ## Purpose and usage

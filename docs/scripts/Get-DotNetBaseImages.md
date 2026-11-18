@@ -1,5 +1,9 @@
 # Get-DotNetBaseImages.ps1
 
+<!-- script-source:begin -->
+Source file: [`Get-DotNetBaseImages.ps1`](../../scripts/Get-DotNetBaseImages.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Inspect bounded official Debian/Alpine tag metadata without starting a container client

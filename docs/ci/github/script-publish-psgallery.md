@@ -22,6 +22,9 @@ and exact-revision qualification checks remain required.
 Publication downloads those prepared nupkg files and verifies versions, hashes and the qualified checkpoint without rebuilding. Only a matching original-repository module-tag release with publication intent can use the protected PSGallery environment. Manual dispatch and generated-preview requests create artifacts. Batch members are validated first, then published in dependency order. Core/Git eligibility comes from manifests; tests and disabled Vagrant are excluded. See the [publication diagram](../execution-model.md#gallery-publication).
 
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/publish-psgallery.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.
@@ -46,10 +49,10 @@ flowchart TD
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
 | checkpoint | runner ubuntu-latest | qualification, reuse-qualification | ${{ !cancelled() && (needs.qualification.result == 'success' &#124;&#124; needs.reuse-qualification.result == 'success') }} |  |
-| package | runner windows-latest | checkpoint | ${{ !cancelled() && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/Invoke-QuietGalleryRelease.ps1, ./scripts/lib/RuntimeTargets.psm1, ./scripts/New-QuietGalleryPackage.ps1, ./scripts/New-QuietPreviewPackage.ps1, ./scripts/Publish-QuietGallery.ps1 |
-| publish | runner windows-latest | checkpoint, package | ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Get-QuietReleasePlan.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Invoke-QuietGalleryRelease.ps1, ./scripts/Publish-QuietGallery.ps1 |
+| package | runner windows-latest | checkpoint | ${{ !cancelled() && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Initialize-PowerShellHost.ps1`](../../scripts/Initialize-PowerShellHost.md), [`./scripts/lib/RuntimeTargets.psm1`](../../scripts/lib/RuntimeTargets.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.md), [`./scripts/Invoke-QuietGalleryRelease.ps1`](../../scripts/Invoke-QuietGalleryRelease.md), [`./scripts/New-QuietPreviewPackage.ps1`](../../scripts/New-QuietPreviewPackage.md), [`./scripts/New-QuietGalleryPackage.ps1`](../../scripts/New-QuietGalleryPackage.md), [`./scripts/Publish-QuietGallery.ps1`](../../scripts/Publish-QuietGallery.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
+| publish | runner windows-latest | checkpoint, package | ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | [`./scripts/Initialize-PowerShellHost.ps1`](../../scripts/Initialize-PowerShellHost.md), [`./scripts/Invoke-QuietGalleryRelease.ps1`](../../scripts/Invoke-QuietGalleryRelease.md), [`./scripts/Publish-QuietGallery.ps1`](../../scripts/Publish-QuietGallery.md), [`./scripts/Get-QuietReleasePlan.ps1`](../../scripts/Get-QuietReleasePlan.md) |
 | qualification | reuses ./.github/workflows/ci.yml |  | inputs.qualified_sha == '' |  |
-| reuse-qualification | runner ubuntu-latest |  | inputs.qualified_sha != '' && inputs.qualified_sha == github.sha | ./scripts/Assert-QualificationReceipt.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
+| reuse-qualification | runner ubuntu-latest |  | inputs.qualified_sha != '' && inputs.qualified_sha == github.sha | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Assert-QualificationReceipt.ps1`](../../scripts/Assert-QualificationReceipt.md) |
 
 <!-- workflow-generated:end -->
 

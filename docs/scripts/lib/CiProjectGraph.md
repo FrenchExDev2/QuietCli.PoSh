@@ -1,5 +1,9 @@
 # CiProjectGraph.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/CiProjectGraph.psm1`](../../../scripts/lib/CiProjectGraph.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Reads project ownership, package declarations, project references and imported build inputs without compiling.

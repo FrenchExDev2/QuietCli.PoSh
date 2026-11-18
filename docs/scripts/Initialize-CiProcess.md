@@ -1,5 +1,9 @@
 # Initialize-CiProcess.ps1
 
+<!-- script-source:begin -->
+Source file: [`Initialize-CiProcess.ps1`](../../scripts/Initialize-CiProcess.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 ```powershell

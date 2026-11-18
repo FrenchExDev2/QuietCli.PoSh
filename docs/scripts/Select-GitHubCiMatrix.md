@@ -1,5 +1,9 @@
 # Select-GitHubCiMatrix.ps1
 
+<!-- script-source:begin -->
+Source file: [`Select-GitHubCiMatrix.ps1`](../../scripts/Select-GitHubCiMatrix.ps1)
+<!-- script-source:end -->
+
 Resolves the YAML-declared suite image through New-CiSuiteImage.ps1 for all four Linux targets, looks up each fingerprint
 in GHCR and verifies its configuration digest, architecture, Linux OS, source and fingerprint labels.
 No image is built or published. Missing/inaccessible images select the approved local Docker fallback;

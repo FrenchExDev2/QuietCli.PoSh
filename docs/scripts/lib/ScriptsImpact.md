@@ -1,5 +1,9 @@
 # ScriptsImpact.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptsImpact.psm1`](../../../scripts/lib/ScriptsImpact.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Chooses which script tests and mutation targets must run after a change below `scripts/` or `test/scripts/`. Without it, every such change would rerun the whole script test suite and every mutation shard.

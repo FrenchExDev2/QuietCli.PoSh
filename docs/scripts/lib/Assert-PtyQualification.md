@@ -1,5 +1,9 @@
 # Assert-PtyQualification.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Assert-PtyQualification.psm1`](../../../scripts/lib/Assert-PtyQualification.psm1)
+<!-- script-source:end -->
+
 ## Library boundary
 
 Located at `scripts/lib/Assert-PtyQualification.psm1`. Load with `Import-Module ([IO.Path]::Combine($root,'scripts/lib/Assert-PtyQualification.psm1')) -DisableNameChecking -ErrorAction Stop`. Import defines functions and explicit dependencies without running business operations. Paths use `System.IO.Path`. Effects remain owned by the calling operation and its preview contract.

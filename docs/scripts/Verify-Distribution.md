@@ -1,5 +1,9 @@
 # Verify-Distribution.ps1
 
+<!-- script-source:begin -->
+Source file: [`Verify-Distribution.ps1`](../../scripts/Verify-Distribution.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 A thin, process-isolation wrapper around `Test-WorkspacePackage.ps1` that runs the exact same

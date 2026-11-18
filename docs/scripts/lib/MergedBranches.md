@@ -1,5 +1,9 @@
 # MergedBranches.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/MergedBranches.psm1`](../../../scripts/lib/MergedBranches.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 The merged branch policy of [Remove-QuietMergedBranches.ps1](../Remove-QuietMergedBranches.md), kept separate from its Git and GitHub effects so every rule is unit tested without a process. Import is inert and no export reads or writes anything.

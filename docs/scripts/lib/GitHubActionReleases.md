@@ -1,5 +1,9 @@
 # GitHubActionReleases.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/GitHubActionReleases.psm1`](../../../scripts/lib/GitHubActionReleases.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 The release source of [Update-GitHubActions.ps1](../Update-GitHubActions.md). It answers one question, "what is the latest release of `owner/repository`, as a tag and a commit?", from one of two interchangeable sources: the GitHub REST API or a reviewed JSON catalog. Callers receive the same `{Action, Status, Tag, Sha, Source}` object from both. Import is inert.

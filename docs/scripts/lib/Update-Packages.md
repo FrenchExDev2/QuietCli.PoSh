@@ -1,5 +1,9 @@
 # Update-Packages.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Update-Packages.psm1`](../../../scripts/lib/Update-Packages.psm1)
+<!-- script-source:end -->
+
 Implements [Update-Packages.ps1](../Update-Packages.md). Exports only "Invoke-QuietScriptUpdatePackages". Imported without name checking; import defines the command without running the operation.
 
 ## Purpose

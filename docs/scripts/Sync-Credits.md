@@ -1,5 +1,9 @@
 # Sync-Credits.ps1
 
+<!-- script-source:begin -->
+Source file: [`Sync-Credits.ps1`](../../scripts/Sync-Credits.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Sync-Credits.psm1](lib/Sync-Credits.md). See that library for the full operation, dependencies, examples, effects and validation limits.

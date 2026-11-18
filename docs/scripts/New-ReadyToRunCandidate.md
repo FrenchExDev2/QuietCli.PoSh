@@ -1,5 +1,9 @@
 # New-ReadyToRunCandidate.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-ReadyToRunCandidate.ps1`](../../scripts/New-ReadyToRunCandidate.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Creates a separate net10.0 ReadyToRun candidate for the manual cold-start comparison. The baseline remains unchanged.

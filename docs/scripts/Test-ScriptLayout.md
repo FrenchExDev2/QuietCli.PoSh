@@ -1,5 +1,9 @@
 # Test-ScriptLayout.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-ScriptLayout.ps1`](../../scripts/Test-ScriptLayout.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 ```powershell

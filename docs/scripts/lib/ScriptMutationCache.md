@@ -1,5 +1,9 @@
 # ScriptMutationCache.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptMutationCache.psm1`](../../../scripts/lib/ScriptMutationCache.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Content-addressed outcome cache of [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). A mutant's outcome is reused only when nothing its target's tests can observe has changed. Import is inert. Only the `Write-` and `Remove-` exports write, and only under the cache directory.

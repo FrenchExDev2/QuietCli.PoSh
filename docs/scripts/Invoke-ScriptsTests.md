@@ -1,5 +1,9 @@
 # Invoke-ScriptsTests.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-ScriptsTests.ps1`](../../scripts/Invoke-ScriptsTests.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Runs the Pester 6 unit and integration tests of `./scripts` that live under [`test/scripts`](../../test/scripts/README.md). The tests target the libraries in `scripts/lib` and their exported functions. Entry points are exercised as real child processes in `integration/`. The run happens in a supervised background worker. A visible read-only [monitor](Watch-Tests.md) opens locally. CI passes `-Headless`.

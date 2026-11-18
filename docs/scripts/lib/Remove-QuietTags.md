@@ -1,5 +1,9 @@
 # Remove-QuietTags.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Remove-QuietTags.psm1`](../../../scripts/lib/Remove-QuietTags.psm1)
+<!-- script-source:end -->
+
 Implements [Remove-QuietTags.ps1](../Remove-QuietTags.md). Exports only "Invoke-QuietScriptRemoveQuietTags". Imported without name checking; import defines the command without running the operation.
 
 # Remove-QuietTags.ps1

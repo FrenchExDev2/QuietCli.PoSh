@@ -1,5 +1,9 @@
 # Resource documentation generator
 
+<!-- script-source:begin -->
+Source file: [`Sync-ResourcesReadme.ps1`](../../scripts/Sync-ResourcesReadme.ps1)
+<!-- script-source:end -->
+
 ## Usage
 
 `./scripts/Sync-ResourcesReadme.ps1` checks; `-Apply -WhatIf` previews; `-Apply -Confirm` regenerates.

@@ -1,5 +1,9 @@
 # PerformanceCharts.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/PerformanceCharts.psm1`](../../../scripts/lib/PerformanceCharts.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This module draws the charts of [New-CorePerformanceReport.ps1](../New-CorePerformanceReport.md). Each chart is rendered twice from the same numbers:

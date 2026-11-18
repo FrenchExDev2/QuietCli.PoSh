@@ -1,5 +1,9 @@
 # Invoke-ColdStartGate.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Invoke-ColdStartGate.psm1`](../../../scripts/lib/Invoke-ColdStartGate.psm1)
+<!-- script-source:end -->
+
 Implements [Invoke-ColdStartGate.ps1](../Invoke-ColdStartGate.md). Exports only "Invoke-QuietScriptInvokeColdStartGate". Imported without name checking; import defines the command without running the operation.
 
 # Invoke-ColdStartGate.ps1

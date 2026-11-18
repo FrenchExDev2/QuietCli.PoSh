@@ -1,5 +1,9 @@
 # WorkflowDocumentation.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/WorkflowDocumentation.psm1`](../../../scripts/lib/WorkflowDocumentation.psm1)
+<!-- script-source:end -->
+
 ## Library boundary
 
 Located at `scripts/lib/WorkflowDocumentation.psm1`. Load with `Import-Module ([IO.Path]::Combine($root,'scripts/lib/WorkflowDocumentation.psm1')) -DisableNameChecking -ErrorAction Stop`. Import defines functions and explicit dependencies without running business operations. Paths use `System.IO.Path`. Effects remain owned by the calling operation and its preview contract.
@@ -7,13 +11,13 @@ Located at `scripts/lib/WorkflowDocumentation.psm1`. Load with `Import-Module ([
 Explicit export surface:
 
 ```powershell
-Export-ModuleMember -Function 'Get-QuietWorkflowDocumentation','Get-QuietWorkflowReadme'
+Export-ModuleMember -Function 'Get-QuietWorkflowDocumentation','Get-QuietWorkflowReadme','Get-QuietWorkflowYamlParser','Get-QuietWorkflowScriptPaths'
 ```
 
 
 ## Purpose and usage
 
-Read-only function library used by Sync-GitHubWorkflowsReadme.ps1. Get-QuietWorkflowDocumentation -WorkspaceRoot <root> enumerates every dotted file directly under .github/workflows, parses jobs/triggers with the checksum-pinned restored YamlDotNet resource, validates dependency targets and renders deterministic Mermaid plus the execution/condition/script table. Get-QuietWorkflowReadme -Entries <catalogue> renders the index body.
+`Get-QuietWorkflowDocumentation -WorkspaceRoot <root>` parses workflow jobs and triggers, validates dependency targets and renders Mermaid with source links and script documentation. `Get-QuietWorkflowReadme -Entries <catalogue>` renders the index. The workflow map shares `Get-QuietWorkflowYamlParser` and `Get-QuietWorkflowScriptPaths`.
 
 ## Parser prerequisite
 
@@ -25,7 +29,7 @@ Requires the checksum-verified YamlDotNet assembly, prepared on demand through R
 
 ## Critical review
 
-- scripts/WorkflowDocumentation.psm1:2 derives job IDs and needs edges from parsed YAML, including reusable callers. Basename/diagram ID collisions and missing dependencies fail explicitly.
+- `scripts/lib/WorkflowDocumentation.psm1:34` derives job IDs and `needs` edges from parsed YAML. Basename and diagram ID collisions and missing dependencies fail explicitly.
 - Generated edges describe declared needs, not unconditional runtime execution: job conditions may skip nodes. Matrix expansion, expressions and scripts require their own semantic review and actual GitHub qualification.
 - AutomationContracts.Tests.ps1 verifies a literal build-to-verify edge and rejects graph drift. Source receipts bind the reviewed prose to the YAML bytes; a hash is not proof of prose accuracy.
 
@@ -42,7 +46,7 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Reads workflow structure and renders its deterministic documentation contract without executing YAML.
+Purpose: Returns the verified YAML parser used by the workflow documentation generators.
 
 Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 

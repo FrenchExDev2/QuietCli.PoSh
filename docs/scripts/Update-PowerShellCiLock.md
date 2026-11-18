@@ -1,5 +1,9 @@
 # Update-PowerShellCiLock.ps1
 
+<!-- script-source:begin -->
+Source file: [`Update-PowerShellCiLock.ps1`](../../scripts/Update-PowerShellCiLock.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Updates only PowerShell host/image pins after verifying published resources. SDK, OS base images and the separately pinned Alpine runtime remain unchanged.

@@ -1,5 +1,9 @@
 # New-CiSuiteImage.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-CiSuiteImage.ps1`](../../scripts/New-CiSuiteImage.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Resolves the base and overlays declared by `build/companions.yml` for Suite (default All) and a native Linux RuntimeIdentifier. It delegates to [CiCompanions](lib/CiCompanions.md) and [CiImages](lib/CiImages.md). Core needs only the base toolchain, including its Git executable; it does not require the Git companion overlay. Vagrant fixture tests declare no Vagrant executable layer.

@@ -1,5 +1,9 @@
 # Invoke-ComponentCheck.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-ComponentCheck.ps1`](../../scripts/Invoke-ComponentCheck.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Validates explicit component paths and executes build, smoke or full workspace-component checks.

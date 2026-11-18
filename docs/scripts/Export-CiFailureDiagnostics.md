@@ -1,5 +1,9 @@
 # Export-CiFailureDiagnostics.ps1
 
+<!-- script-source:begin -->
+Source file: [`Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.ps1)
+<!-- script-source:end -->
+
 Standard WhatIf/Confirm guards creation of the bundle before credentials are read or diagnostics
 are copied. WhatIf validates the source/destination shape but creates no output directory.
 

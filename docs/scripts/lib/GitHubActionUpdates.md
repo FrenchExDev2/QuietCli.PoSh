@@ -1,5 +1,9 @@
 # GitHubActionUpdates.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/GitHubActionUpdates.psm1`](../../../scripts/lib/GitHubActionUpdates.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 The update policy of [Update-GitHubActions.ps1](../Update-GitHubActions.md): given a parsed reference and the latest release of its action, it decides the new line. It also moves a workflow document's source receipt. Every export is pure. Import loads [GitHubActionReferences.psm1](GitHubActionReferences.md) for rendering.

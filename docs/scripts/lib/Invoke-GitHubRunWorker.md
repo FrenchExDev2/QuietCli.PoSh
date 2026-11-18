@@ -1,5 +1,9 @@
 # Invoke-GitHubRunWorker.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Invoke-GitHubRunWorker.psm1`](../../../scripts/lib/Invoke-GitHubRunWorker.psm1)
+<!-- script-source:end -->
+
 Implements [Invoke-GitHubRunWorker.ps1](../Invoke-GitHubRunWorker.md). Exports only "Invoke-QuietScriptInvokeGitHubRunWorker". Imported without name checking; import defines the command without running the operation.
 
 # Invoke-GitHubRunWorker.ps1

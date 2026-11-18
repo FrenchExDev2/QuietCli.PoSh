@@ -1,5 +1,9 @@
 # Assert-GalleryCheckpoint.ps1
 
+<!-- script-source:begin -->
+Source file: [`Assert-GalleryCheckpoint.ps1`](../../scripts/Assert-GalleryCheckpoint.ps1)
+<!-- script-source:end -->
+
 Validates a downloaded preview's `SourceRevision`, `QualifiedRevision` and version against the exact
 checkpoint emitted by this run's qualification and packaging jobs. It also requires the package-set
 version to match. It never queries the current `develop` HEAD, contacts a registry, reads a key or

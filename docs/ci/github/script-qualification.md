@@ -17,6 +17,9 @@ Manual workflow_dispatch only; no develop or publication dependency.
 This manual path declares a separately provisioned self-hosted Linux/Podman/KVM runner. Its full capability runner remains deliberately unimplemented and fails closed; it cannot currently establish exhaustive Git qualification. It is independent of the hosted production matrix with optional Preview and has no release/develop dependency. See [execution boundaries](../execution-model.md).
 
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/qualification.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.
@@ -30,7 +33,7 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| qualification | runner self-hosted, linux, x64, podman, kvm |  | default success condition | ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitQualification.ps1 |
+| qualification | runner self-hosted, linux, x64, podman, kvm |  | default success condition | [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Invoke-GitQualification.ps1`](../../scripts/Invoke-GitQualification.md) |
 
 <!-- workflow-generated:end -->
 

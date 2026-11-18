@@ -1,5 +1,9 @@
 # Initialize-Workspace.ps1
 
+<!-- script-source:begin -->
+Source file: [`Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Verifies a single monorepo checkout and optionally restores checksum-pinned third-party resources. It never clones child repositories, selects a branch or compiles the product.

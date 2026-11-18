@@ -1,5 +1,9 @@
 # Update-DotNetGlobalJson.ps1
 
+<!-- script-source:begin -->
+Source file: [`Update-DotNetGlobalJson.ps1`](../../scripts/Update-DotNetGlobalJson.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Verify an exact installed SDK and update only explicitly selected global.json files,

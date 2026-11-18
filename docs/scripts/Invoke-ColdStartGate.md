@@ -1,5 +1,9 @@
 # Invoke-ColdStartGate.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-ColdStartGate.ps1`](../../scripts/Invoke-ColdStartGate.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Invoke-ColdStartGate.psm1](lib/Invoke-ColdStartGate.md). See that library for the full operation, dependencies, examples, effects and validation limits.

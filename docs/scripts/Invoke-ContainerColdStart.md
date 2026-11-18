@@ -1,5 +1,9 @@
 # Invoke-ContainerColdStart.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-ContainerColdStart.ps1`](../../scripts/Invoke-ContainerColdStart.ps1)
+<!-- script-source:end -->
+
 Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
 
 ## Purpose and usage

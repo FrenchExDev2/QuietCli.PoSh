@@ -1,5 +1,9 @@
 # Initialize-TestTools.ps1
 
+<!-- script-source:begin -->
+Source file: [`Initialize-TestTools.ps1`](../../scripts/Initialize-TestTools.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Prepares the checksum-pinned script test tools in an isolated cache, without global installation:

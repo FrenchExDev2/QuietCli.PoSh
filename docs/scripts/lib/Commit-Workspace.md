@@ -1,5 +1,9 @@
 # Commit-Workspace.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Commit-Workspace.psm1`](../../../scripts/lib/Commit-Workspace.psm1)
+<!-- script-source:end -->
+
 ## Purpose and exported operation
 
 Implements [Commit-Workspace.ps1](../Commit-Workspace.md) through the single exported

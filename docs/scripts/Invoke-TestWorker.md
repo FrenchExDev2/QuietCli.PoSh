@@ -1,5 +1,9 @@
 # Invoke-TestWorker.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-TestWorker.ps1`](../../scripts/Invoke-TestWorker.ps1)
+<!-- script-source:end -->
+
 ## Purpose and entry points
 
 Executes the selected test scope, verifies identities and always saves progress/terminal reports. Local Invoke-WorkspaceCi starts it in a background process with a visible monitor; Invoke-GitHubCi calls it directly in the selected runner/job-container PowerShell. GitHub Docker fallback invokes that same entry inside the guest. This worker starts no desktop monitor itself.

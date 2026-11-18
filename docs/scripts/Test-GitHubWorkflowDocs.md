@@ -1,5 +1,9 @@
 # Test-GitHubWorkflowDocs.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-GitHubWorkflowDocs.ps1`](../../scripts/Test-GitHubWorkflowDocs.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Read-only RaC entry point: ./scripts/Test-GitHubWorkflowDocs.ps1 [-WorkspaceRoot <root>]. Calls Sync-GitHubWorkflowsReadme.ps1 without Apply. Missing matching docs, stale source receipts, absent required sections or generated graph/index drift are blocking errors.

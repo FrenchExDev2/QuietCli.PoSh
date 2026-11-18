@@ -1,5 +1,9 @@
 # coldstart-1000.profile.psd1
 
+<!-- script-source:begin -->
+Source file: [`RunProfiles/coldstart-1000.profile.psd1`](../../../scripts/RunProfiles/coldstart-1000.profile.psd1)
+<!-- script-source:end -->
+
 ## Purpose
 
 A data-only run profile that binds `Measure-ColdStart.ps1` to a fixed argument set for a long, ~80-minute cold-start A/B measurement (1000 measured pairs), intended, per its own `Description` field (line 5), for "statistical noise elimination" — i.e. a confirmatory, high-confidence run rather than the quick iterative check that `coldstart-100.profile.psd1` provides. It is created by `New-RunProfile.ps1` and consumed by `Invoke-RunProfile.ps1`, and is the "slow, authoritative" counterpart referenced alongside `coldstart-100` in `docs/README-readytorun_profiling.md`'s A/B testing documentation.

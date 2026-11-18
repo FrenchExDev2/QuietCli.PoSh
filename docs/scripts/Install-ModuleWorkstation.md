@@ -1,5 +1,9 @@
 # Install-ModuleWorkstation.ps1
 
+<!-- script-source:begin -->
+Source file: [`Install-ModuleWorkstation.ps1`](../../scripts/Install-ModuleWorkstation.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Runs the per-module workstation installer (its own `scripts/Install-Workstation.ps1`) for each selected

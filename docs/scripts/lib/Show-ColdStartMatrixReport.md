@@ -1,5 +1,9 @@
 # Show-ColdStartMatrixReport.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Show-ColdStartMatrixReport.psm1`](../../../scripts/lib/Show-ColdStartMatrixReport.psm1)
+<!-- script-source:end -->
+
 Implements [Show-ColdStartMatrixReport.ps1](../Show-ColdStartMatrixReport.md). Exports only "Invoke-QuietScriptShowColdStartMatrixReport". Imported without name checking; import defines the command without running the operation.
 
 # Show-ColdStartMatrixReport.ps1

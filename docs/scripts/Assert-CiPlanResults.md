@@ -1,5 +1,9 @@
 # Assert-CiPlanResults.ps1
 
+<!-- script-source:begin -->
+Source file: [`Assert-CiPlanResults.ps1`](../../scripts/Assert-CiPlanResults.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Verifies actual jobs against the selective execution plan and saves a scoped receipt behind the stable QuietCli required CI check.

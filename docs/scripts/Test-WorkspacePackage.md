@@ -1,5 +1,9 @@
 # Test-WorkspacePackage.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-WorkspacePackage.ps1`](../../scripts/Test-WorkspacePackage.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Test-WorkspacePackage.psm1](lib/Test-WorkspacePackage.md). See that library for the full operation, dependencies, examples, effects and validation limits.

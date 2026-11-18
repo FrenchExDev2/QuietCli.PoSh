@@ -1,5 +1,9 @@
 # Move-WorkspaceProjects.ps1
 
+<!-- script-source:begin -->
+Source file: [`Move-WorkspaceProjects.ps1`](../../scripts/Move-WorkspaceProjects.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Migrates the eight flat modules to src/<group>/src or src/<group>/test and updates literal module path references.

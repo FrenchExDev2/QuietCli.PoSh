@@ -1,5 +1,9 @@
 # Invoke-DotNetTests.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-DotNetTests.ps1`](../../scripts/Invoke-DotNetTests.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Select focused offline .NET automation campaigns through the existing shared launcher.

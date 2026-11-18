@@ -1,5 +1,9 @@
 # Update-EnvFile.ps1
 
+<!-- script-source:begin -->
+Source file: [`Update-EnvFile.ps1`](../../scripts/Update-EnvFile.ps1)
+<!-- script-source:end -->
+
 Reads or edits one key through [EnvFile.ps1](lib/EnvFile.md). `-Path` defaults to the checkout's `.env`;
 `-Key` is mandatory and case-sensitive. Supplying `-Value` selects write mode; otherwise `-Read`
 reads only the selected value. Read mode is explicit value output, so choose which key to display.

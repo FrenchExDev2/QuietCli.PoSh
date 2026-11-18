@@ -1,5 +1,9 @@
 # Script boilerplate and preview review generator
 
+<!-- script-source:begin -->
+Source file: [`Sync-ScriptContracts.ps1`](../../scripts/Sync-ScriptContracts.ps1)
+<!-- script-source:end -->
+
 ## Usage
 
 Check with `./scripts/Sync-ScriptContracts.ps1`; apply with `-Apply -WhatIf` or `-Apply -Confirm`.

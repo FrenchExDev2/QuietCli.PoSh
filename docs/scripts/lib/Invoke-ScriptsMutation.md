@@ -1,5 +1,9 @@
 # Invoke-ScriptsMutation.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Invoke-ScriptsMutation.psm1`](../../../scripts/lib/Invoke-ScriptsMutation.psm1)
+<!-- script-source:end -->
+
 Implements [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). It exports the launcher `Invoke-QuietScriptInvokeScriptsMutation`, the worker body `Invoke-QuietScriptsMutationWorker` and `Copy-QuietScriptsMutationTree`. Import defines the commands without running anything.
 
 ## Purpose and usage

@@ -1,5 +1,9 @@
 # Assert-RunProfileMutationShards.ps1
 
+<!-- script-source:begin -->
+Source file: [`Assert-RunProfileMutationShards.ps1`](../../scripts/Assert-RunProfileMutationShards.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 ```powershell

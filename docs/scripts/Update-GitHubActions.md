@@ -1,5 +1,9 @@
 # Update-GitHubActions.ps1
 
+<!-- script-source:begin -->
+Source file: [`Update-GitHubActions.ps1`](../../scripts/Update-GitHubActions.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Update-GitHubActions.psm1](lib/Update-GitHubActions.md). See that library for the full operation, decision rules, dependencies, effects and validation limits.

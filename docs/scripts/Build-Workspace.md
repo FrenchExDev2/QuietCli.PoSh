@@ -1,5 +1,9 @@
 # Build-Workspace.ps1
 
+<!-- script-source:begin -->
+Source file: [`Build-Workspace.ps1`](../../scripts/Build-Workspace.ps1)
+<!-- script-source:end -->
+
 ## Scoped CI execution
 
 Suite selects the test module and transitive RequiredModules closure. A scoped owned solution contains its projects; undeclared ProjectReferences fail before compilation. All preserves the complete solution. Incremental compilation reuses valid MSBuild outputs; portable publications remain --no-build. Matrix calls publish only their tested RuntimeIdentifier; packaging retains every required RID. WhatIf creates no scoped solution.

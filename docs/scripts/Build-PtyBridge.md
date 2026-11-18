@@ -1,5 +1,9 @@
 # Build-PtyBridge.ps1
 
+<!-- script-source:begin -->
+Source file: [`Build-PtyBridge.ps1`](../../scripts/Build-PtyBridge.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Cross-compiles the native PTY bridge binary for Linux x64/ARM64 (both glibc and musl RID folders) from its bundled C source, using a checksum-pinned Zig toolchain, so the module can ship working PTY support without requiring a C toolchain on the build host. It is invoked ad hoc by `artifacts/Run-IndependentPtyWorker.ps1` (line 8), an audit/profiling helper; no match was found in any `.github/workflows/*.yml`, suggesting this is a manually-run step (run when the native C source changes) rather than a step every CI run executes, which is consistent with it rewriting committed binaries and a lock file.

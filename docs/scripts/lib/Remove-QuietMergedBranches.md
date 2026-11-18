@@ -1,5 +1,9 @@
 # Remove-QuietMergedBranches.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Remove-QuietMergedBranches.psm1`](../../../scripts/lib/Remove-QuietMergedBranches.psm1)
+<!-- script-source:end -->
+
 Implements [Remove-QuietMergedBranches.ps1](../Remove-QuietMergedBranches.md). Exports only "Invoke-QuietScriptRemoveQuietMergedBranches". Imported without name checking; import defines the command without running the operation.
 
 ## Purpose and usage

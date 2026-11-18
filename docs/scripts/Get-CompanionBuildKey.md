@@ -1,5 +1,9 @@
 # Get-CompanionBuildKey.ps1
 
+<!-- script-source:begin -->
+Source file: [`Get-CompanionBuildKey.ps1`](../../scripts/Get-CompanionBuildKey.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Computes a suite/target cache key from compiled project dependency closures and effective central package declarations.
