@@ -153,13 +153,22 @@ try {
     $cases['generation is inert with an absent executable and throwing callbacks'] = {
         $before = [FrenchExDev2.QuietCli.QuietSession]::Engine
         $database = & $core { [string](Get-QuietConfigurationSnapshot).Values['telemetry.database'] }
-        $dbBefore = if ($database -and [IO.File]::Exists($database)) { (Get-FileHash -LiteralPath $database).Hash } else { $null }
+        # The persistent SQLite writer remains open; hash without denying its existing write access.
+        $hashDatabase = {
+            param($path)
+            if ($path -and [IO.File]::Exists($path)) {
+                $stream = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+                try { [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($stream)) }
+                finally { $stream.Dispose() }
+            }
+        }
+        $dbBefore = & $hashDatabase $database
         $file = quiet -Script (Join-Path $root 'inert.ps1') -AsObject -DataFactory { throw 'factory ran' } -Output { throw 'output ran' } missing-quiet-script-executable
         if ($file -isnot [IO.FileInfo] -or ![object]::ReferenceEquals($before, ([FrenchExDev2.QuietCli.QuietSession]::Engine))) { throw 'ScriptGenerationNotInert' }
         $bytes = [IO.File]::ReadAllBytesAsync($file.FullName).GetAwaiter().GetResult()
         $text = [Text.Encoding]::UTF8.GetString($bytes)
         if ($text.Contains("`r") -or $bytes[0] -eq 0xef -or $text.Contains("Add('-Script')") -or $text.Contains("Add('-TimeoutSeconds')")) { throw 'ScriptSourceContractChanged' }
-        $dbAfter = if ($database -and [IO.File]::Exists($database)) { (Get-FileHash -LiteralPath $database).Hash } else { $null }
+        $dbAfter = & $hashDatabase $database
         if ($dbBefore -cne $dbAfter) { throw 'ScriptGenerationWroteMeasurements' }
     }
     $cases['CI argument quoting round-trips hostile values through a child process'] = {
