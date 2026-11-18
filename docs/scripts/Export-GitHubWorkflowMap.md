@@ -25,6 +25,7 @@ Requires PowerShell 7.6 and the repository's checksum-pinned YAML parser. The sh
 - `scripts/Export-GitHubWorkflowMap.ps1:28` guards report generation and prerequisite preparation. Missing workflows or YAML parsing failures leave any previous report in place.
 - Step tables link literal `scripts/` paths found in `run` blocks. They cannot infer dynamically assembled commands or paths, or distinguish every shell comment from a command.
 - The overview shows declared event and reusable-workflow links. Per-workflow diagrams add `needs` and local action calls. Vector rendering depends on the selected Markdown viewer.
+- Flowchart nodes carry same-document links and the arrows name their relations. The `depends on` arrow points from the dependent job to the prerequisite. The diagram links depend on the viewer's Mermaid configuration. The adjacent Markdown links and table of contents support navigation independently. [Mermaid flowchart links](https://mermaid.js.org/syntax/flowchart.html#interaction)
 
 ## Verdict
 

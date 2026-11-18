@@ -37,72 +37,115 @@
 
 ## Déclencheurs et appels entre workflows
 
-Les flèches pleines relient un événement aux workflows qui le déclarent. Les flèches en pointillés représentent les appels de workflows réutilisables dans ce dépôt.
+Les nœuds pointent vers les sections du document. Le sommaire et les listes sous les diagrammes donnent accès aux mêmes sections si le lecteur bloque les clics Mermaid.
+Les relations `triggers`, `composed of`, `depends on` et `uses` relient respectivement un événement à un workflow, un workflow à ses jobs, un job à son prérequis et un appelant à sa cible.
 Les filtres, les conditions `if` et les matrices peuvent limiter les exécutions. Les appels déclenchés par du code et le contenu des dépendances externes sortent du périmètre de cette carte.
 
 ~~~mermaid
 flowchart LR
     n4["ci.yml"]
+    click n4 href "#workflow-ci-yml-4" "Ouvrir la section" _self
     e0(["workflow_dispatch"])
-    e0 --> n4
-    n4 -.-> n22
-    n4 -.-> n19
+    click e0 href "#event-workflow-dispatch-e0" "Ouvrir la section" _self
+    e0 -->|triggers| n4
+    n4 -. uses .-> n22
+    n4 -. uses .-> n19
     n5["companions-ci.yml"]
+    click n5 href "#workflow-companions-ci-yml-5" "Ouvrir la section" _self
     e1(["pull_request"])
-    e1 --> n5
+    click e1 href "#event-pull-request-e1" "Ouvrir la section" _self
+    e1 -->|triggers| n5
     e2(["push"])
-    e2 --> n5
-    e0 --> n5
-    n5 -.-> n4
-    n5 -.-> n22
-    n5 -.-> n19
-    n5 -.-> n7
+    click e2 href "#event-push-e2" "Ouvrir la section" _self
+    e2 -->|triggers| n5
+    e0 -->|triggers| n5
+    n5 -. uses .-> n4
+    n5 -. uses .-> n22
+    n5 -. uses .-> n19
+    n5 -. uses .-> n7
     n6["core-ci.yml"]
-    e0 --> n6
-    n6 -.-> n4
+    click n6 href "#workflow-core-ci-yml-6" "Ouvrir la section" _self
+    e0 -->|triggers| n6
+    n6 -. uses .-> n4
     n7["distribution-ci.yml"]
-    e0 --> n7
-    n7 -.-> n22
+    click n7 href "#workflow-distribution-ci-yml-7" "Ouvrir la section" _self
+    e0 -->|triggers| n7
+    n7 -. uses .-> n22
     n8["git-ci.yml"]
-    e0 --> n8
-    n8 -.-> n4
+    click n8 href "#workflow-git-ci-yml-8" "Ouvrir la section" _self
+    e0 -->|triggers| n8
+    n8 -. uses .-> n4
     n9["packages-update.yml"]
-    e0 --> n9
+    click n9 href "#workflow-packages-update-yml-9" "Ouvrir la section" _self
+    e0 -->|triggers| n9
     n10["preview-psgallery.yml"]
-    e0 --> n10
-    n10 -.-> n11
+    click n10 href "#workflow-preview-psgallery-yml-10" "Ouvrir la section" _self
+    e0 -->|triggers| n10
+    n10 -. uses .-> n11
     n11["publish-psgallery.yml"]
-    e0 --> n11
-    n11 -.-> n4
+    click n11 href "#workflow-publish-psgallery-yml-11" "Ouvrir la section" _self
+    e0 -->|triggers| n11
+    n11 -. uses .-> n4
     n12["qualification.yml"]
-    e0 --> n12
+    click n12 href "#workflow-qualification-yml-12" "Ouvrir la section" _self
+    e0 -->|triggers| n12
     n13["quietcli2-readytorun.yml"]
-    e0 --> n13
+    click n13 href "#workflow-quietcli2-readytorun-yml-13" "Ouvrir la section" _self
+    e0 -->|triggers| n13
     n14["release-tags.yml"]
-    e2 --> n14
-    n14 -.-> n11
+    click n14 href "#workflow-release-tags-yml-14" "Ouvrir la section" _self
+    e2 -->|triggers| n14
+    n14 -. uses .-> n11
     n15["scripts-docs-apply.yml"]
-    e0 --> n15
+    click n15 href "#workflow-scripts-docs-apply-yml-15" "Ouvrir la section" _self
+    e0 -->|triggers| n15
     n16["scripts-docs-check.yml"]
-    e1 --> n16
-    e2 --> n16
-    e0 --> n16
+    click n16 href "#workflow-scripts-docs-check-yml-16" "Ouvrir la section" _self
+    e1 -->|triggers| n16
+    e2 -->|triggers| n16
+    e0 -->|triggers| n16
     n17["sync-credits-apply.yml"]
-    e0 --> n17
+    click n17 href "#workflow-sync-credits-apply-yml-17" "Ouvrir la section" _self
+    e0 -->|triggers| n17
     n18["sync-credits-check.yml"]
-    e1 --> n18
-    e2 --> n18
-    e0 --> n18
+    click n18 href "#workflow-sync-credits-check-yml-18" "Ouvrir la section" _self
+    e1 -->|triggers| n18
+    e2 -->|triggers| n18
+    e0 -->|triggers| n18
     n19["tooling-ci.yml"]
+    click n19 href "#workflow-tooling-ci-yml-19" "Ouvrir la section" _self
     n20["tooling-component-ci.yml"]
-    e0 --> n20
-    n20 -.-> n22
+    click n20 href "#workflow-tooling-component-ci-yml-20" "Ouvrir la section" _self
+    e0 -->|triggers| n20
+    n20 -. uses .-> n22
     n21["vagrant-ci.yml"]
-    e0 --> n21
-    n21 -.-> n4
+    click n21 href "#workflow-vagrant-ci-yml-21" "Ouvrir la section" _self
+    e0 -->|triggers| n21
+    n21 -. uses .-> n4
     n22["workspace-component-ci.yml"]
-    n22 -.-> n19
+    click n22 href "#workflow-workspace-component-ci-yml-22" "Ouvrir la section" _self
+    n22 -. uses .-> n19
 ~~~
+
+Événements · [workflow&#95;dispatch](#event-workflow-dispatch-e0) · [pull&#95;request](#event-pull-request-e1) · [push](#event-push-e2)
+
+<a name="event-workflow-dispatch-e0"></a>
+
+### workflow&#95;dispatch
+
+[ci.yml](#workflow-ci-yml-4) · [companions-ci.yml](#workflow-companions-ci-yml-5) · [core-ci.yml](#workflow-core-ci-yml-6) · [distribution-ci.yml](#workflow-distribution-ci-yml-7) · [git-ci.yml](#workflow-git-ci-yml-8) · [packages-update.yml](#workflow-packages-update-yml-9) · [preview-psgallery.yml](#workflow-preview-psgallery-yml-10) · [publish-psgallery.yml](#workflow-publish-psgallery-yml-11) · [qualification.yml](#workflow-qualification-yml-12) · [quietcli2-readytorun.yml](#workflow-quietcli2-readytorun-yml-13) · [scripts-docs-apply.yml](#workflow-scripts-docs-apply-yml-15) · [scripts-docs-check.yml](#workflow-scripts-docs-check-yml-16) · [sync-credits-apply.yml](#workflow-sync-credits-apply-yml-17) · [sync-credits-check.yml](#workflow-sync-credits-check-yml-18) · [tooling-component-ci.yml](#workflow-tooling-component-ci-yml-20) · [vagrant-ci.yml](#workflow-vagrant-ci-yml-21)
+
+<a name="event-pull-request-e1"></a>
+
+### pull&#95;request
+
+[companions-ci.yml](#workflow-companions-ci-yml-5) · [scripts-docs-check.yml](#workflow-scripts-docs-check-yml-16) · [sync-credits-check.yml](#workflow-sync-credits-check-yml-18)
+
+<a name="event-push-e2"></a>
+
+### push
+
+[companions-ci.yml](#workflow-companions-ci-yml-5) · [release-tags.yml](#workflow-release-tags-yml-14) · [scripts-docs-check.yml](#workflow-scripts-docs-check-yml-16) · [sync-credits-check.yml](#workflow-sync-credits-check-yml-18)
 
 <a name="workflow-ci-yml-4"></a>
 
@@ -117,56 +160,88 @@ flowchart LR
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["ci.yml"])
+    click entry href "#workflow-ci-yml-4" "Ouvrir la section" _self
     j0["validate"]
+    click j0 href "#workflow-ci-yml-4-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
     j1["component-check"]
+    click j1 href "#workflow-ci-yml-4-job-j1" "Ouvrir la section" _self
+    entry -->|composed of| j1
     j2["qualification-gate"]
+    click j2 href "#workflow-ci-yml-4-job-j2" "Ouvrir la section" _self
+    entry -->|composed of| j2
     j3["tooling"]
+    click j3 href "#workflow-ci-yml-4-job-j3" "Ouvrir la section" _self
+    entry -->|composed of| j3
     j4["windows"]
+    click j4 href "#workflow-ci-yml-4-job-j4" "Ouvrir la section" _self
+    entry -->|composed of| j4
     j5["linux-matrix"]
+    click j5 href "#workflow-ci-yml-4-job-j5" "Ouvrir la section" _self
+    entry -->|composed of| j5
     j6["linux-images"]
+    click j6 href "#workflow-ci-yml-4-job-j6" "Ouvrir la section" _self
+    entry -->|composed of| j6
     j7["linux-selection"]
+    click j7 href "#workflow-ci-yml-4-job-j7" "Ouvrir la section" _self
+    entry -->|composed of| j7
     j8["linux"]
+    click j8 href "#workflow-ci-yml-4-job-j8" "Ouvrir la section" _self
+    entry -->|composed of| j8
     j9["linux-test-driver"]
+    click j9 href "#workflow-ci-yml-4-job-j9" "Ouvrir la section" _self
+    entry -->|composed of| j9
     j10["linux-result"]
+    click j10 href "#workflow-ci-yml-4-job-j10" "Ouvrir la section" _self
+    entry -->|composed of| j10
     j11["performance-results"]
-    entry --> j0
+    click j11 href "#workflow-ci-yml-4-job-j11" "Ouvrir la section" _self
+    entry -->|composed of| j11
     n1["cache-resources"]
-    j0 -.-> n1
+    click n1 href "#action-cache-resources-1" "Ouvrir la section" _self
+    j0 -. uses .-> n1
     n3["setup-powershell"]
-    j0 -.-> n3
-    j0 --> j1
-    j1 -.-> cj1["./.github/workflows/workspace-component-ci.yml"]
-    j5 --> j2
-    j4 --> j2
-    j10 --> j2
-    j11 --> j2
-    j3 --> j2
-    entry --> j3
-    j3 -.-> cj3["./.github/workflows/tooling-ci.yml"]
-    j5 --> j4
-    j4 -.-> n1
-    j0 --> j5
-    j5 --> j6
-    j6 -.-> n3
+    click n3 href "#action-setup-powershell-3" "Ouvrir la section" _self
+    j0 -. uses .-> n3
+    j1 -. depends on .-> j0
+    j1 -. uses .-> cj1["./.github/workflows/workspace-component-ci.yml"]
+    click cj1 href "#workflow-workspace-component-ci-yml-22" "Ouvrir la section" _self
+    j2 -. depends on .-> j5
+    j2 -. depends on .-> j4
+    j2 -. depends on .-> j10
+    j2 -. depends on .-> j11
+    j2 -. depends on .-> j3
+    j3 -. uses .-> cj3["./.github/workflows/tooling-ci.yml"]
+    click cj3 href "#workflow-tooling-ci-yml-19" "Ouvrir la section" _self
+    j4 -. depends on .-> j5
+    j4 -. uses .-> n1
+    j5 -. depends on .-> j0
+    j6 -. depends on .-> j5
+    j6 -. uses .-> n3
     n0["cache-ci-layers"]
-    j6 -.-> n0
-    j5 --> j7
-    j6 --> j7
-    j7 --> j8
-    j8 -.-> n1
-    j7 --> j9
-    j9 -.-> n3
-    j9 -.-> n1
-    j9 -.-> n0
-    j7 --> j10
-    j8 --> j10
-    j9 --> j10
-    j5 --> j11
-    j4 --> j11
-    j8 --> j11
-    j9 --> j11
+    click n0 href "#action-cache-ci-layers-0" "Ouvrir la section" _self
+    j6 -. uses .-> n0
+    j7 -. depends on .-> j5
+    j7 -. depends on .-> j6
+    j8 -. depends on .-> j7
+    j8 -. uses .-> n1
+    j9 -. depends on .-> j7
+    j9 -. uses .-> n3
+    j9 -. uses .-> n1
+    j9 -. uses .-> n0
+    j10 -. depends on .-> j7
+    j10 -. depends on .-> j8
+    j10 -. depends on .-> j9
+    j11 -. depends on .-> j5
+    j11 -. depends on .-> j4
+    j11 -. depends on .-> j8
+    j11 -. depends on .-> j9
 ~~~
+
+Jobs · [validate](#workflow-ci-yml-4-job-j0) · [component-check](#workflow-ci-yml-4-job-j1) · [qualification-gate](#workflow-ci-yml-4-job-j2) · [tooling](#workflow-ci-yml-4-job-j3) · [windows](#workflow-ci-yml-4-job-j4) · [linux-matrix](#workflow-ci-yml-4-job-j5) · [linux-images](#workflow-ci-yml-4-job-j6) · [linux-selection](#workflow-ci-yml-4-job-j7) · [linux](#workflow-ci-yml-4-job-j8) · [linux-test-driver](#workflow-ci-yml-4-job-j9) · [linux-result](#workflow-ci-yml-4-job-j10) · [performance-results](#workflow-ci-yml-4-job-j11)
+
+<a name="workflow-ci-yml-4-job-j0"></a>
 
 ### validate
 
@@ -178,11 +253,15 @@ flowchart TD
 | 4 |  | [./.github/actions/setup-powershell](#action-setup-powershell-3) |  |
 | 5 | Validate mode and catalogue paths without building | [scripts/Invoke-ComponentCheck.ps1](scripts/Invoke-ComponentCheck.md) |  |
 
+<a name="workflow-ci-yml-4-job-j1"></a>
+
 ### component-check
 
 Condition · <code>inputs.qualification&#95;mode == 'smoke' &#124;&#124; inputs.qualification&#95;mode == 'build'</code>
 
 Appelle [./.github/workflows/workspace-component-ci.yml](#workflow-workspace-component-ci-yml-22).
+
+<a name="workflow-ci-yml-4-job-j2"></a>
 
 ### qualification-gate
 
@@ -195,11 +274,15 @@ Condition · <code>&#36;{{ always() &#38;&#38; !inputs.images&#95;only &#38;&#38
 | 3 | Require successful qualification of this exact revision | [scripts/Assert-QualificationGate.ps1](scripts/Assert-QualificationGate.md) |  |
 | 4 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
 
+<a name="workflow-ci-yml-4-job-j3"></a>
+
 ### tooling
 
 Condition · <code>inputs.run&#95;tooling &#38;&#38; !inputs.images&#95;only &#38;&#38; (inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full')</code>
 
 Appelle [./.github/workflows/tooling-ci.yml](#workflow-tooling-ci-yml-19).
+
+<a name="workflow-ci-yml-4-job-j4"></a>
 
 ### windows
 
@@ -226,6 +309,8 @@ Matrice déclarée · <code>&#36;{{ fromJson(needs.linux-matrix.outputs.windows&
 | 15 | Prepare bounded redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
 | 16 | Save redacted Windows failure diagnostics | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
 
+<a name="workflow-ci-yml-4-job-j5"></a>
+
 ### linux-matrix
 
 Condition · <code>inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full'</code>
@@ -236,6 +321,8 @@ Condition · <code>inputs.qualification&#95;mode == '' &#124;&#124; inputs.quali
 | 2 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
 | 3 | Select locked production hosts and optional next-version preview | [scripts/Select-PowerShellCiMatrix.ps1](scripts/Select-PowerShellCiMatrix.md) | <code>&#36;{{ !inputs.images&#95;only }}</code> |
 | 4 | Define the native Linux platform/RID/runner matrix once for every consumer job | [scripts/lib/GitHubCi.psm1](scripts/lib/GitHubCi.md), [scripts/Initialize-CiCompanions.ps1](scripts/Initialize-CiCompanions.md) |  |
+
+<a name="workflow-ci-yml-4-job-j6"></a>
 
 ### linux-images
 
@@ -254,6 +341,8 @@ Matrice déclarée · <code>&#36;{{ fromJson(needs.linux-matrix.outputs.matrix) 
 | 7 |  | [./.github/actions/cache-ci-layers](#action-cache-ci-layers-0) | <code>steps.image&#95;probe.outputs.cache&#95;hit != 'true'</code> |
 | 8 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
 
+<a name="workflow-ci-yml-4-job-j7"></a>
+
 ### linux-selection
 
 Condition · <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; !inputs.images&#95;only &#38;&#38; needs.linux-matrix.result == 'success' &#38;&#38; (needs.linux-images.result == 'success' &#124;&#124; needs.linux-images.result == 'skipped') }}</code>
@@ -264,6 +353,8 @@ Condition · <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; !inputs.i
 | 2 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
 | 3 | Verify registry identity and choose every native target exactly once | [scripts/Select-GitHubCiMatrix.ps1](scripts/Select-GitHubCiMatrix.md) |  |
 | 4 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+
+<a name="workflow-ci-yml-4-job-j8"></a>
 
 ### linux
 
@@ -287,6 +378,8 @@ Matrice déclarée · <code>&#36;{{ fromJson(needs.linux-selection.outputs.conta
 | 12 | Prepare bounded redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
 | 13 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
 | 14 | Save NuGet packages using the resolved restore key | actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>&#36;{{ success() &#38;&#38; steps.nuget-cache.outputs.cache-hit != 'true' }}</code> |
+
+<a name="workflow-ci-yml-4-job-j9"></a>
 
 ### linux-test-driver
 
@@ -315,6 +408,8 @@ Matrice déclarée · <code>&#36;{{ fromJson(needs.linux-selection.outputs.docke
 | 17 | Prepare bounded redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
 | 18 | Save redacted Linux failure diagnostics and image identity | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
 
+<a name="workflow-ci-yml-4-job-j10"></a>
+
 ### linux-result
 
 Condition · <code>&#36;{{ always() &#38;&#38; !inputs.images&#95;only &#38;&#38; (inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full') }}</code>
@@ -324,6 +419,8 @@ Condition · <code>&#36;{{ always() &#38;&#38; !inputs.images&#95;only &#38;&#38
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
 | 2 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
 | 3 | Reject failed or unexpectedly skipped Linux matrices | [scripts/lib/GitHubCi.psm1](scripts/lib/GitHubCi.md) |  |
+
+<a name="workflow-ci-yml-4-job-j11"></a>
 
 ### performance-results
 
@@ -351,56 +448,84 @@ Condition · <code>&#36;{{ always() &#38;&#38; !inputs.images&#95;only &#38;&#38
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["companions-ci.yml"])
+    click entry href "#workflow-companions-ci-yml-5" "Ouvrir la section" _self
     j0["source-checks"]
+    click j0 href "#workflow-companions-ci-yml-5-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
     j1["plan"]
+    click j1 href "#workflow-companions-ci-yml-5-job-j1" "Ouvrir la section" _self
+    entry -->|composed of| j1
     j2["layout-tests"]
+    click j2 href "#workflow-companions-ci-yml-5-job-j2" "Ouvrir la section" _self
+    entry -->|composed of| j2
     j3["images"]
+    click j3 href "#workflow-companions-ci-yml-5-job-j3" "Ouvrir la section" _self
+    entry -->|composed of| j3
     j4["products"]
+    click j4 href "#workflow-companions-ci-yml-5-job-j4" "Ouvrir la section" _self
+    entry -->|composed of| j4
     j5["smokes"]
+    click j5 href "#workflow-companions-ci-yml-5-job-j5" "Ouvrir la section" _self
+    entry -->|composed of| j5
     j6["tooling-only"]
+    click j6 href "#workflow-companions-ci-yml-5-job-j6" "Ouvrir la section" _self
+    entry -->|composed of| j6
     j7["distribution"]
+    click j7 href "#workflow-companions-ci-yml-5-job-j7" "Ouvrir la section" _self
+    entry -->|composed of| j7
     j8["ci-status"]
-    entry --> j0
-    entry --> j1
+    click j8 href "#workflow-companions-ci-yml-5-job-j8" "Ouvrir la section" _self
+    entry -->|composed of| j8
     n1["cache-resources"]
-    j1 -.-> n1
+    click n1 href "#action-cache-resources-1" "Ouvrir la section" _self
+    j1 -. uses .-> n1
     n3["setup-powershell"]
-    j1 -.-> n3
-    j1 --> j2
-    j2 -.-> n1
-    j2 -.-> n3
-    j1 --> j3
-    j0 --> j3
-    j3 -.-> n3
+    click n3 href "#action-setup-powershell-3" "Ouvrir la section" _self
+    j1 -. uses .-> n3
+    j2 -. depends on .-> j1
+    j2 -. uses .-> n1
+    j2 -. uses .-> n3
+    j3 -. depends on .-> j1
+    j3 -. depends on .-> j0
+    j3 -. uses .-> n3
     n0["cache-ci-layers"]
-    j3 -.-> n0
-    j1 --> j4
-    j0 --> j4
-    j2 --> j4
-    j3 --> j4
-    j4 -.-> cj4["./.github/workflows/ci.yml"]
-    j1 --> j5
-    j0 --> j5
-    j2 --> j5
-    j5 -.-> cj5["./.github/workflows/workspace-component-ci.yml"]
-    j1 --> j6
-    j0 --> j6
-    j2 --> j6
-    j6 -.-> cj6["./.github/workflows/tooling-ci.yml"]
-    j1 --> j7
-    j0 --> j7
-    j2 --> j7
-    j7 -.-> cj7["./.github/workflows/distribution-ci.yml"]
-    j1 --> j8
-    j0 --> j8
-    j2 --> j8
-    j3 --> j8
-    j4 --> j8
-    j5 --> j8
-    j6 --> j8
-    j7 --> j8
+    click n0 href "#action-cache-ci-layers-0" "Ouvrir la section" _self
+    j3 -. uses .-> n0
+    j4 -. depends on .-> j1
+    j4 -. depends on .-> j0
+    j4 -. depends on .-> j2
+    j4 -. depends on .-> j3
+    j4 -. uses .-> cj4["./.github/workflows/ci.yml"]
+    click cj4 href "#workflow-ci-yml-4" "Ouvrir la section" _self
+    j5 -. depends on .-> j1
+    j5 -. depends on .-> j0
+    j5 -. depends on .-> j2
+    j5 -. uses .-> cj5["./.github/workflows/workspace-component-ci.yml"]
+    click cj5 href "#workflow-workspace-component-ci-yml-22" "Ouvrir la section" _self
+    j6 -. depends on .-> j1
+    j6 -. depends on .-> j0
+    j6 -. depends on .-> j2
+    j6 -. uses .-> cj6["./.github/workflows/tooling-ci.yml"]
+    click cj6 href "#workflow-tooling-ci-yml-19" "Ouvrir la section" _self
+    j7 -. depends on .-> j1
+    j7 -. depends on .-> j0
+    j7 -. depends on .-> j2
+    j7 -. uses .-> cj7["./.github/workflows/distribution-ci.yml"]
+    click cj7 href "#workflow-distribution-ci-yml-7" "Ouvrir la section" _self
+    j8 -. depends on .-> j1
+    j8 -. depends on .-> j0
+    j8 -. depends on .-> j2
+    j8 -. depends on .-> j3
+    j8 -. depends on .-> j4
+    j8 -. depends on .-> j5
+    j8 -. depends on .-> j6
+    j8 -. depends on .-> j7
 ~~~
+
+Jobs · [source-checks](#workflow-companions-ci-yml-5-job-j0) · [plan](#workflow-companions-ci-yml-5-job-j1) · [layout-tests](#workflow-companions-ci-yml-5-job-j2) · [images](#workflow-companions-ci-yml-5-job-j3) · [products](#workflow-companions-ci-yml-5-job-j4) · [smokes](#workflow-companions-ci-yml-5-job-j5) · [tooling-only](#workflow-companions-ci-yml-5-job-j6) · [distribution](#workflow-companions-ci-yml-5-job-j7) · [ci-status](#workflow-companions-ci-yml-5-job-j8)
+
+<a name="workflow-companions-ci-yml-5-job-j0"></a>
 
 ### source-checks
 
@@ -408,6 +533,8 @@ flowchart TD
 | ---: | --- | --- | --- |
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
 | 2 | Validate sources without importing product modules | [scripts/Invoke-WorkspaceChecks.ps1](scripts/Invoke-WorkspaceChecks.md) |  |
+
+<a name="workflow-companions-ci-yml-5-job-j1"></a>
 
 ### plan
 
@@ -419,6 +546,8 @@ flowchart TD
 | 4 |  | actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 |  |
 | 5 | Read complete diff, project references and central packages | [scripts/New-CiImpactPlan.ps1](scripts/New-CiImpactPlan.md) |  |
 | 6 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+
+<a name="workflow-companions-ci-yml-5-job-j2"></a>
 
 ### layout-tests
 
@@ -432,6 +561,8 @@ Condition · <code>needs.plan.outputs.run&#95;layout == 'true'</code>
 | 4 | Verify generated solutions and companion workflows | [scripts/Invoke-WorkspaceChecks.ps1](scripts/Invoke-WorkspaceChecks.md) |  |
 | 5 | Run layout, property, malformed-input and mutation checks | [scripts/Invoke-WorkspaceCi.ps1](scripts/Invoke-WorkspaceCi.md) |  |
 | 6 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+
+<a name="workflow-companions-ci-yml-5-job-j3"></a>
 
 ### images
 
@@ -450,6 +581,8 @@ Matrice déclarée · <code>{"include"&#58;&#91;{"rid"&#58;"linux-x64","runner"&
 | 7 |  | [./.github/actions/cache-ci-layers](#action-cache-ci-layers-0) | <code>steps.image&#95;probe.outputs.cache&#95;hit != 'true'</code> |
 | 8 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
 
+<a name="workflow-companions-ci-yml-5-job-j4"></a>
+
 ### products
 
 Condition · <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; needs.layout-tests.result == 'success' &#38;&#38; (needs.images.result == 'success' &#124;&#124; needs.images.result == 'skipped') &#38;&#38; needs.plan.outputs.run&#95;products == 'true' }}</code>
@@ -457,6 +590,8 @@ Condition · <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.pla
 Matrice déclarée · <code>&#36;{{ fromJson(needs.plan.outputs.matrix) }}</code>
 
 Appelle [./.github/workflows/ci.yml](#workflow-ci-yml-4).
+
+<a name="workflow-companions-ci-yml-5-job-j5"></a>
 
 ### smokes
 
@@ -466,17 +601,23 @@ Matrice déclarée · <code>{"runner"&#58;&#91;"windows-latest","ubuntu-latest"&
 
 Appelle [./.github/workflows/workspace-component-ci.yml](#workflow-workspace-component-ci-yml-22).
 
+<a name="workflow-companions-ci-yml-5-job-j6"></a>
+
 ### tooling-only
 
 Condition · <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; (needs.layout-tests.result == 'success' &#124;&#124; (needs.layout-tests.result == 'skipped' &#38;&#38; needs.plan.outputs.run&#95;layout == 'false')) &#38;&#38; needs.plan.outputs.run&#95;tooling == 'true' }}</code>
 
 Appelle [./.github/workflows/tooling-ci.yml](#workflow-tooling-ci-yml-19).
 
+<a name="workflow-companions-ci-yml-5-job-j7"></a>
+
 ### distribution
 
 Condition · <code>needs.plan.outputs.run&#95;distribution == 'true'</code>
 
 Appelle [./.github/workflows/distribution-ci.yml](#workflow-distribution-ci-yml-7).
+
+<a name="workflow-companions-ci-yml-5-job-j8"></a>
 
 ### ci-status
 
@@ -501,11 +642,18 @@ Condition · <code>&#36;{{ always() }}</code>
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["core-ci.yml"])
+    click entry href "#workflow-core-ci-yml-6" "Ouvrir la section" _self
     j0["qualify"]
-    entry --> j0
-    j0 -.-> cj0["./.github/workflows/ci.yml"]
+    click j0 href "#workflow-core-ci-yml-6-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
+    j0 -. uses .-> cj0["./.github/workflows/ci.yml"]
+    click cj0 href "#workflow-ci-yml-4" "Ouvrir la section" _self
 ~~~
+
+Jobs · [qualify](#workflow-core-ci-yml-6-job-j0)
+
+<a name="workflow-core-ci-yml-6-job-j0"></a>
 
 ### qualify
 
@@ -524,11 +672,18 @@ Appelle [./.github/workflows/ci.yml](#workflow-ci-yml-4).
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["distribution-ci.yml"])
+    click entry href "#workflow-distribution-ci-yml-7" "Ouvrir la section" _self
     j0["qualify"]
-    entry --> j0
-    j0 -.-> cj0["./.github/workflows/workspace-component-ci.yml"]
+    click j0 href "#workflow-distribution-ci-yml-7-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
+    j0 -. uses .-> cj0["./.github/workflows/workspace-component-ci.yml"]
+    click cj0 href "#workflow-workspace-component-ci-yml-22" "Ouvrir la section" _self
 ~~~
+
+Jobs · [qualify](#workflow-distribution-ci-yml-7-job-j0)
+
+<a name="workflow-distribution-ci-yml-7-job-j0"></a>
 
 ### qualify
 
@@ -547,11 +702,18 @@ Appelle [./.github/workflows/workspace-component-ci.yml](#workflow-workspace-com
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["git-ci.yml"])
+    click entry href "#workflow-git-ci-yml-8" "Ouvrir la section" _self
     j0["qualify"]
-    entry --> j0
-    j0 -.-> cj0["./.github/workflows/ci.yml"]
+    click j0 href "#workflow-git-ci-yml-8-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
+    j0 -. uses .-> cj0["./.github/workflows/ci.yml"]
+    click cj0 href "#workflow-ci-yml-4" "Ouvrir la section" _self
 ~~~
+
+Jobs · [qualify](#workflow-git-ci-yml-8-job-j0)
+
+<a name="workflow-git-ci-yml-8-job-j0"></a>
 
 ### qualify
 
@@ -569,15 +731,24 @@ Appelle [./.github/workflows/ci.yml](#workflow-ci-yml-4).
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["packages-update.yml"])
+    click entry href "#workflow-packages-update-yml-9" "Ouvrir la section" _self
     j0["report"]
+    click j0 href "#workflow-packages-update-yml-9-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
     j1["apply"]
-    entry --> j0
+    click j1 href "#workflow-packages-update-yml-9-job-j1" "Ouvrir la section" _self
+    entry -->|composed of| j1
     n3["setup-powershell"]
-    j0 -.-> n3
-    j0 --> j1
-    j1 -.-> n3
+    click n3 href "#action-setup-powershell-3" "Ouvrir la section" _self
+    j0 -. uses .-> n3
+    j1 -. depends on .-> j0
+    j1 -. uses .-> n3
 ~~~
+
+Jobs · [report](#workflow-packages-update-yml-9-job-j0) · [apply](#workflow-packages-update-yml-9-job-j1)
+
+<a name="workflow-packages-update-yml-9-job-j0"></a>
 
 ### report
 
@@ -587,6 +758,8 @@ flowchart TD
 | 2 |  | actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 |  |
 | 3 |  | [./.github/actions/setup-powershell](#action-setup-powershell-3) |  |
 | 4 | List package x framework rows and the updates that would be written | [scripts/Update-Packages.ps1](scripts/Update-Packages.md) |  |
+
+<a name="workflow-packages-update-yml-9-job-j1"></a>
 
 ### apply
 
@@ -612,11 +785,18 @@ Condition · <code>&#36;{{ inputs.apply }}</code>
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["preview-psgallery.yml"])
+    click entry href "#workflow-preview-psgallery-yml-10" "Ouvrir la section" _self
     j0["preview"]
-    entry --> j0
-    j0 -.-> cj0["./.github/workflows/publish-psgallery.yml"]
+    click j0 href "#workflow-preview-psgallery-yml-10-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
+    j0 -. uses .-> cj0["./.github/workflows/publish-psgallery.yml"]
+    click cj0 href "#workflow-publish-psgallery-yml-11" "Ouvrir la section" _self
 ~~~
+
+Jobs · [preview](#workflow-preview-psgallery-yml-10-job-j0)
+
+<a name="workflow-preview-psgallery-yml-10-job-j0"></a>
 
 ### preview
 
@@ -637,30 +817,47 @@ Appelle [./.github/workflows/publish-psgallery.yml](#workflow-publish-psgallery-
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["publish-psgallery.yml"])
+    click entry href "#workflow-publish-psgallery-yml-11" "Ouvrir la section" _self
     j0["qualification"]
+    click j0 href "#workflow-publish-psgallery-yml-11-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
     j1["reuse-qualification"]
+    click j1 href "#workflow-publish-psgallery-yml-11-job-j1" "Ouvrir la section" _self
+    entry -->|composed of| j1
     j2["checkpoint"]
+    click j2 href "#workflow-publish-psgallery-yml-11-job-j2" "Ouvrir la section" _self
+    entry -->|composed of| j2
     j3["package"]
+    click j3 href "#workflow-publish-psgallery-yml-11-job-j3" "Ouvrir la section" _self
+    entry -->|composed of| j3
     j4["publish"]
-    entry --> j0
-    j0 -.-> cj0["./.github/workflows/ci.yml"]
-    entry --> j1
-    j0 --> j2
-    j1 --> j2
-    j2 --> j3
+    click j4 href "#workflow-publish-psgallery-yml-11-job-j4" "Ouvrir la section" _self
+    entry -->|composed of| j4
+    j0 -. uses .-> cj0["./.github/workflows/ci.yml"]
+    click cj0 href "#workflow-ci-yml-4" "Ouvrir la section" _self
+    j2 -. depends on .-> j0
+    j2 -. depends on .-> j1
+    j3 -. depends on .-> j2
     n1["cache-resources"]
-    j3 -.-> n1
-    j2 --> j4
-    j3 --> j4
-    j4 -.-> n1
+    click n1 href "#action-cache-resources-1" "Ouvrir la section" _self
+    j3 -. uses .-> n1
+    j4 -. depends on .-> j2
+    j4 -. depends on .-> j3
+    j4 -. uses .-> n1
 ~~~
+
+Jobs · [qualification](#workflow-publish-psgallery-yml-11-job-j0) · [reuse-qualification](#workflow-publish-psgallery-yml-11-job-j1) · [checkpoint](#workflow-publish-psgallery-yml-11-job-j2) · [package](#workflow-publish-psgallery-yml-11-job-j3) · [publish](#workflow-publish-psgallery-yml-11-job-j4)
+
+<a name="workflow-publish-psgallery-yml-11-job-j0"></a>
 
 ### qualification
 
 Condition · <code>inputs.qualified&#95;sha == ''</code>
 
 Appelle [./.github/workflows/ci.yml](#workflow-ci-yml-4).
+
+<a name="workflow-publish-psgallery-yml-11-job-j1"></a>
 
 ### reuse-qualification
 
@@ -673,6 +870,8 @@ Condition · <code>inputs.qualified&#95;sha != '' &#38;&#38; inputs.qualified&#9
 | 3 |  | actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 |  |
 | 4 | Require All qualification from this exact run, attempt and revision | [scripts/Assert-QualificationReceipt.ps1](scripts/Assert-QualificationReceipt.md) |  |
 
+<a name="workflow-publish-psgallery-yml-11-job-j2"></a>
+
 ### checkpoint
 
 Condition · <code>&#36;{{ !cancelled() &#38;&#38; (needs.qualification.result == 'success' &#124;&#124; needs.reuse-qualification.result == 'success') }}</code>
@@ -680,6 +879,8 @@ Condition · <code>&#36;{{ !cancelled() &#38;&#38; (needs.qualification.result =
 | Ordre | Étape | Action ou script | Condition |
 | ---: | --- | --- | --- |
 | 1 | Accept the successful commit-bound qualification path | `run` |  |
+
+<a name="workflow-publish-psgallery-yml-11-job-j3"></a>
 
 ### package
 
@@ -699,6 +900,8 @@ Condition · <code>&#36;{{ !cancelled() &#38;&#38; needs.checkpoint.result == 's
 | 10 | Require preview properties, offline installation and targeted mutations | [scripts/Invoke-GitHubCi.ps1](scripts/Invoke-GitHubCi.md) | <code>inputs.preview&#95;build == true</code> |
 | 11 | Prepare bounded redacted package failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
 | 12 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
+
+<a name="workflow-publish-psgallery-yml-11-job-j4"></a>
 
 ### publish
 
@@ -727,14 +930,22 @@ Condition · <code>&#36;{{ !cancelled() &#38;&#38; inputs.publish == true &#38;&
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["qualification.yml"])
+    click entry href "#workflow-qualification-yml-12" "Ouvrir la section" _self
     j0["qualification"]
-    entry --> j0
+    click j0 href "#workflow-qualification-yml-12-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
     n1["cache-resources"]
-    j0 -.-> n1
+    click n1 href "#action-cache-resources-1" "Ouvrir la section" _self
+    j0 -. uses .-> n1
     n3["setup-powershell"]
-    j0 -.-> n3
+    click n3 href "#action-setup-powershell-3" "Ouvrir la section" _self
+    j0 -. uses .-> n3
 ~~~
+
+Jobs · [qualification](#workflow-qualification-yml-12-job-j0)
+
+<a name="workflow-qualification-yml-12-job-j0"></a>
 
 ### qualification
 
@@ -759,18 +970,27 @@ flowchart TD
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["quietcli2-readytorun.yml"])
+    click entry href "#workflow-quietcli2-readytorun-yml-13" "Ouvrir la section" _self
     j0["readytorun"]
+    click j0 href "#workflow-quietcli2-readytorun-yml-13-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
     j1["readytorun-linux"]
-    entry --> j0
+    click j1 href "#workflow-quietcli2-readytorun-yml-13-job-j1" "Ouvrir la section" _self
+    entry -->|composed of| j1
     n1["cache-resources"]
-    j0 -.-> n1
+    click n1 href "#action-cache-resources-1" "Ouvrir la section" _self
+    j0 -. uses .-> n1
     n3["setup-powershell"]
-    j0 -.-> n3
-    entry --> j1
-    j1 -.-> n1
-    j1 -.-> n3
+    click n3 href "#action-setup-powershell-3" "Ouvrir la section" _self
+    j0 -. uses .-> n3
+    j1 -. uses .-> n1
+    j1 -. uses .-> n3
 ~~~
+
+Jobs · [readytorun](#workflow-quietcli2-readytorun-yml-13-job-j0) · [readytorun-linux](#workflow-quietcli2-readytorun-yml-13-job-j1)
+
+<a name="workflow-quietcli2-readytorun-yml-13-job-j0"></a>
 
 ### readytorun
 
@@ -788,6 +1008,8 @@ flowchart TD
 | 10 | Export redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
 | 11 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
 | 12 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+
+<a name="workflow-quietcli2-readytorun-yml-13-job-j1"></a>
 
 ### readytorun-linux
 
@@ -821,18 +1043,30 @@ Matrice déclarée · <code>{"include"&#58;&#91;{"platform"&#58;"debian","rid"&#
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["release-tags.yml"])
+    click entry href "#workflow-release-tags-yml-14" "Ouvrir la section" _self
     j0["plan"]
+    click j0 href "#workflow-release-tags-yml-14-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
     j1["release"]
+    click j1 href "#workflow-release-tags-yml-14-job-j1" "Ouvrir la section" _self
+    entry -->|composed of| j1
     j2["github-release"]
-    entry --> j0
-    j0 --> j1
-    j1 -.-> cj1["./.github/workflows/publish-psgallery.yml"]
-    j0 --> j2
-    j1 --> j2
+    click j2 href "#workflow-release-tags-yml-14-job-j2" "Ouvrir la section" _self
+    entry -->|composed of| j2
+    j1 -. depends on .-> j0
+    j1 -. uses .-> cj1["./.github/workflows/publish-psgallery.yml"]
+    click cj1 href "#workflow-publish-psgallery-yml-11" "Ouvrir la section" _self
+    j2 -. depends on .-> j0
+    j2 -. depends on .-> j1
     n3["setup-powershell"]
-    j2 -.-> n3
+    click n3 href "#action-setup-powershell-3" "Ouvrir la section" _self
+    j2 -. uses .-> n3
 ~~~
+
+Jobs · [plan](#workflow-release-tags-yml-14-job-j0) · [release](#workflow-release-tags-yml-14-job-j1) · [github-release](#workflow-release-tags-yml-14-job-j2)
+
+<a name="workflow-release-tags-yml-14-job-j0"></a>
 
 ### plan
 
@@ -843,11 +1077,15 @@ Condition · <code>github.repository == 'FrenchExDev2/QuietCli.PoSh'</code>
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
 | 2 | Validate the tag, manifest version and publication capability | [scripts/Get-QuietReleasePlan.ps1](scripts/Get-QuietReleasePlan.md) |  |
 
+<a name="workflow-release-tags-yml-14-job-j1"></a>
+
 ### release
 
 Condition · <code>needs.plan.outputs.is&#95;leader == 'true'</code>
 
 Appelle [./.github/workflows/publish-psgallery.yml](#workflow-publish-psgallery-yml-11).
+
+<a name="workflow-release-tags-yml-14-job-j2"></a>
 
 ### github-release
 
@@ -874,10 +1112,16 @@ Condition · <code>needs.release.result == 'success' &#38;&#38; needs.plan.outpu
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["scripts-docs-apply.yml"])
+    click entry href "#workflow-scripts-docs-apply-yml-15" "Ouvrir la section" _self
     j0["apply"]
-    entry --> j0
+    click j0 href "#workflow-scripts-docs-apply-yml-15-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
 ~~~
+
+Jobs · [apply](#workflow-scripts-docs-apply-yml-15-job-j0)
+
+<a name="workflow-scripts-docs-apply-yml-15-job-j0"></a>
 
 ### apply
 
@@ -901,17 +1145,26 @@ flowchart TD
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["scripts-docs-check.yml"])
+    click entry href "#workflow-scripts-docs-check-yml-16" "Ouvrir la section" _self
     j0["check"]
+    click j0 href "#workflow-scripts-docs-check-yml-16-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
     j1["diagrams"]
-    entry --> j0
+    click j1 href "#workflow-scripts-docs-check-yml-16-job-j1" "Ouvrir la section" _self
+    entry -->|composed of| j1
     n1["cache-resources"]
-    j0 -.-> n1
+    click n1 href "#action-cache-resources-1" "Ouvrir la section" _self
+    j0 -. uses .-> n1
     n2["cache-test-tools"]
-    j0 -.-> n2
-    entry --> j1
-    j1 -.-> n1
+    click n2 href "#action-cache-test-tools-2" "Ouvrir la section" _self
+    j0 -. uses .-> n2
+    j1 -. uses .-> n1
 ~~~
+
+Jobs · [check](#workflow-scripts-docs-check-yml-16-job-j0) · [diagrams](#workflow-scripts-docs-check-yml-16-job-j1)
+
+<a name="workflow-scripts-docs-check-yml-16-job-j0"></a>
 
 ### check
 
@@ -922,6 +1175,8 @@ flowchart TD
 | 3 |  | [./.github/actions/cache-test-tools](#action-cache-test-tools-2) |  |
 | 4 |  | actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 |  |
 | 5 | Check repository automation contracts through the shared registry | [scripts/Invoke-WorkspaceChecks.ps1](scripts/Invoke-WorkspaceChecks.md) |  |
+
+<a name="workflow-scripts-docs-check-yml-16-job-j1"></a>
 
 ### diagrams
 
@@ -945,10 +1200,16 @@ flowchart TD
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["sync-credits-apply.yml"])
+    click entry href "#workflow-sync-credits-apply-yml-17" "Ouvrir la section" _self
     j0["apply"]
-    entry --> j0
+    click j0 href "#workflow-sync-credits-apply-yml-17-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
 ~~~
+
+Jobs · [apply](#workflow-sync-credits-apply-yml-17-job-j0)
+
+<a name="workflow-sync-credits-apply-yml-17-job-j0"></a>
 
 ### apply
 
@@ -973,10 +1234,16 @@ flowchart TD
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["sync-credits-check.yml"])
+    click entry href "#workflow-sync-credits-check-yml-18" "Ouvrir la section" _self
     j0["check"]
-    entry --> j0
+    click j0 href "#workflow-sync-credits-check-yml-18-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
 ~~~
+
+Jobs · [check](#workflow-sync-credits-check-yml-18-job-j0)
+
+<a name="workflow-sync-credits-check-yml-18-job-j0"></a>
 
 ### check
 
@@ -998,49 +1265,71 @@ flowchart TD
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["tooling-ci.yml"])
+    click entry href "#workflow-tooling-ci-yml-19" "Ouvrir la section" _self
     j0["results"]
+    click j0 href "#workflow-tooling-ci-yml-19-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
     j1["script-selection"]
+    click j1 href "#workflow-tooling-ci-yml-19-job-j1" "Ouvrir la section" _self
+    entry -->|composed of| j1
     j2["core-independence"]
+    click j2 href "#workflow-tooling-ci-yml-19-job-j2" "Ouvrir la section" _self
+    entry -->|composed of| j2
     j3["tooling"]
+    click j3 href "#workflow-tooling-ci-yml-19-job-j3" "Ouvrir la section" _self
+    entry -->|composed of| j3
     j4["run-profiles-mutation"]
+    click j4 href "#workflow-tooling-ci-yml-19-job-j4" "Ouvrir la section" _self
+    entry -->|composed of| j4
     j5["mutation-complete"]
+    click j5 href "#workflow-tooling-ci-yml-19-job-j5" "Ouvrir la section" _self
+    entry -->|composed of| j5
     j6["script-tests"]
+    click j6 href "#workflow-tooling-ci-yml-19-job-j6" "Ouvrir la section" _self
+    entry -->|composed of| j6
     j7["script-mutation"]
+    click j7 href "#workflow-tooling-ci-yml-19-job-j7" "Ouvrir la section" _self
+    entry -->|composed of| j7
     j8["script-mutation-complete"]
-    j2 --> j0
-    j3 --> j0
-    j6 --> j0
-    j4 --> j0
-    j7 --> j0
-    j5 --> j0
-    j8 --> j0
-    entry --> j1
+    click j8 href "#workflow-tooling-ci-yml-19-job-j8" "Ouvrir la section" _self
+    entry -->|composed of| j8
+    j0 -. depends on .-> j2
+    j0 -. depends on .-> j3
+    j0 -. depends on .-> j6
+    j0 -. depends on .-> j4
+    j0 -. depends on .-> j7
+    j0 -. depends on .-> j5
+    j0 -. depends on .-> j8
     n3["setup-powershell"]
-    j1 -.-> n3
-    entry --> j2
+    click n3 href "#action-setup-powershell-3" "Ouvrir la section" _self
+    j1 -. uses .-> n3
     n1["cache-resources"]
-    j2 -.-> n1
-    j2 -.-> n3
-    entry --> j3
-    j3 -.-> n1
-    j3 -.-> n3
-    entry --> j4
-    j4 -.-> n1
-    j4 -.-> n3
-    j4 --> j5
-    j1 --> j6
-    j6 -.-> n1
+    click n1 href "#action-cache-resources-1" "Ouvrir la section" _self
+    j2 -. uses .-> n1
+    j2 -. uses .-> n3
+    j3 -. uses .-> n1
+    j3 -. uses .-> n3
+    j4 -. uses .-> n1
+    j4 -. uses .-> n3
+    j5 -. depends on .-> j4
+    j6 -. depends on .-> j1
+    j6 -. uses .-> n1
     n2["cache-test-tools"]
-    j6 -.-> n2
-    j6 -.-> n3
-    j1 --> j7
-    j7 -.-> n1
-    j7 -.-> n2
-    j7 -.-> n3
-    j1 --> j8
-    j7 --> j8
+    click n2 href "#action-cache-test-tools-2" "Ouvrir la section" _self
+    j6 -. uses .-> n2
+    j6 -. uses .-> n3
+    j7 -. depends on .-> j1
+    j7 -. uses .-> n1
+    j7 -. uses .-> n2
+    j7 -. uses .-> n3
+    j8 -. depends on .-> j1
+    j8 -. depends on .-> j7
 ~~~
+
+Jobs · [results](#workflow-tooling-ci-yml-19-job-j0) · [script-selection](#workflow-tooling-ci-yml-19-job-j1) · [core-independence](#workflow-tooling-ci-yml-19-job-j2) · [tooling](#workflow-tooling-ci-yml-19-job-j3) · [run-profiles-mutation](#workflow-tooling-ci-yml-19-job-j4) · [mutation-complete](#workflow-tooling-ci-yml-19-job-j5) · [script-tests](#workflow-tooling-ci-yml-19-job-j6) · [script-mutation](#workflow-tooling-ci-yml-19-job-j7) · [script-mutation-complete](#workflow-tooling-ci-yml-19-job-j8)
+
+<a name="workflow-tooling-ci-yml-19-job-j0"></a>
 
 ### results
 
@@ -1051,6 +1340,8 @@ Condition · <code>&#36;{{ always() }}</code>
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
 | 2 | Export authoritative prerequisite results even after failure | [scripts/Write-ToolingResults.ps1](scripts/Write-ToolingResults.md) |  |
 
+<a name="workflow-tooling-ci-yml-19-job-j1"></a>
+
 ### script-selection
 
 | Ordre | Étape | Action ou script | Condition |
@@ -1058,6 +1349,8 @@ Condition · <code>&#36;{{ always() }}</code>
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
 | 2 |  | [./.github/actions/setup-powershell](#action-setup-powershell-3) |  |
 | 3 | Expand and validate the selection | [scripts/lib/ScriptsImpact.psm1](scripts/lib/ScriptsImpact.md) |  |
+
+<a name="workflow-tooling-ci-yml-19-job-j2"></a>
 
 ### core-independence
 
@@ -1072,6 +1365,8 @@ Condition · <code>inputs.scope == 'full'</code>
 | 5 | Verify sources and pinned resources | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md), [scripts/Initialize-Workspace.ps1](scripts/Initialize-Workspace.md) |  |
 | 6 | Build only Core and run its entire suite with Git source absent | [scripts/Test-CoreIndependence.ps1](scripts/Test-CoreIndependence.md) |  |
 | 7 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+
+<a name="workflow-tooling-ci-yml-19-job-j3"></a>
 
 ### tooling
 
@@ -1091,6 +1386,8 @@ Condition · <code>inputs.scope == 'full'</code>
 | 10 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always() &#38;&#38; ((steps.tooling&#95;tests.outcome != '' &#38;&#38; steps.tooling&#95;tests.outcome != 'skipped') &#124;&#124; (steps.run&#95;profiles.outcome != '' &#38;&#38; steps.run&#95;profiles.outcome != 'skipped'))</code> |
 | 11 | Preserve tooling fixtures only after a failed campaign | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure() &#38;&#38; (steps.tooling&#95;tests.outcome == 'failure' &#124;&#124; steps.run&#95;profiles.outcome == 'failure')</code> |
 
+<a name="workflow-tooling-ci-yml-19-job-j4"></a>
+
 ### run-profiles-mutation
 
 Condition · <code>inputs.scope == 'full'</code>
@@ -1106,6 +1403,8 @@ Matrice déclarée · <code>{"shard"&#58;&#91;"0","1"&#93;}</code>
 | 5 | Require every run-profile tooling mutant to be detected | [scripts/Invoke-GitHubCi.ps1](scripts/Invoke-GitHubCi.md) |  |
 | 6 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always() &#38;&#38; steps.run&#95;profiles&#95;mutation.outcome != '' &#38;&#38; steps.run&#95;profiles&#95;mutation.outcome != 'skipped'</code> |
 
+<a name="workflow-tooling-ci-yml-19-job-j5"></a>
+
 ### mutation-complete
 
 Condition · <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; inputs.scope == 'full' }}</code>
@@ -1116,6 +1415,8 @@ Condition · <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; inputs.sc
 | 2 |  | actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 |  |
 | 3 | Verify all shards from this revision and attempt | [scripts/Assert-RunProfileMutationShards.ps1](scripts/Assert-RunProfileMutationShards.md) |  |
 | 4 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 |  |
+
+<a name="workflow-tooling-ci-yml-19-job-j6"></a>
 
 ### script-tests
 
@@ -1135,6 +1436,8 @@ Matrice déclarée · <code>{"os"&#58;&#91;"windows-latest","ubuntu-latest"&#93;
 | 8 | Run the selected script tests | [scripts/Invoke-ScriptsTests.ps1](scripts/Invoke-ScriptsTests.md) |  |
 | 9 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always() &#38;&#38; steps.script&#95;tests.outcome != '' &#38;&#38; steps.script&#95;tests.outcome != 'skipped'</code> |
 
+<a name="workflow-tooling-ci-yml-19-job-j7"></a>
+
 ### script-mutation
 
 Condition · <code>needs.script-selection.outputs.run&#95;mutation == 'true'</code>
@@ -1153,6 +1456,8 @@ Matrice déclarée · <code>{"target"&#58;"&#36;{{ fromJson(needs.script-selecti
 | 8 | Require the target's mutation score | [scripts/Invoke-ScriptsMutation.ps1](scripts/Invoke-ScriptsMutation.md) |  |
 | 9 | Save the target's incremental mutation cache | actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>always() &#38;&#38; steps.script&#95;mutation.outcome != '' &#38;&#38; steps.script&#95;mutation.outcome != 'skipped'</code> |
 | 10 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always() &#38;&#38; steps.script&#95;mutation.outcome != '' &#38;&#38; steps.script&#95;mutation.outcome != 'skipped'</code> |
+
+<a name="workflow-tooling-ci-yml-19-job-j8"></a>
 
 ### script-mutation-complete
 
@@ -1178,11 +1483,18 @@ Condition · <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.scr
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["tooling-component-ci.yml"])
+    click entry href "#workflow-tooling-component-ci-yml-20" "Ouvrir la section" _self
     j0["qualify"]
-    entry --> j0
-    j0 -.-> cj0["./.github/workflows/workspace-component-ci.yml"]
+    click j0 href "#workflow-tooling-component-ci-yml-20-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
+    j0 -. uses .-> cj0["./.github/workflows/workspace-component-ci.yml"]
+    click cj0 href "#workflow-workspace-component-ci-yml-22" "Ouvrir la section" _self
 ~~~
+
+Jobs · [qualify](#workflow-tooling-component-ci-yml-20-job-j0)
+
+<a name="workflow-tooling-component-ci-yml-20-job-j0"></a>
 
 ### qualify
 
@@ -1201,11 +1513,18 @@ Appelle [./.github/workflows/workspace-component-ci.yml](#workflow-workspace-com
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["vagrant-ci.yml"])
+    click entry href "#workflow-vagrant-ci-yml-21" "Ouvrir la section" _self
     j0["qualify"]
-    entry --> j0
-    j0 -.-> cj0["./.github/workflows/ci.yml"]
+    click j0 href "#workflow-vagrant-ci-yml-21-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
+    j0 -. uses .-> cj0["./.github/workflows/ci.yml"]
+    click cj0 href "#workflow-ci-yml-4" "Ouvrir la section" _self
 ~~~
+
+Jobs · [qualify](#workflow-vagrant-ci-yml-21-job-j0)
+
+<a name="workflow-vagrant-ci-yml-21-job-j0"></a>
 
 ### qualify
 
@@ -1223,21 +1542,34 @@ Appelle [./.github/workflows/ci.yml](#workflow-ci-yml-4).
 
 ~~~mermaid
 flowchart TD
-    entry(["Workflow déclenché"])
+    entry(["workspace-component-ci.yml"])
+    click entry href "#workflow-workspace-component-ci-yml-22" "Ouvrir la section" _self
     j0["validate"]
+    click j0 href "#workflow-workspace-component-ci-yml-22-job-j0" "Ouvrir la section" _self
+    entry -->|composed of| j0
     j1["tooling"]
+    click j1 href "#workflow-workspace-component-ci-yml-22-job-j1" "Ouvrir la section" _self
+    entry -->|composed of| j1
     j2["component"]
-    entry --> j0
+    click j2 href "#workflow-workspace-component-ci-yml-22-job-j2" "Ouvrir la section" _self
+    entry -->|composed of| j2
     n1["cache-resources"]
-    j0 -.-> n1
+    click n1 href "#action-cache-resources-1" "Ouvrir la section" _self
+    j0 -. uses .-> n1
     n3["setup-powershell"]
-    j0 -.-> n3
-    j0 --> j1
-    j1 -.-> cj1["./.github/workflows/tooling-ci.yml"]
-    j0 --> j2
-    j2 -.-> n1
-    j2 -.-> n3
+    click n3 href "#action-setup-powershell-3" "Ouvrir la section" _self
+    j0 -. uses .-> n3
+    j1 -. depends on .-> j0
+    j1 -. uses .-> cj1["./.github/workflows/tooling-ci.yml"]
+    click cj1 href "#workflow-tooling-ci-yml-19" "Ouvrir la section" _self
+    j2 -. depends on .-> j0
+    j2 -. uses .-> n1
+    j2 -. uses .-> n3
 ~~~
+
+Jobs · [validate](#workflow-workspace-component-ci-yml-22-job-j0) · [tooling](#workflow-workspace-component-ci-yml-22-job-j1) · [component](#workflow-workspace-component-ci-yml-22-job-j2)
+
+<a name="workflow-workspace-component-ci-yml-22-job-j0"></a>
 
 ### validate
 
@@ -1249,11 +1581,15 @@ flowchart TD
 | 4 |  | [./.github/actions/setup-powershell](#action-setup-powershell-3) |  |
 | 5 | Validate declared scope and paths | [scripts/Invoke-ComponentCheck.ps1](scripts/Invoke-ComponentCheck.md) |  |
 
+<a name="workflow-workspace-component-ci-yml-22-job-j1"></a>
+
 ### tooling
 
 Condition · <code>inputs.suite == 'Tooling' &#38;&#38; inputs.qualification&#95;mode == 'full'</code>
 
 Appelle [./.github/workflows/tooling-ci.yml](#workflow-tooling-ci-yml-19).
+
+<a name="workflow-workspace-component-ci-yml-22-job-j2"></a>
 
 ### component
 
@@ -1280,10 +1616,10 @@ Condition · <code>inputs.suite != 'Tooling' &#124;&#124; inputs.qualification&#
 ~~~mermaid
 sequenceDiagram
     participant A as cache-ci-layers
-    A->>A: docker/setup-docker-action@3f1ab1ab0e29231562e4db4ca600c1a49653bac6
-    A->>A: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-    A->>A: Enable the checkout-owned intermediate cache
-    A->>A: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+    A->>A: uses · docker/setup-docker-action@3f1ab1ab0e29231562e4db4ca600c1a49653bac6
+    A->>A: uses · actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+    A->>A: runs · Enable the checkout-owned intermediate cache
+    A->>A: uses · actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
 ~~~
 
 | Ordre | Étape | Action ou script | Condition |
@@ -1302,8 +1638,8 @@ sequenceDiagram
 ~~~mermaid
 sequenceDiagram
     participant A as cache-resources
-    A->>A: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-    A->>A: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+    A->>A: uses · actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+    A->>A: uses · actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
 ~~~
 
 | Ordre | Étape | Action ou script | Condition |
@@ -1320,7 +1656,7 @@ sequenceDiagram
 ~~~mermaid
 sequenceDiagram
     participant A as cache-test-tools
-    A->>A: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+    A->>A: uses · actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
 ~~~
 
 | Ordre | Étape | Action ou script | Condition |
@@ -1336,7 +1672,7 @@ sequenceDiagram
 ~~~mermaid
 sequenceDiagram
     participant A as setup-powershell
-    A->>A: Prepare the selected stable host
+    A->>A: runs · Prepare the selected stable host
 ~~~
 
 | Ordre | Étape | Action ou script | Condition |

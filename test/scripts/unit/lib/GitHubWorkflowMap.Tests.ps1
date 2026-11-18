@@ -22,6 +22,13 @@ Describe 'GitHub workflow map links' {
         (& $mapModule { Format-QuietWorkflowMapText "élan|[vue]`r`nétape" }) | Should -BeExactly 'élan&#124;&#91;vue&#93; étape'
         (& $mapModule { Format-QuietWorkflowMapText 'plain' }) | Should -BeExactly 'plain'
     }
+
+    It 'generates Mermaid hyperlinks with local fragments and rejects invalid node IDs and destinations' {
+        (& $mapModule { Format-QuietWorkflowMapClick 'j42' 'workflow-ci-yml-4-job-j42' }) |
+            Should -BeExactly '    click j42 href "#workflow-ci-yml-4-job-j42" "Ouvrir la section" _self'
+        { & $mapModule { Format-QuietWorkflowMapClick 'j 42' 'workflow-ci' } } | Should -Throw
+        { & $mapModule { Format-QuietWorkflowMapClick 'j42' 'https://example.com/' } } | Should -Throw
+    }
 }
 
 Describe 'Get-QuietWorkflowScriptPaths' {

@@ -14,8 +14,8 @@ Uses GitHubActionReferences to discover workflows and local actions and Workflow
 
 ## Findings
 
-- `scripts/lib/GitHubWorkflowMap.psm1:132` builds a case-sensitive catalogue for local `uses` links. Local references outside `.github/actions`, remote actions and remote workflows remain references without inspecting their implementation.
-- A job flowchart links dependencies and local calls. A composite action sequence diagram reads steps in declaration order. Conditions and matrices render as inline code to preserve GitHub Actions expressions in Markdown previews.
+- `scripts/lib/GitHubWorkflowMap.psm1:142` builds a case-sensitive catalogue for local `uses` links. External reusable workflow nodes link to the calling job's section. The map does not inspect external implementations.
+- Flowcharts name the `triggers`, `composed of`, `depends on` and `uses` relations. Mermaid node links use generated local fragments, with parallel Markdown navigation. Sequences label steps as `runs` or `uses` in declaration order. Conditions and matrices render as inline code.
 - Property tests exercise repeated links and generated names. Fixture tests cover trigger syntax, job dependencies, filters, local calls, rendered section headings and complete Mermaid participant declarations. GitHub execution remains outside this validation.
 
 ## Verdict

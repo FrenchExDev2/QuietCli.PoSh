@@ -14,7 +14,7 @@
         @{
             Name = 'GitHubWorkflowMap'
             Module = 'lib/GitHubWorkflowMap.psm1'
-            Functions = @('Get-QuietWorkflowMapTarget','Format-QuietWorkflowMapText')
+            Functions = @('Get-QuietWorkflowMapTarget','Format-QuietWorkflowMapText','Format-QuietWorkflowMapClick')
             UnitTestFiles = @('unit/lib/GitHubWorkflowMap.Tests.ps1')
             Break = 80
         }

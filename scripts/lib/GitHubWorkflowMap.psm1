@@ -71,6 +71,20 @@ function Format-QuietWorkflowMapReference {
     $label
 }
 
+function Format-QuietWorkflowMapClick {
+    <#
+    .SYNOPSIS
+    Emits Mermaid hyperlink syntax using a local Markdown fragment as the destination.
+    .PARAMETER NodeId
+    Generated Mermaid node identifier.
+    .PARAMETER Anchor
+    Generated section anchor, without the leading hash.
+    #>
+    param([ValidatePattern('\A[a-z][a-z0-9]*\z')][string]$NodeId,[ValidatePattern('\A[a-z0-9][a-z0-9-]*\z')][string]$Anchor)
+
+    '    click '+$NodeId+' href "#'+$Anchor+'" "Ouvrir la section" _self'
+}
+
 function Get-QuietWorkflowMapStepRows {
     <#
     .SYNOPSIS
@@ -171,7 +185,8 @@ function New-QuietGitHubWorkflowMap {
     }
     $lines.AddRange([string[]]@(
         '','<a name="declencheurs"></a>','','## Déclencheurs et appels entre workflows','',
-        'Les flèches pleines relient un événement aux workflows qui le déclarent. Les flèches en pointillés représentent les appels de workflows réutilisables dans ce dépôt.',
+        'Les nœuds pointent vers les sections du document. Le sommaire et les listes sous les diagrammes donnent accès aux mêmes sections si le lecteur bloque les clics Mermaid.',
+        'Les relations `triggers`, `composed of`, `depends on` et `uses` relient respectivement un événement à un workflow, un workflow à ses jobs, un job à son prérequis et un appelant à sa cible.',
         'Les filtres, les conditions `if` et les matrices peuvent limiter les exécutions. Les appels déclenchés par du code et le contenu des dépendances externes sortent du périmètre de cette carte.',
         '','~~~mermaid','flowchart LR'
     ))
@@ -179,24 +194,43 @@ function New-QuietGitHubWorkflowMap {
     $callEdges = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($entry in $workflows) {
         $lines.Add('    '+$entry.Id+'["'+(Format-QuietWorkflowMapText $entry.Name -Mermaid)+'"]')
+        $lines.Add((Format-QuietWorkflowMapClick $entry.Id $entry.Anchor))
         foreach ($eventName in $entry.Events.Keys) {
             if ($eventName -ceq 'workflow_call') { continue }
             if (!$eventNodes.Contains($eventName)) {
                 $eventId = 'e'+$eventNodes.Count
-                $eventNodes.Add($eventName,$eventId)
+                $slug = $eventName.ToLowerInvariant() -replace '[^a-z0-9-]','-'
+                $eventNodes.Add($eventName,[pscustomobject]@{
+                    Id = $eventId
+                    Anchor = 'event-'+$slug+'-'+$eventId
+                    Workflows = [Collections.Generic.List[object]]::new()
+                })
                 $lines.Add('    '+$eventId+'(["'+(Format-QuietWorkflowMapText $eventName -Mermaid)+'"])')
+                $lines.Add((Format-QuietWorkflowMapClick $eventId $eventNodes[$eventName].Anchor))
             }
-            $lines.Add('    '+$eventNodes[$eventName]+' --> '+$entry.Id)
+            $eventNode = $eventNodes[$eventName]
+            $eventNode.Workflows.Add($entry)
+            $lines.Add('    '+$eventNode.Id+' -->|triggers| '+$entry.Id)
         }
         foreach ($job in $entry.Body['jobs'].Values) {
             $target = Get-QuietWorkflowMapTarget -Reference $job['uses'] -Entries $entries
             if ($target -and $target.IsWorkflow) {
-                $edge = '    '+$entry.Id+' -.-> '+$target.Id
+                $edge = '    '+$entry.Id+' -. uses .-> '+$target.Id
                 if ($callEdges.Add($edge)) { $lines.Add($edge) }
             }
         }
     }
     $lines.AddRange([string[]]@('~~~',''))
+    $eventIndex = foreach ($eventName in $eventNodes.Keys) {
+        '['+(Format-QuietWorkflowMapText $eventName)+'](#'+$eventNodes[$eventName].Anchor+')'
+    }
+    if ($eventIndex) { $lines.AddRange([string[]]@(('Événements · '+($eventIndex -join ' · ')),'')) }
+    foreach ($eventName in $eventNodes.Keys) {
+        $eventNode = $eventNodes[$eventName]
+        $eventLinks = foreach ($entry in $eventNode.Workflows) { '['+$entry.Name+'](#'+$entry.Anchor+')' }
+        $eventLabel = Format-QuietWorkflowMapText $eventName
+        $lines.AddRange([string[]]@(('<a name="'+$eventNode.Anchor+'"></a>'),'',('### '+$eventLabel),'',($eventLinks -join ' · '),''))
+    }
 
     foreach ($entry in $workflows) {
         $source = Format-QuietWorkflowMapLink -Directory $directory -Target $entry.Path
@@ -219,24 +253,33 @@ function New-QuietGitHubWorkflowMap {
         $jobs = $entry.Body['jobs']
         $ids = [Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)
         $actionNodes = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-        $lines.AddRange([string[]]@('~~~mermaid','flowchart TD','    entry(["Workflow déclenché"])'))
+        $jobLinks = [Collections.Generic.List[string]]::new()
+        $entryLabel = Format-QuietWorkflowMapText $entry.Name -Mermaid
+        $lines.AddRange([string[]]@('~~~mermaid','flowchart TD',('    entry(["'+$entryLabel+'"])')))
+        $lines.Add((Format-QuietWorkflowMapClick 'entry' $entry.Anchor))
         foreach ($jobName in $jobs.Keys) {
             $id = 'j'+$ids.Count
             $ids.Add([string]$jobName,$id)
+            $jobAnchor = $entry.Anchor+'-job-'+$id
             $label = Format-QuietWorkflowMapText $jobName -Mermaid
             $lines.Add('    '+$id+'["'+$label+'"]')
+            $lines.Add((Format-QuietWorkflowMapClick $id $jobAnchor))
+            $lines.Add('    entry -->|composed of| '+$id)
+            $jobLinks.Add('['+(Format-QuietWorkflowMapText $jobName)+'](#'+$jobAnchor+')')
         }
         foreach ($jobName in $jobs.Keys) {
             $job = $jobs[$jobName]
             $id = $ids[[string]$jobName]
-            if (!$job['needs']) { $lines.Add('    entry --> '+$id) }
             foreach ($dependency in $job['needs']) {
                 if (!$ids.Contains([string]$dependency)) { throw "WorkflowMapUnknownJob: $($entry.Name)/$jobName needs $dependency" }
-                $lines.Add('    '+$ids[[string]$dependency]+' --> '+$id)
+                $lines.Add('    '+$id+' -. depends on .-> '+$ids[[string]$dependency])
             }
             if ($job['uses']) {
+                $target = Get-QuietWorkflowMapTarget -Reference $job['uses'] -Entries $entries
+                $targetAnchor = if ($target -and $target.IsWorkflow) { $target.Anchor } else { $entry.Anchor+'-job-'+$id }
                 $label = Format-QuietWorkflowMapText $job['uses'] -Mermaid
-                $lines.Add('    '+$id+' -.-> c'+$id+'["'+$label+'"]')
+                $lines.Add('    '+$id+' -. uses .-> c'+$id+'["'+$label+'"]')
+                $lines.Add((Format-QuietWorkflowMapClick ('c'+$id) $targetAnchor))
             }
             $jobActions = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
             foreach ($step in $job['steps']) {
@@ -245,14 +288,17 @@ function New-QuietGitHubWorkflowMap {
                 if ($actionNodes.Add($action.Id)) {
                     $label = Format-QuietWorkflowMapText $action.Name -Mermaid
                     $lines.Add('    '+$action.Id+'["'+$label+'"]')
+                    $lines.Add((Format-QuietWorkflowMapClick $action.Id $action.Anchor))
                 }
-                $lines.Add('    '+$id+' -.-> '+$action.Id)
+                $lines.Add('    '+$id+' -. uses .-> '+$action.Id)
             }
         }
         $lines.AddRange([string[]]@('~~~',''))
+        $lines.AddRange([string[]]@(('Jobs · '+($jobLinks -join ' · ')),''))
         foreach ($jobName in $jobs.Keys) {
             $job = $jobs[$jobName]
-            $lines.AddRange([string[]]@(('### '+$jobName),''))
+            $jobAnchor = $entry.Anchor+'-job-'+$ids[[string]$jobName]
+            $lines.AddRange([string[]]@(('<a name="'+$jobAnchor+'"></a>'),'',('### '+$jobName),''))
             if ($job['if']) { $lines.AddRange([string[]]@(('Condition · '+(Format-QuietWorkflowLiteral $job['if'])),'')) }
             if ($job['strategy'] -is [Collections.IDictionary] -and $job['strategy'].Keys -ccontains 'matrix') {
                 $matrix = $job['strategy']['matrix']
@@ -284,7 +330,8 @@ function New-QuietGitHubWorkflowMap {
         $lines.AddRange([string[]]@('~~~mermaid','sequenceDiagram',('    participant A as '+(Format-QuietWorkflowMapText $entry.Name -Mermaid))))
         foreach ($step in $run['steps']) {
             $label = $step['name'] ?? $step['uses'] ?? $step['id'] ?? 'run'
-            $lines.Add('    A->>A: '+(Format-QuietWorkflowMapText $label -Mermaid))
+            $verb = if ($step['uses']) { 'uses' } else { 'runs' }
+            $lines.Add('    A->>A: '+$verb+' · '+(Format-QuietWorkflowMapText $label -Mermaid))
         }
         $lines.AddRange([string[]]@('~~~','','| Ordre | Étape | Action ou script | Condition |','| ---: | --- | --- | --- |'))
         $lines.AddRange([string[]]@(Get-QuietWorkflowMapStepRows -Steps $run['steps'] -Entries $entries -Root $WorkspaceRoot -Directory $directory))

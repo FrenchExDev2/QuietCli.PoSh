@@ -23,6 +23,8 @@ jobs:
     needs: prepare
     if: ${{ always() && !inputs.images_only }}
     uses: ./.github/workflows/verify.yaml
+  external:
+    uses: owner/repo/.github/workflows/review.yml@main
 '@
     $null = New-QuietTestFile ([IO.Path]::Combine($root,'.github/workflows/verify.yaml')) @'
 on: workflow_call
@@ -62,10 +64,10 @@ Describe 'Export-GitHubWorkflowMap.ps1' {
         $run.ExitCode | Should -Be 0 -Because $run.Error
         $report = [IO.File]::ReadAllText($path,[Text.Encoding]::UTF8)
         (New-QuietGitHubWorkflowMap -WorkspaceRoot $root -OutputPath $path).Markdown | Should -BeExactly $report
-        $report | Should -Match 'flowchart LR[\s\S]*?\["push"\][\s\S]*?e0 --> n1[\s\S]*?n1 -\.-> n2'
-        $report | Should -Match 'flowchart TD[\s\S]*?j0 --> j1[\s\S]*?j1 -\.-> cj1\["\./\.github/workflows/verify\.yaml"\]'
-        $report | Should -Match 'j0 -\.-> n0'
-        $report | Should -Match 'sequenceDiagram[\s\S]*?A->>A: Commencer[\s\S]*?A->>A: actions/checkout@v4'
+        $report | Should -Match 'flowchart LR[\s\S]*?\["push"\][\s\S]*?e0 -->\|triggers\| n1[\s\S]*?n1 -\. uses \.-> n2'
+        $report | Should -Match 'flowchart TD[\s\S]*?entry -->\|composed of\| j0[\s\S]*?entry -->\|composed of\| j1[\s\S]*?j1 -\. depends on \.-> j0[\s\S]*?j1 -\. uses \.-> cj1\["\./\.github/workflows/verify\.yaml"\]'
+        $report | Should -Match 'j0 -\. uses \.-> n0'
+        $report | Should -Match 'sequenceDiagram[\s\S]*?A->>A: runs · Commencer[\s\S]*?A->>A: uses · actions/checkout@v4'
         $report | Should -Match '(?m)^    participant A as setup$'
         $html = (ConvertFrom-Markdown -InputObject $report).Html
         $html | Should -Match '<h2[^>]*>Sommaire</h2>'
@@ -80,6 +82,23 @@ Describe 'Export-GitHubWorkflowMap.ps1' {
         $report | Should -Not -Match "`r|(?m)^    e\d+\(\[.workflow_call"
         foreach ($link in [regex]::Matches($report,'\]\(#([^\)]+)\)')) {
             $report.Contains('<a name="'+$link.Groups[1].Value+'"></a>') | Should -BeTrue
+        }
+    }
+
+    It 'links each graph node to an existing section and keeps Markdown navigation beside the graphs' {
+        $report = (New-QuietGitHubWorkflowMap -WorkspaceRoot $root -OutputPath ([IO.Path]::Combine($root,'map.md'))).Markdown
+        $report | Should -Match 'click e0 href "#event-push-e0"'
+        $report | Should -Match 'click n1 href "#workflow-entry-yml-1"'
+        $report | Should -Match 'click j1 href "#workflow-entry-yml-1-job-j1"'
+        $report | Should -Match 'click n0 href "#action-setup-0"'
+        $report | Should -Match 'click cj1 href "#workflow-verify-yaml-2"'
+        $report | Should -Match 'click cj2 href "#workflow-entry-yml-1-job-j2"'
+        $report | Should -Match '\[push\]\(#event-push-e0\)'
+        $report | Should -Match '\[verify\]\(#workflow-entry-yml-1-job-j1\)'
+        $anchors = @([regex]::Matches($report,'(?m)^<a name="(?<anchor>[a-z0-9-]+)"></a>$') | ForEach-Object { $_.Groups['anchor'].Value })
+        ($anchors | Sort-Object -Unique).Count | Should -Be $anchors.Count
+        foreach ($click in [regex]::Matches($report,'(?m)^    click \w+ href "#(?<anchor>[a-z0-9-]+)"')) {
+            $anchors | Should -Contain $click.Groups['anchor'].Value
         }
     }
 
