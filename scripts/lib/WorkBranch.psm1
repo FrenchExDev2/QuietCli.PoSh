@@ -42,7 +42,7 @@ function Resolve-QuietWorkBranchName {
 function Get-QuietWorkBranchKinds {
     <#
     .SYNOPSIS
-    Returns the work branch kinds, each the first segment of a branch name: fix, feature and chore.
+    Returns the work branch kinds: fix, feature, chore and companion.
     .DESCRIPTION
     There is no release kind: releases are tags, and the transient release/* branches carrying version commits
     belong to Invoke-QuietRelease.ps1.
@@ -50,7 +50,7 @@ function Get-QuietWorkBranchKinds {
     [CmdletBinding()]
     [OutputType([string[]])]
     param()
-    [string[]]@('fix','feature','chore')
+    [string[]]@('fix','feature','chore','companion')
 }
 
 function Assert-QuietWorkBranchBase {

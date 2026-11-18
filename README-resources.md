@@ -19,6 +19,8 @@ The CI companion catalogue uses the same pinned YAML reader from `scripts/lib/Ci
 It prepares its own parser dependency and loads no product engine. Preview entry points return
 before preparation; image PlanOnly mode may prepare this parser but performs no native or registry operation.
 
+The [companion generator](docs/scripts/New-QuietCompanion.md) reuses the verified YAML parser from the checkout and checks its staged copy. Prepare resources with Restore-CoreResources.ps1 if the parser is missing. Its preview returns before resource preparation or branch operations.
+
 ```powershell
 #Objective: Preview preparation of the pinned workflow parser.
 . ./scripts/lib/Resources.psm1

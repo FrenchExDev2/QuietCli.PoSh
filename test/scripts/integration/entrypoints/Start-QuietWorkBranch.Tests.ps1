@@ -74,14 +74,14 @@ Describe 'Start-QuietWorkBranch.ps1' {
         & $write $fixture.Work 'notes/untracked.txt' "untracked`n"
         $tip=& $advance $fixture 'upstream.txt'
 
-        $run=& $start $fixture @('-Kind','feature','-Name','demo')
+        $run=& $start $fixture @('-Kind','companion','-Name','demo')
 
         $run.ExitCode|Should -Be 0 -Because $run.Text
-        & $git $fixture.Work @('branch','--show-current')|Should -BeExactly 'feature/demo'
+        & $git $fixture.Work @('branch','--show-current')|Should -BeExactly 'companion/demo'
         & $git $fixture.Work @('rev-parse','HEAD')|Should -BeExactly $tip
         & $git $fixture.Work @('rev-parse','develop')|Should -BeExactly $tip -Because 'develop is fast-forwarded, never rewritten'
         & $git $fixture.Work @('ls-tree','--name-only','HEAD')|Should -Not -Match 'old\.txt' -Because 'the commit of the previous work branch must not leak into the new one'
-        & $git $fixture.Work @('config','--get','branch.feature/demo.merge') -AllowFailure|Should -BeNullOrEmpty -Because 'a work branch never tracks develop'
+        & $git $fixture.Work @('config','--get','branch.companion/demo.merge') -AllowFailure|Should -BeNullOrEmpty -Because 'a work branch never tracks develop'
         & $read $fixture.Work 'README.md'|Should -BeExactly "edited`n"
         & $git $fixture.Work @('diff','--cached','--name-only')|Should -BeExactly 'staged.txt' -Because 'the index is restored with --index'
         & $read $fixture.Work 'notes/untracked.txt'|Should -BeExactly "untracked`n"
@@ -197,5 +197,163 @@ Describe 'Start-QuietWorkBranch.ps1' {
             $null=& git check-ref-format --branch $case 2>&1
             $LASTEXITCODE -eq 0
         }
+    }
+}
+
+Describe 'New-QuietCompanion.ps1' {
+    BeforeAll {
+        $source = Get-QuietTestWorkspaceRoot
+        $scripts = Get-QuietTestScriptsRoot
+        $generator = [IO.Path]::Combine($scripts, 'New-QuietCompanion.ps1')
+        $newCompanionFixture = {
+            param([string]$Label)
+            $fixture = & $newFixture $Label
+            $core = 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh'
+            $coreTests = 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh'
+            foreach ($relative in @(
+                'LICENSE',
+                '.github/workflows/core-ci.yml',
+                'docs/ci/github/script-core-ci.md',
+                "$core/resources/yaml/YamlDotNet.dll",
+                "$core/resources/dependencies.lock.json",
+                'scripts/Invoke-Quiet.ps1',
+                'scripts/lib/WorkspaceLayout.psm1',
+                'scripts/lib/WorkspaceProjects.psm1',
+                'scripts/lib/CompanionWorkflows.psm1',
+                'scripts/lib/CiCompanions.psm1',
+                'scripts/lib/Resources.psm1'
+            )) {
+                $destination = [IO.Path]::Combine($fixture.Work, $relative)
+                $null = [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
+                [IO.File]::Copy([IO.Path]::Combine($source, $relative), $destination)
+            }
+            & $write $fixture.Work "$core/FrenchExDev2.QuietCli.Core.PoSh.psd1" @'
+@{
+    RootModule='FrenchExDev2.QuietCli.Core.PoSh.psm1'
+    ModuleVersion='0.2.0'
+    PrivateData=@{QuietCli=@{
+        SolutionGroup='Core'
+        Binary='dotnet'
+        TestsModule='FrenchExDev2.QuietCli.Core.Tests.PoSh'
+        Publishable=$false
+    }}
+}
+'@
+            & $write $fixture.Work "$core/FrenchExDev2.QuietCli.Core.PoSh.psm1" '# local Core import fixture'
+            & $write $fixture.Work "$core/LICENSE_CREDITS.md" '## Core fixture'
+            & $write $fixture.Work "$coreTests/FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1" @'
+@{
+    RootModule='FrenchExDev2.QuietCli.Core.Tests.PoSh.psm1'
+    ModuleVersion='0.1.0'
+    RequiredModules=@('FrenchExDev2.QuietCli.Core.PoSh')
+    FunctionsToExport=@('Invoke-QuietCoreTests')
+    PrivateData=@{QuietCli=@{SolutionGroup='Core'}}
+}
+'@
+            & $write $fixture.Work 'Quietly.slnx' '<Solution />'
+            & $write $fixture.Work 'CREDITS.md' '# Credits fixture'
+            & $write $fixture.Work 'docs/ci/github/README.md' '# Workflow fixture'
+            & $write $fixture.Work 'build/companions.yml' @'
+schema: 1
+companions:
+  Core:
+    requires: []
+    image: base
+suites:
+  Core:
+    test_project: FrenchExDev2.QuietCli.Core.Tests.PoSh
+    command: Invoke-QuietCoreTests
+    requires: [Core]
+    core_evidence: true
+'@
+            $null = & $git $fixture.Work @('add','-f','--','src','scripts','build','.github','docs','Quietly.slnx','LICENSE','CREDITS.md')
+            $null = & $git $fixture.Work @('commit','-q','-m','Add companion generation fixture')
+            $null = & $git $fixture.Work @('push','-q','origin','develop')
+            $fixture.Credits = New-QuietTestFile ([IO.Path]::Combine([IO.Path]::GetDirectoryName($fixture.Work), 'credits.md')) "## Packer fixture`n`n- License: https://example.test/license`n"
+            $fixture
+        }
+        $generate = {
+            param($Fixture, [string[]]$Options)
+            $arguments = @('-WorkspaceRoot',$Fixture.Work,'-Name','Packer','-LicenseCreditsPath',$Fixture.Credits)
+            Invoke-QuietTestScript -ScriptPath $generator -ArgumentList ($arguments + $Options) -TimeoutSeconds 120
+        }
+    }
+
+    It 'previews the branch and writes nothing with WhatIf' {
+        $fixture = & $newCompanionFixture 'companion-preview'
+        $before = & $snapshot $fixture
+        $result = & $generate $fixture @('-GitBranch','packer-parser','-WhatIf')
+        $result.ExitCode | Should -Be 0 -Because $result.Error
+        $result.Output | Should -Match 'companion/packer-parser'
+        $result.Output | Should -Match 'src/Packer'
+        $after = & $snapshot $fixture
+        ($after | ConvertTo-Json -Compress) | Should -BeExactly ($before | ConvertTo-Json -Compress)
+    }
+
+    It 'generates and imports the <Variant> scaffold on <Branch>' -ForEach @(
+        @{Variant='PowerShell'; Branch='companion/packer'; Options=@(); Compiled=$false}
+        @{Variant='CSharp'; Branch='companion/packer-parser'; Options=@('-WithCSharp','-GitBranch','companion/packer-parser'); Compiled=$true}
+        @{Variant='existing branch'; Branch='companion/existing'; Options=@('-NoGitBranch'); Compiled=$false}
+    ) {
+        $fixture = & $newCompanionFixture ('companion-'+$Variant.Replace(' ','-'))
+        if ($Options -contains '-NoGitBranch') {
+            $null = & $git $fixture.Work @('switch','-q','--no-track','-c',$Branch)
+            $null = & $git $fixture.Work @('remote','remove','origin')
+        }
+        $result = & $generate $fixture $Options
+        $result.ExitCode | Should -Be 0 -Because $result.Error
+        $result.Output | Should -Not -Match 'VoidTaskResult'
+        & $git $fixture.Work @('branch','--show-current') | Should -BeExactly $Branch
+        $product = 'src/Packer/src/FrenchExDev2.QuietCli.Packer.PoSh'
+        $tests = 'src/Packer/test/FrenchExDev2.QuietCli.Packer.Tests.PoSh'
+        $manifest = Import-PowerShellDataFile -LiteralPath ([IO.Path]::Combine($fixture.Work, $product, 'FrenchExDev2.QuietCli.Packer.PoSh.psd1'))
+        $testManifest = Import-PowerShellDataFile -LiteralPath ([IO.Path]::Combine($fixture.Work, $tests, 'FrenchExDev2.QuietCli.Packer.Tests.PoSh.psd1'))
+        $testManifest.GUID | Should -Not -Be $manifest.GUID
+        $manifest.PrivateData.QuietCli.Binary | Should -BeExactly 'packer'
+        $manifest.PrivateData.QuietCli.Publishable | Should -BeFalse
+        $manifest.PrivateData.QuietCli.ContainsKey('BuildProjects') | Should -Be $Compiled
+        [IO.File]::Exists([IO.Path]::Combine($fixture.Work, $product, 'engine/QuietCli.Packer.Parser.csproj')) | Should -Be $Compiled
+        & $read $fixture.Work 'Quietly.slnx' | Should -Match 'src/Packer/'
+        & $read $fixture.Work 'src/Packer/Packer.slnx' | Should -Match 'Invoke|Tests.PoSh'
+        & $read $fixture.Work 'CREDITS.md' | Should -Match 'Packer fixture'
+        $workflow = [IO.Path]::Combine($fixture.Work, '.github/workflows/packer-ci.yml')
+        $hash = (Get-FileHash -LiteralPath $workflow).Hash
+        & $read $fixture.Work 'docs/ci/github/script-packer-ci.md' | Should -Match $hash
+        & $read $fixture.Work 'docs/ci/github/README.md' | Should -Match 'packer-ci.yml'
+
+        $check = New-QuietTestFile ([IO.Path]::Combine([IO.Path]::GetDirectoryName($fixture.Work), 'check.ps1')) @'
+param([string]$Root, [string]$SmokeModule)
+$ErrorActionPreference = 'Stop'
+& ([IO.Path]::Combine($Root, 'scripts/Invoke-Quiet.ps1')) -Companion Packer -Runtime $Root -Code {
+    param($checkout)
+    $manifest = [IO.Path]::Combine($checkout, 'src/Packer/test/FrenchExDev2.QuietCli.Packer.Tests.PoSh/FrenchExDev2.QuietCli.Packer.Tests.PoSh.psd1')
+    Import-Module $manifest -ErrorAction Stop
+    $result = Invoke-QuietPackerTests -WorkspaceRoot $checkout
+    if ($result.Passed -ne 1 -or $result.Failed -ne 0) { throw ($result.Cases.Error -join ', ') }
+}
+Import-Module $SmokeModule -DisableNameChecking -ErrorAction Stop
+$smoke = Invoke-QuietCompanionSmokeTests -WorkspaceRoot $Root -Suites Packer
+if ($smoke.Passed -ne 1 -or $smoke.Failed -ne 0 -or $smoke.Cases[0].Name -cne 'Packer module-loading smoke') {
+    throw ($smoke.Cases.Error -join ', ')
+}
+'@
+        $smokeModule = [IO.Path]::Combine($source, 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/CompanionSmoke.Tests.psm1')
+        $importResult = Invoke-QuietTestScript -ScriptPath $check -ArgumentList @($fixture.Work, $smokeModule)
+        $importResult.ExitCode | Should -Be 0 -Because $importResult.Error
+
+        $repeat = & $generate $fixture @('-WhatIf')
+        $repeat.ExitCode | Should -Not -Be 0
+        $repeat.Error | Should -Match 'CompanionDestinationExists'
+    }
+
+    It 'rejects NoGitBranch on develop and rejects the two branch options together' {
+        $fixture = & $newCompanionFixture 'companion-rejections'
+        $result = & $generate $fixture @('-NoGitBranch')
+        $result.ExitCode | Should -Not -Be 0
+        $result.Error | Should -Match 'CompanionActiveBranchRequired'
+        $result = & $generate $fixture @('-NoGitBranch', '-GitBranch', 'different')
+        $result.ExitCode | Should -Not -Be 0
+        [IO.Directory]::Exists([IO.Path]::Combine($fixture.Work, 'src/Packer')) | Should -BeFalse
+        & $git $fixture.Work @('branch','--show-current') | Should -BeExactly 'develop'
     }
 }

@@ -36,7 +36,7 @@ read from `.env`, installed or changed. Comment writes use the explicitly select
 
 ## Review and validation limits
 
-The Core companion uses a scoped native adapter to check seeded feature/fix/release branches, exact repository
+The Core companion uses a scoped native adapter to check seeded feature/fix/companion/release branches, exact repository
 routing, Unicode summaries, previews, absent/ambiguous PRs, checkpoint races, duplicate suppression,
 hostile remote URLs and native failures. These are offline contract tests; they do not qualify GitHub
 authentication or network availability. A network failure after GitHub accepts a comment may report

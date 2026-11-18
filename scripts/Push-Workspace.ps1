@@ -1,7 +1,7 @@
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Pushes one monorepo branch and summarizes feature/fix/release updates on its existing GitHub PR.
+Pushes one monorepo branch and summarizes feature, fix, release and companion updates on its existing GitHub PR.
 .PARAMETER WorkspaceRoot
 QuietCli2 monorepo root.
 .PARAMETER Remote
@@ -27,7 +27,7 @@ foreach($entry in @(@{Name='Comment';Path=$PrCommentBodyFile},@{Name='Descriptio
     $documents[$entry.Name]=$text
 }
 Invoke-WorkspaceNative git @('-C',$WorkspaceRoot,'push','--set-upstream',$Remote,$Branch) $WorkspaceRoot
-if($Branch -cmatch '^(feature|fix|release)/'){
+if($Branch -cmatch '^(feature|fix|release|companion)/'){
     try{
         $update=@{WorkspaceRoot=$WorkspaceRoot;Remote=$Remote;Branch=$Branch;Body=$documents.Comment;Confirm=$false}
         if($PrDescriptionBodyFile){$update.Description=$documents.Description}

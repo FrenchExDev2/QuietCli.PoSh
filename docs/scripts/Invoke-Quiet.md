@@ -35,7 +35,7 @@ Out-QuietResult $result -AsYaml -MaxItems 5 -MaxOutputBytes 4096
   the start of the block. PowerShell comments use `#`, not `//`.
 - `Runtime` optionally supplies a non-null caller-owned object. By default every
   invocation creates a context containing fresh `Data` and `State` hashtables.
-- `Companion` accepts one or more values from the explicit `Git`, `Vagrant` set. Core
+- `Companion` accepts one or more discovered local companion names, such as `Git` and `Vagrant`. Core
   is always imported first; selected companions are deduplicated and imported from
   their exact local manifests before `Code` runs. For companion dependency resolution,
   Core is temporarily exposed in the process-global scope. Modules newly introduced by
