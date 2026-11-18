@@ -150,6 +150,16 @@
             Break = 80
         }
         @{
+            Name = 'MergedBranches'
+            Module = 'lib/MergedBranches.psm1'
+            Functions = @('Get-QuietMergedBranchRepository','ConvertFrom-QuietMergedBranchRefs','ConvertFrom-QuietMergedBranchPullRequests','ConvertTo-QuietMergedBranchRelation','Get-QuietMergedBranchDecision','Get-QuietMergedBranchConfigSections')
+            UnitTestFiles = @('unit/lib/MergedBranches.Tests.ps1')
+            Break = 80
+            Equivalent = @(
+                @{Function = 'ConvertFrom-QuietMergedBranchPullRequests'; Mutator = 'EqualityOperator'; Original = '-gt'; Replacement = '-ge'; Reason = 'A number listed twice throws before the comparison, so two pull requests never have equal numbers and the boundary is unreachable.'}
+            )
+        }
+        @{
             Name = 'GitHubActionReferences'
             Module = 'lib/GitHubActionReferences.psm1'
             Functions = @('Get-QuietGitHubActionFiles','ConvertFrom-QuietGitHubActionUses','Get-QuietGitHubActionRefKind','Format-QuietGitHubActionUses','Get-QuietGitHubActionRewrittenText')
