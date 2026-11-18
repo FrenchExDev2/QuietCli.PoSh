@@ -107,7 +107,7 @@ jobs:
     name: Validate component profile
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Initialize deterministic GitHub environment
@@ -143,7 +143,7 @@ jobs:
     outputs:
       qualified_sha: ${{ steps.gate.outputs.qualified_sha }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ github.sha }}
@@ -166,7 +166,7 @@ jobs:
         run: |
           # Objective: Fail closed and emit a commit-bound receipt only after every required check succeeds.
           ./scripts/Assert-QualificationGate.ps1 -Suite $env:QUIETCLI_SUITE -Revision $env:GITHUB_SHA -WindowsResult $env:WINDOWS_RESULT -LinuxResult $env:LINUX_RESULT -PerformanceResult $env:PERFORMANCE_RESULT -MutationResult skipped -ToolingWorkflowResult $env:TOOLING_WORKFLOW_RESULT -ToolingResult $env:TOOLING_RESULT -ToolingMutationResult $env:TOOLING_MUTATION_RESULT -ToolingCompletionResult $env:TOOLING_COMPLETION_RESULT -RequireTooling:($env:REQUIRE_TOOLING -ceq 'true') -SkipTty -ReceiptPath ./artifacts/qualification-gate/receipt.json -OutputPath $env:GITHUB_OUTPUT
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: ${{ (inputs.suite == '' || inputs.suite == 'All') && 'quietcli2-qualification-gate' || format('quietcli2-qualification-gate-{0}', inputs.suite) }}
@@ -186,13 +186,13 @@ jobs:
     runs-on: ${{ matrix.image }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, reviewed upstream reference
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, reviewed upstream reference
         with:
           persist-credentials: false
       - name: Initialize deterministic GitHub environment
         shell: pwsh
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
           cache: true
@@ -222,7 +222,7 @@ jobs:
         env:
           EXPECTED_RID: ${{ matrix.rid }}
         run: ./scripts/Get-CompanionBuildKey.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -ReadyToRun -OutputPath $env:GITHUB_OUTPUT
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: src/**/lib/
           key: ${{ steps.build_key.outputs.cache_key }}
@@ -279,7 +279,7 @@ jobs:
               ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/evidence -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -Suite $env:QUIETCLI_SUITE
             }
           }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: quietcli-core-evidence-${{ matrix.rid }}-${{ matrix.channel }}-${{ matrix.mode }}-${{ github.sha }}-${{ inputs.suite || 'All' }}
@@ -296,7 +296,7 @@ jobs:
         run: ./scripts/Export-CiFailureDiagnostics.ps1
       - name: Save redacted Windows failure diagnostics
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: quietcli-failure-${{ matrix.rid }}-${{ matrix.channel }}-${{ matrix.mode }}-${{ github.sha }}-attempt${{ github.run_attempt }}-${{ inputs.suite || 'All' }}
           path: artifacts/failure-diagnostics
@@ -315,7 +315,7 @@ jobs:
       windows_matrix: ${{ steps.windows_matrix.outputs.windows_matrix }}
       expected_reports: ${{ steps.windows_matrix.outputs.expected_reports }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Initialize deterministic GitHub environment
@@ -365,7 +365,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Initialize deterministic GitHub environment
@@ -400,7 +400,7 @@ jobs:
           mode: save
           rid: ${{ matrix.rid }}
           fingerprint: ${{ steps.image_probe.outputs.fingerprint }}
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: quietcli2-suite-image-${{ inputs.suite || 'All' }}-${{ matrix.rid }}-${{ inputs.suite || 'All' }}
@@ -421,7 +421,7 @@ jobs:
       has_docker_container_runtime: ${{ steps.select.outputs.has_docker_container_runtime }}
       has_core: ${{ needs.linux-matrix.outputs.has_core }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Initialize deterministic GitHub environment
@@ -434,7 +434,7 @@ jobs:
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
           QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
         run: ./scripts/Select-GitHubCiMatrix.ps1 -Suite $env:QUIETCLI_SUITE
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: quietcli-linux-selection-${{ github.sha }}-attempt${{ github.run_attempt }}-${{ inputs.suite || 'All' }}
@@ -465,7 +465,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Initialize deterministic GitHub environment
@@ -474,7 +474,7 @@ jobs:
       - uses: ./.github/actions/cache-resources
       - name: Restore NuGet packages before build and tests
         id: nuget-cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-${{ runner.arch }}-quietcli-nuget-${{ hashFiles('**/*.csproj', 'Directory.Packages.props', 'Directory.Build.props', 'global.json') }}
@@ -486,7 +486,7 @@ jobs:
         env:
           EXPECTED_RID: ${{ matrix.rid }}
         run: ./scripts/Get-CompanionBuildKey.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -ReadyToRun -OutputPath $env:GITHUB_OUTPUT
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: src/**/lib/
           key: ${{ steps.build_key.outputs.cache_key }}
@@ -518,7 +518,7 @@ jobs:
               ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/evidence -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -Suite $env:QUIETCLI_SUITE
             }
           }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: quietcli-core-evidence-${{ matrix.rid }}-Auto-${{ github.sha }}-${{ inputs.suite || 'All' }}
@@ -532,7 +532,7 @@ jobs:
         env:
           QUIETCLI_DIAGNOSTIC_TOKEN: ${{ github.token }}
         run: ./scripts/Export-CiFailureDiagnostics.ps1
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: quietcli-failure-${{ matrix.rid }}-${{ github.sha }}-attempt${{ github.run_attempt }}-${{ inputs.suite || 'All' }}
@@ -541,7 +541,7 @@ jobs:
           retention-days: 14
       - name: Save NuGet packages using the resolved restore key
         if: ${{ success() && steps.nuget-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.nuget/packages
           key: ${{ steps.nuget-cache.outputs.cache-primary-key }}
@@ -560,14 +560,14 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.linux-selection.outputs.docker_matrix) }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Initialize deterministic GitHub environment
         shell: pwsh
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
       - uses: ./.github/actions/setup-powershell
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
           cache: true
@@ -586,7 +586,7 @@ jobs:
         env:
           EXPECTED_RID: ${{ matrix.rid }}
         run: ./scripts/Get-CompanionBuildKey.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -ReadyToRun -OutputPath $env:GITHUB_OUTPUT
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: src/**/lib/
           key: ${{ steps.build_key.outputs.cache_key }}
@@ -652,7 +652,7 @@ jobs:
               ./scripts/New-CorePerformanceReport.ps1 -EvidenceRoot ./artifacts/evidence -OutputDirectory ./artifacts/evidence -Revision $env:GITHUB_SHA -Suite $env:QUIETCLI_SUITE
             }
           }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: quietcli-core-evidence-${{ matrix.rid }}-Auto-${{ github.sha }}-${{ inputs.suite || 'All' }}
@@ -669,7 +669,7 @@ jobs:
         run: ./scripts/Export-CiFailureDiagnostics.ps1
       - name: Save redacted Linux failure diagnostics and image identity
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: quietcli-failure-${{ matrix.rid }}-${{ github.sha }}-attempt${{ github.run_attempt }}-${{ inputs.suite || 'All' }}
           path: artifacts/failure-diagnostics
@@ -683,7 +683,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Initialize deterministic GitHub environment
@@ -707,13 +707,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Initialize deterministic GitHub environment
         shell: pwsh
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: always()
         with:
           pattern: quietcli-core-evidence-*-${{ inputs.suite || 'All' }}
@@ -735,7 +735,7 @@ jobs:
               [void][IO.File]::AppendAllTextAsync($env:GITHUB_STEP_SUMMARY,$text,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
             }
           }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: quietcli-performance-results-${{ github.sha }}-${{ inputs.suite || 'All' }}
