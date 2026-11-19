@@ -223,6 +223,13 @@
             )
         }
         @{
+            Name = 'MergedOriginBranches'
+            Module = 'lib/Remove-QuietMergedOriginBranches.psm1'
+            Functions = @('Get-QuietMergedOriginBranchPlan')
+            UnitTestFiles = @('unit/lib/Remove-QuietMergedOriginBranches.Tests.ps1')
+            Break = 80
+        }
+        @{
             Name = 'GitHubActionReferences'
             Module = 'lib/GitHubActionReferences.psm1'
             Functions = @('Get-QuietGitHubActionFiles','ConvertFrom-QuietGitHubActionUses','Get-QuietGitHubActionRefKind','Format-QuietGitHubActionUses','Get-QuietGitHubActionRewrittenText')

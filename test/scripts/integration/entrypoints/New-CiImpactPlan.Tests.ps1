@@ -77,6 +77,39 @@ AfterAll {
 }
 
 Describe 'New-CiImpactPlan.ps1' {
+    It 'previews staged, unstaged and untracked paths while respecting Git ignore rules' {
+        $null=& $git @('checkout','-q','--detach',$baseRevision)
+        $staged='test/scripts/unit/LocalStaged.Tests.ps1'
+        $unstaged='docs/README.md'
+        $untracked='test/scripts/unit/LocalUntracked.Tests.ps1'
+        $ignored='docs/roadmaps/local-impact.md'
+        foreach($path in $staged,$untracked,$ignored){
+            $null=New-QuietTestFile ([IO.Path]::Combine($workspace,$path)) '# local impact fixture'
+        }
+        $null=& $git @('add','--',$staged)
+        [IO.File]::AppendAllText([IO.Path]::Combine($workspace,$unstaged),"`n<!-- local impact fixture -->`n",[Text.UTF8Encoding]::new($false))
+        try{
+            $outputPath=[IO.Path]::Combine($TestDrive,'working-tree-output.txt')
+            $before=& $git @('status','--porcelain=v1','--untracked-files=all')
+            $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @('-WorkspaceRoot',$workspace,'-Base',$baseRevision,'-WorkingTree','-OutputPath',$outputPath) -TimeoutSeconds 300
+            $run.ExitCode | Should -Be 0 -Because ($run.Output+$run.Error)
+            $report=[IO.File]::ReadAllText([IO.Path]::Combine($workspace,'artifacts','ci-plan','plan.json'),[Text.Encoding]::UTF8) | ConvertFrom-Json
+            $report.Revision | Should -BeExactly 'working-tree'
+            @($report.Plan.ChangedPaths | Sort-Object) -join ',' | Should -BeExactly "$unstaged,$staged,$untracked"
+            $report.Plan.ToolingScope | Should -BeExactly 'scripts'
+            $report.Plan.RunScriptTooling | Should -BeTrue
+            $report.Plan.RunProducts | Should -BeFalse
+            $report.Plan.ScriptTestsRequireBuild | Should -BeFalse
+            $report.Plan.ScriptTests | Should -Contain 'unit/LocalStaged.Tests.ps1'
+            $report.Plan.ScriptTests | Should -Contain 'unit/LocalUntracked.Tests.ps1'
+            (& $git @('status','--porcelain=v1','--untracked-files=all')) | Should -BeExactly $before
+        }finally{
+            $null=& $git @('reset','-q','HEAD','--',$staged)
+            $null=& $git @('restore','--',$unstaged)
+            foreach($path in $staged,$untracked,$ignored){[IO.File]::Delete([IO.Path]::Combine($workspace,$path))}
+        }
+    }
+
     It 'selects exactly <Companion> when only its sources change, and smokes its dependents' -ForEach $companionCases {
         $source="src/$Companion/src/FrenchExDev2.QuietCli.$Companion.PoSh/Private/ImpactFixture.ps1"
         $observed=& $plan (& $commit $source)
@@ -133,6 +166,26 @@ Describe 'New-CiImpactPlan.ps1' {
         $selectedTests|Should -Contain 'unit/quality/Inventory.Tests.ps1' -Because 'the inventory reads every script'
         $selectedTests|Should -Not -Contain 'unit/lib/CiImpact.Tests.ps1' -Because 'nothing it reaches changed'
         (@($selectedTargets) -join ',')|Should -BeExactly ([string]$Targets)
+    }
+
+    It 'plans the edited mutation shard and its tests without a product or layout run' {
+        $path='test/scripts/mutation.targets.psd1'
+        $null=& $git @('checkout','-q','--detach',$baseRevision)
+        $absolute=[IO.Path]::Combine($workspace,$path)
+        $catalogueText=[IO.File]::ReadAllText($absolute,[Text.Encoding]::UTF8)
+        $pattern=[regex]::new("(?s)(Name = 'SqliteDocumentation'.*?Break = )80")
+        $edited=$pattern.Replace($catalogueText,'${1}81',1)
+        $edited | Should -Not -BeExactly $catalogueText
+        [IO.File]::WriteAllText($absolute,$edited,[Text.UTF8Encoding]::new($false))
+        $null=& $git @('add','--',$path)
+        $null=& $git @('commit','-q','-m','change one mutation target')
+        $observed=& $plan (& $git @('rev-parse','HEAD'))
+        $observed.Run.ExitCode | Should -Be 0 -Because ($observed.Run.Output+$observed.Run.Error)
+        $observed.Values['run_products'] | Should -BeExactly 'false'
+        $observed.Values['run_layout'] | Should -BeExactly 'false'
+        $observed.Values['tooling_scope'] | Should -BeExactly 'scripts'
+        $observed.Values['script_mutation_targets'] | Should -BeExactly '["SqliteDocumentation"]'
+        $observed.Values['script_tests'] | Should -BeExactly '["unit/lib/SqliteDocumentation.Tests.ps1"]'
     }
 
     It 'runs every script test with coverage and every target when the test runner <Path> changes' -ForEach @(
