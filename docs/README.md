@@ -36,6 +36,7 @@ The [agent documentation index](agents/README.md) identifies distributed instruc
 
 - [QuietCli Core proposal](../readmes/README-proposal.md)
 - [Configuration and unique tokenized deliveries](README-configuration.md): configuration schema, delivery identity and token measurements.
+- [SQLite schema and queries](README-sqlite-schema-and-queries.md) with a Mermaid diagram, catalog definitions and source links.
 - [Recall contract](README-recall.md): memory capture, durable journals, recovery, offline analysis and optional ZIP64 transport.
 - [Compiled framing and direct engine hosting](README-performance-and-hosting.md): compatible hosts, framing boundaries and measurement reproduction.
 - [PowerShell and C# boundaries](README-powershell-csharp-boundaries.md): responsibilities retained in PowerShell and moved into compiled components.

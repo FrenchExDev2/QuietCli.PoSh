@@ -57,6 +57,17 @@
         }
 
         @{
+            Name = 'SqliteDocumentation'
+            Module = 'lib/SqliteDocumentation.psm1'
+            Functions = @('Get-QuietSqliteSourceStatement', 'Get-QuietSqliteSchema', 'Get-QuietSqliteCheckConstraint', 'ConvertTo-QuietSqliteMarkdown', 'ConvertTo-QuietSqliteMermaid', 'ConvertTo-QuietSqliteMarkdownTable', 'Format-QuietSqliteMarkdownCode', 'Format-QuietSqliteCodeBlock')
+            UnitTestFiles = @('unit/lib/SqliteDocumentation.Tests.ps1')
+            Break = 80
+            Equivalent = @(
+                @{Function = 'Get-QuietSqliteCheckConstraint'; Mutator = 'EqualityOperator'; Original = '-lt'; Replacement = '-le'; Reason = 'The extra iteration reads a null token in the module scope, which matches neither a parenthesis nor CHECK and emits nothing.'}
+            )
+        }
+
+        @{
             Name = 'ScriptsTests'
             Module = 'lib/ScriptsTests.psm1'
             Functions = @('ConvertTo-QuietScriptsXmlText','Protect-QuietScriptsTestResult','Get-QuietScriptsTestPlan','Get-QuietScriptsTestValue','Test-QuietScriptsPathWithin','Resolve-QuietScriptsTestPath','Get-QuietScriptsCoverageTargets','New-QuietScriptsPesterConfiguration','ConvertTo-QuietScriptsTestCount','ConvertTo-QuietScriptsTestReport','New-QuietScriptsTestStatus','Update-QuietScriptsTestStatus','Get-QuietScriptsTestExitCode','Test-QuietScriptsTestsApplicable')
