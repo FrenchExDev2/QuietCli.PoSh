@@ -72,6 +72,7 @@ file by hand, run:
 - [`Move-WorkspaceProjects.ps1`](../../scripts/Move-WorkspaceProjects.ps1) -> [documentation](Move-WorkspaceProjects.md)
 - [`New-CiImage.ps1`](../../scripts/New-CiImage.ps1) -> [documentation](New-CiImage.md)
 - [`New-CiImpactPlan.ps1`](../../scripts/New-CiImpactPlan.ps1) -> [documentation](New-CiImpactPlan.md)
+- [`New-CiImpactPlanFile.ps1`](../../scripts/New-CiImpactPlanFile.ps1) -> [documentation](New-CiImpactPlanFile.md)
 - [`New-CiModuleImage.ps1`](../../scripts/New-CiModuleImage.ps1) -> [documentation](New-CiModuleImage.md)
 - [`New-CiSuiteImage.ps1`](../../scripts/New-CiSuiteImage.ps1) -> [documentation](New-CiSuiteImage.md)
 - [`New-CoreEvidenceBundle.ps1`](../../scripts/New-CoreEvidenceBundle.ps1) -> [documentation](New-CoreEvidenceBundle.md)

@@ -77,6 +77,54 @@ AfterAll {
 }
 
 Describe 'New-CiImpactPlan.ps1' {
+    It 'returns the same plan with a null or omitted output path without writing reports' {
+        $revision=& $commit 'docs/README-impact-object.md'
+        $driver=New-QuietTestFile ([IO.Path]::Combine($TestDrive,'read-plan-object.ps1')) @'
+param($Entry,$Workspace,$Base,$Revision,$Mode,$OutputPath)
+$arguments=@{WorkspaceRoot=$Workspace;Base=$Base;Revision=$Revision;AsObject=$true}
+if($Mode -ceq 'Null'){$arguments.OutputPath=$null}
+if($Mode -ceq 'File'){$arguments.OutputPath=$OutputPath}
+$plan=@(& $Entry @arguments)
+ConvertTo-Json -InputObject $plan -Depth 10 -Compress
+'@
+        $summary=[IO.Path]::Combine($TestDrive,'object-step-summary.md')
+        $outputPath=[IO.Path]::Combine($TestDrive,'object-plan.txt')
+        $reportPath=[IO.Path]::Combine($workspace,'artifacts','ci-plan','plan.json')
+        $markdownPath=[IO.Path]::Combine($workspace,'artifacts','ci-plan','impact.md')
+        $readReports={
+            foreach($path in $reportPath,$markdownPath){
+                if([IO.File]::Exists($path)){[IO.File]::ReadAllText($path,[Text.Encoding]::UTF8)}
+            }
+        }
+        $before=ConvertTo-Json -InputObject @(& $readReports) -Compress
+        $plans=@(foreach($mode in 'Omitted','Null','File'){
+            $run=Invoke-QuietTestScript -ScriptPath $driver -ArgumentList @($entry,$workspace,$baseRevision,$revision,$mode,$outputPath) -Environment @{GITHUB_STEP_SUMMARY=$summary}
+            $run.ExitCode | Should -Be 0 -Because ($run.Output+$run.Error)
+            if($mode -cne 'File'){
+                [IO.File]::Exists($outputPath) | Should -BeFalse
+                [IO.File]::Exists($summary) | Should -BeFalse
+                (ConvertTo-Json -InputObject @(& $readReports) -Compress) | Should -BeExactly $before
+            }
+            $observed=ConvertFrom-Json -InputObject $run.Output -NoEnumerate
+            @($observed).Count | Should -Be 1
+            $observed[0].ChangedPaths | Should -Be @('docs/README-impact-object.md')
+            $observed[0].ToolingScope | Should -BeExactly 'none'
+            $run.Output
+        })
+        $plans[0] | Should -BeExactly $plans[2]
+        $plans[1] | Should -BeExactly $plans[2]
+        [IO.File]::Exists($outputPath) | Should -BeTrue
+        [IO.File]::Exists($summary) | Should -BeTrue
+        [IO.File]::Exists($reportPath) | Should -BeTrue
+        [IO.File]::Exists($markdownPath) | Should -BeTrue
+    }
+
+    It 'requires an output path for the existing file mode' {
+        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @('-WorkspaceRoot',$workspace,'-Base',$baseRevision,'-Revision',$baseRevision)
+        $run.ExitCode | Should -Not -Be 0
+        ($run.Output+$run.Error) | Should -Match 'CiImpactOutputPathRequired'
+    }
+
     It 'previews staged, unstaged and untracked paths while respecting Git ignore rules' {
         $null=& $git @('checkout','-q','--detach',$baseRevision)
         $staged='test/scripts/unit/LocalStaged.Tests.ps1'

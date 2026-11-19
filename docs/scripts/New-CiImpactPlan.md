@@ -4,13 +4,19 @@
 Source file: [`New-CiImpactPlan.ps1`](../../scripts/New-CiImpactPlan.ps1)
 <!-- script-source:end -->
 
-Plans CI for an immutable Base/Revision pair using the complete `git diff --no-renames --name-only -z` path set. Native orchestration uses Ci.Process. It writes `artifacts/ci-plan/plan.json`, `artifacts/ci-plan/impact.md` and the job outputs.
+Plans CI for an immutable Base/Revision pair using the complete `git diff --no-renames --name-only -z` path set. Native orchestration uses Ci.Process. With an output path, it writes `artifacts/ci-plan/plan.json`, `artifacts/ci-plan/impact.md` and the job outputs.
 
 For both `pull_request` and `push`, the planner selects affected suites from the diff and declared dependencies. Shared or unknown paths select every companion. Mixed paths combine their requirements.
 
 ### Preview the local branch
 
-From the repository root, use the merge base with the PR target and select the working tree:
+Use [New-CiImpactPlanFile.ps1](New-CiImpactPlanFile.md) to generate a temporary output file using the merge base with `origin/develop`:
+
+```powershell
+./scripts/New-CiImpactPlanFile.ps1 -GetContent
+```
+
+To call the planner directly from the repository root, supply the base and select the working tree:
 
 ```powershell
 $base = git merge-base origin/develop HEAD
@@ -23,6 +29,13 @@ Get-Content $outputs -Encoding utf8
 `-WorkingTree` compares the files on disk with `-Base`. The plan includes branch commits, staged and unstaged differences, and non-ignored untracked files. Git applies `.gitignore`, `.git/info/exclude` and its global excludes to untracked files. Tracked paths remain eligible for selection. The plan exposes `ScriptTests`, `ScriptMutationTargets` and `ScriptTestsRequireBuild`. The preview leaves the Git index alone and writes only its reports and output file.
 
 Pass `-Revision (git rev-parse HEAD)` to plan a committed diff. GitHub uses the PR base SHA and its synthetic merge commit. `-WhatIf` skips calculation and writes.
+
+Use `-AsObject` to return the same plan object with an omitted or null `-OutputPath`. This skips the job output file, the plan reports and the GitHub step summary. Supplying a path still writes those outputs as before.
+
+```powershell
+$plan = ./scripts/New-CiImpactPlan.ps1 -Base $base -WorkingTree -AsObject -OutputPath $null
+$plan.ScriptTests
+```
 
 Outputs are written once each, in a stable order:
 
@@ -68,6 +81,7 @@ For a subset such as `Core,Git`, or `Tooling` after a change to qualification sc
 | `CiImpactDispatchTakesNoBase` | `-Base` with `workflow_dispatch` |
 | `CiImpactBaseRequired` | `pull_request` or `push` without `-Base` |
 | `CiImpactSuiteRequiresDispatch` | `-Suite` outside `workflow_dispatch` |
+| `CiImpactOutputPathRequired` | An omitted or empty output path without `-AsObject` |
 | `CiDispatchSuiteRequired`, `CiDispatchSuiteUnknown: <name>` | an empty or unknown selection |
 
 Every rejection happens before any output is written.
