@@ -1,5 +1,9 @@
 # GitHubActionReferences.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/GitHubActionReferences.psm1`](../../../scripts/lib/GitHubActionReferences.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 The reading and writing of `uses:` references for [Update-GitHubActions.ps1](../Update-GitHubActions.md). It has no knowledge of releases or policy. Import is inert. Only `Get-QuietGitHubActionFiles` touches the file system, and it only lists files.
@@ -54,5 +58,5 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

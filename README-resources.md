@@ -9,7 +9,7 @@ provenance, licenses and reviewed hashes. See [source identity](docs/README-sour
 
 `dotnet restore` resolves project references. It does not prepare the module's ignored resource payloads. `Initialize-Workspace.ps1` delegates this preparation to `Restore-CoreResources.ps1`; module import itself never downloads files. Native PTY payloads are built separately by `Build-PtyBridge.ps1`.
 
-Automation that needs a particular resource calls `Ensure-QuietResource` from `scripts/lib/Resources.psm1`. It verifies the declared hash, restores only the corresponding package if needed, verifies the resulting bytes, and optionally loads the required managed type. An already loaded assembly must match the pinned hash; an incompatible assembly requires a fresh process. Workflow documentation uses this function for YamlDotNet in development and CI, without relying on an earlier workflow step.
+Automation that needs a particular resource calls `Ensure-QuietResource` from `scripts/lib/Resources.psm1`. It verifies the declared hash, restores only the corresponding package if needed, verifies the resulting bytes, and optionally loads the required managed type. An already loaded assembly must match the pinned hash; an incompatible assembly requires a fresh process. The workflow documentation gate and the navigable workflow map share the same pinned YamlDotNet loader. [Workflow map exporter](docs/scripts/Export-GitHubWorkflowMap.md)
 
 PowerShell production archives have a separate [availability audit](docs/scripts/Test-PowerShellReleaseAvailability.md) and [guarded lock updater](docs/scripts/Update-PowerShellCiLock.md). The reviewed host lock selects GA 7.7.0 for Windows/Linux glibc x64/ARM64; downloaded archives are SHA-256 verified before extraction. Next-version preview execution is opt-in and has no invented hash while unpublished. An existing PowerShell process cannot change its CLR/version in place; prepared executables start fresh sessions without changing profiles or the machine installation.
 
@@ -59,7 +59,7 @@ The generated reference list is source inspection, not exhaustive static data-fl
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 Intermediate Docker layers use a separate checkout-owned .cache/ci-buildkit cache. These toolchain-only layers are outside source identity and pinned archive inventories; final image provenance and pinned payload verification remain required. A final registry hit is probed before restoring any intermediate layer cache.

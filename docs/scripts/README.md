@@ -23,6 +23,7 @@ file by hand, run:
 - [`Build-Workspace.ps1`](../../scripts/Build-Workspace.ps1) -> [documentation](Build-Workspace.md)
 - [`Commit-Workspace.ps1`](../../scripts/Commit-Workspace.ps1) -> [documentation](Commit-Workspace.md)
 - [`Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.ps1) -> [documentation](Export-CiFailureDiagnostics.md)
+- [`Export-GitHubWorkflowMap.ps1`](../../scripts/Export-GitHubWorkflowMap.ps1) -> [documentation](Export-GitHubWorkflowMap.md)
 - [`Get-CiImageForDevelopment.ps1`](../../scripts/Get-CiImageForDevelopment.ps1) -> [documentation](Get-CiImageForDevelopment.md)
 - [`Get-CompanionBuildKey.ps1`](../../scripts/Get-CompanionBuildKey.ps1) -> [documentation](Get-CompanionBuildKey.md)
 - [`Get-DevelopQualification.ps1`](../../scripts/Get-DevelopQualification.ps1) -> [documentation](Get-DevelopQualification.md)
@@ -164,6 +165,7 @@ file by hand, run:
 - [`lib/GitHubActionUpdates.psm1`](../../scripts/lib/GitHubActionUpdates.psm1) -> [documentation](lib/GitHubActionUpdates.md)
 - [`lib/GitHubCi.psm1`](../../scripts/lib/GitHubCi.psm1) -> [documentation](lib/GitHubCi.md)
 - [`lib/GitHubRelease.psm1`](../../scripts/lib/GitHubRelease.psm1) -> [documentation](lib/GitHubRelease.md)
+- [`lib/GitHubWorkflowMap.psm1`](../../scripts/lib/GitHubWorkflowMap.psm1) -> [documentation](lib/GitHubWorkflowMap.md)
 - [`lib/Invoke-ColdStartGate.psm1`](../../scripts/lib/Invoke-ColdStartGate.psm1) -> [documentation](lib/Invoke-ColdStartGate.md)
 - [`lib/Invoke-ContainerRuntimeDiagnosis.psm1`](../../scripts/lib/Invoke-ContainerRuntimeDiagnosis.psm1) -> [documentation](lib/Invoke-ContainerRuntimeDiagnosis.md)
 - [`lib/Invoke-GitHubRunWorker.psm1`](../../scripts/lib/Invoke-GitHubRunWorker.psm1) -> [documentation](lib/Invoke-GitHubRunWorker.md)
@@ -252,5 +254,5 @@ file by hand, run:
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

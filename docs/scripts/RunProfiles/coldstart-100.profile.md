@@ -1,5 +1,9 @@
 # coldstart-100.profile.psd1
 
+<!-- script-source:begin -->
+Source file: [`RunProfiles/coldstart-100.profile.psd1`](../../../scripts/RunProfiles/coldstart-100.profile.psd1)
+<!-- script-source:end -->
+
 ## Purpose
 
 A data-only run profile that binds `Measure-ColdStart.ps1` to a fixed argument set for a quick, ~8-minute cold-start A/B measurement (100 measured pairs). It solves the problem of giving a short, repeatable benchmark configuration a stable name (`coldstart-100`) that a developer or CI step can invoke without retyping six parameter values, and that is sensitive enough to "detect differences of a few percent" (per its own `Description` field, line 5). It is created by `New-RunProfile.ps1` and consumed by `Invoke-RunProfile.ps1` (the executor named in `New-RunProfile.ps1`'s own usage example), and is directly referenced in `docs/README-readytorun_profiling.md`'s A/B testing walkthrough as the fast/iterative profile, contrasted with `coldstart-1000` as the slow/confirmatory one.
@@ -44,7 +48,7 @@ Fit for purpose as-is; this is a correctly-formed, minimal configuration record 
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

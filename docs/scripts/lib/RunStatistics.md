@@ -1,5 +1,9 @@
 # RunStatistics.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/RunStatistics.psm1`](../../../scripts/lib/RunStatistics.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Supplies the statistical primitives needed to tell a real cold-start performance difference apart from machine noise: order statistics (quantiles, five-number summary) and a seeded paired-bootstrap confidence interval of the median of candidate-minus-baseline differences, plus a verdict classifier (`faster`/`slower`/`inconclusive`/`too-few-pairs`). It is the statistics engine behind `scripts/Measure-ColdStart.ps1` (the A/B cold-start comparison tool), used there to summarize per-phase (`Import`, `First call`, `Second call`) timing distributions and to decide whether a ReadyToRun build variant is measurably faster/slower than baseline. Covered directly by `RunProfiles.Tests.ps1` and by nine dedicated mutation cases in `RunProfiles.Mutation.ps1` (lines 82-90) targeting quantile interpolation, even-sample median, seed fixation, one- vs two-tailed alpha, verdict boundary conditions, and bootstrap resampling itself.
@@ -43,7 +47,7 @@ Fit for purpose as-is — correct, pure, and unusually well-covered by targeted 
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

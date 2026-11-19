@@ -1,5 +1,9 @@
 # Assert-GalleryCheckpoint.ps1
 
+<!-- script-source:begin -->
+Source file: [`Assert-GalleryCheckpoint.ps1`](../../scripts/Assert-GalleryCheckpoint.ps1)
+<!-- script-source:end -->
+
 Validates a downloaded preview's `SourceRevision`, `QualifiedRevision` and version against the exact
 checkpoint emitted by this run's qualification and packaging jobs. It also requires the package-set
 version to match. It never queries the current `develop` HEAD, contacts a registry, reads a key or
@@ -19,7 +23,7 @@ The adjacent `Publish-QuietGallery.ps1 -ValidateOnly` step independently verifie
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

@@ -1,5 +1,9 @@
 # Invoke-ContainerWorker.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-ContainerWorker.ps1`](../../scripts/Invoke-ContainerWorker.ps1)
+<!-- script-source:end -->
+
 The dynamic `Suite` block precedes executable imports so PowerShell binds companion selection before
 execution. The layout campaign checks real Core, Git, Vagrant and Mutation bindings with `-WhatIf`.
 The independent native probe uses the grouped Core test path inside `/workspace/src/Core/test/`.
@@ -98,7 +102,7 @@ Fit for purpose, with careful cross-checks for the higher-risk `Mutation` suite.
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

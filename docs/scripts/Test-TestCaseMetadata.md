@@ -1,5 +1,9 @@
 # Test-TestCaseMetadata.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-TestCaseMetadata.ps1`](../../scripts/Test-TestCaseMetadata.ps1)
+<!-- script-source:end -->
+
 ## All companion catalogues
 
 The default Suite is All: discover every test project manifest through WorkspaceProjects, then read that companion's own TestCatalogue/RootModule and local `.psm1` metadata. No Core-owned Git/Vagrant case registry is introduced. `-Suite Core|Git|Vagrant` narrows validation; `-Plan` resolves currently active cases and the selected worker budget without running them. Output includes declared/active counts, optional campaigns not requested, kinds, isolation opt-ins and the manifest cap. Every discovered test companion must declare its catalogue; missing or orphan metadata, unsafe sources and mismatched optional registration conditions fail.
@@ -63,5 +67,5 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

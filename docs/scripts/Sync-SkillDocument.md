@@ -1,5 +1,9 @@
 # Sync-SkillDocument.ps1
 
+<!-- script-source:begin -->
+Source file: [`Sync-SkillDocument.ps1`](../../scripts/Sync-SkillDocument.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Regenerates the distributed `docs/agents/SKILL.md` file from the canonical `docs/agents/AGENTS.md`
@@ -83,7 +87,7 @@ the separate test referenced in `docs/agents/README.md`, not this script in isol
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

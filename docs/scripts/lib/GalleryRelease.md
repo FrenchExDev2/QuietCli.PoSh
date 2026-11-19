@@ -1,5 +1,9 @@
 # GalleryRelease.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/GalleryRelease.psm1`](../../../scripts/lib/GalleryRelease.psm1)
+<!-- script-source:end -->
+
 `Resolve-QuietGalleryReleaseBatch` validates bounded annotation JSON or explicit members against current publication policies and exact manifest versions. It rejects wrong revisions, duplicate modules, disabled/unknown owners and absent trigger membership, then uses workspace dependency order to elect one leader. It performs no Git/network operation; the release-plan entry point verifies all remote tag commits before starting qualification.
 
 The schema version must be an integer, not a coercible boolean. The parser rejects duplicate fields, malformed JSON, non-array tags and oversized batches. Seeded member permutations preserve the same leader; a remote-revision guard mutant is rejected by the foreign-commit counterexample.
@@ -33,5 +37,5 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

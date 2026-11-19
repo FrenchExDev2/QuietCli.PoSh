@@ -1,5 +1,9 @@
 # Invoke-ColdStartMatrix.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-ColdStartMatrix.ps1`](../../scripts/Invoke-ColdStartMatrix.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Single entry point that builds the baseline and every requested ReadyToRun candidate, then runs the
@@ -67,7 +71,7 @@ Fit for purpose: a well-structured, resilient top-level orchestrator with good p
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

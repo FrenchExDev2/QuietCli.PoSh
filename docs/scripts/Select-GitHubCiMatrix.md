@@ -1,5 +1,9 @@
 # Select-GitHubCiMatrix.ps1
 
+<!-- script-source:begin -->
+Source file: [`Select-GitHubCiMatrix.ps1`](../../scripts/Select-GitHubCiMatrix.ps1)
+<!-- script-source:end -->
+
 Resolves the YAML-declared suite image through New-CiSuiteImage.ps1 for all four Linux targets, looks up each fingerprint
 in GHCR and verifies its configuration digest, architecture, Linux OS, source and fingerprint labels.
 No image is built or published. Missing/inaccessible images select the approved local Docker fallback;
@@ -32,7 +36,7 @@ the YAML, so image selection has no companion-specific branch.
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

@@ -1,5 +1,9 @@
 # CiCompanionWorkers.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/CiCompanionWorkers.psm1`](../../../scripts/lib/CiCompanionWorkers.psm1)
+<!-- script-source:end -->
+
 `WorkerBudget` is the shared budget for concurrent suite workers. The caller still limits simultaneous suites with MaxConcurrency. Internal slots are the integer quotient of the budget by the admitted suite-slot count, with a minimum of one; no extra slot is invented. For All with a budget of four and two suites, Git and Vagrant each receive two, then apply their own case policy/cap. Omitting WorkerBudget preserves one internal slot per admitted suite. Budgets one/two therefore keep inner concurrency at one. Core qualification still precedes all companion admissions, and individual case children remain single-slot. The owned optimization regression verifies both legacy one-slot isolation and the four-slot/two-suite distribution.
 
 ## Purpose
@@ -61,5 +65,5 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

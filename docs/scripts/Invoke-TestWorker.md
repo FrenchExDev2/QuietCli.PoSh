@@ -1,5 +1,9 @@
 # Invoke-TestWorker.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-TestWorker.ps1`](../../scripts/Invoke-TestWorker.ps1)
+<!-- script-source:end -->
+
 ## Purpose and entry points
 
 Executes the selected test scope, verifies identities and always saves progress/terminal reports. Local Invoke-WorkspaceCi starts it in a background process with a visible monitor; Invoke-GitHubCi calls it directly in the selected runner/job-container PowerShell. GitHub Docker fallback invokes that same entry inside the guest. This worker starts no desktop monitor itself.
@@ -70,7 +74,7 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- grouped-layout-review:begin -->

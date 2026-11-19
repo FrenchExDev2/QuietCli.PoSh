@@ -1,5 +1,9 @@
 # RuntimeDiagnosis.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/RuntimeDiagnosis.psm1`](../../../scripts/lib/RuntimeDiagnosis.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Turns raw container/host probe observations (architecture, OS, ELF machine code, libc flavor, reported .NET runtime identifier, native-asset hash-verification outcomes) into a bounded, conservative diagnosis of *why* a container image might be failing to select the expected native runtime assets (e.g. `linux-musl-arm64` vs `linux-x64`), without ever claiming more than the evidence supports. It exists because a SQLite/native-asset load succeeding proves only that one diagnostic load worked — never whole-product or release compatibility — and the module is explicit about that (`WholeProductCompatibilityProven=$false`, `Qualification='DiagnosticOnly'`, line 117). It is called by `scripts/Invoke-ContainerRuntimeDiagnosis.ps1` (the orchestrating script that actually launches the probes) and is covered by a dedicated `RuntimeDiagnosis.Tests.ps1`, with its output format documented in `docs/audits/2026-11-09-container-runtime-diagnosis.md` / `.json`.
@@ -44,7 +48,7 @@ Functionally sound and appropriately conservative in its claims, but the single 
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

@@ -1,5 +1,9 @@
 # CiImpact.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/CiImpact.psm1`](../../../scripts/lib/CiImpact.psm1)
+<!-- script-source:end -->
+
 Exports Get-QuietCiImpact, Get-QuietCiDispatchImpact and Test-QuietDevelopReceipt. Import is inert; no product module or native process starts.
 
 Get-QuietCiImpact reads the validated YAML suite catalogue. Companion changes select all suites whose transitive requirements include that product. Core changes select Core and smoke its dependents; shared or unknown changes select All plus tooling. Multiple affected suites share one matrix. Tooling.Tests belongs to its own campaign. Existing FrenchExDev application modules consume Core and separate executable companions; application membership does not qualify a CLI handler.
@@ -45,7 +49,7 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- grouped-layout-review:begin -->

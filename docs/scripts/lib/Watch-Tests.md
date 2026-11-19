@@ -1,5 +1,9 @@
 # Watch-Tests.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Watch-Tests.psm1`](../../../scripts/lib/Watch-Tests.psm1)
+<!-- script-source:end -->
+
 Implements [Watch-Tests.ps1](../Watch-Tests.md). Exports only "Invoke-QuietScriptWatchTests". Imported without name checking; import defines the command without running the operation.
 
 # Watch-Tests.ps1
@@ -144,7 +148,7 @@ per-run counters by hardcoding `'-'` (line 83), and (2) adding fuzz coverage for
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 ## Live report tail

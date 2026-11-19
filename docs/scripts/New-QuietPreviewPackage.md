@@ -1,5 +1,9 @@
 # New-QuietPreviewPackage.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-QuietPreviewPackage.ps1`](../../scripts/New-QuietPreviewPackage.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Prepares a uniquely versioned, Core-only preview without publishing. The public identity remains FrenchExDev2.QuietCli.Core.PoSh, inferred from its .psm1 and matching manifest; staging does not rename it to QuietCli. Numbered release previews (preview1, preview2, ...) belong to New-QuietPreviewTag.ps1 -Version -NextPreview; this artifact-only helper retains its run/attempt labels.
@@ -27,7 +31,7 @@ GitHub creates an immutable, uniquely versioned R2R preview artifact. Publicatio
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

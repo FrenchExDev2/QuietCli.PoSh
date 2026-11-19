@@ -1,5 +1,9 @@
 # Build-PtyBridge.ps1
 
+<!-- script-source:begin -->
+Source file: [`Build-PtyBridge.ps1`](../../scripts/Build-PtyBridge.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Cross-compiles the native PTY bridge binary for Linux x64/ARM64 (both glibc and musl RID folders) from its bundled C source, using a checksum-pinned Zig toolchain, so the module can ship working PTY support without requiring a C toolchain on the build host. It is invoked ad hoc by `artifacts/Run-IndependentPtyWorker.ps1` (line 8), an audit/profiling helper; no match was found in any `.github/workflows/*.yml`, suggesting this is a manually-run step (run when the native C source changes) rather than a step every CI run executes, which is consistent with it rewriting committed binaries and a lock file.
@@ -47,7 +51,7 @@ Functionally careful (pinned/verified toolchain download, post-compile source-ta
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

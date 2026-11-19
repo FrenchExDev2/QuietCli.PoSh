@@ -1,5 +1,9 @@
 # WorkstationResources.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/WorkstationResources.psm1`](../../../scripts/lib/WorkstationResources.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Implements ownership tracking and safe, bounded teardown for temporary Podman containers/images created on behalf of a "development workstation" run, so that cleanup never removes a resource it did not itself create, never force-removes or prunes, and never deletes outside a known report root (even through filesystem reparse points/symlinks). This solves the operational risk of a crashed or interrupted CI/dev-workstation worker leaving containers/images behind, or — worse — a cleanup pass accidentally wiping unrelated Podman resources or files outside its own sandbox. It is dot-sourced indirectly via `scripts/Ci.Process.ps1` and used by `scripts/Remove-DevelopmentWorkstationRun.ps1` and `scripts/lib/DevelopmentWorkstation.psm1` (per grep), with coverage in `FrenchExDev2.QuietCli.Core.Tests.PoSh/WorkstationResources.Tests.ps1` and a smoke test `Invoke-DevelopmentWorkstationSmoke.ps1`.
@@ -56,7 +60,7 @@ Solid and conscientiously safety-first in design (fail-closed ownership checks, 
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

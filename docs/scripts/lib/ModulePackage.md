@@ -1,5 +1,9 @@
 # ModulePackage.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ModulePackage.psm1`](../../../scripts/lib/ModulePackage.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 `Get-QuietModulePackageIdentity -Path <module.psm1> [-RequireManifest]` implements the shared package identity reader behind [Get-ModulePackageName](../Get-ModulePackageName.md), Gallery staging/validation and release-tag resolution. The package name follows the script-module basename; no Core/Git name mapping or short-name substitution is performed.
@@ -27,5 +31,5 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

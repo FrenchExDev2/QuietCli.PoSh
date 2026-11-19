@@ -1,5 +1,9 @@
 # Build-Workspace.ps1
 
+<!-- script-source:begin -->
+Source file: [`Build-Workspace.ps1`](../../scripts/Build-Workspace.ps1)
+<!-- script-source:end -->
+
 ## Scoped CI execution
 
 Suite selects the test module and transitive RequiredModules closure. A scoped owned solution contains its projects; undeclared ProjectReferences fail before compilation. All preserves the complete solution. Incremental compilation reuses valid MSBuild outputs; portable publications remain --no-build. Matrix calls publish only their tested RuntimeIdentifier; packaging retains every required RID. WhatIf creates no scoped solution.
@@ -76,7 +80,7 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- grouped-layout-review:begin -->

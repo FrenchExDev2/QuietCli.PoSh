@@ -1,5 +1,9 @@
 # Assert-QualificationReceipt.ps1
 
+<!-- script-source:begin -->
+Source file: [`Assert-QualificationReceipt.ps1`](../../scripts/Assert-QualificationReceipt.ps1)
+<!-- script-source:end -->
+
 Reused All receipts must additionally contain Performance=success and boolean PerformanceRequired=true. Legacy receipts without these fields and reports skipped/failed for the same revision are rejected. Same-run/attempt identity, complete All scope, platform results and explicit TTY exclusion remain mandatory. The optimization regression covers damaged performance fields alongside revision/attempt mismatches; accepting an old unprofiled receipt cannot bypass the restored matrix report gate.
 
 ## Purpose
@@ -39,5 +43,5 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

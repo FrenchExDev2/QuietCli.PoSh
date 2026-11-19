@@ -1,5 +1,9 @@
 # Measure-ColdStart.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Measure-ColdStart.psm1`](../../../scripts/lib/Measure-ColdStart.psm1)
+<!-- script-source:end -->
+
 Implements [Measure-ColdStart.ps1](../Measure-ColdStart.md). Exports only "Invoke-QuietScriptMeasureColdStart". Imported without name checking; import defines the command without running the operation.
 
 # Measure-ColdStart.ps1
@@ -79,7 +83,7 @@ Shared run-format, statistics, encoding and profiler libraries load without forc
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

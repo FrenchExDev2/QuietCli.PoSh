@@ -1,5 +1,9 @@
 # Test-ScriptAnalysis.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-ScriptAnalysis.ps1`](../../scripts/Test-ScriptAnalysis.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Blocking PSScriptAnalyzer check of every `.ps1` and `.psm1` under `scripts/` and `test/scripts/`. It is registered as `ScriptAnalyzer` in [Invoke-WorkspaceChecks](Invoke-WorkspaceChecks.md), so it runs in Commit-Workspace and in `scripts-docs-check.yml`. Legacy findings are frozen in a baseline that can only shrink. Any finding outside it fails the check. A workspace without `test/scripts/` and without `src/` (an isolated commit fixture) is not applicable: the check returns `{Check, Applicable=$false}` and reads nothing else. A workspace with `src/` must ship `test/scripts/`, otherwise the check fails with `ScriptsTestsRootMissing: test/scripts`, so deleting the test tree never turns it off.
@@ -86,5 +90,5 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

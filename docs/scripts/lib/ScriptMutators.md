@@ -1,5 +1,9 @@
 # ScriptMutators.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptMutators.psm1`](../../../scripts/lib/ScriptMutators.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Mutators of [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). Each mutator `<Name>` is one function `Find-QuietScriptMutant<Name> -Ast <FunctionBody>`, which emits candidates `{Mutator, StartOffset, EndOffset, Line, Column, Original, Replacement}`. `Get-QuietScriptMutatorCatalog` lists the names in application order. Adding a mutator means adding one function and its name in the catalog, and the engine does not change (open/closed).
@@ -34,5 +38,5 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

@@ -1,5 +1,9 @@
 # Test-CoreIndependence.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-CoreIndependence.ps1`](../../scripts/Test-CoreIndependence.ps1)
+<!-- script-source:end -->
+
 Private SDK selection is shared with the normal test worker through WorkspaceProjects. The CI copy receives an explicit public Docker preset; local copies keep local Podman/Docker discovery. No private dotenv values are copied.
 
 Builds only Core and Core.Tests for the native RID in a fresh short temporary path, deliberately excluding the real Git product directory. Existing Git executable fixtures remain required. The copied Git test sources are inert catalogue inputs; their parser project is never built.
@@ -37,7 +41,7 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- grouped-layout-review:begin -->

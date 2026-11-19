@@ -1,5 +1,9 @@
 # New-QuietCompanion.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/New-QuietCompanion.psm1`](../../../scripts/lib/New-QuietCompanion.psm1)
+<!-- script-source:end -->
+
 `Invoke-QuietScriptNewQuietCompanion` implements [New-QuietCompanion.ps1](../New-QuietCompanion.md). Importing the library loads only workspace helpers.
 
 Get-QuietCompanionScaffoldPlan validates the inputs and lists the branch and exact destination paths without writing.
@@ -21,5 +25,5 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

@@ -11,6 +11,9 @@ Regenerate aggregate credits and mandatory documentation footers, then commit/pu
 Manual workflow_dispatch only. No automatic PR/push trigger.
 
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/sync-credits-apply.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.
@@ -24,7 +27,7 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| apply | runner ubuntu-latest |  | default success condition | ./scripts/Sync-Credits.ps1, ./scripts/Sync-DocsCredits.ps1 |
+| apply | runner ubuntu-latest |  | default success condition | [`./scripts/Sync-Credits.ps1`](../../scripts/Sync-Credits.md), [`./scripts/Sync-DocsCredits.ps1`](../../scripts/Sync-DocsCredits.md) |
 
 <!-- workflow-generated:end -->
 
@@ -39,5 +42,5 @@ These generators cover attribution linkage, not semantic accuracy or workflow re
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

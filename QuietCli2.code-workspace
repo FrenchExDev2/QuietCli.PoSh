@@ -44,6 +44,7 @@
       "**/bin": true,
       "**/obj": true,
       "**/artifacts": true
-    }
+    },
+    "dotnet.defaultSolution": "Workspace/Quietly.slnx"
   }
 }

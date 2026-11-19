@@ -1,5 +1,9 @@
 # Assert-CoreIntegrationEvidence.ps1
 
+<!-- script-source:begin -->
+Source file: [`Assert-CoreIntegrationEvidence.ps1`](../../scripts/Assert-CoreIntegrationEvidence.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Fails closed a Core (or "All") suite CI result that lacks the full mandated fresh-session-import, import-diagnostics, and controlled-Git-status evidence — a hard qualification gate ensuring the property/fuzz/mutation evidence the repository's test strategy requires was actually produced, not merely declared present. It is invoked by `scripts/Invoke-TestWorker.ps1` (line 145, when `$selected -eq 'Core'`) and exercised directly by `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Integration.Tests.ps1` (line 29) and `Integration.Gate.Tests.ps1` (line 9, which instead reads this file's own text as a static contract check).
@@ -45,7 +49,7 @@ The common Core/All worker enforces this for selected PR and develop qualificati
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

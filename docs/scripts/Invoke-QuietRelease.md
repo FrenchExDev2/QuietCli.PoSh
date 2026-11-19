@@ -1,5 +1,9 @@
 # Invoke-QuietRelease.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-QuietRelease.ps1`](../../scripts/Invoke-QuietRelease.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Recommended release entry point. After one confirmation it creates `release/<components>-<version>-<UTC>-<id>` from the fetched remote delivery branch, commits the selected version edits, pushes only that branch, opens its pull request, waits for the required `QuietCli required CI` check and, with `-Merge`, merges with a merge commit pinned to the release head. It then tags the merge commit, pushes only those tags and restores the original branch. The operation is implemented by [Invoke-QuietRelease.psm1](lib/Invoke-QuietRelease.md) over the [ReleaseFlow](lib/ReleaseFlow.md) phases.
@@ -19,7 +23,7 @@ Imports its local library using `-DisableNameChecking -ErrorAction Stop` and inv
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

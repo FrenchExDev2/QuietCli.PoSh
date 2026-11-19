@@ -1,5 +1,9 @@
 # RunEncoding.psm1 (lib)
 
+<!-- script-source:begin -->
+Source file: [`lib/RunEncoding.psm1`](../../../scripts/lib/RunEncoding.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Centralizes the single text-encoding policy for the run-profile tooling, with two deliberately distinct contracts documented at the top of the file (lines 6–11): files on disk are always strict UTF-8 without BOM with LF line endings (no silent replacement of malformed bytes), while the console/process boundary encoding is a separate, explicit, configurable choice (`utf-8` or `oem`) because a mismatch there must be a deliberate decision, not a hardcoded default. It solves the "which encoding wins" ambiguity that otherwise causes mojibake or silently-corrupted profile files across different terminal code pages. It underlies every other `lib/*.psm1` file that touches text: `RunLog.psm1` imports it directly (`Import-Module (Join-Path $PSScriptRoot 'RunEncoding.psm1')`, that file's line 12) for its `FileLogSink`, and `RunProfileStore.psm1`/`RunProfiler.psm1` are plausible further consumers given the shared `lib/` naming convention (not individually confirmed by direct grep in this review).
@@ -48,7 +52,7 @@ This module is a clean, well-isolated, convention-compliant encoding policy with
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

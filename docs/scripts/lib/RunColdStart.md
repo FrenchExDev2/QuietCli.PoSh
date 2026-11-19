@@ -1,5 +1,9 @@
 # RunColdStart.psm1 (lib)
 
+<!-- script-source:begin -->
+Source file: [`lib/RunColdStart.psm1`](../../../scripts/lib/RunColdStart.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Primitives shared by Measure-ColdStart.ps1: ConvertFrom-RunColdSample validates exactly three finite, nonnegative invariant-culture durations; Get-RunModuleFootprintBytes sums all module files; Get-RunModuleHostedPathBytes measures the active engine slot; Get-RunModulePackageBytes measures an actual Compress-PSResource nupkg.
@@ -29,7 +33,7 @@ Shared measurement primitives retain separate whole-package and loaded-path cost
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

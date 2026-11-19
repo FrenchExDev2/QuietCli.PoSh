@@ -1,5 +1,9 @@
 # New-WorkspacePackage.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-WorkspacePackage.ps1`](../../scripts/New-WorkspacePackage.ps1)
+<!-- script-source:end -->
+
 Selected packages and their transitive RequiredModules determine which declared build outputs must validate. No Git parser path is hard-coded. Module Core validates Core only; Git validates Git and Core. Unknown modules fail before output creation. Core-containing packages retain all six engine RID checks; RequireReadyToRun retains both CLR builds for all six RIDs. scripts/New-WorkspacePackage.ps1:21 and Get-QuietWorkspaceBuildSelection own this boundary; inert discovery and the Git-absent distribution regression verify it.
 
 ## Purpose and usage
@@ -29,7 +33,7 @@ GitHub release preparation uses RequireReadyToRun; a local ordinary package does
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

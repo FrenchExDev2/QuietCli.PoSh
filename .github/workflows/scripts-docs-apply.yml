@@ -1,11 +1,10 @@
 name: QuietCli2 Scripts docs apply
 
-# Manual only: regenerates docs/scripts/README.md from the scripts/ and docs/scripts/ trees actually
+# Manual only: regenerates the scripts index and source links from the scripts/ and docs/scripts/ trees actually
 # on disk, then commits and pushes that result directly to the branch this run was dispatched on.
 # Never runs on pull_request or push - triggering it is the explicit approval to write and push, per
-# docs/README-scripts-have-docs.md. It cannot fix a missing script doc, only the index's own
-# staleness - that failure (ScriptsDocsMissing) must be fixed by adding the doc before this can
-# succeed. Companion read-only workflow: scripts-docs-check.yml.
+# docs/README-scripts-have-docs.md. Missing script docs require authorship before this can succeed.
+# Companion read-only workflow: scripts-docs-check.yml.
 on:
   workflow_dispatch:
 
@@ -14,14 +13,14 @@ permissions:
 
 jobs:
   apply:
-    name: Apply scripts docs index and push
+    name: Apply scripts docs synchronization and push
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: true
-      - name: Regenerate docs/scripts/README.md
+      - name: Regenerate scripts index and source links
         shell: pwsh
         run: ./scripts/Sync-ScriptsReadme.ps1 -Apply
       - name: Commit and push the result, if anything changed
@@ -29,10 +28,10 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add --all -- docs/scripts/README.md
+          git add --all -- docs/scripts
           if (git diff --cached --quiet) {
-            Write-Host 'Nothing to commit: docs/scripts/README.md is already up to date.'
+            Write-Host 'Nothing to commit: scripts index and source links are up to date.'
           } else {
-            git commit -m 'Sync docs/scripts/README.md'
+            git commit -m 'Sync scripts index and source links'
             git push origin "HEAD:${{ github.ref }}"
           }

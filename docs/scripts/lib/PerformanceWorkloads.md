@@ -1,5 +1,9 @@
 # PerformanceWorkloads.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/PerformanceWorkloads.psm1`](../../../scripts/lib/PerformanceWorkloads.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This module reads a Core suite summary and the profiler line evidence of one environment. It turns them into one statistics row per workload, measure and variant for [New-CorePerformanceReport.ps1](../New-CorePerformanceReport.md). The workloads are kept apart: a Git transport number is never pooled with a framing or event number.
@@ -66,5 +70,5 @@ Review: `Get-QuietPerformanceWorkloadCatalog` maps only declared scalar timer fi
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

@@ -1,5 +1,9 @@
 # Remove-DevelopmentWorkstationRun.ps1
 
+<!-- script-source:begin -->
+Source file: [`Remove-DevelopmentWorkstationRun.ps1`](../../scripts/Remove-DevelopmentWorkstationRun.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Garbage-collects expired, registered "workstation smoke run" directories (and the disposable Podman resources they own) that other scripts in this ecosystem create during local, interactive development/testing — without ever touching active, foreign, unmanaged, or unverifiable runs, and without touching real product installations under `LocalAppData`/`~/.local/share` (explicitly out of scope per its own `.DESCRIPTION`, line 9). It solves the housekeeping problem of disk/container cruft accumulating from repeated local smoke-test runs. It is a standalone maintenance entry point; no other script in `scripts/` was found to call it, implying it is meant to be run manually (or on a schedule) by a developer or CI housekeeping job, consistent with its `ConfirmImpact='High'` destructive classification.
@@ -54,7 +58,7 @@ Fit for purpose; this is one of the more carefully engineered scripts in the bat
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

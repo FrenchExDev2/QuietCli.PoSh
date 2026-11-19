@@ -1,5 +1,9 @@
 # ReleaseFlow.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ReleaseFlow.psm1`](../../../scripts/lib/ReleaseFlow.psm1)
+<!-- script-source:end -->
+
 Resumable release phases behind [Invoke-QuietRelease](../Invoke-QuietRelease.md). All effects go through injected callbacks (Git, commit, branch push, GitHub CLI), so the same code runs against the real tools and against owned test doubles.
 
 ## Purpose and usage
@@ -62,7 +66,7 @@ The CI optimization case runs `ReleaseFlow.Tests.ps1` against an owned repositor
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

@@ -1,5 +1,9 @@
 # Assert-CiPlanResults.ps1
 
+<!-- script-source:begin -->
+Source file: [`Assert-CiPlanResults.ps1`](../../scripts/Assert-CiPlanResults.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Verifies actual jobs against the selective execution plan and saves a scoped receipt behind the stable QuietCli required CI check.
@@ -25,7 +29,7 @@ Explicit source-bound automation with a checked scope. Read the selected run's s
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

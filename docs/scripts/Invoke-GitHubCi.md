@@ -1,5 +1,9 @@
 # Invoke-GitHubCi.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.ps1)
+<!-- script-source:end -->
+
 WorkspaceRoot and explicit RunDirectory values are normalized against the caller location before any worker runs. Product builds remain native-RID-only; Tooling, Distribution and GalleryPreview retain full IL distribution inputs. RunProfilesMutation skips product compilation. GitHub rejects Partial or Incomplete suite summaries even when their terminal state says Success.
 
 ## Scoped CI execution
@@ -93,7 +97,7 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- grouped-layout-review:begin -->

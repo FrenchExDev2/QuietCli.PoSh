@@ -1,5 +1,9 @@
 # Invoke-ScriptsTests.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-ScriptsTests.ps1`](../../scripts/Invoke-ScriptsTests.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Runs the Pester 6 unit and integration tests of `./scripts` that live under [`test/scripts`](../../test/scripts/README.md). The tests target the libraries in `scripts/lib` and their exported functions. Entry points are exercised as real child processes in `integration/`. The run happens in a supervised background worker. A visible read-only [monitor](Watch-Tests.md) opens locally. CI passes `-Headless`.
@@ -66,5 +70,5 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

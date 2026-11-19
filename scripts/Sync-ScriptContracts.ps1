@@ -13,6 +13,7 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -Di
 
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/ScriptReview.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Sync-DocsCredits.psm1')) -DisableNameChecking -ErrorAction Stop
 $entries=@(Get-QuietScriptReview $WorkspaceRoot)
 $changes=0
 foreach($entry in $entries){
@@ -67,7 +68,7 @@ foreach($entry in $reviewed){
 }
 $review=Get-QuietScriptReviewReadme $WorkspaceRoot
 $path=[IO.Path]::Combine($WorkspaceRoot,'docs/scripts/preview-support.md')
-$footer=@('<!-- credits:begin -->','## Credits','',"This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).",'<!-- credits:end -->') -join "`n"
+$footer=Format-QuietDocsCreditsBlock -Link '../../CREDITS.md'
 $review+="`n"+$footer+"`n"
 $current=if(Test-Path $path){Get-Content $path -Raw -Encoding utf8}else{$null}
 if($current -cne $review){

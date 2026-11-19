@@ -1,5 +1,9 @@
 # Invoke-WorkspaceCi.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-WorkspaceCi.ps1`](../../scripts/Invoke-WorkspaceCi.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Local build/test supervisor with a background worker and visible read-only monitor. GitHub product jobs use [Invoke-GitHubCi](Invoke-GitHubCi.md) directly, without this desktop launcher. Both share the same worker and owning test runners.
@@ -63,7 +67,7 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- grouped-layout-review:begin -->

@@ -1,5 +1,9 @@
 # TestConfiguration.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/TestConfiguration.psm1`](../../../scripts/lib/TestConfiguration.psm1)
+<!-- script-source:end -->
+
 ## Library boundary
 
 Located at `scripts/lib/TestConfiguration.psm1`. Load with `Import-Module ([IO.Path]::Combine($root,'scripts/lib/TestConfiguration.psm1')) -DisableNameChecking -ErrorAction Stop`. Import defines functions and explicit dependencies without running business operations. Paths use `System.IO.Path`. Effects remain owned by the calling operation and its preview contract.
@@ -128,7 +132,7 @@ mutable process environment variable, so two configurations can coexist safely i
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

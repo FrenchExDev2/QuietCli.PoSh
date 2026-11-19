@@ -1,5 +1,9 @@
 # EditorExtensions.psm1 (lib)
 
+<!-- script-source:begin -->
+Source file: [`lib/EditorExtensions.psm1`](../../../scripts/lib/EditorExtensions.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Exports/synchronizes a repository-tracked inventory of VS Code (Stable or Insiders) extensions through the real editor CLI, so the exact set of extensions a contributor's editor has installed can be captured into a reviewable JSON manifest and later re-applied on another machine. It solves "which extensions does this project expect, and how do we keep a new workstation's editor in sync with that list" without baking secrets, local paths, or private settings into the manifest. It is consumed by `Sync-DevelopmentEditorExtensions.ps1` (the end-user-facing script) and by `DevelopmentWorkstation.psm1`'s `Install-DevelopmentExtensions` (line 486–497 of that module), which calls `Sync-DevelopmentEditorExtensions.ps1` rather than this module's functions directly.
@@ -51,7 +55,7 @@ A well-defended, single-responsibility module with existing test coverage and no
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

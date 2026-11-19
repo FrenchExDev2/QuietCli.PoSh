@@ -1,5 +1,9 @@
 # RunProfileStore.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/RunProfileStore.psm1`](../../../scripts/lib/RunProfileStore.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Defines and enforces the file format for "run profiles": named, data-only `<Name>.profile.ps1` files that bind a target script (under `scripts/`) to a default parameter set, so that a benchmarking run (for example, `scripts/Invoke-RunProfile.ps1`) can be launched by name instead of by repeating a long argument list. The core safety property is that a profile file can never execute code — it is parsed in PowerShell's restricted language mode — so a malicious or corrupted `.profile.ps1` cannot do anything beyond declare data. This module is the schema/validation/IO layer; `scripts/New-RunProfile.ps1` is presumably the CLI front-end that calls `Write-RunProfile`/`ConvertTo-RunProfileSource`, and `scripts/Invoke-RunProfile.ps1` is the consumer that calls `Read-RunProfile`/`Merge-RunProfileArguments`/`Resolve-RunProfileTarget`. It is exercised directly by `RunProfiles.Tests.ps1` and targeted by multiple entries in `RunProfiles.Mutation.ps1`.
@@ -58,7 +62,7 @@ Solid, deliberately defensive design (restricted-language parsing is the right c
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

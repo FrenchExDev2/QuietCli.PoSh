@@ -11,6 +11,9 @@ Report, per package and target framework, which Directory.Packages.props pins ha
 Manual workflow_dispatch only, with two boolean inputs: `apply` (default false) and `prerelease` (default false). No automatic PR/push trigger.
 
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/packages-update.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.
@@ -26,8 +29,8 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| apply | runner ubuntu-latest | report | ${{ inputs.apply }} | ./scripts/Update-Packages.ps1 |
-| report | runner ubuntu-latest |  | default success condition | ./scripts/Update-Packages.ps1 |
+| apply | runner ubuntu-latest | report | <code>&#36;{{ inputs.apply }}</code> | [`./scripts/Update-Packages.ps1`](../../scripts/Update-Packages.md) |
+| report | runner ubuntu-latest |  | default success condition | [`./scripts/Update-Packages.ps1`](../../scripts/Update-Packages.md) |
 
 <!-- workflow-generated:end -->
 
@@ -42,5 +45,5 @@ The report job succeeds even when some rows show `eval error`, `fetch error` or 
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

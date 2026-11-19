@@ -1,5 +1,9 @@
 # Test-GitHubWorkflowDocs.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-GitHubWorkflowDocs.ps1`](../../scripts/Test-GitHubWorkflowDocs.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Read-only RaC entry point: ./scripts/Test-GitHubWorkflowDocs.ps1 [-WorkspaceRoot <root>]. Calls Sync-GitHubWorkflowsReadme.ps1 without Apply. Missing matching docs, stale source receipts, absent required sections or generated graph/index drift are blocking errors.
@@ -25,7 +29,7 @@ One blocking check shared by GitHub automation and both Commit-Workspace tree mo
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

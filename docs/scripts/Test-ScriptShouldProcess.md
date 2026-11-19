@@ -1,5 +1,9 @@
 # Test-ScriptShouldProcess.ps1
 
+<!-- script-source:begin -->
+Source file: [`Test-ScriptShouldProcess.ps1`](../../scripts/Test-ScriptShouldProcess.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Read-only RaC gate: ./scripts/Test-ScriptShouldProcess.ps1 [-WorkspaceRoot <root>]. Loads ScriptShouldProcess.ps1 and applies build/script-shouldprocess.json. A new unclassified executable script fails; missing/stale exception metadata fails.
@@ -21,7 +25,7 @@ Blocking new-script API check in the common commit/GitHub registry; never a blan
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

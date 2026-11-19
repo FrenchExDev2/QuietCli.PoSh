@@ -1,5 +1,9 @@
 # GitHubActionUpdates.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/GitHubActionUpdates.psm1`](../../../scripts/lib/GitHubActionUpdates.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 The update policy of [Update-GitHubActions.ps1](../Update-GitHubActions.md): given a parsed reference and the latest release of its action, it decides the new line. It also moves a workflow document's source receipt. Every export is pure. Import loads [GitHubActionReferences.psm1](GitHubActionReferences.md) for rendering.
@@ -63,5 +67,5 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

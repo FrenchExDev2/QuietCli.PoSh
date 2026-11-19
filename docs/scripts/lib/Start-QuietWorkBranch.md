@@ -1,5 +1,9 @@
 # Start-QuietWorkBranch.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Start-QuietWorkBranch.psm1`](../../../scripts/lib/Start-QuietWorkBranch.psm1)
+<!-- script-source:end -->
+
 Implements [Start-QuietWorkBranch.ps1](../Start-QuietWorkBranch.md). Exports only "Invoke-QuietScriptStartQuietWorkBranch". Imported without name checking; import defines the command without running the operation.
 
 # Start-QuietWorkBranch.ps1
@@ -69,7 +73,7 @@ Native failures are not retried. The remote-base comparison is an observation, n
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

@@ -1,5 +1,9 @@
 # Publish-QuietGitHubRelease.ps1
 
+<!-- script-source:begin -->
+Source file: [`Publish-QuietGitHubRelease.ps1`](../../scripts/Publish-QuietGitHubRelease.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Create one GitHub Release per independently versioned module tag after successful Gallery publication. The workflow calls this entry point with the qualified revision and downloaded package/publication artifacts. No build or Gallery publication is repeated.
@@ -21,7 +25,7 @@ Uses GalleryRelease for tag policy, Gallery for exact nupkg integrity/identity v
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

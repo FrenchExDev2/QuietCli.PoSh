@@ -1,5 +1,9 @@
 # ToolingResults.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ToolingResults.psm1`](../../../scripts/lib/ToolingResults.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 `Get-QuietToolingResults -NeedsJson $json` reads the seven authoritative GitHub needs
@@ -29,7 +33,7 @@ owns generated status properties, malformed inputs and source-checked mutations.
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

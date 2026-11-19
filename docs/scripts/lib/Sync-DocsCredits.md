@@ -1,6 +1,10 @@
 # Sync-DocsCredits.psm1
 
-Implements [Sync-DocsCredits.ps1](../Sync-DocsCredits.md). Exports only "Invoke-QuietScriptSyncDocsCredits". Imported without name checking; import defines the command without running the operation.
+<!-- script-source:begin -->
+Source file: [`lib/Sync-DocsCredits.psm1`](../../../scripts/lib/Sync-DocsCredits.psm1)
+<!-- script-source:end -->
+
+Implements `Invoke-QuietScriptSyncDocsCredits` and exports `Format-QuietDocsCreditsBlock -Link` so generators can add the same block with LF line endings. Import defines the commands without running the operation. [Sync-DocsCredits.ps1](../Sync-DocsCredits.md)
 
 # Sync-DocsCredits.ps1
 
@@ -116,7 +120,7 @@ cannot silently produce a mixed-line-ending document when `-Apply` patches it.
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

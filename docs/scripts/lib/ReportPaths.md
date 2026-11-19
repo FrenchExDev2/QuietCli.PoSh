@@ -1,5 +1,9 @@
 # ReportPaths.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ReportPaths.psm1`](../../../scripts/lib/ReportPaths.psm1)
+<!-- script-source:end -->
+
 ## Library boundary
 
 Located at `scripts/lib/ReportPaths.psm1`. Load with `Import-Module ([IO.Path]::Combine($root,'scripts/lib/ReportPaths.psm1')) -DisableNameChecking -ErrorAction Stop`. Import defines functions and explicit dependencies without running business operations. Paths use `System.IO.Path`. Effects remain owned by the calling operation and its preview contract.
@@ -61,7 +65,7 @@ Path components are passed separately to System.IO.Path.Combine, including the t
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

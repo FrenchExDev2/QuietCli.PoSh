@@ -1,5 +1,9 @@
 # Update-GitHubActions.ps1
 
+<!-- script-source:begin -->
+Source file: [`Update-GitHubActions.ps1`](../../scripts/Update-GitHubActions.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Update-GitHubActions.psm1](lib/Update-GitHubActions.md). See that library for the full operation, decision rules, dependencies, effects and validation limits.
@@ -31,5 +35,5 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

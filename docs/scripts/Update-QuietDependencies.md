@@ -1,5 +1,9 @@
 # Update-QuietDependencies.ps1
 
+<!-- script-source:begin -->
+Source file: [`Update-QuietDependencies.ps1`](../../scripts/Update-QuietDependencies.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Establishes (or refreshes) `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json` — a
@@ -113,7 +117,7 @@ explicit mapping file) instead of a hardcoded switch inside this script.
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

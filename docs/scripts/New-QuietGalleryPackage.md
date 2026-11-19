@@ -1,5 +1,9 @@
 # New-QuietGalleryPackage.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-QuietGalleryPackage.ps1`](../../scripts/New-QuietGalleryPackage.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Prepares one selected publishable business-module nupkg and its SHA-256 publication plan, without contacting PSGallery. Module defaults to Core; -Module Git selects FrenchExDev2.QuietCli.Git.PoSh. Workspace manifests and the shared reader derive eligibility/name/version, preserving existing filenames, GUID and dependencies. Core keeps its six RID payloads; Git keeps its declared net10.0/net11.0 parser outputs and Core dependency.
@@ -31,7 +35,7 @@ evidence does not refresh a committed file or replace source-bound binary and qu
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

@@ -1,5 +1,9 @@
 # ScriptsWorker.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptsWorker.psm1`](../../../scripts/lib/ScriptsWorker.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Shared supervised launch for [Invoke-ScriptsTests.ps1](../Invoke-ScriptsTests.md) and [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). `Invoke-QuietScriptsSupervisedWorker -ModulePath -WorkerFunction -RequestPath -RunDirectory -WorkspaceRoot [-Headless] -TimeoutSeconds` performs these steps:
@@ -28,5 +32,5 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

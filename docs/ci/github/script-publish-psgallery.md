@@ -22,6 +22,9 @@ and exact-revision qualification checks remain required.
 Publication downloads those prepared nupkg files and verifies versions, hashes and the qualified checkpoint without rebuilding. Only a matching original-repository module-tag release with publication intent can use the protected PSGallery environment. Manual dispatch and generated-preview requests create artifacts. Batch members are validated first, then published in dependency order. Core/Git eligibility comes from manifests; tests and disabled Vagrant are excluded. See the [publication diagram](../execution-model.md#gallery-publication).
 
 <!-- workflow-generated:begin -->
+
+[Workflow source](../../../.github/workflows/publish-psgallery.yml)
+
 ## Jobs and dependencies
 
 Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can skip jobs; edges express declared needs.
@@ -45,11 +48,11 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| checkpoint | runner ubuntu-latest | qualification, reuse-qualification | ${{ !cancelled() && (needs.qualification.result == 'success' &#124;&#124; needs.reuse-qualification.result == 'success') }} |  |
-| package | runner windows-latest | checkpoint | ${{ !cancelled() && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Build-Workspace.ps1, ./scripts/Export-CiFailureDiagnostics.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Initialize-Workspace.ps1, ./scripts/Invoke-GitHubCi.ps1, ./scripts/Invoke-QuietGalleryRelease.ps1, ./scripts/lib/RuntimeTargets.psm1, ./scripts/New-QuietGalleryPackage.ps1, ./scripts/New-QuietPreviewPackage.ps1, ./scripts/Publish-QuietGallery.ps1 |
-| publish | runner windows-latest | checkpoint, package | ${{ !cancelled() && inputs.publish == true && inputs.preview_build != true && github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.') && needs.checkpoint.result == 'success' && needs.checkpoint.outputs.qualified_sha == github.sha }} | ./scripts/Get-QuietReleasePlan.ps1, ./scripts/Initialize-PowerShellHost.ps1, ./scripts/Invoke-QuietGalleryRelease.ps1, ./scripts/Publish-QuietGallery.ps1 |
-| qualification | reuses ./.github/workflows/ci.yml |  | inputs.qualified_sha == '' |  |
-| reuse-qualification | runner ubuntu-latest |  | inputs.qualified_sha != '' && inputs.qualified_sha == github.sha | ./scripts/Assert-QualificationReceipt.ps1, ./scripts/Initialize-CiEnvironment.ps1 |
+| checkpoint | runner ubuntu-latest | qualification, reuse-qualification | <code>&#36;{{ !cancelled() &#38;&#38; (needs.qualification.result == 'success' &#124;&#124; needs.reuse-qualification.result == 'success') }}</code> |  |
+| package | runner windows-latest | checkpoint | <code>&#36;{{ !cancelled() &#38;&#38; needs.checkpoint.result == 'success' &#38;&#38; needs.checkpoint.outputs.qualified&#95;sha == github.sha }}</code> | [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Initialize-PowerShellHost.ps1`](../../scripts/Initialize-PowerShellHost.md), [`./scripts/lib/RuntimeTargets.psm1`](../../scripts/lib/RuntimeTargets.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.md), [`./scripts/Invoke-QuietGalleryRelease.ps1`](../../scripts/Invoke-QuietGalleryRelease.md), [`./scripts/New-QuietPreviewPackage.ps1`](../../scripts/New-QuietPreviewPackage.md), [`./scripts/New-QuietGalleryPackage.ps1`](../../scripts/New-QuietGalleryPackage.md), [`./scripts/Publish-QuietGallery.ps1`](../../scripts/Publish-QuietGallery.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
+| publish | runner windows-latest | checkpoint, package | <code>&#36;{{ !cancelled() &#38;&#38; inputs.publish == true &#38;&#38; inputs.preview&#95;build != true &#38;&#38; github.repository == 'FrenchExDev2/QuietCli.PoSh' &#38;&#38; github.event&#95;name == 'push' &#38;&#38; startsWith(github.ref, 'refs/tags/FrenchExDev2.QuietCli.') &#38;&#38; needs.checkpoint.result == 'success' &#38;&#38; needs.checkpoint.outputs.qualified&#95;sha == github.sha }}</code> | [`./scripts/Initialize-PowerShellHost.ps1`](../../scripts/Initialize-PowerShellHost.md), [`./scripts/Invoke-QuietGalleryRelease.ps1`](../../scripts/Invoke-QuietGalleryRelease.md), [`./scripts/Publish-QuietGallery.ps1`](../../scripts/Publish-QuietGallery.md), [`./scripts/Get-QuietReleasePlan.ps1`](../../scripts/Get-QuietReleasePlan.md) |
+| qualification | reuses ./.github/workflows/ci.yml |  | <code>inputs.qualified&#95;sha == ''</code> |  |
+| reuse-qualification | runner ubuntu-latest |  | <code>inputs.qualified&#95;sha != '' &#38;&#38; inputs.qualified&#95;sha == github.sha</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Assert-QualificationReceipt.ps1`](../../scripts/Assert-QualificationReceipt.md) |
 
 <!-- workflow-generated:end -->
 
@@ -72,5 +75,5 @@ Local policy tests cover event boundaries and discovered targets; GalleryPreview
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

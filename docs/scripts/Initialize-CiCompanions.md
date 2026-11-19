@@ -1,5 +1,9 @@
 # Initialize-CiCompanions.ps1
 
+<!-- script-source:begin -->
+Source file: [`Initialize-CiCompanions.ps1`](../../scripts/Initialize-CiCompanions.ps1)
+<!-- script-source:end -->
+
 Reads `build/companions.yml` through `scripts/lib/CiCompanions.psm1` and returns selected tests,
 product/tool closure, image layers, Core-evidence policy and configuration SHA-256. It starts no
 tests or native tools. Missing pinned parser resources are prepared by the consumer.
@@ -40,5 +44,5 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

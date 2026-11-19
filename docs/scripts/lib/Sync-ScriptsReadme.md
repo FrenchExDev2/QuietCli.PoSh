@@ -1,14 +1,16 @@
 # Sync-ScriptsReadme.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Sync-ScriptsReadme.psm1`](../../../scripts/lib/Sync-ScriptsReadme.psm1)
+<!-- script-source:end -->
+
 Implements [Sync-ScriptsReadme.ps1](../Sync-ScriptsReadme.md). Exports only "Invoke-QuietScriptSyncScriptsReadme". Imported without name checking; import defines the command without running the operation.
 
 # Sync-ScriptsReadme.ps1
 
 ## Purpose
 
-Check that every PowerShell script under `scripts/` has a mirrored Markdown document, and generate
-the navigable [scripts index](../README.md). This includes `Sync-ScriptsReadme.ps1` and this document.
-The gate never invents missing script documentation.
+Check that every PowerShell script and run profile under `scripts/` has a mirrored Markdown document with a link to its source. Generate the navigable index. [Scripts documentation index](../README.md)
 
 ## Usage
 
@@ -18,26 +20,24 @@ The gate never invents missing script documentation.
 ./scripts/Sync-ScriptsReadme.ps1 -Apply
 ```
 
-- `-ScriptsPath`: source directory scanned recursively for `*.ps1` and `*.psm1`.
-- `-DocsPath`: mirrored documentation root and destination of the generated `README.md`.
-- `-Apply`: regenerate a missing or stale index once all script documents exist.
-- `-WhatIf` / `-Confirm`: preview or approve the generated index write.
+- `-ScriptsPath` selects the source directory scanned recursively for `*.ps1`, `*.psm1` and `*.profile.psd1`.
+- `-DocsPath` selects the mirrored documentation root and generated `README.md` destination.
+- `-Apply` synchronizes stale source links, converts mirrored documentation to LF and regenerates the index once all script documents exist.
+- `-WhatIf` and `-Confirm` preview or approve each write.
 
-Default mode writes nothing. Missing script documentation throws `ScriptsDocsMissing` in every
-mode. A missing or stale index throws `ScriptsReadmeNonCompliant` unless `-Apply` actually fixes it.
-The report includes `Path`, `State` and `DocumentedScriptCount`.
+Default mode reports `ScriptsDocsMissing` for missing docs, `ScriptsDocSourceLinksStale` for missing or stale links, `ScriptsDocLineEndingsStale` for mirrored documents containing CR and `ScriptsReadmeNonCompliant` for a stale index, including one with CRLF. Malformed marker pairs report `ScriptsDocSourceBlockInvalid`. The result includes `Path`, `State`, `DocumentedScriptCount`, `SourceLinksToSync` and `LineEndingsToSync`. The last two fields count affected mirrored documents.
 
 ## Dependencies and side effects
 
 Uses PowerShell filesystem commands, path operations and asynchronous UTF-8 file I/O. No native
-process, engine, download or Git mutation is involved. Approved `-Apply` only writes the generated
-`docs/scripts/README.md`, with LF line endings and its mandatory credits footer.
+process, engine, download or Git mutation is involved. Approved `-Apply` writes the index and the managed source link in each affected document with LF line endings. The index uses the shared credits formatter. [Sync-DocsCredits.psm1](Sync-DocsCredits.md)
 
 `Commit-Workspace.ps1` calls this gate before committing. Under `-NoAll`, it checks a temporary
 export of staged sources and documents; unstaged files are outside that snapshot's scope.
 
 ## Findings
 
+- `scripts/lib/Sync-ScriptsReadme.psm1:72` derives the link from each document's own directory, including nested libraries and run profiles. It refreshes exactly one managed block per doc and rejects ambiguous markers before writing.
 - **Missing document fixed:** this file supplies the generator's previously missing mirrored doc,
   following the same rule as every other script.
 - **Scope consistency fixed:** `scripts/lib/Sync-ScriptsReadme.psm1` previously excluded its own physical
@@ -59,7 +59,7 @@ their existing side-effect boundary; working-tree and staged-snapshot checks use
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

@@ -1,5 +1,9 @@
 # Get-QuietReleasePlan.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/Get-QuietReleasePlan.psm1`](../../../scripts/lib/Get-QuietReleasePlan.psm1)
+<!-- script-source:end -->
+
 Implements [Get-QuietReleasePlan.ps1](../Get-QuietReleasePlan.md). Exports only "Invoke-QuietScriptGetQuietReleasePlan". Imported without name checking; import defines the command without running the operation.
 
 # Get-QuietReleasePlan.ps1
@@ -32,7 +36,7 @@ Shared helper imports reuse loaded modules and preserve caller command visibilit
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

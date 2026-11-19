@@ -1,5 +1,9 @@
 # New-ReadyToRunCandidate.ps1
 
+<!-- script-source:begin -->
+Source file: [`New-ReadyToRunCandidate.ps1`](../../scripts/New-ReadyToRunCandidate.ps1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Creates a separate net10.0 ReadyToRun candidate for the manual cold-start comparison. The baseline remains unchanged.
@@ -28,7 +32,7 @@ Dedicated manual experiment input. Production GitHub R2R builds use Build-Worksp
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

@@ -1,5 +1,9 @@
 # Push-Workspace.ps1
 
+<!-- script-source:begin -->
+Source file: [`Push-Workspace.ps1`](../../scripts/Push-Workspace.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 `-PrDescriptionBodyFile <utf8.md>` explicitly replaces the verified existing PR description with `gh pr edit --body-file` after pushing. Both Markdown files are validated before the push. Description editing and commenting use the same selected remote, branch and exact head verification; WhatIf performs neither. Omitting the new option preserves comment-only behavior. Failures are reported separately from the successful push.
@@ -60,7 +64,7 @@ The push now has a standard whole-operation preview/confirmation guard. The sepa
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

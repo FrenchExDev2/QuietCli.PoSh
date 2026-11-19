@@ -1,5 +1,9 @@
 # Update-EnvFile.ps1
 
+<!-- script-source:begin -->
+Source file: [`Update-EnvFile.ps1`](../../scripts/Update-EnvFile.ps1)
+<!-- script-source:end -->
+
 Reads or edits one key through [EnvFile.ps1](lib/EnvFile.md). `-Path` defaults to the checkout's `.env`;
 `-Key` is mandatory and case-sensitive. Supplying `-Value` selects write mode; otherwise `-Read`
 reads only the selected value. Read mode is explicit value output, so choose which key to display.
@@ -28,5 +32,5 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

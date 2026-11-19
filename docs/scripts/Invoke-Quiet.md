@@ -1,5 +1,9 @@
 # Invoke-Quiet.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-Quiet.ps1`](../../scripts/Invoke-Quiet.ps1)
+<!-- script-source:end -->
+
 Runs a PowerShell scriptblock in the current process after importing the exact local
 Core manifest and optional selected companion manifests relative to `$PSScriptRoot`. Run from a built source checkout:
 
@@ -130,7 +134,7 @@ Core and leaves business analysis and bounded delivery explicit.
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

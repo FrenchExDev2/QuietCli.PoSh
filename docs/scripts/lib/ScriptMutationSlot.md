@@ -1,5 +1,9 @@
 # ScriptMutationSlot.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/ScriptMutationSlot.psm1`](../../../scripts/lib/ScriptMutationSlot.psm1)
+<!-- script-source:end -->
+
 ## Purpose and usage
 
 Persistent test workers of [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). Each slot is one hidden `pwsh` that imports the pinned Pester once and then runs every job it is handed. That replaces one process per mutant. The parent and the worker talk only through files in the slot's control directory.
@@ -59,5 +63,5 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

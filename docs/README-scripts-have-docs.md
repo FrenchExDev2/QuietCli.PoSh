@@ -21,6 +21,7 @@ dependencies and known gaps live only in its author's head. The rule is simple a
   `scripts/Baz.ps1` at `docs/scripts/Baz.md`.
 - That doc must be reachable from [`docs/scripts/README.md`](scripts/README.md) - the single table of
   contents a reader starts from. A doc nobody can find from the index does not count as documented.
+- Each mirrored document includes a managed relative link to its `.ps1`, `.psm1` or `.profile.psd1` source.
 - Each doc documents the script's purpose, usage/parameters, dependencies, side effects, and - this is
   the part that actually earns its keep - a critical **Findings** review: bugs, convention violations
   (against this repository's [`AGENTS.md`](../AGENTS.md)), design smells, missing validation, and
@@ -51,9 +52,10 @@ export of the prepared Git index, as used by `Commit-Workspace.ps1 -NoAll`.
     fires whether or not `-Apply` is passed. A missing doc is never silently tolerated.
   - Otherwise throws `ScriptsReadmeNonCompliant` if `docs/scripts/README.md` is missing or stale
     (a script was added, removed, or moved to a different subdirectory since it was last generated).
+  - Throws `ScriptsDocSourceLinksStale` when mirrored documents need their source links refreshed.
+  - Throws `ScriptsDocLineEndingsStale` when a mirrored document contains CRLF or CR line endings.
   - This is what the check workflow runs.
-- `-Apply`: writes the regenerated `docs/scripts/README.md` when it is missing or stale. Still throws
-  `ScriptsDocsMissing` first - `-Apply` can fix a stale index, it cannot invent a missing review.
+- `-Apply` synchronizes the index and source link blocks and normalizes mirrored docs to LF. Missing documents must be authored first.
 - `-Apply -WhatIf`: previews exactly what `-Apply` would write, without writing it.
 - The generated file already carries the mandatory [`CREDITS.md`](../CREDITS.md) footer (see
   [credits and syncing](README-credits-and-syncing.md)), computed with the same regex-identifiable
@@ -86,27 +88,21 @@ A new script, a renamed script, or a script moved to a different `scripts/` subd
 
 ### [`scripts-docs-check.yml`](../.github/workflows/scripts-docs-check.yml)
 
-Report-only, read-only (`permissions: contents: read`). Runs `Sync-ScriptsReadme.ps1` without
-`-Apply`, so it fails the run if any script has no doc or the index is stale. Triggers on
-`pull_request` and on `push` to `main`, both path-filtered to `scripts/**`, `docs/scripts/**` and the
-two workflow files; also available on `workflow_dispatch` for an ad hoc check. This is the gate: it
-never writes, so it is safe to run automatically on every pull request.
+Uses `permissions: contents: read`. The shared registry runs `Sync-ScriptsReadme.ps1` without `-Apply` and checks that the mirrored docs exist, use LF and have current source links, and that the index is current. A separate job generates the workflow diagrams in its checkout, uploads them as an artifact and compares them with the tracked map. The workflow runs on path-filtered pull requests and pushes to `develop`, including changes to `scripts/**` and `test/scripts/**`. It also supports manual dispatch. [GitHub workflows](../README-github-workflows.md)
 
 ### [`scripts-docs-apply.yml`](../.github/workflows/scripts-docs-apply.yml)
 
 `workflow_dispatch` only - it never runs on `pull_request` or `push`. Running it is the explicit,
 human-triggered approval to write and push, consistent with this repository's rule that no commit or
 push is implicit in an automated run. It runs `Sync-ScriptsReadme.ps1 -Apply`, then, only if that
-produced an actual diff, commits (`github-actions[bot]` identity) and pushes straight to the branch
+produced an actual diff under `docs/scripts`, commits (`github-actions[bot]` identity) and pushes straight to the branch
 the run was dispatched on (`HEAD:${{ github.ref }}`) - never to a hardcoded branch, and never with
 `--force`. If there is nothing to commit, the step says so and the run ends cleanly without pushing.
 
-It cannot fix a missing doc - only the index's own staleness. Use it from the Actions tab, on the
-branch that needs fixing, once every script already has its doc and the only remaining failure is
-`ScriptsReadmeNonCompliant`.
+Use it from the Actions tab on the branch that needs fixing once every script already has its doc and the remaining failures concern the index or source links.
 
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

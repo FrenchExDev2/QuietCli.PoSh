@@ -1,5 +1,9 @@
 # PreviewTag.psm1 (lib)
 
+<!-- script-source:begin -->
+Source file: [`lib/PreviewTag.psm1`](../../../scripts/lib/PreviewTag.psm1)
+<!-- script-source:end -->
+
 ## Purpose
 
 A tiny, single-function utility module that deterministically generates a preview release tag name (e.g. `v2.45.0-preview20261109T153045123456789Z`) from a numeric semantic-style version and a UTC timestamp. It solves the need for a consistent, sortable, collision-resistant tag naming scheme for preview releases, separate from stable version tags. It is consumed by `New-QuietPreviewTag.ps1` (the end-user-facing script that actually creates the tag in Git) and is the logic tested directly by `PreviewTag.Tests.ps1`.
@@ -39,7 +43,7 @@ This module is fit for purpose as-is: a minimal, pure, well-validated function w
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

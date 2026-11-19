@@ -1,5 +1,9 @@
 # WorkspaceProjects.psm1
 
+<!-- script-source:begin -->
+Source file: [`lib/WorkspaceProjects.psm1`](../../../scripts/lib/WorkspaceProjects.psm1)
+<!-- script-source:end -->
+
 ## Library boundary
 
 Located at `scripts/lib/WorkspaceProjects.psm1`. Load with `Import-Module ([IO.Path]::Combine($root,'scripts/lib/WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop`. Import defines functions and explicit dependencies without running business operations. Paths use `System.IO.Path`. Effects remain owned by the calling operation and its preview contract.
@@ -141,7 +145,7 @@ into one constant so the convention only needs updating in one place if it ever 
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 ## .NET tooling review

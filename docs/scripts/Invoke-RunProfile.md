@@ -1,5 +1,9 @@
 # Invoke-RunProfile.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-RunProfile.ps1`](../../scripts/Invoke-RunProfile.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Provides a named, reusable "run profile" mechanism so that a repeatable measurement/benchmark scenario (e.g. a cold-start workload against a specific candidate module) can be invoked by a short name instead of re-typing a long parameter set every time. It solves the problem of ad hoc, hand-typed invocations of measurement/diagnostic scripts drifting out of sync between developers and CI: a profile file (`<Name>.profile.psd1`, data only) captures the target script and its default parameters once, and this launcher loads it, lets the caller override specific arguments, validates the merged set against the target script's actual declared parameters, and executes it (optionally under PSProfiler). It is invoked by `Invoke-ColdStartMatrix.ps1`/`Measure-ColdStart.ps1`-style tooling and by developers directly; the `RunProfiles/coldstart-100.profile.psd1` and `coldstart-1000.profile.psd1` files under `scripts/RunProfiles/` are its concrete data targets, and `Invoke-ColdStartGate.ps1` is a known caller in the same scripts folder.
@@ -60,7 +64,7 @@ Runtime helper imports reuse loaded modules. Invoking profiles repeatedly must p
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-contract:begin -->

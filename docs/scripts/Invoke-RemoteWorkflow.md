@@ -1,5 +1,9 @@
 # Invoke-RemoteWorkflow.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-RemoteWorkflow.ps1`](../../scripts/Invoke-RemoteWorkflow.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 Explicitly dispatch a GitHub Actions workflow on a selected remote ref, or list its ten most recent runs, through the authenticated GitHub CLI. The script never pushes local changes. See [qualification and profiling](../../README-qualification-when-where-how.md#profiling-reports-and-manual-pr-runs) for the PR procedure and [Watch-GitHubRun.ps1](Watch-GitHubRun.md) for following a run.
@@ -51,7 +55,7 @@ Add `-WhatIf` to preview without invoking `gh` or contacting GitHub. `-Confirm` 
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->

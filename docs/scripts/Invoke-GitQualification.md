@@ -1,5 +1,9 @@
 # Invoke-GitQualification.ps1
 
+<!-- script-source:begin -->
+Source file: [`Invoke-GitQualification.ps1`](../../scripts/Invoke-GitQualification.ps1)
+<!-- script-source:end -->
+
 ## Purpose
 
 This is a deliberate "qualification gate" that refuses to report success for the Git-handler qualification effort unless the coverage work is actually finished. It solves a trust problem: an inventory-based coverage report (`Get-QuietGitCoverage`) could otherwise be mistaken for proof that every Git command/option/platform combination has been exercised. The script computes coverage, always writes a `qualification.json` report, and then throws one of three explicit failure reasons (missing configuration, incomplete inventory, or "runner not implemented") rather than ever returning a green exit code. It is not wired into any CI workflow or caller script found anywhere else in `scripts/` (no `.ps1` or `.yml` reference to it was found besides its own docs and the qualification README), so today it appears to be a manually invoked audit/reporting tool rather than a step in an automated pipeline.
@@ -46,7 +50,7 @@ As a guardrail that intentionally never reports success until qualification work
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
 <!-- script-library-boundary:begin -->
