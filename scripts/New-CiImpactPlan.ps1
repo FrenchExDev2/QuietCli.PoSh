@@ -15,7 +15,9 @@ pull_request or push recompute their own selective impact plan from the diff; wo
 .PARAMETER Suite
 workflow_dispatch only: companion names, as items or comma-separated, or all.
 .PARAMETER OutputPath
-GitHub job output file.
+GitHub job output file. With AsObject, a null or omitted path suppresses the output file and reports.
+.PARAMETER AsObject
+Returns the plan object and allows the output path to be omitted.
 #>
 [CmdletBinding(SupportsShouldProcess,DefaultParameterSetName='Revision')]
 param(
@@ -25,9 +27,12 @@ param(
     [Parameter(Mandatory,ParameterSetName='WorkingTree')][switch]$WorkingTree,
     [Parameter(ParameterSetName='Revision')][ValidateSet('pull_request','push','workflow_dispatch')][string]$Event='pull_request',
     [Parameter(ParameterSetName='Revision')][string[]]$Suite,
-    [Parameter(Mandatory)][string]$OutputPath
+    [AllowNull()][AllowEmptyString()][string]$OutputPath,
+    [switch]$AsObject
 )
 $ErrorActionPreference='Stop'
+$writeFiles=![string]::IsNullOrWhiteSpace($OutputPath)
+if(!$writeFiles -and !$AsObject){throw 'CiImpactOutputPathRequired: supply -OutputPath or use -AsObject.'}
 $localPreview=[bool]$WorkingTree
 if(!$localPreview -and !$Revision){throw 'CiImpactRevisionRequired'}
 $dispatch=$Event -ceq 'workflow_dispatch'
@@ -35,7 +40,8 @@ if($dispatch -and $Base){throw 'CiImpactDispatchTakesNoBase'}
 if(!$dispatch -and !$Base){throw 'CiImpactBaseRequired'}
 if(!$dispatch -and $PSBoundParameters.ContainsKey('Suite')){throw 'CiImpactSuiteRequiresDispatch'}
 $candidate=if($localPreview){'working-tree'}else{$Revision}
-if(!$PSCmdlet.ShouldProcess($candidate,'Resolve changed suites and save the CI execution plan')){return}
+$action=if($writeFiles){'Resolve changed suites and save the CI execution plan'}else{'Resolve changed suites'}
+if(!$PSCmdlet.ShouldProcess($candidate,$action)){return}
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiImpact.psm1')) -ErrorAction Stop -DisableNameChecking
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CompanionWorkflows.psm1')) -DisableNameChecking -ErrorAction Stop
@@ -116,9 +122,11 @@ if($localPreview){
         ScriptTestsRequireBuild=[bool]$scriptSelection.RequiresBuild
     })
 }
-$summaryPath=if(!$localPreview){$env:GITHUB_STEP_SUMMARY}
-$directory=[IO.Path]::Combine($WorkspaceRoot,'artifacts/ci-plan')
-Write-QuietCiPlanReport -Plan $plan -Base $baseLabel -Revision $candidate -Directory $directory -SummaryPath $summaryPath -Confirm:$false
-[IO.File]::AppendAllText($OutputPath,$values,[Text.UTF8Encoding]::new($false))
-foreach($key in @($outputs.Keys|Sort-Object)){[IO.File]::AppendAllText($OutputPath,($key+'='+$outputs[$key]+[char]10),[Text.UTF8Encoding]::new($false))}
+if($writeFiles){
+    $summaryPath=if(!$localPreview){$env:GITHUB_STEP_SUMMARY}
+    $directory=[IO.Path]::Combine($WorkspaceRoot,'artifacts/ci-plan')
+    Write-QuietCiPlanReport -Plan $plan -Base $baseLabel -Revision $candidate -Directory $directory -SummaryPath $summaryPath -Confirm:$false
+    [IO.File]::AppendAllText($OutputPath,$values,[Text.UTF8Encoding]::new($false))
+    foreach($key in @($outputs.Keys|Sort-Object)){[IO.File]::AppendAllText($OutputPath,($key+'='+$outputs[$key]+[char]10),[Text.UTF8Encoding]::new($false))}
+}
 $plan
