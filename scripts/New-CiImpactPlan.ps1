@@ -15,9 +15,11 @@ pull_request or push recompute their own selective impact plan from the diff; wo
 .PARAMETER Suite
 workflow_dispatch only: companion names, as items or comma-separated, or all.
 .PARAMETER OutputPath
-GitHub job output file. With AsObject, a null or omitted path suppresses the output file and reports.
+GitHub job output file. With AsObject or AsYaml, a null or omitted path suppresses the output file and reports.
 .PARAMETER AsObject
 Returns the plan object and allows the output path to be omitted.
+.PARAMETER AsYaml
+Returns the plan as YAML and allows the output path to be omitted.
 #>
 [CmdletBinding(SupportsShouldProcess,DefaultParameterSetName='Revision')]
 param(
@@ -28,11 +30,13 @@ param(
     [Parameter(ParameterSetName='Revision')][ValidateSet('pull_request','push','workflow_dispatch')][string]$Event='pull_request',
     [Parameter(ParameterSetName='Revision')][string[]]$Suite,
     [AllowNull()][AllowEmptyString()][string]$OutputPath,
-    [switch]$AsObject
+    [switch]$AsObject,
+    [switch]$AsYaml
 )
 $ErrorActionPreference='Stop'
+if($AsObject -and $AsYaml){throw 'CiImpactOutputFormatConflict: use either -AsObject or -AsYaml.'}
 $writeFiles=![string]::IsNullOrWhiteSpace($OutputPath)
-if(!$writeFiles -and !$AsObject){throw 'CiImpactOutputPathRequired: supply -OutputPath or use -AsObject.'}
+if(!$writeFiles -and !$AsObject -and !$AsYaml){throw 'CiImpactOutputPathRequired: supply -OutputPath or use -AsObject or -AsYaml.'}
 $localPreview=[bool]$WorkingTree
 if(!$localPreview -and !$Revision){throw 'CiImpactRevisionRequired'}
 $dispatch=$Event -ceq 'workflow_dispatch'
@@ -122,6 +126,13 @@ if($localPreview){
         ScriptTestsRequireBuild=[bool]$scriptSelection.RequiresBuild
     })
 }
+$delivery=if($AsYaml){
+    # The companion catalogue has already loaded the pinned YamlDotNet assembly.
+    # Project the PowerShell object to ordered mappings and sequences before serialization.
+    $json=ConvertTo-Json -InputObject $plan -Depth 12 -Compress -WarningAction Stop
+    $mapping=ConvertFrom-Json -InputObject $json -AsHashtable -DateKind String
+    [YamlDotNet.Serialization.SerializerBuilder]::new().WithQuotingNecessaryStrings($true).Build().Serialize($mapping)
+}else{$plan}
 if($writeFiles){
     $summaryPath=if(!$localPreview){$env:GITHUB_STEP_SUMMARY}
     $directory=[IO.Path]::Combine($WorkspaceRoot,'artifacts/ci-plan')
@@ -129,4 +140,4 @@ if($writeFiles){
     [IO.File]::AppendAllText($OutputPath,$values,[Text.UTF8Encoding]::new($false))
     foreach($key in @($outputs.Keys|Sort-Object)){[IO.File]::AppendAllText($OutputPath,($key+'='+$outputs[$key]+[char]10),[Text.UTF8Encoding]::new($false))}
 }
-$plan
+$delivery
