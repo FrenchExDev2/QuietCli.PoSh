@@ -7,7 +7,7 @@ Source file: [`Test-DotNetReadiness.ps1`](../../scripts/Test-DotNetReadiness.ps1
 ## Purpose
 
 Observe SDK release/archive publication, MCR platforms and local SDK/runtime readiness.
-[Complete guide](../../README-dotnet-and-global-dot-json.md#check-the-current-situation).
+[Complete guide](../../readmes/README-dotnet-and-global-dot-json.md#check-the-current-situation).
 
 ## Usage and parameters
 

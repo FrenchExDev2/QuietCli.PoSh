@@ -14,8 +14,8 @@ business modules that each have their own lifecycle. Two separate obligations fo
   dependency it drives, with reference links. This is part of the module contract, alongside its
   manifest and declared test companion - see [AGENTS.md](../AGENTS.md)'s
   `module-license-credits` block.
-- **Every document must point back to it.** Every `docs/*.md` file and every root
-  `README.md`/`README-*.md` file must end with a paragraph linking the mandatory
+- **Every document must point back to it.** Each `docs/**/*.md` file, root
+  `README*.md` file and `readmes/README-*.md` guide must end with a paragraph linking the mandatory
   [`CREDITS.md`](../CREDITS.md) - see [AGENTS.md](../AGENTS.md)'s `docs-credits` block.
 
 Both obligations are enforced the same way: a script that recomputes the expected content, compares
@@ -51,8 +51,8 @@ module's content wrapped in its own regex-identifiable marker:
 ### [`scripts/Sync-DocsCredits.ps1`](../scripts/Sync-DocsCredits.ps1)
 
 Scans every `docs/**/*.md` file by default, including the `agents`, `audits` and `ci` subfolders
-(pass `-NoRecurse` to check only `docs/*.md`'s direct children), and every root
-`README.md`/`README-*.md`, and checks each one for a regex-identifiable footer:
+(pass `-NoRecurse` to check only `docs/*.md`'s direct children), every root
+`README*.md` and every `readmes/README-*.md` guide. It checks each one for a regex-identifiable footer:
 
 ```markdown
 <!-- credits:begin -->
@@ -95,7 +95,7 @@ module is renamed), `Sync-DocsCredits.ps1` needs the new `CREDITS.md` location i
 correct links. Both scripts are idempotent - rerunning either after it reports `UpToDate` writes
 nothing and changes nothing.
 
-A new or renamed `docs/*.md` or root `README*.md` file, and a new or changed business module's
+A new or renamed Markdown file in those locations, and a new or changed business module's
 `LICENSE_CREDITS.md`, must pass both scripts' `-Apply` before being committed.
 
 ## The two workflows
@@ -103,8 +103,8 @@ A new or renamed `docs/*.md` or root `README*.md` file, and a new or changed bus
 ### [`sync-credits-check.yml`](../.github/workflows/sync-credits-check.yml)
 
 Report-only, read-only (`permissions: contents: read`). Runs both scripts without `-Apply`, so it
-fails the run if anything is missing or stale. Triggers on `pull_request` and on `push` to `main`,
-both path-filtered to `docs/**`, `README*.md`, `**/LICENSE_CREDITS.md`, `CREDITS.md`, the two sync
+fails the run if anything is missing or stale. Triggers on `pull_request` and on `push` to `develop`,
+both path-filtered to `docs/**`, root READMEs, `readmes/README-*.md`, `**/LICENSE_CREDITS.md`, `CREDITS.md`, the two sync
 scripts and `WorkspaceProjects.ps1`; also available on `workflow_dispatch` for an ad hoc check. This
 is the gate: it never writes, so it is safe to run automatically on every pull request.
 

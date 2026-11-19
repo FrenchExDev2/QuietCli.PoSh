@@ -26,7 +26,7 @@ With `-CollectEvents`, `$r.Events` carries `QuietCli2.Event` envelopes for every
 
 ## Coverage and limits
 
-[Qualification: when, where and how](../../../../README-qualification-when-where-how.md) explains local Vagrant/All test selection, the current Vagrant-only PR trigger gap and the separate real-provider smoke checks.
+[Qualification: when, where and how](../../../../readmes/README-qualification-when-where-how.md) explains local Vagrant/All test selection, the current Vagrant-only PR trigger gap and the separate real-provider smoke checks.
 
 - Only `up` and `provision` are registered; any other `vagrant` subcommand falls through to `HandlerNotFound` (supply your own `-Output`/`-Complete` for it).
 - Supported version range: `stable >=2.3.0 <2.5.0` (probed via `vagrant --version`); outside that range the handler does not match and the call falls through as unsupported.

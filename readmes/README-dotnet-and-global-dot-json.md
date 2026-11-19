@@ -28,7 +28,7 @@ installed SDKs/runtimes and actual SDK resolution in the selected project direct
 eligible version/platform; `Unknown` means failed/unavailable evidence, including TLS
 or authentication errors; `NotChecked` means skipped, declined or previewed.
 Readiness never installs anything. The existing
-[`Test-SdkReadiness.ps1`](docs/scripts/Test-SdkReadiness.md) separately checks pinned
+[`Test-SdkReadiness.ps1`](../docs/scripts/Test-SdkReadiness.md) separately checks pinned
 SDK freshness and ReadyToRun/Crossgen2 feasibility.
 
 ## Install the latest stable SDK and included runtimes
@@ -226,7 +226,7 @@ scope/version changes. Original-byte backups precede each atomic changed-file re
 
 After changing SDK/runtime declarations, synchronize the corresponding external archive/image
 locks with the commands above and review their Git diff. Internal source edits require no
-workspace source-lock refresh; see [source identity](docs/README-source-identity.md).
+workspace source-lock refresh; see [source identity](../docs/README-source-identity.md).
 
 SDK setup steps in CI, package preparation and the manual ReadyToRun workflow read
 global.json. Rebuild before relying on compiled payloads: changing a runtime pin does not
@@ -270,12 +270,12 @@ generated properties and malformed-input counts remain separate. Real installati
 native image pulls, interactive confirmation and unexecuted platforms remain outside
 that offline evidence.
 
-Detailed script reviews and parameter contracts: [script index](docs/scripts/README.md),
-[readiness library](docs/scripts/lib/DotNetReadiness.md),
-[provisioning library](docs/scripts/lib/DotNetProvisioning.md),
-[CI/runtime/base-image library](docs/scripts/lib/DotNetLocks.md).
+Detailed script reviews and parameter contracts: [script index](../docs/scripts/README.md),
+[readiness library](../docs/scripts/lib/DotNetReadiness.md),
+[provisioning library](../docs/scripts/lib/DotNetProvisioning.md),
+[CI/runtime/base-image library](../docs/scripts/lib/DotNetLocks.md).
 The libraries live under `scripts/lib/` as required by **RAC-PS-003**;
-**RAC-NET-001–009** in [AGENTS.md](AGENTS.md) define their effect boundaries.
+**RAC-NET-001–009** in [AGENTS.md](../AGENTS.md) define their effect boundaries.
 
 Official references: [Microsoft SDK/runtime installation](https://learn.microsoft.com/en-us/dotnet/core/install/windows),
 [global.json](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json),
@@ -285,5 +285,5 @@ Official references: [Microsoft SDK/runtime installation](https://learn.microsof
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

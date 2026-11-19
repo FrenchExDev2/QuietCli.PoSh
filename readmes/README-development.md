@@ -1,8 +1,8 @@
 # Development
 
-Automation entry points use `Verb-Noun` names and contain no functions. Put functions in `scripts/lib/*.psm1`, import with `-DisableNameChecking -ErrorAction Stop` and compose paths with `System.IO.Path`. Document the entry point and its library separately. Data profiles use `.profile.psd1`. `Test-ScriptLayout.ps1` enforces these rules through the shared local, commit and CI registry; see [the automation contract](docs/README-automation-contracts.md).
+Automation entry points use `Verb-Noun` names and contain no functions. Put functions in `scripts/lib/*.psm1`, import with `-DisableNameChecking -ErrorAction Stop` and compose paths with `System.IO.Path`. Document the entry point and its library separately. Data profiles use `.profile.psd1`. `Test-ScriptLayout.ps1` enforces these rules through the shared local, commit and CI registry; see [the automation contract](../docs/README-automation-contracts.md).
 
-[Back to the QuietCli overview](README.md) · [Tests and qualification](README-qualification.md) · [Qualification: when, where and how](README-qualification-when-where-how.md) · [Repository and distribution](README-distribution.md)
+[Back to the QuietCli overview](../README.md) · [Tests and qualification](README-qualification.md) · [Qualification: when, where and how](README-qualification-when-where-how.md) · [Repository and distribution](README-distribution.md)
 
 Prepare a new machine with the [development workstation guide](README-development-workstation.md):
 PowerShell bootstrap, the exact .NET SDK, Git, VS Code Stable/Insiders, Podman, wrkflw and native/diagnostic tools
@@ -10,7 +10,7 @@ on Windows, Debian, Ubuntu, Alpine and Fedora. Its host-aware installer also off
 
 The local workflow is **checkout → verify sources → build → fresh PowerShell session → import local manifests → execute → inspect YAML**. The source projects retain their internal directory and manifest names.
 
-[Internal sources and external dependency locks](docs/README-source-identity.md) explains the Git
+[Internal sources and external dependency locks](../docs/README-source-identity.md) explains the Git
 and execution-evidence boundary. Use `Commit-Workspace.ps1` for a checked checkpoint and
 `Invoke-WorkspaceCi.ps1` for an explicitly selected test run; neither operation implies the other.
 
@@ -78,7 +78,7 @@ The source manifest above loads the local Core project. The public Gallery modul
 
 ## Run the Git companion
 
-After the shared build, open a fresh session and follow the [Git quick start](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md#quick-start). It imports both local manifests, defines the repository explicitly and shows the handler's YAML projection.
+After the shared build, open a fresh session and follow the [Git quick start](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md#quick-start). It imports both local manifests, defines the repository explicitly and shows the handler's YAML projection.
 
 ## Rebuild and validate
 
@@ -86,10 +86,10 @@ A built module needs no SDK to import or run. Source builds need the pinned SDK 
 
 From the checkout root, use `./scripts/Invoke-WorkspaceCi.ps1 -Suite Core -SkipBuild` for a Core development check, `-Suite Git` for the Git companion, `-Suite Vagrant` for Vagrant, or `-Suite All` for all discovered companions. These launch monitored test runs; [when, where and how qualification runs](README-qualification-when-where-how.md) explains the local/GitHub paths, while [tests and qualification](README-qualification.md) details suite scopes and evidence limits.
 
-If bundled Linux PTY bridges must be regenerated, read the help for [Build-PtyBridge.ps1](scripts/Build-PtyBridge.ps1): it requires an existing pinned Zig compiler or the explicit `-DownloadCompiler` option. Normal builds verify existing bridges and do not silently install a compiler.
+If bundled Linux PTY bridges must be regenerated, read the help for [Build-PtyBridge.ps1](../scripts/Build-PtyBridge.ps1): it requires an existing pinned Zig compiler or the explicit `-DownloadCompiler` option. Normal builds verify existing bridges and do not silently install a compiler.
 
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

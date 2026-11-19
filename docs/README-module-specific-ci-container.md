@@ -2,7 +2,7 @@
 
 This is the technical reference for native-tool image declarations and their build/identity contract.
 For the complete product/test onboarding path, YAML suite registration and integration suites, use
-[Add a QuietCli companion](../README-add-companion.md).
+[Add a QuietCli companion](../readmes/README-add-companion.md).
 
 Core's own Linux CI images (see [Linux CI images](ci/linux-images.md)) stay independent of every
 Core-consumer module: Core's base image declaration never reads consumer locks or scripts. A module that needs
@@ -123,7 +123,7 @@ caught before any function lookup would have silently failed.
 
 Image selection delegates to `New-CiSuiteImage.ps1` and `scripts/lib/CiCompanions.psm1`; the same final
 plan is used for registry lookup and Docker fallback. Suite registration, generic entry triggers
-and cross-product integration belong to [the onboarding guide's CI section](../README-add-companion.md#5-ci).
+and cross-product integration belong to [the onboarding guide's CI section](../readmes/README-add-companion.md#5-ci).
 This reference does not define a second registration procedure or a per-module workflow.
 
 One native producer matrix prepares the base and required overlays in the same job. Core alone uses the base; All reuses its final image for Core then bounded companion workers. Final registry hits avoid unused parents and intermediate-cache transfer. The Docker-only BuildKit cache and trusted develop/cache-only publication are described in [Linux images](ci/linux-images.md). See [the dated CI map](ci/README.md) for the corresponding source changes.

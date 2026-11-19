@@ -6,7 +6,7 @@ Source file: [`Invoke-RemoteWorkflow.ps1`](../../scripts/Invoke-RemoteWorkflow.p
 
 ## Purpose
 
-Explicitly dispatch a GitHub Actions workflow on a selected remote ref, or list its ten most recent runs, through the authenticated GitHub CLI. The script never pushes local changes. See [qualification and profiling](../../README-qualification-when-where-how.md#profiling-reports-and-manual-pr-runs) for the PR procedure and [Watch-GitHubRun.ps1](Watch-GitHubRun.md) for following a run.
+Explicitly dispatch a GitHub Actions workflow on a selected remote ref, or list its ten most recent runs, through the authenticated GitHub CLI. The script never pushes local changes. See [qualification and profiling](../../readmes/README-qualification-when-where-how.md#profiling-reports-and-manual-pr-runs) for the PR procedure and [Watch-GitHubRun.ps1](Watch-GitHubRun.md) for following a run.
 
 ## Usage
 

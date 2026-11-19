@@ -105,4 +105,4 @@ Documentation alone cannot settle these -- they are tracked as open qualificatio
 The automated `Vagrant` suite uses the shared .NET process fixture, so it needs neither Vagrant nor
 a container engine. It never installs prerequisites. Real provider/UI verification is a separate manual
 run requiring Vagrant and a usable Docker-compatible client, prepared explicitly through the
-[module workstation selector](../../../../../README-development-workstation.md#select-git-and-vagrant-independently).
+[module workstation selector](../../../../../readmes/README-development-workstation.md#select-git-and-vagrant-independently).

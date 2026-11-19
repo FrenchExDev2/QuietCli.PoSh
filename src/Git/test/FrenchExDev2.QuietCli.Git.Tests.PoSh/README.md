@@ -12,7 +12,7 @@ MaxParallelCases is two, while the default remains Ordered: cases share mutable 
 
 Separate companion test module. Depends on Git and the Core companion's conformance assertions.
 
-See [Qualification: when, where and how](../../../../README-qualification-when-where-how.md) for PR triggers, Windows runners, Linux containers, local commands and the distinction between building and executing tests.
+See [Qualification: when, where and how](../../../../readmes/README-qualification-when-where-how.md) for PR triggers, Windows runners, Linux containers, local commands and the distinction between building and executing tests.
 
 Fixtures use a dedicated Git identity, disabled global configuration and repositories under `git-fixtures` in the private RunDirectory (under the shared temporary root locally). No commits or pushes are made to the user's repositories. The only test push targets a disposable local bare repository.
 

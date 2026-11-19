@@ -7,7 +7,7 @@ Source file: [`Update-DotNetCiLock.ps1`](../../scripts/Update-DotNetCiLock.ps1)
 ## Purpose
 
 Synchronize exact .NET SDK archive hashes with global.json and optionally resolve current
-Debian/Alpine base-image digests. [Complete guide](../../README-dotnet-and-global-dot-json.md#synchronize-ci-sdk-hashes-and-debianalpine-bases).
+Debian/Alpine base-image digests. [Complete guide](../../readmes/README-dotnet-and-global-dot-json.md#synchronize-ci-sdk-hashes-and-debianalpine-bases).
 
 ## Usage and parameters
 

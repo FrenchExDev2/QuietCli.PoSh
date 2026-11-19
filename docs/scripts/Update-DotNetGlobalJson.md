@@ -7,7 +7,7 @@ Source file: [`Update-DotNetGlobalJson.ps1`](../../scripts/Update-DotNetGlobalJs
 ## Purpose
 
 Verify an exact installed SDK and update only explicitly selected global.json files,
-with original-byte backups. [Complete guide](../../README-dotnet-and-global-dot-json.md#update-only-globaljson).
+with original-byte backups. [Complete guide](../../readmes/README-dotnet-and-global-dot-json.md#update-only-globaljson).
 
 ## Usage and parameters
 

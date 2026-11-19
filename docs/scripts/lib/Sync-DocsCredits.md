@@ -10,8 +10,8 @@ Implements `Invoke-QuietScriptSyncDocsCredits` and exports `Format-QuietDocsCred
 
 ## Purpose
 
-Enforces a repository-wide documentation policy: every `docs/**/*.md` file and every root
-`README*.md` file must carry a standard, machine-generated "Credits" paragraph linking back to the
+The repository requires a credits footer in every `docs/**/*.md` file, every root
+`README*.md` file and every `readmes/README-*.md` guide. The generated footer links to the
 mandatory `CREDITS.md` (produced by `Sync-Credits.ps1`). This solves the problem of license
 attribution being easy to omit or let drift as documentation grows — instead of trusting every doc
 author to remember the paragraph, this script can both audit (default) and repair (`-Apply`) every
@@ -42,7 +42,7 @@ param(
 
 - `DocsPath` (string, optional) — documentation directory scanned recursively for `*.md`. Defaults to
   `docs` at the repository root.
-- `RootPath` (string, optional) — repository root scanned (non-recursively) for `README*.md`. Defaults
+- `RootPath` (string, optional) — repository root scanned for `README*.md` and direct `readmes/README-*.md` guides. Defaults
   to the script's parent directory.
 - `CreditsPath` (string, optional) — the mandatory credits file every document must link to. Defaults
   to `CREDITS.md` at the repository root.
@@ -126,7 +126,7 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Checks or writes the mandatory CREDITS.md credits paragraph at the end of every docs/**/*.md and root README*.md file.
+Purpose: Checks or writes the mandatory CREDITS.md paragraph in docs, root READMEs and readmes/ guides.
 
 Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 

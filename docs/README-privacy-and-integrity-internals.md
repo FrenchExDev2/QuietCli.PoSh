@@ -2,7 +2,7 @@
 
 [Back to the documentation index](README.md) · [QuietCli overview](../README.md)
 
-The [Core README's "Limits, integrity and privacy" section](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md#limits-integrity-and-privacy) states the contract in one paragraph per mechanism. This guide traces each mechanism to the code that implements it, then proposes how a companion module could plug into it without forking Core. Related: [Measurements and privacy](../README-measurements.md), [PowerShell and C# boundaries](README-powershell-csharp-boundaries.md), [Companion modules](../README-modules.md).
+The [Core README's "Limits, integrity and privacy" section](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md#limits-integrity-and-privacy) states the contract in one paragraph per mechanism. This guide traces each mechanism to the code that implements it, then proposes how a companion module could plug into it without forking Core. Related: [Measurements and privacy](../readmes/README-measurements.md), [PowerShell and C# boundaries](README-powershell-csharp-boundaries.md), [Companion modules](../readmes/README-modules.md).
 
 ## 1. Timeouts that turn an unfinished exchange into a known outcome
 
@@ -49,7 +49,7 @@ The explicit caveat in the README — "a checksum proves neither an author's ide
 
 ## 5. Build staleness is a separate, test-time check
 
-The build manifest linking C# sources, SDK, protocol and compiled files is a different mechanism from `dependencies.lock.json`: it is enforced by the test suite (including with `-SkipBuild`), not by `ResourceVerifier` at runtime. `protocol.json` is the shared limits file both the C# engine and the PowerShell facade read, so the two sides cannot silently drift. See [tests and qualification](../README-qualification.md) for how staleness rejection is exercised; this guide does not re-trace that path.
+The build manifest linking C# sources, SDK, protocol and compiled files is a different mechanism from `dependencies.lock.json`: it is enforced by the test suite (including with `-SkipBuild`), not by `ResourceVerifier` at runtime. `protocol.json` is the shared limits file both the C# engine and the PowerShell facade read, so the two sides cannot silently drift. See [tests and qualification](../readmes/README-qualification.md) for how staleness rejection is exercised; this guide does not re-trace that path.
 
 ## Where a developer can already turn a knob
 
@@ -75,7 +75,7 @@ Neither gap is a bug today — Core's own contract never promised extensibility 
 
 ## A proposed extension design, consistent with the existing companion-module pattern
 
-Core already has exactly one precedent for "a companion module registers something, Core's loop stays unchanged and just asks a registry": `Register-QuietHandler` / `Get-QuietHandler` / `Unregister-QuietHandler` (see [companion modules](../README-modules.md)). The same shape covers both gaps above without duplicating logic (DRY) and without widening Core's responsibility (SOLID's single-responsibility/open-closed principles):
+Core already has exactly one precedent for "a companion module registers something, Core's loop stays unchanged and just asks a registry": `Register-QuietHandler` / `Get-QuietHandler` / `Unregister-QuietHandler` (see [companion modules](../readmes/README-modules.md)). The same shape covers both gaps above without duplicating logic (DRY) and without widening Core's responsibility (SOLID's single-responsibility/open-closed principles):
 
 1. **A privacy-projection registry, mirrored on the handler registry.**
    Add `Register-QuietPrivacyProjection -ModuleId <id> -Type [MyCompanion.SafeRecord]`, backed by a small `PrivacyProjectionRegistry` next to the existing handler registry. `MeasurementProjection.Scrub` and `.Read` stay exactly as they are — same transaction, same paging, same `DeepEquals` comparison — except the projection type is resolved per row from a `ModuleId`/`HandlerId` tag that rows already carry (`MeasurementRecord.HandlerId`), falling back to `MeasurementRecord` for rows with no registered module. Core's loop does not grow a branch per module; it stays open for extension, closed for modification.

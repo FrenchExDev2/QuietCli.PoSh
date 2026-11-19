@@ -16,7 +16,7 @@ Useful for developer scripts, inventories, build automation, diagnostics and age
 | QuietCli Core | You want caller-local analysis, execution metadata, explicit completeness and bounded delivery together. | The meaning and correctness of your callbacks or provider, plus their tests. |
 
 Core does not make a small native JSON response better automatically. It adds execution and analysis controls when your script needs them.
-See the [RTK comparison and measurements](QUIET_VS_RTK_MEASURES.md); byte reduction is not proof of token or financial savings.
+See the [RTK comparison and measurements](../QUIET_VS_RTK_MEASURES.md); byte reduction is not proof of token or financial savings.
 
 ## Requirements and installation
 
@@ -47,7 +47,7 @@ Install-PSResource -Name QuietCli -Version '0.2.0-preview' -Prerelease -Reposito
 Import-Module QuietCli
 ```
 
-The historical stable package is not evidence that this development preview is available. See [package installation](docs/README-PSGallery.md).
+The historical stable package is not evidence that this development preview is available. See [package installation](../docs/README-PSGallery.md).
 <!-- TODO Jean: Verify publication of 0.2.0-preview before presenting the Gallery command as an available installation path. -->
 
 ## Quickstart: Core alone, one native command
@@ -214,14 +214,14 @@ New-QuietModule -Name Example.Tool.PoSh -Binary tool -OutputPath ./modules
 
 This command writes a module and companion test skeleton; existing destinations are rejected. Configure `Probe`, `TestVersion`, `Match` and `Execute`.
 The generated handler starts unimplemented, and the initial tests fail until independent business assertions are written; generation is not qualification.
-The [Git companion](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md) is an optional, in-development example, not a Core dependency at runtime.
+The [Git companion](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md) is an optional, in-development example, not a Core dependency at runtime.
 See [companion modules](README-modules.md) and [qualification](README-qualification.md).
 
 ## Use with AI agents
 
 An agent is one consumer of the same Core contracts, not a prerequisite. Reuse a persistent PowerShell session to amortize imports and engine startup.
 Keep result objects local and deliver only the required view. Session persistence belongs to the agent/tool integration, not to launching a fresh `pwsh` for each command.
-Start with [agent documentation](docs/agents/README.md) and [persistent-shell guidance](docs/agents/persistent-shell.md).
+Start with [agent documentation](../docs/agents/README.md) and [persistent-shell guidance](../docs/agents/persistent-shell.md).
 Any future rewrite hook should remain a lightweight shim; this proposal does not claim an installed transparent hook.
 
 ## Preview scope and a short Core roadmap
@@ -250,5 +250,5 @@ Proposed milestones, not completed release claims:
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

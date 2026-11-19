@@ -1,6 +1,6 @@
 # Commit companion boundaries and PSDrive feasibility
 
-[Qualification: when, where and how](../../README-qualification-when-where-how.md) maps PR triggers to runners, containers, companion execution and local report paths.
+[Qualification: when, where and how](../../readmes/README-qualification-when-where-how.md) maps PR triggers to runners, containers, companion execution and local report paths.
 
 ## Local checkpoint versus CI qualification
 

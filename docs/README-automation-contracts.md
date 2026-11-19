@@ -61,7 +61,7 @@ The AST check proves API/guard presence, not complete side-effect control flow. 
 
 ## Resource preparation and documentation
 
-RAC-RES-001 treats resources as a documented contract. [README-resources.md](../README-resources.md) explains preparation; Sync-ResourcesReadme.ps1 derives the [inventory and source dependencies](resources/README.md) from the lock and readers/writers. Test-Resources.ps1 checks drift without downloading or building payloads.
+RAC-RES-001 treats resources as a documented contract. [README-resources.md](../readmes/README-resources.md) explains preparation; Sync-ResourcesReadme.ps1 derives the [inventory and source dependencies](resources/README.md) from the lock and readers/writers. Test-Resources.ps1 checks drift without downloading or building payloads.
 
 Workflow parsing calls Ensure-QuietResource: verified bytes are reused, missing or tampered YamlDotNet bytes are restored selectively through ShouldProcess, then verified before loading. This works without a preceding GitHub step. WhatIf never restores a resource; a parser that is unavailable cannot complete the preview check. An incompatible loaded assembly requires a fresh process. dotnet restore does not prepare these module resources. Optional GitHub caching reuses archives and never replaces checksum validation.
 

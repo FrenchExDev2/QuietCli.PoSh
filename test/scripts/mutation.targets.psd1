@@ -32,6 +32,21 @@
             UnitTestFiles = @('unit/lib/Sync-ScriptsReadme.Tests.ps1')
             Break = 80
         }
+        @{
+            Name = 'ReadmeGuideCredits'
+            Module = 'lib/Sync-DocsCredits.psm1'
+            Functions = @('Get-QuietReadmeGuideFiles')
+            UnitTestFiles = @('unit/lib/ReadmeRelocation.Tests.ps1')
+            Break = 80
+        }
+
+        @{
+            Name = 'ResourceInventoryFooter'
+            Module = 'lib/ResourceDocumentation.psm1'
+            Functions = @('Get-QuietResourceInventoryFooter')
+            UnitTestFiles = @('unit/lib/ReadmeRelocation.Tests.ps1')
+            Break = 80
+        }
 
         @{
             Name = 'NewQuietCompanion'

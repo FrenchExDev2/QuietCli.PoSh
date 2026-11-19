@@ -18,7 +18,7 @@ Restore verifies/restores Core's pinned external resources. Without Restore, thi
 
 ## Dependencies and side effects
 
-Loads Common and its workspace/resource helpers. Restore-CoreResources can fetch/extract verified missing resources or reuse existing ones; the default path writes nothing. This is source/resource readiness, not NuGet compilation, test execution or hosted qualification. See [resources](../../README-resources.md) and [source identity](../README-source-identity.md).
+Loads Common and its workspace/resource helpers. Restore-CoreResources can fetch/extract verified missing resources or reuse existing ones; the default path writes nothing. This is source/resource readiness, not NuGet compilation, test execution or hosted qualification. See [resources](../../readmes/README-resources.md) and [source identity](../README-source-identity.md).
 
 ## Critical review and verdict
 

@@ -1,6 +1,6 @@
 # .NET release readiness
 
-Start with [SDK installation and global.json](../README-dotnet-and-global-dot-json.md).
+Start with [SDK installation and global.json](../readmes/README-dotnet-and-global-dot-json.md).
 The release checker queries published SDK archives, official MCR image/platform manifests,
 installed SDK/runtime inventories and actual SDK resolution. It complements the existing
 [SDK/Crossgen2 feasibility checker](scripts/Test-SdkReadiness.md).

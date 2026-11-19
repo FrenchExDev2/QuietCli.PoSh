@@ -19,7 +19,7 @@ $plans = Update-DotNetCiLock -IncludeDevelopmentLock -RefreshBaseImages -PlanOnl
 $runtime = Get-DotNetRuntimeFrameworkPlan -Version 11.0.0
 ```
 
-See the [user guide](../../../README-dotnet-and-global-dot-json.md) and mirrored entry
+See the [user guide](../../../readmes/README-dotnet-and-global-dot-json.md) and mirrored entry
 points for SDK/global.json, runtime/framework/path and optional image-tag parameters.
 The planner is read-only; public network/write operations support WhatIf/Confirm.
 

@@ -1,8 +1,8 @@
 # Streaming, callbacks and results
 
-[Back to the QuietCli overview](README.md)
+[Back to the QuietCli overview](../README.md)
 
-How `quiet` consumes native output and how callbacks turn it into business data. Related: [Recall](README-recall.md), [Measurements](README-measurements.md), [Core module README](src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md).
+How `quiet` consumes native output and how callbacks turn it into business data. Related: [Recall](README-recall.md), [Measurements](README-measurements.md), [Core module README](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md).
 
 Without an explicit capture option, stdout/stderr are read once, counted, dispatched through bounded transient buffers and released. No cumulative raw capture, output spool or content history is created. Native queues are bounded to 16 blocks of 16 KiB per invocation. Incremental UTF-8 decoding and delimiter framing run in C#; unfinished records are bounded by `MaxRecordBytes`. Invalid or incomplete UTF-8 and oversized records fail explicitly.
 
@@ -36,7 +36,7 @@ if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.An
 }
 ```
 
-The [agent failure table](docs/agents/AGENTS.md) lists what to do for each non-success observation.
+The [agent failure table](../docs/agents/AGENTS.md) lists what to do for each non-success observation.
 
 ## Callback pitfalls
 
@@ -65,7 +65,7 @@ $runtime.Emit('Progress', [pscustomobject]@{ File = 'rapport.txt'; Percent = 75 
 
 `-UI` provides a live presentation surface through `$runtime.Ui.Write($event, $lane)` and
 `$runtime.Ui.NewLine($lane)`. `-MaxLines` selects the positive history depth per lane and requires
-`-UI`. Emit does not automatically write to this surface. The [Vagrant companion](src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md)
+`-UI`. Emit does not automatically write to this surface. The [Vagrant companion](../src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md)
 supplies both event emission and per-machine presentation.
 
 - **Options precede the executable.** `quiet -AsObject -C label git status`: QuietCli options first, native arguments after, verbatim. For an exact argument vector use `-FilePath` and `-ArgumentList`.
@@ -79,10 +79,10 @@ supplies both event emission and per-machine presentation.
 
 Generated native calls preserve explicit `-CollectEvents` values. Offline Recall analysis retains its separate Data/cursor contract; it does not accept this native-invocation collection option.
 
-`quiet -Script ./Tool.ps1 ...` writes a readable call definition instead of running it. See the [Core module README](src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md#reusable-scripts-and-business-factories) for the rules and limits.
+`quiet -Script ./Tool.ps1 ...` writes a readable call definition instead of running it. See the [Core module README](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md#reusable-scripts-and-business-factories) for the rules and limits.
 
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

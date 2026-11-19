@@ -1,10 +1,9 @@
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Checks or writes the mandatory CREDITS.md credits paragraph at the end of every docs/**/*.md and
-root README*.md file.
+Checks or writes the mandatory CREDITS.md paragraph in docs, root READMEs and readmes/ guides.
 .DESCRIPTION
-Every docs/**/*.md file (recursively, by default) and every root README.md/README-*.md file must
+Every docs/**/*.md file (recursively, by default), root README*.md and readmes/README-*.md file must
 end with a regex-identifiable block, surrounded by <!-- credits:begin --> / <!-- credits:end -->
 markers, linking the mandatory CREDITS.md file. Default (no -Apply) mode only reports each file's
 compliance state and writes nothing. -Apply writes the missing or stale block into every
@@ -17,9 +16,8 @@ Documentation directory scanned for *.md files. Defaults to docs under this repo
 Every docs/**/*.md file is scanned by default, including the agents, audits and ci subfolders; use
 -NoRecurse to check only its direct children.
 .PARAMETER RootPath
-Repository root scanned for README.md and README-*.md files. Defaults to this script's
-workspace root. Only its direct children are scanned; subdirectories (docs included) are never
-matched by this pattern.
+Repository root scanned for README*.md files and readmes/README-*.md guides. Defaults to this
+script's workspace root.
 .PARAMETER CreditsPath
 Path to the mandatory CREDITS.md file. Defaults to CREDITS.md at this repository root.
 .PARAMETER NoRecurse
@@ -29,7 +27,7 @@ Writes the missing or stale credits block into each non-compliant file. Without 
 script only reports; it never writes.
 .EXAMPLE
 ./scripts/Sync-DocsCredits.ps1
-Reports the compliance state of every docs/*.md and root README*.md file without writing.
+Reports the compliance state of every covered Markdown file without writing.
 .EXAMPLE
 ./scripts/Sync-DocsCredits.ps1 -Apply -WhatIf
 Previews exactly which files -Apply would write and why, without writing them.

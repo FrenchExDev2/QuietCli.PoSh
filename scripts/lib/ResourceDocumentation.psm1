@@ -1,6 +1,7 @@
 #requires -Version 7.6
 
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
 function Get-QuietResourceDocumentation {
     <#
     .SYNOPSIS
@@ -35,8 +36,16 @@ function Get-QuietResourceDocumentation {
     }
     $lines.Add('');$lines.Add('## Scope and verification');$lines.Add('')
     $lines.Add('The generated source-reference graph is an inventory, not complete static data-flow analysis. Locks define exact files; dynamic copy edges are explicitly listed. Test-Resources.ps1 validates this inventory. Resource payload readiness is verified by Ensure-QuietResource and the existing runtime verifier, not by source-only documentation checks.')
-    $lines.Add('');$lines.Add('[Resource contract](../../README-resources.md) · [CREDITS.md](../../CREDITS.md).')
+    $lines.Add('');$lines.Add((Get-QuietResourceInventoryFooter))
     return (($lines -join "`n")+"`n")
+}
+
+function Get-QuietResourceInventoryFooter {
+    <#
+    .SYNOPSIS
+    Links the generated resource inventory to its source guide and license attribution.
+    #>
+    '[Resource contract](../../readmes/README-resources.md) · [CREDITS.md](../../CREDITS.md).'
 }
 
 Export-ModuleMember -Function 'Get-QuietResourceDocumentation'

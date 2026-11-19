@@ -8,7 +8,7 @@ Source file: [`lib/DotNetProvisioning.psm1`](../../../scripts/lib/DotNetProvisio
 
 Share SDK-pin planning/updating and verified portable SDK installation. Exports
 Get-DotNetGlobalJsonPlan, Update-DotNetGlobalJson and Install-DotNetEnvironment.
-[Complete usage](../../../README-dotnet-and-global-dot-json.md).
+[Complete usage](../../../readmes/README-dotnet-and-global-dot-json.md).
 
 ## Usage and parameters
 
