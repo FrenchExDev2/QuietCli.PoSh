@@ -4,9 +4,25 @@
 Source file: [`New-CiImpactPlan.ps1`](../../scripts/New-CiImpactPlan.ps1)
 <!-- script-source:end -->
 
-Plans CI for an immutable Base/Revision pair using the complete `git diff --no-renames --name-only -z` path set. Native orchestration uses Ci.Process, without the product engine. It writes artifacts/ci-plan/plan.json and suite/run_products/run_tooling GitHub outputs.
+Plans CI for an immutable Base/Revision pair using the complete `git diff --no-renames --name-only -z` path set. Native orchestration uses Ci.Process. It writes `artifacts/ci-plan/plan.json`, `artifacts/ci-plan/impact.md` and the job outputs.
 
-For pull_request, lib/CiImpact selects affected suites through declared transitive dependencies. Shared/unknown sources require All. Multiple impacted companions share one All matrix. Documentation-only PR changes avoid product runs. Unknown paths retain All. Mixed paths union requirements. For push, Get-DevelopQualification must verify identical-tree PR evidence before product replay is removed; a miss requires All.
+For both `pull_request` and `push`, the planner selects affected suites from the diff and declared dependencies. Shared or unknown paths select every companion. Mixed paths combine their requirements.
+
+### Preview the local branch
+
+From the repository root, use the merge base with the PR target and select the working tree:
+
+```powershell
+$base = git merge-base origin/develop HEAD
+$outputs = [IO.Path]::GetTempFileName()
+./scripts/New-CiImpactPlan.ps1 -Base $base -WorkingTree -OutputPath $outputs
+Get-Content ./artifacts/ci-plan/impact.md -Encoding utf8
+Get-Content $outputs -Encoding utf8
+```
+
+`-WorkingTree` compares the files on disk with `-Base`. The plan includes branch commits, staged and unstaged differences, and non-ignored untracked files. Git applies `.gitignore`, `.git/info/exclude` and its global excludes to untracked files. Tracked paths remain eligible for selection. The plan exposes `ScriptTests`, `ScriptMutationTargets` and `ScriptTestsRequireBuild`. The preview leaves the Git index alone and writes only its reports and output file.
+
+Pass `-Revision (git rev-parse HEAD)` to plan a committed diff. GitHub uses the PR base SHA and its synthetic merge commit. `-WhatIf` skips calculation and writes.
 
 Outputs are written once each, in a stable order:
 
@@ -30,10 +46,10 @@ Repository scripts (`scripts/**`) and their tests (`test/scripts/**`) select no 
 | Plan | `tooling_scope` | `script_tests`, `script_mutation_targets` |
 | --- | --- | --- |
 | A tooling, shared or unknown path, or a manual `Tooling` or `all` dispatch | `full` | `all` |
-| Only script paths that reach at least one test or target | `scripts` | The selection, or `all` when the runner, a shared test input, a data file or a deletion changed |
+| Only script paths that reach at least one test or target | `scripts` | A targeted selection, or `all` for shared inputs such as the test runner |
 | Anything else | `none` | `[]` |
 
-The report gains a `Tooling: <scope>.` line and one `Scripts` row per selected test or target, with its reason. `test/scripts/integration/entrypoints/New-CiImpactPlan.Tests.ps1` runs the script on a fresh Git copy of the working tree. It covers each companion, documentation, script tests, repository scripts, an unknown shared input, manual dispatches and every parameter rejection.
+The planner reads the baseline mutation catalogue from Git when that file changes. A comparable addition or edit selects the affected mutation shard and its unit tests. A missing or unusable baseline, or a removed target, retains the shared-input selection. The report records the reason for each selection.
 
 ## Manual dispatch
 

@@ -138,6 +138,45 @@ Describe 'Get-QuietScriptsImpact' {
         @($impact.Reasons|Where-Object Selection -CEQ 'script-mutation'|ForEach-Object Reason|Sort-Object -Unique)|Should -Be @($Path+': MutationEngineChanged')
     }
 
+    It 'selects only the added or edited catalogue entries and their tests (<Action>)' -ForEach @(
+        @{Action='addition';Expected='C'}
+        @{Action='threshold';Expected='A'}
+        @{Action='formatting';Expected=''}
+    ) {
+        $path='test/scripts/mutation.targets.psd1'
+        $current=$files[$path]
+        $baseline=switch($Action){
+            'addition' {"@{Targets=@(@{Name='A';Module='lib/A.psm1';Functions=@('Get-A');UnitTestFiles=@('unit/A.Tests.ps1');Break=80;Inputs=@('scripts/lib/C.psm1')})}"}
+            'threshold' {$current.Replace("Break=80;Inputs","Break=79;Inputs")}
+            'formatting' {$current.Replace("Name='C';Module='lib/C.psm1'","Module='lib/C.psm1'; Name='C'")}
+        }
+        $impact=Get-QuietScriptsImpact -WorkspaceRoot $root -ChangedPaths @($path) -PreviousMutationCatalogue $baseline
+        $impact.AllTests | Should -BeFalse
+        $impact.AllTargets | Should -BeFalse
+        ($impact.MutationTargets -join ',') | Should -BeExactly $Expected
+        $expectedTest=if($Expected){"unit/$Expected.Tests.ps1"}else{''}
+        ($impact.TestFiles -join ',') | Should -BeExactly $expectedTest
+        foreach($reason in $impact.Reasons){$reason.Reason | Should -BeExactly "${path}: MutationTargetChanged"}
+    }
+
+    It 'keeps the shared-input fallback for a removed target or malformed baseline' {
+        $path='test/scripts/mutation.targets.psd1'
+        $withRemovedTarget=$files[$path].Replace("Name='A'","Name='Removed'").Replace("Name='C'","Name='A'")
+        foreach($baseline in $withRemovedTarget,'throw "not a literal catalogue"'){
+            $impact=Get-QuietScriptsImpact -WorkspaceRoot $root -ChangedPaths @($path) -PreviousMutationCatalogue $baseline
+            $impact.AllTests | Should -BeTrue
+            $impact.AllTargets | Should -BeTrue
+        }
+    }
+
+    It 'combines catalogue targets with the tests and targets reached by changed scripts' {
+        $path='test/scripts/mutation.targets.psd1'
+        $baseline=$files[$path].Replace("Break=80;Inputs","Break=79;Inputs")
+        $impact=Get-QuietScriptsImpact -WorkspaceRoot $root -ChangedPaths @($path,'scripts/lib/D.psm1') -PreviousMutationCatalogue $baseline
+        ($impact.TestFiles -join ',') | Should -BeExactly 'unit/A.Tests.ps1,unit/All.Tests.ps1,unit/C.Tests.ps1'
+        ($impact.MutationTargets -join ',') | Should -BeExactly 'A,C'
+    }
+
     It 'selects nothing for no change' {
         $impact=Get-QuietScriptsImpact -WorkspaceRoot $root -ChangedPaths @()
         $impact.TestFiles.Count+$impact.MutationTargets.Count+@($impact.Reasons).Count|Should -Be 0

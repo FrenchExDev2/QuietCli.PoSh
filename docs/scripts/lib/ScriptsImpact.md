@@ -22,7 +22,7 @@ $selection=Resolve-QuietScriptsCiSelection -WorkspaceRoot . -Scope scripts -Test
 | Function | Returns |
 | --- | --- |
 | `Get-QuietScriptsTestFiles -TestsRoot` | Every `*.Tests.ps1` under `unit/` and `integration/`, relative to the tests root, in ordinal order. |
-| `Get-QuietScriptsImpact -WorkspaceRoot -ChangedPaths` | `{SchemaVersion=1; AllTests; AllTargets; TestFiles; MutationTargets; Reasons}`. Files and targets keep their catalogue order. Each reason is `{Selection; Name; Reason}`, where `Reason` reads `<path>: <code>`. |
+| `Get-QuietScriptsImpact -WorkspaceRoot -ChangedPaths [-PreviousMutationCatalogue]` | `{SchemaVersion=1; AllTests; AllTargets; TestFiles; MutationTargets; Reasons}`. Files and targets keep their catalogue order. Each reason is `{Selection; Name; Reason}`, where `Reason` reads `<path>: <code>`. |
 | `Resolve-QuietScriptsCiSelection -WorkspaceRoot -Scope -Tests -Targets` | `{AllTests; TestFiles; MutationTargets; RequiresBuild}`. `all` expands to every known test or target. |
 
 ### Selection rules
@@ -40,13 +40,15 @@ A mutation target is selected (`ReachesTarget`) when a changed path is in one of
 - one of its unit test files;
 - one of its `Inputs` files.
 
+A change to `test/scripts/mutation.targets.psd1` compares literal declarations by target name. Added or edited targets select their mutation shards and declared unit tests with `MutationTargetChanged`. Whitespace, comments and hashtable key order do not affect the comparison. The shared-input fallback applies if the baseline is missing or unusable, or if a target was removed.
+
 Some changes select everything, with the reason recorded:
 
 | Reason | Change | Selects |
 | --- | --- | --- |
 | `DeletedScriptInput` | A changed path no longer exists. | Every test and every target. |
 | `ScriptData` | A script file that is not `.ps1` or `.psm1`. | Every test and every target. |
-| `SharedTestInput` | A test-root file other than a unit or integration `*.Tests.ps1`: support, analyzer, settings, targets or inventories. | Every test and every target. |
+| `SharedTestInput` | A test-root support, analyzer, settings or inventory file, or a mutation catalogue change requiring the fallback. | Every test and every target. |
 | `TestRunnerChanged` | A file in the closure of `Invoke-ScriptsTests.ps1`. | Every test and every target. |
 | `MutationEngineChanged` | A file in the closure of `Invoke-ScriptsMutation.ps1`. | Every target. |
 
@@ -71,11 +73,13 @@ The module imports [`ScriptMutation.psm1`](ScriptMutation.md), which reads the t
 
 ## Critical review
 
+- `scripts/lib/ScriptsImpact.psm1:24` reads only a literal baseline catalogue. The comparison falls back to the shared-input selection if the baseline cannot be parsed as data or contains a target missing from the current catalogue.
 - The selection is only as precise as the reference scan of the mutation cache. That scan follows quoted `<name>.ps1`/`<name>.psm1` literals and `Import-QuietTestLibrary` names. It over-includes rather than under-includes. A dependency built from a computed name is invisible to it, so a test file that needs it must name the file literally or declare `#ScriptsImpact: AllScripts`.
 - Coverage is global, so a selective run is a partial run without coverage. Coverage is measured only when every test runs: the runner, a shared input or a manual `Tooling` dispatch.
 - `test/scripts/unit/lib/ScriptsImpact.Tests.ps1` covers:
   - a fixture repository with a runner, an engine, targets with `Inputs`, quoted headers and a non-test file;
   - every reason;
+  - catalogue additions, edits, formatting changes, removals and an invalid baseline;
   - empty, unsafe and outside paths;
   - monotonicity and order invariance under a seeded property;
   - every `Resolve-QuietScriptsCiSelection` rejection, with fuzzed selections.

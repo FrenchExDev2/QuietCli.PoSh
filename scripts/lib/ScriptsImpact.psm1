@@ -21,6 +21,48 @@ function Get-QuietScriptsTestFiles {
     $files
 }
 
+function Compare-QuietScriptMutationCatalogue {
+    <#
+    .SYNOPSIS
+    Finds added or edited targets using the literal baseline and the validated current catalogue.
+    .PARAMETER Previous
+    The catalogue text read from the baseline commit.
+    .PARAMETER CurrentPath
+    Path of the current catalogue, already validated by the mutation loader.
+    #>
+    param([string]$Previous,[string]$CurrentPath)
+    if(!$Previous){return}
+    $tokens=$null
+    $errors=$null
+    $ast=[Management.Automation.Language.Parser]::ParseInput($Previous,[ref]$tokens,[ref]$errors)
+    $statements=$ast.EndBlock.Statements
+    if($errors.Count -or $statements.Count -ne 1 -or $statements[0] -isnot [Management.Automation.Language.PipelineAst]){return}
+    $elements=$statements[0].PipelineElements
+    if($elements.Count -ne 1 -or $elements[0].Expression -isnot [Management.Automation.Language.HashtableAst]){return}
+    try{$baseline=$elements[0].Expression.SafeGetValue()}catch{return}
+    if($baseline.Count -ne 1 -or !$baseline.ContainsKey('Targets') -or !@($baseline.Targets).Count){return}
+
+    $before=[Collections.Generic.Dictionary[string,hashtable]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach($target in $baseline.Targets){
+        if($target -isnot [hashtable] -or $target.Name -isnot [string] -or !$target.Name -or !$before.TryAdd($target.Name,$target)){return}
+    }
+    $current=Import-PowerShellDataFile -LiteralPath $CurrentPath
+    $names=@($current.Targets | ForEach-Object Name)
+    if(@($before.Keys | Where-Object {$_ -cnotin $names}).Count){return}
+
+    $changed=@(foreach($target in $current.Targets){
+        $old=$null
+        if(!$before.TryGetValue($target.Name,[ref]$old)){
+            $target.Name
+            continue
+        }
+        $oldJson=[Text.Json.Nodes.JsonNode]::Parse((ConvertTo-Json -InputObject $old -Depth 20 -Compress -WarningAction Stop))
+        $newJson=[Text.Json.Nodes.JsonNode]::Parse((ConvertTo-Json -InputObject $target -Depth 20 -Compress -WarningAction Stop))
+        if(![Text.Json.Nodes.JsonNode]::DeepEquals($oldJson,$newJson)){$target.Name}
+    })
+    [pscustomobject]@{ChangedNames=[string[]]$changed}
+}
+
 function Get-QuietScriptsImpact {
     <#
     .SYNOPSIS
@@ -30,6 +72,7 @@ function Get-QuietScriptsImpact {
     from the file and the support modules) contains a changed script, or, for any script change, when it declares
     '#ScriptsImpact: AllScripts' on a line of its own because it reads every script (inventories, analyzers). A mutation
     target is selected when a changed path is its module closure, one of its unit test files or one of its Inputs.
+    A comparable mutation catalogue change selects the added or edited targets and their unit tests.
     Every test and every target is selected, with the reason, when a changed path is deleted, is a script data file (not
     .ps1 or .psm1), is a test-root file other than a unit or integration *.Tests.ps1 (support, analyzer, settings,
     targets, inventories), or lies in the closure of Invoke-ScriptsTests.ps1; every target, when it lies in the closure of
@@ -39,21 +82,35 @@ function Get-QuietScriptsImpact {
     Checkout whose scripts/ and test/scripts/ are inspected.
     .PARAMETER ChangedPaths
     Repository-relative changed paths, '/'-separated, under scripts/ or test/scripts/.
+    .PARAMETER PreviousMutationCatalogue
+    Literal mutation catalogue from the baseline. A missing or uncomparable baseline keeps the shared-input fallback.
     #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][AllowEmptyCollection()][AllowEmptyString()][string[]]$ChangedPaths)
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][AllowEmptyCollection()][AllowEmptyString()][string[]]$ChangedPaths,[string]$PreviousMutationCatalogue)
     $ErrorActionPreference='Stop'
     foreach($path in $ChangedPaths){if(!$path -or $path.Contains([char]0) -or $path.Contains('\') -or $path.StartsWith('/') -or $path.Split('/') -contains '..'){throw 'ScriptsImpactPathInvalid'}}
     foreach($path in $ChangedPaths){if(!$path.StartsWith('scripts/',[StringComparison]::Ordinal) -and !$path.StartsWith('test/scripts/',[StringComparison]::Ordinal)){throw ('ScriptsImpactPathOutsideScripts: '+$path)}}
     $root=[IO.Path]::GetFullPath($WorkspaceRoot)
     $scriptsRoot=[IO.Path]::Combine($root,'scripts');$testsRoot=[IO.Path]::Combine($root,'test','scripts')
-    $targets=@(Read-QuietScriptMutationTargets -Path ([IO.Path]::Combine($testsRoot,'mutation.targets.psd1')) -ScriptsRoot $scriptsRoot -TestsRoot $testsRoot)
+    $cataloguePath='test/scripts/mutation.targets.psd1'
+    $catalogueFile=[IO.Path]::Combine($root,$cataloguePath)
+    $targets=@(Read-QuietScriptMutationTargets -Path $catalogueFile -ScriptsRoot $scriptsRoot -TestsRoot $testsRoot)
     $testFiles=@(Get-QuietScriptsTestFiles $testsRoot)
     $reasons=[Collections.Generic.List[object]]::new()
     $changed=[Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
     $allTests=$null;$allTargets=$null
+    $catalogueTests=@()
+    $catalogueTargets=@()
     foreach($path in $ChangedPaths){
         if($path.EndsWith('.md',[StringComparison]::Ordinal)){continue}
+        if($path -ceq $cataloguePath){
+            $comparison=Compare-QuietScriptMutationCatalogue -Previous $PreviousMutationCatalogue -CurrentPath $catalogueFile
+            if($comparison){
+                $catalogueTargets=$comparison.ChangedNames
+                $catalogueTests=@($targets | Where-Object {$_.Name -cin $catalogueTargets} | ForEach-Object UnitTestFiles)
+                continue
+            }
+        }
         $full=[IO.Path]::GetFullPath([IO.Path]::Combine($root,$path))
         $reason=if(![IO.File]::Exists($full)){'DeletedScriptInput'}
             elseif($path.StartsWith('test/',[StringComparison]::Ordinal)){if($path -cnotmatch '^test/scripts/(unit|integration)/.+\.Tests\.ps1$'){'SharedTestInput'}}
@@ -79,6 +136,7 @@ function Get-QuietScriptsImpact {
         $full=[IO.Path]::GetFullPath([IO.Path]::Combine($testsRoot,$file))
         $why=if($allTests){$allTests}
             elseif($changed.ContainsKey($full)){$changed[$full]+': TestChanged'}
+            elseif($file -cin $catalogueTests){$cataloguePath+': MutationTargetChanged'}
             elseif($changed.Count){
                 $reached=& $hit (& $closure '' @($file))
                 if($reached){$reached+': ReachesScript'}
@@ -89,6 +147,7 @@ function Get-QuietScriptsImpact {
     $selectedTargets=[Collections.Generic.List[string]]::new()
     foreach($target in $targets){
         $why=if($allTargets){$allTargets}
+            elseif($target.Name -cin $catalogueTargets){$cataloguePath+': MutationTargetChanged'}
             elseif($changed.Count){
                 $observed=@(& $closure ([string]$target.Module) @($target.UnitTestFiles))+@(foreach($file in @($target.UnitTestFiles)){[IO.Path]::GetFullPath([IO.Path]::Combine($testsRoot,$file))})+@(Get-QuietScriptMutationInputFiles -WorkspaceRoot $root -Inputs @($target.Inputs|Where-Object {$_}))
                 $reached=& $hit $observed
