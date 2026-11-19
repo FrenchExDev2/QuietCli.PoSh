@@ -37,6 +37,12 @@ $plan = ./scripts/New-CiImpactPlan.ps1 -Base $base -WorkingTree -AsObject -Outpu
 $plan.ScriptTests
 ```
 
+Use `-AsYaml` to return the plan as YAML. An omitted or null output path skips file output. An explicit path still receives the GitHub job outputs in their usual format. Choose one of `-AsObject` and `-AsYaml`.
+
+```powershell
+./scripts/New-CiImpactPlan.ps1 -Base $base -WorkingTree -AsYaml
+```
+
 Outputs are written once each, in a stable order:
 
 | Output | Content |
@@ -81,7 +87,8 @@ For a subset such as `Core,Git`, or `Tooling` after a change to qualification sc
 | `CiImpactDispatchTakesNoBase` | `-Base` with `workflow_dispatch` |
 | `CiImpactBaseRequired` | `pull_request` or `push` without `-Base` |
 | `CiImpactSuiteRequiresDispatch` | `-Suite` outside `workflow_dispatch` |
-| `CiImpactOutputPathRequired` | An omitted or empty output path without `-AsObject` |
+| `CiImpactOutputPathRequired` | An omitted or empty output path without `-AsObject` or `-AsYaml` |
+| `CiImpactOutputFormatConflict` | Both `-AsObject` and `-AsYaml` |
 | `CiDispatchSuiteRequired`, `CiDispatchSuiteUnknown: <name>` | an empty or unknown selection |
 
 Every rejection happens before any output is written.

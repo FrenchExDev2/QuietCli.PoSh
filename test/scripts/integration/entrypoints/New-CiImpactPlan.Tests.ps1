@@ -125,6 +125,35 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
         ($run.Output+$run.Error) | Should -Match 'CiImpactOutputPathRequired'
     }
 
+    It 'returns YAML with typed fields and leaves explicit job outputs in GitHub format' {
+        $path='test/scripts/unit/YamlPreviewFixture.Tests.ps1'
+        $revision=& $commit $path
+        $summary=[IO.Path]::Combine($TestDrive,'yaml-step-summary.md')
+        $outputPath=[IO.Path]::Combine($TestDrive,'yaml-job-outputs.txt')
+        $arguments=@('-WorkspaceRoot',$workspace,'-Base',$baseRevision,'-Revision',$revision,'-AsYaml')
+        $yaml=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList $arguments -Environment @{GITHUB_STEP_SUMMARY=$summary}
+        $yaml.ExitCode | Should -Be 0 -Because ($yaml.Output+$yaml.Error)
+        $parsed=[YamlDotNet.Serialization.DeserializerBuilder]::new().WithAttemptingUnquotedStringTypeDeserialization().Build().Deserialize($yaml.Output)
+        $parsed['ToolingScope'] | Should -BeExactly 'scripts'
+        $parsed['RunProducts'] | Should -BeOfType [bool]
+        $parsed['RunProducts'] | Should -BeFalse
+        $parsed['ChangedPaths'] | Should -Be @($path)
+        $parsed['Reasons'][0]['Action'] | Should -BeExactly 'script-test'
+        [IO.File]::Exists($summary) | Should -BeFalse
+
+        $file=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList ($arguments+@('-OutputPath',$outputPath)) -Environment @{GITHUB_STEP_SUMMARY=$summary}
+        $file.ExitCode | Should -Be 0 -Because ($file.Output+$file.Error)
+        $file.Output | Should -BeExactly $yaml.Output
+        [IO.File]::ReadAllText($outputPath,[Text.Encoding]::UTF8) | Should -Match '(?m)^tooling_scope=scripts$'
+        [IO.File]::Exists($summary) | Should -BeTrue
+    }
+
+    It 'rejects simultaneous object and YAML output formats' {
+        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @('-WorkspaceRoot',$workspace,'-Base',$baseRevision,'-Revision',$baseRevision,'-AsObject','-AsYaml')
+        $run.ExitCode | Should -Not -Be 0
+        ($run.Output+$run.Error) | Should -Match 'CiImpactOutputFormatConflict'
+    }
+
     It 'previews staged, unstaged and untracked paths while respecting Git ignore rules' {
         $null=& $git @('checkout','-q','--detach',$baseRevision)
         $staged='test/scripts/unit/LocalStaged.Tests.ps1'
