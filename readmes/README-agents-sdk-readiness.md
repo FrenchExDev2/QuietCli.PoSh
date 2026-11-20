@@ -70,3 +70,9 @@ $report = ./scripts/Test-SdkReadiness.ps1
 - `-Update` only prints proposed commands (SDK install, or "do not enable `-ReadyToRun` for this target yet").
   It never runs `dotnet publish`, an SDK installer, or any other mutating command — consistent with this
   workspace's rule that no install or escalation is performed automatically.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->
