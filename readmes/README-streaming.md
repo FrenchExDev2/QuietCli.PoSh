@@ -18,11 +18,49 @@ Collection, retention, decoding, business analysis and delivery are separate res
 
 Nested native calls from callbacks have their own results and retain visible failures. Children inherit the measurement context, but do not implicitly inherit Recall retention or recording. After an analyzer failure, native drainage continues and `Complete` can finalize partial business data.
 
+## Read execution metadata in `-Complete`
+
+QuietCli runs `-Complete` after draining the output and before building the result envelope. The callback can read the final native execution snapshot in a live call, or the recorded source status in a Recall replay.
+
+| Value | Live invocation | Recall replay |
+| --- | --- | --- |
+| Command and arguments | `$runtime.ArgvString` | `$runtime.ArgvString` |
+| Observed exit code | `$runtime.Execution.ExitCode` | `$runtime.Recall.SourceStatus.ExitCode` |
+| Code requested through `.Exit(int)` | `$runtime.Execution.RequestedExitCode` | Unavailable |
+| Replay flag | `$runtime.IsRecall` is `$false` | `$runtime.IsRecall` is `$true` |
+
+The observed exit code can be `$null` if it was unavailable or the capture did not record it. `ArgvString` can also be `$null` when the capture has no command text. After the call returns, `$result.ExitCode` exposes the observed or recorded code directly.
+
+Use the same completion callback for a live capture and a replay.
+
+```powershell
+$complete = {
+    param($runtime)
+
+    $exitCode = if ($runtime.IsRecall) {
+        $runtime.Recall.SourceStatus.ExitCode
+    } else {
+        $runtime.Execution.ExitCode
+    }
+
+    [pscustomobject]@{
+        Command = $runtime.ArgvString
+        ExitCode = $exitCode
+        IsRecall = $runtime.IsRecall
+    }
+}
+
+$live = quiet -AsObject -Recall -Complete $complete git --version
+$replay = Invoke-QuietRecall -InputObject $live -Complete $complete
+$live.Data
+$replay.Data
+```
+
 ## Stop a running child from a callback
 
 Call `$runtime.Exit(0)` from `-Output`, `-StdOut` or `-StdErr` when the native command has produced enough information. QuietCli terminates the owned process tree, drains pending output and runs `-Complete` once. The callback can keep running after the call returns.
 
-The first stop request applies while the child is running. If the child has already exited, QuietCli uses its natural status. When the stop request applies, QuietCli compares `RequestedExitCode` with `-SuccessExitCodes` to determine `Outcome`, and `Completeness.Source` is false. The system-reported `ExitCode` remains available and can differ from `RequestedExitCode`. Offline Recall callbacks cannot request process termination.
+The first stop request applies while the child is running. If the child has already exited, QuietCli uses its natural status. When the stop request applies, QuietCli compares `RequestedExitCode` with `-SuccessExitCodes` to determine `Outcome`, and `Completeness.Source` is false. The system-reported `ExitCode` remains available and can differ from `RequestedExitCode`. If you share an output callback with Recall, check `!$runtime.IsRecall` before calling `.Exit()`.
 
 ## Invocation modes
 

@@ -84,7 +84,7 @@ Each analysis receives new runtime state. Supply fresh `Data` and `State` object
 
 `quiet -RecallId` is routed before executable resolution, probes or native lifecycle control. It rejects executable arguments and native input or interaction options. Replay calls `-Output`, `-StdOut`, `-StdErr` and `-Complete` using the same dispatch rules as native analysis. `$runtime.Mode` is `Script`. `$runtime.ArgvString` contains the preserved display text or `$null` for a capture without it. Loading treats the command text as data. Replay still uses the existing offline delivery and process-control rules.
 
-A replay exposes the recorded native exit code through `ExitCode` when the capture contains it. `RequestedExitCode` is available on a live invocation result.
+In `-Complete`, use `$runtime.Recall.SourceStatus.ExitCode` for the exit code from the capture. The returned replay result exposes the same value as `$result.ExitCode`. Both yield `$null` when the capture has no recorded code. `RequestedExitCode` is available on a live invocation result. [Shared completion callback example](../readmes/README-streaming.md#read-execution-metadata-in--complete)
 
 In a callback, the read-only `$runtime.IsRecall` is true during `Invoke-QuietRecall` or `quiet -RecallId`. A live command that records output with `-Recall` or `-SaveRecall` sees false. Use the flag when sharing callbacks that control a live process.
 

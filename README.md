@@ -27,7 +27,7 @@ Read [Qualification: when, where and how](readmes/README-qualification-when-wher
 QuietCli's engine streams native output once. Your own code decides what that stream becomes, split across two callbacks with different jobs:
 
 - **`-Output`**, **`-StdOut`** and **`-StdErr`** accumulate state into `$runtime.Data`. For each event, QuietCli calls `-Output` first and then the matching stream callback when supplied.
-- **`-Complete`** runs once, after the stream ends. It reads `$runtime.Data` and returns the one object the call delivers — the actual business projection. This is where you decide what the command means in business terms: a status summary, a count, a list of typed records.
+- **`-Complete`** runs once, after the stream ends. It reads `$runtime.Data` and returns the business result, such as a status summary, a count or a list of typed records. It can also read the command line and exit code. [Execution metadata in `-Complete`](readmes/README-streaming.md#read-execution-metadata-in--complete)
 
 In short: `-Output` folds raw events into accumulated state, `-Complete` projects that state into the business output you asked for. A companion module (see the Git example below) just supplies a ready-made `-Output`/`-Complete` pair — a handler — for one executable, so you don't write the fold or the projection yourself.
 
