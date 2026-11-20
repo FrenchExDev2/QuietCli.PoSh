@@ -35,23 +35,29 @@ function Invoke-QuietConfigurationDeliveryEngine {
     }
     $outcomes=[Collections.Generic.List[object]]::new();$passed=$baseline.Report.Passed;$failed=0;$catalogueCount=0
     if($Mutation){
+        # Hosted mutants use the assertion that observes the altered behavior in isolation.
+        $sqlitePreparation='SQLite preparation is nonblocking serialized once and drained before disposal'
+        $sqliteWriteCoordination='SQLite write coordination normalizes paths, isolates databases and releases idle registrations'
+        $emitIdentity='property: Emit preserves Type and arbitrary Data references without inspecting payloads'
+        $maxLinesPolicy='-MaxLines without -UI and a non-positive -MaxLines are both rejected before any Ui surface is constructed'
+        $invocationModePolicy='invocation modes resolve prompt and explicit overrides independently of execution'
         $catalogue=@(
             @{Name='yaml-size-limit';File='ConfigurationYaml.cs';From='if (count > 65536)';To='if (false)'},
             @{Name='yaml-inert-tags';File='ConfigurationYaml.cs';From='if (value != null && value.GetType().GetProperty("IsEmpty")?.GetValue(value) is false)';To='if (false)'},
             @{Name='delivery-initial-profile';File='MeasurementStore.cs';From='ON CONFLICT(id) DO NOTHING';To='ON CONFLICT(id) DO UPDATE SET payload=excluded.payload'},
             @{Name='token-conflict-transaction';File='MeasurementStore.cs';From='if ((long)stored["output_tokens"] != token.OutputTokens)';To='if (false)'},
-            @{Name='sqlite-writer-reuse';File='MeasurementStore.cs';From='if (writer is not null) return writer;';To='writer?.Dispose(); writer = null;'},
-            @{Name='sqlite-prepare-queue';File='MeasurementStore.cs';From='_ = Writer();';To=';'},
-            @{Name='sqlite-write-gate-exclusion';File='MeasurementWriteGate.cs';From='new(1, 1)';To='new(2, 2)'},
-            @{Name='sqlite-write-gate-path';File='MeasurementWriteGate.cs';From='string key = Path.GetFullPath(path);';To='string key = path;'},
-            @{Name='sqlite-write-gate-cleanup';File='MeasurementWriteGate.cs';From='entries.Remove(key);';To='_ = entries.ContainsKey(key);'},
-            @{Name='sqlite-store-write-gate';File='MeasurementStore.cs';From='write ? await MeasurementWriteGate.EnterAsync(path) : null';To='false ? await MeasurementWriteGate.EnterAsync(path) : null'},
-            @{Name='sqlite-initialization-retry';File='MeasurementStore.cs';From='initializationError?.Throw();';To=';'},
-            @{Name='sqlite-worker-disposal';File='MeasurementStore.cs';From='finally { writer?.Dispose(); }';To='finally { }'},
-            @{Name='sqlite-bindings-retained';File='SqliteNative.cs';From='int clear = Sqlite.sqlite3_clear_bindings(statement);';To='int clear = 0;'},
-            @{Name='sqlite-statement-reset';File='SqliteNative.cs';From='int reset = Sqlite.sqlite3_reset(statement);';To='int reset = 0;'},
-            @{Name='sqlite-cache-bound';File='SqliteNative.cs';From='statements.Count < statementCapacity';To='statementCapacity > 0'},
-            @{Name='sqlite-start-policy';File='LocalMetadataRequest.cs';From='InputPath, PrepareMeasurements).Validated()';To='InputPath, false).Validated()'},
+            @{Name='sqlite-writer-reuse';File='MeasurementStore.cs';From='if (writer is not null) return writer;';To='writer?.Dispose(); writer = null;';Case=$sqlitePreparation},
+            @{Name='sqlite-prepare-queue';File='MeasurementStore.cs';From='_ = Writer();';To=';';Case=$sqlitePreparation},
+            @{Name='sqlite-write-gate-exclusion';File='MeasurementWriteGate.cs';From='new(1, 1)';To='new(2, 2)';Case=$sqliteWriteCoordination},
+            @{Name='sqlite-write-gate-path';File='MeasurementWriteGate.cs';From='string key = Path.GetFullPath(path);';To='string key = path;';Case=$sqliteWriteCoordination},
+            @{Name='sqlite-write-gate-cleanup';File='MeasurementWriteGate.cs';From='entries.Remove(key);';To='_ = entries.ContainsKey(key);';Case=$sqliteWriteCoordination},
+            @{Name='sqlite-store-write-gate';File='MeasurementStore.cs';From='write ? await MeasurementWriteGate.EnterAsync(path) : null';To='false ? await MeasurementWriteGate.EnterAsync(path) : null';Case='SQLite stores await shared writer ownership before opening a contending connection'},
+            @{Name='sqlite-initialization-retry';File='MeasurementStore.cs';From='initializationError?.Throw();';To=';';Case='SQLite preparation failure is observed by saves without reopening or killing reads'},
+            @{Name='sqlite-worker-disposal';File='MeasurementStore.cs';From='finally { writer?.Dispose(); }';To='finally { }';Case=$sqlitePreparation},
+            @{Name='sqlite-bindings-retained';File='SqliteNative.cs';From='int clear = Sqlite.sqlite3_clear_bindings(statement);';To='int clear = 0;';Case='SQLite cached statements reuse handles and release generated Unicode and null bindings'},
+            @{Name='sqlite-statement-reset';File='SqliteNative.cs';From='int reset = Sqlite.sqlite3_reset(statement);';To='int reset = 0;';Case='SQLite failed bindings and constraints leave reusable statements and transactions clean'},
+            @{Name='sqlite-cache-bound';File='SqliteNative.cs';From='statements.Count < statementCapacity';To='statementCapacity > 0';Case='SQLite statement cache is bounded and connection disposal releases every handle'},
+            @{Name='sqlite-start-policy';File='LocalMetadataRequest.cs';From='InputPath, PrepareMeasurements).Validated()';To='InputPath, false).Validated()';Case='SQLite preparation flag has identical direct and wire defaults and rejects malformed types'},
             @{Name='configuration-budget-range';File='ConfigurationSchema.cs';From='|| number < rule.Min ||';To='|| false ||'},
             @{Name='delivery-receipt-dedup';File='Cmdlets/DeliveryCommands.cs';From='bool already = receipts.ContainsKey(fingerprint);';To='bool already = false;'},
             @{Name='delivery-token-count';File='Cmdlets/DeliveryCommands.cs';From='(long)count(text)';To='0L'},
@@ -115,18 +121,18 @@ function Invoke-QuietConfigurationDeliveryEngine {
             @{Name='module-session-validation';File='QuietSession.cs';From='if (!System.Text.RegularExpressions.Regex.IsMatch(moduleName,';To='if (false && !System.Text.RegularExpressions.Regex.IsMatch(moduleName,'},
             @{Name='script-module-identity';File='Cmdlets/ScriptCommands.cs';From='Prologue.Replace("__QUIET_MODULE__", QuietSession.ModuleName, StringComparison.Ordinal)';To='Prologue.Replace("__QUIET_MODULE__", "QuietCli", StringComparison.Ordinal)'},
             @{Name='scaffold-module-identity';File='Scaffolding/ModuleScaffold.cs';From='[(QuietSession.ModuleName, "0.2.0")]';To='[("FrenchExDev2.QuietCli.Core.PoSh", "0.2.0")]'},
-            @{Name='emit-events-not-recorded';File='Cmdlets/RuntimeCommands.cs';From='Events.Add(value);';To='_ = value;'},
-            @{Name='emit-unrequested-recording';File='Cmdlets/RuntimeCommands.cs';From='if (CollectEvents) Events.Add(value);';To='Events.Add(value);'},
-            @{Name='emit-type-lost';File='Cmdlets/RuntimeCommands.cs';From='new PSNoteProperty("Type", kind)';To='new PSNoteProperty("Type", "Other")'},
-            @{Name='emit-data-lost';File='Cmdlets/RuntimeCommands.cs';From='new PSNoteProperty("Data", Normalize(data))';To='new PSNoteProperty("Data", null)'},
+            @{Name='emit-events-not-recorded';File='Cmdlets/RuntimeCommands.cs';From='Events.Add(value);';To='_ = value;';Case=$emitIdentity},
+            @{Name='emit-unrequested-recording';File='Cmdlets/RuntimeCommands.cs';From='if (CollectEvents) Events.Add(value);';To='Events.Add(value);';Case='property: Emit retains nothing and omits Events unless this call explicitly enables collection'},
+            @{Name='emit-type-lost';File='Cmdlets/RuntimeCommands.cs';From='new PSNoteProperty("Type", kind)';To='new PSNoteProperty("Type", "Other")';Case=$emitIdentity},
+            @{Name='emit-data-lost';File='Cmdlets/RuntimeCommands.cs';From='new PSNoteProperty("Data", Normalize(data))';To='new PSNoteProperty("Data", null)';Case=$emitIdentity},
             @{Name='emit-listener-not-disabled-after-failure';File='Cmdlets/RuntimeCommands.cs';From='(disabledListeners ??= []).Add(i);';To=';'},
             @{Name='emit-listener-skip-check-removed';File='Cmdlets/RuntimeCommands.cs';From='if (disabledListeners?.Contains(i) == true) continue;';To='if (false) continue;'},
             @{Name='emit-nested-inherits-listeners';File='Cmdlets/RuntimeCommands.cs';From='runtime.Listeners = request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : [];';To='runtime.Listeners = parent?.Listeners ?? (request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : []);'},
             @{Name='emit-listener-array-item-not-validated';File='Cmdlets/RuntimeCommands.cs';From='Select(item => Unwrap(item) as ScriptBlock ?? throw new InvalidOperationException("ListenerMustBeScriptBlock")).ToArray();';To='Select(item => Unwrap(item) as ScriptBlock).ToArray()!;'},
-            @{Name='maxlines-requires-ui-guard-removed';File='Cmdlets/InvocationPolicy.cs';From='if (request.ContainsKey("MaxLines") && !ui) throw new InvalidOperationException("MaxLinesRequiresUI");';To=';'},
-            @{Name='maxlines-nonpositive-silently-coerced';File='Cmdlets/InvocationPolicy.cs';From='if (maxLines <= 0) throw new InvalidOperationException("MaxLinesMustBePositive");';To='maxLines = Math.Max(1, maxLines.GetValueOrDefault());'},
-            @{Name='mode-ui-override-ignored';File='Cmdlets/InvocationPolicy.cs';From='request.ContainsKey("UI") ? Flag(request, "UI") : defaults.Ui';To='defaults.Ui'},
-            @{Name='mode-agent-object-allowed';File='Cmdlets/InvocationPolicy.cs';From='defaults.Mode == "Agent" && delivery == InvocationDelivery.Object';To='false'},
+            @{Name='maxlines-requires-ui-guard-removed';File='Cmdlets/InvocationPolicy.cs';From='if (request.ContainsKey("MaxLines") && !ui) throw new InvalidOperationException("MaxLinesRequiresUI");';To=';';Case=$maxLinesPolicy},
+            @{Name='maxlines-nonpositive-silently-coerced';File='Cmdlets/InvocationPolicy.cs';From='if (maxLines <= 0) throw new InvalidOperationException("MaxLinesMustBePositive");';To='maxLines = Math.Max(1, maxLines.GetValueOrDefault());';Case=$maxLinesPolicy},
+            @{Name='mode-ui-override-ignored';File='Cmdlets/InvocationPolicy.cs';From='request.ContainsKey("UI") ? Flag(request, "UI") : defaults.Ui';To='defaults.Ui';Case=$invocationModePolicy},
+            @{Name='mode-agent-object-allowed';File='Cmdlets/InvocationPolicy.cs';From='defaults.Mode == "Agent" && delivery == InvocationDelivery.Object';To='false';Case=$invocationModePolicy},
             @{
                 Name='stream-callback-runs-before-output'
                 File='Cmdlets/RuntimeCommands.cs'
