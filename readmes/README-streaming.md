@@ -10,6 +10,8 @@ Without an explicit capture option, stdout/stderr are read once, counted, dispat
 
 `-Complete` receives the runtime and returns at most one business value. Use the unary comma to return an array as one value. If it returns no value, the existing `Data` is preserved. All callbacks can read the same `$runtime.Mode` and `$runtime.ArgvString`. The latter shows the supplied executable and native arguments, with quoting that preserves their boundaries.
 
+`$runtime.IsRecall` is a read-only Boolean. It is true during offline replay and false during a live invocation, including one that records with `-Recall` or `-SaveRecall`.
+
 Without explicit callbacks, command execution requires a documented compatible registered handler. Unsupported commands are rejected before business execution. `-SaveRecall` also permits direct recording without a parser.
 
 Collection, retention, decoding, business analysis and delivery are separate responsibilities. `-AsObject` returns a local envelope without enumerating, serializing or transferring `Data` to the engine. Inspect `Outcome`, `Execution`, `Completeness` and errors alongside the business data. JSON/YAML delivery applies item, structural and encoded-byte budgets; a delivery projection can select only the information needed by the consumer.

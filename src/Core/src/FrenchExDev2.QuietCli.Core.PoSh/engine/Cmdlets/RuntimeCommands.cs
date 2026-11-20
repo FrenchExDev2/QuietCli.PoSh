@@ -78,7 +78,7 @@ public sealed class QuietRuntime
     /// <summary>True once a durable recall write failed.</summary>
     public bool RecallSaveFailed { get; set; }
     /// <summary>True when the runtime replays retained bytes instead of running a process.</summary>
-    public bool IsRecall { get; set; }
+    public bool IsRecall { get; internal init; }
     /// <summary>Retained event being replayed.</summary>
     public object? CurrentRecallEvent { get; set; }
     /// <summary>Gap preceding the replayed event.</summary>
@@ -433,8 +433,8 @@ public abstract class RuntimeCmdlet : EngineCmdlet
     /// <param name="request">Explicit call options and native argument vector.</param>
     /// <param name="parent">Enclosing runtime, if the call is nested.</param>
     /// <param name="sessionId">Identity of the PowerShell session.</param>
-    /// <param name="recalledArgv">Original command from offline evidence, when available.</param>
-    internal QuietRuntime CreateRuntime(Hashtable request, QuietRuntime? parent, object? sessionId, string? recalledArgv = null)
+    /// <param name="recall">Captured evidence for an offline replay, or null for a live invocation.</param>
+    internal QuietRuntime CreateRuntime(Hashtable request, QuietRuntime? parent, object? sessionId, RecallCapture? recall = null)
     {
         string id = Guid.NewGuid().ToString("N");
         InvocationPolicy policy = InvocationPolicy.ForRequest(request);
@@ -444,7 +444,8 @@ public abstract class RuntimeCmdlet : EngineCmdlet
             Context = request.ContainsKey("Context") ? request["Context"] : parent?.Context,
             State = request.ContainsKey("State") ? request["State"] : new Hashtable(),
             PrepareMeasurements = LanguagePrimitives.IsTrue(Setting("telemetry.enabled")),
-            Mode = policy.Mode, Delivery = policy.Delivery, ArgvString = recalledArgv ?? NativeCommandLine.Display(request),
+            Mode = policy.Mode, Delivery = policy.Delivery, ArgvString = recall?.ArgvString ?? NativeCommandLine.Display(request),
+            IsRecall = recall is not null, Recall = recall,
         };
         if (request.ContainsKey("Data")) runtime.Data = request["Data"];
         runtime.CollectEvents = request.ContainsKey("CollectEvents") && LanguagePrimitives.IsTrue(request["CollectEvents"]);

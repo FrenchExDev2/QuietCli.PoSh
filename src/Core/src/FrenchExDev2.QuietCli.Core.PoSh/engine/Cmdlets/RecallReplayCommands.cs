@@ -86,9 +86,7 @@ internal static class RecallReplayer
         if (!capture.CaptureComplete && !options.AllowPartial) throw new InvalidOperationException("PartialRecallRequiresAllowPartial");
         Hashtable request = BuildRequest(capture, options);
         if (!QuietRuntime.HasAnalysisCallback(request)) throw new InvalidOperationException("RecallAnalysisCallbackRequired");
-        QuietRuntime runtime = host.CreateRuntime(request, QuietCallState.Current, QuietSession.SessionId, capture.ArgvString);
-        runtime.IsRecall = true;
-        runtime.Recall = capture;
+        QuietRuntime runtime = host.CreateRuntime(request, QuietCallState.Current, QuietSession.SessionId, capture);
         var watch = Stopwatch.StartNew();
         var allocation = new AllocationMeter();
         long cursor = 0, consumed = 0, count = 0;

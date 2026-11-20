@@ -86,6 +86,8 @@ Each analysis receives new runtime state. Supply fresh `Data` and `State` object
 
 A replay exposes the recorded native exit code through `ExitCode` when the capture contains it. `RequestedExitCode` is available on a live invocation result.
 
+In a callback, the read-only `$runtime.IsRecall` is true during `Invoke-QuietRecall` or `quiet -RecallId`. A live command that records output with `-Recall` or `-SaveRecall` sees false. Use the flag when sharing callbacks that control a live process.
+
 Treat durable Recall directories and ZIP exports as sensitive when the native arguments contain secrets. Both store the original command line as clear text. The 64 KiB manifest limit applies before recording starts. Executable callbacks and environment values are excluded from the manifest.
 
 Missing retained ranges require `-AllowPartial`. At each gap, decoders and framers reset; separate fragments cannot become a fabricated record. A suffix inside UTF-8 can still fail strict decoding; use bytes to inspect it. `runtime.CurrentRecallEvent`, `CurrentRecallGap` and `Recall` expose the cursor context. A framed record spanning slices needs analyzer-maintained byte provenance. `runtime.MarkIgnored()` explicitly marks a current sequence; cursor delivery counts alone do not prove business use.

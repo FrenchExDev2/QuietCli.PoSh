@@ -88,9 +88,25 @@ function Invoke-QuietRecallTests {
         }
     }
     $cases['Recall completion framing and native controls remain distinct']={
-        $r=quiet -AsObject -Recall -RecordDelimiter ([string][char]0) -Output {} dotnet $fixture unicode
-        $a=Invoke-QuietRecall $r -Data ([Collections.Generic.List[string]]::new()) -Output {param($e,$r) $r.Data.Add($e.Text)}
-        Assert-QuietEqual ($a.Data -join '|') 'é漢🙂|fin'
+        $checkRuntime={
+            param($e,$r)
+            if ($r.IsRecall -isnot [bool] -or $r.IsRecall -ne $r.Data.Expected -or $r.PSObject.Properties['IsRecall'].IsSettable) {
+                throw 'IsRecallCallbackContractChanged'
+            }
+            try { $r.IsRecall = !$r.IsRecall } catch { $r.Data.WriteRejected = $true }
+            $r.Data.Records.Add($e.Text)
+        }
+        $live=@{Expected=$false;WriteRejected=$false;Records=[Collections.Generic.List[string]]::new()}
+        $r=quiet -AsObject -Recall -RecordDelimiter ([string][char]0) -Data $live -Output $checkRuntime dotnet $fixture unicode
+        Assert-QuietEqual $r.Outcome Success
+        Assert-QuietEqual $live.WriteRejected $true
+        Assert-QuietEqual ($live.Records -join '|') 'é漢🙂|fin'
+        $offline=@{Expected=$true;WriteRejected=$false;Records=[Collections.Generic.List[string]]::new()}
+        $a=Invoke-QuietRecall $r -Data $offline -Output $checkRuntime -Complete {param($r) $r.IsRecall}
+        Assert-QuietEqual $a.Outcome Success
+        Assert-QuietEqual $a.Data $true
+        Assert-QuietEqual $offline.WriteRejected $true
+        Assert-QuietEqual ($offline.Records -join '|') 'é漢🙂|fin'
         $blocked=Invoke-QuietRecall $r -Output {param($e,$r) $r.WriteText('must not execute')}
         Assert-QuietEqual $blocked.Outcome Failed
         $blockedExit=Invoke-QuietRecall $r -Output {param($e,$r) $r.Exit(0)}
@@ -185,6 +201,7 @@ function Invoke-QuietRecallTests {
         $before=Get-QuietEngine
         $analysis=quiet -AsObject -RecallId $id -RecallRoot $root -Data @{N=0L;Argv=$null} -StdOut {
             param($e,$r)
+            if (!$r.IsRecall) { throw 'RecallIdRuntimeFlagMissing' }
             $r.Data.N+=$e.ByteCount
             $r.Data.Argv=$r.ArgvString
         } -StdErr {param($e,$r)$r.Data.N+=$e.ByteCount} -Complete {

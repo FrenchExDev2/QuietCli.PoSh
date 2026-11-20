@@ -1,8 +1,12 @@
 {
   "folders": [
     {
-      "name": "Workspace",
-      "path": "."
+      "name": "Docs",
+      "path": "docs"
+    },
+    {
+      "name": "Scripts",
+      "path": "scripts"
     },
     {
       "name": "Core",
@@ -35,6 +39,10 @@
     {
       "name": "Tooling.Tests",
       "path": "src/Tooling/test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh"
+    },
+     {
+      "name": "Workspace",
+      "path": "."
     }
   ],
   "settings": {
