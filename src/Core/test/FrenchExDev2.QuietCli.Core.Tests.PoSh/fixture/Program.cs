@@ -27,6 +27,11 @@ internal static class Program
             case "invalid": await output.WriteAsync(new byte[] { 0xc3 }); return 0;
             case "fail": await EmitAsync(error, 17, 0x65); return 7;
             case "hang": await Task.Delay(300000); return 0;
+            case "ready-hang":
+                await output.WriteAsync("ready\n"u8.ToArray());
+                await output.FlushAsync();
+                await Task.Delay(300000);
+                return 0;
             case "terminal":
                 await output.WriteAsync(Encoding.UTF8.GetBytes("out\n")); await error.WriteAsync(Encoding.UTF8.GetBytes("err\n")); return 0;
             case "chunks":

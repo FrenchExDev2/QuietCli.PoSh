@@ -53,7 +53,8 @@ public sealed class InProcessEngine : IAsyncDisposable
     /// <param name="payload">One input block; callers must not mutate an accepted block.</param>
     /// <param name="columns">Terminal width for Resize.</param>
     /// <param name="rows">Terminal height for Resize.</param>
-    public async Task<LocalEngineReply> ControlAsync(LocalControl control, string invocationId, string requestId, byte[] payload, int columns = 0, int rows = 0)
+    /// <param name="exitCode">Caller-supplied status for Exit.</param>
+    public async Task<LocalEngineReply> ControlAsync(LocalControl control, string invocationId, string requestId, byte[] payload, int columns = 0, int rows = 0, int exitCode = 0)
     {
         if (invocationId.Length > 128 || requestId.Length > 128) throw new InvalidDataException("ControlIdentityTooLarge");
         if (payload.Length > Protocol.BlockSize) throw new InvalidDataException("InputBlockTooLarge");
@@ -63,7 +64,7 @@ public sealed class InProcessEngine : IAsyncDisposable
             ObjectDisposedException.ThrowIf(disposed, this);
             try
             {
-                var data = await session.ControlAsync(control, invocationId, payload, columns, rows);
+                var data = await session.ControlAsync(control, invocationId, payload, columns, rows, exitCode);
                 return new LocalEngineReply(null, [], new { Version = ProtocolSpecification.Version, RequestId = requestId, Ok = true, Data = data });
             }
             catch (Exception error) when (error is not (OperationCanceledException or TimeoutException))
@@ -172,5 +173,7 @@ public enum LocalControl
     /// <summary>Resize the owned terminal.</summary>
     Resize,
     /// <summary>Dispose and remove the owned invocation.</summary>
-    Release
+    Release,
+    /// <summary>Stop the owned process using a caller-supplied status for outcome classification.</summary>
+    Exit
 }

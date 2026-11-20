@@ -222,7 +222,7 @@ Samples go to `Suites[].Performance` as `EventEmission {Listeners, CollectEvents
 
 Each workload writes `powershell.<Workload>.speedscope.json` and its own line rows, and records its instrumented iteration times under `powershell-lines.json` `Workloads`. Import and the first call are listed under `NotProfiled`, because they happen before the collectors attach.
 
-`Control.Tests.ps1` verifies an exact 1 MiB + 7 byte duplex copy in both hosting modes, rejected controls followed by a usable session, input/identity bounds, and direct-versus-JSON request accounting. Its timing samples compare identical 1 MiB stdin/hash workloads through local JSON or typed controls. Startup, hashing and drainage are included; actual pipe traffic is zero for both local samples.
+`Control.Tests.ps1` verifies an exact 1 MiB + 7 byte duplex copy in both hosting modes, rejected controls followed by a usable session, input/identity bounds, and direct-versus-JSON request accounting. It also checks callback-driven termination with boundary exit codes, repeated stop requests, natural exit and final callback execution. Its timing samples compare identical 1 MiB stdin/hash workloads through local JSON or typed controls. Startup, hashing and drainage are included; actual pipe traffic is zero for both local samples.
 
 `InputBackpressureCases.cs` uses a controlled input sink with no native stdout. Once the full queue becomes writable, the next event poll must complete immediately instead of waiting for unrelated output. This assertion uses explicit synchronization rather than a timing speed threshold. Both possible channel waits are canceled and observed before the normal bounded poll finishes.
 

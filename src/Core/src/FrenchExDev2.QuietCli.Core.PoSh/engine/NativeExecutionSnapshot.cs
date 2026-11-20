@@ -11,6 +11,8 @@ internal sealed class NativeExecutionSnapshot
     public int ReadBlockBytes { get; set; }
     /// <summary>Observed exit status, if available.</summary>
     public int? ExitCode { get; set; }
+    /// <summary>Caller-supplied exit status when an explicit stop was requested.</summary>
+    public int? RequestedExitCode { get; set; }
     /// <summary>Observed execution outcome.</summary>
     public string Outcome { get; set; } = "";
     /// <summary>Completed native input writes.</summary>

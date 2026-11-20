@@ -93,6 +93,9 @@ function Invoke-QuietRecallTests {
         Assert-QuietEqual ($a.Data -join '|') 'é漢🙂|fin'
         $blocked=Invoke-QuietRecall $r -Output {param($e,$r) $r.WriteText('must not execute')}
         Assert-QuietEqual $blocked.Outcome Failed
+        $blockedExit=Invoke-QuietRecall $r -Output {param($e,$r) $r.Exit(0)}
+        Assert-QuietEqual $blockedExit.Outcome Failed
+        Assert-QuietEqual ($blockedExit.Error[0].Message -match 'ProcessControlUnavailableDuringRecall') $true
         $nested=Invoke-QuietRecall $r -Output {$null=quiet -AsObject -Output {} dotnet --version}
         Assert-QuietEqual $nested.Outcome Failed
         $ignored=Invoke-QuietRecall $r -StdoutMode Bytes -RecordDelimiter $null -Output {param($e,$r) $r.MarkIgnored()}
@@ -101,6 +104,9 @@ function Invoke-QuietRecallTests {
     $cases['Recall native failure empty timeout and cancellation retain their actual source status']={
         $r=quiet -AsObject -Recall -Output {} dotnet $fixture fail
         Assert-QuietEqual $r.Outcome Failed;Assert-QuietEqual $r.Recall.RetainedBytes 17
+        $replayed=Invoke-QuietRecall $r -Output {}
+        Assert-QuietEqual $replayed.ExitCode 7
+        Assert-QuietEqual $replayed.RequestedExitCode $null
         $empty=quiet -AsObject -Recall -Output {} dotnet $fixture emit 0
         Assert-QuietEqual $empty.Recall.Events.Count 0;Assert-QuietEqual $empty.Recall.CaptureComplete $true
         $timeout=quiet -AsObject -Recall -TimeoutSeconds 0.2 -Output {} dotnet $fixture hang

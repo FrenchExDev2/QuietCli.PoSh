@@ -181,6 +181,7 @@ internal static class RecallReplayer
         foreach ((string name, object? value) in new (string, object?)[]
         {
             ("SchemaVersion", 1), ("Summary", "Retained native output reanalyzed locally."), ("Outcome", runtime.AnalysisComplete ? "Success" : "Failed"), ("Data", runtime.Data),
+            ("ExitCode", capture.SourceStatus?.ExitCode), ("RequestedExitCode", null),
             ("InvocationId", runtime.InvocationId), ("Context", runtime.Context), ("Error", runtime.Errors.ToArray()), ("Truncation", truncation),
             ("Cursor", cursor), ("Measurement", measurement), ("Deliveries", new List<object>()),
             ("Internal", new Hashtable(StringComparer.OrdinalIgnoreCase) { ["Sources"] = new System.Collections.Specialized.OrderedDictionary(), ["Request"] = request, ["Administrative"] = true, ["Offline"] = true }),

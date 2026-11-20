@@ -180,6 +180,7 @@ public abstract class DeliveryCmdlet : RuntimeCmdlet
         var document = new OrderedDictionary
         {
             ["SchemaVersion"] = 1, ["Outcome"] = Members.Get(result, "Outcome"), ["InvocationId"] = Members.Get(result, "InvocationId"), ["Context"] = Members.Get(result, "Context"),
+            ["ExitCode"] = Members.Get(result, "ExitCode"), ["RequestedExitCode"] = Members.Get(result, "RequestedExitCode"),
             ["Data"] = view, ["Completeness"] = completeness, ["Error"] = safeError,
             ["Truncation"] = new OrderedDictionary { ["Applied"] = state.Omitted > 0, ["Omitted"] = state.Omitted, ["OmittedExact"] = !state.UnknownOmissions },
         };
@@ -194,6 +195,7 @@ public abstract class DeliveryCmdlet : RuntimeCmdlet
             var reduced = new OrderedDictionary
             {
                 ["SchemaVersion"] = 1, ["Outcome"] = Members.Get(result, "Outcome"), ["Data"] = null, ["Completeness"] = Flags(completeness),
+                ["ExitCode"] = document["ExitCode"], ["RequestedExitCode"] = document["RequestedExitCode"],
                 ["Truncation"] = new OrderedDictionary { ["Applied"] = true, ["Reason"] = "OutputBudget" },
             };
             object? error = Members.Get(result, "Error");
@@ -207,6 +209,12 @@ public abstract class DeliveryCmdlet : RuntimeCmdlet
             truncated = true;
             text = yaml ? RenderYaml(reduced) : JsonText.Compress(reduced, 8);
             size = Utf8.GetByteCount(text);
+            if (size > maxBytes && reduced.Contains("Error"))
+            {
+                reduced.Remove("Error");
+                text = yaml ? RenderYaml(reduced) : JsonText.Compress(reduced, 8);
+                size = Utf8.GetByteCount(text);
+            }
         }
         if (size > maxBytes) throw new InvalidOperationException("OutputBudgetTooSmall");
         double serializationMs = watch.Elapsed.TotalMilliseconds;

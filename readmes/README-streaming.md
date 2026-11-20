@@ -16,6 +16,12 @@ Collection, retention, decoding, business analysis and delivery are separate res
 
 Nested native calls from callbacks have their own results and retain visible failures. Children inherit the measurement context, but do not implicitly inherit Recall retention or recording. After an analyzer failure, native drainage continues and `Complete` can finalize partial business data.
 
+## Stop a running child from a callback
+
+Call `$runtime.Exit(0)` from `-Output`, `-StdOut` or `-StdErr` when the native command has produced enough information. QuietCli terminates the owned process tree, drains pending output and runs `-Complete` once. The callback can keep running after the call returns.
+
+The first stop request applies while the child is running. If the child has already exited, QuietCli uses its natural status. When the stop request applies, QuietCli compares `RequestedExitCode` with `-SuccessExitCodes` to determine `Outcome`, and `Completeness.Source` is false. The system-reported `ExitCode` remains available and can differ from `RequestedExitCode`. Offline Recall callbacks cannot request process termination.
+
 ## Invocation modes
 
 | Mode | Delivery | Dashboard |
@@ -46,6 +52,8 @@ quiet -Mode Agent -Data @{ Version = '' } -StdOut {
 | Field | Question it answers | Typical values |
 | --- | --- | --- |
 | `Outcome` | Did the invocation do its job? | `Success`; `Failed` (the native command exited with a non-success code); `Unsupported` (no handler and no callbacks, so nothing ran) |
+| `ExitCode` | Which exit status did the system report? | Integer, or `null` when no single native exit was observed |
+| `RequestedExitCode` | Which status did the callback supply to stop the child? | Integer for an applied stop request, otherwise `null` |
 | `Execution` | What happened to the native process? | Native exit code, timing, `EffectStatus`, `State`, issues |
 | `Completeness.Source` | Was the native output fully read? | `True`, or `False` when drainage was interrupted |
 | `Completeness.Analysis` | Did the analyzer see every record and finish? | `True`, or `False` after a callback failure |

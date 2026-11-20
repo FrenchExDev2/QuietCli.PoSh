@@ -32,6 +32,7 @@ QuietCli's engine streams native output once. Your own code decides what that st
 In short: `-Output` folds raw events into accumulated state, `-Complete` projects that state into the business output you asked for. A companion module (see the Git example below) just supplies a ready-made `-Output`/`-Complete` pair — a handler — for one executable, so you don't write the fold or the projection yourself.
 
 Callbacks can also call `$runtime.Emit($event)` to notify `-Listeners` without producing pipeline output.
+`$runtime.Exit(0)` stops the invocation's running child and requests a successful outcome with the default success codes. The result exposes the system-reported `ExitCode` and the callback's `RequestedExitCode`.
 Events are transient by default. Explicit `-CollectEvents` retains them in order on `$runtime.Events`,
 lets `-Complete` read them, and adds a snapshot under the finished result's top-level `Events` field,
 alongside `Data`. Without this switch, the runtime list stays empty and the result omits `Events`.

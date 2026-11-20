@@ -278,6 +278,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
             foreach ((string name, object? value) in new (string, object?)[]
             {
                 ("SchemaVersion", 1), ("Summary", handlerUsed is not null ? handlerUsed["Summary"] : "Native command processed."), ("Outcome", outcome), ("Data", runtime.Data),
+                ("ExitCode", PropertyReader.Get(runtime.Execution, "ExitCode")), ("RequestedExitCode", PropertyReader.Get(runtime.Execution, "RequestedExitCode")),
                 ("InvocationId", runtime.InvocationId), ("ParentId", runtime.ParentId), ("RootId", runtime.RootId), ("SessionId", runtime.SessionId), ("Context", runtime.Context),
                 ("Error", runtime.Errors.ToArray()), ("Truncation", truncation), ("Measurement", measurement), ("Deliveries", new List<object>()),
                 ("Internal", new Hashtable(StringComparer.OrdinalIgnoreCase) { ["Sources"] = runtime.Sources, ["Request"] = request, ["Handler"] = runtime.Handler, ["Administrative"] = false }),

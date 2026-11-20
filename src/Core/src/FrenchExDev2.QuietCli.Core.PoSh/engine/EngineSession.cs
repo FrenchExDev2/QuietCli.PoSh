@@ -69,6 +69,7 @@ internal sealed class EngineSession : IAsyncDisposable
             case "input": data = await ControlAsync(LocalControl.Input, invocationId, input); break;
             case "eof": data = await ControlAsync(LocalControl.Eof, invocationId, input); break;
             case "cancel": data = await ControlAsync(LocalControl.Cancel, invocationId, input); break;
+            case "exit": data = await ControlAsync(LocalControl.Exit, invocationId, input, exitCode: request.GetProperty("ExitCode").GetInt32()); break;
             case "resize": data = await ControlAsync(LocalControl.Resize, invocationId, input, request.GetProperty("Columns").GetInt32(), request.GetProperty("Rows").GetInt32()); break;
             case "release": data = await ControlAsync(LocalControl.Release, invocationId, input); break;
             case "save":
@@ -143,7 +144,8 @@ internal sealed class EngineSession : IAsyncDisposable
     /// <param name="input">One transient input block; accepted blocks remain owned by the writer.</param>
     /// <param name="columns">Terminal width for Resize.</param>
     /// <param name="rows">Terminal height for Resize.</param>
-    internal async Task<object?> ControlAsync(LocalControl control, string invocationId, byte[] input, int columns = 0, int rows = 0)
+    /// <param name="exitCode">Caller-supplied status for Exit.</param>
+    internal async Task<object?> ControlAsync(LocalControl control, string invocationId, byte[] input, int columns = 0, int rows = 0, int exitCode = 0)
     {
         var native = invocations[invocationId];
         switch (control)
@@ -151,6 +153,7 @@ internal sealed class EngineSession : IAsyncDisposable
             case LocalControl.Input: { bool accepted = native.TryWrite(input); return new { Accepted = accepted, Closed = !accepted && native.InputClosed }; }
             case LocalControl.Eof: native.CompleteInput(); break;
             case LocalControl.Cancel: native.Cancel(); break;
+            case LocalControl.Exit: native.Exit(exitCode); break;
             case LocalControl.Resize: native.Resize(columns, rows); break;
             case LocalControl.Release: await native.DisposeAsync(); invocations.Remove(invocationId); break;
             default: throw new ArgumentOutOfRangeException(nameof(control));

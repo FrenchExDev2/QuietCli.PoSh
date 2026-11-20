@@ -84,6 +84,8 @@ Each analysis receives new runtime state. Supply fresh `Data` and `State` object
 
 `quiet -RecallId` is routed before executable resolution, probes or native lifecycle control. It rejects executable arguments and native input or interaction options. Replay calls `-Output`, `-StdOut`, `-StdErr` and `-Complete` using the same dispatch rules as native analysis. `$runtime.Mode` is `Script`. `$runtime.ArgvString` contains the preserved display text or `$null` for a capture without it. Loading treats the command text as data. Replay still uses the existing offline delivery and process-control rules.
 
+A replay exposes the recorded native exit code through `ExitCode` when the capture contains it. `RequestedExitCode` is available on a live invocation result.
+
 Treat durable Recall directories and ZIP exports as sensitive when the native arguments contain secrets. Both store the original command line as clear text. The 64 KiB manifest limit applies before recording starts. Executable callbacks and environment values are excluded from the manifest.
 
 Missing retained ranges require `-AllowPartial`. At each gap, decoders and framers reset; separate fragments cannot become a fabricated record. A suffix inside UTF-8 can still fail strict decoding; use bytes to inspect it. `runtime.CurrentRecallEvent`, `CurrentRecallGap` and `Recall` expose the cursor context. A framed record spanning slices needs analyzer-maintained byte provenance. `runtime.MarkIgnored()` explicitly marks a current sequence; cursor delivery counts alone do not prove business use.

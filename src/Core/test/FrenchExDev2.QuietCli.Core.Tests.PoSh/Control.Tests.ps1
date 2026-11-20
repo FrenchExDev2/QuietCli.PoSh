@@ -1,7 +1,7 @@
 function Test-QuietTypedControls {
     <#
     .SYNOPSIS
-    Checks exact duplex bytes, control rejection recovery and direct/JSON accounting in both modes.
+    Checks exact duplex bytes, callback-driven process exit and control rejection recovery in both modes.
     .PARAMETER Fixture
     Existing independent native byte fixture.
     .PARAMETER Dotnet
@@ -39,9 +39,41 @@ function Test-QuietTypedControls {
                         if($after.MetadataJsonRequests-$before.MetadataJsonRequests -ne 0 -or $after.DirectRequests-$before.DirectRequests -lt 69 -or $after.ProtocolInputBytes+$after.ProtocolOutputBytes -ne 0){throw 'TypedControlsStillUseJsonOrPipes'}
                     }elseif($after.DirectRequests -ne 0 -or $after.ProtocolInputBytes+$after.ProtocolOutputBytes -le 0){throw 'IsolatedControlAccountingChanged'}
                 }finally{$data.Hash.Dispose()}
-                foreach($action in @('input','eof','cancel','resize','release')){
+                $onReady = {
+                    param($event,$runtime)
+                    if ($event.Text.Trim() -ceq 'ready') {
+                        $runtime.Exit($runtime.Data.Code)
+                        $runtime.Exit(42)
+                        $runtime.Data.CallbackContinued = $true
+                    }
+                }
+                foreach ($code in @(0, 37, [int]::MinValue, [int]::MaxValue)) {
+                    $data = @{ Code = $code; CallbackContinued = $false; Completions = 0; Large = 'x' * 500 }
+                    $r = quiet -AsObject -TimeoutSeconds 15 -RecordDelimiter "`n" -Data $data -Output $onReady -Complete {
+                        param($runtime)
+                        $runtime.Data.Completions++
+                    } $dotnet $fixture ready-hang
+                    $expectedOutcome = if ($code -eq 0) { 'Success' } else { 'Failed' }
+                    if ($r.Outcome -cne $expectedOutcome -or $r.ExitCode -isnot [int] -or $r.ExitCode -eq 0 -or
+                        $r.ExitCode -ne $r.Execution.Native.ExitCode -or $r.RequestedExitCode -ne $code -or
+                        $r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count -or
+                        !$data.CallbackContinued -or $data.Completions -ne 1) { throw "CallbackExitContractChanged: $mode $code" }
+                    $json = ConvertTo-QuietJson -InputObject $r | ConvertFrom-Json
+                    if ($json.ExitCode -ne $r.ExitCode -or $json.RequestedExitCode -ne $code) { throw "CallbackExitJsonChanged: $mode $code" }
+                    $yaml = ConvertTo-QuietYaml -InputObject $r -MaxOutputBytes 256
+                    if ($yaml -notmatch "(?m)^ExitCode: $($r.ExitCode)`r?$" -or $yaml -notmatch "(?m)^RequestedExitCode: $code`r?$" -or
+                        $yaml -notmatch 'OutputBudget' -or [Text.Encoding]::UTF8.GetByteCount($yaml) -gt 256) {
+                        throw "CallbackExitBoundedYamlChanged: $mode $code"
+                    }
+                }
+                $natural = quiet -AsObject -RecordDelimiter "`n" -Output { param($event,$runtime) $runtime.Exit(42) } $dotnet $fixture fail
+                if ($natural.ExitCode -ne 7 -or $null -ne $natural.RequestedExitCode -or
+                    $natural.Outcome -cne 'Failed' -or !$natural.Completeness.Source -or $natural.Error.Count) {
+                    throw "NaturalExitCodeChanged: $mode"
+                }
+                foreach($action in @('input','eof','cancel','exit','resize','release')){
                     $rejected=$false
-                    try{$null=Send-QuietRequest @{Action=$action;InvocationId='missing-control';Columns=80;Rows=40}}
+                    try{$null=Send-QuietRequest @{Action=$action;InvocationId='missing-control';Columns=80;Rows=40;ExitCode=0}}
                     catch{$rejected=$_.Exception.Data['QuietCliRequestRejected'] -eq $true -and $_.Exception.Data['Code'] -eq 'KeyNotFoundException'}
                     if(!$rejected -or [FrenchExDev2.QuietCli.QuietSession]::Engine.Broken){throw 'ControlRejectionBrokeSession'}
                 }

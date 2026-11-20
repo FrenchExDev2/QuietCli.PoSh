@@ -141,6 +141,15 @@ public sealed class QuietRuntime
     /// <summary>Requests cancellation of the native process.</summary>
     public void Cancel() => Control("cancel", null);
 
+    /// <summary>Stops the owned native process and supplies an exit status for outcome classification.</summary>
+    /// <param name="exitCode">Requested status, independent of the observed native exit code.</param>
+    public void Exit(int exitCode)
+    {
+        // A final decoded record can be dispatched while draining, after native completion.
+        if (NativeStarted && Completed && Lifecycle == "Draining") return;
+        Control("exit", new Hashtable { ["ExitCode"] = exitCode });
+    }
+
     /// <summary>Resizes the pseudo terminal.</summary>
     /// <param name="columns">Column count.</param>
     /// <param name="rows">Row count.</param>
@@ -154,7 +163,7 @@ public sealed class QuietRuntime
     }
 
     /// <summary>Sends a lifecycle control for the owned native child.</summary>
-    /// <param name="action">eof, cancel or resize.</param>
+    /// <param name="action">eof, cancel, exit or resize.</param>
     /// <param name="options">Additional control fields.</param>
     private void Control(string action, IDictionary? options)
     {

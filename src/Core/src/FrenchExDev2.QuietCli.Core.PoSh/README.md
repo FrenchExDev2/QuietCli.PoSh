@@ -13,12 +13,14 @@
 - **Native execution:** process startup, streamed stdout/stderr, stdin, cancellation, timeouts and terminal transports.
 - **Business callbacks:** `-Output`, `-StdOut` and `-StdErr` accumulate caller-local data. `-Complete` returns the business result.
 - **Business events:** `$runtime.Emit($kind, $data)` creates a `QuietCli2.Event` with `Type = $kind` and customizable `Data`, then notifies per-call `-Listeners`. Explicit `-CollectEvents` retains ordered events and adds an `Events` snapshot to the result. Default invocations retain none. `-UI` exposes explicit live presentation lanes.
-- **Explicit results:** `Outcome`, `Execution`, `Completeness` and errors distinguish success from incomplete or failed work.
+- **Explicit results:** `Outcome`, `ExitCode`, `Execution`, `Completeness` and errors describe the process and analysis.
 - **Controlled delivery:** local objects with `-AsObject`, or bounded JSON/YAML views with measured delivery sizes.
 - **Reusable analysis:** script generation, handler registration, companion-module scaffolding and opt-in Recall evidence.
 - **Configuration and measurements:** YAML settings and SQLite metadata/counters, with business output excluded from telemetry.
 
 Command-specific parsing belongs in callbacks or companion modules. Core does not automatically supply business semantics for every executable.
+
+Call `$runtime.Exit(0)` from `-Output` to stop the running child when the callback has enough information. QuietCli drains pending output and invokes `-Complete`. The result exposes the observed native `ExitCode` and the status supplied by the callback in `RequestedExitCode`. [Streaming and result contract](../../../../readmes/README-streaming.md)
 
 ## Requirements
 
