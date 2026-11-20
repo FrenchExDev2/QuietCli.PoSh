@@ -29,7 +29,7 @@ flowchart TD
     PUB -- No --> LOCAL[Keep locally built image for PR tests]
 ```
 
-Final-image identity includes rendered recipes, declared inputs, lock/script changes and parent provenance. Registry configuration and local inspection verify digests, Linux architecture, source and fingerprint labels. Execution uses an immutable digest/local image ID. Missing or inaccessible private cache entries may be built locally; unexpected registry/network errors remain explicit failures, without automatic retries.
+Final-image identity includes rendered recipes, declared inputs, lock/script changes and parent provenance. Registry configuration and local inspection verify digests, Linux architecture, source and fingerprint labels. Execution uses an immutable digest or local image ID. In the Docker fallback job, a registry miss or a failed download of a resolved digest leads to a verified local build. That build can reuse cached parents and the restored BuildKit layers. A publication job stops if it cannot download a resolved digest. Registry identity and local image verification failures still stop preparation.
 
 The registry reader accepts OCI indexes and Docker manifest lists, including the image-plus-attestation indexes produced by BuildKit for a single target. Publication receipts retain the root digest. Configuration verification follows one matching Linux platform manifest and verifies its content and configuration digests before accepting architecture/source/fingerprint labels; attestation descriptors are not executable images. Ambiguous or missing platform matches and malformed or altered documents fail explicitly.
 

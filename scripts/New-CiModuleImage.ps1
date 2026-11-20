@@ -50,7 +50,7 @@ if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: New-CiModuleImag
 $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 if($RegistryCache -and !$ParentPlan){
     $credential=$env:QUIETCLI_REGISTRY_TOKEN
-    try{$cached=Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory ([IO.Path]::Combine((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $moduleRoot),'.github/containers')) -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache -CacheOnly -ContainerRuntime $ContainerRuntime}
+    try{$cached=Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory ([IO.Path]::Combine((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $moduleRoot),'.github/containers')) -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache -CacheOnly -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime}
     finally{$env:QUIETCLI_REGISTRY_TOKEN=$credential;$credential=$null}
     if($cached){return $cached}
 }
@@ -64,4 +64,5 @@ finally{$env:QUIETCLI_REGISTRY_TOKEN=$registryCredential;$registryCredential=$nu
 $coreTag=$plan.ParentReference
 $null=Invoke-WorkspaceNative $ContainerRuntime @('tag',$coreImage.Image,$coreTag) $WorkspaceRoot -TimeoutSeconds 30
 $plan.Arguments.CORE_IMAGE=$coreTag
-Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory ([IO.Path]::Combine((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $moduleRoot),'.github/containers')) -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
+$readOverlayCache=$RegistryCache -and ($ParentPlan -or $PublishCache)
+Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory ([IO.Path]::Combine((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $moduleRoot),'.github/containers')) -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ($Module.ToLowerInvariant()+'-'+$RuntimeIdentifier) -RegistryCache:$readOverlayCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime

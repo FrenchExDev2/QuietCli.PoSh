@@ -27,13 +27,13 @@ Function library for native image plans, recipe rendering, verified GHCR lookup 
 | `Get-QuietCiVerifiedImage`, `Get-QuietCiLocalImageArchitecture` | Inspect actual local identity and architecture. |
 | `Get-QuietCiBuildCacheOptions`, `Get-QuietCiBuildCommand` | Plan Docker-only intermediate caches and exact build arguments. |
 | `ConvertTo-QuietCiRegistryDiagnostic` | Redact credentials and bound retained diagnostics. |
-| `Invoke-QuietCiImageBuild` | Pull verified cache hits, build misses, optionally publish trusted cache entries, save receipts. |
+| `Invoke-QuietCiImageBuild` | Pull and verify cache images, build when the read-only cache is unavailable, optionally publish trusted cache entries, and save receipts. |
 
 Use the guarded [base](../New-CiImage.md), [overlay](../New-CiModuleImage.md) or [suite](../New-CiSuiteImage.md) entry points for normal operations.
 
 ## Cache and parent boundaries
 
-RegistryCache checks the final image before unused parents are prepared. CacheOnly never builds on a missing digest; the caller decides whether to prepare parents. Suite ProbeOnly verifies registry metadata without a daemon/pull; ResolveOnly can return an immutable reference without downloading layers. Image execution resolves/pulls that identity separately.
+RegistryCache checks the final image before unused parents are prepared. A failed download of a resolved digest produces a warning with the digest reference and log path. In read-only mode, CacheOnly returns control to the caller to prepare the required parents. A regular build falls back to a verified local image and records a cache miss. Publication stops on a failed download of an existing digest. Suite ProbeOnly verifies registry metadata without a daemon or pull. ResolveOnly can return an immutable reference without downloading layers.
 
 Registry requests accept OCI image indexes and Docker manifest lists as well as their single-image formats. BuildKit can publish an index containing the image and a separate attestation even for one target platform. Digest-only lookup returns that root digest. `IncludeConfiguration` follows exactly one Linux descriptor matching the requested architecture, including bounded nested indexes, and returns the original immutable root reference after verifying the selected configuration's architecture, OS, source and fingerprint. Attestations and unrelated platforms are not followed. Missing or ambiguous platform matches, invalid schema/types, repeated digests, excess nesting, altered bytes and unavailable referenced documents fail explicitly. Only a 401/403/404 at the initial token/tag lookup is a cache miss.
 

@@ -181,15 +181,19 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'CiImages.psm1')) -DisableNameCh
                 }
             }
             if($ProbeOnly){return [pscustomobject]@{RuntimeIdentifier=$RuntimeIdentifier;Fingerprint=$finalPlan.Fingerprint;CacheHit=$false;Published=$false;RegistryOnly=$true}}
-            $cached=Invoke-QuietCiImageBuild -Plan $finalPlan -ContextDirectory ([IO.Path]::Combine($WorkspaceRoot,'.github/containers')) -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ('suite-'+$RuntimeIdentifier) -RegistryCache -CacheOnly -ContainerRuntime $ContainerRuntime
+            $cached=Invoke-QuietCiImageBuild -Plan $finalPlan -ContextDirectory ([IO.Path]::Combine($WorkspaceRoot,'.github/containers')) -WorkspaceRoot $WorkspaceRoot -ArtifactPrefix ('suite-'+$RuntimeIdentifier) -RegistryCache -CacheOnly -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
             $env:QUIETCLI_REGISTRY_TOKEN=$credential
             if($cached){return $cached}
         }
+        # The final read-only cache was already checked. Parent layers can still use their own cache.
+        $lastLayer=$Selection.Images[-1]
+        $readBaseCache=$RegistryCache -and ($PublishCache -or $Selection.Images.Count -gt 1)
         $plan=& ([IO.Path]::Combine($PSScriptRoot,'../New-CiImage.ps1')) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -PlanOnly
-        $image=& ([IO.Path]::Combine($PSScriptRoot,'../New-CiImage.ps1')) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
+        $image=& ([IO.Path]::Combine($PSScriptRoot,'../New-CiImage.ps1')) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -RegistryCache:$readBaseCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
         foreach($name in @($Selection.Images|Select-Object -Skip 1)){
             $env:QUIETCLI_REGISTRY_TOKEN=$credential
-            $image=& ([IO.Path]::Combine($PSScriptRoot,'../New-CiModuleImage.ps1')) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -Module $name -ParentPlan $plan -ParentImage $image.Image -RegistryCache:$RegistryCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
+            $readLayerCache=$RegistryCache -and ($PublishCache -or $name -cne $lastLayer)
+            $image=& ([IO.Path]::Combine($PSScriptRoot,'../New-CiModuleImage.ps1')) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -Module $name -ParentPlan $plan -ParentImage $image.Image -RegistryCache:$readLayerCache -PublishCache:$PublishCache -ContainerRuntime $ContainerRuntime
             $plan=& ([IO.Path]::Combine($PSScriptRoot,'../New-CiModuleImage.ps1')) -WorkspaceRoot $WorkspaceRoot -RuntimeIdentifier $RuntimeIdentifier -Module $name -ParentPlan $plan -PlanOnly
         }
         $image
