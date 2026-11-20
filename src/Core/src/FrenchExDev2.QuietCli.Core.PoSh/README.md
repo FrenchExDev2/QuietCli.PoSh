@@ -11,7 +11,7 @@
 ## What Core provides
 
 - **Native execution:** process startup, streamed stdout/stderr, stdin, cancellation, timeouts and terminal transports.
-- **Business callbacks:** `-Output` accumulates caller-local data; `-Complete` returns the business result.
+- **Business callbacks:** `-Output`, `-StdOut` and `-StdErr` accumulate caller-local data. `-Complete` returns the business result.
 - **Business events:** `$runtime.Emit($kind, $data)` creates a `QuietCli2.Event` with `Type = $kind` and customizable `Data`, then notifies per-call `-Listeners`. Explicit `-CollectEvents` retains ordered events and adds an `Events` snapshot to the result. Default invocations retain none. `-UI` exposes explicit live presentation lanes.
 - **Explicit results:** `Outcome`, `Execution`, `Completeness` and errors distinguish success from incomplete or failed work.
 - **Controlled delivery:** local objects with `-AsObject`, or bounded JSON/YAML views with measured delivery sizes.
@@ -150,7 +150,7 @@ The native version line becomes a typed object with one `SdkVersion` property. `
 
 `Invoke-QuietCli`, aliased as `quiet`, uses explicit callbacks or a documented compatible registered handler. Unsupported commands without either are rejected before business execution; explicit `-SaveRecall` can also record without an analyzer.
 
-`-Output` receives an event and the runtime. Keep required business data in `runtime.Data` and emit no incidental pipeline output; discard method return values with `[void]`. `-Complete` receives the runtime and returns zero or one value; use `,$array` for an array as one value. Callbacks remain in PowerShell and must cooperate with cancellation.
+`-Output`, `-StdOut` and `-StdErr` receive an event and the runtime. QuietCli invokes `-Output` first, followed by the matching callback for stdout or stderr. Keep required business data in `runtime.Data` and discard incidental method return values with `[void]`. `-Complete` receives the runtime and returns zero or one value. Use `,$array` for an array as one value. Callbacks can read `$runtime.Mode` and `$runtime.ArgvString`, such as `dotnet --version`.
 
 Native streams are consumed once through bounded buffers. Without explicit Recall capture/recording, there is no cumulative raw capture, spool or content history. Byte events expose transient `Bytes` and `ByteCount`; strict incremental UTF-8 decoding and delimiter framing reject invalid input, incomplete characters and oversized records.
 
@@ -166,11 +166,23 @@ The six architecture-specific publications under `lib/engine/<RID>` serve isolat
 
 The callback runtime exposes `Request`, `Data`, `State`, `Execution`, `Children`, identifiers and `WriteBytes`, `WriteText`, `CompleteInput`, `ReadEvent`, `Resize`, `Cancel`. Pipes distinguish stdout/stderr; PTY merges output into `TerminalBytesRead`, with separate stream counts unknown. Windows uses ConPTY; Linux uses the verified bridge. Ending terminal input is not a pipe half-close.
 
-Nested calls inherit the measurement context and return an object by default; their failures remain visible even when results are assigned. `quiet -C name` does not change later independent calls. See [hosting and native transports](../../../../readmes/README-hosting.md).
+Nested calls inherit the measurement context and default to `Script`. Their failures remain visible even when results are assigned. `quiet -C name` leaves independent calls free to select their own context. See [hosting and native transports](../../../../readmes/README-hosting.md).
 
-## Live dashboard (`-UI` / `-MaxLines`)
+## Invocation modes and live dashboard
 
-`-UI` renders a live, lane-based dashboard of the call's `Emit`/`Output` events via [Spectre.Console](https://spectreconsole.net/); `-MaxLines` sets the per-lane tail depth (default `1`) and requires `-UI`. Each lane is keyed by a business-chosen string (for example a machine name in a multi-target companion module); the default, unkeyed lane renders without a redundant `[key]` prefix, and an event's own `Machine`-shaped property is likewise omitted from a line when it already matches its lane's key. A lane always shows its latest line even when the caller never calls `NewLine` on it.
+| Mode | Default delivery | Dashboard by default |
+| --- | --- | --- |
+| `Agent` | JSON | Off |
+| `User` | YAML | On |
+| `Script` | PowerShell object | Off |
+
+Use `-Mode Agent\|User\|Script` to select a mode explicitly. Direct calls at an interactive PowerShell
+console prompt default to `User`. Scripted, nested and non-interactive calls default to `Script`.
+`-AsObject`, `-AsJson` and `-AsYaml` select the delivery explicitly. Agent mode accepts JSON and YAML.
+Use `-Mode Script -AsObject` for explicit local analysis or Recall. Both format and UI options precede
+the executable. `-UI` and `-UI:$false` override the mode's dashboard setting.
+
+The enabled dashboard uses [Spectre.Console](https://spectreconsole.net/) to render caller-selected events in lanes. `-MaxLines` sets the per-lane tail depth (default `1`) and requires the dashboard to be enabled. Each lane is keyed by a business-chosen string, such as a machine name. The default lane has no key prefix, and a matching event `Machine` property is omitted from the line. A lane shows its latest line before the caller calls `NewLine`.
 
 `Spectre.Console` is a Central Package Management dependency declared in `Directory.Packages.props` (no `Version=` on the `<PackageReference>` in the engine's `.csproj`, per the repository's CPM convention). A render failure is caught, logged once via the same failure-reporting path as other engine failures, and permanently disables further rendering for that call without propagating the exception to the caller or the native process. Nested `-UI` calls in the same process cannot share one live terminal session: the inner call's surface construction detects the conflict and falls back to a plain append-only renderer instead of a live-redrawing one.
 

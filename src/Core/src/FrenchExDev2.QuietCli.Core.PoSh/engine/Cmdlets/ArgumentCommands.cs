@@ -16,7 +16,7 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
     /// <summary>Facade options that consume the following argument.</summary>
     private static readonly string[] Values =
     [
-        "Output", "Complete", "Listeners", "Context", "Data", "State", "WorkingDirectory", "TimeoutSeconds", "DrainTimeoutSeconds", "Environment", "Transport",
+        "Mode", "Output", "StdOut", "StdErr", "Complete", "Listeners", "Context", "Data", "State", "WorkingDirectory", "TimeoutSeconds", "DrainTimeoutSeconds", "Environment", "Transport",
         "StdoutMode", "StderrMode", "InputText", "InputBytes", "InputPath", "Interaction", "RecordDelimiter", "MaxRecordBytes", "MaxOutputBytes",
         "MaxItems", "Role", "HandlerId", "CancellationFile", "CancellationToken", "Projection", "Tokenizer", "FilePath", "ArgumentList", "TerminalSize",
         "SuccessExitCodes", "ReadBlockBytes", "RecallMaxBytes", "RecallPolicy", "RecallId", "RecallName", "RecallRoot", "Compress", "Script",
@@ -26,13 +26,13 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
     /// <summary>Options a saved-capture replay may combine with its identifier.</summary>
     private static readonly string[] ReplayAllowed =
     [
-        "RecallId", "RecallRoot", "AsObject", "AsJson", "AsYaml", "Output", "Complete", "Data", "State", "StdoutMode", "StderrMode",
+        "RecallId", "RecallRoot", "AsObject", "AsJson", "AsYaml", "Output", "StdOut", "StdErr", "Complete", "Data", "State", "StdoutMode", "StderrMode",
         "RecordDelimiter", "MaxRecordBytes", "Projection", "AllowPartial", "MaxItems", "MaxOutputBytes", "Tokenizer",
     ];
 
     /// <summary>Options forwarded to the offline replay.</summary>
     private static readonly string[] ReplayForwarded =
-        ["Output", "Complete", "Data", "State", "StdoutMode", "StderrMode", "RecordDelimiter", "MaxRecordBytes", "Projection", "AllowPartial"];
+        ["Output", "StdOut", "StdErr", "Complete", "Data", "State", "StdoutMode", "StderrMode", "RecordDelimiter", "MaxRecordBytes", "Projection", "AllowPartial"];
 
     /// <summary>Matches the colon form of a switch such as -AsObject:$false.</summary>
     private static readonly Regex Colon = new("^([^:]+):(.*)$", RegexOptions.Compiled | RegexOptions.Singleline);
@@ -41,10 +41,14 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
     [Parameter(Position = 0)]
     public object?[] Arguments { get; set; } = [];
 
+    /// <summary>True when the facade is called directly from an interactive terminal prompt.</summary>
+    [Parameter]
+    public SwitchParameter InteractivePrompt { get; set; }
+
     /// <inheritdoc />
     protected override void EndProcessing()
     {
-        try { WriteObject(Parse(Arguments ?? [], CurrentDirectory, SessionState.Path.CurrentLocation.Path)); }
+        try { WriteObject(Parse(Arguments ?? [], CurrentDirectory, SessionState.Path.CurrentLocation.Path, InteractivePrompt && QuietCallState.Depth == 0)); }
         catch (Exception error) when (error is not PipelineStoppedException) { FailWith(error); }
     }
 
@@ -55,7 +59,7 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
     private static string Text(object? value) => LanguagePrimitives.ConvertTo<string>(value) ?? "";
 
     /// <summary>Parses, validates and completes the request.</summary>
-    internal static Hashtable Parse(object?[] args, string currentDirectory, string location)
+    internal static Hashtable Parse(object?[] args, string currentDirectory, string location, bool interactivePrompt = false)
     {
         var request = new Hashtable(StringComparer.OrdinalIgnoreCase);
         int index = 0;
@@ -87,10 +91,13 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
             index++;
         }
         if (index < args.Length && QuietRuntime.Unwrap(args[index]) is string separator && separator == "--") index++;
+        foreach (string callback in new[] { "StdOut", "StdErr" })
+            if (request.ContainsKey(callback) && QuietRuntime.Unwrap(request[callback]) is not ScriptBlock)
+                throw new InvalidOperationException("CallbackMustBeScriptBlock: " + callback);
         if (request.ContainsKey("RecallId"))
         {
             if (index != args.Length || request.Keys.Cast<string>().Any(key => Canonical(ReplayAllowed, key) is null)) throw new InvalidOperationException("RecallReplayCannotExecute");
-            if (!request.ContainsKey("Output") && !request.ContainsKey("Complete")) throw new InvalidOperationException("RecallAnalysisCallbackRequired");
+            if (!QuietRuntime.HasAnalysisCallback(request)) throw new InvalidOperationException("RecallAnalysisCallbackRequired");
             var replay = new Hashtable(StringComparer.OrdinalIgnoreCase);
             foreach (string key in ReplayForwarded) if (request.ContainsKey(key)) replay[key] = request[key];
             request["ReplayOptions"] = replay;
@@ -102,7 +109,11 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
             index++;
         }
         if (!request.ContainsKey("ArgumentList")) request["ArgumentList"] = ReadNativeArguments(args, ref index);
-        else if (index != args.Length) throw new InvalidOperationException("UnexpectedArgumentsAfterArgumentList");
+        else
+        {
+            if (index != args.Length) throw new InvalidOperationException("UnexpectedArgumentsAfterArgumentList");
+            request["ArgumentList"] = NativeCommandLine.Arguments(request["ArgumentList"]);
+        }
         foreach (string name in new[] { "Data", "State" })
         {
             string factory = name + "Factory";
@@ -129,11 +140,11 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
             ["ReadBlockBytes"] = configuration["streams.readBlockBytes"],
         };
         foreach (DictionaryEntry entry in defaults) if (!request.ContainsKey(entry.Key)) request[entry.Key] = entry.Value;
-        if (new[] { "AsObject", "AsJson", "AsYaml" }.Count(key => Flag(request, key)) > 1) throw new InvalidOperationException("OutputFormatsAreExclusive");
+        if (request.ContainsKey("RecallId")) _ = InvocationPolicy.ExplicitDelivery(request);
+        else request["InvocationPolicy"] = InvocationPolicy.Resolve(request, interactivePrompt && exportRequest is null);
         bool saving = Flag(request, "SaveRecall");
         if (request.ContainsKey("AllowPartial") && !request.ContainsKey("RecallId")) throw new InvalidOperationException("AllowPartialRequiresReplay");
         if (saving && !Flag(request, "AsObject")) throw new InvalidOperationException("SaveRecallRequiresExplicitAsObject");
-        if (request.ContainsKey("MaxLines") && !Flag(request, "UI")) throw new InvalidOperationException("MaxLinesRequiresUI");
         if (request.ContainsKey("RecallName"))
         {
             string recallName = Text(request["RecallName"]);

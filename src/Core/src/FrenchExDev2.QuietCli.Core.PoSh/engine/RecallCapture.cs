@@ -93,6 +93,8 @@ public sealed class RecallCapture
     public bool SourceComplete { get; }
     /// <summary>Original inert decoding settings.</summary>
     public RecallAnalysisSettings Settings { get; }
+    /// <summary>Original display command retained for offline analysis, when available.</summary>
+    public string? ArgvString { get; }
     /// <summary>Original capture identity when this artifact was explicitly transformed.</summary>
     public string? ParentCaptureId { get; }
     /// <summary>Explicit transformation label; null for original observations.</summary>
@@ -110,7 +112,8 @@ public sealed class RecallCapture
     /// <param name="transformation">Optional explicit transformation label.</param>
     /// <param name="sourceStatus">Optional inert native execution status.</param>
     /// <param name="recallName">Optional nonunique label.</param>
-    public RecallCapture(string id, IEnumerable<RecallEvent> events, long received, bool sourceComplete, RecallAnalysisSettings settings, string? parentCaptureId = null, string? transformation = null, RecallSourceStatus? sourceStatus = null, string? recallName = null)
+    /// <param name="argvString">Optional original display command.</param>
+    public RecallCapture(string id, IEnumerable<RecallEvent> events, long received, bool sourceComplete, RecallAnalysisSettings settings, string? parentCaptureId = null, string? transformation = null, RecallSourceStatus? sourceStatus = null, string? recallName = null, string? argvString = null)
     {
         if (recallName != null && (string.IsNullOrWhiteSpace(recallName) || recallName.Length > 256)) throw new ArgumentException("InvalidRecallName");
         if ((parentCaptureId == null) != (transformation == null) || parentCaptureId != null && (!Guid.TryParseExact(parentCaptureId, "N", out _) || parentCaptureId == id || string.IsNullOrWhiteSpace(transformation) || transformation.Length > 256)) throw new ArgumentException("InvalidRecallProvenance");
@@ -132,7 +135,7 @@ public sealed class RecallCapture
         CaptureId = id; Events = Array.AsReadOnly(list); Gaps = gaps.AsReadOnly(); ReceivedBytes = received; RetainedBytes = retained; SourceComplete = sourceComplete; Settings = settings;
         ParentCaptureId = parentCaptureId; Transformation = transformation;
         SourceStatus = sourceStatus;
-        RecallName = recallName; EventCount = list.LongLength;
+        RecallName = recallName; ArgvString = argvString; EventCount = list.LongLength;
     }
 
     /// <summary>Builds a validated lazy snapshot of an immutable journal prefix.</summary>
@@ -142,7 +145,7 @@ public sealed class RecallCapture
     internal RecallCapture(string directory, RecallJournalMetadata metadata, bool recovered)
     {
         CaptureId = metadata.RecallId; RecallName = metadata.RecallName; StoragePath = directory; State = metadata.State; Recovered = recovered; DurableBytes = metadata.DurableBytes; EventCount = metadata.EventCount;
-        ReceivedBytes = metadata.ReceivedBytes; RetainedBytes = metadata.StoredBytes; SourceComplete = metadata.SourceComplete; Settings = metadata.Settings;
+        ReceivedBytes = metadata.ReceivedBytes; RetainedBytes = metadata.StoredBytes; SourceComplete = metadata.SourceComplete; Settings = metadata.Settings; ArgvString = metadata.ArgvString;
         ParentCaptureId = metadata.ParentCaptureId; Transformation = metadata.Transformation; SourceStatus = metadata.SourceStatus; JournalMetadata = metadata;
         Events = new RecallJournalEvents(directory, metadata); Gaps = metadata.GapCount == 0 ? Array.Empty<RecallGap>() : new RecallJournalGaps(metadata, Events);
     }
@@ -195,5 +198,6 @@ public sealed class RecallCollector
     /// <param name="sourceComplete">Whether native drainage completed.</param>
     /// <param name="settings">Original decoding settings.</param>
     /// <param name="sourceStatus">Optional inert native execution status.</param>
-    public RecallCapture Snapshot(bool sourceComplete, RecallAnalysisSettings settings, RecallSourceStatus? sourceStatus = null) => new(id, head.Concat(tail), received, sourceComplete, settings, sourceStatus: sourceStatus, recallName: name);
+    /// <param name="argvString">Optional original display command.</param>
+    public RecallCapture Snapshot(bool sourceComplete, RecallAnalysisSettings settings, RecallSourceStatus? sourceStatus = null, string? argvString = null) => new(id, head.Concat(tail), received, sourceComplete, settings, sourceStatus: sourceStatus, recallName: name, argvString: argvString);
 }

@@ -110,9 +110,27 @@ function Invoke-QuietRecallTests {
         Assert-QuietEqual $cancel.Outcome Cancelled;Assert-QuietEqual $cancel.Recall.SourceComplete $false
     }
     $cases['PTY Recall retains merged terminal source status']={
-        $pty=quiet -AsObject -Recall -Transport Pty -Output {} dotnet $fixture terminal
+        $pty=quiet -AsObject -Recall -Transport Pty -Data @{Terminal=0} -Output {
+            param($e,$r)
+            if($e.Stream -ceq 'terminal'){$r.Data.Terminal++}
+        } -StdOut {throw 'TerminalRoutedToStdOut'} -StdErr {throw 'TerminalRoutedToStdErr'} dotnet $fixture terminal
         Assert-QuietEqual $pty.Outcome Success
+        Assert-QuietEqual ($pty.Data.Terminal -gt 0) $true
         Assert-QuietEqual @($pty.Recall.Events|Where-Object Stream -NE terminal).Count 0
+    }
+    $cases['PTY direct PowerShell prompt selects User mode and enables the dashboard']={
+        $module=(Get-Module FrenchExDev2.QuietCli.Core.PoSh).Path
+        $manifest=[IO.Path]::ChangeExtension($module,'.psd1')
+        $manifestLiteral="'"+[Management.Automation.Language.CodeGeneration]::EscapeSingleQuotedStringContent($manifest)+"'"
+        $command='Import-Module '+$manifestLiteral+' -ErrorAction Stop; '+
+            '$probe=quiet -AsObject -Complete {param($r) $r.Mode+"|"+($null -ne $r.Ui)} dotnet --version; '+
+            '[Console]::WriteLine("quiet-prompt="+$probe.Data); exit'
+        $pty=quiet -AsObject -Transport Pty -TimeoutSeconds 20 -Data ([Text.StringBuilder]::new()) -Interaction {
+            param($r)
+            $r.WriteText($command+"`r")
+        } -Output {param($e,$r) [void]$r.Data.Append($e.Text)} -FilePath ([Environment]::ProcessPath) -ArgumentList @('-NoLogo')
+        Assert-QuietEqual $pty.Outcome Success
+        Assert-QuietEqual ($pty.Data.ToString() -cmatch 'quiet-prompt=User\|True') $true
     }
     $cases['Recall export import comparison fixture and reducer are independent offline tools']={
         $r=quiet -AsObject -Recall -StdoutMode Bytes -Output {} dotnet $fixture emit 30
@@ -159,8 +177,20 @@ function Invoke-QuietRecallTests {
         $listed=@(Get-QuietSavedRecall -RecallRoot $root -RecallName 'build-*')
         Assert-QuietEqual $listed.Count 1;Assert-QuietEqual $listed[0].RecallId $id
         $before=Get-QuietEngine
-        $analysis=quiet -AsObject -RecallId $id -RecallRoot $root -Data @{N=0L} -Output {param($e,$r)$r.Data.N+=$e.ByteCount} -Complete {param($r)@{Bytes=$r.Data.N}} -Projection {param($data,$budget)@{Final=$data.Bytes}}
+        $analysis=quiet -AsObject -RecallId $id -RecallRoot $root -Data @{N=0L;Argv=$null} -StdOut {
+            param($e,$r)
+            $r.Data.N+=$e.ByteCount
+            $r.Data.Argv=$r.ArgvString
+        } -StdErr {param($e,$r)$r.Data.N+=$e.ByteCount} -Complete {
+            param($r)
+            if($r.Data.Argv -cne $r.ArgvString){throw 'ReplayCommandChanged'}
+            @{Bytes=$r.Data.N;Argv=$r.ArgvString;Mode=$r.Mode}
+        } -Projection {param($data,$budget)@{Final=$data.Bytes}}
         Assert-QuietEqual $analysis.Data.Bytes 18432
+        Assert-QuietEqual $analysis.Data.Mode Script
+        Assert-QuietEqual $analysis.Data.Argv $saved.Recall.ArgvString
+        Assert-QuietEqual $saved.Recall.MemoryCapture.ArgvString $saved.Recall.ArgvString
+        Assert-QuietEqual ($saved.Recall.ArgvString -cmatch '^dotnet .* mixed 16384 2048$') $true
         $delivery=Out-QuietResult $analysis|ConvertFrom-Json
         Assert-QuietEqual $delivery.Data.Final 18432
         $after=Get-QuietEngine;Assert-QuietEqual $after.Requests $before.Requests
@@ -230,8 +260,13 @@ throw 'CrashCallbackNotExecuted'
         $importRoot=Join-Path $RunDirectory 'zip-imports'
         $imported=Import-QuietRecall $r.Recall.Transport.Path -MaxBytes All -RecallRoot $importRoot
         Assert-QuietEqual $imported.RecallId $r.Recall.RecallId
-        $analysis=Invoke-QuietRecall -RecallId $imported.RecallId -RecallRoot $importRoot -Data @{N=0L} -Output {param($e,$r)$r.Data.N+=$e.ByteCount}
+        $analysis=Invoke-QuietRecall -RecallId $imported.RecallId -RecallRoot $importRoot -Data @{N=0L;Argv=$null} -StdOut {
+            param($e,$r)
+            $r.Data.N+=$e.ByteCount
+            $r.Data.Argv=$r.ArgvString
+        }
         Assert-QuietEqual $analysis.Data.N 65536
+        Assert-QuietEqual $analysis.Data.Argv $r.Recall.ArgvString
         $copy=Export-QuietRecall $r -Path (Join-Path $RunDirectory 'transport-copy.zip') -Zip -Compress 0 -PassThru
         Assert-QuietEqual $copy.CompressionLevel 0
         $duplicate=quiet -AsObject -SaveRecall -RecallRoot $root -RecallName zipped -Output {} dotnet $fixture emit 1

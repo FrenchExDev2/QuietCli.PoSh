@@ -34,10 +34,11 @@ public static class RecallStore
     /// <param name="root">Store root; null selects the user data location.</param>
     /// <param name="name">Optional label.</param>
     /// <param name="settings">Inert analysis settings.</param>
-    public static Task<RecallJournalWriter> CreateAsync(string? root, string? name, RecallAnalysisSettings settings)
+    /// <param name="argvString">Optional original display command.</param>
+    public static Task<RecallJournalWriter> CreateAsync(string? root, string? name, RecallAnalysisSettings settings, string? argvString = null)
     {
         string id = Guid.NewGuid().ToString("N");
-        return RecallJournalWriter.CreateAsync(Path.Combine(Path.GetFullPath(root ?? DefaultRoot), id), id, name, settings);
+        return RecallJournalWriter.CreateAsync(Path.Combine(Path.GetFullPath(root ?? DefaultRoot), id), id, name, settings, argvString);
     }
 
     /// <summary>Opens a stored identity without executing a native process.</summary>
@@ -97,7 +98,7 @@ public static class RecallStore
     /// <param name="name">Optional label override.</param>
     public static async Task<RecallCapture> SaveDirectoryAsync(RecallCapture capture, string directory, string? name = null)
     {
-        await using var writer = await RecallJournalWriter.CreateAsync(directory, capture.RecallId, name ?? capture.RecallName, capture.Settings);
+        await using var writer = await RecallJournalWriter.CreateAsync(directory, capture.RecallId, name ?? capture.RecallName, capture.Settings, capture.ArgvString);
         foreach (var item in capture.Events) await writer.AppendEventAsync(item);
         return await writer.CompleteAsync(capture.SourceComplete, capture.SourceStatus, capture.ReceivedBytes, capture.ParentCaptureId, capture.Transformation);
     }
@@ -120,8 +121,7 @@ public static class RecallStore
     internal static async Task WriteManifestAsync(string directory, RecallJournalMetadata metadata)
     {
         Validate(metadata);
-        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(metadata, JsonOptions);
-        if (bytes.Length > ManifestLimit) throw new InvalidDataException("RecallManifestLimit");
+        byte[] bytes = SerializeManifest(metadata);
         string temporary = Path.Combine(directory, "manifest-" + Guid.NewGuid().ToString("N") + ".tmp");
         try
         {
@@ -141,11 +141,35 @@ public static class RecallStore
         }
     }
 
+    /// <summary>Reserves space for the largest checkpoint fields before opening any recording files.</summary>
+    internal static void EnsureManifestCapacity(RecallJournalMetadata metadata)
+    {
+        if (metadata.Version == 2) return;
+        const char escaped = '\uffff';
+        _ = SerializeManifest(metadata with
+        {
+            State = "Interrupted", SourceComplete = false,
+            UpdatedUtc = new DateTimeOffset(9999, 12, 31, 23, 59, 59, TimeSpan.Zero).AddTicks(9_999_999),
+            ReceivedBytes = long.MaxValue, StoredBytes = long.MaxValue, DurableBytes = long.MaxValue,
+            EventCount = long.MaxValue, GapCount = long.MaxValue, JournalLength = long.MaxValue,
+            SourceStatus = new(new string(escaped, 32), int.MinValue, new string(escaped, 32)),
+            ParentCaptureId = Guid.Empty.ToString("N"), Transformation = new string(escaped, 256),
+        });
+    }
+
+    private static byte[] SerializeManifest(RecallJournalMetadata metadata)
+    {
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(metadata, JsonOptions);
+        if (bytes.Length > ManifestLimit) throw new InvalidDataException("RecallManifestLimit");
+        return bytes;
+    }
+
     /// <summary>Validates checked counter relationships, identity and inert analysis settings.</summary>
     /// <param name="m">Untrusted or writer-produced metadata.</param>
     internal static void Validate(RecallJournalMetadata m)
     {
-        if (m.Version != 2 || NormalizeId(m.RecallId) != m.RecallId || m.RecallName != null && (string.IsNullOrWhiteSpace(m.RecallName) || m.RecallName.Length > 256) || m.State is not ("Recording" or "Completed" or "Failed" or "Interrupted") || m.ReceivedBytes < m.StoredBytes || m.StoredBytes < 0 || m.DurableBytes < 0 || m.DurableBytes > m.StoredBytes || m.EventCount < 0 || m.EventCount > m.StoredBytes || m.GapCount < 0 || m.GapCount > m.EventCount + 1 || m.JournalLength != checked(RecallJournalReader.PreambleLength + m.StoredBytes + m.EventCount * (RecallJournalReader.HeaderLength + RecallJournalReader.HashLength))) throw new InvalidDataException("RecallManifestInvalid");
+        bool versionValid = m.Version switch { 2 => m.ArgvString is null, 3 => !string.IsNullOrWhiteSpace(m.ArgvString), _ => false };
+        if (!versionValid || NormalizeId(m.RecallId) != m.RecallId || m.RecallName != null && (string.IsNullOrWhiteSpace(m.RecallName) || m.RecallName.Length > 256) || m.State is not ("Recording" or "Completed" or "Failed" or "Interrupted") || m.ReceivedBytes < m.StoredBytes || m.StoredBytes < 0 || m.DurableBytes < 0 || m.DurableBytes > m.StoredBytes || m.EventCount < 0 || m.EventCount > m.StoredBytes || m.GapCount < 0 || m.GapCount > m.EventCount + 1 || m.JournalLength != checked(RecallJournalReader.PreambleLength + m.StoredBytes + m.EventCount * (RecallJournalReader.HeaderLength + RecallJournalReader.HashLength))) throw new InvalidDataException("RecallManifestInvalid");
         _ = new RecallCapture(m.RecallId, [], m.ReceivedBytes, m.SourceComplete, m.Settings, m.ParentCaptureId, m.Transformation, m.SourceStatus, m.RecallName);
     }
 

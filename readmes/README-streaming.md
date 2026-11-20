@@ -6,13 +6,38 @@ How `quiet` consumes native output and how callbacks turn it into business data.
 
 Without an explicit capture option, stdout/stderr are read once, counted, dispatched through bounded transient buffers and released. No cumulative raw capture, output spool or content history is created. Native queues are bounded to 16 blocks of 16 KiB per invocation. Incremental UTF-8 decoding and delimiter framing run in C#; unfinished records are bounded by `MaxRecordBytes`. Invalid or incomplete UTF-8 and oversized records fail explicitly.
 
-`-Output` receives `(event, runtime)` and must emit no incidental pipeline output. Store required business information in `runtime.Data`; use `[void]` for methods whose return values should be discarded. `-Complete` receives the runtime and returns at most one business value. Use the unary comma to return an array as one value. If it returns no value, the existing `Data` is preserved.
+`-Output`, `-StdOut` and `-StdErr` receive `(event, runtime)`. Each event goes to `-Output` first and then to its matching stream callback when supplied. PTY delivers merged `terminal` events through `-Output`. The callbacks share text decoding, framing and byte-mode behavior. Store required business information in `runtime.Data` and use `[void]` to discard method return values.
+
+`-Complete` receives the runtime and returns at most one business value. Use the unary comma to return an array as one value. If it returns no value, the existing `Data` is preserved. All callbacks can read the same `$runtime.Mode` and `$runtime.ArgvString`. The latter shows the supplied executable and native arguments, with quoting that preserves their boundaries.
 
 Without explicit callbacks, command execution requires a documented compatible registered handler. Unsupported commands are rejected before business execution. `-SaveRecall` also permits direct recording without a parser.
 
 Collection, retention, decoding, business analysis and delivery are separate responsibilities. `-AsObject` returns a local envelope without enumerating, serializing or transferring `Data` to the engine. Inspect `Outcome`, `Execution`, `Completeness` and errors alongside the business data. JSON/YAML delivery applies item, structural and encoded-byte budgets; a delivery projection can select only the information needed by the consumer.
 
 Nested native calls from callbacks have their own results and retain visible failures. Children inherit the measurement context, but do not implicitly inherit Recall retention or recording. After an analyzer failure, native drainage continues and `Complete` can finalize partial business data.
+
+## Invocation modes
+
+| Mode | Delivery | Dashboard |
+| --- | --- | --- |
+| `Agent` | JSON by default, YAML with `-AsYaml` | Off by default |
+| `User` | YAML by default | On by default |
+| `Script` | PowerShell object by default | Off by default |
+
+Direct calls at an interactive PowerShell console prompt choose `User` when `-Mode` is omitted.
+Scripts, nested calls and non-interactive calls choose `Script`. Use `-Mode Agent` to receive a bounded
+JSON or YAML delivery. Explicit format switches take precedence in `User` and `Script`. To collect
+Recall evidence, supply `-AsObject` explicitly in `Script` or `User` mode.
+
+```powershell
+quiet -Mode Agent -Data @{ Version = '' } -StdOut {
+    param($event, $runtime)
+    $runtime.Data.Version += $event.Text
+} -Complete {
+    param($runtime)
+    @{ Version = $runtime.Data.Version.Trim(); Command = $runtime.ArgvString }
+} dotnet --version
+```
 
 ## Anatomy of a result
 
@@ -63,9 +88,10 @@ $runtime.Emit('Progress', [pscustomobject]@{ File = 'rapport.txt'; Percent = 75 
 # A listener receives: $event.Type == 'Progress', $event.Data.Percent == 75
 ```
 
-`-UI` provides a live presentation surface through `$runtime.Ui.Write($event, $lane)` and
-`$runtime.Ui.NewLine($lane)`. `-MaxLines` selects the positive history depth per lane and requires
-`-UI`. Emit does not automatically write to this surface. The [Vagrant companion](../src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md)
+`-UI` and `-UI:$false` override the mode's dashboard setting. The enabled dashboard provides
+`$runtime.Ui.Write($event, $lane)` and `$runtime.Ui.NewLine($lane)`. `-MaxLines` selects a positive
+history depth per lane when the dashboard is enabled. Call `Ui.Write` to display an emitted event.
+The [Vagrant companion](../src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md)
 supplies both event emission and per-machine presentation.
 
 - **Options precede the executable.** `quiet -AsObject -C label git status`: QuietCli options first, native arguments after, verbatim. For an exact argument vector use `-FilePath` and `-ArgumentList`.

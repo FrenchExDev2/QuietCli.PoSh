@@ -120,8 +120,11 @@ function Invoke-QuietConfigurationDeliveryEngine {
             @{Name='emit-listener-skip-check-removed';File='Cmdlets/RuntimeCommands.cs';From='if (disabledListeners?.Contains(i) == true) continue;';To='if (false) continue;'},
             @{Name='emit-nested-inherits-listeners';File='Cmdlets/RuntimeCommands.cs';From='runtime.Listeners = request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : [];';To='runtime.Listeners = parent?.Listeners ?? (request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : []);'},
             @{Name='emit-listener-array-item-not-validated';File='Cmdlets/RuntimeCommands.cs';From='Select(item => Unwrap(item) as ScriptBlock ?? throw new InvalidOperationException("ListenerMustBeScriptBlock")).ToArray();';To='Select(item => Unwrap(item) as ScriptBlock).ToArray()!;'},
-            @{Name='maxlines-requires-ui-guard-removed';File='Cmdlets/ArgumentCommands.cs';From='if (request.ContainsKey("MaxLines") && !Flag(request, "UI")) throw new InvalidOperationException("MaxLinesRequiresUI");';To=';'},
-            @{Name='maxlines-nonpositive-silently-coerced';File='Cmdlets/RuntimeCommands.cs';From='if (maxLines <= 0) throw new InvalidOperationException("MaxLinesMustBePositive");';To='maxLines = Math.Max(1, maxLines);'},
+            @{Name='maxlines-requires-ui-guard-removed';File='Cmdlets/InvocationPolicy.cs';From='if (request.ContainsKey("MaxLines") && !ui) throw new InvalidOperationException("MaxLinesRequiresUI");';To=';'},
+            @{Name='maxlines-nonpositive-silently-coerced';File='Cmdlets/InvocationPolicy.cs';From='if (maxLines <= 0) throw new InvalidOperationException("MaxLinesMustBePositive");';To='maxLines = Math.Max(1, maxLines.GetValueOrDefault());'},
+            @{Name='mode-ui-override-ignored';File='Cmdlets/InvocationPolicy.cs';From='request.ContainsKey("UI") ? Flag(request, "UI") : defaults.Ui';To='defaults.Ui'},
+            @{Name='mode-agent-object-allowed';File='Cmdlets/InvocationPolicy.cs';From='defaults.Mode == "Agent" && delivery == InvocationDelivery.Object';To='false'},
+            @{Name='stream-callback-runs-before-output';File='Cmdlets/RuntimeCommands.cs';From='DispatchCallback("Output", evt);';To='if (stream == "stdout") DispatchCallback("StdOut", evt); if (stream == "stderr") DispatchCallback("StdErr", evt); DispatchCallback("Output", evt);'},
             @{Name='ui-tail-fifo-head-not-advanced';File='Cmdlets/UiRenderer.cs';From='lane.Head = (lane.Head + 1) % lane.Tail.Length;';To='lane.Head = 0;'},
             @{Name='ui-tail-count-not-capped';File='Cmdlets/UiRenderer.cs';From='if (lane.Count < lane.Tail.Length) lane.Count++;';To='lane.Count++;'},
             @{Name='ui-lane-order-not-insertion';File='Cmdlets/UiRenderer.cs';From='laneOrder.Add(key);';To='laneOrder.Insert(0, key);'},
@@ -159,9 +162,11 @@ function Invoke-QuietConfigurationDeliveryEngine {
             $offlineFeed=[IO.Path]::Combine($directory,'offline-feed')
             [void][IO.Directory]::CreateDirectory($offlineFeed)
             $project=[IO.Path]::Combine($directory,'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/engine-tests/QuietCli.Engine.Tests.csproj')
+            # Keep intermediate paths short inside the Windows report tree. The runner loads the test DLL.
+            $buildProperties=@('-p:TargetFrameworks=net11.0','-p:UseAppHost=false','--artifacts-path',([IO.Path]::Combine($directory,'artifacts')))
             $phases=[ordered]@{
-                Restore=@('restore',$project,'-p:TargetFrameworks=net11.0','-p:NuGetAudit=false','--source',$offlineFeed,'--nologo')
-                Build=@('build',$project,'--no-restore','-f','net11.0','-p:TargetFrameworks=net11.0','-c','Release','-o',([IO.Path]::Combine($directory,'out')),'--nologo')
+                Restore=@('restore',$project,'-p:NuGetAudit=false','--source',$offlineFeed,'--nologo')+$buildProperties
+                Build=@('build',$project,'--no-restore','-f','net11.0','-c','Release','-o',([IO.Path]::Combine($directory,'out')),'--nologo')+$buildProperties
             }
             foreach($phase in $phases.Keys){
                 $diagnostics=[Collections.Generic.Queue[string]]::new()

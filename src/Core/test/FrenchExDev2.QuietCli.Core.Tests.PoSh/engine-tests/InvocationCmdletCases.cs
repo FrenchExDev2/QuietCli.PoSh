@@ -348,6 +348,79 @@ internal static class InvocationCmdletCases
             Require(QuietCallState.Depth == 0, "Call stack leaked after -MaxLines rejections");
             return Task.CompletedTask;
         });
+
+        await run("invocation modes resolve prompt and explicit overrides independently of execution", () =>
+        {
+            string directory = Directory.GetCurrentDirectory();
+            InvocationPolicy ParseMode(bool prompt, params object[] options) =>
+                (InvocationPolicy)ReadQuietArgumentsCommand.Parse([.. options, "dotnet", "--version"], directory, directory, prompt)["InvocationPolicy"]!;
+            Require(ParseMode(true) == new InvocationPolicy("User", 1, InvocationDelivery.Yaml), "Interactive default");
+            Require(ParseMode(false) == new InvocationPolicy("Script", null, InvocationDelivery.Object), "Script default");
+            Require(ParseMode(true, "-MoDe", "aGeNt") == new InvocationPolicy("Agent", null, InvocationDelivery.Json), "Agent default or case");
+            Require(ParseMode(false, "-Mode", "User", "-MaxLines", 3, "-AsJson") == new InvocationPolicy("User", 3, InvocationDelivery.Json), "User override");
+            Require(ParseMode(false, "-Mode", "User", "-UI:False", "-AsObject") == new InvocationPolicy("User", null, InvocationDelivery.Object), "User UI override");
+            Require(ParseMode(true, "-Mode", "Agent", "-UI", "-AsYaml") == new InvocationPolicy("Agent", 1, InvocationDelivery.Yaml), "Agent override");
+            Require(ParseMode(true, "-Mode", "Script", "-AsYaml") == new InvocationPolicy("Script", null, InvocationDelivery.Yaml), "Script override");
+            ExpectFailure(() => ParseMode(true, "-Mode", "Agent", "-AsObject"), "Agent object delivery was accepted");
+            ExpectFailure(() => ParseMode(true, "-Mode", "User", "-UI:False", "-MaxLines", 4), "Disabled UI accepted MaxLines");
+            var random = new Random(Seed);
+            for (int i = 0; i < 96; i++)
+            {
+                string invalid = "invalid-" + random.Next();
+                ExpectFailure(() => ParseMode(random.Next(2) == 0, "-Mode", invalid), "Unsupported mode was accepted: " + invalid);
+            }
+            return Task.CompletedTask;
+        });
+
+        await run("stream callbacks receive the same event in order including the final record and skip PTY", () =>
+        {
+            var runtime = new QuietRuntime { Mode = "Agent", ArgvString = "dotnet --version", Data = new List<string>() };
+            runtime.Request["Output"] = ScriptBlock.Create("param($e,$r) $r.Data.Add('all:'+$e.Stream+':'+$e.Text); $r.State = $e");
+            runtime.Request["StdOut"] = ScriptBlock.Create("param($e,$r) if(![object]::ReferenceEquals($e,$r.State)){throw 'EventChanged'}; $r.Data.Add('out:'+$e.Text)");
+            runtime.Request["StdErr"] = ScriptBlock.Create("param($e,$r) if($r.Mode -cne 'Agent' -or $r.ArgvString -cne 'dotnet --version'){throw 'ContextChanged'}; $r.Data.Add('err:'+$e.Bytes[0])");
+            runtime.Request["StdoutMode"] = "Text";
+            runtime.Request["StderrMode"] = "Bytes";
+            runtime.Request["RecordDelimiter"] = "\n";
+            runtime.Request["MaxRecordBytes"] = 256;
+            DeliveryCmdletCases.Script(runspace, "param($r) $null=$r.StreamBlock('stdout',[byte[]](97,10,98)); $null=$r.StreamBlock('stderr',[byte[]](99)); $null=$r.StreamBlock('terminal',[byte[]](116,10)); $r.CompleteStreams()", runtime);
+            Require(runtime.AnalysisComplete, "Stream callback failed: " + string.Join(", ", runtime.Errors.Cast<Hashtable>().Select(error => error["Message"])));
+            Require(((List<string>)runtime.Data).SequenceEqual(["all:stdout:a", "out:a", "all:stderr:", "err:99", "all:terminal:t", "all:stdout:b", "out:b"]), "Wrong callback order, stream or framing");
+
+            runtime.Request["Output"] = ScriptBlock.Create("throw 'StopAtGeneralCallback'");
+            runtime.Request["Complete"] = ScriptBlock.Create("param($r) $r.Data.Add('complete')");
+            DeliveryCmdletCases.Script(runspace, "param($r) $null=$r.StreamBlock('stderr',[byte[]](100)); $null=$r.StreamBlock('stderr',[byte[]](101)); $r.CompleteAnalysis()", runtime);
+            Require(!runtime.AnalysisComplete && runtime.Errors.Count == 1 && ((List<string>)runtime.Data).Count == 8 && ((List<string>)runtime.Data)[^1] == "complete", "Callback failure skipped completion or allowed a later stream callback");
+            return Task.CompletedTask;
+        });
+
+        await run("display command preserves exact vectors and PowerShell quote boundaries (seeded)", () =>
+        {
+            Require(NativeCommandLine.Display(new Hashtable { ["FilePath"] = "dotnet", ["ArgumentList"] = new[] { "--version" } }) == "dotnet --version", "Plain command spelling");
+            int reads = 0;
+            IEnumerable<object> ReadOnce()
+            {
+                Require(++reads == 1, "Argument vector was enumerated again");
+                yield return "";
+                yield return 42;
+            }
+            string directory = Directory.GetCurrentDirectory();
+            Hashtable parsed = ReadQuietArgumentsCommand.Parse(["-FilePath", "dotnet", "-ArgumentList", ReadOnce()], directory, directory);
+            Require(NativeCommandLine.Display(parsed) == "dotnet '' 42"
+                && NativeCommandLine.Arguments(parsed["ArgumentList"]).SequenceEqual(["", "42"]) && reads == 1,
+                "Display and launch must use the same normalized arguments");
+            var random = new Random(Seed);
+            string[] alphabet = ["é", "漢", "🙂", " ", "'", "’", "$", "`", "\n", "\\", "x"];
+            for (int trial = 0; trial < 96; trial++)
+            {
+                string[] vector = ["", "leading space", "a'b", .. Enumerable.Range(0, random.Next(0, 7)).Select(_ => "x" + string.Concat(Enumerable.Range(0, random.Next(1, 10)).Select(_ => alphabet[random.Next(alphabet.Length)])))];
+                string display = NativeCommandLine.Display(new Hashtable { ["FilePath"] = "a path/dotnet", ["ArgumentList"] = vector })!;
+                var ast = System.Management.Automation.Language.Parser.ParseInput("probe " + display, out _, out var errors);
+                var command = (System.Management.Automation.Language.CommandAst)ast.Find(node => node is System.Management.Automation.Language.CommandAst, false)!;
+                var actual = command.CommandElements.Skip(1).OfType<System.Management.Automation.Language.StringConstantExpressionAst>().Select(element => element.Value);
+                Require(errors.Length == 0 && actual.SequenceEqual(vector.Prepend("a path/dotnet")), "Display argument changed in trial " + trial);
+            }
+            return Task.CompletedTask;
+        });
     }
 
     /// <summary>Creates a directory link, returning false when the platform or privileges forbid it.</summary>

@@ -34,12 +34,18 @@ public sealed class RecallJournalWriter : IAsyncDisposable
     /// <param name="id">Canonical identity.</param>
     /// <param name="name">Optional label.</param>
     /// <param name="settings">Inert decoding settings.</param>
-    public static async Task<RecallJournalWriter> CreateAsync(string directory, string id, string? name, RecallAnalysisSettings settings)
+    /// <param name="argvString">Optional original display command carried by a version-3 manifest.</param>
+    public static async Task<RecallJournalWriter> CreateAsync(string directory, string id, string? name, RecallAnalysisSettings settings, string? argvString = null)
     {
         directory = Path.GetFullPath(directory);
         if (System.IO.Directory.Exists(directory) || File.Exists(directory)) throw new IOException("RecallDestinationExists");
-        var metadata = new RecallJournalMetadata { RecallId = RecallStore.NormalizeId(id), RecallName = name, Settings = settings };
+        var metadata = new RecallJournalMetadata
+        {
+            Version = argvString is null ? 2 : 3, ArgvString = argvString,
+            RecallId = RecallStore.NormalizeId(id), RecallName = name, Settings = settings,
+        };
         RecallStore.Validate(metadata);
+        RecallStore.EnsureManifestCapacity(metadata);
         RecallPrivateFiles.CreateDirectory(directory);
         var ownership = RecallPrivateFiles.CreateNew(Path.Combine(directory, "writer.lock"), FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.None);
         FileStream? journal = null;
