@@ -216,6 +216,56 @@ try {
         $rejected = $false; try { $null = quiet -AsObject -StateFactory { 'invalid' } -Complete {} absent } catch { $rejected = $true }
         if (!$rejected) { throw 'ScriptInvalidStateFactoryAccepted' }
     }
+    $cases['quiet modes select delivery and stream callbacks survive script export'] = {
+        $fixture = [IO.Path]::Combine($PSScriptRoot, 'lib/fixture/QuietCli.Fixture.dll')
+        $arguments = @($fixture, 'mixed', '19', '7')
+        $data = { @{ stdout = 0L; stderr = 0L; Argv = $null } }
+        $stdout = { param($e, $r) $r.Data.stdout += $e.ByteCount; $r.Data.Argv = $r.ArgvString }
+        $stderr = { param($e, $r) $r.Data.stderr += $e.ByteCount }
+        $complete = {
+            param($r)
+            if ($r.Data.Argv -cne $r.ArgvString -or $null -ne $r.Ui) { throw 'UnexpectedInvocationContext' }
+            @{ Out = $r.Data.stdout; Err = $r.Data.stderr; Mode = $r.Mode; Argv = $r.ArgvString }
+        }
+        $analysis = @{
+            DataFactory = $data; StdOut = $stdout; StdErr = $stderr; Complete = $complete
+            StdoutMode = 'Bytes'; StderrMode = 'Bytes'; FilePath = 'dotnet'; ArgumentList = $arguments
+        }
+        # The facade consumes an exact option vector rather than PowerShell's named splat.
+        $options = @($analysis.GetEnumerator() | ForEach-Object { "-$($_.Key)"; ,$_.Value })
+        $script = quiet @options
+        Assert-QuietEqual $script.Outcome Success
+        Assert-QuietEqual $script.Data.Mode Script
+        Assert-QuietEqual $script.Data.Out 19
+        Assert-QuietEqual $script.Data.Err 7
+        $agent = quiet -Mode Agent @options | ConvertFrom-Json
+        Assert-QuietEqual $agent.Data.Mode Agent
+        Assert-QuietEqual $agent.Data.Err 7
+        $yaml = quiet -Mode User -UI:$false @options
+        if ($yaml -isnot [string] -or $yaml -notmatch '\bMode:\s*User\b') { throw 'UserDidNotDeliverYaml' }
+        $user = quiet -Mode User -AsObject -UI:$false @options
+        Assert-QuietEqual $user.Data.Mode User
+        $generated = quiet -Script ([IO.Path]::Combine($root, 'stream-callbacks.ps1')) -Mode User -AsObject -UI:$false @options
+        $replayed = & $generated.FullName
+        Assert-QuietEqual $replayed.Outcome Success
+        Assert-QuietEqual $replayed.Data.Mode User
+        Assert-QuietEqual $replayed.Data.Argv $user.Data.Argv
+        Assert-QuietEqual $replayed.Data.Out 19
+        Assert-QuietEqual $replayed.Data.Err 7
+
+        $nested = quiet -Mode User -AsObject -UI:$false -Complete {
+            param($r)
+            $child = quiet -Complete { param($c) $c.Mode } dotnet --version
+            $child.Data
+        } dotnet --version
+        Assert-QuietEqual $nested.Data Script
+
+        foreach ($invalid in @(@('-Mode','Agent','-AsObject'), @('-Mode','Other'), @('-StdOut','not a scriptblock'))) {
+            $rejected = $false
+            try { $null = quiet @invalid dotnet --version } catch { $rejected = $true }
+            Assert-QuietEqual $rejected $true
+        }
+    }
     $cases['generated script matches direct execution, supports overrides and recreates state'] = {
         $runner = Join-Path $PSHOME $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' })
         $nativeArguments = @('-NoLogo','-NonInteractive','-Command', '[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); [Console]::Error.WriteLine((ConvertTo-Json -Compress -InputObject @{PowerShell=$PSVersionTable.PSVersion.ToString();Runtime=[Environment]::Version.ToString();OutputCodePage=[Console]::OutputEncoding.CodePage;InputCodePage=[Console]::InputEncoding.CodePage;FixtureHex=[Convert]::ToHexString([Console]::OutputEncoding.GetBytes("é漢"))})); [Console]::Out.Write("é漢")')

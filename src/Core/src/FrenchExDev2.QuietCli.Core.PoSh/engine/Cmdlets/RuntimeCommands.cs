@@ -31,6 +31,12 @@ public sealed class QuietRuntime
     public object? Context { get; internal set; }
     /// <summary>Validated facade options.</summary>
     public Hashtable Request { get; internal set; } = new();
+    /// <summary>Resolved invocation mode shared by every callback.</summary>
+    public string Mode { get; internal init; } = "Script";
+    /// <summary>Display form of the original native command, when known.</summary>
+    public string? ArgvString { get; internal init; }
+    /// <summary>Caller-side delivery chosen with the runtime's mode.</summary>
+    internal InvocationDelivery Delivery { get; init; }
     /// <summary>Caller-owned business value.</summary>
     public object? Data { get; set; }
     /// <summary>Caller-owned auxiliary state.</summary>
@@ -72,7 +78,7 @@ public sealed class QuietRuntime
     /// <summary>True once a durable recall write failed.</summary>
     public bool RecallSaveFailed { get; set; }
     /// <summary>True when the runtime replays retained bytes instead of running a process.</summary>
-    public bool IsRecall { get; set; }
+    public bool IsRecall { get; internal init; }
     /// <summary>Retained event being replayed.</summary>
     public object? CurrentRecallEvent { get; set; }
     /// <summary>Gap preceding the replayed event.</summary>
@@ -89,7 +95,7 @@ public sealed class QuietRuntime
     public List<object?> Events { get; } = [];
     /// <summary>Indexes into <see cref="Listeners"/> that failed and are skipped for the remainder of this call.</summary>
     private HashSet<int>? disabledListeners;
-    /// <summary>Live presentation frame for -UI; null (zero cost) unless the caller requested it.</summary>
+    /// <summary>Live presentation frame when enabled by the invocation policy.</summary>
     public QuietUiRenderer? Ui { get; internal set; }
 
     /// <summary>Moves the lifecycle forward; any other transition is rejected.</summary>
@@ -135,6 +141,15 @@ public sealed class QuietRuntime
     /// <summary>Requests cancellation of the native process.</summary>
     public void Cancel() => Control("cancel", null);
 
+    /// <summary>Stops the owned native process and supplies an exit status for outcome classification.</summary>
+    /// <param name="exitCode">Requested status, independent of the observed native exit code.</param>
+    public void Exit(int exitCode)
+    {
+        // A final decoded record can be dispatched while draining, after native completion.
+        if (NativeStarted && Completed && Lifecycle == "Draining") return;
+        Control("exit", new Hashtable { ["ExitCode"] = exitCode });
+    }
+
     /// <summary>Resizes the pseudo terminal.</summary>
     /// <param name="columns">Column count.</param>
     /// <param name="rows">Row count.</param>
@@ -148,7 +163,7 @@ public sealed class QuietRuntime
     }
 
     /// <summary>Sends a lifecycle control for the owned native child.</summary>
-    /// <param name="action">eof, cancel or resize.</param>
+    /// <param name="action">eof, cancel, exit or resize.</param>
     /// <param name="options">Additional control fields.</param>
     private void Control(string action, IDictionary? options)
     {
@@ -204,13 +219,13 @@ public sealed class QuietRuntime
                 evt.Properties["Text"].Value = text;
                 if (Request.ContainsKey("RecordDelimiter"))
                 {
-                    foreach (string record in processor.Frame(text)) OutputCallback(NewEvent(stream, "Text", null, record, null));
+                    foreach (string record in processor.Frame(text)) DispatchOutput(stream, NewEvent(stream, "Text", null, record, null));
                     return evt;
                 }
             }
             catch (Exception error) { AnalysisComplete = false; AddError("DecodeOrFramingFailed", "Output", error.Message); return null; }
         }
-        OutputCallback(evt);
+        DispatchOutput(stream, evt);
         return evt;
     }
 
@@ -224,7 +239,7 @@ public sealed class QuietRuntime
             try
             {
                 string tail = processor.Finish();
-                if (tail.Length > 0) OutputCallback(NewEvent(stream, "Text", null, tail, null));
+                if (tail.Length > 0) DispatchOutput(stream, NewEvent(stream, "Text", null, tail, null));
             }
             catch (Exception error) { AnalysisComplete = false; AddError("DecodeIncomplete", "Drain", error.Message); }
         }
@@ -257,7 +272,7 @@ public sealed class QuietRuntime
         var start = new Hashtable
         {
             ["Action"] = "start", ["InvocationId"] = InvocationId, ["FilePath"] = request["FilePath"],
-            ["ArgumentList"] = ((IEnumerable)request["ArgumentList"]!).Cast<object?>().Select(item => Convert.ToString(Unwrap(item), CultureInfo.InvariantCulture) ?? "").ToArray(),
+            ["ArgumentList"] = NativeCommandLine.Arguments(request["ArgumentList"]),
             ["WorkingDirectory"] = workingDirectory, ["Environment"] = request["Environment"], ["Transport"] = request["Transport"],
             ["Columns"] = Convert.ToInt32(Unwrap(size[0]), CultureInfo.InvariantCulture), ["Rows"] = Convert.ToInt32(Unwrap(size[1]), CultureInfo.InvariantCulture),
             ["TimeoutSeconds"] = Convert.ToDouble(QuietRuntime.Unwrap(request["TimeoutSeconds"]), CultureInfo.InvariantCulture),
@@ -326,13 +341,29 @@ public sealed class QuietRuntime
         return evt;
     }
 
-    /// <summary>Dispatches a transient event without retaining it in the runtime.</summary>
-    private void OutputCallback(PSObject evt)
+    /// <summary>Detects inline analysis independently of handler resolution.</summary>
+    internal static bool HasAnalysisCallback(Hashtable request) =>
+        request.ContainsKey("Output") || request.ContainsKey("StdOut") || request.ContainsKey("StdErr") || request.ContainsKey("Complete");
+
+    /// <summary>Dispatches the original event to the general callback and then to the native stream's callback.</summary>
+    private void DispatchOutput(string stream, PSObject evt)
     {
-        if (!AnalysisComplete || !Request.ContainsKey("Output")) return;
+        DispatchCallback("Output", evt);
+        string? callback = stream switch { "stdout" => "StdOut", "stderr" => "StdErr", _ => null };
+        if (callback is not null) DispatchCallback(callback, evt);
+    }
+
+    /// <summary>Invokes one registered callback and records its first analysis failure.</summary>
+    private void DispatchCallback(string name, PSObject evt)
+    {
+        if (!AnalysisComplete || !Request.ContainsKey(name)) return;
         var watch = Stopwatch.StartNew();
-        try { Callback(Request["Output"], [evt, this], true); }
-        catch (Exception error) { AnalysisComplete = false; AddError("OutputCallbackFailed", "Output", error.Message); }
+        try { Callback(Request[name], [evt, this], true); }
+        catch (Exception error)
+        {
+            AnalysisComplete = false;
+            AddError("OutputCallbackFailed", "Output", name == "Output" ? error.Message : name + ": " + error.Message);
+        }
         finally { CallbackMs += watch.Elapsed.TotalMilliseconds; }
     }
 
@@ -402,27 +433,34 @@ public abstract class RuntimeCmdlet : EngineCmdlet
     /// <param name="request">Explicit call options and native argument vector.</param>
     /// <param name="parent">Enclosing runtime, if the call is nested.</param>
     /// <param name="sessionId">Identity of the PowerShell session.</param>
-    internal QuietRuntime CreateRuntime(Hashtable request, QuietRuntime? parent, object? sessionId)
+    /// <param name="recall">Captured evidence for an offline replay, or null for a live invocation.</param>
+    internal QuietRuntime CreateRuntime(Hashtable request, QuietRuntime? parent, object? sessionId, RecallCapture? recall = null)
     {
         string id = Guid.NewGuid().ToString("N");
+        InvocationPolicy policy = InvocationPolicy.ForRequest(request);
         var runtime = new QuietRuntime
         {
             InvocationId = id, ParentId = parent?.InvocationId, RootId = parent?.RootId ?? id, SessionId = sessionId, Request = request,
             Context = request.ContainsKey("Context") ? request["Context"] : parent?.Context,
             State = request.ContainsKey("State") ? request["State"] : new Hashtable(),
             PrepareMeasurements = LanguagePrimitives.IsTrue(Setting("telemetry.enabled")),
+            Mode = policy.Mode, Delivery = policy.Delivery, ArgvString = recall?.ArgvString ?? NativeCommandLine.Display(request),
+            IsRecall = recall is not null, Recall = recall,
         };
         if (request.ContainsKey("Data")) runtime.Data = request["Data"];
         runtime.CollectEvents = request.ContainsKey("CollectEvents") && LanguagePrimitives.IsTrue(request["CollectEvents"]);
         runtime.Listeners = request.ContainsKey("Listeners") ? QuietRuntime.NormalizeListeners(request["Listeners"]) : [];
-        if (request.ContainsKey("UI") && LanguagePrimitives.IsTrue(request["UI"]))
+        runtime.Exchange = BuildExchange();
+        string? name = request.ContainsKey("RecallName") ? Convert.ToString(QuietRuntime.Unwrap(request["RecallName"]), CultureInfo.InvariantCulture) : null;
+        if (request.ContainsKey("SaveRecall") && LanguagePrimitives.IsTrue(request["SaveRecall"]))
         {
-            int maxLines = 1;
-            if (request.ContainsKey("MaxLines"))
-            {
-                maxLines = Convert.ToInt32(QuietRuntime.Unwrap(request["MaxLines"]), CultureInfo.InvariantCulture);
-                if (maxLines <= 0) throw new InvalidOperationException("MaxLinesMustBePositive");
-            }
+            string root = RecallCommandSupport.ResolveRoot(request.ContainsKey("RecallRoot") ? Convert.ToString(QuietRuntime.Unwrap(request["RecallRoot"]), CultureInfo.InvariantCulture) : "", CurrentDirectory);
+            runtime.RecallWriter = RecallStore.CreateAsync(root, name, RecallSettings(request), runtime.ArgvString).GetAwaiter().GetResult();
+        }
+        if (request.ContainsKey("RecallOptions"))
+            runtime.RecallCollector = new RecallCollector((RecallOptions)LanguagePrimitives.ConvertTo(request["RecallOptions"], typeof(RecallOptions)), runtime.RecallWriter?.RecallId, name);
+        if (policy.UiMaxLines is { } maxLines)
+        {
             IUiSurface surface;
             try { surface = AnsiConsole.Profile.Capabilities.Interactive ? new SpectreLiveSurface() : new AppendOnlySurface(); }
             catch (Exception error)
@@ -437,15 +475,6 @@ public abstract class RuntimeCmdlet : EngineCmdlet
             string tool = Path.GetFileName(Convert.ToString(QuietRuntime.Unwrap(request["FilePath"]), CultureInfo.InvariantCulture) ?? "native");
             runtime.Ui.SetHeader([$"Project: {Path.GetFileName(directory)} | Task: {tool}", directory]);
         }
-        string? name = request.ContainsKey("RecallName") ? Convert.ToString(QuietRuntime.Unwrap(request["RecallName"]), CultureInfo.InvariantCulture) : null;
-        if (request.ContainsKey("SaveRecall") && LanguagePrimitives.IsTrue(request["SaveRecall"]))
-        {
-            string root = RecallCommandSupport.ResolveRoot(request.ContainsKey("RecallRoot") ? Convert.ToString(QuietRuntime.Unwrap(request["RecallRoot"]), CultureInfo.InvariantCulture) : "", CurrentDirectory);
-            runtime.RecallWriter = RecallStore.CreateAsync(root, name, RecallSettings(request)).GetAwaiter().GetResult();
-        }
-        if (request.ContainsKey("RecallOptions"))
-            runtime.RecallCollector = new RecallCollector((RecallOptions)LanguagePrimitives.ConvertTo(request["RecallOptions"], typeof(RecallOptions)), runtime.RecallWriter?.RecallId, name);
-        runtime.Exchange = BuildExchange();
         return runtime;
     }
 

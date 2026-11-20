@@ -10,6 +10,10 @@ internal sealed class RecallReplayOptions
 {
     /// <summary>Streaming callback receiving each event and the fresh runtime.</summary>
     public ScriptBlock? Output { get; init; }
+    /// <summary>Callback for retained stdout events.</summary>
+    public ScriptBlock? StdOut { get; init; }
+    /// <summary>Callback for retained stderr events.</summary>
+    public ScriptBlock? StdErr { get; init; }
     /// <summary>Completion callback.</summary>
     public ScriptBlock? Complete { get; init; }
     /// <summary>Caller-local delivery projection.</summary>
@@ -34,7 +38,7 @@ internal sealed class RecallReplayOptions
     private static readonly string[] Modes = ["Text", "Bytes"];
 
     /// <summary>Builds options from the validated facade replay hashtable.</summary>
-    /// <param name="values">Subset of Output, Complete, Data, State, StdoutMode, StderrMode, RecordDelimiter, MaxRecordBytes, Projection, AllowPartial.</param>
+    /// <param name="values">Caller-local analysis and callback overrides.</param>
     /// <exception cref="InvalidOperationException">A stable code when a value has the wrong type or range.</exception>
     public static RecallReplayOptions Parse(Hashtable values)
     {
@@ -56,7 +60,7 @@ internal sealed class RecallReplayOptions
         }
         return new RecallReplayOptions
         {
-            Output = Block("Output"), Complete = Block("Complete"), Projection = Block("Projection"),
+            Output = Block("Output"), StdOut = Block("StdOut"), StdErr = Block("StdErr"), Complete = Block("Complete"), Projection = Block("Projection"),
             Data = values.ContainsKey("Data") ? values["Data"] : null,
             State = Raw("State") switch { null => new Hashtable(StringComparer.OrdinalIgnoreCase), Hashtable table => table, _ => throw new InvalidOperationException("RecallStateMustBeHashtable") },
             StdoutMode = Mode("StdoutMode"), StderrMode = Mode("StderrMode"),
@@ -80,11 +84,9 @@ internal static class RecallReplayer
     public static PSObject Replay(RuntimeCmdlet host, RecallCapture capture, object? native, RecallReplayOptions options)
     {
         if (!capture.CaptureComplete && !options.AllowPartial) throw new InvalidOperationException("PartialRecallRequiresAllowPartial");
-        if (options.Output is null && options.Complete is null) throw new InvalidOperationException("RecallAnalysisCallbackRequired");
         Hashtable request = BuildRequest(capture, options);
-        QuietRuntime runtime = host.CreateRuntime(request, QuietCallState.Current, QuietSession.SessionId);
-        runtime.IsRecall = true;
-        runtime.Recall = capture;
+        if (!QuietRuntime.HasAnalysisCallback(request)) throw new InvalidOperationException("RecallAnalysisCallbackRequired");
+        QuietRuntime runtime = host.CreateRuntime(request, QuietCallState.Current, QuietSession.SessionId, capture);
         var watch = Stopwatch.StartNew();
         var allocation = new AllocationMeter();
         long cursor = 0, consumed = 0, count = 0;
@@ -147,6 +149,8 @@ internal static class RecallReplayer
             if (string.IsNullOrEmpty(options.RecordDelimiter)) request.Remove("RecordDelimiter"); else request["RecordDelimiter"] = options.RecordDelimiter;
         }
         if (options.Output is not null) request["Output"] = options.Output;
+        if (options.StdOut is not null) request["StdOut"] = options.StdOut;
+        if (options.StdErr is not null) request["StdErr"] = options.StdErr;
         if (options.Complete is not null) request["Complete"] = options.Complete;
         if (options.Projection is not null) request["Projection"] = options.Projection;
         return request;
@@ -175,6 +179,7 @@ internal static class RecallReplayer
         foreach ((string name, object? value) in new (string, object?)[]
         {
             ("SchemaVersion", 1), ("Summary", "Retained native output reanalyzed locally."), ("Outcome", runtime.AnalysisComplete ? "Success" : "Failed"), ("Data", runtime.Data),
+            ("ExitCode", capture.SourceStatus?.ExitCode), ("RequestedExitCode", null),
             ("InvocationId", runtime.InvocationId), ("Context", runtime.Context), ("Error", runtime.Errors.ToArray()), ("Truncation", truncation),
             ("Cursor", cursor), ("Measurement", measurement), ("Deliveries", new List<object>()),
             ("Internal", new Hashtable(StringComparer.OrdinalIgnoreCase) { ["Sources"] = new System.Collections.Specialized.OrderedDictionary(), ["Request"] = request, ["Administrative"] = true, ["Offline"] = true }),
@@ -203,6 +208,10 @@ public sealed class InvokeQuietRecallCommand : DeliveryCmdlet
     public string? RecallRoot { get; set; }
     /// <summary>Streaming callback receiving event and fresh runtime.</summary>
     [Parameter] public ScriptBlock? Output { get; set; }
+    /// <summary>Callback receiving only stdout events.</summary>
+    [Parameter] public ScriptBlock? StdOut { get; set; }
+    /// <summary>Callback receiving only stderr events.</summary>
+    [Parameter] public ScriptBlock? StdErr { get; set; }
     /// <summary>Optional completion callback.</summary>
     [Parameter] public ScriptBlock? Complete { get; set; }
     /// <summary>Caller-owned fresh business state.</summary>
@@ -233,7 +242,7 @@ public sealed class InvokeQuietRecallCommand : DeliveryCmdlet
                 : RecallCommandSupport.ResolveCapture(InputObject);
             var options = new RecallReplayOptions
             {
-                Output = Output, Complete = Complete, Projection = Projection, Data = Data, State = State,
+                Output = Output, StdOut = StdOut, StdErr = StdErr, Complete = Complete, Projection = Projection, Data = Data, State = State,
                 StdoutMode = StdoutMode, StderrMode = StderrMode, RecordDelimiterBound = MyInvocation.BoundParameters.ContainsKey(nameof(RecordDelimiter)),
                 RecordDelimiter = RecordDelimiter, MaxRecordBytes = MyInvocation.BoundParameters.ContainsKey(nameof(MaxRecordBytes)) ? MaxRecordBytes : null,
                 AllowPartial = AllowPartial,

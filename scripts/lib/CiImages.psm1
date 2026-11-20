@@ -372,6 +372,33 @@ function Get-QuietCiBuildCommand {
     return @('build')
 }
 
+function Receive-QuietCiRegistryImage {
+    <#
+    .SYNOPSIS
+    Pulls a resolved registry image and allows read-only callers to recover from a failed download.
+    .PARAMETER Reference
+    Immutable registry image reference.
+    .PARAMETER ContainerRuntime
+    Selected Docker or Podman executable.
+    .PARAMETER AuthArguments
+    Registry authentication options for the selected executable.
+    .PARAMETER WorkspaceRoot
+    Checkout owning the image operation.
+    .PARAMETER LogPath
+    Owned diagnostic log for the attempted pull.
+    .PARAMETER PublishCache
+    Preserves download errors when preparing a publishable cache.
+    #>
+    param([string]$Reference,[string]$ContainerRuntime,[string[]]$AuthArguments,[string]$WorkspaceRoot,[string]$LogPath,[switch]$PublishCache)
+    try{
+        $null=Invoke-WorkspaceNative $ContainerRuntime (@('pull')+$AuthArguments+@($Reference)) $WorkspaceRoot -TimeoutSeconds 600 -LogPath $LogPath
+        return $true
+    }catch{
+        if($PublishCache){throw}
+        Write-Warning "CI registry cache pull failed for $Reference. See $LogPath."
+        return $false
+    }
+}
 function Invoke-QuietCiImageBuild {
     <#
     .SYNOPSIS
@@ -401,7 +428,7 @@ function Invoke-QuietCiImageBuild {
     .PARAMETER ContainerRuntime
     Podman for workstation runs; Docker for GitHub image preparation and PR fallback.
     .PARAMETER CacheOnly
-    Pulls and verifies an existing final image, returning no value on a registry miss without building.
+    Pulls and verifies an existing final image. Returns no value when the read-only cache is unavailable, without building.
     #>
     param($Plan,[Parameter(Mandatory)][string]$ContextDirectory,[Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$ArtifactPrefix,[switch]$RegistryCache,[switch]$PublishCache,[switch]$CacheOnly,[AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime)
     $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
@@ -453,8 +480,11 @@ function Invoke-QuietCiImageBuild {
                 throw 'CiRegistryLoginFailed'
             }
         }
+        if($digest -and !(Receive-QuietCiRegistryImage -Reference ($registry+'@'+$digest) -ContainerRuntime $ContainerRuntime -AuthArguments $auth -WorkspaceRoot $WorkspaceRoot -LogPath $logPath -PublishCache:$PublishCache)){
+            if($CacheOnly){return}
+            $digest=$null
+        }
         if($digest){
-            $null=Invoke-WorkspaceNative $ContainerRuntime (@('pull')+$auth+@($registry+'@'+$digest)) $WorkspaceRoot -TimeoutSeconds 600 -LogPath $logPath
             $image=$registry+'@'+$digest;$cacheHit=$true
         }else{
             if($ContainerRuntime -eq 'docker'){$env:DOCKER_CONFIG=$previousDockerConfig}

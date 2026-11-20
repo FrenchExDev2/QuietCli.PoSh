@@ -14,7 +14,7 @@ Builds a declared companion overlay over a verified Core or explicit preceding i
 
 The module owns `ci/Get-CiImageArguments.ps1`, recipe fragments, arguments and locks. CiImages renders the Containerfile; its input and parent fingerprints define the final identity. `Module` is the short declared name, such as Git; RuntimeIdentifier selects a native Linux target.
 
-Without ParentPlan, registry reuse checks the final overlay before building Core. On a miss, the wrapper resolves Core, tags the verified parent under a fingerprint-bound local reference, then builds the overlay. With ParentPlan, a real build requires ParentImage and verifies its RID/fingerprint/identity. It never substitutes an unrelated parent.
+Without ParentPlan, registry reuse checks the final overlay before building Core. On a miss or a failed read-only cache download, the wrapper resolves Core, tags the verified parent under a fingerprint-bound local reference, then builds the overlay. With ParentPlan, a real build requires ParentImage and verifies its RID, fingerprint and identity.
 
 ## Dependencies and side effects
 

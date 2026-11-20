@@ -43,7 +43,7 @@ Each record uses a directory named by its canonical GUID:
     writer.lock
 ```
 
-The closed version-2 JSON manifest contains only identity, label, timestamps, inert decoding settings, native status, provenance and counters. The binary journal contains sequence, stream, stream offset, observed combined offset, payload length, payload and SHA-256 over both record metadata and payload. Native reads are framed in bounded blocks; export splits unusually large memory events into at most 1 MiB frames without changing their original sequence. All offsets and byte counters are 64-bit. There is no 20,000-event or 4 GiB content ceiling.
+The JSON manifest contains identity, label, timestamps, inert decoding settings, native status, provenance and counters. Version 3 also contains `ArgvString`, the original command as display text. Version-2 journals remain readable. The binary journal contains sequence, stream, stream offset, observed combined offset, payload length, payload and SHA-256 over both record metadata and payload. Native reads are framed in bounded blocks. Exports split large memory events into at most 1 MiB frames while preserving their original sequence. All offsets and byte counters are 64-bit.
 
 Opening and replaying a completed journal uses bounded-memory cursors, not a whole-file load. Every replay validates record checksums, ordering and final counters as it reads. Corruption produces an explicit failed analysis with incomplete source evidence. Metadata listing never scans business output. Collection `Count`/indexed access retain their Int32 interface for compatibility; use `EventCount` and streaming enumeration for very large record counts. Indexed access on disk scans and is intended for small inspections.
 
@@ -82,7 +82,13 @@ $b = Invoke-QuietRecall -InputObject $r -Output $parserV3 -Complete $completeV3
 
 Each analysis receives new runtime state. Supply fresh `Data` and `State` objects for independent runs. `Output`, `Complete`, delivery `Projection`, `StdoutMode`, `StderrMode`, `RecordDelimiter` and `MaxRecordBytes` can change. A null delimiter override disables record framing. Projection remains a delivery projection, matching ordinary `quiet -AsObject` semantics.
 
-`quiet -RecallId` is routed before executable resolution, probes or native lifecycle control. It rejects executable arguments and native input/interaction options. No command line or executable callback is saved in the journal. Loading evidence never executes persisted code. Runtime native controls and nested QuietCli execution are unavailable during replay; arbitrary caller-supplied scriptblocks remain trusted code rather than sandboxed code.
+`quiet -RecallId` is routed before executable resolution, probes or native lifecycle control. It rejects executable arguments and native input or interaction options. Replay calls `-Output`, `-StdOut`, `-StdErr` and `-Complete` using the same dispatch rules as native analysis. `$runtime.Mode` is `Script`. `$runtime.ArgvString` contains the preserved display text or `$null` for a capture without it. Loading treats the command text as data. Replay still uses the existing offline delivery and process-control rules.
+
+In `-Complete`, use `$runtime.Recall.SourceStatus.ExitCode` for the exit code from the capture. The returned replay result exposes the same value as `$result.ExitCode`. Both yield `$null` when the capture has no recorded code. `RequestedExitCode` is available on a live invocation result. [Shared completion callback example](../readmes/README-streaming.md#read-execution-metadata-in--complete)
+
+In a callback, the read-only `$runtime.IsRecall` is true during `Invoke-QuietRecall` or `quiet -RecallId`. A live command that records output with `-Recall` or `-SaveRecall` sees false. Use the flag when sharing callbacks that control a live process.
+
+Treat durable Recall directories and ZIP exports as sensitive when the native arguments contain secrets. Both store the original command line as clear text. The 64 KiB manifest limit applies before recording starts. Executable callbacks and environment values are excluded from the manifest.
 
 Missing retained ranges require `-AllowPartial`. At each gap, decoders and framers reset; separate fragments cannot become a fabricated record. A suffix inside UTF-8 can still fail strict decoding; use bytes to inspect it. `runtime.CurrentRecallEvent`, `CurrentRecallGap` and `Recall` expose the cursor context. A framed record spanning slices needs analyzer-maintained byte provenance. `runtime.MarkIgnored()` explicitly marks a current sequence; cursor delivery counts alone do not prove business use.
 
@@ -131,6 +137,8 @@ Import bounds central-directory and manifest allocations before exposing records
 ```
 
 The existing visible monitor and external test-report rules apply. Properties cover memory policies, generated mixed-stream durable journals, fragmented Unicode and PowerShell bindings; fuzzing covers malformed manifests, journal frames and ZIPs. Targeted mutations cover meaningful C#/PowerShell behavior changes, not exhaustive mutation coverage. Source-free packages verify their helper binaries before loading them.
+
+The compiled Recall mutation campaign restores only the .NET 11 target from the NuGet cache populated by the workspace build. It compiles each source copy with that restore and retains separate restore, build and test logs in the campaign directory.
 
 `Invoke-QuietRecallRtkComparison` accepts explicit inert command-case records and otherwise reuses `New-QuietControlledStatusFixtures` for all eight Git states. It also exercises the existing C# producer's large, mixed, Unicode and failing outputs as documented RTK passthrough controls. Fixture setup and its environment changes run in an isolated worker. The report distinguishes filter scenarios, passthrough controls, native outcomes, expected facts, observed bytes, latency and allocation gaps. It records the RTK version/hash; missing RTK is `Unavailable`, never an implicit successful comparison. RTK executes through the same QuietCli wrapper, so standalone overhead is not isolated. No general ranking, exact native token counts or financial savings are claimed.
 

@@ -47,7 +47,7 @@ public static class RecallDevelopment
         var best = capture; int index = 0;
         while (index < best.Events.Count && attempts < maximumAttempts && watch.Elapsed.TotalSeconds < seconds)
         {
-            var candidate = new RecallCapture(Guid.NewGuid().ToString("N"), best.Events.Where((_, i) => i != index), capture.ReceivedBytes, capture.SourceComplete, capture.Settings, capture.CaptureId, "Event reduction", capture.SourceStatus);
+            var candidate = new RecallCapture(Guid.NewGuid().ToString("N"), best.Events.Where((_, i) => i != index), capture.ReceivedBytes, capture.SourceComplete, capture.Settings, capture.CaptureId, "Event reduction", capture.SourceStatus, argvString: capture.ArgvString);
             attempts++;
             if (fails(candidate)) best = candidate; else index++;
         }

@@ -106,10 +106,10 @@ internal static class ScriptDefinitionBuilder
     private static readonly Regex Unsupported = new("Recall|^(SaveRecall|Zip|Compress|AllowPartial|CancellationToken)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     /// <summary>Options emitted as switches.</summary>
-    private static readonly string[] Switches = ["AsObject", "AsJson", "AsYaml", "CollectEvents", "MeasurePhases"];
+    private static readonly string[] Switches = ["AsObject", "AsJson", "AsYaml", "UI", "CollectEvents", "MeasurePhases"];
 
     /// <summary>Options holding callbacks whose source is copied verbatim.</summary>
-    private static readonly string[] Callbacks = ["Output", "Complete", "DataFactory", "StateFactory", "Interaction"];
+    private static readonly string[] Callbacks = ["Output", "StdOut", "StdErr", "Complete", "DataFactory", "StateFactory", "Interaction"];
 
     /// <summary>Options derived from the generated parameters rather than stored.</summary>
     private static readonly string[] Derived = ["Script", "FilePath", "ArgumentList", "WorkingDirectory"];
@@ -157,7 +157,7 @@ internal static class ScriptDefinitionBuilder
     /// <param name="path">Absolute, validated destination of the definition.</param>
     internal static string Build(Hashtable request, string currentDirectory, out string path)
     {
-        if (!request.ContainsKey("Output") && !request.ContainsKey("Complete")) throw new InvalidOperationException("QuietScriptCallbackRequired");
+        if (!QuietRuntime.HasAnalysisCallback(request)) throw new InvalidOperationException("QuietScriptCallbackRequired");
         foreach (object key in request.Keys)
             if (Unsupported.IsMatch(Convert.ToString(key, CultureInfo.InvariantCulture) ?? "")) throw new InvalidOperationException($"QuietScriptUnsupportedOption: {key}");
         path = Path.GetFullPath(Text(request["Script"]), currentDirectory);
@@ -167,7 +167,7 @@ internal static class ScriptDefinitionBuilder
         if (File.Exists(path) || Directory.Exists(path)) throw new InvalidOperationException("QuietScriptAlreadyExists");
         var budget = new ScriptLiteralEncoder.Budget();
         string binary = ScriptLiteralEncoder.Encode(request["FilePath"], budget);
-        string arguments = ScriptLiteralEncoder.Encode(AsStringArray(request["ArgumentList"]), budget);
+        string arguments = ScriptLiteralEncoder.Encode(NativeCommandLine.Arguments(request["ArgumentList"]), budget);
         string directory = request.ContainsKey("WorkingDirectory") ? Path.GetFullPath(Text(request["WorkingDirectory"]), currentDirectory) : currentDirectory;
         string working = ScriptLiteralEncoder.Encode(directory, budget);
         var lines = new List<string>
@@ -205,15 +205,6 @@ internal static class ScriptDefinitionBuilder
 
     private static string Text(object? value) => Convert.ToString(QuietRuntime.Unwrap(value), CultureInfo.InvariantCulture) ?? "";
 
-    /// <summary>Mirrors the PowerShell <c>[string[]]</c> cast: null stays null and a scalar becomes one element.</summary>
-    private static string[]? AsStringArray(object? value) => QuietRuntime.Unwrap(value) switch
-    {
-        null => null,
-        string[] strings => strings,
-        string single => [single],
-        IEnumerable items => items.Cast<object?>().Select(Text).ToArray(),
-        { } other => [Text(other)],
-    };
 }
 
 /// <summary>Writes an explicit call definition without executing callbacks or native code.</summary>

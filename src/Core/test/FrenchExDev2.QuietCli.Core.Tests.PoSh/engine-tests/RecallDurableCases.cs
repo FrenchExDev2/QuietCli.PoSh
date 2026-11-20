@@ -165,7 +165,7 @@ internal static class RecallDurableCases
             string root = Root(); await using var writer = await RecallStore.CreateAsync(root, null, settings); await writer.AppendAsync("stdout", [1]);
             var capture = await writer.CompleteAsync(true, new("Success", 0, "Executed")); string manifest = Path.Combine(capture.StoragePath!, "manifest.json");
             var valid = JsonSerializer.Deserialize<RecallJournalMetadata>(await File.ReadAllTextAsync(manifest))!;
-            foreach (var invalid in new[] { valid with { Version = 99 }, valid with { StoredBytes = -1 }, valid with { EventCount = long.MaxValue }, valid with { JournalLength = 1 }, valid with { RecallId = "../outside" }, valid with { Settings = settings with { RecordDelimiter = "" } } })
+            foreach (var invalid in new[] { valid with { Version = 99 }, valid with { Version = 3 }, valid with { Version = 3, ArgvString = " " }, valid with { ArgvString = "dotnet --version" }, valid with { StoredBytes = -1 }, valid with { EventCount = long.MaxValue }, valid with { JournalLength = 1 }, valid with { RecallId = "../outside" }, valid with { Settings = settings with { RecordDelimiter = "" } } })
             {
                 await File.WriteAllBytesAsync(manifest, JsonSerializer.SerializeToUtf8Bytes(invalid));
                 await RejectAsync(() => RecallStore.OpenDirectoryAsync(capture.StoragePath!));
@@ -175,6 +175,37 @@ internal static class RecallDurableCases
             for (int i = 0; i < 100; i++) { byte[] bytes = new byte[random.Next(1, 1024)]; random.NextBytes(bytes); await File.WriteAllBytesAsync(malformed, bytes); await RejectAsync(() => RecallArchive.ImportAsync(malformed, 1024, root)); }
             string traversal = Path.Combine(root, "traversal.zip"); using (var zip = ZipFile.Open(traversal, ZipArchiveMode.Create)) { zip.CreateEntry("../manifest.json"); zip.CreateEntry("events.bin"); }
             await RejectAsync(() => RecallArchive.ImportAsync(traversal, null, root));
+        });
+
+        await test("Recall v3 keeps argv in memory, on disk and through ZIP while v2 remains readable", async () =>
+        {
+            string root = Root();
+            const string argv = "dotnet 'é漢🙂 a''b' ''";
+            var collector = new RecallCollector(new("All", "Head"));
+            collector.Append("stdout", [42]);
+            RecallCapture memory = collector.Snapshot(true, settings, argvString: argv);
+            Require(memory.ArgvString == argv, "Memory command changed");
+            string directory = Path.Combine(root, "saved");
+            var saved = await RecallStore.SaveDirectoryAsync(memory, directory);
+            Require(saved.JournalMetadata!.Version == 3 && saved.ArgvString == argv, "Disk command changed");
+            Require((await RecallStore.OpenDirectoryAsync(directory)).ArgvString == argv, "Reopened command missing");
+            string zip = Path.Combine(root, "saved.zip");
+            await RecallArchive.ExportAsync(saved, zip, zip: true);
+            var imported = await RecallArchive.ImportAsync(zip, root: Path.Combine(root, "import"));
+            Require(imported.ArgvString == argv && imported.Events.Single().Bytes.SequenceEqual(new byte[] { 42 }), "ZIP command or payload changed");
+
+            string legacy = Path.Combine(root, "legacy");
+            await using var writer = await RecallJournalWriter.CreateAsync(legacy, Guid.NewGuid().ToString("N"), null, settings);
+            await writer.CompleteAsync(true, null);
+            var previous = await RecallStore.OpenDirectoryAsync(legacy);
+            Require(previous.JournalMetadata!.Version == 2 && previous.ArgvString is null, "Legacy manifest rejected or command fabricated");
+        });
+
+        await test("Recall rejects oversized argv before creating a journal", async () =>
+        {
+            string directory = Path.Combine(Root(), "too-large");
+            await RejectAsync(() => RecallJournalWriter.CreateAsync(directory, Guid.NewGuid().ToString("N"), null, settings, new string('漢', RecallStore.ManifestLimit / 6)));
+            Require(!Directory.Exists(directory), "Oversized manifest left a journal");
         });
     }
 

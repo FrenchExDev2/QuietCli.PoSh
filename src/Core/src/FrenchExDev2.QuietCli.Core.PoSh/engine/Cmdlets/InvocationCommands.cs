@@ -182,7 +182,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
             {
                 runtime.Transition("Running");
                 request["FilePath"] = ApplicationResolver.Resolve(Text(request["FilePath"]), CurrentDirectory);
-                if (request.ContainsKey("Output") || request.ContainsKey("Complete")) runtime.RunNative();
+                if (QuietRuntime.HasAnalysisCallback(request)) runtime.RunNative();
                 else
                 {
                     Hashtable? handler = HandlerRegistry.Resolve(runtime);
@@ -190,7 +190,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
                     else if (handler is null)
                     {
                         outcome = "Unsupported";
-                        runtime.Errors.Add(new Hashtable { ["Code"] = "HandlerNotFound", ["Phase"] = "Resolve", ["Message"] = "No compatible handler is registered. Supply -Output/-Complete for direct execution." });
+                        runtime.Errors.Add(new Hashtable { ["Code"] = "HandlerNotFound", ["Phase"] = "Resolve", ["Message"] = "No compatible handler is registered. Supply -Output, -StdOut, -StdErr or -Complete for direct execution." });
                     }
                     else
                     {
@@ -278,6 +278,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
             foreach ((string name, object? value) in new (string, object?)[]
             {
                 ("SchemaVersion", 1), ("Summary", handlerUsed is not null ? handlerUsed["Summary"] : "Native command processed."), ("Outcome", outcome), ("Data", runtime.Data),
+                ("ExitCode", PropertyReader.Get(runtime.Execution, "ExitCode")), ("RequestedExitCode", PropertyReader.Get(runtime.Execution, "RequestedExitCode")),
                 ("InvocationId", runtime.InvocationId), ("ParentId", runtime.ParentId), ("RootId", runtime.RootId), ("SessionId", runtime.SessionId), ("Context", runtime.Context),
                 ("Error", runtime.Errors.ToArray()), ("Truncation", truncation), ("Measurement", measurement), ("Deliveries", new List<object>()),
                 ("Internal", new Hashtable(StringComparer.OrdinalIgnoreCase) { ["Sources"] = runtime.Sources, ["Request"] = request, ["Handler"] = runtime.Handler, ["Administrative"] = false }),
@@ -289,11 +290,11 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
             FinalProperties.Set(result, "Completeness", completeness);
             if (diskRecall is not null)
             {
-                if (runtime.RecallCollector is { } collector) diskRecall.AttachMemorySnapshot(collector.Snapshot(Flag(runtime.Execution, "SourceComplete"), RecallSettings(request), diskRecall.SourceStatus));
+                if (runtime.RecallCollector is { } collector) diskRecall.AttachMemorySnapshot(collector.Snapshot(Flag(runtime.Execution, "SourceComplete"), RecallSettings(request), diskRecall.SourceStatus, runtime.ArgvString));
                 FinalProperties.Set(result, "Recall", diskRecall);
             }
             else if (runtime.RecallCollector is { } memory)
-                FinalProperties.Set(result, "Recall", memory.Snapshot(Flag(runtime.Execution, "SourceComplete"), RecallSettings(request), StatusOf(runtime.Execution)));
+                FinalProperties.Set(result, "Recall", memory.Snapshot(Flag(runtime.Execution, "SourceComplete"), RecallSettings(request), StatusOf(runtime.Execution), runtime.ArgvString));
             Members.SetNote(measurement, "Allocation", allocation.Stop());
             Hashtable? phases = null;
             if (measurePhases)
@@ -316,11 +317,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
             }
         }
         QuietCallState.Current?.Children.Add(result);
-        bool asObject = request.ContainsKey("AsObject") && LanguagePrimitives.IsTrue(request["AsObject"]);
-        if (!request.ContainsKey("AsJson") && !request.ContainsKey("AsYaml") && QuietCallState.Depth > 0) asObject = true;
-        if (asObject) return result;
-        return Deliver(result, Convert.ToInt32(QuietRuntime.Unwrap(request["MaxItems"]), CultureInfo.InvariantCulture), Convert.ToInt32(QuietRuntime.Unwrap(request["MaxOutputBytes"]), CultureInfo.InvariantCulture),
-            Text(request["Tokenizer"]), request.ContainsKey("AsYaml") && LanguagePrimitives.IsTrue(request["AsYaml"]));
+        return DeliverInvocation(result, request, runtime.Delivery);
     }
 
     /// <summary>Routes quiet -RecallId before native resolution, probing or lifecycle orchestration; replays offline and delivers.</summary>
@@ -331,9 +328,15 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
         string root = request.ContainsKey("RecallRoot") ? Text(request["RecallRoot"]) : "";
         RecallCapture capture = RecallStore.OpenAsync(RecallCommandSupport.ResolveRoot(root, CurrentDirectory), Text(request["RecallId"])).GetAwaiter().GetResult();
         PSObject result = RecallReplayer.Replay(this, capture, null, RecallReplayOptions.Parse(replay));
-        if (request.ContainsKey("AsObject") && LanguagePrimitives.IsTrue(request["AsObject"])) return result;
+        return DeliverInvocation(result, request, InvocationPolicy.ExplicitDelivery(request) ?? InvocationDelivery.Json);
+    }
+
+    /// <summary>Returns the local result or applies the selected bounded serializer.</summary>
+    private object DeliverInvocation(PSObject result, Hashtable request, InvocationDelivery delivery)
+    {
+        if (delivery == InvocationDelivery.Object) return result;
         return Deliver(result, Convert.ToInt32(QuietRuntime.Unwrap(request["MaxItems"]), CultureInfo.InvariantCulture), Convert.ToInt32(QuietRuntime.Unwrap(request["MaxOutputBytes"]), CultureInfo.InvariantCulture),
-            Text(request["Tokenizer"]), request.ContainsKey("AsYaml") && LanguagePrimitives.IsTrue(request["AsYaml"]));
+            Text(request["Tokenizer"]), delivery == InvocationDelivery.Yaml);
     }
 
     /// <summary>Saves counters without serializing or enumerating Result.Data.</summary>

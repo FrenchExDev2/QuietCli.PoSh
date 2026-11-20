@@ -182,6 +182,19 @@ Executes independent native byte and object invariants in a companion module.
         Write-WorkspaceJson (Join-Path $RunDirectory event-collection/campaign.json) $result
         if($result.Failed){throw 'ExplicitEventCollectionMutationFailed'}
     }
+    $cases['invocation modes, stream routing and Recall argv detect targeted mutations']={
+        . ([IO.Path]::Combine($PSScriptRoot,'ConfigurationDelivery.Mutation.ps1'))
+        . ([IO.Path]::Combine($PSScriptRoot,'Recall.Mutation.ps1'))
+        $mutationRoot=[IO.Path]::Combine($RunDirectory,'invocation-mutations')
+        $progress={param($name,$state,$passed,$failed) Write-Host ('Mutation: '+$name+'; state='+$state+'; passed='+$passed+'; failed='+$failed)}
+        $policy=Invoke-QuietConfigurationDeliveryEngine -WorkspaceRoot $WorkspaceRoot -RunDirectory $mutationRoot -Mutation -MutationName @(
+            'maxlines-requires-ui-guard-removed','maxlines-nonpositive-silently-coerced','mode-ui-override-ignored',
+            'mode-agent-object-allowed','stream-callback-runs-before-output'
+        ) -OnProgress $progress
+        $recall=Invoke-QuietRecallMutation -WorkspaceRoot $WorkspaceRoot -RunDirectory ([IO.Path]::Combine($mutationRoot,'recall')) -MutationName 'lose-durable-argv' -OnProgress $progress
+        Write-WorkspaceJson ([IO.Path]::Combine($mutationRoot,'campaign.json')) @{Policy=$policy;Recall=$recall}
+        if($policy.Failed -or $recall.Failed){throw 'InvocationMutationFailed'}
+    }
 
     $cases['cold engine and warm block-size measurements retain no business output']={
         Stop-QuietEngine
@@ -202,7 +215,7 @@ Executes independent native byte and object invariants in a companion module.
         $nativeDirectory=Join-Path $WorkspaceRoot ('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/'+[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier+'/native')
         $r=quiet -AsObject -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){[void]$r.Data.Append($e.Text)}} -Complete {param($r)$r.Data.ToString()|ConvertFrom-Json} $dotnet $assembly $nativeDirectory
         Assert-QuietEqual $r.Outcome Success
-        Assert-QuietEqual $r.Data.Passed 79
+        Assert-QuietEqual $r.Data.Passed 81
         Assert-QuietEqual $r.Data.Failed 0
     }
     $cases['SQLite preparation overlaps native execution and preserves telemetry policy']={
@@ -474,6 +487,7 @@ Register-QuietHandler -Id 'Sample.QuietStatus.PoSh' -Definition @{
         'compiled framing and direct engine measure local overhead independently'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'business events measure Emit with listeners and explicit collection'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'explicit event collection compiled properties and targeted mutations'=@{TestKind='Integration';Dependencies=@('FileSystem','DotNetBuild','NativeProcess')}
+        'invocation modes, stream routing and Recall argv detect targeted mutations'=@{TestKind='Integration';Dependencies=@('FileSystem','DotNetBuild','NativeProcess')}
         'cold engine and warm block-size measurements retain no business output'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'C# protocol and concurrent SQLite assertions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'SQLite preparation overlaps native execution and preserves telemetry policy'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}

@@ -7,6 +7,9 @@ public sealed record RecallJournalMetadata
 {
     /// <summary>Journal format version.</summary>
     public int Version { get; init; } = 2;
+    /// <summary>Inert original display command in a version-3 manifest.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ArgvString { get; init; }
     /// <summary>Canonical immutable artifact identity.</summary>
     public string RecallId { get; init; } = "";
     /// <summary>Optional human label, not a path or unique key.</summary>

@@ -425,6 +425,29 @@ try{
         & $module {param($path) Get-Module CiImages -All | Where-Object Path -EQ $path | Remove-Module -Force} ([IO.Path]::GetFullPath([IO.Path]::Combine($warmScripts,'lib/CiImages.psm1')))
         $miss=& $module {param($root,$selection) Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-x64 -RegistryCache -ProbeOnly -ContainerRuntime docker} $warmRoot $selection
         if(!$miss.RegistryOnly -or $miss.CacheHit){throw 'ProbePreparedMissingImage'}
+
+        $unavailableSource=$images.Replace('[pscustomobject]@{Image="verified-final-local";CacheHit=$true}', 'return')
+        $imagesPath=[IO.Path]::Combine($warmScripts,'lib','CiImages.psm1')
+        [IO.File]::WriteAllText($imagesPath,$unavailableSource,[Text.UTF8Encoding]::new($false))
+        & $module {param($path) Get-Module CiImages -All | Where-Object Path -EQ $path | Remove-Module -Force} $imagesPath
+        $prepare=@'
+param($WorkspaceRoot,$RuntimeIdentifier,$Module,$ParentPlan,$ParentImage,[switch]$PlanOnly,[switch]$RegistryCache,[switch]$PublishCache,$ContainerRuntime)
+if($PlanOnly){return [pscustomobject]@{Fingerprint=('a'*64);Rid=$RuntimeIdentifier}}
+if($PublishCache -or $ContainerRuntime -cne 'docker'){throw 'UnexpectedOutagePreparation'}
+$layer=if($Module){$Module}else{'Core'}
+$source=if($RegistryCache){'cache'}else{'local'}
+[pscustomobject]@{Image="$layer/$source";ParentImage=$ParentImage}
+'@
+        foreach($scriptName in @('New-CiImage.ps1','New-CiModuleImage.ps1')){
+            [IO.File]::WriteAllText([IO.Path]::Combine($warmScripts,$scriptName),$prepare,[Text.UTF8Encoding]::new($false))
+        }
+        & $module {
+            param($root,$selection)
+            $coreImage=Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection @{Images=@('Core')} -RuntimeIdentifier linux-musl-arm64 -RegistryCache -ContainerRuntime docker
+            if($coreImage.Image -cne 'Core/local'){throw 'CoreFinalCacheCheckedAgainAfterUnavailablePull'}
+            $overlayImage=Invoke-QuietCiSuiteImage -WorkspaceRoot $root -Selection $selection -RuntimeIdentifier linux-musl-arm64 -RegistryCache -ContainerRuntime docker
+            if($overlayImage.Image -cne 'Git/local' -or $overlayImage.ParentImage -cne 'Core/cache'){throw 'OverlayFallbackDidNotReuseAvailableParent'}
+        } $warmRoot $selection
     }finally{Remove-Module -ModuleInfo $module -Force}
     $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
     $yaml=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build()

@@ -26,12 +26,13 @@ Read [Qualification: when, where and how](readmes/README-qualification-when-wher
 
 QuietCli's engine streams native output once. Your own code decides what that stream becomes, split across two callbacks with different jobs:
 
-- **`-Output`** runs once per stream event (one line of stdout or stderr). It never produces the result itself; its only job is to accumulate state into `$runtime.Data` — counters, lists, parsed fields. Nothing else leaves this callback.
-- **`-Complete`** runs once, after the stream ends. It reads `$runtime.Data` and returns the one object the call delivers — the actual business projection. This is where you decide what the command means in business terms: a status summary, a count, a list of typed records.
+- **`-Output`**, **`-StdOut`** and **`-StdErr`** accumulate state into `$runtime.Data`. For each event, QuietCli calls `-Output` first and then the matching stream callback when supplied.
+- **`-Complete`** runs once, after the stream ends. It reads `$runtime.Data` and returns the business result, such as a status summary, a count or a list of typed records. It can also read the command line and exit code. [Execution metadata in `-Complete`](readmes/README-streaming.md#read-execution-metadata-in--complete)
 
 In short: `-Output` folds raw events into accumulated state, `-Complete` projects that state into the business output you asked for. A companion module (see the Git example below) just supplies a ready-made `-Output`/`-Complete` pair — a handler — for one executable, so you don't write the fold or the projection yourself.
 
 Callbacks can also call `$runtime.Emit($event)` to notify `-Listeners` without producing pipeline output.
+`$runtime.Exit(0)` stops the invocation's running child and requests a successful outcome with the default success codes. The result exposes the system-reported `ExitCode` and the callback's `RequestedExitCode`.
 Events are transient by default. Explicit `-CollectEvents` retains them in order on `$runtime.Events`,
 lets `-Complete` read them, and adds a snapshot under the finished result's top-level `Events` field,
 alongside `Data`. Without this switch, the runtime list stays empty and the result omits `Events`.
@@ -46,12 +47,10 @@ $r = quiet -AsObject -CollectEvents -C sdk-version -WorkingDirectory (Get-Locati
         param($event, $runtime)
         Write-Host "SDK version emitted: $event"
     } `
-    -Output {
+    -StdOut {
         param($event, $runtime)
-        if ($event.Stream -eq 'stdout') {
-            $runtime.Data.Version = $event.Text.Trim()
-            $runtime.Emit($runtime.Data.Version)
-        }
+        $runtime.Data.Version = $event.Text.Trim()
+        $runtime.Emit($runtime.Data.Version)
     } `
     -Complete {
         param($runtime)
@@ -63,6 +62,12 @@ $r = quiet -AsObject -CollectEvents -C sdk-version -WorkingDirectory (Get-Locati
 `-Listeners` accepts one scriptblock or an array of scriptblocks and runs each one synchronously as
 `$runtime.Emit(...)` is called, including without collection. This example explicitly collects the
 values for `-Complete`; omit `-CollectEvents` when only live notification or UI progress is needed.
+
+`-Mode Agent` defaults to bounded JSON delivery. `-Mode Script` defaults to a local PowerShell object.
+`-Mode User` defaults to YAML and a dashboard. When the mode is omitted, direct interactive PowerShell
+prompt calls select `User`; scripts, nested calls and non-interactive calls select `Script`.
+Callbacks can inspect the resolved mode in `$runtime.Mode` and the original command in
+`$runtime.ArgvString`, for example `dotnet --version`. See the [streaming guide](readmes/README-streaming.md).
 
 ## Roadmap: from a script to an ecosystem
 

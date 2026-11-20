@@ -18,7 +18,7 @@ Resolves the base and overlays declared by `build/companions.yml` for Suite (def
 | PlanOnly | Offline; no native/credential access | Final plan and fingerprint; the YAML reader may prepare its pinned parser resource. |
 | ProbeOnly with RegistryCache | Registry configuration lookup, no pull/build/daemon | Final CacheHit and fingerprint; PublishCache is rejected. |
 | ResolveOnly with RegistryCache | Verify metadata; build only on miss | Existing immutable reference without pulling layers, or newly prepared image. |
-| Normal RegistryCache | Pull verified final hit first; build required parents on miss | Verified local final image. |
+| Normal RegistryCache | Pull the final image first. In read-only mode, prepare required parents and build locally on a cache miss or download failure. | Verified local final image. |
 
 Suite accepts several names. With more than one, the script delegates to `Invoke-QuietCiSuiteImages`, which prepares each distinct chain once, sequentially and base first, and returns the aggregate `{RuntimeIdentifier, Suites, Chains, Fingerprint, CacheHit}`. This is the mode used by the `images` warm-up job of `companions-ci.yml`, the single producer per RID of a develop run. PlanOnly accepts one suite only (`CiSuiteImagePlanRequiresOneSuite`); a single name keeps the per-suite result.
 
@@ -38,7 +38,8 @@ flowchart TD
     H -- No, preparation --> BASE[Prepare declared base]
     BASE --> L[Prepare required overlays in dependency order]
     L --> FINAL[Verify final identity and save receipts]
-    PULL --> FINAL
+    PULL -- Download succeeds --> FINAL
+    PULL -- Read-only download fails --> BASE
 ```
 
 ## Dependencies, side effects and review

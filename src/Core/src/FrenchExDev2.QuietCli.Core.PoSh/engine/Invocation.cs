@@ -43,6 +43,8 @@ internal sealed class Invocation : IAsyncDisposable
     private const long NoExitCode = long.MinValue;
     /// <summary>Native exit code, or <see cref="NoExitCode"/>; a 64-bit slot keeps the value and its presence in one atomic read.</summary>
     private long exitCodeValue = NoExitCode;
+    /// <summary>First exit code requested through the serialized engine control path.</summary>
+    private int? requestedExitCode;
     /// <summary>Native success codes contract used by the isolated runtime.</summary>
     private readonly int[] successCodes;
     /// <summary>Configured reader block size, bounded by the protocol maximum.</summary>
@@ -227,6 +229,14 @@ internal sealed class Invocation : IAsyncDisposable
     private void CloseInput() { inputClosed = true; input.Writer.TryComplete(); }
     /// <summary>Cancels only this owned process tree.</summary>
     internal void Cancel() { cancelled = true; process.Kill(); }
+    /// <summary>Requests termination of the owned process tree while preserving the native exit code.</summary>
+    /// <param name="code">Status to compare with the configured success codes.</param>
+    internal void Exit(int code)
+    {
+        if (requestedExitCode.HasValue || timedOut || cancelled || process.HasExited) return;
+        requestedExitCode = code;
+        process.Kill();
+    }
     /// <summary>Resizes an explicitly requested terminal.</summary>
     /// <param name="columns">Terminal width in columns.</param>
 /// <param name="rows">Terminal height in rows.</param>
@@ -240,15 +250,16 @@ internal sealed class Invocation : IAsyncDisposable
     {
         // Read each cross-thread field once so one snapshot never mixes two states.
         int? exit = ExitCode; string? failure = Error; bool wasTimedOut = timedOut, wasCancelled = cancelled, completed = IsCompleted;
+        int? status = requestedExitCode ?? exit;
         return new NativeExecutionSnapshot {
-        ProcessId = ProcessId, Transport = Transport, ReadBlockBytes = readBlockBytes, ExitCode = exit,
-        Outcome = wasTimedOut ? "Timeout" : wasCancelled ? "Cancelled" : failure != null || !successCodes.Contains(exit ?? -1) ? "Failed" : "Success",
+            ProcessId = ProcessId, Transport = Transport, ReadBlockBytes = readBlockBytes, ExitCode = exit, RequestedExitCode = requestedExitCode,
+            Outcome = wasTimedOut ? "Timeout" : wasCancelled ? "Cancelled" : failure != null || !successCodes.Contains(status ?? -1) ? "Failed" : "Success",
         StdinBytesWritten = Interlocked.Read(ref stdinBytes),
         StdoutBytesRead = Transport == "Pty" ? (long?)null : Interlocked.Read(ref stdoutBytes),
         StderrBytesRead = Transport == "Pty" ? (long?)null : Interlocked.Read(ref stderrBytes),
         TerminalBytesRead = Transport == "Pty" ? (long?)Interlocked.Read(ref stdoutBytes) : null,
         ElapsedMs = watch.Elapsed.TotalMilliseconds,
-        SourceComplete = completed && !wasTimedOut && !wasCancelled && failure == null,
+            SourceComplete = completed && !wasTimedOut && !wasCancelled && !requestedExitCode.HasValue && failure == null,
         Error = failure, State = completed ? "Finalized" : "Running",
         EffectStatus = exit.HasValue && !wasTimedOut && !wasCancelled ? "Executed" : "Unknown"
         };

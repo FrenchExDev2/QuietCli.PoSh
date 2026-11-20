@@ -6,13 +6,84 @@ How `quiet` consumes native output and how callbacks turn it into business data.
 
 Without an explicit capture option, stdout/stderr are read once, counted, dispatched through bounded transient buffers and released. No cumulative raw capture, output spool or content history is created. Native queues are bounded to 16 blocks of 16 KiB per invocation. Incremental UTF-8 decoding and delimiter framing run in C#; unfinished records are bounded by `MaxRecordBytes`. Invalid or incomplete UTF-8 and oversized records fail explicitly.
 
-`-Output` receives `(event, runtime)` and must emit no incidental pipeline output. Store required business information in `runtime.Data`; use `[void]` for methods whose return values should be discarded. `-Complete` receives the runtime and returns at most one business value. Use the unary comma to return an array as one value. If it returns no value, the existing `Data` is preserved.
+`-Output`, `-StdOut` and `-StdErr` receive `(event, runtime)`. Each event goes to `-Output` first and then to its matching stream callback when supplied. PTY delivers merged `terminal` events through `-Output`. The callbacks share text decoding, framing and byte-mode behavior. Store required business information in `runtime.Data` and use `[void]` to discard method return values.
+
+`-Complete` receives the runtime and returns at most one business value. Use the unary comma to return an array as one value. If it returns no value, the existing `Data` is preserved. All callbacks can read the same `$runtime.Mode` and `$runtime.ArgvString`. The latter shows the supplied executable and native arguments, with quoting that preserves their boundaries.
+
+`$runtime.IsRecall` is a read-only Boolean. It is true during offline replay and false during a live invocation, including one that records with `-Recall` or `-SaveRecall`.
 
 Without explicit callbacks, command execution requires a documented compatible registered handler. Unsupported commands are rejected before business execution. `-SaveRecall` also permits direct recording without a parser.
 
 Collection, retention, decoding, business analysis and delivery are separate responsibilities. `-AsObject` returns a local envelope without enumerating, serializing or transferring `Data` to the engine. Inspect `Outcome`, `Execution`, `Completeness` and errors alongside the business data. JSON/YAML delivery applies item, structural and encoded-byte budgets; a delivery projection can select only the information needed by the consumer.
 
 Nested native calls from callbacks have their own results and retain visible failures. Children inherit the measurement context, but do not implicitly inherit Recall retention or recording. After an analyzer failure, native drainage continues and `Complete` can finalize partial business data.
+
+## Read execution metadata in `-Complete`
+
+QuietCli runs `-Complete` after draining the output and before building the result envelope. The callback can read the final native execution snapshot in a live call, or the recorded source status in a Recall replay.
+
+| Value | Live invocation | Recall replay |
+| --- | --- | --- |
+| Command and arguments | `$runtime.ArgvString` | `$runtime.ArgvString` |
+| Observed exit code | `$runtime.Execution.ExitCode` | `$runtime.Recall.SourceStatus.ExitCode` |
+| Code requested through `.Exit(int)` | `$runtime.Execution.RequestedExitCode` | Unavailable |
+| Replay flag | `$runtime.IsRecall` is `$false` | `$runtime.IsRecall` is `$true` |
+
+The observed exit code can be `$null` if it was unavailable or the capture did not record it. `ArgvString` can also be `$null` when the capture has no command text. After the call returns, `$result.ExitCode` exposes the observed or recorded code directly.
+
+Use the same completion callback for a live capture and a replay.
+
+```powershell
+$complete = {
+    param($runtime)
+
+    $exitCode = if ($runtime.IsRecall) {
+        $runtime.Recall.SourceStatus.ExitCode
+    } else {
+        $runtime.Execution.ExitCode
+    }
+
+    [pscustomobject]@{
+        Command = $runtime.ArgvString
+        ExitCode = $exitCode
+        IsRecall = $runtime.IsRecall
+    }
+}
+
+$live = quiet -AsObject -Recall -Complete $complete git --version
+$replay = Invoke-QuietRecall -InputObject $live -Complete $complete
+$live.Data
+$replay.Data
+```
+
+## Stop a running child from a callback
+
+Call `$runtime.Exit(0)` from `-Output`, `-StdOut` or `-StdErr` when the native command has produced enough information. QuietCli terminates the owned process tree, drains pending output and runs `-Complete` once. The callback can keep running after the call returns.
+
+The first stop request applies while the child is running. If the child has already exited, QuietCli uses its natural status. When the stop request applies, QuietCli compares `RequestedExitCode` with `-SuccessExitCodes` to determine `Outcome`, and `Completeness.Source` is false. The system-reported `ExitCode` remains available and can differ from `RequestedExitCode`. If you share an output callback with Recall, check `!$runtime.IsRecall` before calling `.Exit()`.
+
+## Invocation modes
+
+| Mode | Delivery | Dashboard |
+| --- | --- | --- |
+| `Agent` | JSON by default, YAML with `-AsYaml` | Off by default |
+| `User` | YAML by default | On by default |
+| `Script` | PowerShell object by default | Off by default |
+
+Direct calls at an interactive PowerShell console prompt choose `User` when `-Mode` is omitted.
+Scripts, nested calls and non-interactive calls choose `Script`. Use `-Mode Agent` to receive a bounded
+JSON or YAML delivery. Explicit format switches take precedence in `User` and `Script`. To collect
+Recall evidence, supply `-AsObject` explicitly in `Script` or `User` mode.
+
+```powershell
+quiet -Mode Agent -Data @{ Version = '' } -StdOut {
+    param($event, $runtime)
+    $runtime.Data.Version += $event.Text
+} -Complete {
+    param($runtime)
+    @{ Version = $runtime.Data.Version.Trim(); Command = $runtime.ArgvString }
+} dotnet --version
+```
 
 ## Anatomy of a result
 
@@ -21,6 +92,8 @@ Nested native calls from callbacks have their own results and retain visible fai
 | Field | Question it answers | Typical values |
 | --- | --- | --- |
 | `Outcome` | Did the invocation do its job? | `Success`; `Failed` (the native command exited with a non-success code); `Unsupported` (no handler and no callbacks, so nothing ran) |
+| `ExitCode` | Which exit status did the system report? | Integer, or `null` when no single native exit was observed |
+| `RequestedExitCode` | Which status did the callback supply to stop the child? | Integer for an applied stop request, otherwise `null` |
 | `Execution` | What happened to the native process? | Native exit code, timing, `EffectStatus`, `State`, issues |
 | `Completeness.Source` | Was the native output fully read? | `True`, or `False` when drainage was interrupted |
 | `Completeness.Analysis` | Did the analyzer see every record and finish? | `True`, or `False` after a callback failure |
@@ -63,9 +136,10 @@ $runtime.Emit('Progress', [pscustomobject]@{ File = 'rapport.txt'; Percent = 75 
 # A listener receives: $event.Type == 'Progress', $event.Data.Percent == 75
 ```
 
-`-UI` provides a live presentation surface through `$runtime.Ui.Write($event, $lane)` and
-`$runtime.Ui.NewLine($lane)`. `-MaxLines` selects the positive history depth per lane and requires
-`-UI`. Emit does not automatically write to this surface. The [Vagrant companion](../src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md)
+`-UI` and `-UI:$false` override the mode's dashboard setting. The enabled dashboard provides
+`$runtime.Ui.Write($event, $lane)` and `$runtime.Ui.NewLine($lane)`. `-MaxLines` selects a positive
+history depth per lane when the dashboard is enabled. Call `Ui.Write` to display an emitted event.
+The [Vagrant companion](../src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md)
 supplies both event emission and per-machine presentation.
 
 - **Options precede the executable.** `quiet -AsObject -C label git status`: QuietCli options first, native arguments after, verbatim. For an exact argument vector use `-FilePath` and `-ArgumentList`.

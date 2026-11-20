@@ -120,6 +120,13 @@
             )
         }
         @{
+            Name = 'CiImages'
+            Module = 'lib/CiImages.psm1'
+            Functions = @('Receive-QuietCiRegistryImage')
+            UnitTestFiles = @('unit/lib/CiImages.Tests.ps1')
+            Break = 80
+        }
+        @{
             # Invoke-QuietCiSuiteImage drives a container runtime; its guards are tested, its body is covered by the image workflows.
             Name = 'CiCompanions'
             Module = 'lib/CiCompanions.psm1'

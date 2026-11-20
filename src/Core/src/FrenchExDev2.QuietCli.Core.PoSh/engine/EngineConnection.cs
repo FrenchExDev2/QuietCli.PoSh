@@ -150,7 +150,7 @@ public static class HeaderJson
 public static class EngineClient
 {
     /// <summary>Actions that read a block directly in the InProcess host.</summary>
-    private static readonly HashSet<string> ControlActions = new(StringComparer.Ordinal) { "input", "eof", "cancel", "resize", "release" };
+    private static readonly HashSet<string> ControlActions = new(StringComparer.Ordinal) { "input", "eof", "cancel", "exit", "resize", "release" };
     /// <summary>Actions dispatched as metadata without JSON in the InProcess host.</summary>
     private static readonly HashSet<string> MetadataActions = new(StringComparer.Ordinal) { "hello", "allocations", "start", "save", "gain", "gain-poll", "gain-next", "gain-release", "scrub", "shutdown" };
 
@@ -185,7 +185,7 @@ public static class EngineClient
                 string invocation = System.Convert.ToString(header["InvocationId"], CultureInfo.InvariantCulture) ?? "";
                 Task<LocalEngineReply> pending;
                 if (directRead) pending = engine.Host!.ReadAsync(invocation, requestId);
-                else if (directControl) pending = engine.Host!.ControlAsync(Enum.Parse<LocalControl>(action, true), invocation, requestId, payload, ToInt(header["Columns"]), ToInt(header["Rows"]));
+                else if (directControl) pending = engine.Host!.ControlAsync(Enum.Parse<LocalControl>(action, true), invocation, requestId, payload, ToInt(header["Columns"]), ToInt(header["Rows"]), ToInt(header["ExitCode"]));
                 else if (directMetadata) pending = engine.Host!.MetadataAsync(header, MetadataAdapter.Instance);
                 else pending = engine.Host!.RequestAsync(encoded!, payload);
                 LocalEngineReply reply = pending.WaitAsync(deadline.Token).GetAwaiter().GetResult();

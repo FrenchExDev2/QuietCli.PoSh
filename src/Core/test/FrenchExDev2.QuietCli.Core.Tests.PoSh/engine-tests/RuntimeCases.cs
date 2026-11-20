@@ -58,8 +58,10 @@ internal static class RuntimeCases
             var runtime = new QuietRuntime { IsRecall = true, NativeStarted = true };
             ExpectCode("ProcessInputUnavailableDuringRecall", () => runtime.WriteBytes([]));
             ExpectCode("ProcessControlUnavailableDuringRecall", () => runtime.Cancel());
+            ExpectCode("ProcessControlUnavailableDuringRecall", () => runtime.Exit(0));
             ExpectCode("ProcessControlUnavailableDuringRecall", () => runtime.ReadEvent());
             ExpectCode("NativeSessionNotRunning", () => new QuietRuntime().Cancel());
+            ExpectCode("NativeSessionNotRunning", () => new QuietRuntime().Exit(0));
             return Task.CompletedTask;
         });
 

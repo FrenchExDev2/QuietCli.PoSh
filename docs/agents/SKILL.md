@@ -15,10 +15,10 @@ This file is the whole production contract. It is not the QuietCli repository's 
 1. Before executing, define the question, the business data required and the smallest useful delivery. Keep unknown measurements unknown.
 2. Use PowerShell Core 7.6+ with its normal profile and UTF-8 initialization. Import `QuietCli` once per process. Do not mix QuietCli releases or archived OPumper modules in the same process.
 3. Read the executable's help or official format documentation before writing a parser. A handler listed in the inventory is not proof that a variant or platform is supported.
-4. Run native commands through `quiet`, with a registered handler or explicit `-Output` and `-Complete` callbacks. Without either, the command is rejected before it runs. CI orchestration and read-only streaming monitors keep their host's documented exceptions.
+4. Run native commands through `quiet` with a registered handler or an explicit `-Output`, `-StdOut`, `-StdErr` or `-Complete` callback. CI orchestration and read-only streaming monitors keep their host's documented exceptions.
 5. Set `-WorkingDirectory`. QuietCli options precede the executable; native arguments follow verbatim. Use `-FilePath` and `-ArgumentList` for exact argument vectors.
-6. Keep `-AsObject` results in named variables. Before using `Data`, check `Outcome`, `Completeness.Source`, `Completeness.Analysis`, `Error` and the business scope. A zero exit code does not prove complete analysis.
-7. Callbacks keep only business data in `runtime.Data`. `-Output` emits nothing to the pipeline (use `[void]`). `-Complete` returns at most one value; use the unary comma to return an array. Parsers throw on records they do not recognize instead of skipping them.
+6. Use `-Mode Agent` for bounded JSON or `-Mode Agent -AsYaml` for YAML, with the dashboard off by default. For local analysis, use `-Mode Script -AsObject` and keep the result in a named variable. Before using `Data`, check `Outcome`, `Completeness.Source`, `Completeness.Analysis`, `Error` and business scope.
+7. Store business data in `runtime.Data`. Use `[void]` to discard return values from stream callbacks. `-Complete` returns at most one value. Use the unary comma to return an array as one value. Callbacks can inspect `$runtime.Mode` and `$runtime.ArgvString`. Throw when a record cannot be parsed.
 8. Deliver bounded views with `Out-QuietResult` or `ConvertTo-QuietJson`. Never dump `Internal`, callback objects or native evidence. `-AsObject` alone saves nothing on delivery.
 9. Results live in the PowerShell process. Use one persistent process when the client allows it; otherwise keep each call self-contained, or use Recall to survive the process.
 10. Preserve failures and incomplete evidence. Never retry automatically or repeat a mutation whose effect is unknown. A suggestion is not an authorization.
@@ -41,7 +41,8 @@ This file is the whole production contract. It is not the QuietCli repository's 
 - **Recall.** Ordinary streaming keeps no native output. `-Recall -AsObject` retains bounded in-memory evidence;
   `-SaveRecall -AsObject` writes a durable journal identified by `RecallId`. `Invoke-QuietRecall` re-runs new
   callbacks over that evidence without executing the command. Partial evidence needs `-AllowPartial` and must be
-  reported as partial. `-Recall` and `-SaveRecall` require explicit `-AsObject`.
+  reported as partial. `-Recall` and `-SaveRecall` require explicit `-AsObject`. Durable evidence and ZIP
+  exports include the original command text, which can contain sensitive arguments.
 - **Gains.** `Get-QuietCliGain` reports measured volumes only; native tokens and unmeasured sizes stay unknown. Byte savings are not an API bill.
 - **Configuration.** `QUIETCLI_CONFIG_DIRECTORY` selects the directory holding `config.yaml`. Keep `engine.hosting` at `Auto`. A disposable configuration must also relocate the database and Recall root.
 - **Handlers.** `New-QuietModule` generates a business module with its test companion. Reusable executable semantics belong there, not in ad hoc callbacks.
