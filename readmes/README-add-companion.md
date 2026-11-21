@@ -2,9 +2,10 @@
 
 The automatic `All` path prepares one shared toolchain image per RID from the declared test requirements. Core's tests require Git even though the Core product does not depend on the Git module. Core validates first, then the other declared suites execute concurrently in separate processes inside the same runner/container. A fixture-only companion can keep `image: none`; adding a native tool requirement extends the shared image without introducing another workflow branch or build.
 
-A companion owns the business meaning of a native tool. Core owns process execution, streaming,
-hosting, lifecycle and bounded delivery. Keep tool-specific argument binding, parsing, projections,
-supported-version policy and independent assertions in the companion and its test project.
+Use this guide to integrate a companion into the QuietCli monorepo. For a module kept in your own project,
+follow the [standalone module walkthrough](../docs/README-create-git-handler.md#load-the-handler-from-a-standalone-module).
+Core owns process execution, streaming, hosting, lifecycle and bounded delivery. Keep tool-specific
+argument binding, parsing, projections and version policy in the companion and its assertions in the test project.
 
 This guide covers source integration, tests and CI. It does not authorize a push, image publication,
 Gallery publication or release. A successful build or catalogue entry does not qualify a platform.
@@ -60,6 +61,14 @@ Register inert handlers on import. Reuse Core's execution and streaming APIs. Pr
 argument vectors and keep only explicitly required business data. Do not add automatic raw-output
 capture, output history, retries or implicit remote operations.
 
+Start with the [Git handler example](../docs/README-create-git-handler.md#register-one-form-and-verify-its-result)
+for a read-only command. In a generated group, put the registration in `src/Handler.ps1` inside the product
+module. Load that file from the root `.psm1` before its export declaration and unregister the same handler
+IDs on module removal. Follow the [module wiring example](../docs/README-create-git-handler.md#load-the-handler-from-a-standalone-module).
+With the built Core imported in a fresh PowerShell session, import the new
+product manifest by its path and verify the expected ID with `Get-QuietHandler -Binary <executable>`.
+Call a supported read-only form and check its result before adding mutating forms.
+
 Declare actual version/platform coverage. Preserve source, licence and resource provenance. Missing
 or incompatible resources must fail explicitly or be prepared by their owning consumer under the
 documented guard. Review [resource preparation](README-resources.md) when adding a resource or reader.
@@ -69,6 +78,9 @@ companion README. New scripts belong under `scripts/`; dependent libraries belon
 `scripts/lib/`, with mirrored documentation under `docs/scripts/` and `docs/scripts/lib/`.
 
 ## 4. Add independent tests
+
+Follow [the Vagrant case walkthrough](../docs/README-add-companion-tests.md) to pair a case with its
+fixture, catalogue metadata, focused launcher command and report.
 
 Use the test companion for functional assertions, generated properties, malformed-input/fuzz corpora
 and meaningful targeted mutations. Retain seeds, source identity, terminal summaries and failure

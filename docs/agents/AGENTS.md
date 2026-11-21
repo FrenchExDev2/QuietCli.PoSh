@@ -124,7 +124,7 @@ $compactJson = ConvertTo-QuietJson $recent -MaxItems 5 -MaxOutputBytes 4096
 
 | Observed | Meaning | Do |
 | --- | --- | --- |
-| `Outcome` `Unsupported`, `Error[0].Code` `HandlerNotFound` | No handler and no callbacks; nothing ran | Register a handler or supply `-Output` and `-Complete` |
+| `Outcome` `Unsupported`, `Error[0].Code` `HandlerNotFound` | No handler matched. A version probe may have run. The requested business command did not run. | Check `Get-QuietHandler -Binary <name>`, the version and argument form. Use explicit analysis callbacks for direct execution. |
 | `Outcome` `Failed`, `Execution.Native.ExitCode` non-zero | The native command failed | Read its documented exit codes; declare `-SuccessExitCodes` only for documented successes |
 | `Completeness.Source` or `.Analysis` false | Output not fully drained, or the analyzer did not finish | Treat `Data` as unusable; fix the parser, then observe again |
 | Exception `RecallRequiresExplicitAsObject` | `-Recall` or `-SaveRecall` without `-AsObject` | Add `-AsObject` |

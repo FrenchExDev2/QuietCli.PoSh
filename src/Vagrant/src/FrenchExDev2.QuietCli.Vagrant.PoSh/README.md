@@ -20,6 +20,7 @@ Import-Module ./src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/FrenchExDev2.
 ## Quick start
 
 From the directory containing your `Vagrantfile`, start the project with a live dashboard and keep the parsed events in the result.
+On first boot, Vagrant can run the provisioners defined in that file. To start without provisioning, replace the invocation below with `$result = quiet -AsObject -UI -CollectEvents vagrant up --no-provision` and keep the same result checks.
 
 ```powershell
 $result = quiet -AsObject -UI -CollectEvents vagrant up
@@ -31,6 +32,7 @@ $result.Events | Select-Object Type, @{ Name = "Machine"; Expression = { $_.Data
 ```
 
 The handler adds `--machine-readable`. The dashboard uses one lane per named machine. Use `-MaxLines` with `-UI` to control the history shown per lane.
+The dashboard's provider label is a hint. It shows `docker via podman` when the PowerShell process's `DOCKER_HOST` contains `podman`, and `docker` otherwise. Use Vagrant's configuration and provider output to confirm which provider ran.
 
 ## Event contract
 

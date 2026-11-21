@@ -4,10 +4,6 @@ Start with the [product README](../README.md) for installation, requirements and
 
 ## Usage guides
 
-- [Companion layout and selective CI](README-companion-layout-and-ci.md): grouped sources, local solutions, explicit workflow profiles, selective rebuilds and dependency smokes.
-
-- [Core test classification and concurrency](README-test-classification-and-concurrency.md): explicit case metadata, fail-closed checks and process-isolation candidates.
-
 - [.NET SDK installation and global.json updates](../readmes/README-dotnet-and-global-dot-json.md): release checks, verified portable SDKs, optional images and backed-up SDK pins.
 
 - [Streaming, callbacks and results](../readmes/README-streaming.md): build business projections and interpret outcome, execution and completeness.
@@ -16,11 +12,15 @@ Start with the [product README](../README.md) for installation, requirements and
 - [Configuration](../readmes/README-configuration.md): create a minimal YAML file, validate it, reload it and inspect active settings.
 - [Measurements and privacy](../readmes/README-measurements.md): interpret measured volumes, delivery budgets and retention boundaries.
 - [QuietCli with AI agents](../readmes/README-agents.md): install production instructions for an agent.
-- [Companion modules](../readmes/README-modules.md): register reusable executable handlers and define their support boundaries.
-- [Create a Git handler and render live updates](README-create-git-handler.md): version probing, exact form selection, a native assertion and Vagrant UI lanes.
 - [PowerShell Gallery installation](README-PSGallery.md): install packages and check runtime and platform requirements.
 
-## Modules and test companions
+## Companions
+
+- [Use a companion](../readmes/README-modules.md) · import a module, inspect its handlers and check a first result.
+- [Write a handler](README-create-git-handler.md) · try a Git handler, load it from a standalone module and verify its output. See [handler selection and diagnostics](README-companion-handler-selection.md) for the runtime contract.
+- [Integrate and test a companion](../readmes/README-add-companion.md) · create a monorepo group and connect it to CI. Follow [the Vagrant test example](README-add-companion-tests.md) to register and verify a business case.
+
+### Products and test suites
 
 - [Core](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md) and [Core tests](../src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/README.md), including [security audit regression tests](../src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/README.md).
 - [Git](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md) and [Git tests](../src/Git/test/FrenchExDev2.QuietCli.Git.Tests.PoSh/README.md).
@@ -58,13 +58,13 @@ The [agent documentation index](agents/README.md) identifies distributed instruc
 
 - [GitHub workflows](../readmes/README-github-workflows.md) and the [generated Mermaid diagrams](README-github-workflows-diagrams.md).
 - [CI map and source-change landmarks](ci/README.md): workflow routing, dates/commits, script responsibilities and evidence boundaries.
+- [Companion layout and selective CI](README-companion-layout-and-ci.md): grouped sources, local solutions, generated workflow profiles and dependency smokes.
+- [Test classification and concurrency](README-test-classification-and-concurrency.md): explicit case metadata, fail-closed checks and process isolation.
 
 - [Scalable companion qualification](ci/scalable-companions.md): consumer boundaries, Core independence, affected suites, intermediate caches, bounded mutation and verified develop reuse.
 
 - [CI companions and independent integration suites](scripts/lib/CiCompanions.md): YAML declarations,
   dependency expansion, image composition and shared script entry points.
-- [Add a companion](../readmes/README-add-companion.md): product/test projects, Vagrant, dedicated integration
-  runners, image tooling, checks and qualification boundaries.
 
 Repository development follows the root [AGENTS.md](../AGENTS.md). Consumer-project agent instructions are documented separately in the [agent index](agents/README.md).
 

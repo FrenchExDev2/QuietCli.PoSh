@@ -97,7 +97,7 @@ PrivateData = @{
     QuietCli = @{
         TestsModule = 'FrenchExDev2.QuietCli.Core.Tests.PoSh'
         Publishable = $true
-        PackageName = 'QuietCli'
+        PackageName = 'FrenchExDev2.QuietCli.Core.PoSh'
     }
 }
 ```
