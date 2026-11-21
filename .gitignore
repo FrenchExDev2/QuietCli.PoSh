@@ -6,6 +6,13 @@
 **/bin/
 **/obj/
 **/lib/
+# These lib directories contain versioned PowerShell sources, tests and documentation.
+!/scripts/lib/
+!/docs/scripts/lib/
+!/docs/scripts/*/lib/
+!/src/*/scripts/lib/
+!/test/scripts/unit/lib/
+!/test/scripts/integration/lib/
 /.cache/
 .dotnet/
 global.json.bak-*
