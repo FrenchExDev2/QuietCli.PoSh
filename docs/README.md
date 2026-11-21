@@ -6,8 +6,6 @@ Start with the [product README](../README.md) for installation, requirements and
 
 - [Companion layout and selective CI](README-companion-layout-and-ci.md): grouped sources, local solutions, explicit workflow profiles, selective rebuilds and dependency smokes.
 
-- [Distribution test companion](../src/Distribution/test/FrenchExDev2.QuietCli.Distribution.Tests.PoSh/README.md): one complete six-RID packaging qualification outside the native matrix.
-
 - [Core test classification and concurrency](README-test-classification-and-concurrency.md): explicit case metadata, fail-closed checks and process-isolation candidates.
 
 - [.NET SDK installation and global.json updates](../readmes/README-dotnet-and-global-dot-json.md): release checks, verified portable SDKs, optional images and backed-up SDK pins.
@@ -20,6 +18,14 @@ Start with the [product README](../README.md) for installation, requirements and
 - [QuietCli with AI agents](../readmes/README-agents.md): install production instructions for an agent.
 - [Companion modules](../readmes/README-modules.md): register reusable executable handlers and define their support boundaries.
 - [PowerShell Gallery installation](README-PSGallery.md): install packages and check runtime and platform requirements.
+
+## Modules and test companions
+
+- [Core](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md) and [Core tests](../src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/README.md), including [security audit regression tests](../src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/README.md).
+- [Git](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md) and [Git tests](../src/Git/test/FrenchExDev2.QuietCli.Git.Tests.PoSh/README.md).
+- [Vagrant](../src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md), [Vagrant tests](../src/Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/README.md) and the [shared Vagrant fixture](../src/Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/fixture/README.md).
+- [Distribution tests](../src/Distribution/test/FrenchExDev2.QuietCli.Distribution.Tests.PoSh/README.md) cover six-RID packaging outside the native matrix.
+- [Repository tooling tests](../src/Tooling/test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/README.md) cover the automation and release gates.
 
 ## Agent instructions and examples
 
@@ -43,6 +49,7 @@ The [agent documentation index](agents/README.md) identifies distributed instruc
 - [Allocation costs and actual delivery gains](README-allocation-and-delivery-metrics.md): allocation intervals, serialization measurements and unknown values.
 - [Privacy and integrity internals](README-privacy-and-integrity-internals.md): what timeouts, closed-DTO projection, the explicit scrub and resource verification concretely do, and how a companion module could plug into them.
 - [Native PTY bridge and LLVM fuzzing findings](README-native-pty-and-llvm-fuzzing.md): resize protocol, qualification layers and recorded sanitizer findings.
+- [Static Unix transport bridge notices](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/third_party/quietcli-pty/README.md) cover the statically linked Linux bridge.
 - [Why `quiet` stays a PowerShell module, not a native binary](README-why-not-native.md): ScriptBlock callbacks, native tab-completion glue and the `InProcess` zero-serialization contract.
 
 ## Development, CI and distribution
@@ -66,6 +73,7 @@ Repository development follows the root [AGENTS.md](../AGENTS.md). Consumer-proj
 - [Automation requirements as code](README-automation-contracts.md): workflow receipts, shared commit checks, script logging policy and the [complete preview review](scripts/preview-support.md).
 - [Projects, suites and package eligibility](README-workspace-projects.md): reusable manifest discovery, dynamic suite parameters and explicit public-package policy.
 - [Development workstation](../readmes/README-development-workstation.md): platform-specific installations and the host-aware prerequisite installer, including VS Code Stable/Insiders.
+- [.NET provisioning and SDK pins](README-dotnet-provisioning.md) covers portable SDK installation and pin updates. [.NET release readiness](README-dotnet-readiness.md) covers archive, image and runtime checks. The [SDK and Crossgen2 readiness guide](../readmes/README-agents-sdk-readiness.md) covers ReadyToRun feasibility for the pinned SDK.
 - [Local workflows with wrkflw](scripts/README-wrkflw-plan.md): pinned workstation integration, released capabilities and the explicit backlog of PowerShell usage helpers.
 - [CI execution model](ci/execution-model.md): shared workers, GitHub/local boundaries, Linux routing, qualification gates and Gallery publication.
 - [Deterministic local/GitHub environment](ci/environment.md): dotenv editing, runtime precedence, generated presets and the RAC-ENV-001 contract.
@@ -99,10 +107,10 @@ These reports describe their recorded revisions, environments and executed scope
 - 5 November 2026, Git: [principal commands](audits/2026-11-05-git-principal-commands.md), [object, ref and file queries](audits/2026-11-05-git-queries.md), [revision queries](audits/2026-11-05-git-revisions.md), [path queries](audits/2026-11-05-git-path-queries.md), [reflog, blame and annotate](audits/2026-11-05-git-attribution.md), and [push extraction and apphost staging](audits/2026-11-05-git-push-csharp.md).
 - 7 November 2026: [run-profile tests and mutation audit](audits/2026-11-07-run-profiles.md).
 - 8 November 2026: [Core frame codec](audits/2026-11-08-core-frame-codec.md), [ecosystem usage and gap review](audits/2026-11-08-ecosystem-usage-review.md), and [run-profile tooling qualification](audits/2026-11-08-run-profile-qualification.md).
-- 8 November 2026, execution continuation: [Emit/listeners, Vagrant and dynamic workspace/package catalogues](audits/2026-11-08-emit-listeners-and-vagrant.md).
-- 9 November 2026: [real Vagrant provider, interactive UI and stable/preview qualification](audits/2026-11-09-provider-ui-qualification.md).
-- 9 November 2026: [container runtime/bootstrap and RID resource diagnosis](audits/2026-11-09-container-runtime-diagnosis.md).
-- 9 November 2026: [Alpine recipe correction, rebuilt image and default-host/SDK smoke](audits/2026-11-09-alpine-image-recipe.md).
+- 8 November 2026: [Vagrant companion and live dashboard authoring notes](audits/2026-11-08-emit-listeners-ui-vagrant.md) and the [execution follow-up on Emit, listeners, Vagrant and dynamic workspace catalogues](audits/2026-11-08-emit-listeners-and-vagrant.md).
+- 9 November 2026: [real Vagrant provider, interactive UI and stable/preview qualification](audits/2026-11-09-provider-ui-qualification.md) and its [evidence JSON](audits/2026-11-09-provider-ui-evidence.json).
+- 9 November 2026: [container runtime/bootstrap and RID resource diagnosis](audits/2026-11-09-container-runtime-diagnosis.md) and its [evidence JSON](audits/2026-11-09-container-runtime-diagnosis.json).
+- 9 November 2026: [Alpine recipe correction, rebuilt image and default-host/SDK smoke](audits/2026-11-09-alpine-image-recipe.md) and its [evidence JSON](audits/2026-11-09-alpine-image-recipe.json).
 - 14 November 2026: [Git status repository states, classified errors, profiles and hot-path view](audits/2026-11-14-git-status-states-profiles.md).
 
 ## Automation contracts

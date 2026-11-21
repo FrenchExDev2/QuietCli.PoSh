@@ -1,399 +1,82 @@
 <p align="center">
-  <img src="./icons/logo.png" alt="QuietCli logo" width="150px" />
+  <img src="icons/logo.png" alt="QuietCli logo" width="150px" />
 </p>
 
 # QuietCli
 
-**QuietCli** (pronounced *Quietly*) runs native command-line tools from PowerShell Core 7.6+ and turns their noisy output into small, typed, trustworthy results. It is built for AI agents and developer tooling, where every byte of terminal text costs time, context and attention.
+QuietCli (pronouced **Quietly**) turns native command output into structured PowerShell results for scripts and AI agents. The `quiet` command streams stdout and stderr, then uses your PowerShell callbacks or a companion module to extract the data you need.
 
-A C# engine starts the native process and streams its output once, through bounded buffers. Your own PowerShell callbacks, which stay in your process, turn that stream into business data. You then inspect the data directly or deliver a bounded JSON/YAML view of it.
+Keep the result local with `-AsObject`, or share a bounded JSON or YAML view. Each result reports the execution outcome and whether the output and analysis are complete.
 
-Start here: [Gallery installation](#from-powershell-gallery) · [.NET SDK and global.json](readmes/README-dotnet-and-global-dot-json.md) · [Local checkout, build and first command](#from-a-source-checkout) · [Git companion](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md#quick-start).
-
-Browse the [documentation index](docs/README.md) for usage guides, technical contracts, agent instructions, CI, profiling and dated audit evidence.
-
-Follow triggers, jobs and reusable calls in the generated Mermaid map. [GitHub workflows](readmes/README-github-workflows.md)
-
-Read [Qualification: when, where and how](readmes/README-qualification-when-where-how.md) for PR triggers, Windows runners, Linux containers, executed test suites, local commands and evidence limits.
-
-## Resources
-
-[Resource preparation and integrity](readmes/README-resources.md) explains pinned payloads, on-demand automation preparation and optional GitHub caching. The [generated resource inventory](docs/resources/README.md) maps declared files to source consumers. Resource documentation and the [complete script preview review](docs/scripts/preview-support.md) are checked by the shared workspace/commit pipeline.
-
-> **Status: preview (`0.2.0-preview`).** The engine is under active development and its API may change. The Git companion module is a work in progress and is presented here as an example only. Nothing in this repository is a release qualification unless a report says so; see [Tests and qualification](readmes/README-qualification.md).
-
-## How projection works
-
-QuietCli's engine streams native output once. Your own code decides what that stream becomes, split across two callbacks with different jobs:
-
-- **`-Output`**, **`-StdOut`** and **`-StdErr`** accumulate state into `$runtime.Data`. For each event, QuietCli calls `-Output` first and then the matching stream callback when supplied.
-- **`-Complete`** runs once, after the stream ends. It reads `$runtime.Data` and returns the business result, such as a status summary, a count or a list of typed records. It can also read the command line and exit code. [Execution metadata in `-Complete`](readmes/README-streaming.md#read-execution-metadata-in--complete)
-
-In short: `-Output` folds raw events into accumulated state, `-Complete` projects that state into the business output you asked for. A companion module (see the Git example below) just supplies a ready-made `-Output`/`-Complete` pair — a handler — for one executable, so you don't write the fold or the projection yourself.
-
-Callbacks can also call `$runtime.Emit($event)` to notify `-Listeners` without producing pipeline output.
-`$runtime.Exit(0)` stops the invocation's running child and requests a successful outcome with the default success codes. The result exposes the system-reported `ExitCode` and the callback's `RequestedExitCode`.
-Events are transient by default. Explicit `-CollectEvents` retains them in order on `$runtime.Events`,
-lets `-Complete` read them, and adds a snapshot under the finished result's top-level `Events` field,
-alongside `Data`. Without this switch, the runtime list stays empty and the result omits `Events`.
-`-UI` exposes a separate live presentation surface. The
-[streaming guide](readmes/README-streaming.md) explains these contracts, and the
-[Vagrant companion](src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) uses both for per-machine progress.
-
-```powershell
-$r = quiet -AsObject -CollectEvents -C sdk-version -WorkingDirectory (Get-Location).Path `
-    -RecordDelimiter "`n" -Data @{ Version = $null } `
-    -Listeners {
-        param($event, $runtime)
-        Write-Host "SDK version emitted: $event"
-    } `
-    -StdOut {
-        param($event, $runtime)
-        $runtime.Data.Version = $event.Text.Trim()
-        $runtime.Emit($runtime.Data.Version)
-    } `
-    -Complete {
-        param($runtime)
-        [pscustomobject]@{ SdkVersion = $runtime.Data.Version; Emitted = $runtime.Events }
-    } `
-    dotnet --version
-```
-
-`-Listeners` accepts one scriptblock or an array of scriptblocks and runs each one synchronously as
-`$runtime.Emit(...)` is called, including without collection. This example explicitly collects the
-values for `-Complete`; omit `-CollectEvents` when only live notification or UI progress is needed.
-
-`-Mode Agent` defaults to bounded JSON delivery. `-Mode Script` defaults to a local PowerShell object.
-`-Mode User` defaults to YAML and a dashboard. When the mode is omitted, direct interactive PowerShell
-prompt calls select `User`; scripts, nested calls and non-interactive calls select `Script`.
-Callbacks can inspect the resolved mode in `$runtime.Mode` and the original command in
-`$runtime.ArgvString`, for example `dotnet --version`. See the [streaming guide](readmes/README-streaming.md).
-
-## Roadmap: from a script to an ecosystem
-
-QuietCli is meant to grow along one path, each step adding reuse without discarding the one before it:
-
-1. **`pwsh` callback** — inline `-Output`/`-Complete` scriptblocks at the call site. Fastest to write, not reusable.
-2. **Parameterizable script** — a standalone `.ps1` projection file, loaded and reused across calls and projects without a full module.
-3. **Module** — a companion module (like the Git module) with registered handlers, tests, and a documented coverage/limits matrix.
-4. **Ecosystem** — a family of modules sharing conventions, scaffolding and qualification tooling.
-
-Each step up this path can opt into a stricter dev pipeline style — Minimal, Standard (basic tests), or Hardened (property, fuzz and mutation testing) — so a one-off script stays light while a published module can be qualified to the same rigor as QuietCli's own handlers. See [Tests and qualification](readmes/README-qualification.md) for what "qualified" means today.
-
-## What QuietCli gives you
-
-- **Any executable, one entry point.** `quiet` (an alias of `Invoke-QuietCli`) wraps `git`, `dotnet`, `docker` or any other native command. QuietCli options come first; native arguments follow verbatim.
-- **Output becomes data.** `-Output` and `-Complete` callbacks parse the stream into objects. Nothing is captured, spooled or kept in a history unless you ask for it.
-- **Results you can trust.** Every result reports `Outcome`, `Execution` and `Completeness`, so a truncated or failed run is never mistaken for a clean one.
-- **Bounded deliveries.** `ConvertTo-QuietJson`, `ConvertTo-QuietYaml` and `Out-QuietResult` enforce item, structural and byte budgets, with token counts measured on the exact delivered text.
-- **Capture once, analyze again.** Opt-in *Recall* keeps native evidence in memory or in a durable journal, so analysis can continue in another session without running the command again.
-- **Ready for AI agents.** `Add-QuietAgentInstruction` installs production instructions for Codex, Claude Code or any agent that reads `AGENTS.md` or a skill file.
-- **Honest measurements.** `Get-QuietCliGain` reports measured volumes and overhead. Unknown values stay unknown, and metadata never contains your business output.
-- **Reusable modules.** Companion modules register tested business handlers for one executable, and `New-QuietModule` scaffolds a new one.
-
-## Requirements
-
-| Item | Requirement |
-| --- | --- |
-| PowerShell | Core 7.6 or later |
-| Operating systems | Windows and Linux (glibc and musl) |
-| Architectures | x64 and ARM64 |
-| Hosting | Automatic: the integrated build matching the PowerShell CLR (.NET 10 or .NET 11+). The isolated `Process` host needs the pinned .NET 11 runtime. See [Hosting](readmes/README-hosting.md) |
-| Native tools | Installed separately; QuietCli never installs the executables you call |
-
-Configured platforms are not the same as qualified platforms. See [Tests and qualification](readmes/README-qualification.md) for what has actually been executed.
-
-## .NET SDK and global.json
-
-The [.NET SDK and global.json guide](readmes/README-dotnet-and-global-dot-json.md) explains release and image availability checks, verified portable SDK installation with its runtimes, optional Docker/Podman image downloads, and SDK pin updates with backups. All operations support standard `-WhatIf`/`-Confirm`.
-
-From this checkout:
-
-```powershell
-$report = ./scripts/Test-DotNetReadiness.ps1
-./scripts/Install-DotNet.ps1 -Channel 11.0 -UpdateGlobalJson -ActivateSession -WhatIf
-```
-
-Use `scripts/Update-DotNetGlobalJson.ps1` for a separate SDK pin update. See the guide for exact versions, preview/RC selection, container configuration and complete installation commands.
-
-After changing the SDK pin, use `scripts/Update-DotNetCiLock.ps1 -IncludeDevelopmentLock -RefreshBaseImages` to synchronize archive hashes and the existing Debian/Alpine tag digests, and `scripts/Update-DotNetRuntimeFrameworkVersion.ps1` to update source runtime pins. Preview with `-WhatIf` or inspect resolved changes with `-PlanOnly`; the guide explains backups, tag discovery and the remaining build qualification.
+**Preview.** APIs and companion coverage may change. [Tests and qualification](readmes/README-qualification.md)
 
 ## How to install
 
-### From PowerShell Gallery
+Use PowerShell Core 7.6+ on Windows or Linux (x64 or ARM64). Install the native tools you plan to run separately. [Runtime and platform details](docs/README-PSGallery.md#runtime-requirements-and-supported-platforms)
 
-Install the `FrenchExDev2.QuietCli.Core.PoSh` package, which provides Core, then import it in the current session:
+### From PowerShell Gallery
 
 ```powershell
 Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh -Prerelease -Repository PSGallery -Scope CurrentUser
-Import-Module FrenchExDev2.QuietCli.Core.PoSh
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
 ```
 
-`-Prerelease` includes available preview packages; omit it to select stable releases only. See [package installation](docs/README-PSGallery.md) for publication status, runtime requirements and platform notes.
+`-Prerelease` includes available preview packages.
 
 ### From a source checkout
 
-For container-based source checks, `./scripts/Initialize-CiEnvironment.ps1 -Target Local` writes the
-checkout's ignored runtime preset. Explicit `-ContainerRuntime` overrides `.env`; otherwise discovery
-is the fallback. See [local/GitHub environment initialization](docs/ci/environment.md).
-
-Use PowerShell Core 7.6+, Git and the exact .NET SDK pinned in `global.json` (currently `11.0.100`). Build before importing the local modules. Rebuilds stage new distributions before replacing files, including assemblies already loaded by PowerShell. Existing sessions keep their old assemblies; restart them to use the new build. Locked previous files are retained with a warning until their owning sessions close; see [build publication](docs/scripts/lib/WorkspacePublication.md).
-
-For SDK/runtimes installation, container image downloads and SDK pin updates, see [the .NET and global.json guide](readmes/README-dotnet-and-global-dot-json.md).
-
-**1. Check out and build.**
-
-The commands start in a parent directory of your choice and clone the whole monorepo into `$HOME/src/QuietCli`. For an existing checkout, set `$checkout` to its root and skip the clone. Git performs this initial bootstrap before local `quiet` is available; the build script uses the engine-independent process helper.
+From the repository root, use Git and the [.NET SDK pinned in `global.json`](global.json) to build Core. [SDK setup](readmes/README-dotnet-and-global-dot-json.md)
 
 ```powershell
-$checkout = Join-Path $HOME 'src/QuietCli'
-New-Item -ItemType Directory -Path (Split-Path $checkout -Parent) -Force | Out-Null
-git clone --branch develop https://github.com/FrenchExDev2/QuietCli.PoSh.git $checkout
-if ($LASTEXITCODE -ne 0) { throw 'CheckoutFailed' }
-Set-Location $checkout
 ./scripts/Initialize-Workspace.ps1 -Restore
 ./scripts/Build-Workspace.ps1
 ```
 
-All paths are relative to the monorepo root. `Initialize-Workspace.ps1` validates projects discovered from their manifests; `-Restore` also restores and verifies pinned external Core resources. Git identifies committed internal sources, while build/test artifacts retain actual source and binary identities. Internal edits require no committed source-lock refresh. A successful build creates the compiled engine and companion binaries; it does not publish or install a Gallery package.
-
-Open `Quietly.slnx` to browse production packages under `src` and `*.Tests.PoSh` companions under `test`, including the pure PowerShell Vagrant packages. Run `./scripts/Build-Workspace.ps1 -SolutionOnly` to rebuild all C# projects and their target frameworks without preparing distributions. `Directory.Build.props` enables `TreatWarningsAsErrors=true` throughout the repository.
-
-The default build also compiles this solution once, then prepares the distributions declared by package manifests through `Get-QuietWorkspaceBuildProjects`, followed by targeted engine RID publications. Local and GitHub CI use the same build script. See [compiled distributions and new consumers](docs/README-workspace-projects.md#compiled-distributions).
-
-**2. Import and run in a fresh session.**
-
-**Open a new PowerShell Core 7.6+ session with its normal profile**, then paste the following block. Reassigning `$checkout` makes the new session independent of variables from the build session.
+Open a fresh PowerShell session at the repository root and import the built module.
 
 ```powershell
-$checkout = Join-Path $HOME 'src/QuietCli'
-Set-Location $checkout
-./scripts/Invoke-Quiet.ps1 -Companion Git,Vagrant -Code {
-    param($context)
-    $r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
-        -RecordDelimiter "`n" -Data @{ Version = $null; Records = 0 } `
-        -Output {
-            param($event, $runtime)
-            if ($event.Stream -eq 'stdout') {
-                $runtime.Data.Version = $event.Text.Trim()
-                $runtime.Data.Records++
-            }
-        } `
-        -Complete {
-            param($runtime)
-            if ($runtime.Data.Records -ne 1) { throw 'ExpectedOneSdkVersion' }
-            [pscustomobject]@{ SdkVersion = $runtime.Data.Version }
-        } `
-        dotnet --version
-    if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count) {
-        throw 'IncompleteSdkVersion'
-    }
-    Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
-}
+Import-Module ./src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1 -ErrorAction Stop
 ```
 
-YAML excerpt; invocation IDs and other envelope metadata are omitted. The version shown is the SDK selected in this checkout. `-Output` reads one native record; `-Complete` creates `{ SdkVersion }`. `-AsObject` keeps that result local, and `Out-QuietResult -AsYaml` formats the same result without executing `dotnet` again.
+## Quick start
 
-```yaml
-Outcome: Success
-Context: sdk-version
-Data: {SdkVersion: "11.0.100"}
-Completeness: {Source: true, Analysis: true}
-```
-
-The source manifest above loads the local Core project. Its existing Gallery identity is also `FrenchExDev2.QuietCli.Core.PoSh`; installation uses `Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh` and `Import-Module FrenchExDev2.QuietCli.Core.PoSh`.
-
-For source automation, [`scripts/Invoke-Quiet.ps1`](docs/scripts/Invoke-Quiet.md)
-loads that exact local Core module before invoking your block in the same process:
+With a .NET SDK installed, turn `dotnet --version` into a result with a named `SdkVersion` field. QuietCli options go before the executable.
 
 ```powershell
-$result = ./scripts/Invoke-Quiet.ps1 -Companion Git,Vagrant -Code {
-    param($context)
-    $context.Data.Result = quiet -AsObject -Complete { param($native) $native.Data } dotnet --version
-    $context.Data.Result
-}
-```
-
-Supply `-Output`/`-Complete` callbacks for your business analysis or explicitly import
-a compatible companion. The block receives fresh `Data` and `State` hashtables, or
-your own `-Runtime` object; this is separate from native callback runtimes.
-`-WhatIf` skips both import and block execution. See the
-[launcher contract and complete projection example](docs/scripts/Invoke-Quiet.md).
-
-## How to use
-
-For a Gallery installation, import `QuietCli` and run this SDK-version contract. For a local build, the checkout recipe above already imports the source manifest and executes the same example.
-
-```powershell
-Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
-
-$r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
-    -RecordDelimiter "`n" -Data @{ Version = $null; Records = 0 } `
-    -Output {
+$result = quiet -AsObject -RecordDelimiter "`n" -Data @{ Version = $null } `
+    -StdOut {
         param($event, $runtime)
-        if ($event.Stream -eq 'stdout') {
-            $runtime.Data.Version = $event.Text.Trim()
-            $runtime.Data.Records++
-        }
-    } `
-    -Complete {
+        $runtime.Data.Version = $event.Text.Trim()
+    } -Complete {
         param($runtime)
-        if ($runtime.Data.Records -ne 1) { throw 'ExpectedOneSdkVersion' }
         [pscustomobject]@{ SdkVersion = $runtime.Data.Version }
-    } `
-    dotnet --version
-if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count) {
-    throw 'IncompleteSdkVersion'
+    } dotnet --version
+
+if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
+    !$result.Completeness.Analysis -or $result.Error.Count) {
+    throw 'Could not read the .NET SDK version.'
 }
-Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
+$result.Data
 ```
 
-YAML excerpt; invocation IDs and other envelope metadata are omitted. The version shown is the SDK selected in this checkout. `-Output` reads one native record; `-Complete` creates `{ SdkVersion }`. `-AsObject` keeps that result local, and `Out-QuietResult -AsYaml` formats the same result without executing `dotnet` again.
+[Streaming, callbacks and results](readmes/README-streaming.md) · [Bounded delivery and privacy](readmes/README-measurements.md)
 
-```yaml
-Outcome: Success
-Context: sdk-version
-Data: {SdkVersion: "11.0.100"}
-Completeness: {Source: true, Analysis: true}
-```
+<a name="example-a-companion-module-git-under-development"></a>
 
-The raw native output is a version string. The completed business object has one `SdkVersion` property; the YAML envelope adds execution outcome and completeness. Reject an incomplete result before using `Data`. QuietCli options precede the executable, and native arguments follow verbatim.
+## Companion modules
 
-See [streaming, callbacks and results](readmes/README-streaming.md) for callback rules and [a non-Git example](docs/agents/non-git-example.md) for a larger parser.
+- [Git](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md) supplies command handlers. With the companion imported, `quiet -AsObject git status` returns the branch, working tree entries and change counts.
+- [Vagrant](src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) provides structured events and a live dashboard for `vagrant up` and `vagrant provision`.
 
-## Bounded delivery, measured
+## Documentation
 
-The point of a delivery budget is that the size of what you hand to a human or an agent no longer grows with the size of the repository. Measured on 6 November 2026 on Windows, with the local `0.2.0-preview` Core and Git modules, on disposable repositories (byte counts of UTF-8 text, default item budget):
-
-| Repository state | Raw `git status` | `quiet -AsObject git status` delivered with `ConvertTo-QuietJson -MaxOutputBytes 4096` |
-| --- | ---: | ---: |
-| 40 modified and 20 untracked files | 1,883 bytes | 2,973 bytes |
-| 1,500 modified files | 33,640 bytes | 2,795 bytes (1,480 of 1,500 entries reported as omitted) |
-
-On a small repository the structured JSON is larger than the raw text, because it carries typed fields. On a large one it stays bounded and states explicitly what it left out (`Truncation.Applied`). A caller-defined projection can be much smaller still, as in the counters example below. These are byte counts, not model tokens or cost: byte reduction alone establishes neither context-window use nor financial savings. See [Measurements and privacy](readmes/README-measurements.md) and the [comparison with RTK](QUIET_VS_RTK_MEASURES.md) for definitions and limits.
-
-## Use QuietCli with an AI agent
-
-`Add-QuietAgentInstruction` copies QuietCli's production instructions into your project's `.skills` directory and writes a short, delimited reference block into the instruction file your agent reads. Text outside that block is never touched, and repeating the command changes nothing. It installs no hook, profile change or agent setting.
-
-```powershell
-Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
-$project = (Get-Location).Path
-
-# Preview first, then run without -WhatIf.
-Add-QuietAgentInstruction -Path $project -Claude -WhatIf    # Claude Code: CLAUDE.md imports .skills/AGENTS.md
-Add-QuietAgentInstruction -Path $project -Agents -WhatIf    # Codex and AGENTS.md readers
-```
-
-Commands for each agent, the skill form, options and verification steps are in [QuietCli with AI agents](readmes/README-agents.md).
-
-## Example: a companion module (Git, under development)
-
-> **Status: under development.** The Git module illustrates what a companion module looks like. Its handler catalogue is growing, the full command/version/platform matrix is not qualified, and its API and coverage may change. Inventory membership is not support. Read the [Git README](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md#coverage-and-limits) before relying on a command.
-
-A handler is a ready-made callback pair. `quiet -AsObject git status` is shorthand for the explicit form `quiet -AsObject -Output { ... } -Complete { ... } git status ...`, where the module supplies the `-Output` parser and the `-Complete` finalizer for you. The explicit form below does the same job by hand on a small scale: it asks Git for its machine format, counts the entries of a repository and returns a typed result.
-
-```powershell
-./scripts/Invoke-Quiet.ps1 -Code {
-    param($context)
-    # Without a companion module: you write the callbacks.
-    $r = quiet -AsObject -C git-status -RecordDelimiter "`n" `
-        -Data @{ Branch = $null; Changed = 0; Conflicted = 0; Untracked = 0 } `
-        -Output {
-            param($event, $runtime)
-            if ($event.Stream -ne 'stdout') { return }
-            $line = $event.Text.TrimEnd([char[]]"`r`n")
-            switch -Regex ($line) {
-                '^# branch\.head (?<name>.+)$' { $runtime.Data.Branch = $Matches['name'] }
-                '^[12] ' { $runtime.Data.Changed++ }
-                '^u '    { $runtime.Data.Conflicted++ }
-                '^\? '   { $runtime.Data.Untracked++ }
-            }
-        } `
-        -Complete {
-            param($runtime)
-            [pscustomobject]@{
-                Branch     = $runtime.Data.Branch
-                Changed    = $runtime.Data.Changed
-                Conflicted = $runtime.Data.Conflicted
-                Untracked  = $runtime.Data.Untracked
-            }
-        } `
-        git status --porcelain=v2 --branch
-
-    if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count) {
-        throw 'IncompleteExplicitGitStatus'
-    }
-    Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
-}
-```
-
-Illustrative YAML excerpt for branch `develop`, one modified tracked file and one untracked file. The callbacks count the selected porcelain records; `-Complete` defines these four business fields.
-
-```yaml
-Outcome: Success
-Data: {Branch: develop, Changed: 1, Conflicted: 0, Untracked: 1}
-```
-
-With the source-development launcher selecting the Git and Vagrant companions (both depend on Core), the same question needs no callback. Git selects its own handler for `git status`; Vagrant is ready for a later call in the same block:
-
-```powershell
-./scripts/Invoke-Quiet.ps1 -Companion Git,Vagrant -Code {
-    param($context)
-    # Run from the built checkout root; select which handler fields to deliver.
-    $statusView = {
-        param($data, $budget)
-        [pscustomobject]@{
-            Branch = $data.Branch
-            Staged = $data.Counts.Staged
-            Unstaged = $data.Counts.Unstaged
-            Untracked = $data.Counts.Untracked
-        }
-    }
-    $result = quiet -AsObject -WorkingDirectory (Get-Location).Path -Projection $statusView git status
-    if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis -or $result.Error.Count) { throw 'IncompleteGitStatus' }
-    Out-QuietResult $result -AsYaml -MaxItems 5 -MaxOutputBytes 4096
-}
-```
-
-For the same illustrative repository, the handler's projected YAML is:
-
-```yaml
-Outcome: Success
-Data: {Branch: develop, Staged: 0, Unstaged: 1, Untracked: 1}
-```
-
-The handler builds the complete local status object; `$statusView` selects the delivered fields without changing `$result.Data`. Counts depend on the selected repository.
-
-The module's handler goes further than this sketch: it reads NUL-delimited porcelain v2 and reports the branch, HEAD, initial or detached state, divergence from local references, entries and counters, and it keeps the short forms and pathspec filters. QuietCli options precede `git`; Git arguments follow it. To build a module for another executable, see [Companion modules](readmes/README-modules.md).
-
-## Go deeper
-
-The [documentation index](docs/README.md) groups all guides and technical references by topic. Dated audits record their own revisions and executed scopes; they do not qualify a later revision.
-
-| Topic | Read |
-| --- | --- |
-| Package installation, runtime and platform requirements | [PowerShell Gallery installation](docs/README-PSGallery.md) |
-| Outcome, completeness, callbacks, reusable scripts | [Streaming, callbacks and results](readmes/README-streaming.md) |
-| Capturing native evidence and analyzing it later | [Recall](readmes/README-recall.md) |
-| Integrated and isolated engine, pipes and PTY, platforms | [Hosting and native transports](readmes/README-hosting.md) |
-| YAML configuration and the single environment override | [Configuration](readmes/README-configuration.md) |
-| What is measured, stored and never stored | [Measurements and privacy](readmes/README-measurements.md) |
-| Using QuietCli with Codex, Claude Code or another agent | [QuietCli with AI agents](readmes/README-agents.md) |
-| Production agent rules, examples and troubleshooting | [Agent documentation index](docs/agents/README.md) |
-| Registered handlers and writing a module | [Companion modules](readmes/README-modules.md) |
-| Working from a source checkout, building | [Development](readmes/README-development.md) |
-| Property, fuzzing and mutation campaigns, CI matrix | [Tests and qualification](readmes/README-qualification.md) |
-| Performance evidence and reproducible profiling campaigns | [Core performance evidence](src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/PERFORMANCES.md), [Run profiles](docs/README-run-profiles.md) |
-| Packaging, publication gates, repository layout | [Repository and distribution](readmes/README-distribution.md) |
-| Preview identities, artifact preparation and publication | [Preview versions and GitHub publication](docs/README-preview-releases.md) |
-| Repository rules for contributors and agents | [AGENTS.md](AGENTS.md) |
+- [Documentation index](docs/README.md) for all guides, module READMEs, CI and audits.
+- [AI agent setup](readmes/README-agents.md) for Codex and Claude Code.
+- [Recall](readmes/README-recall.md) for capturing native output on demand and analyzing it later.
 
 ## License
 
-QuietCli is distributed under the MIT license. Each module directory ships its own `LICENSE` file, for example [Core](src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/LICENSE).
-
-Each business module also ships its own `LICENSE_CREDITS.md`, declaring the third-party license(s) its native dependency uses, with reference links. The root [CREDITS.md](CREDITS.md) is generated from them by [`scripts/Sync-Credits.ps1`](scripts/Sync-Credits.ps1); see [AGENTS.md](AGENTS.md) for the module contract.
+[MIT](src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/LICENSE)
 
 <!-- credits:begin -->
 ## Credits

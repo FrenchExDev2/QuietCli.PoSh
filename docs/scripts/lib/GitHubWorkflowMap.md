@@ -6,7 +6,7 @@ Source file: [`lib/GitHubWorkflowMap.psm1`](../../../scripts/lib/GitHubWorkflowM
 
 ## Usage
 
-`New-QuietGitHubWorkflowMap -WorkspaceRoot <path> -OutputPath <path>` composes the Markdown and returns the text and counts. `-OutputPath` determines relative links. The caller owns filesystem writes.
+`New-QuietGitHubWorkflowMap -WorkspaceRoot <path> -OutputPath <path>` composes the Markdown and returns the text and counts. `-OutputPath` determines relative links. The map uses English headings and navigation and displays step names from the source YAML. The caller owns filesystem writes.
 
 ## Dependencies and effects
 
@@ -15,7 +15,7 @@ Uses GitHubActionReferences to discover workflows and local actions and Workflow
 ## Findings
 
 - `scripts/lib/GitHubWorkflowMap.psm1:142` builds a case-sensitive catalogue for local `uses` links. External reusable workflow nodes link to the calling job's section. The map does not inspect external implementations.
-- Flowcharts name the `triggers`, `composed of`, `depends on` and `uses` relations. Mermaid node links use generated local fragments, with parallel Markdown navigation. Sequences label steps as `runs` or `uses` in declaration order. Conditions and matrices render as inline code.
+- Flowcharts use `triggers` from an event to a workflow, `declares` from a workflow to a job, `calls` for reusable workflows and `uses` for local actions. A `depends on` arrow points from a job to a prerequisite in its `needs`. Mermaid node links use generated local fragments, with parallel Markdown navigation. Sequences label steps as `runs` or `uses` in declaration order. Conditions and matrices render as inline code.
 - Property tests exercise repeated links and generated names. Fixture tests cover trigger syntax, job dependencies, filters, local calls, rendered section headings and complete Mermaid participant declarations. GitHub execution remains outside this validation.
 
 ## Verdict

@@ -40,10 +40,10 @@ native `git` executable and is the project this credit belongs to.
 <!-- module-credits:Vagrant:begin -->
 ## Vagrant
 
-Vagrant is distributed by HashiCorp. Versions 2.3.0 and later use the Business Source License
-1.1; earlier versions used the Mozilla Public License 2.0. This module drives the native
-`vagrant` executable and is the project this credit belongs to.
+This module invokes the native executable from the HashiCorp Vagrant project. Refer to
+the upstream license file for the installed release.
 
-- License text: https://github.com/hashicorp/vagrant/blob/main/LICENSE
-- Project: https://www.vagrantup.com/
+- [Vagrant 2.3.7](https://github.com/hashicorp/vagrant/blob/v2.3.7/LICENSE) uses the MIT license.
+- [Vagrant 2.4.0](https://github.com/hashicorp/vagrant/blob/v2.4.0/LICENSE) and [Vagrant 2.4.9](https://github.com/hashicorp/vagrant/blob/v2.4.9/LICENSE) use the Business Source License 1.1 with MPL 2.0 as the Change License.
+- [Vagrant project](https://github.com/hashicorp/vagrant).
 <!-- module-credits:Vagrant:end -->
