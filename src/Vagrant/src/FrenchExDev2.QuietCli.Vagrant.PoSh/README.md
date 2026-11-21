@@ -2,35 +2,44 @@
   <img src="../../../../icons/logo.png" alt="QuietCli logo" width="150px" />
 </p>
 
-# FrenchExDev2.QuietCli.Vagrant.PoSh
+# QuietCli Vagrant
 
-> **Status: under development (`0.1.0-preview`).** Covers `vagrant up` and `vagrant provision` only. **Qualification is partial** -- read [Coverage and limits](#coverage-and-limits) before relying on this module.
+The Vagrant companion turns `vagrant up` and `vagrant provision` into structured [QuietCli](../../../../README.md) events. Use a PowerShell listener to react to machine events or open a live dashboard with one lane per machine.
 
-Vagrant business handlers for the [QuietCli](../../../../README.md) engine. `quiet vagrant up`/`quiet vagrant provision` run the native command with `--machine-readable` appended internally (you never see that flag or its raw lines) and turn each line into a structured event pushed live to `-Listeners`. Explicit `-CollectEvents` also retains an ordered snapshot in `$result.Events`; default calls retain no event history. `-UI` renders a small live dashboard, one lane per machine, without requiring collection.
+**Preview.** Provider and version qualification is partial. [Coverage and limits](#coverage-and-limits)
+
+## Installation
+
+Use PowerShell Core 7.6+, a separate Vagrant installation and the provider required by your `Vagrantfile`. Load the companion from a [built source checkout](../../../../README.md#from-a-source-checkout). In a fresh PowerShell session at the repository root, import both modules.
+
+```powershell
+Import-Module ./src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1 -ErrorAction Stop
+Import-Module ./src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/FrenchExDev2.QuietCli.Vagrant.PoSh.psd1 -ErrorAction Stop
+```
 
 ## Quick start
 
+From the directory containing your `Vagrantfile`, start the project with a live dashboard and keep the parsed events in the result.
+
 ```powershell
-Import-Module ./Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1 -ErrorAction Stop
-Import-Module ./Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/FrenchExDev2.QuietCli.Vagrant.PoSh.psd1 -ErrorAction Stop
-
-# Observe every Vagrant event as it happens, independently of the raw stream:
-$events = [Collections.Generic.List[object]]::new()
-$r = quiet -AsObject -WorkingDirectory $vagrantfileDirectory -Listeners { param($e, $r) [void]$events.Add($e) } vagrant up
-
-# Or watch a live per-machine dashboard (Vagrantfile path/provider header, one line per machine, always the latest):
-quiet -UI -WorkingDirectory $vagrantfileDirectory vagrant up
+$result = quiet -AsObject -UI -CollectEvents vagrant up
+if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
+    !$result.Completeness.Analysis -or $result.Error.Count) {
+    throw 'Vagrant up failed or its result is incomplete.'
+}
+$result.Events | Select-Object Type, @{ Name = "Machine"; Expression = { $_.Data.Machine } }
 ```
 
-With `-CollectEvents`, `$r.Events` carries `QuietCli2.Event` envelopes for every parsed `--machine-readable` line. `Type` holds the native event type and `Data` holds `Timestamp`/`Machine`/`Type`/`Fields`; read machine names through `$event.Data.Machine`. A synthetic event with `Type = 'ProvisionerStarted'` carries `Machine`/`Provisioner`/`Timestamp` in `Data` whenever Vagrant itself emits a `Running provisioner: ...` line -- which it never does under `--no-provision`, so that flag needs no special handling here: forward it in your own `ArgumentList` as you would to plain `vagrant up` and the absence of `ProvisionerStarted` follows automatically. The listener example above explicitly retains its own list; it does not request the result's optional snapshot.
+The handler adds `--machine-readable`. Use `-Listeners` to process events as they arrive and `-CollectEvents` to retain them after the command. Events expose the machine and parsed fields under `Data`.
 
 ## Coverage and limits
 
-[Qualification: when, where and how](../../../../readmes/README-qualification-when-where-how.md) explains local Vagrant/All test selection, the current Vagrant-only PR trigger gap and the separate real-provider smoke checks.
+- The registered handlers cover `up` and `provision` with stable Vagrant `>= 2.3.0` and `< 2.5.0`.
+- The parser emits events from recognized machine-readable lines. `ProvisionerStarted` is inferred from the matching machine’s `ui`/`info` messages.
+- Fixture tests exercise parsing and dispatch. The real-provider audit records the narrower Windows and Podman scenario exercised with Vagrant 2.4.9.
 
-- Only `up` and `provision` are registered; any other `vagrant` subcommand falls through to `HandlerNotFound` (supply your own `-Output`/`-Complete` for it).
-- Supported version range: `stable >=2.3.0 <2.5.0` (probed via `vagrant --version`); outside that range the handler does not match and the call falls through as unsupported.
-- `--machine-readable` is documented by HashiCorp as **partially stabilized** ("Work-In-Progress"). The generic event (`Type`/`Machine`/`Fields`/`Timestamp`) is emitted for every line regardless of `Type`, so a listener can filter on types this module does not know about. `ConvertFrom-QuietVagrantMachineReadableLine` never throws on an unrecognized shape -- it returns `$null` and the line is dropped.
-- `ProvisionerStarted` detection infers a named provisioner from the `ui`/`info` channel. It accepts unprefixed messages and the exact machine prefix (`==> web: Running provisioner: shell...`) retained inside real machine-readable data. Other channels, foreign machine prefixes and incomplete messages are rejected. A two-machine Windows/Podman run with Vagrant 2.4.9 verifies this observed form; the inference and broader provider/version coverage remain partial. See the [execution audit](../../../../docs/audits/2026-11-09-provider-ui-qualification.md).
-- `Get-QuietVagrantProviderLabel` only detects the documented "sans plugin" Podman wiring (`$env:DOCKER_HOST` pointing at a Podman socket); the community `podman` gem path still reports as plain `docker`.
-- `-UI`/`-MaxLines` are a Core engine feature (`QuietUiRenderer`), not specific to this module; see [Core's README](../../../Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md) for the Spectre.Console dependency and the single-active-`-UI`-per-process limit.
+[Vagrant test companion](../../test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/README.md) · [Real-provider audit](../../../../docs/audits/2026-11-09-provider-ui-qualification.md) · [Core dashboard and streaming](../../../Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md#invocation-modes-and-live-dashboard)
+
+## Credits
+
+The QuietCli Vagrant module uses the MIT license. The native Vagrant executable comes from the HashiCorp Vagrant project and has release-specific license terms. [Module license](LICENSE) · [Vagrant license credits](LICENSE_CREDITS.md) · [Repository credits](../../../../CREDITS.md#vagrant)

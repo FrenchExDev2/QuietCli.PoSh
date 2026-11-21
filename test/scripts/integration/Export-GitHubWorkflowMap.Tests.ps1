@@ -64,20 +64,21 @@ Describe 'Export-GitHubWorkflowMap.ps1' {
         $run.ExitCode | Should -Be 0 -Because $run.Error
         $report = [IO.File]::ReadAllText($path,[Text.Encoding]::UTF8)
         (New-QuietGitHubWorkflowMap -WorkspaceRoot $root -OutputPath $path).Markdown | Should -BeExactly $report
-        $report | Should -Match 'flowchart LR[\s\S]*?\["push"\][\s\S]*?e0 -->\|triggers\| n1[\s\S]*?n1 -\. uses \.-> n2'
-        $report | Should -Match 'flowchart TD[\s\S]*?entry -->\|composed of\| j0[\s\S]*?entry -->\|composed of\| j1[\s\S]*?j1 -\. depends on \.-> j0[\s\S]*?j1 -\. uses \.-> cj1\["\./\.github/workflows/verify\.yaml"\]'
+        $report | Should -Match 'flowchart LR[\s\S]*?\["push"\][\s\S]*?e0 -->\|triggers\| n1[\s\S]*?n1 -\. calls \.-> n2'
+        $report | Should -Match 'flowchart TD[\s\S]*?entry -->\|declares\| j0[\s\S]*?entry -->\|declares\| j1[\s\S]*?j1 -\. depends on \.-> j0[\s\S]*?j1 -\. calls \.-> cj1\["\./\.github/workflows/verify\.yaml"\]'
         $report | Should -Match 'j0 -\. uses \.-> n0'
         $report | Should -Match 'sequenceDiagram[\s\S]*?A->>A: runs · Commencer[\s\S]*?A->>A: uses · actions/checkout@v4'
         $report | Should -Match '(?m)^    participant A as setup$'
         $html = (ConvertFrom-Markdown -InputObject $report).Html
-        $html | Should -Match '<h2[^>]*>Sommaire</h2>'
+        $html | Should -Match '<h2[^>]*>Table of contents</h2>'
+        $html | Should -Match '<h2[^>]*>Triggers and calls between workflows</h2>'
         $html | Should -Match '<h2[^>]*>entry\.yml</h2>'
-        $html | Should -Match '<h2[^>]*>Action locale · setup</h2>'
+        $html | Should -Match '<h2[^>]*>Local action · setup</h2>'
         $report | Should -Match '\[scripts/Run-Thing\.ps1\]\(\.\./scripts/Run-Thing\.md\)'
-        $report | Should -Match '\[Documentation du workflow\]\(\.\./ci/github/script-entry\.md\)'
+        $report | Should -Match '\[Workflow documentation\]\(\.\./ci/github/script-entry\.md\)'
         $report | Should -Match '\[YAML source\]\(\.\./\.\./\.github/workflows/entry\.yml\)'
         $report | Should -Match 'Préparer &#124; vérifier'
-        $report | Should -Match 'Matrice déclarée.*windows'
+        $report | Should -Match 'Declared matrix.*windows'
         $report | Should -Match '"branches".*"develop"'
         $report | Should -Not -Match "`r|(?m)^    e\d+\(\[.workflow_call"
         foreach ($link in [regex]::Matches($report,'\]\(#([^\)]+)\)')) {
@@ -95,6 +96,8 @@ Describe 'Export-GitHubWorkflowMap.ps1' {
         $report | Should -Match 'click cj2 href "#workflow-entry-yml-1-job-j2"'
         $report | Should -Match '\[push\]\(#event-push-e0\)'
         $report | Should -Match '\[verify\]\(#workflow-entry-yml-1-job-j1\)'
+        $report | Should -Match '\[Triggers and calls between workflows\]\(#workflow-triggers\)'
+        $report | Should -Match '\[Table of contents\]\(#table-of-contents\)'
         $anchors = @([regex]::Matches($report,'(?m)^<a name="(?<anchor>[a-z0-9-]+)"></a>$') | ForEach-Object { $_.Groups['anchor'].Value })
         ($anchors | Sort-Object -Unique).Count | Should -Be $anchors.Count
         foreach ($click in [regex]::Matches($report,'(?m)^    click \w+ href "#(?<anchor>[a-z0-9-]+)"')) {
@@ -107,7 +110,7 @@ Describe 'Export-GitHubWorkflowMap.ps1' {
         $report.Markdown | Should -Not -Match '\$\{\{'
         $html = (ConvertFrom-Markdown -InputObject $report.Markdown).Html
         $html.Contains('Condition · <code>${{ always() &amp;&amp; !inputs.images_only }}</code>') | Should -BeTrue
-        $html.Contains('Matrice déclarée · <code>${{ fromJson(inputs.windows_matrix) }}</code>') | Should -BeTrue
+        $html.Contains('Declared matrix · <code>${{ fromJson(inputs.windows_matrix) }}</code>') | Should -BeTrue
         $html.Contains('<td><code>${{ always() &amp;&amp; (!inputs.images_only || inputs.retry) }}</code></td>') | Should -BeTrue
 
         $docs = @(Get-QuietWorkflowDocumentation -WorkspaceRoot $root)

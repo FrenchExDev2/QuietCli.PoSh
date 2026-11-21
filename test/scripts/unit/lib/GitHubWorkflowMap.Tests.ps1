@@ -25,7 +25,7 @@ Describe 'GitHub workflow map links' {
 
     It 'generates Mermaid hyperlinks with local fragments and rejects invalid node IDs and destinations' {
         (& $mapModule { Format-QuietWorkflowMapClick 'j42' 'workflow-ci-yml-4-job-j42' }) |
-            Should -BeExactly '    click j42 href "#workflow-ci-yml-4-job-j42" "Ouvrir la section" _self'
+            Should -BeExactly '    click j42 href "#workflow-ci-yml-4-job-j42" "Open section" _self'
         { & $mapModule { Format-QuietWorkflowMapClick 'j 42' 'workflow-ci' } } | Should -Throw
         { & $mapModule { Format-QuietWorkflowMapClick 'j42' 'https://example.com/' } } | Should -Throw
     }
