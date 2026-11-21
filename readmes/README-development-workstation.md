@@ -1,6 +1,6 @@
 # Development workstation
 
-[Development workflow](README-development.md) · [Tests and qualification](README-qualification.md) · [Qualification: when, where and how](README-qualification-when-where-how.md) · [Documentation index](../docs/README.md)
+[Development workflow](README-development.md) · [Local tests and reports](README-qualification-local.md) · [Workstation maintenance](README-development-workstation-maintenance.md) · [Documentation index](../docs/README.md)
 
 Install **PowerShell Core 7.6 or later first**, obtain this repository, then run
 `scripts/Install-DevelopmentWorkstation.ps1`. The installer prepares a complete workstation by default.
@@ -360,71 +360,18 @@ and manual multi-machine checks. `State` describes readiness; `Action` and `Cach
 record what download/install mode did. Real installation tests are manual; automated tests trap
 all download/install effects.
 
-## First build and qualification boundaries
+## First build
 
 ```powershell
 ./scripts/Initialize-Workspace.ps1 -Restore
 ./scripts/Build-Workspace.ps1
-# Open a fresh normal-profile PowerShell session, activate it, then:
-Import-Module ./Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
-./scripts/Invoke-WorkspaceCi.ps1 -Suite All -SkipBuild
 ```
 
-Internal source edits require no lock refresh. Git identifies committed sources and execution
-artifacts retain actual source hashes, including dirty content; external tool/resource pins retain
-their dedicated locks. Builds verify existing bundled PTY bridges. To rebuild their C source explicitly:
+Open a fresh PowerShell session after rebuilding loaded assemblies. Follow [local tests and reports](README-qualification-local.md) to select and run a suite or a native PTY campaign. See [hosted qualification](README-qualification-github.md) for the Windows and Linux matrix and its evidence.
 
-```powershell
-./scripts/Build-PtyBridge.ps1 -CompilerPath $env:QUIETCLI_DEVELOPMENT_ZIG
-```
+Internal source edits need no lock refresh. [Source identity](../docs/README-source-identity.md) explains committed sources, dirty-content evidence and external pins. Builds verify the bundled PTY bridges. To rebuild the C source explicitly, use [Build-PtyBridge](../docs/scripts/Build-PtyBridge.md) with `-CompilerPath $env:QUIETCLI_DEVELOPMENT_ZIG`.
 
-Installed compilers do not constitute native qualification. Full native C campaigns require generated
-properties, 20,000 libFuzzer executions with sanitizers and the targeted mutation catalogue. On musl the
-fuzzer requires a container memory limit of at most 1 GiB. Use the existing monitored container/native
-launchers and matching architecture; see [Tests and qualification](README-qualification.md).
-
-The local visible monitor currently uses the Windows host launcher. Linux hosts can develop/build and
-run CI headlessly, but a headless local test does not satisfy the repository's visible-monitor rule.
-The installer does not claim to add a Linux desktop test monitor or qualify unexecuted architectures.
-
-## Disposable installation smoke tests and cleanup
-
-From a Windows host with working Podman, run the companion smoke launcher:
-
-```powershell
-./Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-DevelopmentWorkstationSmoke.ps1
-
-# Windows controls and wrkflw archive/list/validation smoke only; no Podman required.
-./Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-DevelopmentWorkstationSmoke.ps1 -Targets Windows
-```
-
-It opens the shared visible monitor. Windows exercises read-only control modes, installs only the
-reviewed wrkflw binary in an external toolchain cache, and checks real job listing plus valid/invalid
-workflow definition exit codes without executing workflow steps. Debian, Ubuntu,
-Alpine and Fedora perform real package/tool installations inside disposable containers, with a
-read-only source snapshot. Editor and nested Podman installation are excluded in those guests.
-The guest checks activation, a second idempotent installation and a small sanitizer/linker probe;
-this smoke probe is separate from the product's complete native fuzz/mutation qualification.
-
-Every new run records `ownership.json`: source workspace, worker PID and creation time, host/user,
-terminal state and exact labelled disposable image/container names. A live `run.lease` protects the
-run independently of timestamps. Completed runs release their own inactive containers and images
-without `--force` or `prune`; base images and resources in use are preserved. Reports and failure
-diagnostics remain available under the printed temporary run directory. Monitor errors are saved
-to `monitor*.stderr.log`; repeated monitor failure is bounded and stops the owned worker.
-
-```powershell
-# Read the cleanup decisions before removing anything.
-./scripts/Remove-DevelopmentWorkstationRun.ps1 -WhatIf
-# Normal policy: retain seven days and at least the three latest runs.
-./scripts/Remove-DevelopmentWorkstationRun.ps1
-```
-
-The enclosing workspace's `scripts/Invoke-ArtifactsCleanup.ps1` also calls this cleanup, including
-when its `.artifacts` directory is absent. Use `-Category workstation` to select these runs or
-`-SkipQuietCliWorkstation` to leave them out. Active, foreign, linked or unverifiable runs are kept;
-legacy runs without an ownership receipt are reported as `Unmanaged` and preserved. User tool
-installations under LocalAppData or `~/.local/share` are never treated as disposable smoke artifacts.
+Use [workstation maintenance](README-development-workstation-maintenance.md) to run disposable installation tests and clean up expired runs.
 
 <!-- credits:begin -->
 ## Credits

@@ -13,7 +13,7 @@ Start with the [product README](../README.md) for installation, requirements and
 - [Streaming, callbacks and results](../readmes/README-streaming.md): build business projections and interpret outcome, execution and completeness.
 - [Recall](../readmes/README-recall.md): capture native evidence explicitly and analyze it again without rerunning the command.
 - [Hosting and native transports](../readmes/README-hosting.md): choose engine hosting and understand pipes and PTY.
-- [Configuration](../readmes/README-configuration.md): configure QuietCli through YAML and the supported environment override.
+- [Configuration](../readmes/README-configuration.md): create a minimal YAML file, validate it, reload it and inspect active settings.
 - [Measurements and privacy](../readmes/README-measurements.md): interpret measured volumes, delivery budgets and retention boundaries.
 - [QuietCli with AI agents](../readmes/README-agents.md): install production instructions for an agent.
 - [Companion modules](../readmes/README-modules.md): register reusable executable handlers and define their support boundaries.
@@ -42,7 +42,8 @@ The [agent documentation index](agents/README.md) identifies distributed instruc
 
 ## Technical contracts and boundaries
 
-- [Configuration and unique tokenized deliveries](README-configuration.md): configuration schema, delivery identity and token measurements.
+- [Configuration reference](README-configuration.md): YAML schema, precedence, validation and reload behavior.
+- [Delivery identity and token measurements](README-measurements-delivery-identity.md): representation receipts, token encodings and SQLite accounting.
 - [SQLite schema and queries](README-sqlite-schema-and-queries.md) with a Mermaid diagram, catalog definitions and source links.
 - [Recall contract](README-recall.md): memory capture, durable journals, recovery, offline analysis and optional ZIP64 transport.
 - [Compiled framing and direct engine hosting](README-performance-and-hosting.md): compatible hosts, framing boundaries and measurement reproduction.
@@ -74,13 +75,15 @@ Repository development follows the root [AGENTS.md](../AGENTS.md). Consumer-proj
 - [Automation requirements as code](README-automation-contracts.md): workflow receipts, shared commit checks, script logging policy and the [complete preview review](scripts/preview-support.md).
 - [Projects, suites and package eligibility](README-workspace-projects.md): reusable manifest discovery, dynamic suite parameters and explicit public-package policy.
 - [Development workstation](../readmes/README-development-workstation.md): platform-specific installations and the host-aware prerequisite installer, including VS Code Stable/Insiders.
+  - [Workstation maintenance](../readmes/README-development-workstation-maintenance.md): disposable installation smoke tests, diagnostics and ownership-based cleanup.
 - [.NET provisioning and SDK pins](README-dotnet-provisioning.md) covers portable SDK installation and pin updates. [.NET release readiness](README-dotnet-readiness.md) covers archive, image and runtime checks. The [SDK and Crossgen2 readiness guide](../readmes/README-agents-sdk-readiness.md) covers ReadyToRun feasibility for the pinned SDK.
 - [Local workflows with wrkflw](scripts/README-wrkflw-plan.md): pinned workstation integration, released capabilities and the explicit backlog of PowerShell usage helpers.
 - [CI execution model](ci/execution-model.md): shared workers, GitHub/local boundaries, Linux routing, qualification gates and Gallery publication.
 - [Deterministic local/GitHub environment](ci/environment.md): dotenv editing, runtime precedence, generated presets and the RAC-ENV-001 contract.
 - [Editor extensions](README-development-editor-extensions.md): export the installed inventory and install/update the saved set in Stable or Insiders with `-WhatIf` and `-Update`.
-- [Tests and qualification](../readmes/README-qualification.md): companion suites, property testing, fuzzing, mutation campaigns and qualification limits.
-- [Qualification: when, where and how](../readmes/README-qualification-when-where-how.md): affected-suite planning, Windows hosts, Linux job containers/Docker fallback, tooling, actual test execution and excluded scopes.
+- [Tests and qualification](../readmes/README-qualification.md) links to two paths.
+  - [Local tests and reports](../readmes/README-qualification-local.md): suite selection, visible monitoring, opt-in campaigns and saved results.
+  - [Hosted qualification on GitHub](../readmes/README-qualification-github.md): workflow triggers, selected matrices, required reports and exclusions.
 - [Commit-suite boundaries and PSDrive feasibility](testing/commit-workspace.md): optional local campaigns, integration labels, physical Git fixtures and pure logic separation.
 - [Repository and distribution](../readmes/README-distribution.md): monorepo layout, packaging and publication gates.
 - [Credits and syncing](README-credits-and-syncing.md): why `CREDITS.md` is generated, the two sync scripts, their check/apply workflows and how to run the sync locally.

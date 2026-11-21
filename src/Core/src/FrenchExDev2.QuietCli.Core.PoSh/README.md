@@ -197,7 +197,7 @@ These presentation limits do not truncate business events explicitly retained wi
 
 Settings live in `~/.quietcli/config.yaml`; `QUIETCLI_CONFIG_DIRECTORY` is the sole product configuration environment override. Use `New-QuietCliConfiguration`, `Test-QuietCliConfiguration`, `Get-QuietCliConfiguration` and `Import-QuietCliConfiguration` to manage them explicitly.
 
-Explicit invocation options override the session YAML snapshot, then built-in defaults. See the [configuration contract](../../../../docs/README-configuration.md) for the schema, reload behavior, unique delivery identities, `AlreadyDelivered` and encoding-specific token measurements.
+Explicit invocation options override the session YAML snapshot, then built-in defaults. See the [configuration reference](../../../../docs/README-configuration.md) for the schema and reload behavior. The [delivery identity contract](../../../../docs/README-measurements-delivery-identity.md) covers `AlreadyDelivered` and encoding-specific token measurements.
 
 ## Recall
 
@@ -329,13 +329,13 @@ See [agent integration](../../../../readmes/README-agents.md), the [Codex guide]
 
 ## Tests and dependencies
 
-[Qualification: when, where and how](../../../../readmes/README-qualification-when-where-how.md) explains when Core tests run, which runners/containers execute them and how to inspect actual test evidence.
+[Hosted qualification](../../../../readmes/README-qualification-github.md) explains when Core tests run, which runners/containers execute them and how to inspect actual test evidence.
 
 Tests live in `FrenchExDev2.QuietCli.Core.Tests.PoSh`, with independent C# assertions and PowerShell scenarios. The SDK/runtime are pinned in `global.json` and the C# projects. Companion tests verify matching build inputs and binaries, including with `-SkipBuild`; supplied RIDs do not establish qualification of unexecuted platforms.
 
 From the monorepo root, `./scripts/Invoke-WorkspaceCi.ps1 -Suite Core -SkipBuild` runs Core with the shared visible monitor. `-Suite All` also validates the dependent Git companion. Focused `Import`, `Integration`, `RealStatus`, `Script`, Recall and other suites establish only their executed scope. Property, fuzzing and targeted mutation results remain distinct from platform/release qualification.
 
-See [tests and qualification](../../../../readmes/README-qualification.md) for local campaigns, profiling, R2R comparisons, GitHub workflows, exclusions and report locations; [Core performance evidence](PERFORMANCES.md) defines controlled workloads and measurements.
+See [local tests and reports](../../../../readmes/README-qualification-local.md) for campaigns, profiling, ReadyToRun comparisons and report locations; [Core performance evidence](PERFORMANCES.md) defines controlled workloads and measurements.
 
 ## Further reading
 

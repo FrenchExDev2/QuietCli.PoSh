@@ -20,7 +20,7 @@ Core mixes pure logic with real filesystem, Git, process and package integration
 
 `PrivateData.QuietCli.TestExecution` in this companion's manifest declares Ordered defaults, Exclusive measurement barriers and one reviewed IsolatedProcess audit case. Core saves its resolved execution plan before cases run and batches adjacent eligible cases with a cap of two or the smaller caller budget. Each child owns configuration, SQLite and reports and receives one internal worker. `scripts/Test-TestCaseMetadata.ps1 -Plan` previews the complete plan without importing Core or executing a case. The same policy is consumed locally and in CI; Git/Vagrant fan-out still follows complete Core acceptance.
 
-See [Qualification: when, where and how](../../../../readmes/README-qualification-when-where-how.md) for PR triggers, the six Windows and four Linux environments, build versus test execution, local launchers and qualification exclusions.
+See [Hosted qualification](../../../../readmes/README-qualification-github.md) for PR triggers, the four required Windows and four Linux environments, optional Preview hosts and qualification exclusions. See [local tests and reports](../../../../readmes/README-qualification-local.md) for local launchers.
 
 Only the actual `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh` source directory enables
 workspace helper discovery. A flat installed package beside a checkout uses its own Recall build

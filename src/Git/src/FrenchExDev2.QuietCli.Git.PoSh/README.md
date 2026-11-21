@@ -79,7 +79,7 @@ try {
 
 [Create a handler based on Git](../../../../docs/README-create-git-handler.md) shows how to register and assert one form.
 
-[Git test companion](../../test/FrenchExDev2.QuietCli.Git.Tests.PoSh/README.md) · [Qualification and CI](../../../../readmes/README-qualification-when-where-how.md) · [Audit index](../../../../docs/README.md#dated-audits-and-evidence)
+[Git test companion](../../test/FrenchExDev2.QuietCli.Git.Tests.PoSh/README.md) · [Qualification and CI](../../../../readmes/README-qualification-github.md) · [Audit index](../../../../docs/README.md#dated-audits-and-evidence)
 
 ## Credits
 

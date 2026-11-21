@@ -2,7 +2,7 @@
 
 Automation entry points use `Verb-Noun` names and contain no functions. Put functions in `scripts/lib/*.psm1`, import with `-DisableNameChecking -ErrorAction Stop` and compose paths with `System.IO.Path`. Document the entry point and its library separately. Data profiles use `.profile.psd1`. `Test-ScriptLayout.ps1` enforces these rules through the shared local, commit and CI registry; see [the automation contract](../docs/README-automation-contracts.md).
 
-[Back to the QuietCli overview](../README.md) · [Tests and qualification](README-qualification.md) · [Qualification: when, where and how](README-qualification-when-where-how.md) · [Repository and distribution](README-distribution.md)
+[Back to the QuietCli overview](../README.md) · [Local tests and reports](README-qualification-local.md) · [Hosted qualification](README-qualification-github.md) · [Repository and distribution](README-distribution.md)
 
 Prepare a new machine with the [development workstation guide](README-development-workstation.md):
 PowerShell bootstrap, the exact .NET SDK, Git, VS Code Stable/Insiders, Podman, wrkflw and native/diagnostic tools
@@ -84,7 +84,7 @@ After the shared build, open a fresh session and follow the [Git quick start](..
 
 A built module needs no SDK to import or run. Source builds need the pinned SDK and the bundled native resources; import does not compile or install dependencies. Keep `engine.hosting` at `Auto` unless a specific host is being qualified. Imports of rebuilt assemblies require a new PowerShell process.
 
-From the checkout root, use `./scripts/Invoke-WorkspaceCi.ps1 -Suite Core -SkipBuild` for a Core development check, `-Suite Git` for the Git companion, `-Suite Vagrant` for Vagrant, or `-Suite All` for all discovered companions. These launch monitored test runs; [when, where and how qualification runs](README-qualification-when-where-how.md) explains the local/GitHub paths, while [tests and qualification](README-qualification.md) details suite scopes and evidence limits.
+From the checkout root, use `./scripts/Invoke-WorkspaceCi.ps1 -Suite Core -SkipBuild` for a Core development check, `-Suite Git` for the Git companion, `-Suite Vagrant` for Vagrant, or `-Suite All` for all discovered companions. See [local tests and reports](README-qualification-local.md) for suite scopes, monitoring and saved reports, and [hosted qualification](README-qualification-github.md) for GitHub triggers, environments and evidence.
 
 If bundled Linux PTY bridges must be regenerated, read the help for [Build-PtyBridge.ps1](../scripts/Build-PtyBridge.ps1): it requires an existing pinned Zig compiler or the explicit `-DownloadCompiler` option. Normal builds verify existing bridges and do not silently install a compiler.
 

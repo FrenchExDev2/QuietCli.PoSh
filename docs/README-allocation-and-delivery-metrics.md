@@ -2,6 +2,8 @@
 
 QuietCli reports two different quantities. Native-output reduction compares actual UTF-8 delivery bytes with associated native business-source bytes. Managed allocation costs describe memory allocated while executing the caller-local invocation and its `Complete` callback. Allocations are not retained object size, serialized output size, token savings or a percentage reduction against stdout/stderr.
 
+See [delivery identity and token measurements](README-measurements-delivery-identity.md) for representation deduplication and token accounting.
+
 ## Caller-thread allocation intervals
 
 Both integrated and isolated hosting use the compatible caller-local C# `AllocationMeter`. It samples `GC.GetAllocatedBytesForCurrentThread()` without forcing collection, traversing `Data`, evaluating business getters or serializing an object. `Complete` may return an entirely new `[pscustomobject]`, an existing reference, an array or a lazy object; measurement preserves that behavior.

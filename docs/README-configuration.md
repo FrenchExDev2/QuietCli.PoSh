@@ -1,23 +1,14 @@
-# Configuration and unique tokenized deliveries
+# QuietCli configuration reference
 
-QuietCli lazily reads `~/.quietcli/config.yaml` on first relevant use and keeps a validated snapshot for the session. Importing the module does not read configuration, start an engine or create a file. An absent file uses built-in defaults. An invalid existing file fails explicitly before execution.
+[Configuration guide](../readmes/README-configuration.md) · [Delivery identity and token measurements](README-measurements-delivery-identity.md)
 
-`QUIETCLI_CONFIG_DIRECTORY` is the only product configuration environment variable. It selects the directory containing `config.yaml`; it does not contain the file name. No `QUIETCLI2_*` aliases are recognized. Old database, hosting, tracking, IPC-timeout and Recall-root environment settings no longer configure the product. Test-runner control variables are separate from product configuration.
+## Loading and precedence
 
-Explicit command parameters override YAML values, which override built-in defaults. Configuration-management cmdlets accept an explicit `-Path` to inspect, create or load another file. The automatic path otherwise comes from `QUIETCLI_CONFIG_DIRECTORY`, then `~/.quietcli`.
+QuietCli reads `~/.quietcli/config.yaml` on first relevant use and keeps a validated snapshot for the session. Importing the module leaves configuration unread. An absent file uses built-in defaults. An invalid existing file fails explicitly before native execution.
 
-```powershell
-New-QuietCliConfiguration
-$validation = Test-QuietCliConfiguration
-$validation.IsValid
-$validation.Errors
-$effective = Get-QuietCliConfiguration
-$effective.Configuration
-$effective.Origins
+Explicit invocation parameters override YAML values, followed by built-in defaults. `QUIETCLI_CONFIG_DIRECTORY`, the only product configuration environment variable, selects the directory containing `config.yaml`. `New-QuietCliConfiguration`, `Test-QuietCliConfiguration` and `Import-QuietCliConfiguration` also accept `-Path` to select a specific file. `Get-QuietCliConfiguration` reports the active configuration and setting origins. The environment has no `QUIETCLI2_*` aliases. Test-runner variables are separate.
 
-# Apply edits explicitly; an invalid reload preserves the previous snapshot.
-Import-QuietCliConfiguration
-```
+## Validation and reload
 
 `New-QuietCliConfiguration -Force` explicitly permits replacing an existing file; `-WhatIf` is supported. Validation returns a `PSCustomObject` with `IsValid`, `Path`, `Exists`, `Errors`, `Warnings` and normalized `Configuration`. Errors identify their key, line and column where available. Validation never creates a configuration file, database or engine. The verified managed parser may be loaded to inspect an existing YAML file.
 
@@ -64,30 +55,6 @@ Output bytes must be at least 256; item count may be zero. Representation capaci
 
 Relative YAML paths resolve against the configuration file directory. Only a leading `~` expands to the user profile. No variable, wildcard or expression expansion occurs. Omitted database and Recall paths preserve the existing user-data locations; no historical database is moved.
 
-## Tokens and delivery identity
-
-`quiet -AsJson` / `-AsYaml`, `Out-QuietResult`, `ConvertTo-QuietJson` and `ConvertTo-QuietYaml` share one delivery path. Tokenization defaults to `o200k_base` and counts the exact final representation, including whitespace and any truncation envelope. `-Tokenizer cl100k_base` or `-Tokenizer off` overrides the configured default. Counts identify the encoding and actual tokenizer library version, rather than claiming model-independent tokens.
-
-```powershell
-$json = ConvertTo-QuietJson $result
-$result.AlreadyDelivered               # False on the first representation
-$result.Deliveries[0].TokenProfile     # o200k_base by default
-$same = ConvertTo-QuietJson $result
-$result.AlreadyDelivered               # True; same DeliveryId
-$otherCount = ConvertTo-QuietJson $result -Tokenizer cl100k_base
-$yaml = ConvertTo-QuietYaml $result
-```
-
-Within the originating result, format plus the SHA-256 of exact UTF-8 text identifies a representation. Identical conversions reuse their `DeliveryId`; a different format or text creates a new delivery. Returning to a previous representation reuses its receipt. The tokenizer is a measurement choice, not a new delivery identity. The latest delivery and its `AlreadyDelivered`, tokenizer and token count are available through `Deliveries[0]` and `Measurement`; the result also exposes `DeliveryId` and `AlreadyDelivered`.
-
-Only hashes, numeric measurements and metadata receipts accumulate locally, bounded by `maxTrackedRepresentations`. Only the latest delivery text is retained. Exceeding the capacity fails explicitly before a new representation is delivered or counted. `-AsObject` never enumerates or serializes business data to measure tokens. Offline conversion and disabled tracking retain only local receipts.
-
-SQLite keeps one `quiet2_events` delivery row, preserving its initial tokenizer fields and timestamp. `quiet2_delivery_tokens` stores one numeric measurement per `(delivery_id, token_profile, token_version)`. Additional tokenizers enrich the same delivery without increasing delivery or byte totals. Repeated measurements are cached locally; persistence is idempotent and transactional. Storage failures preserve the local identity and are reported through `Measurement.StorageError`, permitting a later conversion to retry with the same identity.
-
-`Get-QuietCliGain` reports `DeliveredTokensByProfile`: measured tokens, measured/unmeasured deliveries and completeness for each encoding/version. These totals never mix encodings or treat missing measurements as zero. `NativeTokens` remains unknown: this feature does not tokenize native streams. The gain report's own JSON/YAML representations remain excluded from delivery tracking.
-
-Existing databases remain readable without rewriting their events. With telemetry enabled, a successfully started native invocation queues background preparation of the writer connection, schema and reusable statements. The token table is created during that preparation or the first write, never by an ordinary read. Import, engine inspection and telemetry-disabled calls do not prepare a database. Historical deliveries are neither retokenized nor retroactively deduplicated; their missing measurements remain explicit coverage gaps. Conversion records a unique produced representation, not proof that a person or model received it.
-
 ## Focused development validation
 
 ```powershell
@@ -95,7 +62,7 @@ Existing databases remain readable without rewriting their events. With telemetr
 ./scripts/Invoke-WorkspaceCi.ps1 -Suite ConfigurationDelivery -SkipBuild
 ```
 
-The focused suite uses owned temporary configuration/database files, both hosting modes, generated Unicode/scalar properties, malformed YAML/UTF-8 inputs, historical SQLite fixtures, transaction conflicts and targeted PowerShell/C# source mutants. The shared launcher owns the visible monitor and saves diagnostics outside the checkout. This development scope does not qualify unexecuted platform/release matrix entries.
+The suite uses owned temporary configuration and database files, both hosting modes, generated Unicode and scalar properties, malformed YAML/UTF-8 inputs, and targeted PowerShell/C# source mutants. It also exercises historical SQLite fixtures and transaction conflicts for the [delivery measurement contract](README-measurements-delivery-identity.md). See the [local test guide](../readmes/README-qualification-local.md) for the visible monitor and reports.
 
 <!-- credits:begin -->
 ## Credits
