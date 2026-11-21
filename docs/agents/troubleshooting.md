@@ -27,7 +27,7 @@ contracts in `AGENTS.md`, `examples.md` and `docs/README-recall.md` and were not
 
 ## Loading problems
 
-- **Wrong module version loaded.** Check `(Get-Module QuietCli).Path`. Do not
+- **Wrong module version loaded.** Check `(Get-Module FrenchExDev2.QuietCli.Core.PoSh).Path`. Do not
   accept an older installed release silently; import the selected source module explicitly.
 - **Legacy modules in the process.** Do not mix QuietCli releases or load archived OPumper modules in the
   same process; they share public command names. Start a new process.

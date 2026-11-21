@@ -43,7 +43,7 @@ The first local experiment retained JSON for direct native reads and was slower 
 
 ## Remaining candidates
 
-The [second pass](powershell-csharp-boundaries.md) moves generic text framing and telemetry aggregation to C#. Typed input/lifecycle and metadata operations, caller-local metadata freezing, standard YAML emission and probe identity construction are implemented. Git-owned argument and format parsers are also implemented in their own dual-target companion; see the [final ordered audit](audits/2026-11-05-core-then-git.md). Their priority needs measured representative workloads; moving them blindly can exchange interpreter cost for per-record IPC or business-object serialization.
+The [PowerShell and C# boundaries](README-powershell-csharp-boundaries.md) describe how C# handles generic text framing and telemetry aggregation. Typed input/lifecycle and metadata operations, caller-local metadata freezing, standard YAML emission and probe identity construction are implemented. Git-owned argument and format parsers are also implemented in their own dual-target companion; see the [final ordered audit](audits/2026-11-05-core-then-git.md). Their priority needs measured representative workloads; moving them blindly can exchange interpreter cost for per-record IPC or business-object serialization.
 
 Cross-platform execution and release qualification remain separate from local Windows measurements. Building all six publications establishes compilation and binary architecture, not successful execution on those six platforms.
 

@@ -2,6 +2,8 @@
 
 Date : **4 novembre 2026**, Europe/Paris. Périmètre : ce workspace et ses quatre modules compagnons. Audit du code présent, sans correction des sources produit, commit, push, changement de profil ou redémarrage de service.
 
+Les liens de code renvoient à la première révision conservée dans le monorepo, datée du 5 novembre 2026. Les numéros de ligne cités se rapportent au workspace audité le 4 novembre.
+
 Suivi : les [correctifs et leurs critères de vérification](2026-11-04-remediation.md) sont documentés séparément. Les constats ci-dessous décrivent l’état initial audité.
 
 ## Avis
@@ -47,7 +49,7 @@ Les deux premières tentatives du harnais ont rencontré des erreurs de harnais,
 
 **Gravité élevée si les paquets sont non fiables ou proviennent d’un emplacement modifiable par un tiers.**
 
-Source : [Test-WorkspacePackage.ps1](../../scripts/Test-WorkspacePackage.ps1), lignes 15–26.
+Source : [Test-WorkspacePackage.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/scripts/Test-WorkspacePackage.ps1), lignes 15–26.
 
 Le script extrait chaque archive dans une destination commune. Il contrôle ensuite les empreintes et le nombre de fichiers seulement sous `$manifest.Module`, puis importe les noms Core et Git attendus sans établir que leurs fichiers appartiennent à un manifeste effectivement vérifié.
 
@@ -63,7 +65,7 @@ Critère de fermeture : le paquet synthétique de l’audit est rejeté **avant*
 
 **Gravité élevée pour les automatisations qui pilotent des mutations.**
 
-Sources : [Invoke.ps1](../../FrenchExDev2.QuietCli.Core.PoSh/src/Invoke.ps1), lignes 92–103 et 137–141 ; [Program.cs](../../FrenchExDev2.QuietCli.Core.PoSh/engine/Program.cs), lignes 34–38.
+Sources : [Invoke.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/src/Invoke.ps1), lignes 92–103 et 137–141 ; [Program.cs](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/engine/Program.cs), lignes 34–38.
 
 `NativeStarted` passe à `true` seulement après le retour de la requête `start`. Pourtant le moteur crée déjà le processus avant d’envoyer sa réponse. Si l’accusé ne parvient pas à la façade, le chemin d’erreur considère qu’aucun natif n’a démarré. L’expression de complétude traite ensuite `Execution=null` comme une source complète.
 
@@ -77,7 +79,7 @@ Critère de fermeture : la même injection indique source incomplète et effet i
 
 **Gravité moyenne : disponibilité des rapports de gains, sans suppression du résultat métier.**
 
-Sources : [MeasurementStore.cs](../../FrenchExDev2.QuietCli.Core.PoSh/engine/MeasurementStore.cs), lignes 57–69 ; [Protocol.cs](../../FrenchExDev2.QuietCli.Core.PoSh/engine/Protocol.cs), lignes 19–21 et 48–52.
+Sources : [MeasurementStore.cs](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/engine/MeasurementStore.cs), lignes 57–69 ; [Protocol.cs](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/engine/Protocol.cs), lignes 19–21 et 48–52.
 
 La requête charge jusqu’à 1 001 événements et renvoie 1 000 objets. La réponse entière doit pourtant tenir dans un header de 1 Mio. Ces deux limites ne sont pas coordonnées.
 
@@ -91,7 +93,7 @@ Critère de fermeture : les 180 événements sont consultables en plusieurs page
 
 **Gravité moyenne : exactitude des effets métier observés.**
 
-Source : [Repository.ps1](../../FrenchExDev2.QuietCli.Git.PoSh/src/Repository.ps1), lignes 27–34.
+Source : [Repository.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Git.PoSh/src/Repository.ps1), lignes 27–34.
 
 Les hashtables PowerShell `$old` et `$new`, ainsi que le tri unique par défaut, confondent les noms qui ne diffèrent que par leur casse. Les noms de références doivent être traités comme des identifiants distincts ; la possibilité de les matérialiser dépend ensuite du stockage et du système de fichiers.
 
@@ -103,7 +105,7 @@ Correction recommandée : dictionnaires et union utilisant `StringComparer.Ordin
 
 **Gravité moyenne : ressources, contrat métier et fichiers temporaires.**
 
-Source : [History.ps1](../../FrenchExDev2.QuietCli.Git.PoSh/src/History.ps1), lignes 74–89.
+Source : [History.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Git.PoSh/src/History.ps1), lignes 74–89.
 
 Le fichier et le hash sont créés avant l’appel natif. Leur libération dépend du callback `Complete`, qui ne doit justement pas être appelé pour une invocation non démarrée. En cas d’échec de démarrage, la fonction continue, enregistre l’artefact et retourne le sink technique resté dans `Data`.
 
@@ -117,7 +119,7 @@ Critère de fermeture : démarrage refusé, callback raté et finalisation raté
 
 **Gravité moyenne, conditionnelle au contenu des callbacks.**
 
-Sources : [Runtime.ps1](../../FrenchExDev2.QuietCli.Core.PoSh/src/Runtime.ps1), lignes 80–81 ; [Gain.ps1](../../FrenchExDev2.QuietCli.Core.PoSh/src/Gain.ps1), lignes 8–10 et 20–23.
+Sources : [Runtime.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/src/Runtime.ps1), lignes 80–81 ; [Gain.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/src/Gain.ps1), lignes 8–10 et 20–23.
 
 Le moteur ne capture pas automatiquement stderr. En revanche, le texte brut d’une exception de callback est copié dans `Error.Message`, puis enregistré dans SQLite par défaut. Un handler qui construit ce message à partir d’un événement peut donc y conserver un token ou un contenu métier.
 
@@ -129,7 +131,7 @@ Correction recommandée : codes, phases et diagnostics sûrs par défaut ; messa
 
 **Gravité moyenne de validation et de confidentialité ; pas une élévation de privilèges démontrée.**
 
-Source : [MeasurementStore.cs](../../FrenchExDev2.QuietCli.Core.PoSh/engine/MeasurementStore.cs), lignes 37–51.
+Source : [MeasurementStore.cs](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/engine/MeasurementStore.cs), lignes 37–51.
 
 Les noms de propriétés de premier niveau sont contrôlés, mais `Execution`, `Sources`, `Error` et `Completeness` restent des `JsonElement` arbitraires. `Execution.Data.ArbitraryBusinessMarker` est accepté, stocké et relu dans la reproduction.
 
@@ -141,7 +143,7 @@ Correction recommandée : DTO explicites et validation récursive des types, lon
 
 **Gravité moyenne pour l’extensibilité et la portabilité.**
 
-Source : [Registry.ps1](../../FrenchExDev2.QuietCli.Core.PoSh/src/Registry.ps1), ligne 45 ; [Scaffold.ps1](../../FrenchExDev2.QuietCli.Core.PoSh/src/Scaffold.ps1), validation de `Binary`.
+Source : [Registry.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/src/Registry.ps1), ligne 45 ; [Scaffold.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/src/Scaffold.ps1), validation de `Binary`.
 
 `GetFileNameWithoutExtension` transforme `audit.tool` en `audit`. Le handler déclaré pour `audit.tool` n’est alors jamais candidat. La reproduction montre le défaut sans exécuter de binaire. Le générateur interdit également les points dans les noms, alors que de tels exécutables existent notamment sous Unix.
 
@@ -151,7 +153,7 @@ Correction recommandée : identité logique explicite du binaire ; normalisation
 
 ### SEC-04 — Les blobs temporaires Git n’ont pas de permissions Unix explicites
 
-Source : [History.ps1](../../FrenchExDev2.QuietCli.Git.PoSh/src/History.ps1), lignes 74–77. À comparer avec [PrivateDirectory.cs](../../FrenchExDev2.QuietCli.Core.PoSh/engine/PrivateDirectory.cs), lignes 8–13, et [SqliteNative.cs](../../FrenchExDev2.QuietCli.Core.PoSh/engine/SqliteNative.cs), lignes 185–195.
+Source : [History.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Git.PoSh/src/History.ps1), lignes 74–77. À comparer avec [PrivateDirectory.cs](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/engine/PrivateDirectory.cs), lignes 8–13, et [SqliteNative.cs](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/engine/SqliteNative.cs), lignes 185–195.
 
 Les mécanismes C# utilisent des modes privés. Le handler blob crée son répertoire et son fichier sans mode explicite : leur confidentialité dépend de l’environnement. Sous un Unix avec umask permissif, un autre utilisateur local pourrait lire un blob temporaire avant sa suppression. Ce risque n’a pas été reproduit dans une session Unix de cet audit ; les ACL Windows ne sont pas assimilées à des permissions Unix.
 
@@ -159,7 +161,7 @@ Utiliser un répertoire `0700` et un fichier `0600` dès la création, avec les 
 
 ### SEC-05 — Le bootstrap administratif lit des lignes sans limite
 
-Sources : [Bootstrap.ps1](../../scripts/Bootstrap.ps1), lignes 35–43 ; [Common.ps1](../../scripts/Common.ps1), limitation des diagnostics aux dix dernières lignes.
+Sources : [Bootstrap.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/scripts/Bootstrap.ps1), lignes 35–43 ; [Common.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/scripts/Common.ps1), limitation des diagnostics aux dix dernières lignes.
 
 `ReadLineAsync` peut accumuler une ligne arbitrairement longue avant que le callback ne la voie. Limiter le nombre de lignes dans le callback ne borne donc pas la mémoire. Ce chemin concerne les commandes administratives du workspace ; il ne remet pas en cause les blocs bornés du moteur produit.
 
@@ -167,7 +169,7 @@ Remplacer cette lecture par des blocs et un cadrage limité, avec signalement ex
 
 ### SEC-06 — La provenance des dépendances binaires et CI doit être renforcée
 
-Sources : [SqliteNative.cs](../../FrenchExDev2.QuietCli.Core.PoSh/engine/SqliteNative.cs), lignes 27–35 ; [Delivery.ps1](../../FrenchExDev2.QuietCli.Core.PoSh/src/Delivery.ps1), lignes 98–101 ; [.github/workflows/ci.yml](../../.github/workflows/ci.yml), références `@v4` ; [Containerfile.debian](../../.github/containers/Containerfile.debian), lignes 2–11.
+Sources : [SqliteNative.cs](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/engine/SqliteNative.cs), lignes 27–35 ; [Delivery.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/src/Delivery.ps1), lignes 98–101 ; [.github/workflows/ci.yml](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/.github/workflows/ci.yml), références `@v4` ; [Containerfile.debian](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/.github/containers/Containerfile.debian), lignes 2–11.
 
 Le répertoire `resources` contient 18 fichiers, environ 15,96 Mo, dont des DLL managées, SQLite natif et les bridges. Aucun inventaire de versions/licences/provenance n’y a été trouvé. Le `FileVersion` Windows de SQLite est vide. Un audit de références NuGet ne suffirait donc pas à couvrir ces dépendances. Aucune CVE précise n’est affirmée ici.
 
@@ -181,7 +183,7 @@ Le fallback SQLite charge des noms de bibliothèques non qualifiés si le binair
 
 ### REL-05 — Complétude après le délai interne de drainage : à qualifier
 
-Sources : [Invocation.cs](../../FrenchExDev2.QuietCli.Core.PoSh/engine/Invocation.cs), lignes 107–114, 162–168 et 194–203.
+Sources : [Invocation.cs](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/engine/Invocation.cs), lignes 107–114, 162–168 et 194–203.
 
 Après la sortie du processus principal, le drainage dispose de 30 secondes. Son annulation interne n’alimente ni `error`, ni `cancelled`, ni `timedOut` dans ce chemin. `Snapshot` peut donc annoncer `SourceComplete=true` sans avoir observé EOF.
 
@@ -191,7 +193,7 @@ Il faut distinguer EOF, annulation, limite de drainage et erreur de lecture dans
 
 ### REL-06 — Aucun délai propre aux échanges IPC
 
-Sources : [Protocol.ps1](../../FrenchExDev2.QuietCli.Core.PoSh/src/Protocol.ps1), lignes 36–46 et 60 ; [Program.cs](../../FrenchExDev2.QuietCli.Core.PoSh/engine/Program.cs), usages de `CancellationToken.None`.
+Sources : [Protocol.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/src/Protocol.ps1), lignes 36–46 et 60 ; [Program.cs](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/engine/Program.cs), usages de `CancellationToken.None`.
 
 Les échanges attendent les streams et l’arrêt du moteur sans token ni délai indépendant. Si le moteur se fige, le délai natif ne peut pas débloquer le client, et le client ne peut pas envoyer son annulation sur cette même connexion synchrone. Ce risque concerne la résistance aux pannes du moteur ; le callback PowerShell arbitrairement bloqué reste une limite distincte, déjà documentée.
 
@@ -199,7 +201,7 @@ Prévoir un délai de requête, une fermeture forcée du moteur détenu après �
 
 ### CI-01 — Le workflow Linux n’est pas exploitable depuis des sources seules
 
-Sources : [ci.yml](../../.github/workflows/ci.yml), lignes 36–53 ; [Invoke-ContainerWorker.ps1](../../scripts/Invoke-ContainerWorker.ps1), création de conteneur avec `--pull=never` et lancement avec `-SkipBuild` ; [Build-Workspace.ps1](../../scripts/Build-Workspace.ps1), lignes 14–15 ; `.gitignore` des modules.
+Sources : [ci.yml](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/.github/workflows/ci.yml), lignes 36–53 ; [Invoke-ContainerWorker.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/scripts/Invoke-ContainerWorker.ps1), création de conteneur avec `--pull=never` et lancement avec `-SkipBuild` ; [Build-Workspace.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/scripts/Build-Workspace.ps1), lignes 14–15 ; `.gitignore` des modules.
 
 Le job Linux restaure les dépôts puis lance le conteneur. Il ne construit ni le moteur ni les fixtures. Or les dossiers `lib` sont ignorés dans Git et le conteneur ne construit pas. Une variable donnant le nom d’une image ne la rend pas non plus disponible sur un runner hébergé neuf lorsque le pull est interdit.
 
@@ -209,7 +211,7 @@ Le script de qualification complète est un garde-fou qui échoue explicitement,
 
 ### REL-07 — Les rapports de tests n’attachent pas suffisamment les binaires aux sources
 
-Sources : [Invoke-TestWorker.ps1](../../scripts/Invoke-TestWorker.ps1), construction de `source-identity.json` ; [Update-WorkspaceLock.ps1](../../scripts/Update-WorkspaceLock.ps1), calcul des empreintes ; [Protocol.ps1](../../FrenchExDev2.QuietCli.Core.PoSh/src/Protocol.ps1), identité du moteur.
+Sources : [Invoke-TestWorker.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/scripts/Invoke-TestWorker.ps1), construction de `source-identity.json` ; [Update-WorkspaceLock.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/scripts/Update-WorkspaceLock.ps1), calcul des empreintes ; [Protocol.ps1](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/1a73aaee5bf63b6801ff49b7340c60028e07e98a/FrenchExDev2.QuietCli.Core.PoSh/src/Protocol.ps1), identité du moteur.
 
 Les rapports hachent les sources de quatre dépôts et excluent les `lib` exécutés. Le dépôt d’orchestration n’est pas intégré à cette liste de fichiers. Avec `-SkipBuild`, une ancienne DLL peut être exécutée alors que le rapport décrit les sources courantes, sans lien de build contrôlé entre les deux.
 

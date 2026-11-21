@@ -74,7 +74,7 @@ Data: {SdkVersion: "11.0.100"}
 Completeness: {Source: true, Analysis: true}
 ```
 
-The source manifest above loads the local Core project. The public Gallery module is named `QuietCli`; its installation uses `Install-PSResource -Name QuietCli` and `Import-Module QuietCli`.
+The source manifest above loads the local Core project. The [Gallery installation guide](../docs/README-PSGallery.md) uses `FrenchExDev2.QuietCli.Core.PoSh` for both `Install-PSResource` and `Import-Module`.
 
 ## Run the Git companion
 

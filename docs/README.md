@@ -40,7 +40,6 @@ The [agent documentation index](agents/README.md) identifies distributed instruc
 
 ## Technical contracts and boundaries
 
-- [QuietCli Core proposal](../readmes/README-proposal.md)
 - [Configuration and unique tokenized deliveries](README-configuration.md): configuration schema, delivery identity and token measurements.
 - [SQLite schema and queries](README-sqlite-schema-and-queries.md) with a Mermaid diagram, catalog definitions and source links.
 - [Recall contract](README-recall.md): memory capture, durable journals, recovery, offline analysis and optional ZIP64 transport.
@@ -112,6 +111,8 @@ These reports describe their recorded revisions, environments and executed scope
 - 9 November 2026: [container runtime/bootstrap and RID resource diagnosis](audits/2026-11-09-container-runtime-diagnosis.md) and its [evidence JSON](audits/2026-11-09-container-runtime-diagnosis.json).
 - 9 November 2026: [Alpine recipe correction, rebuilt image and default-host/SDK smoke](audits/2026-11-09-alpine-image-recipe.md) and its [evidence JSON](audits/2026-11-09-alpine-image-recipe.json).
 - 14 November 2026: [Git status repository states, classified errors, profiles and hot-path view](audits/2026-11-14-git-status-states-profiles.md).
+
+- [Archived Core README proposal](../readmes/README-proposal.md): historical draft. Use the [maintained Core README](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md) for current instructions.
 
 ## Automation contracts
 

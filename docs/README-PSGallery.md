@@ -2,20 +2,12 @@
 
 ## GitHub publication
 
-An applicable `develop` push executes `All` qualification and profiling without publishing a module.
-An explicit `src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/v<version>` tag push requests a Core release after full qualification of the tagged
-revision. The tag version must exactly match the source manifest, including its prerelease suffix.
-Windows x64 rebuilds all six embedded RIDs in Release ReadyToRun for CLR 10 and 11,
-verifies the Windows build, and prepares one public `FrenchExDev2.QuietCli.Core.PoSh` nupkg with `-RequireReadyToRun`.
-There is no separate Gallery package per RID. Native Linux matrix tests and Docker fallback qualify
-the source revision; the final package is rebuilt on Windows, not assembled from matrix artifacts.
-
-The publish job downloads the prepared nupkg, verifies its recorded hash, version and qualified
-checkpoint, then uses `Publish-PSResource -NupkgPath` with the `psgallery` environment secret.
-Publication uses the tagged checkpoint even if develop has advanced. Both stable and prerelease
-publication require a tag push; workflow dispatch only prepares artifacts. The manual ReadyToRun A/B benchmark
-is informational and never blocks a release. See the diagrams and platform details in
-[the CI execution model](ci/execution-model.md).
+Pushes to `develop` use [change-based qualification](ci/README.md#end-to-end-routing). Release tags
+such as `FrenchExDev2.QuietCli.Core.PoSh/v<version>` and `FrenchExDev2.QuietCli.Git.PoSh/v<version>`
+request publication with `All` qualification for the exact tagged revision. The version must match
+the owning manifest, including its prerelease suffix. Manual dispatch prepares artifacts only.
+See the [release guide](README-preview-releases.md#module-release-tags-and-independent-versions)
+and the [CI execution model](ci/execution-model.md#gallery-publication).
 
 QuietCli is the product name. Core and Git retain their existing PowerShell Gallery identities, FrenchExDev2.QuietCli.Core.PoSh and FrenchExDev2.QuietCli.Git.PoSh. Both are enabled as independently versioned CI publication targets. Git's package contains its parser outputs and a declared dependency on Core; it never embeds the Core package. Vagrant remains disabled and test modules are never public release targets.
 
@@ -60,20 +52,15 @@ To include prereleases when selecting the latest available QuietCli release, add
 Install-PSResource -Name FrenchExDev2.QuietCli.Core.PoSh -Prerelease -Repository PSGallery -Scope CurrentUser
 ```
 
-The development prerelease identity [0.2.0-preview] is an example, not evidence that it is already public. To select a specific release instead of the latest, the optional `-Version` parameter accepts its complete package version, including any prerelease suffix. Installed module directories use the numeric base version; the package identity retains the prerelease suffix.
+To select a specific published release, pass its complete package version to `-Version`, including any prerelease suffix. Installed module directories use the numeric base version and the package identity retains the suffix.
 
 PowerShell Gallery prerelease labels use the supported alphanumeric/hyphen form. Dotted SemVer 2 labels and build metadata are rejected explicitly. See Microsoft's [prerelease module guidance](https://learn.microsoft.com/powershell/gallery/concepts/module-prerelease-support).
 
 ## Publication requirements
 
-Gallery preparation copies Core into a separate `FrenchExDev2.QuietCli.Core.PoSh` staging directory, preserving its `.psd1` and `.psm1` names and bytes. The shared [module package reader](scripts/Get-ModulePackageName.md) derives the name from the script module and checks its literal sibling manifest. Package preparation, release tags and publication validation consume that identity; no short-name alias is introduced. Versions and GUIDs remain unchanged, and generated calls and companion dependencies use `FrenchExDev2.QuietCli.Core.PoSh` after installation.
+The Windows x64 packaging job rebuilds the six embedded Core RIDs in Release ReadyToRun for CLR 10 and 11 and prepares a single Core nupkg. Git packages carry their own parser outputs and the declared Core dependency. A standalone release prepares one package. An annotated release batch prepares one package per selected module and publishes in dependency order.
 
-For generated artifact-only preview versions, independent module tags and release preparation, see
-[preview releases](README-preview-releases.md). Source versions and GUIDs stay unchanged during CI packaging.
-
-A QuietCli release requires qualification of the delivered revision across its supported runtime and platform matrix, including the required property, fuzzing and mutation campaigns for the selected scope. GitHub CI excludes native TTY/PTY campaigns; its reports do not qualify that transport. A targeted development run or a successful run for an older revision does not qualify a new release.
-
-Both stable and prerelease publication are requested by explicit module tag pushes after qualification. Each artifact contains exactly one selected business package; unexpected extra nupkgs are rejected. Get-QuietReleasePlan discovers the owning business manifest and requires its version and publication flag. Core/Git releases use their existing package names; Vagrant requests fail while Publishable=false. New modules join publication through their own metadata and CI qualification declarations rather than a hardcoded release selector.
+The [release guide](README-preview-releases.md) covers artifact-only previews, release qualification, package verification and publication receipts. GitHub CI records its native TTY/PTY exclusion in the qualification scope.
 
 ## Companion packages
 
@@ -85,7 +72,7 @@ Both stable and prerelease publication are requested by explicit module tag push
 
 Install the published Git companion with `Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Repository PSGallery`; add `-Prerelease` when selecting previews. Its RequiredModules dependency remains FrenchExDev2.QuietCli.Core.PoSh. Operator-created batches qualify once and publish Core before Git. Separately created manual tags remain independent; publish a compatible Core dependency first. Public indexing delays can reject Git even after Core upload. Package preparation/isolated import checks do not establish which versions are currently available on the Gallery.
 
-For checked version commits, numbered previews and selected tag pushes, see [the release operator](scripts/New-QuietPreviewTag.md). No module is published merely by merging develop.
+Use [Invoke-QuietRelease](scripts/Invoke-QuietRelease.md) for the release workflow. The [manual single-module operator](scripts/New-QuietPreviewTag.md) handles checked tags when required.
 
 Keep API keys out of code, CLI arguments, reports and chat. Follow [Microsoft's publishing guidelines](https://learn.microsoft.com/en-us/powershell/gallery/concepts/publishing-guidelines) and the [Publish-PSResource documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.psresourceget/publish-psresource) when preparing an explicitly authorized release.
 

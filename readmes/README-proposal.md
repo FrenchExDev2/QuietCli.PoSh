@@ -1,5 +1,7 @@
 # QuietCli Core
 
+> **Archived README proposal.** The [maintained Core README](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md) provides current installation and usage instructions.
+
 **Run native tools from PowerShell and turn their output into structured results, without collecting a terminal transcript first.**
 Start an executable with an argument vector, observe stdout and stderr through callbacks, and keep the business state your script needs.
 Inspect the result locally, deliver a bounded JSON/YAML view, or retain evidence explicitly and analyze it again without rerunning the command.
@@ -16,7 +18,7 @@ Useful for developer scripts, inventories, build automation, diagnostics and age
 | QuietCli Core | You want caller-local analysis, execution metadata, explicit completeness and bounded delivery together. | The meaning and correctness of your callbacks or provider, plus their tests. |
 
 Core does not make a small native JSON response better automatically. It adds execution and analysis controls when your script needs them.
-See the [RTK comparison and measurements](../QUIET_VS_RTK_MEASURES.md); byte reduction is not proof of token or financial savings.
+See the [historical RTK comparison and measurements](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/c4341fa11075dd9215d6dff8539528c8e0ede3b2/QUIET_VS_RTK_MEASURES.md). Token and cost savings require separate measurements.
 
 ## Requirements and installation
 

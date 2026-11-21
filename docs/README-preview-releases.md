@@ -123,10 +123,11 @@ qualified revision may be packaged. GitHub CI excludes native TTY/PTY qualificat
 explicitly. Local TTY campaigns remain available. Builds cover all embedded runtime distributions; the packaging
 job checks its actual build again.
 
-The packaging job has no Gallery key. It uploads the Core nupkg and its plans as a run/version/attempt-specific
-artifact. The publication job checks out the qualified revision, downloads that exact artifact and verifies its hashes,
-version and the Core-only package set before publishing Core for an explicit matching tag push. It never rebuilds
-between artifact creation and publication and does not depend on the current develop head.
+The packaging job uploads a run/version/attempt-specific artifact without a Gallery key. A generated preview
+contains a Core nupkg. An exact-version dispatch prepares the selected module. The tag-driven workflow can also
+prepare an annotated batch with one package per selected module. For publication, the job checks out the
+qualified revision and verifies the artifact's hashes, versions and package set before uploading the prepared bytes
+in dependency order.
 
 For generated preview artifacts, dispatch **QuietCli2 manual preview artifacts** on `develop`.
 For exact-version artifacts, dispatch **QuietCli2 qualified PowerShell Gallery release** with the source-manifest
@@ -136,8 +137,8 @@ version. Neither manual dispatch publishes. PRs, forks and branch pushes do not 
 
 - Keep `PSGALLERY_API_KEY` only in the existing `psgallery` GitHub environment. Never add it to source, command arguments,
   artifact contents or logs. GHCR continues to use its separate ephemeral `GITHUB_TOKEN`.
-- That environment must allow **tags** matching `FrenchExDev2.QuietCli.Core.PoSh/v*`. A branch rule for develop alone does not authorize tag
-  deployments. Existing approval protection still applies; the workflow does not change account settings. See
+- That environment must allow **tags** matching `FrenchExDev2.QuietCli.Core.PoSh/v*` and
+  `FrenchExDev2.QuietCli.Git.PoSh/v*` for their releases. Existing approval protection applies. See
   [GitHub's environment rules](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
 - The workflow files must be committed and pushed before GitHub can run them. A local test does not activate remote CI
   or prove that an environment secret, branch policy or public package is available.

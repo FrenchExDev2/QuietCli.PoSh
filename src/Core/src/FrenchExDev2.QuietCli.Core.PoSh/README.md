@@ -111,7 +111,7 @@ The source manifest above loads the local Core project. Its Gallery identity is 
 
 ## First use
 
-This standalone example uses the installed `QuietCli` module. The local checkout recipe above runs the same contract with the source manifest. `dotnet` must be installed.
+This standalone example uses the installed `FrenchExDev2.QuietCli.Core.PoSh` module. The local checkout recipe above runs the same contract with the source manifest. `dotnet` must be installed.
 
 ```powershell
 Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
