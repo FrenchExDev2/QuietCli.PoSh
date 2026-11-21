@@ -40,13 +40,44 @@ Before basing an automated decision on the result, check `Outcome`, `Completenes
 
 The local result also includes entries, upstream state, in-progress operations and a compact `Digest`. Use `quiet -UI git status` for a live view. [Status details and measured scenarios](../../../../docs/audits/2026-11-14-git-status-states-profiles.md)
 
+## Read a tree and a blob
+
+From a Git working tree with a committed `README.md`, inspect its tree entry and then read the corresponding blob. Choose another committed path by changing `$path`.
+
+<!-- git-example:blob -->
+```powershell
+$path = 'README.md'
+$tree = quiet -AsObject -FilePath git -ArgumentList @('ls-tree', 'HEAD', '--', $path)
+if ($tree.Outcome -ne 'Success' -or !$tree.Completeness.Source -or
+    !$tree.Completeness.Analysis -or $tree.Error.Count -or $tree.Data.Entries.Count -ne 1 -or
+    $tree.Data.Entries[0].Type -cne 'blob') {
+    throw 'Expected one committed blob'
+}
+
+$blob = quiet -AsObject -FilePath git -ArgumentList @('show', ('HEAD:' + $path))
+$artifact = $blob.Data.Artifact
+try {
+    if ($blob.Outcome -ne 'Success' -or !$blob.Completeness.Source -or
+        !$blob.Completeness.Analysis -or $blob.Error.Count -or !$artifact.Complete) {
+        throw 'The blob artifact is incomplete'
+    }
+    $hash = (Get-FileHash -LiteralPath $artifact.Path -Algorithm SHA256).Hash
+    if ($hash -cne $artifact.SHA256) { throw 'Artifact content changed' }
+    [pscustomobject]@{ Bytes = $artifact.Bytes; SHA256 = $hash }
+} finally {
+    if ($artifact) { Remove-QuietGitArtifact -Artifact $artifact }
+}
+```
+
+`show` returns an owned file with the exact requested output for a blob, including any transformations Git was asked to apply. Keep and release the descriptor in the originating module session. Read or stream the file before release. [Command forms and result fields](../../../../docs/README-git-command-reference.md)
+
 ## Coverage and limits
 
 - The version check accepts stable Git `>= 2.40.0` and `< 2.57.0`, including Git for Windows builds.
-- `Get-QuietGitCoverage` reports the inventory, implemented handlers and qualification status separately. Commands or forms without a matching handler require explicit callbacks.
+- `Get-QuietGitCoverage` reports the inventory, implemented handlers and qualification status separately. The [generated command reference](../../../../docs/README-git-command-reference.md) links native forms to their result fields and limitations. Commands or forms without a matching handler require explicit callbacks.
 - Handlers for mutations observe local state around one native operation. Their reports describe the changes they can observe.
 
-An explicit `git show` of a blob can produce a local artifact. After reading it, release it with `Remove-QuietGitArtifact -Artifact $result.Data.Artifact`, using the result from that `show` call.
+[Create a handler based on Git](../../../../docs/README-create-git-handler.md) shows how to register and assert one form.
 
 [Git test companion](../../test/FrenchExDev2.QuietCli.Git.Tests.PoSh/README.md) · [Qualification and CI](../../../../readmes/README-qualification-when-where-how.md) · [Audit index](../../../../docs/README.md#dated-audits-and-evidence)
 

@@ -30,7 +30,38 @@ if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
 $result.Events | Select-Object Type, @{ Name = "Machine"; Expression = { $_.Data.Machine } }
 ```
 
-The handler adds `--machine-readable`. Use `-Listeners` to process events as they arrive and `-CollectEvents` to retain them after the command. Events expose the machine and parsed fields under `Data`.
+The handler adds `--machine-readable`. The dashboard uses one lane per named machine. Use `-MaxLines` with `-UI` to control the history shown per lane.
+
+## Event contract
+
+Each event has a `Type` and a `Data` payload. `-Listeners` receives events during execution. `-CollectEvents` retains the same events in `$result.Events` in emission order. The dashboard works independently of both options.
+
+| Event | Payload |
+| --- | --- |
+| Native Vagrant type, for example `ui` | `Timestamp` as a `DateTimeOffset`, `Machine` as the target name or null, `Type` as the native type and `Fields` as the decoded native values in order. A `ui` message can have `Fields[0] = 'info'` and its text in `Fields[1]`. |
+| `ProvisionerStarted` | `Kind`, `Machine`, `Provisioner` and `Timestamp`. This inferred event follows the native `ui` event when its info message matches `Running provisioner: <name>...`, optionally prefixed with the same machine name. |
+
+The inferred event indicates a matching start message. Confirm provisioner outcomes through the execution result and the provider's relevant events. The parser skips malformed stdout records. It does not infer a start from the command arguments.
+
+The separate `$result.Data` summary contains `Command` (`up` or `provision`), `Lines` (the count of parsed native records) and `Machines` (the distinct named machines observed). A synthetic `ProvisionerStarted` event contributes to the event collection only.
+
+```powershell
+$starts = [Collections.Generic.List[object]]::new()
+$listener = {
+    param($event, $runtime)
+    if ($event.Type -ceq 'ProvisionerStarted') { $starts.Add($event.Data) }
+}.GetNewClosure()
+
+$result = quiet -AsObject -UI -MaxLines 4 -Listeners $listener -CollectEvents vagrant provision web
+if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
+    !$result.Completeness.Analysis -or $result.Error.Count) {
+    throw 'Vagrant provision or its analysis failed'
+}
+$starts | Select-Object Machine, Provisioner, Timestamp
+$result.Data | Select-Object Command, Lines, Machines
+```
+
+The example assumes `web` is defined and already running in the current Vagrant project. See the [handler UI example](../../../../docs/README-create-git-handler.md#show-live-updates-using-the-vagrant-pattern) for the emission and lane-writing callbacks.
 
 ## Coverage and limits
 

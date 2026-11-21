@@ -17,12 +17,14 @@ Start with the [product README](../README.md) for installation, requirements and
 - [Measurements and privacy](../readmes/README-measurements.md): interpret measured volumes, delivery budgets and retention boundaries.
 - [QuietCli with AI agents](../readmes/README-agents.md): install production instructions for an agent.
 - [Companion modules](../readmes/README-modules.md): register reusable executable handlers and define their support boundaries.
+- [Create a Git handler and render live updates](README-create-git-handler.md): version probing, exact form selection, a native assertion and Vagrant UI lanes.
 - [PowerShell Gallery installation](README-PSGallery.md): install packages and check runtime and platform requirements.
 
 ## Modules and test companions
 
 - [Core](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md) and [Core tests](../src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/README.md), including [security audit regression tests](../src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/audit/README.md).
 - [Git](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md) and [Git tests](../src/Git/test/FrenchExDev2.QuietCli.Git.Tests.PoSh/README.md).
+- [Git command reference](README-git-command-reference.md): command forms grouped by their returned data, shared results and implementation links.
 - [Vagrant](../src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md), [Vagrant tests](../src/Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/README.md) and the [shared Vagrant fixture](../src/Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh/fixture/README.md).
 - [Distribution tests](../src/Distribution/test/FrenchExDev2.QuietCli.Distribution.Tests.PoSh/README.md) cover six-RID packaging outside the native matrix.
 - [Repository tooling tests](../src/Tooling/test/FrenchExDev2.QuietCli.Tooling.Tests.PoSh/README.md) cover the automation and release gates.

@@ -5,6 +5,13 @@
 @{
     Targets = @(
         @{
+            Name = 'ContainerGroupScripts'
+            Module = 'lib/ContainerInputs.psm1'
+            Functions = @('Get-QuietContainerGroupScripts')
+            UnitTestFiles = @('unit/lib/ContainerInputs.Tests.ps1')
+            Break = 80
+        }
+        @{
             Name = 'DocsCreditsBlock'
             Module = 'lib/Sync-DocsCredits.psm1'
             Functions = @('Format-QuietDocsCreditsBlock')

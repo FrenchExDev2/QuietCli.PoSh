@@ -1,5 +1,24 @@
 
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+
+function Get-QuietContainerGroupScripts {
+    <#
+    .SYNOPSIS
+    Selects existing script directories owned by discovered solution groups.
+    .PARAMETER WorkspaceRoot
+    Source checkout selected for staging.
+    .PARAMETER Projects
+    Projects whose manifests identify the owning solution groups.
+    #>
+    param([string]$WorkspaceRoot, [object[]]$Projects)
+    foreach ($group in ($Projects | Select-Object -ExpandProperty SolutionGroup -Unique)) {
+        $relative = "src/$group/scripts"
+        if (Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot, $relative)) -PathType Container) {
+            $relative
+        }
+    }
+}
+
 function Copy-QuietContainerInputs {
     <#
     .SYNOPSIS
@@ -18,7 +37,9 @@ function Copy-QuietContainerInputs {
     if(!$PSCmdlet.ShouldProcess($Destination,'Copy explicit container inputs and restored NuGet packages')){return}
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'Common.psm1')) -DisableNameChecking -ErrorAction Stop
     $projects=if($NativeOnly){@()}else{@(Get-QuietWorkspaceProjects $WorkspaceRoot)}
-    $directories=if($NativeOnly){@('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/native','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/transport','src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests')}else{@('scripts','build','docs','.github')+@($projects.Path)}
+    $directories=if($NativeOnly){@('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/native','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/transport','src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/native-tests')}else{
+        @('scripts','build','docs','.github') + @($projects.Path) + @(Get-QuietContainerGroupScripts -WorkspaceRoot $WorkspaceRoot -Projects $projects)
+    }
     foreach($directory in $directories){
         $source=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $directory)
         foreach($file in Get-ChildItem -LiteralPath $source -Recurse -File -Force){

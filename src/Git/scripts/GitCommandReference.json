@@ -1,0 +1,227 @@
+{
+  "add": [
+    {"Form":"add -- <path>", "Data":"Local ref observation", "Limits":"Includes native dry-run forms. Staged content and index changes are outside this observation."}
+  ],
+  "annotate": [
+    {"Form":"annotate -- <path>", "Data":"Lines, Scope", "Limits":"Uses native line-porcelain attribution."},
+    {"Form":"annotate --porcelain -- <path>", "Data":"RequestedFormat", "Limits":"Explicit display modes retain native records."}
+  ],
+  "blame": [
+    {"Form":"blame [<rev>] -- <path>", "Data":"Lines, Scope", "Limits":"Retains line attribution and source text bytes."},
+    {"Form":"blame --porcelain -- <path>", "Data":"RequestedFormat", "Limits":"Incremental and explicit display forms retain native records."}
+  ],
+  "branch": [
+    {"Form":"branch --list [<pattern>]", "Data":"Branches", "Limits":"Entries include Name, ObjectId, Current and Upstream."},
+    {"Form":"branch --show-current / branch --format=<format>", "Data":"RequestedFormat", "Limits":"Explicit display form."},
+    {"Form":"branch <name> [<start-point>] / branch -d <name>", "Data":"Local ref observation", "Limits":"Ref changes are observed locally."}
+  ],
+  "check-attr": [
+    {"Form":"check-attr <attr> -- <path> / check-attr --stdin -z <attr>", "Data":"Kind, Entries", "Limits":"Uses NUL-delimited path, attribute and value triples. Supply explicit input for --stdin."},
+    {"Form":"check-attr --stdin <attr>", "Data":"RequestedFormat", "Limits":"The newline-delimited input form keeps native output records."}
+  ],
+  "check-ignore": [
+    {"Form":"check-ignore -q <path>", "Data":"AnyIgnored, ExitCode", "Limits":"Exit 1 means the predicate is false."},
+    {"Form":"check-ignore --stdin -z / check-ignore -z <path>", "Data":"Kind, Entries, AnyIgnored, ExitCode", "Limits":"Supply -InputBytes for NUL input. QuietCli adapts literal paths to the NUL stdin form."},
+    {"Form":"check-ignore [-v] <path>", "Data":"RequestedFormat", "Limits":"The newline display form keeps requested records."}
+  ],
+  "check-mailmap": [
+    {"Form":"check-mailmap <contact>", "Data":"Contacts", "Limits":"Native mailmap resolution."}
+  ],
+  "check-ref-format": [
+    {"Form":"check-ref-format <ref> / check-ref-format --normalize <ref>", "Data":"Valid, NormalizedName, Values, ExitCode", "Limits":"A valid ref needs no output. NormalizedName is populated when Git writes a name."}
+  ],
+  "checkout": [
+    {"Form":"checkout <branch> / checkout -- <path>", "Data":"Local ref observation", "Limits":"Local ref and HEAD observation. Worktree content and index changes are outside this observation."}
+  ],
+  "checkout-index": [
+    {"Form":"checkout-index -- <path>", "Data":"Local index observation", "Limits":"Alternate destinations with --temp or --prefix are rejected. File contents are outside the observed scope."}
+  ],
+  "cherry-pick": [
+    {"Form":"cherry-pick <commit> / cherry-pick --continue", "Data":"Local worktree observation", "Limits":"Includes local ref observations when available."}
+  ],
+  "clean": [
+    {"Form":"clean -n", "Data":"RequestedFormat", "Limits":"Dry-run output is returned as requested records."},
+    {"Form":"clean -f", "Data":"Local worktree observation", "Limits":"Actual removal is a native operation. Only observed worktree state is reported."}
+  ],
+  "clone": [
+    {"Form":"clone <repository> [<directory>]", "Data":"Destination, Repository, DestinationObserved, ExitCode", "Limits":"Probes an explicit destination. Implicit clone destinations and recursive submodule state are outside the observation."}
+  ],
+  "commit": [
+    {"Form":"commit -m <message> / commit -F <file>", "Data":"Before, After, Changed, ExitCode, Observation", "Limits":"Uses HEAD before and after. Supply an explicit message or interaction."}
+  ],
+  "config": [
+    {"Form":"config --list / config list", "Data":"Operation, Entries, Found, ExitCode", "Limits":"Reads configuration entries. Config values may be sensitive."},
+    {"Form":"config --get <name> / config get <name>", "Data":"Operation, Values, Found, ExitCode", "Limits":"A lookup exit of 1 means no value."},
+    {"Form":"config --show-origin --list / config --get-regexp <pattern>", "Data":"RequestedFormat", "Limits":"Alternate display modes retain native records."},
+    {"Form":"config --add <name> <value> / config set <name> <value>", "Data":"Operation, OperationOutcome, ExitCode, Scope", "Limits":"Reports native write status. Values are omitted from the projection."}
+  ],
+  "count-objects": [
+    {"Form":"count-objects [-v]", "Data":"Counts, Alternates, SizeUnit", "Limits":"Uses the verbose numeric protocol in KiB."},
+    {"Form":"count-objects -v -H", "Data":"RequestedFormat", "Limits":"Human-readable units retain native records."}
+  ],
+  "describe": [
+    {"Form":"describe [--tags] [<commit>]", "Data":"Descriptions, Scope", "Limits":"Parses the long form. Abbreviations do not prove full object IDs."},
+    {"Form":"describe --contains / describe --dirty / describe --abbrev=0", "Data":"RequestedFormat", "Limits":"Custom suffix, contains and short forms use native records."}
+  ],
+  "diff": [
+    {"Form":"diff [--cached] [<rev>] [-- <path>]", "Data":"OutputMode, Files, Commits, Preamble, Scope", "Limits":"Patch projection. --exit-code accepts native exit 1; inspect the native exit code."},
+    {"Form":"diff --name-status [-z] / diff --check / diff --stat", "Data":"RequestedFormat", "Limits":"Explicit formats retain requested records."}
+  ],
+  "diff-files": [
+    {"Form":"diff-files [-- <path>]", "Data":"OutputMode, Files, Commits, ExitCode, Scope", "Limits":"Uses the NUL-framed raw protocol with full IDs."},
+    {"Form":"diff-files -p", "Data":"OutputMode, Files, Commits, Preamble, Scope", "Limits":"Patch projection."},
+    {"Form":"diff-files --name-status [-z]", "Data":"RequestedFormat", "Limits":"Explicit formats retain requested records."}
+  ],
+  "diff-index": [
+    {"Form":"diff-index --cached <tree> [-- <path>]", "Data":"OutputMode, Files, Commits, ExitCode, Scope", "Limits":"Uses the NUL-framed raw protocol with full IDs."},
+    {"Form":"diff-index -p <tree>", "Data":"OutputMode, Files, Commits, Preamble, Scope", "Limits":"Patch projection."},
+    {"Form":"diff-index --name-status <tree>", "Data":"RequestedFormat", "Limits":"Explicit formats retain requested records."}
+  ],
+  "diff-tree": [
+    {"Form":"diff-tree -r <tree>", "Data":"OutputMode, Files, Commits, ExitCode, Scope", "Limits":"Uses the NUL-framed raw protocol with full IDs."},
+    {"Form":"diff-tree -p <commit>", "Data":"OutputMode, Files, Commits, Preamble, Scope", "Limits":"Patch projection."},
+    {"Form":"diff-tree --name-status -r <tree>", "Data":"RequestedFormat", "Limits":"Explicit formats retain requested records."}
+  ],
+  "fetch": [
+    {"Form":"fetch [<remote>]", "Data":"Local ref observation", "Limits":"Observes local refs affected by the fetch. The requested native operation may contact a remote."}
+  ],
+  "for-each-ref": [
+    {"Form":"for-each-ref [<pattern>]", "Data":"References", "Limits":"Entries include Name, ObjectId, Type and SymbolicTarget."},
+    {"Form":"for-each-ref --format=<format>", "Data":"RequestedFormat", "Limits":"Custom formatting and quoting are native records."}
+  ],
+  "grep": [
+    {"Form":"grep -q <pattern>", "Data":"Mode, Matched, ExitCode", "Limits":"The predicate can be false with a successful QuietCli outcome."},
+    {"Form":"grep -l <pattern> / grep -L <pattern>", "Data":"Mode, Files, HasResults, ExitCode", "Limits":"Structured path results use NUL framing."},
+    {"Form":"grep [-n] <pattern>", "Data":"RequestedFormat", "Limits":"Native line records."}
+  ],
+  "hash-object": [
+    {"Form":"hash-object <file> / hash-object --stdin", "Data":"Objects, Found, ExitCode", "Limits":"Reports object identities. Supply input explicitly for --stdin. -w writes an object."}
+  ],
+  "init": [
+    {"Form":"init [--bare] [<directory>]", "Data":"Destination, Repository, DestinationObserved, ExitCode", "Limits":"Probes the requested destination or working directory on success."}
+  ],
+  "log": [
+    {"Form":"log [-n <count>] [<rev-range>]", "Data":"OutputMode, Commits, Scope", "Limits":"Commits include full object and parent IDs, author, committer, subject and body. Supply a count to bound the walk."},
+    {"Form":"log -p", "Data":"OutputMode, Files, Commits, Preamble, Scope", "Limits":"Patch projection."},
+    {"Form":"log --oneline / log --format=<format>", "Data":"RequestedFormat", "Limits":"Explicit display forms retain native records."}
+  ],
+  "ls-files": [
+    {"Form":"ls-files [--stage] [-- <path>]", "Data":"Files, WithStage, PathRepresentation", "Limits":"Stage mode includes mode, object ID and stage. Path entries preserve native bytes where needed."},
+    {"Form":"ls-files --eol / ls-files --debug", "Data":"RequestedFormat", "Limits":"Alternate report formats retain native records."}
+  ],
+  "ls-remote": [
+    {"Form":"ls-remote [--exit-code] <repository> [<pattern>]", "Data":"References, Found, ExitCode", "Limits":"Native remote observation. --exit-code uses 2 for a missing match."},
+    {"Form":"ls-remote --get-url <repository>", "Data":"RequestedFormat", "Limits":"Returns the requested URL record."}
+  ],
+  "ls-tree": [
+    {"Form":"ls-tree [-r] <tree> [-- <path>]", "Data":"Entries, Scope", "Limits":"Projects mode, type, object ID, size and path through NUL framing."},
+    {"Form":"ls-tree --format=<format> <tree>", "Data":"RequestedFormat", "Limits":"Explicit formats retain requested records."}
+  ],
+  "merge": [
+    {"Form":"merge <commit> / merge --abort", "Data":"Local worktree observation", "Limits":"Conflicts and local ref changes reflect observed state."}
+  ],
+  "merge-base": [
+    {"Form":"merge-base [--all] <left> <right>", "Data":"Objects, WithParents, Found, ExitCode", "Limits":"Exit 1 can indicate no common ancestor."},
+    {"Form":"merge-base --is-ancestor <left> <right>", "Data":"IsAncestor, ExitCode, Scope", "Limits":"Native ancestry predicate. Exit 1 means false."}
+  ],
+  "mv": [
+    {"Form":"mv <source> <destination>", "Data":"Local worktree observation", "Limits":"Content and hook effects are outside the observation."}
+  ],
+  "name-rev": [
+    {"Form":"name-rev <rev> / name-rev --all", "Data":"Names", "Limits":"Native labels can be undefined. Labels are separate from object IDs."},
+    {"Form":"name-rev --name-only <rev>", "Data":"RequestedFormat", "Limits":"Custom display and stdin modes retain native records."}
+  ],
+  "pull": [
+    {"Form":"pull [<remote> [<refspec>]]", "Data":"Local ref observation", "Limits":"Only local HEAD and refs are observed. Native integration and network behavior depend on the requested Git call."}
+  ],
+  "push": [
+    {"Form":"push [--dry-run] <remote> <refspec>", "Data":"Remote, References, ExitCode", "Limits":"Uses Git porcelain over Pipe. Reference acceptance is reported by Git."}
+  ],
+  "read-tree": [
+    {"Form":"read-tree <tree>", "Data":"Local index observation", "Limits":"--index-output is rejected. Updates to worktree contents are outside the observed scope."}
+  ],
+  "rebase": [
+    {"Form":"rebase <upstream> / rebase --abort", "Data":"Local worktree observation", "Limits":"Interactive forms require explicit interaction or input."},
+    {"Form":"rebase --show-current-patch", "Data":"RequestedFormat", "Limits":"Returns the requested patch records."}
+  ],
+  "reflog": [
+    {"Form":"reflog [show] [<ref>]", "Data":"Entries, Scope", "Limits":"Uses the requested native reflog walk. Old IDs are outside the projection."},
+    {"Form":"reflog exists <ref>", "Data":"Operation, Exists, ExitCode", "Limits":"Exit 1 means the reflog does not exist."},
+    {"Form":"reflog show --format=<format>", "Data":"RequestedFormat", "Limits":"Explicit formats and non-show/exists operations retain native records."}
+  ],
+  "remote": [
+    {"Form":"remote [-v]", "Data":"Remotes", "Limits":"Returns configured fetch/push URLs from the local repository."},
+    {"Form":"remote get-url <name> / remote show <name>", "Data":"RequestedFormat", "Limits":"Preserves native requested records. remote show may query the remote."},
+    {"Form":"remote add <name> <url> / remote remove <name>", "Data":"Subcommand, Before, After, ExitCode, Observation", "Limits":"Observes local remote configuration."}
+  ],
+  "reset": [
+    {"Form":"reset --soft <rev> / reset --mixed <rev> / reset --hard <rev>", "Data":"Local worktree observation", "Limits":"Local refs and worktree state are observed. Reset can discard changes."}
+  ],
+  "restore": [
+    {"Form":"restore [--staged] -- <path>", "Data":"Local worktree observation", "Limits":"Reports observed index and worktree state."}
+  ],
+  "rev-list": [
+    {"Form":"rev-list [--parents] <range>", "Data":"Objects, WithParents, Found, ExitCode", "Limits":"Typed object IDs and optional parents."},
+    {"Form":"rev-list --count <range> / rev-list --objects <range>", "Data":"RequestedFormat", "Limits":"Counts, objects with paths and explicit display variations retain native records."}
+  ],
+  "rev-parse": [
+    {"Form":"rev-parse --verify [--quiet] <rev>", "Data":"Objects, WithParents, Found, ExitCode", "Limits":"Use --verify for a typed object ID. A quiet miss has Found=false."},
+    {"Form":"rev-parse --show-toplevel / rev-parse --is-inside-work-tree", "Data":"Kind, Selector, Value, ExitCode", "Limits":"A single supported path, Boolean or format selector uses Pipe."},
+    {"Form":"rev-parse --symbolic-full-name <ref>", "Data":"RequestedFormat", "Limits":"Other option-bearing forms use requested records. Bare positional input such as rev-parse HEAD currently fails in the handler."}
+  ],
+  "revert": [
+    {"Form":"revert --no-edit <commit> / revert --abort", "Data":"Local worktree observation", "Limits":"Conflicts and local ref changes reflect observed state."}
+  ],
+  "rm": [
+    {"Form":"rm [--cached] -- <path>", "Data":"Local worktree observation", "Limits":"Content and hook effects are outside the observation."}
+  ],
+  "shortlog": [
+    {"Form":"shortlog -s [-n] <range>", "Data":"Groups, Scope", "Limits":"Groups preserve native labels and counts."},
+    {"Form":"shortlog <range>", "Data":"RequestedFormat", "Limits":"Without --summary the output remains native records."}
+  ],
+  "show": [
+    {"Form":"show <rev>", "Data":"OutputMode, Files, Commits, Preamble, Scope", "Limits":"For a non-blob using the default patch format."},
+    {"Form":"show <rev>:<path>", "Data":"ObjectType, Expression, OutputMode, Artifact", "Limits":"A single object resolved as a blob produces an owned artifact. Release it in the same session."},
+    {"Form":"show --format=<format> <rev>", "Data":"RequestedFormat", "Limits":"The explicit format route applies when the object is not selected as a blob."}
+  ],
+  "show-ref": [
+    {"Form":"show-ref [--verify <ref>]", "Data":"References, Found, ExitCode", "Limits":"Full references and object IDs. A quiet lookup uses the exit code for Found."},
+    {"Form":"show-ref --exists <ref>", "Data":"Exists, ExitCode", "Limits":"Requires a Git version with --exists. Distinguish absent and error by the native code."},
+    {"Form":"show-ref --hash / show-ref --abbrev", "Data":"RequestedFormat", "Limits":"Explicit short/hash formats retain native records."}
+  ],
+  "stash": [
+    {"Form":"stash list", "Data":"Stashes", "Limits":"Entries contain Reference, ObjectId and Subject."},
+    {"Form":"stash show [<stash>] / stash list --format=<format>", "Data":"RequestedFormat", "Limits":"Native requested output."},
+    {"Form":"stash push / stash apply [<stash>]", "Data":"Local ref observation", "Limits":"Observes local refs. Stash-induced file content changes are outside this scope."}
+  ],
+  "status": [
+    {"Form":"status [--short] [-- <path>]", "Data":"Repository, Branch, HeadOid, Counts, Entries, Operations, Profile, Digest, Diagnostics, Scope, AnswerComplete", "Limits":"Uses one structured result across display flags. Pipe required. Bare repositories and non-worktree positions return classified answers."},
+    {"Form":"status --no-ahead-behind / status --no-show-stash", "Data":"Ahead, Behind, AheadBehindComputed, StashCount, Scope", "Limits":"Omitted or unavailable values can be null. Inspect AnswerComplete and repository kind."}
+  ],
+  "switch": [
+    {"Form":"switch <branch> / switch -c <branch>", "Data":"Local worktree observation", "Limits":"Also observes local ref changes."}
+  ],
+  "symbolic-ref": [
+    {"Form":"symbolic-ref [-q] HEAD", "Data":"Reference, Exists, Values, ExitCode", "Limits":"A quiet miss is reported with Exists=false."},
+    {"Form":"symbolic-ref <name> <ref> / symbolic-ref --delete <name>", "Data":"Local ref observation", "Limits":"Local ref and HEAD observation."}
+  ],
+  "tag": [
+    {"Form":"tag --list [<pattern>]", "Data":"Tags", "Limits":"Projects tag name, object ID, type and peeled ID where available."},
+    {"Form":"tag --format=<format> / tag --verify <name>", "Data":"RequestedFormat", "Limits":"Explicit formatting and verification output retain native records."},
+    {"Form":"tag <name> [<object>] / tag --delete <name>", "Data":"Local ref observation", "Limits":"Local ref observation."}
+  ],
+  "update-index": [
+    {"Form":"update-index --add -- <path>", "Data":"Local index observation", "Limits":"Index stat flags and extensions are outside the observed projection."},
+    {"Form":"update-index --show-index-version", "Data":"RequestedFormat", "Limits":"Returns the native version record."}
+  ],
+  "version": [
+    {"Form":"version [--build-options] / --version", "Data":"Version, BuildInformation", "Limits":"BuildInformation contains the additional native lines when requested."}
+  ],
+  "worktree": [
+    {"Form":"worktree list", "Data":"Worktrees", "Limits":"Uses the NUL-framed porcelain listing."},
+    {"Form":"worktree add <path> [<commit>] / worktree remove <path>", "Data":"Subcommand, Before, After, ExitCode, Observation", "Limits":"Compares independent local worktree lists."}
+  ],
+  "write-tree": [
+    {"Form":"write-tree", "Data":"Objects, Found, ExitCode", "Limits":"Reports the native tree identity and may create a tree object."}
+  ]
+}

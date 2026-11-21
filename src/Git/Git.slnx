@@ -31,6 +31,7 @@
     <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/CiImages.Tests.ps1" />
     <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/FrenchExDev2.QuietCli.Git.Tests.PoSh.psd1" />
     <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/FrenchExDev2.QuietCli.Git.Tests.PoSh.psm1" />
+    <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/GitCommandReference.Tests.ps1" />
     <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/IndexOperations.Tests.ps1" />
     <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/Migration.Baseline.ps1" />
     <File Path="test/FrenchExDev2.QuietCli.Git.Tests.PoSh/Migration.Tests.ps1" />

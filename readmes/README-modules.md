@@ -20,6 +20,8 @@ packages; test companions and execution modes such as `All` are never public pac
 
 `New-QuietModule` generates a business module, an inert catalogue, a handler skeleton and a companion test project. Implement probes, version policy, command selection and analysis from the executable's documentation. The initial companion suite fails until independent business assertions are supplied. Inventory membership alone never establishes semantic support.
 
+Follow the [complete Git handler example](../docs/README-create-git-handler.md) for registration, version probing, exact-form selection and an independent assertion. It also shows the Vagrant pattern for event emission and live UI lanes.
+
 Guidelines:
 
 - Keep unsupported variants and version/platform gaps explicit; a missing contract must fail instead of falling back to a guess.
