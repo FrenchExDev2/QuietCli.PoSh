@@ -91,7 +91,7 @@ quiet -Mode Agent -Data @{ Version = '' } -StdOut {
 
 | Field | Question it answers | Typical values |
 | --- | --- | --- |
-| `Outcome` | Did the invocation do its job? | `Success`; `Failed` (the native command exited with a non-success code); `Unsupported` (no handler and no callbacks, so nothing ran) |
+| `Outcome` | Did the invocation do its job? | `Success`; `Failed` (for example, a non-success exit code or failed analysis); `Unsupported` (no compatible handler for the requested business command; a version probe may have run) |
 | `ExitCode` | Which exit status did the system report? | Integer, or `null` when no single native exit was observed |
 | `RequestedExitCode` | Which status did the callback supply to stop the child? | Integer for an applied stop request, otherwise `null` |
 | `Execution` | What happened to the native process? | Native exit code, timing, `EffectStatus`, `State`, issues |

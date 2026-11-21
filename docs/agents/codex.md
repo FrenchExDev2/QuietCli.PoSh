@@ -80,7 +80,7 @@ console input, console output and `$OutputEncoding` with UTF-8 before any exchan
 
 `QUIETCLI_CONFIG_DIRECTORY` selects the **directory containing `config.yaml`**. It is the sole
 product configuration environment override. Legacy database, hosting and tracking environment
-variables are not configuration APIs. See the [configuration contract](../configuration.md).
+variables are not configuration APIs. See the [configuration contract](../README-configuration.md).
 
 For an owned disposable session, create the full default template, then put its storage inside
 that directory. Relative YAML paths resolve against the configuration file's directory:
@@ -184,7 +184,7 @@ PowerShell variables and `-AsObject` results disappear when their process exits.
 metadata and measurements, not the business objects or native output needed to recreate them.
 Restarting a conversation or using the same configuration directory does not restore `$result`.
 
-When evidence must survive a process loss, explicitly choose [Recall](../recall.md): `-Recall`
+When evidence must survive a process loss, explicitly choose [Recall](../README-recall.md): `-Recall`
 retains bounded in-memory native evidence, while `-SaveRecall` records a durable journal and
 allows later analysis by `RecallId`. Offline analysis does not rerun the original executable.
 These opt-in features are distinct from shell persistence and from legacy RECORD APIs.

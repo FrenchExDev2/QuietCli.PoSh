@@ -283,7 +283,7 @@ For contributors with the engine and companion fixture already built, the focuse
 ./scripts/Invoke-WorkspaceCi.ps1 -Suite Core -Case '*container runtime diagnosis*' -SkipBuild
 ```
 
-If the fixture is not built, follow [workspace build instructions](../readmes/README-qualification.md#local-suites)
+If the fixture is not built, follow [workspace build instructions](../readmes/README-qualification-local.md#local-suites)
 first. That test preparation is separate from building the container image. The focused suite includes
 independent examples, generated architecture/RID cases, malformed report inputs, single-element-array
 regressions and targeted mutants. Its filtered result is partial and does not replace release qualification.

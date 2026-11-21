@@ -16,7 +16,7 @@ check its availability in the installed version with `Get-Command Add-QuietAgent
 Preview first, from the project the agent will work on:
 
 ```powershell
-Import-Module QuietCli -ErrorAction Stop
+Import-Module FrenchExDev2.QuietCli.Core.PoSh -ErrorAction Stop
 $project = (Get-Location).Path
 $preview = Add-QuietAgentInstruction -Path $project -Agents -WhatIf
 $preview.Files | Select-Object Path, ReferencePath, Status

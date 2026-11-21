@@ -4,15 +4,11 @@ Always read the envelope before the data: `Outcome`, `Execution`, `Completeness.
 `Completeness.Analysis` and `Error`. Never retry automatically; a failed command may have had an
 effect. Deliver diagnostics with `Out-QuietResult $result -MaxItems 8 -MaxOutputBytes 4096`.
 
-The first three rows' codes (`HandlerNotFound`, non-zero `ExitCode`, `RecallRequiresExplicitAsObject`)
-were reproduced on the repository's local Core module. The other rows follow the documented
-contracts in `AGENTS.md`, `examples.md` and `docs/README-recall.md` and were not reproduced here.
-
 ## Symptoms
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `Outcome` is `Unsupported`; `Error[0].Code` is `HandlerNotFound` (phase `Resolve`); nothing ran | No registered handler matches the command and no callbacks were given | Import the companion module that owns the command, or supply `-Output` and `-Complete` (see [non-git-example.md](non-git-example.md)) |
+| `Outcome` is `Unsupported`; `Error[0].Code` is `HandlerNotFound` (phase `Resolve`) | No registered handler matched. A version probe can run before this rejection. The business command did not run. | Check the loaded module, version and exact form with [handler selection and diagnostics](../README-companion-handler-selection.md#diagnose-a-rejected-call). See the [direct callback example](non-git-example.md) to run with your own parser. |
 | `Outcome` is `Failed`, `Execution.Native.ExitCode` is non-zero, both `Completeness` flags true | The native command itself failed; the analysis ran on its output | Read the executable's documented exit codes. Declare `-SuccessExitCodes` only for codes it documents as success |
 | `Outcome` is `Success` but `Completeness.Analysis` is false | The analyzer did not see all records, or `-Complete` did not run to the end | Treat the data as unusable. Fix the parser, then run a fresh observation |
 | `Completeness.Source` is false | Native output was not fully drained (timeout, cancellation, buffer limit) | Do not present the data as complete. Rerun only when repeating is safe |
@@ -27,7 +23,7 @@ contracts in `AGENTS.md`, `examples.md` and `docs/README-recall.md` and were not
 
 ## Loading problems
 
-- **Wrong module version loaded.** Check `(Get-Module QuietCli).Path`. Do not
+- **Wrong module version loaded.** Check `(Get-Module FrenchExDev2.QuietCli.Core.PoSh).Path`. Do not
   accept an older installed release silently; import the selected source module explicitly.
 - **Legacy modules in the process.** Do not mix QuietCli releases or load archived OPumper modules in the
   same process; they share public command names. Start a new process.

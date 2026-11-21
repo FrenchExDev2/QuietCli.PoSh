@@ -26,6 +26,8 @@ its effective runtime explicitly; `-NativeOnly` omits this dotenv preparation.
 
 Root build inputs explicitly include `Quietly.slnx` and `Directory.Build.props`, preserving the same solution inventory and warning-as-error policy in local and GitHub container staging. The container-input regression asserts both files are copied, while private root files remain excluded.
 
+Existing `src/<Group>/scripts` directories for discovered solution groups are copied with their relative paths. The Git reference tests use the same companion generator on the host and in the staged Linux checkout.
+
 Grouped solutions and all source `.props`, `.targets` and `NuGet.Config` files retain their relative
 paths, including inherited policies between a companion and its module directories and shared imports.
 Generated directories remain excluded by the source enumerator.
@@ -50,7 +52,7 @@ to attempt another download even when the package's assemblies were copied.
 `-WhatIf` returns before creating directories or copying inputs; `-Confirm` uses standard PowerShell
 confirmation. The executable caller guards the overall operation and delegates its approved copy.
 
-The focused Core case `GitHub CI container inputs include docs and restored packages without secrets
+The focused Tooling case `GitHub CI container inputs include docs and restored packages without secrets
 or path escapes` uses small filesystem fixtures, including absent-destination preview, a hidden
 extraction-marker hash check, rejection of an incomplete package and hostile package paths.
 It starts no container and performs no network operation.
@@ -64,7 +66,7 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Stages source, documentation, built modules and restored packages for networkless companion execution.
+Purpose: Selects existing script directories owned by discovered solution groups.
 
 Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 

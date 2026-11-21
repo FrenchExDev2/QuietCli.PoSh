@@ -100,7 +100,11 @@ function Invoke-QuietCoreTests {
         Assert-QuietEqual ($inventory.CaseNames -ccontains $name) $false
         Assert-QuietEqual ($distribution.CaseNames -ccontains $name) $true
     }
-    Assert-QuietEqual ($companions|Where-Object Suite -CEQ Git).Cases 88
+    $gitManifest=[IO.Path]::Combine($WorkspaceRoot,'src/Git/test/FrenchExDev2.QuietCli.Git.Tests.PoSh/FrenchExDev2.QuietCli.Git.Tests.PoSh.psd1')
+    $gitInventory=Get-QuietCompanionTestInventory -ManifestPath $gitManifest
+    $gitReport=$companions|Where-Object Suite -CEQ Git
+    Assert-QuietEqual $gitReport.Cases $gitInventory.CaseNames.Count
+    Assert-QuietEqual ($gitReport.Unit+$gitReport.Integration) $gitReport.Cases
     Assert-QuietEqual ($companions|Where-Object Suite -CEQ Vagrant).Unit 6
     $owned=Join-Path $directory owned-catalogue;[void][IO.Directory]::CreateDirectory($owned)
     $ownedModule=Join-Path $owned owned.psm1;$ownedManifest=Join-Path $owned owned.psd1;$helper=Join-Path $owned cases.ps1

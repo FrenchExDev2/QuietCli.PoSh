@@ -6,22 +6,14 @@
 **/bin/
 **/obj/
 **/lib/
+# These lib directories contain versioned PowerShell sources, tests and documentation.
 !/scripts/lib/
-!/scripts/lib/*.psm1
 !/docs/scripts/lib/
-!/docs/scripts/lib/*.md
+!/docs/scripts/*/lib/
+!/src/*/scripts/lib/
 !/test/scripts/unit/lib/
-!/test/scripts/unit/lib/*.ps1
 !/test/scripts/integration/lib/
-!/test/scripts/integration/lib/*.ps1
 /.cache/
-# Third-party binaries restored from NuGet by scripts/Restore-CoreResources.ps1; see
-# resources/dependencies.lock.json and docs/scripts/Restore-CoreResources.md. The quietcli-pty
-# native binaries (resources/transport/) are source-built, not downloaded, and stay tracked.
-/src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/runtime/runtimes/
-/src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/tokenizers/*.dll
-/src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/*.dll
-# Portable .NET toolchains and original-byte SDK-pin backups
 .dotnet/
 global.json.bak-*
 *.json.bak-*

@@ -50,7 +50,7 @@ try {
         [Console]::Out.WriteLine('@@CODEX_DONE@@' + (ConvertTo-Json $codexCompletion -Compress))
     }
 } finally {
-    if (Get-Module QuietCli) { Stop-QuietEngine }
+if (Get-Module FrenchExDev2.QuietCli.Core.PoSh) { Stop-QuietEngine }
 }
 ```
 
@@ -84,7 +84,7 @@ failure and source completeness. Nonterminating PowerShell errors require explic
   reconstruct read-only state as needed.
 - Do not automatically repeat a mutation whose previous effect is unknown.
 - Close an owned idle session with `__CLOSE_CODEX_PWSH__` followed by a newline and verify process termination.
-- When evidence must outlive the process, use Recall (`-SaveRecall`); see [../recall.md](../recall.md).
+- When evidence must outlive the process, use `-SaveRecall`. See the [Recall contract](../README-recall.md).
 
 <!-- credits:begin -->
 ## Credits

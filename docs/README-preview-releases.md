@@ -1,5 +1,7 @@
 # Preview versions and GitHub publication
 
+[Install QuietCli](README-PSGallery.md) · [Hosted qualification](../readmes/README-qualification-github.md)
+
 Version-mode operator tags share an annotated batch. One dependency-ordered leader runs release qualification and packaging once, then publishes selected modules in order. Followers validate the plan without another matrix. PR qualification stays independent, with no cross-run receipt reuse. Legacy/manual tags without batch metadata remain standalone; existing immutable tags are not rewritten.
 
 Keep the package name, GUID and numeric target release stable while iterating on a preview. For a target `0.2.0`,
@@ -66,7 +68,7 @@ The manual path uses New-QuietPreviewTag.ps1 with Version and exactly one Module
 
 Namespaced tag pushes request publication through release-tags.yml: validate the selected manifest, qualify All with profiling, prepare verified packages and publish those bytes on PowerShell Gallery. After the complete selected Gallery publication succeeds, a separate job creates one GitHub Release per module tag with the identical nupkg, package-set.json and successful publication.json. Preview versions become GitHub prereleases. Releases do not change the repository-wide latest pointer. Legacy local timestamp/exact-manifest tag modes without Version still never push, and a published identity is never overwritten.
 
-Publish a compatible Core version before a companion that depends on it. Git CI publication now preserves its existing script-module/package name and RequiredModules dependency, validates net10.0/net11.0 parser payloads and exercises isolated installation plus a Git handler. Versions advance independently; a Core release does not imply republishing every companion. Partial command/version and real-provider qualification remains explicit.
+Core and Git versions advance independently. For separately created tags, publish the compatible Core version and confirm that PSGallery has indexed it before publishing Git. Git package validation checks the net10.0 and net11.0 parser outputs, the declared Core dependency, and isolated installation with a Git handler. See [the Git command reference](README-git-command-reference.md) for the command and version coverage boundaries.
 
 ## Create a local timestamped Git tag
 
@@ -120,13 +122,13 @@ releases for consumption and feedback, rather than disposable publication-test o
 `preview-psgallery.yml` is manual on `develop` in the original repository and always passes `publish=false`.
 It calls `publish-psgallery.yml`, which uses `ci.yml` with `suite=All` and matrix profiling. Only the exact
 qualified revision may be packaged. GitHub CI excludes native TTY/PTY qualification; receipts record that scope
-explicitly. Local TTY campaigns remain available. Builds cover all embedded runtime distributions; the packaging
-job checks its actual build again.
+explicitly. Local TTY campaigns remain available. The Windows x64 packaging job rebuilds and verifies the six embedded Core RIDs in Release ReadyToRun for CLR 10 and CLR 11. Each selected module yields its own nupkg. Git packages retain their own parser outputs and a declared Core dependency.
 
-The packaging job has no Gallery key. It uploads the Core nupkg and its plans as a run/version/attempt-specific
-artifact. The publication job checks out the qualified revision, downloads that exact artifact and verifies its hashes,
-version and the Core-only package set before publishing Core for an explicit matching tag push. It never rebuilds
-between artifact creation and publication and does not depend on the current develop head.
+The packaging job uploads a run/version/attempt-specific artifact without a Gallery key. A generated preview
+contains a Core nupkg. An exact-version dispatch prepares the selected module. The tag-driven workflow can also
+prepare an annotated batch with one package per selected module. For publication, the job checks out the
+qualified revision and verifies the artifact's hashes, versions and package set before uploading the prepared bytes
+in dependency order.
 
 For generated preview artifacts, dispatch **QuietCli2 manual preview artifacts** on `develop`.
 For exact-version artifacts, dispatch **QuietCli2 qualified PowerShell Gallery release** with the source-manifest
@@ -136,8 +138,8 @@ version. Neither manual dispatch publishes. PRs, forks and branch pushes do not 
 
 - Keep `PSGALLERY_API_KEY` only in the existing `psgallery` GitHub environment. Never add it to source, command arguments,
   artifact contents or logs. GHCR continues to use its separate ephemeral `GITHUB_TOKEN`.
-- That environment must allow **tags** matching `FrenchExDev2.QuietCli.Core.PoSh/v*`. A branch rule for develop alone does not authorize tag
-  deployments. Existing approval protection still applies; the workflow does not change account settings. See
+- That environment must allow **tags** matching `FrenchExDev2.QuietCli.Core.PoSh/v*` and
+  `FrenchExDev2.QuietCli.Git.PoSh/v*` for their releases. Existing approval protection applies. See
   [GitHub's environment rules](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
 - The workflow files must be committed and pushed before GitHub can run them. A local test does not activate remote CI
   or prove that an environment secret, branch policy or public package is available.
@@ -148,6 +150,8 @@ version. Neither manual dispatch publishes. PRs, forks and branch pushes do not 
 - GitHub Release creation uses only the ephemeral GITHUB_TOKEN with contents:write; the Gallery key remains in the protected publication job. The GitHub job verifies each remote tag's exact peeled commit, creates a draft, uploads and checks asset sizes/SHA-256 digests, then publishes it. Existing drafts/releases are refused without replacement. A failed upload leaves an unpublished draft for deliberate recovery. A GitHub job failure does not undo Gallery publication; inspect and recover that job separately instead of repeating Gallery publication. No rollback or automatic retry is provided.
 - A full workflow rerun increments the attempt and prepares a new preview identity. `GITHUB_RUN_NUMBER` does not increase
   for a rerun, which is why the attempt is part of the suffix.
+
+For authorized publication, see Microsoft's [publishing guidelines](https://learn.microsoft.com/powershell/gallery/concepts/publishing-guidelines) and [Publish-PSResource documentation](https://learn.microsoft.com/powershell/module/microsoft.powershell.psresourceget/publish-psresource).
 
 GitHub documents the [run counters](https://docs.github.com/actions/reference/workflows-and-actions/variables)
 and [deployment environment settings](https://docs.github.com/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments).

@@ -4,7 +4,7 @@
 ReadyToRun (Crossgen2) is actually publishable for every target `Build-Workspace.ps1 -ReadyToRun` would attempt,
 **without building, installing or publishing anything**. It exists because `-ReadyToRun` on `Build-Workspace.ps1`
 is unverified against the pinned .NET 11 RC SDK's Crossgen2 package availability per RID (see
-[docs/README-run-profiles.md](docs/README-run-profiles.md), "ReadyToRun candidate (local A/B)"), and checking that by hand
+[ReadyToRun candidate and A/B](../docs/README-run-profiles.md#readytorun-candidate-and-ab)), and checking that by hand
 means cross-referencing `global.json`, `dotnet --list-sdks`/`--list-runtimes` and the NuGet Crossgen2 listing for
 six RIDs.
 

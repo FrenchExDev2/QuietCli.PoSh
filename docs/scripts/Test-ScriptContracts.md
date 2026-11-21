@@ -14,7 +14,7 @@ Check-only wrapper around Sync-ScriptContracts. Shared registry name ScriptContr
 
 ## Critical review and verdict
 
-Source: [Test-ScriptContracts.ps1:1](../../scripts/Test-ScriptContracts.ps1:1). Static compliance does not replace runtime no-write tests. Reintroduced objective boilerplate, changed guard classifications and stale mirrored contracts fail. Regeneration is explicit.
+Source: [Test-ScriptContracts.ps1:1](../../scripts/Test-ScriptContracts.ps1#L1). Static compliance does not replace runtime no-write tests. Reintroduced objective boilerplate, changed guard classifications and stale mirrored contracts fail. Regeneration is explicit.
 
 Verdict: suitable within the documented boundary; qualification evidence belongs in the companion test reports.
 

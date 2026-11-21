@@ -4,15 +4,23 @@
 
 # FrenchExDev2.QuietCli.Git.Tests.PoSh
 
+The [command reference](../../../../docs/README-git-command-reference.md) has Git companion cases for coverage, regeneration, preview and invalid guidance. They run the documented version handler and blob artifact example against native and byte expectations. Run the focused cases from the repository root after building.
+
+```powershell
+./scripts/Invoke-WorkspaceCi.ps1 -Suite Git -SkipBuild -Case 'Git reference*'
+```
+
+This focused run reports partial Git test scope. See [generator maintenance](../../../../docs/scripts/Git/Export-GitCommandReference.md).
+
 ## Owned metadata and scheduling
 
-This companion owns its runner and complete literal `$caseMetadata` table in its own `.psm1`. Its manifest declares the RootModule, TestCatalogue runner/helper sources and TestExecution policy; shared infrastructure discovers/validates the declarations without a central Core-owned Git case list. The catalogue contains 78 cases, with 69 active by default and nine optional mutation cases. Each optional entry declares its exact EnabledWhen environment flag, statically checked against the registration guard; inactive campaigns are explicit and cannot hide an omitted active test.
+This companion owns its runner and complete literal `$caseMetadata` table in its own `.psm1`. Its manifest declares the RootModule, TestCatalogue runner/helper sources and TestExecution policy. Shared infrastructure discovers and validates those declarations. Each optional mutation case declares its exact EnabledWhen environment flag, statically checked against its registration guard. Use `scripts/Test-TestCaseMetadata.ps1 -Suite Git` to inspect the current catalogue.
 
 MaxParallelCases is two, while the default remains Ordered: cases share mutable synthetic repositories, handler/probe state and earlier observations. Parser timing is explicitly Exclusive within this companion. No Git case opts into isolated parallel execution until its prerequisites and fixtures are independently isolated. Git and Vagrant can still run as separate suites after accepted Core; the parent divides its worker budget among suite slots. `-Case` and stop-on-first now apply to this runner as well and produce Partial/Incomplete reports. Inspect `scripts/Test-TestCaseMetadata.ps1 -Suite Git -Plan` before execution.
 
 Separate companion test module. Depends on Git and the Core companion's conformance assertions.
 
-See [Qualification: when, where and how](../../../../readmes/README-qualification-when-where-how.md) for PR triggers, Windows runners, Linux containers, local commands and the distinction between building and executing tests.
+See [Hosted qualification](../../../../readmes/README-qualification-github.md) for PR triggers, Windows runners, Linux containers and test evidence. See [local tests and reports](../../../../readmes/README-qualification-local.md) for local launchers.
 
 Fixtures use a dedicated Git identity, disabled global configuration and repositories under `git-fixtures` in the private RunDirectory (under the shared temporary root locally). No commits or pushes are made to the user's repositories. The only test push targets a disposable local bare repository.
 

@@ -14,7 +14,7 @@ Removes objective comment headers and automatic entry-point announcements from p
 
 ## Critical review and verdict
 
-Source: [Sync-ScriptContracts.ps1:29](../../scripts/Sync-ScriptContracts.ps1:29). Whole-operation preview avoids starting workers/builds but does not simulate native effects. Review the generated diff. Existing detailed supports/guards are not rewritten. Mirrored documentation must exist first.
+Source: [Sync-ScriptContracts.ps1:40](../../scripts/Sync-ScriptContracts.ps1#L40). Whole-operation preview avoids starting workers/builds but does not simulate native effects. Review the generated diff. Existing detailed supports/guards are not rewritten. Mirrored documentation must exist first.
 
 Verdict: suitable within the documented boundary; qualification evidence belongs in the companion test reports.
 

@@ -14,7 +14,7 @@ Generate a navigable Markdown document from `.github/workflows` and `.github/act
 ./scripts/Export-GitHubWorkflowMap.ps1 -OutputPath ./artifacts/ci-map.md -WhatIf
 ```
 
-The default output is `artifacts/github-workflows.md` under the selected `-WorkspaceRoot`. An explicit relative `-OutputPath` is resolved from the current PowerShell location. The tracked map uses the second command. Open it in a Markdown renderer with Mermaid support and follow the table of contents to YAML, reusable workflows, local actions and script documentation. [GitHub workflow map](../../README-github-workflows-diagrams.md)
+The default output is `artifacts/github-workflows.md` under the selected `-WorkspaceRoot`. An explicit relative `-OutputPath` is resolved from the current PowerShell location. The tracked map uses the second command. Open it in a Markdown renderer with Mermaid support and follow the table of contents to YAML, reusable workflows, local actions and script documentation. [GitHub workflow map](../README-github-workflows-diagrams.md)
 
 ## Dependencies and effects
 

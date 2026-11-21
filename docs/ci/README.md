@@ -1,6 +1,6 @@
 # Continuous integration
 
-Start with [qualification: when, where and how](../../readmes/README-qualification-when-where-how.md) for triggers, targets and evidence. The [workflow index](github/README.md) contains the reviewed YAML contracts and generated job graphs. This page connects those workflows to their scripts.
+Start with [hosted qualification](../../readmes/README-qualification-github.md) for triggers, targets and evidence. The [workflow index](github/README.md) contains the reviewed YAML contracts and generated job graphs. This page connects those workflows to their scripts.
 
 ## Source-change landmarks
 

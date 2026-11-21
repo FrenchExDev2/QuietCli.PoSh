@@ -14,7 +14,7 @@ Check-only wrapper around Sync-ResourcesReadme. Registered as Resources in the s
 
 ## Critical review and verdict
 
-Source: [Test-Resources.ps1:1](../../scripts/Test-Resources.ps1:1). No cosmetic WhatIf parameter: this entry point is read-only. Explicit commit skips are reported as omissions.
+Source: [Test-Resources.ps1:1](../../scripts/Test-Resources.ps1#L1). No cosmetic WhatIf parameter: this entry point is read-only. Explicit commit skips are reported as omissions.
 
 Verdict: suitable within the documented boundary; qualification evidence belongs in the companion test reports.
 

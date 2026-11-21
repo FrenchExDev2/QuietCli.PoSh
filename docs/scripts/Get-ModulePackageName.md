@@ -9,10 +9,10 @@ Source file: [`Get-ModulePackageName.ps1`](../../scripts/Get-ModulePackageName.p
 Read a `.psm1` without importing it and infer its package name using this repository's matching `.psm1`/`.psd1` filename convention. A sibling manifest, when present, must agree with that filename through `RootModule` and its optional `PrivateData.QuietCli.PackageName` declaration. Arbitrary PowerShell code cannot establish a unique Gallery name by itself; a standalone file returns a candidate name with `HasManifest=false`.
 
 ```powershell
-./scripts/Get-ModulePackageName.ps1 -Path ./Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psm1
+./scripts/Get-ModulePackageName.ps1 -Path ./src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psm1
 # FrenchExDev2.QuietCli.Core.PoSh
 
-./scripts/Get-ModulePackageName.ps1 -Path ./Git/src/FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psm1 -RequireManifest -AsObject
+./scripts/Get-ModulePackageName.ps1 -Path ./src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/FrenchExDev2.QuietCli.Git.PoSh.psm1 -RequireManifest -AsObject
 ```
 
 `-AsObject` returns Name, complete Version, GUID, ModulePath, ManifestPath, HasManifest, declared Publishable and Dependencies. `-RequireManifest` rejects a standalone script module. Default output is the name string. `-WhatIf` previews the read and returns before importing the helper or reading files.

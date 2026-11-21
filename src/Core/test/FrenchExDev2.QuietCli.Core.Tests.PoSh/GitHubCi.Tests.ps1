@@ -17,6 +17,10 @@ function Test-QuietContainerInputs {
     foreach($relative in @('scripts/staged.ps1','build/lock.json','docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','README.md','Quietly.slnx','Directory.Build.props','Directory.Build.targets','src/Core/Core.slnx','src/Core/Directory.Build.props','src/Core/test/Directory.Packages.props','build/imports/policy.targets','.env','secret.json')){
         $path=Join-Path $fixture $relative;[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path));[void][IO.File]::WriteAllTextAsync($path,'fixture-é漢',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     }
+    $groupInput = 'src/Core/scripts/lib/Fixture.psm1'
+    $groupFile = [IO.Path]::Combine($fixture, $groupInput)
+    $null = [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($groupFile))
+    [IO.File]::WriteAllText($groupFile, '# group script fixture', [Text.UTF8Encoding]::new($false))
     $cache=Join-Path $RunDirectory restored-packages
     [void][IO.Directory]::CreateDirectory((Join-Path $cache 'system.fixture/1.0.0'))
     [void][IO.File]::WriteAllTextAsync((Join-Path $cache system.fixture/1.0.0/content.txt),'restored-package',[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
@@ -30,6 +34,9 @@ function Test-QuietContainerInputs {
     $null=Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $stage -WhatIf
     if(Test-Path -LiteralPath $stage){throw 'ContainerStagePreviewWroteFiles'}
     Copy-QuietContainerInputs -WorkspaceRoot $fixture -Destination $stage -Confirm:$false
+    if (!(Test-Path -LiteralPath ([IO.Path]::Combine($stage, $groupInput)) -PathType Leaf)) {
+        throw 'ContainerGroupScriptMissing'
+    }
     $stagedMetadata=[IO.Path]::Combine($stage,'artifacts/nuget-cache/system.fixture/1.0.0/.nupkg.metadata')
     if(!(Test-Path -LiteralPath $stagedMetadata) -or (Get-FileHash -LiteralPath $stagedMetadata).Hash -cne (Get-FileHash -LiteralPath $metadata).Hash){throw 'ContainerNuGetExtractionMetadataLost'}
     foreach($relative in @('docs/agents/AGENTS.md','docs/scripts/Sync-ScriptsReadme.md','.github/actions/cache-resources/action.yml','CREDITS.md','Quietly.slnx','Directory.Build.props','Directory.Build.targets','src/Core/Core.slnx','src/Core/Directory.Build.props','src/Core/test/Directory.Packages.props','build/imports/policy.targets','artifacts/nuget-cache/system.fixture/1.0.0/content.txt')){

@@ -12,6 +12,7 @@ foreach($library in @('TestCaseMetadata','TestCaseScheduling')){
 . (Join-Path $PSScriptRoot 'Parser.Mutation.ps1')
 . (Join-Path $PSScriptRoot 'Migration.Tests.ps1')
 . (Join-Path $PSScriptRoot 'CiImages.Tests.ps1')
+. ([IO.Path]::Combine($PSScriptRoot, 'GitCommandReference.Tests.ps1'))
 #requires -Version 7.6
 . (Join-Path $PSScriptRoot 'Semantic.Tests.ps1')
 function Invoke-GitFixture {
@@ -117,6 +118,15 @@ Tests independently prepared repositories, hook counts and local bare push targe
         Assert-QuietEqual $coverage.Count 183
         Assert-QuietEqual @($coverage|Where-Object EntireInventoryQualified).Count 0
     }
+    $cases['Git reference generator checks coverage freshness and preview'] = {
+        Test-QuietGitCommandReference -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+    }
+    $cases['Git reference renderer is deterministic and rejects mutated guidance'] = {
+        Test-QuietGitCommandReferenceGuidance -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+    }
+    $cases['Git reference examples match the native version and exact blob bytes'] = {
+        Test-QuietGitDocumentationExamples -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Environment $environment
+    }
     if($env:QUIETCLI_GIT_PUSH_MUTATION -eq '1'){$cases['push targeted mutations are detected by independent assertions']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot}}
     if($env:QUIETCLI_GIT_COMMAND_MUTATION -eq '1'){$cases['repository command C# mutants are detected']={$null=Invoke-QuietGitParserMutation -WorkspaceRoot $WorkspaceRoot -Catalogue Repository}}
     $repositoryCases=Get-QuietRepositoryCommandCases -RootDirectory $root -Environment $environment -WorkspaceRoot $WorkspaceRoot
@@ -193,6 +203,9 @@ Tests independently prepared repositories, hook counts and local bare push targe
         'probe cache avoids repeated version subprocesses'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'generic context flag and native Git -C remain distinct'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'official inventory is not certified by enumeration'=@{TestKind='Integration';Dependencies=@('FileSystem','EngineState')}
+        'Git reference generator checks coverage freshness and preview'=@{TestKind='Integration';Dependencies=@('FileSystem','EngineState')}
+        'Git reference renderer is deterministic and rejects mutated guidance'=@{TestKind='Integration';Dependencies=@('FileSystem')}
+        'Git reference examples match the native version and exact blob bytes'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'push targeted mutations are detected by independent assertions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState','DotNetBuild');EnabledWhen='QUIETCLI_GIT_PUSH_MUTATION=1'}
         'repository command C# mutants are detected'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState','DotNetBuild');EnabledWhen='QUIETCLI_GIT_COMMAND_MUTATION=1'}
         'query parser C# mutants are detected'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState','DotNetBuild');EnabledWhen='QUIETCLI_GIT_QUERY_MUTATION=1'}

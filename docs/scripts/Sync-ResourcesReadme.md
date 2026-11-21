@@ -14,7 +14,7 @@ Writes `docs/resources/README.md` after ShouldProcess. The default check reports
 
 ## Critical review and verdict
 
-Source: [Sync-ResourcesReadme.ps1:23](../../scripts/Sync-ResourcesReadme.ps1:23). A source-only inventory cannot prove binary readiness. Hashes of dependency readers/writers intentionally make their changes invalidate the document.
+Source: [Sync-ResourcesReadme.ps1:22](../../scripts/Sync-ResourcesReadme.ps1#L22). A source-only inventory cannot prove binary readiness. Hashes of dependency readers/writers intentionally make their changes invalidate the document.
 
 Verdict: suitable within the documented boundary; qualification evidence belongs in the companion test reports.
 
