@@ -19,11 +19,9 @@ Import-Module FrenchExDev2.QuietCli.Git.PoSh -ErrorAction Stop
 Get-QuietHandler -Binary git | Select-Object Id, VersionRange, Qualification
 
 $result = quiet -AsObject -WorkingDirectory $PWD.Path git status
-if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
-    !$result.Completeness.Analysis -or $result.Error.Count) {
+$result.OnFailure({
     throw 'Git status failed or its result is incomplete.'
-}
-$result.Data | Select-Object Branch, Counts
+}).Data | Select-Object Branch, Counts
 ```
 
 `Get-QuietHandler` reads registered metadata without starting a probe. Use the companion's command reference for accepted argument forms and its qualification limits. Inspect [the result envelope](README-streaming.md#anatomy-of-a-result) before using the business data.

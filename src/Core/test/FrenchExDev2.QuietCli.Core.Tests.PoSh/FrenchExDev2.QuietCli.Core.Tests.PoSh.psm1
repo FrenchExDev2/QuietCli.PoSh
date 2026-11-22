@@ -250,7 +250,101 @@ Executes independent native byte and object invariants in a companion module.
         $r=quiet -AsObject -Data $business -Output {param($e,$r)} $dotnet $fixture emit 10
         Assert-QuietEqual $r.Outcome Success
         Assert-QuietEqual ([object]::ReferenceEquals($r.Data,$business)) $true
+        $chained = $r.Success({ param($result) Assert-QuietEqual $result.Data.Marker 'local'; 'ignored output' }).
+            Failure({ throw 'Successful result ran its failure action' })
+        Assert-QuietEqual ([object]::ReferenceEquals($r, $chained)) $true 'Actions must return the same envelope'
         Invoke-QuietConformance $r
+    }
+    $cases['fluent result defaults classify native failures, listener errors and recall']={
+        $failed = quiet -AsObject -Output {} $dotnet $fixture fail
+        Assert-QuietEqual $failed.Outcome Failed
+        Assert-QuietEqual $failed.Completeness.Source $true
+        Assert-QuietEqual $failed.Completeness.Analysis $true
+        Assert-QuietEqual $failed.Error.Count 0
+
+        $listenerError = quiet -AsObject -CollectEvents -Listeners { throw 'Expected listener error' } -Complete {
+            param($runtime)
+            $runtime.Emit('Fixture', 'record')
+        } $dotnet $fixture emit 1
+        Assert-QuietEqual $listenerError.Outcome Success
+        Assert-QuietEqual $listenerError.Completeness.Source $true
+        Assert-QuietEqual $listenerError.Completeness.Analysis $true
+        Assert-QuietEqual $listenerError.Error.Count 1
+        Assert-QuietEqual $listenerError.Error[0].Code ListenerFailed
+
+        $stopped = quiet -AsObject -TimeoutSeconds 3 -Interaction { param($runtime) $runtime.Exit(0) } -Output {} $dotnet $fixture hang
+        Assert-QuietEqual $stopped.Outcome Success
+        Assert-QuietEqual $stopped.Completeness.Source $false
+        Assert-QuietEqual $stopped.Completeness.Analysis $true
+        Assert-QuietEqual $stopped.Error.Count 0
+
+        $capture = quiet -AsObject -Recall -Output {} $dotnet $fixture emit 1
+        $replay = Invoke-QuietRecall $capture -Complete { param($runtime) 'offline' }
+        $seen = [Collections.Generic.List[string]]::new()
+        foreach ($item in @($failed, $listenerError, $stopped)) {
+            $returned = $item.OnSuccess({ throw 'Failed result ran its success action' }).
+                OnFailure({ param($result) $seen.Add($result.InvocationId) })
+            Assert-QuietEqual ([object]::ReferenceEquals($item, $returned)) $true
+        }
+        $null = $replay.Succes({ param($result) $seen.Add($result.Data) }).
+            OnFailure({ throw 'Complete replay ran its failure action' })
+        Assert-QuietEqual ($seen -join ',') "$($failed.InvocationId),$($listenerError.InvocationId),$($stopped.InvocationId),offline"
+    }
+    $cases['fluent result predicates compose lazily and keep one decision per result']={
+        $result = quiet -AsObject -Data @{ Score = 3 } -Output {} $dotnet $fixture emit 1
+        $other = quiet -AsObject -Data @{ Score = 3 } -Output {} $dotnet $fixture emit 1
+        $trace = [Collections.Generic.List[string]]::new()
+        $threshold = 2
+        $fields = $result.PSObject.Properties.Name -join ','
+        $configured = $result.AsSuccessWhen({
+            param($r)
+            $trace.Add('success rule')
+            $r.Data.Score -ge $threshold
+        }).AsFailureWhen({
+            param($r)
+            $trace.Add('failure rule')
+            $r.Data.Score -eq 3
+        })
+        Assert-QuietEqual ([object]::ReferenceEquals($result, $configured)) $true
+        Assert-QuietEqual $trace.Count 0
+        $null = $configured.OnFailure({ param($r) $trace.Add('failure action'); $r.Data.Score = 5 }).
+            OnSuccess({ throw 'Failure veto did not stay in effect' })
+        Assert-QuietEqual ($trace -join ',') 'failure rule,failure action'
+        Assert-QuietEqual $result.Outcome Success 'The fluent decision must leave the recorded outcome intact'
+
+        $null = $result.AsFailureWhen({ $false }).
+            OnSuccess({ param($r) $trace.Add('success action'); $r.Data.Score = 0 }).
+            OnFailure({ throw 'The success decision was recomputed after the action' })
+        Assert-QuietEqual ($trace -join ',') 'failure rule,failure action,success rule,success action'
+        $null = $other.OnFailure({ throw 'Rules leaked to another result' })
+        $null = $other.AsSuccessWhen({ $false }).OnFailure({ $trace.Add('negative success rule') })
+        $null = $result.AsFailureWhen({ $false }).AsSuccessWhen({ $true }).OnSuccess({ $trace.Add('replacement rule') })
+        Assert-QuietEqual ($trace[-2..-1] -join ',') 'negative success rule,replacement rule'
+        Assert-QuietEqual ($result.PSObject.Properties.Name -join ',') $fields 'Rules must stay outside the envelope properties'
+        Assert-QuietEqual $result.Deliveries.Count 0
+        Assert-QuietEqual $result.Measurement.OutputBytes $null
+    }
+    $cases['fluent result predicates validate Boolean output and propagate caller errors']={
+        $result = quiet -AsObject -Output {} $dotnet $fixture fail
+        foreach ($rule in @({}, { 'true' }, { $true; $false })) {
+            $message = ''
+            try { $null = $result.AsFailureWhen($rule).OnFailure({ throw 'Invalid rule reached its action' }) }
+            catch { $message = $_.Exception.Message }
+            Assert-QuietEqual ($message -like '*QuietResultPredicateMustReturnBoolean: AsFailureWhen*') $true $message
+        }
+        $message = ''
+        try { $null = $result.AsFailureWhen({ throw 'Expected predicate error' }).OnFailure({}) }
+        catch { $message = $_.Exception.Message }
+        Assert-QuietEqual ($message -like '*Expected predicate error*') $true $message
+        $message = ''
+        try {
+            $null = $result.AsFailureWhen({ $false }).
+                OnFailure({ throw 'Failure-only rule did not override the default' }).
+                OnSuccess({ throw 'Expected action error' })
+        } catch { $message = $_.Exception.Message }
+        Assert-QuietEqual ($message -like '*Expected action error*') $true $message
+        Assert-QuietEqual $result.Outcome Failed
+        Assert-QuietEqual $result.Error.Count 0
     }
     $cases['large output retains only bounded transport blocks']={
         $before=[GC]::GetTotalMemory($true)
@@ -495,6 +589,9 @@ Register-QuietHandler -Id 'Sample.QuietStatus.PoSh' -Definition @{
         'PTY reports a merged terminal counter without fake stderr separation'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'exact stdout/stderr counters with no capture'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'AsObject does not enumerate or serialize business getters'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'fluent result defaults classify native failures, listener errors and recall'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'fluent result predicates compose lazily and keep one decision per result'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'fluent result predicates validate Boolean output and propagate caller errors'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'large output retains only bounded transport blocks'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'nested callback inherits context without serializing child objects'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'assigned child failure remains visible'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}

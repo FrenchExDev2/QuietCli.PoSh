@@ -98,9 +98,7 @@ The local `-AsObject` envelope additionally exposes `Execution`, including `Exec
 Use the local result when exit status or detailed execution metadata is needed. Inspect completeness and errors, not only a zero exit code:
 
 ```powershell
-if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count) {
-    throw 'IncompleteResult'
-}
+$r.OnFailure({ throw 'IncompleteResult' }).Data
 ```
 
 ## The model: stream, state, result, delivery

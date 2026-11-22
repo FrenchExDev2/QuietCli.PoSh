@@ -66,10 +66,8 @@ $readVersion = {
             }
             $runtime.Data.Version = $Matches[1]
         }
-    if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
-        !$result.Completeness.Analysis -or $result.Error.Count -or !$result.Data.Version) {
-        throw 'Git version observation failed'
-    }
+    [void]$result.OnFailure({ throw 'Git version observation failed' })
+    if (!$result.Data.Version) { throw 'Git version observation failed' }
     $result.Data.Version
 }
 
@@ -119,10 +117,10 @@ try {
 
     foreach ($path in $gitPaths) {
         $result = quiet -Mode Script -AsObject -FilePath $path -ArgumentList @('version')
-        if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
-            !$result.Completeness.Analysis -or $result.Error.Count) {
-            throw "Version routing failed for $path ($($result.Outcome)): $($result.Error.Message -join ', ')"
-        }
+        [void]$result.OnFailure({
+            param($r)
+            throw "Version routing failed for $path ($($r.Outcome)): $($r.Error.Message -join ', ')"
+        })
         $result.Data
     }
 } finally {

@@ -111,13 +111,37 @@ quiet -Mode Agent -Data @{ Version = '' } -StdOut {
 | `Data` | The business result built by your callbacks or a handler | Whatever `-Complete` returned |
 | `Events` | Optional business-event snapshot | Present only with `-CollectEvents`; ordered values passed to `$runtime.Emit(...)` |
 
-A zero exit code does not prove a complete analysis. Use this guard before consuming `Data`:
+### Handle success and failure
+
+On a local result, `.OnSuccess({ param($r) ... })` and `.OnFailure({ param($r) ... })` run the matching action and return the same result for chaining. The default requires `Outcome = 'Success'`, complete source and analysis, and an empty `Error` array.
 
 ```powershell
-if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count) {
-    throw 'IncompleteResult'
-}
+$r.OnFailure({ throw 'IncompleteResult' }).Data
 ```
+
+Use `.AsSuccessWhen({ param($r) ... })` or `.AsFailureWhen({ param($r) ... })` to supply a custom classification. Each predicate receives the result and must return exactly one Boolean. With only a success rule, false selects failure. With only a failure rule, false selects success. When both are set, a true failure rule takes precedence. Otherwise the success rule decides.
+
+```powershell
+# Requires the Git companion and a Git working tree.
+$status = quiet -AsObject git status
+$checked = $status.AsSuccessWhen({
+    param($r)
+    $r.Outcome -eq 'Success' -and $r.Completeness.Source -and
+        $r.Completeness.Analysis -and $r.Error.Count -eq 0
+}).AsFailureWhen({
+    param($r)
+    $null -ne $r.Data -and $r.Data.AnswerComplete -eq $false
+}).OnSuccess({
+    param($r)
+    Write-Verbose "Read status for $($r.Data.Branch)"
+}).OnFailure({
+    param($r)
+    throw "Git status failed or was incomplete ($($r.Outcome))"
+})
+$checked.Data | Select-Object Branch, Counts
+```
+
+The first action evaluates the rules. Subsequent actions use that decision until a rule setter replaces a predicate. Use `.Success(...)` or `.Succes(...)` as aliases for `.OnSuccess(...)`, and `.Failure(...)` as an alias for `.OnFailure(...)`. Actions receive the original envelope and their success-stream output is discarded. A thrown predicate or action error reaches the caller. The rules and decision are local to the object and leave the recorded outcome, execution and completeness intact. These methods also work on local Recall replay results.
 
 The [agent failure table](../docs/agents/AGENTS.md) lists what to do for each non-success observation.
 

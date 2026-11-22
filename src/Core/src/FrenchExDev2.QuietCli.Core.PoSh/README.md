@@ -92,9 +92,9 @@ $r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
         [pscustomobject]@{ SdkVersion = $runtime.Data.Version }
     } `
     dotnet --version
-if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count) {
+[void]$r.OnFailure({
     throw 'IncompleteSdkVersion'
-}
+})
 Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 ```
 
@@ -131,9 +131,9 @@ $r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
         [pscustomobject]@{ SdkVersion = $runtime.Data.Version }
     } `
     dotnet --version
-if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count) {
+[void]$r.OnFailure({
     throw 'IncompleteSdkVersion'
-}
+})
 Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 ```
 
@@ -146,7 +146,7 @@ Data: {SdkVersion: "11.0.100"}
 Completeness: {Source: true, Analysis: true}
 ```
 
-The native version line becomes a typed object with one `SdkVersion` property. `Outcome`, `Completeness` and errors describe whether that object can be trusted. See [streaming, callbacks and results](../../../../readmes/README-streaming.md).
+The native version line becomes a typed object with one `SdkVersion` property. `.OnFailure(...)` checks the outcome, both completeness flags and the error list before delivery. Use `.OnSuccess(...)` for the other branch and `.AsSuccessWhen(...)` or `.AsFailureWhen(...)` for caller-specific rules. See [fluent result handling](../../../../readmes/README-streaming.md#handle-success-and-failure).
 
 ## Contract
 
@@ -222,12 +222,12 @@ $file = quiet -Script ./CountBytes.ps1 -AsObject -StdoutMode Bytes -StderrMode B
 } -Complete { param($runtime) $runtime.Data } -FilePath dotnet -ArgumentList @('--list-sdks')
 
 $result = & $file.FullName
-if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis -or $result.Error.Count) { throw 'IncompleteByteCount' }
+[void]$result.OnFailure({ throw 'IncompleteByteCount' })
 Out-QuietResult $result -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 
 # Reuse the same byte-counting contract with different native arguments.
 $infoResult = & $file.FullName -ArgumentList @('--info') -WorkingDirectory $PWD.Path
-if ($infoResult.Outcome -ne 'Success' -or !$infoResult.Completeness.Source -or !$infoResult.Completeness.Analysis -or $infoResult.Error.Count) { throw 'IncompleteByteCount' }
+[void]$infoResult.OnFailure({ throw 'IncompleteByteCount' })
 Out-QuietResult $infoResult -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 ```
 
