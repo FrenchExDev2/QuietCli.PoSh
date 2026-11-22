@@ -27,6 +27,7 @@ Pushes the monorepo's single root repository's current branch to its configured 
 | `Branch` | `string` (`ValidatePattern('^[A-Za-z0-9._/-]+$')`) | No | `main` |
 | `Repository` | `string` (`ValidateSet('Workspace')`) | No | `Workspace` |
 | `PrCommentBodyFile` | `string` | No | Automatic commit-title summary |
+| `ExpectedHead` | `string` | No | Push the verified SHA without changing upstream tracking. |
 
 ```powershell
 ./scripts/Push-Workspace.ps1 -Branch develop
@@ -39,6 +40,8 @@ Pushes the monorepo's single root repository's current branch to its configured 
 - Assumes `git` is on `PATH`, that `WorkspaceRoot` is a valid Git working tree with `Remote` already configured, and that the caller has push credentials already set up (the script does not touch credentials itself).
 
 ## Side effects
+
+With `-ExpectedHead`, the script verifies the local branch SHA and pushes that exact commit with a non-forced refspec. The branch's tracking configuration stays as configured.
 
 No companion tests or qualification campaign is started by this script. A feature, fix, companion or release branch can be pushed explicitly before local full-suite qualification; the applicable GitHub workflows validate it. Always pass -Branch for the intended work branch: the compatibility default is main.
 

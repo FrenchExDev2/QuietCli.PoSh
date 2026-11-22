@@ -1,7 +1,7 @@
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Commits the monorepo once, either staging all changes or preserving a prepared index; never pushes.
+Commits the monorepo once and optionally pushes and follows its existing pull request.
 .DESCRIPTION
 Before staging, runs Invoke-WorkspaceChecks.ps1: script layout/naming, script docs, workflow receipts/graphs/index,
 new-script WhatIf/Confirm support, documentation credits and aggregate credits. The same registry
@@ -28,6 +28,14 @@ Required commit message, without trailers.
 QuietCli2 monorepo root.
 .PARAMETER CiPlanPath
 Markdown plan destination. Relative paths are anchored in WorkspaceRoot, with .artifacts/plan.md as the default.
+.PARAMETER Watch
+Push the new commit to its existing pull request and follow its GitHub run.
+.PARAMETER MergePullRequest
+Implies Watch and merges the verified pull request after the watcher and required CI both succeed.
+.PARAMETER NoRebase
+Use a merge commit with MergePullRequest.
+.PARAMETER NoBranchDelete
+Preserve the source branch with MergePullRequest.
 .PARAMETER Repository
 Only Workspace exists; retained to reject accidental requests for independent module commits.
 .PARAMETER CoAuthoredBy
@@ -90,6 +98,10 @@ param(
     [Parameter(Mandatory)][string]$Message,
     [string]$WorkspaceRoot = (Split-Path $PSScriptRoot -Parent),
     [ValidateNotNullOrWhiteSpace()][string]$CiPlanPath = '.artifacts/plan.md',
+    [switch]$Watch,
+    [switch]$MergePullRequest,
+    [switch]$NoRebase,
+    [switch]$NoBranchDelete,
     [ValidateSet('Workspace')][string]$Repository = 'Workspace',
     [string[]]$CoAuthoredBy = $null,
     [switch]$NoAll,

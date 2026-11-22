@@ -42,7 +42,7 @@ A function library; no script-level params.
 |---|---|
 | `Invoke-WorkspaceNative` | `FilePath`, `Arguments`, `WorkingDirectory`, `TimeoutSeconds` (`ValidateRange(1,3600)`, default 600), `LogPath` (optional) |
 | `Write-WorkspaceJson` | `Path`, `Value` |
-| `Wait-WorkspaceWorker` | `Worker` (`Diagnostics.Process`), `RunDirectory`, `WorkspaceRoot`, `Runner`, `Monitor` (`Diagnostics.Process`), `TimeoutSeconds` |
+| `Wait-WorkspaceWorker` | `Worker` (`Diagnostics.Process`), `RunDirectory`, `WorkspaceRoot`, `Runner`, `Monitor` (`Diagnostics.Process`), `TimeoutSeconds`, `ShowRemoteJobs` (switch) |
 | `ConvertTo-QuietByteCount` | `Size` (`string`, mandatory) — a bare integer (bytes), or a number with a decimal (`KB`/`MB`/`GB`/`TB`, powers of 1000) or binary (`KiB`/`MiB`/`GiB`/`TiB`, powers of 1024) unit suffix, case-insensitive, optional whitespace before the unit |
 
 ```powershell

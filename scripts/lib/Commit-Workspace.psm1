@@ -4,7 +4,7 @@ function Invoke-QuietScriptCommitWorkspace {
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Commits the monorepo once, either staging all changes or preserving a prepared index; never pushes.
+Commits the monorepo once and optionally pushes and follows its existing pull request.
 .DESCRIPTION
 Before staging, runs Invoke-WorkspaceChecks.ps1: script layout/naming, script docs, workflow receipts/graphs/index,
 new-script WhatIf/Confirm support, documentation credits and aggregate credits. The same registry
@@ -31,6 +31,14 @@ Required commit message, without trailers.
 QuietCli2 monorepo root.
 .PARAMETER CiPlanPath
 Markdown plan destination. Relative paths are anchored in WorkspaceRoot, with .artifacts/plan.md as the default.
+.PARAMETER Watch
+Push the new commit to its existing pull request and follow its GitHub run.
+.PARAMETER MergePullRequest
+Implies Watch and merges the verified pull request after the watcher and required CI both succeed.
+.PARAMETER NoRebase
+Use a merge commit with MergePullRequest.
+.PARAMETER NoBranchDelete
+Preserve the source branch with MergePullRequest.
 .PARAMETER Repository
 Only Workspace exists; retained to reject accidental requests for independent module commits.
 .PARAMETER CoAuthoredBy
@@ -93,6 +101,10 @@ param(
     [Parameter(Mandatory)][string]$Message,
     [string]$WorkspaceRoot = (Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),
     [ValidateNotNullOrWhiteSpace()][string]$CiPlanPath = '.artifacts/plan.md',
+    [switch]$Watch,
+    [switch]$MergePullRequest,
+    [switch]$NoRebase,
+    [switch]$NoBranchDelete,
     [ValidateSet('Workspace')][string]$Repository = 'Workspace',
     [string[]]$CoAuthoredBy = $null,
     [switch]$NoAll,
@@ -385,11 +397,21 @@ if (!$NoAll -and $PSCmdlet.ShouldProcess($WorkspaceRoot, "git add --all --")) {
 if ($PSCmdlet.ShouldProcess($WorkspaceRoot, "git commit -m <message>")) {
     Invoke-WorkspaceNative git @('-C', $WorkspaceRoot, 'commit', '-m', $finalMessage) $WorkspaceRoot
     $revision = $null
+    $planReady = $false
     try {
         $revision = Get-QuietCommitPlanRevision @('rev-parse','HEAD')
         Write-QuietCommitCiPlan -Revision $revision
+        $planReady = $true
     } catch {
         Write-Warning "Commit succeeded ($revision). CI plan generation failed for '$planPath': $($_.Exception.Message)"
+    }
+    if($Watch -or $MergePullRequest){
+        if(!$planReady){throw "CommitWorkspacePullRequestPlanUnavailable: commit $revision succeeded; a matching CI plan is required before pushing."}
+        $action=if($MergePullRequest){'Push, watch and merge the existing pull request after required CI'}else{'Push and watch the existing pull request'}
+        if($PSCmdlet.ShouldProcess($revision,$action)){
+            Import-Module ([IO.Path]::Combine($PSScriptRoot,'Merge-PullRequest.psm1')) -DisableNameChecking -ErrorAction Stop
+            Invoke-QuietCommitPullRequest -WorkspaceRoot $WorkspaceRoot -Revision $revision -MergePullRequest:$MergePullRequest -NoRebase:$NoRebase -NoBranchDelete:$NoBranchDelete -Confirm:$false
+        }
     }
 }
 

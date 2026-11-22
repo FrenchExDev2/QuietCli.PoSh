@@ -16,12 +16,19 @@ After a successful commit, the entry point writes a CI forecast to `.artifacts/p
 ./scripts/Commit-Workspace.ps1 -Message 'Update automation' -CiPlanPath .artifacts/review.md
 ```
 
+Use `-Watch` to push the new commit to the open PR for the current work branch and start its CI monitor. `-MergePullRequest` implies `-Watch` and merges after the selected run and required CI succeed. It rebases and deletes the source branch by default. Pass `-NoRebase` for a merge commit or `-NoBranchDelete` to preserve the branch. Both options use the existing PR targeting `develop`.
+
+```powershell
+./scripts/Commit-Workspace.ps1 -Message 'Update automation' -Watch
+./scripts/Commit-Workspace.ps1 -Message 'Update automation' -MergePullRequest
+```
+
 Imports its local library using `-DisableNameChecking -ErrorAction Stop` and invokes `Invoke-QuietScriptCommitWorkspace`. The library retains the original operation guards and output contract. Import alone does not run the operation.
 
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Commits the monorepo once, either staging all changes or preserving a prepared index; never pushes.
+Purpose: Commits the monorepo once and optionally pushes and follows its existing pull request.
 
 Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
