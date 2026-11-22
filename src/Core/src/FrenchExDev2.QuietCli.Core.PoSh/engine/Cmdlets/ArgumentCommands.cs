@@ -11,7 +11,7 @@ namespace FrenchExDev2.QuietCli.Cmdlets;
 public sealed class ReadQuietArgumentsCommand : QuietCmdlet
 {
     /// <summary>Boolean facade switches; a trailing colon form carries an explicit value.</summary>
-    private static readonly string[] Switches = ["AsObject", "AsJson", "AsYaml", "Recall", "SaveRecall", "Zip", "AllowPartial", "UI", "CollectEvents", "MeasurePhases"];
+    private static readonly string[] Switches = ["AsObject", "AsJson", "AsYaml", "Recall", "SaveRecall", "Zip", "AllowPartial", "UI", "CollectEvents", "MeasurePhases", "WatchOnKeypress"];
 
     /// <summary>Facade options that consume the following argument.</summary>
     private static readonly string[] Values =
@@ -20,7 +20,7 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
         "StdoutMode", "StderrMode", "InputText", "InputBytes", "InputPath", "Interaction", "RecordDelimiter", "MaxRecordBytes", "MaxOutputBytes",
         "MaxItems", "Role", "HandlerId", "CancellationFile", "CancellationToken", "Projection", "Tokenizer", "FilePath", "ArgumentList", "TerminalSize",
         "SuccessExitCodes", "ReadBlockBytes", "RecallMaxBytes", "RecallPolicy", "RecallId", "RecallName", "RecallRoot", "Compress", "Script",
-        "DataFactory", "StateFactory", "MaxLines",
+        "DataFactory", "StateFactory", "MaxLines", "Watch",
     ];
 
     /// <summary>Options a saved-capture replay may combine with its identifier.</summary>
@@ -121,11 +121,16 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
             if (request.ContainsKey(name)) throw new InvalidOperationException("QuietFactoryConflict: " + name);
             if (QuietRuntime.Unwrap(request[factory]) is not ScriptBlock) throw new InvalidOperationException("QuietFactoryMustBeScriptBlock: " + factory);
         }
+        bool saving = Flag(request, "SaveRecall");
+        if (InvocationPolicy.IsWatch(request))
+            if (saving || Flag(request, "Recall")) throw new InvalidOperationException("WatchCannotCaptureRecall");
+        if (request.ContainsKey("Watch"))
+            request["Watch"] = ParseWatchInterval(Text(request["Watch"]));
         Hashtable? exportRequest = null;
         if (request.ContainsKey("Script"))
         {
             foreach (string key in request.Keys)
-                if (key.Contains("Recall", StringComparison.OrdinalIgnoreCase) || Canonical(["Zip", "Compress", "AllowPartial", "CancellationToken"], key) is not null)
+                if (key.Contains("Recall", StringComparison.OrdinalIgnoreCase) || Canonical(["Zip", "Compress", "AllowPartial", "CancellationToken", "Watch", "WatchOnKeypress"], key) is not null)
                     throw new InvalidOperationException("QuietScriptUnsupportedOption: " + key);
             exportRequest = (Hashtable)request.Clone();
         }
@@ -142,7 +147,6 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
         foreach (DictionaryEntry entry in defaults) if (!request.ContainsKey(entry.Key)) request[entry.Key] = entry.Value;
         if (request.ContainsKey("RecallId")) _ = InvocationPolicy.ExplicitDelivery(request);
         else request["InvocationPolicy"] = InvocationPolicy.Resolve(request, interactivePrompt && exportRequest is null);
-        bool saving = Flag(request, "SaveRecall");
         if (request.ContainsKey("AllowPartial") && !request.ContainsKey("RecallId")) throw new InvalidOperationException("AllowPartialRequiresReplay");
         if (saving && !Flag(request, "AsObject")) throw new InvalidOperationException("SaveRecallRequiresExplicitAsObject");
         if (request.ContainsKey("RecallName"))
@@ -209,6 +213,19 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
     /// <param name="level">Parsed level when valid.</param>
     public static bool TryParseCompression(string text, out int level) =>
         int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out level) && level >= 0 && level <= 9;
+
+    /// <summary>Reads a positive whole number with an explicit ms or s suffix.</summary>
+    /// <param name="text">Invariant-culture interval, such as 200ms or 1s.</param>
+    private static TimeSpan ParseWatchInterval(string text)
+    {
+        int unit = text.EndsWith("ms", StringComparison.OrdinalIgnoreCase) ? 1
+            : text.EndsWith("s", StringComparison.OrdinalIgnoreCase) ? 1000 : 0;
+        int suffixLength = unit == 1 ? 2 : 1;
+        if (unit == 0 || !int.TryParse(text.AsSpan(0, text.Length - suffixLength), NumberStyles.None, CultureInfo.InvariantCulture, out int amount)
+            || amount < 1 || amount > int.MaxValue / unit)
+            throw new InvalidOperationException("InvalidWatchInterval: use a positive number of milliseconds (200ms) or seconds (1s).");
+        return TimeSpan.FromMilliseconds(amount * unit);
+    }
 
     /// <summary>True when the switch is present and truthy.</summary>
     private static bool Flag(Hashtable request, string key) => request.ContainsKey(key) && LanguagePrimitives.IsTrue(request[key]);

@@ -12,6 +12,27 @@ internal static class UiRendererCases
     /// <param name="run">Existing companion assertion runner.</param>
     internal static async Task RunAsync(Func<string, Func<Task>, Task> run)
     {
+        await run("Watch replaces a completed Spectre frame and drops stale lanes", () =>
+        {
+            var surface = new RecordingSurface();
+            using var renderer = new QuietUiRenderer(1, surface, (_, _, _) => { }, ["Watch git status"]);
+            renderer.SetHeader(["Branch: main"]);
+            renderer.Write("été.txt", "entry:01");
+            renderer.PublishWatchFrame("first pass", () => throw new InvalidOperationException("Unexpected fallback"));
+            renderer.SetHeader(["Branch: main"]);
+            renderer.Write("Clean working tree", "summary");
+            renderer.PublishWatchFrame("second pass", () => throw new InvalidOperationException("Unexpected fallback"));
+            renderer.Dispose();
+            var frame = Last(surface.DrawCalls);
+            Require(frame.Header.SequenceEqual(["Watch git status", "second pass", "Branch: main"]), "Watch heading was not replaced");
+            Require(frame.Lanes.Single().Key == "summary" && frame.Lanes.Single().Lines.Single().Contains("Clean working tree"),
+                "A stale Watch lane survived or the current result disappeared");
+            var lanes = Enumerable.Repeat(frame.Lanes.Single(), 12).ToArray();
+            var rows = UiFrameLayout.Create("*", frame.Header, lanes, 80, 6, 4);
+            Require(rows.Contains("Branch: main") && rows.Any(row => row.Contains("Clean working tree")),
+                "Overflowing lanes hid the Watch heading or working-tree summary");
+            return Task.CompletedTask;
+        });
         await run("live viewport layout bounds Unicode rows and retains identity across resize and malformed text", () =>
         {
             var method = typeof(QuietUiRenderer).Assembly.GetType("FrenchExDev2.QuietCli.Cmdlets.UiFrameLayout")!
@@ -23,7 +44,7 @@ internal static class UiRendererCases
                 int width = random.Next(12, 140), height = random.Next(4, 35);
                 string payload = new string('x', random.Next(1, 200)) + "été 漢🙂 e\u0301\u001b[31m\n\r\0\ud800";
                 LaneSnapshot[] lanes = Enumerable.Range(0, random.Next(1, 12)).Select(i => new LaneSnapshot("m" + i, [payload, payload])).ToArray();
-                var rows = (string[])method.Invoke(null, ["*", header, lanes, width, height])!;
+                var rows = (string[])method.Invoke(null, ["*", header, lanes, width, height, 1])!;
                 Require(rows.Length <= height && rows.Length > 0, $"Height exceeded: seed=20261109 iteration={iteration}");
                 Require(rows[0].StartsWith("Project:", StringComparison.Ordinal) || rows[0].StartsWith("P:", StringComparison.Ordinal), "Project identity disappeared");
                 Require(rows[0].Contains("Task:", StringComparison.Ordinal) || rows[0].Contains(" T:", StringComparison.Ordinal), "Task identity disappeared");

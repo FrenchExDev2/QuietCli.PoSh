@@ -13,8 +13,15 @@ Executes a streaming command or registered handler; options precede the binary.
     Native arguments follow the executable verbatim; put QuietCli options first.
     -Script path.ps1 writes a reusable definition without executing the command.
     -DataFactory and -StateFactory initialize fresh business values once per real call.
+    -Watch 200ms or -Watch 1s repeats the call after each completed execution.
+    -WatchOnKeypress runs again on a console key and can be combined with -Watch.
+    Watch uses a live dashboard at the console, or streams one result per execution when a format is selected.
+    Press Ctrl+C to stop, or supply -CancellationToken or -CancellationFile.
     .EXAMPLE
     $result = quiet -AsObject -Data @{Bytes=0L} -Output {param($e,$r) $r.Data.Bytes+=$e.ByteCount} pwsh -Command '"hello"'
+    .EXAMPLE
+    quiet -Watch 200ms -WatchOnKeypress git status
+    With the Git companion imported, refreshes the working-tree dashboard every 200 ms or on a keypress.
     #>
     $interactivePrompt = $Host.Name -eq 'ConsoleHost' -and !$MyInvocation.ScriptName -and
         ![Console]::IsInputRedirected -and ![Console]::IsOutputRedirected -and

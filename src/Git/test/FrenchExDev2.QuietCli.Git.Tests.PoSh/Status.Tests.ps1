@@ -43,6 +43,29 @@ function Get-QuietGitStatusCases {
     $factory=Get-Command New-QuietGitRepositoryFixture;$prepare=Get-Command Invoke-GitFixture;$step=Get-Command Invoke-QuietGitStatusFixtureStep
     $write=Get-Command Write-QuietGitStatusFixtureFile;$success=Get-Command Assert-QuietGitSuccess;$assert=Get-Command Assert-QuietEqual
     $cases=[ordered]@{}
+    $cases['status Watch observes working tree changes between snapshots']={
+        $path = & $factory $RootDirectory $Environment
+        $name = 'été watch.txt'
+        $file = [IO.Path]::Combine($path,$name)
+        $snapshots = [Collections.Generic.List[object]]::new()
+        $cancel = [Threading.CancellationTokenSource]::new()
+        try {
+            $cancel.CancelAfter(60000)
+            quiet -Watch 200ms -AsObject -CancellationToken $cancel.Token -WorkingDirectory $path -Environment $Environment git status |
+                ForEach-Object {
+                    & $success $_
+                    $snapshots.Add($_)
+                    if($snapshots.Count -eq 1){& $write $file 'observed by Watch'}
+                    if($snapshots.Count -eq 2){[IO.File]::Delete($file)}
+                    if($snapshots.Count -eq 3){$cancel.Cancel()}
+                }
+            & $assert $snapshots.Count 3
+            & $assert $snapshots[0].Data.Clean $true
+            & $assert $snapshots[1].Data.Counts.Untracked 1
+            & $assert $snapshots[1].Data.Entries[0].Path $name
+            & $assert $snapshots[2].Data.Clean $true
+        } finally { $cancel.Dispose() }
+    }.GetNewClosure()
     $cases['status executes its probes and verbose patches through the active Core runtime']={
         $isolated=$Environment.Clone()
         $isolated.GIT_DEFAULT_REF_FORMAT='files'

@@ -160,7 +160,10 @@ public abstract class DeliveryCmdlet : RuntimeCmdlet
     /// <param name="maxBytesOverride">Final UTF-8 byte budget, or null for the configuration.</param>
     /// <param name="tokenizerOverride">Encoding override, or null for the configuration.</param>
     /// <param name="yaml">True when YAML is requested.</param>
-    internal string Deliver(object result, int? maxItemsOverride, int? maxBytesOverride, string? tokenizerOverride, bool yaml)
+    /// <param name="yamlDocumentStart">True to include a YAML document marker for a stream of results.</param>
+    /// <param name="measureDelivery">False for a dashboard preview clipped by the viewport.</param>
+    internal string Deliver(object result, int? maxItemsOverride, int? maxBytesOverride, string? tokenizerOverride, bool yaml,
+        bool yamlDocumentStart = false, bool measureDelivery = true)
     {
         var values = ConfigurationService.Snapshot(CurrentDirectory).Values;
         int maxItems = maxItemsOverride ?? Convert.ToInt32(values["delivery.maxItems"], CultureInfo.InvariantCulture);
@@ -187,7 +190,8 @@ public abstract class DeliveryCmdlet : RuntimeCmdlet
         if (LanguagePrimitives.IsTrue(Members.Get(internals["Request"], "CollectEvents"))) document["Events"] = safeEvents;
         bool truncated = state.Omitted > 0;
         string text;
-        if (yaml) { document["Completeness"] = Flags(completeness); text = RenderYaml(document); }
+        string Yaml(object value) => (yamlDocumentStart ? "---\n" : "") + RenderYaml(value);
+        if (yaml) { document["Completeness"] = Flags(completeness); text = Yaml(document); }
         else text = JsonText.Compress(document, 48);
         int size = Utf8.GetByteCount(text);
         if (size > maxBytes)
@@ -207,16 +211,17 @@ public abstract class DeliveryCmdlet : RuntimeCmdlet
                 reduced["Error"] = new OrderedDictionary { ["Code"] = code };
             }
             truncated = true;
-            text = yaml ? RenderYaml(reduced) : JsonText.Compress(reduced, 8);
+            text = yaml ? Yaml(reduced) : JsonText.Compress(reduced, 8);
             size = Utf8.GetByteCount(text);
             if (size > maxBytes && reduced.Contains("Error"))
             {
                 reduced.Remove("Error");
-                text = yaml ? RenderYaml(reduced) : JsonText.Compress(reduced, 8);
+                text = yaml ? Yaml(reduced) : JsonText.Compress(reduced, 8);
                 size = Utf8.GetByteCount(text);
             }
         }
         if (size > maxBytes) throw new InvalidOperationException("OutputBudgetTooSmall");
+        if (!measureDelivery) return text;
         double serializationMs = watch.Elapsed.TotalMilliseconds;
         string format = yaml ? "yaml" : "json";
         string fingerprint = format + ":" + Convert.ToHexString(SHA256.HashData(Utf8.GetBytes(text)));

@@ -38,7 +38,10 @@ $result.Data | Select-Object Branch, Counts, AnswerComplete
 
 Before basing an automated decision on the result, check `Outcome`, `Completeness`, `Error` and `Data.AnswerComplete`. [Streaming and result contract](../../../../readmes/README-streaming.md)
 
-The local result also includes entries, upstream state, in-progress operations and a compact `Digest`. Use `quiet -UI git status` for a live view. [Status details and measured scenarios](../../../../docs/audits/2026-11-14-git-status-states-profiles.md)
+The local result also includes entries, upstream state, in-progress operations and a compact `Digest`.
+Use `quiet -Watch 200ms git status` at an interactive prompt to monitor the working tree, or
+`quiet -WatchOnKeypress git status` to refresh when you press a key. Press Ctrl+C to stop.
+[Watch options](../../../Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md#watch-a-command) · [Status details and measured scenarios](../../../../docs/audits/2026-11-14-git-status-states-profiles.md)
 
 ## Read a tree and a blob
 

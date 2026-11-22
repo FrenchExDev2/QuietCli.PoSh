@@ -1,3 +1,6 @@
+#requires -Version 7.6
+Set-StrictMode -Version Latest
+
 function Get-QuietTestSourceWorkspace {
     <#
     .SYNOPSIS
@@ -46,8 +49,6 @@ if($sourceWorkspace){
 . (Join-Path $PSScriptRoot 'CiImageRecipe.Tests.ps1')
 . (Join-Path $PSScriptRoot 'WorkstationResources.Tests.ps1')
 . (Join-Path $PSScriptRoot 'EditorExtensions.Tests.ps1')
-#requires -Version 7.6
-Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'Performance.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Import.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Status.Aggregation.ps1')
@@ -58,6 +59,7 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'PowerShellReleases.Tests.ps1')
 . (Join-Path $PSScriptRoot 'SecondPass.Tests.ps1')
 . (Join-Path $PSScriptRoot 'Control.Tests.ps1')
+. ([IO.Path]::Combine($PSScriptRoot,'Watch.Tests.ps1'))
 . (Join-Path $PSScriptRoot 'CoreMigration.Tests.ps1')
 . (Join-Path $PSScriptRoot 'ConfigurationDelivery.Tests.ps1')
 . (Join-Path $PSScriptRoot 'AgentInstructions.Tests.ps1')
@@ -116,6 +118,7 @@ Executes independent native byte and object invariants in a companion module.
     $cases=[ordered]@{}
 
     $cases['native Emit listeners preserve Unicode order and bounded JSON/YAML deliveries']={Test-QuietEmitListeners -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory}
+    $cases['Watch streams independent native results with bounded delivery and cancellation']={Test-QuietWatch -Fixture $fixture -Dotnet $dotnet}
 
     $cases['configuration and unique tokenized deliveries preserve their contracts']={
         $configuration=Invoke-QuietConfigurationDeliveryTests -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
@@ -565,6 +568,7 @@ Register-QuietHandler -Id 'Sample.QuietStatus.PoSh' -Definition @{
 
     $caseMetadata=@{
         'native Emit listeners preserve Unicode order and bounded JSON/YAML deliveries'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'Watch streams independent native results with bounded delivery and cancellation'=@{TestKind='Integration';Dependencies=@('NativeProcess','EngineState')}
         'configuration and unique tokenized deliveries preserve their contracts'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'reusable scripts, factories and literal property regressions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'Recall capture and offline analysis regressions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}

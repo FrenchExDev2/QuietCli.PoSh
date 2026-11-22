@@ -21,6 +21,10 @@ internal sealed record InvocationPolicy(string Mode, int? UiMaxLines, Invocation
     internal static InvocationPolicy ForRequest(Hashtable request) =>
         request["InvocationPolicy"] as InvocationPolicy ?? Resolve(request, false);
 
+    /// <summary>True when the caller requested timer or keyboard repetition.</summary>
+    /// <param name="request">Facade options.</param>
+    internal static bool IsWatch(Hashtable request) => request.ContainsKey("Watch") || Flag(request, "WatchOnKeypress");
+
     /// <summary>Validates explicit overrides and supplies the defaults for the selected mode.</summary>
     internal static InvocationPolicy Resolve(Hashtable request, bool interactivePrompt)
     {
@@ -29,11 +33,17 @@ internal sealed record InvocationPolicy(string Mode, int? UiMaxLines, Invocation
             : interactivePrompt ? "User" : "Script";
         if (!Defaults.TryGetValue(mode, out var defaults)) throw new InvalidOperationException("InvalidQuietMode");
 
-        InvocationDelivery delivery = ExplicitDelivery(request) ?? defaults.Delivery;
+        InvocationDelivery? explicitDelivery = ExplicitDelivery(request);
+        InvocationDelivery delivery = explicitDelivery ?? defaults.Delivery;
         if (defaults.Mode == "Agent" && delivery == InvocationDelivery.Object)
             throw new InvalidOperationException("AgentModeRequiresJsonOrYaml");
 
         bool ui = request.ContainsKey("UI") ? Flag(request, "UI") : defaults.Ui;
+        if (IsWatch(request) && explicitDelivery is not null)
+        {
+            if (Flag(request, "UI")) throw new InvalidOperationException("WatchUiAndOutputFormatAreExclusive");
+            ui = false;
+        }
         if (request.ContainsKey("MaxLines") && !ui) throw new InvalidOperationException("MaxLinesRequiresUI");
         int? maxLines = null;
         if (ui)

@@ -109,6 +109,7 @@
     <File Path="src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Telemetry.Tests.ps1" />
     <File Path="src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/TestCaseMetadata.Tests.ps1" />
     <File Path="src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/TestCaseScheduling.Tests.ps1" />
+    <File Path="src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Watch.Tests.ps1" />
     <File Path="src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/WorkspaceProjects.Tests.ps1" />
     <File Path="src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/WorkspacePublication.Tests.ps1" />
     <File Path="src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/WorkstationResources.Tests.ps1" />
