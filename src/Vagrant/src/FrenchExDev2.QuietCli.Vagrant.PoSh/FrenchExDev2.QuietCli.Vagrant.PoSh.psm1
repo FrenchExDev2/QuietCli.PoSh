@@ -34,6 +34,7 @@ Register-QuietHandler -Id 'FrenchExDev2.QuietCli.Vagrant.PoSh.Up' -Definition @{
     Probe = $script:VagrantProbe
     TestVersion = $script:VagrantTestVersion
     Match = { param($request, $version) $request.ArgumentList.Count -gt 0 -and $request.ArgumentList[0] -ceq 'up' }
+    CallbackFactory = { param($runtime) Invoke-QuietVagrantUp $runtime -Prepare }
     Execute = { param($runtime) Invoke-QuietVagrantUp $runtime }
 }
 Register-QuietHandler -Id 'FrenchExDev2.QuietCli.Vagrant.PoSh.Provision' -Definition @{
@@ -43,6 +44,7 @@ Register-QuietHandler -Id 'FrenchExDev2.QuietCli.Vagrant.PoSh.Provision' -Defini
     Probe = $script:VagrantProbe
     TestVersion = $script:VagrantTestVersion
     Match = { param($request, $version) $request.ArgumentList.Count -gt 0 -and $request.ArgumentList[0] -ceq 'provision' }
+    CallbackFactory = { param($runtime) Invoke-QuietVagrantProvision $runtime -Prepare }
     Execute = { param($runtime) Invoke-QuietVagrantProvision $runtime }
 }
 $ExecutionContext.SessionState.Module.OnRemove = {

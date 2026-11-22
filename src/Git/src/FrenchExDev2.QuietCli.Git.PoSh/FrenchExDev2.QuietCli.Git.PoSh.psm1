@@ -32,6 +32,7 @@ Register-QuietHandler -Id 'FrenchExDev2.QuietCli.Git.PoSh' -Definition @{
  }
  TestVersion={param($version)if($version -notmatch '^(2\.\d+\.\d+)(?:\.windows\.\d+)?$'){return $false};$numeric=[version]$Matches[1];$numeric -ge [version]'2.40.0' -and $numeric -lt [version]'2.57.0'}
  Match={param($request,$version)$parsed=Get-GitInvocation @{ArgumentList=$request.ArgumentList};!$parsed.Error}
+ CallbackFactory={param($runtime)Invoke-QuietGitCommand $runtime -Prepare}
  Execute={param($runtime)Invoke-QuietGitCommand $runtime}
 }
 $ExecutionContext.SessionState.Module.OnRemove={Unregister-QuietHandler -Id 'FrenchExDev2.QuietCli.Git.PoSh'}

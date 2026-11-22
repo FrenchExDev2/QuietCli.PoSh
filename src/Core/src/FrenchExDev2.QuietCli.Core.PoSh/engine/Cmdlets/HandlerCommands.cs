@@ -15,7 +15,7 @@ public static class HandlerRegistry
     public static Dictionary<string, object?> ProbeCache { get; } = new(StringComparer.Ordinal);
 
     /// <summary>Fields every definition must provide.</summary>
-    private static readonly string[] RequiredFields = ["Binary", "Execute", "VersionRange", "TestVersion"];
+    private static readonly string[] RequiredFields = ["Binary", "VersionRange", "TestVersion"];
 
     /// <summary>Optional fields and their defaults.</summary>
     private static readonly (string Name, Func<object> Value)[] Defaults =
@@ -30,6 +30,10 @@ public static class HandlerRegistry
     public static void Register(string id, Hashtable definition)
     {
         foreach (string field in RequiredFields) if (!definition.ContainsKey(field)) throw new InvalidOperationException("MissingHandlerField: " + field);
+        if (!definition.ContainsKey("Execute") && !definition.ContainsKey("CallbackFactory"))
+            throw new InvalidOperationException("MissingHandlerField: Execute or CallbackFactory");
+        foreach (string field in new[] { "Execute", "CallbackFactory" })
+            if (definition.ContainsKey(field)) _ = Block(definition[field]);
         if (Handlers.Contains(id)) throw new InvalidOperationException("HandlerAlreadyRegistered: " + id);
         var copy = (Hashtable)definition.Clone();
         copy["Id"] = id;
