@@ -174,26 +174,39 @@ Tests independently prepared repositories, hook counts and local bare push targe
     Add-AuditEvidence REL-03 ($changes -eq 1) @{ExpectedChanges=1;ObservedChanges=$changes}
 
     $temporary=Join-Path $RunDirectory 'owned-temp';[void][IO.Directory]::CreateDirectory($temporary)
-    $saved=@{TEMP=$env:TEMP;TMP=$env:TMP;TMPDIR=$env:TMPDIR};$env:TEMP=$temporary;$env:TMP=$temporary;$env:TMPDIR=$temporary
+    $saved=@{TEMP=$env:TEMP;TMP=$env:TMP;TMPDIR=$env:TMPDIR}
+    $id='git-audit-blob-fixture'
+    $execute=& $git { {param($runtime) Invoke-QuietGitBlobOutput $runtime $runtime.Request.ArgumentList 'synthetic'} }
+    Register-QuietHandler -Id $id -Definition @{
+        Binary='git';VersionRange='Synthetic';Probe={'fixture'}
+        TestVersion={param($version) $version -ceq 'fixture'}
+        Execute=$execute
+    }
     try{
-        $gitPath=(Get-Command git -CommandType Application|Select-Object -First 1).Source
-        $failed=& $git {param($file,$directory)$runtime=[pscustomobject]@{Request=@{WorkingDirectory=$directory;Environment=@{};FilePath=$file;TimeoutSeconds=1;Transport='Pipe'}};Invoke-QuietGitBlobOutput $runtime @('--version') 'synthetic'} $gitPath (Join-Path $RunDirectory 'nonexistent-directory')
+        $env:TEMP=$temporary;$env:TMP=$temporary;$env:TMPDIR=$temporary
+        $failure=quiet -AsObject -HandlerId $id -WorkingDirectory (Join-Path $RunDirectory 'nonexistent-directory') -TimeoutSeconds 1 git --version
+        $failed=$failure.Data
         $left=@(Get-ChildItem -LiteralPath $temporary -Recurse -File).Count
-        Add-AuditEvidence REL-04 (!$failed.ContainsKey('File') -and $null -eq $failed.Artifact -and $left -eq 0) @{InternalStreamReturned=$failed.ContainsKey('File');RemainingFiles=$left}
+        Add-AuditEvidence REL-04 ($failure.Outcome -eq 'Failed' -and $failed -is [hashtable] -and !$failed.ContainsKey('File') -and $null -eq $failed.Artifact -and $left -eq 0) @{Outcome=$failure.Outcome;RemainingFiles=$left}
         if(!$IsWindows){
-            $successful=& $git {param($file,$directory)$runtime=[pscustomobject]@{Request=@{WorkingDirectory=$directory;Environment=@{};FilePath=$file;TimeoutSeconds=5;Transport='Pipe'}};Invoke-QuietGitBlobOutput $runtime @('--version') 'synthetic'} $gitPath $RunDirectory
+            $success=quiet -AsObject -HandlerId $id -WorkingDirectory $RunDirectory -TimeoutSeconds 5 git --version
+            $successful=$success.Data
             try{
+                Add-AuditEvidence SEC-04 ($success.Outcome -eq 'Success' -and $null -ne $successful.Artifact) @{Outcome=$success.Outcome}
                 $fileMode=[IO.File]::GetUnixFileMode($successful.Artifact.Path)
                 $directoryMode=[IO.File]::GetUnixFileMode([IO.Path]::GetDirectoryName($successful.Artifact.Path))
                 Add-AuditEvidence SEC-04 ([int]$fileMode -eq 384 -and [int]$directoryMode -eq 448) @{FileMode=[int]$fileMode;DirectoryMode=[int]$directoryMode}
-            }finally{Remove-QuietGitArtifact $successful.Artifact}
+            }finally{if($successful.Artifact){Remove-QuietGitArtifact $successful.Artifact}}
         }
-    }finally{foreach($name in $saved.Keys){[Environment]::SetEnvironmentVariable($name,$saved[$name])}}
+    }finally{
+        Unregister-QuietHandler $id
+        foreach($name in $saved.Keys){[Environment]::SetEnvironmentVariable($name,$saved[$name])}
+    }
 
 
     }
     $caseMetadata=@{
-        'Git audit preserves reference case and private artifact cleanup'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess')}
+        'Git audit preserves reference case and private artifact cleanup'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState','ProcessEnvironment')}
         'compiled Git parsers preserve migration vectors and measure local costs'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'compiled Git formats and argument bindings satisfy independent assertions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'status distinguishes unborn state and Unicode untracked paths'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}

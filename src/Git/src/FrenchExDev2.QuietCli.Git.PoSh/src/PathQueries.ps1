@@ -82,7 +82,7 @@ function Invoke-QuietGitIgnore {
         return @{Command='check-ignore';AnyIgnored=($r.Execution.Native.ExitCode -eq 0);ExitCode=$r.Execution.Native.ExitCode}
     }
     Import-QuietGitParser
-    $childRuntime=$Runtime
+    $inputOptions=@{}
     if('--stdin' -cin $flags){
         if('-z' -cnotin $flags){return Invoke-QuietGitRequestedFormat $Runtime ($Prefix+@('check-ignore')+@($Request.Arguments)) check-ignore -Codes @(0,1)}
         $arguments=Get-QuietGitArguments $Binding @('-v','--verbose')
@@ -90,14 +90,12 @@ function Invoke-QuietGitIgnore {
     }else{
         $inputKeys=@('InputText','InputBytes','InputPath','Interaction'|Where-Object {$Runtime.Request.ContainsKey($_)})
         if($inputKeys.Count -or !$Binding.Operands.Count){return Invoke-QuietGitRequestedFormat $Runtime ($Prefix+@('check-ignore')+@($Request.Arguments)) check-ignore -Codes @(0,1)}
-        $requestCopy=$Runtime.Request.Clone()
-        $requestCopy.InputBytes=[FrenchExDev2.QuietCli.Git.GitPathCheckRecords]::EncodePaths([string[]]$Binding.Operands)
-        $childRuntime=[pscustomobject]@{Request=$requestCopy;State=$Runtime.State}
+        $inputOptions.InputBytes=[FrenchExDev2.QuietCli.Git.GitPathCheckRecords]::EncodePaths([string[]]$Binding.Operands)
         $arguments=@('--stdin','-z','-v')
         foreach($token in $Binding.Tokens){if($token.Kind -ceq 'Option' -and $token.Name -cnotin @('-z','-v','--verbose')){$arguments+=@($token.EmitArguments)}}
     }
     $data=@{Command='check-ignore';Kind='Ignore';GitVersion=$Runtime.State.DetectedVersion;Entries=[Collections.Generic.List[object]]::new();AnyIgnored=$false}
-    $r=Invoke-QuietGitRecords $childRuntime ($Prefix+@('check-ignore')+$arguments) $data -Codes @(0,1) -Delimiter 0 -Parser {param($record,$data)[FrenchExDev2.QuietCli.Git.GitPathCheckRecords]::Receive($record,$data)} -Finalize {param($data)[FrenchExDev2.QuietCli.Git.GitPathCheckRecords]::Finish($data);$data}
+    $r=Invoke-QuietGitRecords $Runtime ($Prefix+@('check-ignore')+$arguments) $data -Codes @(0,1) -Delimiter 0 -Parser {param($record,$data)[FrenchExDev2.QuietCli.Git.GitPathCheckRecords]::Receive($record,$data)} -Finalize {param($data)[FrenchExDev2.QuietCli.Git.GitPathCheckRecords]::Finish($data);$data} @inputOptions
     $r.Data.AnyIgnored=$r.Execution.Native.ExitCode -eq 0;$r.Data.ExitCode=$r.Execution.Native.ExitCode
     return $r.Data
 }
