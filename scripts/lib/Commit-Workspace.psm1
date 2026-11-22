@@ -30,7 +30,7 @@ Required commit message, without trailers.
 .PARAMETER WorkspaceRoot
 QuietCli2 monorepo root.
 .PARAMETER CiPlanPath
-Markdown plan destination. Relative paths are anchored in WorkspaceRoot, with .artifacts/plan.md as the default.
+Markdown plan destination. Relative paths are anchored in WorkspaceRoot, with artifacts/plan.md as the default.
 .PARAMETER Watch
 Push the new commit to its existing pull request and follow its GitHub run.
 .PARAMETER MergePullRequest
@@ -100,7 +100,7 @@ Raises the binary/oversized-file sniffer's threshold to 2 MiB for this run only.
 param(
     [Parameter(Mandatory)][string]$Message,
     [string]$WorkspaceRoot = (Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),
-    [ValidateNotNullOrWhiteSpace()][string]$CiPlanPath = '.artifacts/plan.md',
+    [ValidateNotNullOrWhiteSpace()][string]$CiPlanPath = 'artifacts/plan.md',
     [switch]$Watch,
     [switch]$MergePullRequest,
     [switch]$NoRebase,
