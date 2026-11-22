@@ -132,7 +132,7 @@ Describe 'New-CiImpactPlan.ps1' {
             $revision=& $git @('rev-parse','HEAD')
             $revision | Should -Not -BeExactly $parent
             (& $git @('rev-parse','HEAD^')) | Should -BeExactly $parent
-            $markdown=[IO.Path]::Combine($workspace,'.artifacts','plan.md')
+            $markdown=[IO.Path]::Combine($workspace,'artifacts','plan.md')
             $run.Output | Should -Match ([regex]::Escape($markdown))
             [IO.File]::Exists($markdown) | Should -BeTrue -Because ($run.Output+$run.Error)
             $text=Get-Content -LiteralPath $markdown -Raw -Encoding utf8
