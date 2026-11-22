@@ -29,7 +29,7 @@ profile and an adaptive digest (full list or hot paths) published to -Listeners 
     .PARAMETER Prefix
     Native globals.
     #>
-    param($Runtime,$Request,$Binding,[string[]]$Prefix)
+    param($Runtime,$Request,$Binding,[string[]]$Prefix,[switch]$Prepare)
     if($Runtime.Request.Transport -ne 'Pipe'){throw 'StatusBusinessProtocolRequiresPipe: use explicit -Output for terminal rendering.'}
     Import-QuietGitParser
     $branch=$true
@@ -52,13 +52,31 @@ profile and an adaptive digest (full list or hot paths) published to -Listeners 
         $data.Remove('Pending');$data.Clean=$null;$data.Counts=$null;$data.StashCount=$null;$data.AnswerComplete=$true
         $data.Branch=$probe.Repository.HeadBranch;$data.Digest=@{Mode='Classified';Changed=$null;HotPaths=@();Listed=@();Omitted=0L}
         Write-QuietGitStatusPresentation $Runtime $data
+        if($Prepare){return @{Data=$data}}
         return $data
     }
     $parser=Get-Command Receive-QuietGitStatusRecord
     $collector=New-QuietGitDiagnosticCollector
     $watch=[Diagnostics.Stopwatch]::StartNew()
     # 128/129 stay successful at the child level so the handler can classify stderr and throw a typed code.
-    $r=Invoke-QuietGitRecords $Runtime ($Prefix+@('--no-optional-locks','status')+$defaults+$arguments) $data -Delimiter 0 -Diagnostics $collector -Codes @(0,128,129) -Parser {param($record,$data)& $parser $record $data}.GetNewClosure() -Finalize {param($data)[FrenchExDev2.QuietCli.Git.GitRecords]::FinalizeStatus($data);$data}
+    $r=Invoke-QuietGitRecords $Runtime ($Prefix+@('--no-optional-locks','status')+$defaults+$arguments) $data -Delimiter 0 -Diagnostics $collector -Codes @(0,128,129) -Parser {param($record,$data)& $parser $record $data}.GetNewClosure() -Finalize {param($data)[FrenchExDev2.QuietCli.Git.GitRecords]::FinalizeStatus($data);$data} -Prepare:$Prepare
+    if($Prepare){
+        $finish=Get-Command Complete-QuietGitStatus
+        $cleanup=$r.Cleanup
+        $r.Finish={param($result)& $finish $Runtime $Prefix $probe $scope $verbose $collector $watch $result}.GetNewClosure()
+        $r.Cleanup={try{& $cleanup}finally{$collector.Stream.Dispose()}}.GetNewClosure()
+        return $r
+    }
+    try{Complete-QuietGitStatus $Runtime $Prefix $probe $scope $verbose $collector $watch $r}
+    finally{$collector.Stream.Dispose()}
+}
+
+function Complete-QuietGitStatus {
+    <#
+    .SYNOPSIS
+    Classifies the observed status and enriches its caller-local business object.
+    #>
+    param($Runtime,[string[]]$Prefix,$probe,$scope,[int]$verbose,$collector,$watch,$r)
     $watch.Stop()
     $stderr=Read-QuietGitDiagnosticText $collector
     if($r.Execution.Native.ExitCode -ne 0){

@@ -14,6 +14,12 @@ Without an explicit capture option, stdout/stderr are read once, counted, dispat
 
 Without explicit callbacks, command execution requires a documented compatible registered handler. Unsupported commands are rejected before business execution. `-SaveRecall` also permits direct recording without a parser.
 
+## Callback factories for companions
+
+A handler registered with `Register-QuietHandler` can expose `CallbackFactory` alongside the existing `Execute` contract. Core selects the handler using its binary, version and match rules, then calls the factory with the caller's runtime. The factory returns a hashtable containing `Arguments` (the exact native argument vector) and `Options` (native input, stream and analysis options such as `Data`, `Output` and `Complete`). Core uses the resolved executable and runs the prepared request once. PowerShell invokes the scriptblocks, including closures, in the caller's runspace.
+
+An optional `Finish` scriptblock receives the completed Core result and returns the business value. Without it, the handler result uses the native call's `Data`. Optional `Cleanup` releases factory-owned state even when validation, execution or finalization fails. A factory can also return `@{ Data = $value }` for a classified answer that requires no business process, or yield no value to delegate the form to its existing `Execute` handler. Explicit caller analysis callbacks still take the direct execution path.
+
 Collection, retention, decoding, business analysis and delivery are separate responsibilities. `-AsObject` returns a local envelope without enumerating, serializing or transferring `Data` to the engine. Inspect `Outcome`, `Execution`, `Completeness` and errors alongside the business data. JSON/YAML delivery applies item, structural and encoded-byte budgets; a delivery projection can select only the information needed by the consumer.
 
 Nested native calls from callbacks have their own results and retain visible failures. Children inherit the measurement context, but do not implicitly inherit Recall retention or recording. After an analyzer failure, native drainage continues and `Complete` can finalize partial business data.

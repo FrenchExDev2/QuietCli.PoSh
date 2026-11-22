@@ -117,12 +117,20 @@ Invokes a Git command with an explicit streaming business record parser.
     .PARAMETER Diagnostics
     Optional caller-owned collector from New-QuietGitDiagnosticCollector; receives bounded stderr bytes.
     #>
-    param($Runtime,[string[]]$Arguments,$Data,[scriptblock]$Parser,[scriptblock]$Finalize,[byte]$Delimiter=10,[string]$Role='Business',[int[]]$Codes=@(0),[hashtable]$Diagnostics)
+    param($Runtime,[string[]]$Arguments,$Data,[scriptblock]$Parser,[scriptblock]$Finalize,[byte]$Delimiter=10,[string]$Role='Business',[int[]]$Codes=@(0),[hashtable]$Diagnostics,[switch]$Prepare)
     if($Runtime.Request.Transport -ne 'Pipe' -and $Role -eq 'Business'){throw 'ByteRecordBusinessProtocolRequiresPipe: use explicit -Output for terminal control.'}
     $state=New-QuietGitRecordState $Data $Delimiter $Parser $Finalize
     $state.Diagnostics=$Diagnostics
     $receive=Get-Command Receive-QuietGitRecord;$complete=Get-Command Complete-QuietGitRecord
-    try{$r=Invoke-QuietGitNative $Runtime $Arguments -Role $Role -Data $state -StdoutMode Bytes -StderrMode Bytes -SuccessExitCodes $Codes -Output {param($e,$r)& $receive $e $r}.GetNewClosure() -Complete {param($r)& $complete $r}.GetNewClosure()}
+    $options=@{Role=$Role;Data=$state;StdoutMode='Bytes';StderrMode='Bytes';SuccessExitCodes=$Codes;Output={param($e,$r)& $receive $e $r}.GetNewClosure();Complete={param($r)& $complete $r}.GetNewClosure()}
+    if($Prepare){
+        try{$plan=Invoke-QuietGitNative $Runtime $Arguments @options -Prepare}
+        catch{$state.Pending.Dispose();throw}
+        $plan.Cleanup={$state.Pending.Dispose()}.GetNewClosure()
+        $plan.Finish={param($result)if([object]::ReferenceEquals($result.Data,$state)){return $state.Data};return ,$result.Data}.GetNewClosure()
+        return $plan
+    }
+    try{$r=Invoke-QuietGitNative $Runtime $Arguments @options}
     finally{$state.Pending.Dispose()}
     if([object]::ReferenceEquals($r.Data,$state)){$r.Data=$state.Data}
     return $r
@@ -142,11 +150,12 @@ Preserves explicitly requested formatting as lossless business records, without 
     .PARAMETER Delimiter
     Native delimiter, LF by default.
     #>
-    param($Runtime,[string[]]$Arguments,[string]$Name,[int[]]$Codes=@(0),[byte]$Delimiter=10)
+    param($Runtime,[string[]]$Arguments,[string]$Name,[int[]]$Codes=@(0),[byte]$Delimiter=10,[switch]$Prepare)
     $data=@{Command=$Name;GitVersion=$Runtime.State.DetectedVersion;OutputMode='RequestedFormat';Records=[Collections.Generic.List[object]]::new();Delimiter=$Delimiter;Scope='Exact requested native records; UTF-8 text or an explicit byte representation.'}
     Import-QuietGitParser
     $decode=Get-Command ConvertFrom-QuietGitBytes
-    $r=Invoke-QuietGitRecords $Runtime $Arguments $data -Codes $Codes -Delimiter $Delimiter -Parser {param($record,$data)$data.Records.Add((& $decode $record))}.GetNewClosure()
+    $r=Invoke-QuietGitRecords $Runtime $Arguments $data -Codes $Codes -Delimiter $Delimiter -Parser {param($record,$data)$data.Records.Add((& $decode $record))}.GetNewClosure() -Prepare:$Prepare
+    if($Prepare){return $r}
     return $r.Data
 }
 function New-QuietGitDiagnosticCollector {

@@ -23,12 +23,16 @@ Executes one Git operation with explicit business parsing, never generic raw cap
     .PARAMETER StderrMode
     Text or byte error events.
     #>
-    param($Runtime,[string[]]$Arguments,[scriptblock]$Output,[scriptblock]$Complete,[AllowNull()]$Data,[string]$Role='Business',[string]$Delimiter,[int[]]$SuccessExitCodes=@(0),[string]$StdoutMode='Text',[string]$StderrMode='Text')
+    param($Runtime,[string[]]$Arguments,[scriptblock]$Output,[scriptblock]$Complete,[AllowNull()]$Data,[string]$Role='Business',[string]$Delimiter,[int[]]$SuccessExitCodes=@(0),[string]$StdoutMode='Text',[string]$StderrMode='Text',[switch]$Prepare)
     $options=@{AsObject=$true;WorkingDirectory=$Runtime.Request.WorkingDirectory;Environment=@{LC_ALL='C';LANG='C';GIT_PAGER='cat'};Role=$Role;Data=$Data;Output=$Output;Complete=$Complete;FilePath=$Runtime.Request.FilePath;ArgumentList=$Arguments;TimeoutSeconds=$Runtime.Request.TimeoutSeconds;SuccessExitCodes=$SuccessExitCodes;StdoutMode=$StdoutMode;StderrMode=$StderrMode}
     foreach($key in $Runtime.Request.Environment.Keys){$options.Environment[$key]=$Runtime.Request.Environment[$key]}
     if($Role -ne 'Business'){$options.Environment.GIT_OPTIONAL_LOCKS='0';$options.Environment.GIT_NO_LAZY_FETCH='1'}
     if($PSBoundParameters.ContainsKey('Delimiter')){$options.RecordDelimiter=$Delimiter}
     if($Role -eq 'Business'){foreach($key in @('InputText','InputBytes','InputPath','Interaction','Transport','TerminalSize','CancellationFile','CancellationToken','ReadBlockBytes','DrainTimeoutSeconds')){if($Runtime.Request.ContainsKey($key)){$options[$key]=$Runtime.Request[$key]}}}
+    if($Prepare){
+        foreach($key in @('AsObject','FilePath','ArgumentList')){$options.Remove($key)}
+        return @{Arguments=$Arguments;Options=$options}
+    }
     # Use a vector of explicit facade options, not a shell command string.
     $tokens=[Collections.Generic.List[object]]::new();foreach($key in $options.Keys){$tokens.Add('-'+$key);if($key -ne 'AsObject'){$tokens.Add($options[$key])}}
     $quietArguments=$tokens.ToArray()
@@ -55,10 +59,11 @@ Dispatches documented streaming Git semantics and refuses missing semantic handl
     .PARAMETER Runtime
     Caller-local parent runtime.
     #>
-    param($Runtime)
+    param($Runtime,[switch]$Prepare)
     $request=Get-GitInvocation @{ArgumentList=$Runtime.Request.ArgumentList}
     if($request.Error){throw $request.Reason}
     $name=$request.Name;$prefix=@($request.Global)+@('--no-pager','-c','color.ui=false')
+    if($Prepare -and $name -cnotin @('status','diff')){return}
     $version=$Runtime.State.DetectedVersion
     $numeric=Get-GitNumericVersion $version
     $definition=@($script:GitInventory.Commands|Where-Object Name -CEQ $name)|Select-Object -First 1
@@ -71,7 +76,12 @@ Dispatches documented streaming Git semantics and refuses missing semantic handl
     # shared diff/pretty options moved out of command manuals in newer releases.
     # The module's stable range and curated arity grammar select this handler;
     # native Git validates accepted option combinations. Version qualification remains explicit.
-    if($script:GitExecutors.ContainsKey($name)){Assert-QuietGitInteraction $Runtime $request $binding;return & ($script:GitExecutors[$name]) $Runtime $request $binding $prefix}
+    if($script:GitExecutors.ContainsKey($name)){
+        Assert-QuietGitInteraction $Runtime $request $binding
+        $preparation=@{}
+        if($Prepare){$preparation.Prepare=$true}
+        return & ($script:GitExecutors[$name]) $Runtime $request $binding $prefix @preparation
+    }
     if($name -in @('version','rev-parse','symbolic-ref','hash-object','write-tree','commit-tree','mktree','mktag','merge-base','show-ref','for-each-ref','ls-files','ls-tree','count-objects','check-ref-format','check-ignore','check-attr','check-mailmap','log','rev-list','shortlog','describe','name-rev','branch','tag','remote','config','ls-remote')){
         $state=[Collections.Generic.List[string]]::new()
         $codes=if($name -in @('check-ref-format','check-ignore','symbolic-ref','merge-base','show-ref')){@(0,1)}else{@(0)}

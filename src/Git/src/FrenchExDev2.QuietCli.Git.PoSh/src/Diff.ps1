@@ -47,13 +47,14 @@ Routes patch and explicit raw formats separately, preserving exit-code semantics
     .PARAMETER Prefix
     Native Git globals.
     #>
-    param($Runtime,$Request,$Binding,[string[]]$Prefix)
+    param($Runtime,$Request,$Binding,[string[]]$Prefix,[switch]$Prepare)
     $flags=@($Binding.Options.Name)
     $codes=if('--check' -cin $flags){@(0,1,2)}elseif('--exit-code' -cin $flags -or '--quiet' -cin $flags){@(0,1)}else{@(0)}
     $arguments=$Prefix+@($Request.Name)+@($Request.Arguments)
     $formats=@('--name-only','--name-status','--numstat','--raw','--stat','--shortstat','--dirstat','--summary','--check','--word-diff','--color-words','--binary','--output','--format','--pretty','--graph')
-    if(@($flags|Where-Object{$_ -cin $formats}).Count){$delimiter=if('-z' -cin $flags -or '--null' -cin $flags){[byte]0}else{[byte]10};return Invoke-QuietGitRequestedFormat $Runtime $arguments $Request.Name -Codes $codes -Delimiter $delimiter}
+    if(@($flags|Where-Object{$_ -cin $formats}).Count){$delimiter=if('-z' -cin $flags -or '--null' -cin $flags){[byte]0}else{[byte]10};return Invoke-QuietGitRequestedFormat $Runtime $arguments $Request.Name -Codes $codes -Delimiter $delimiter -Prepare:$Prepare}
     $parser=Get-Command Receive-QuietGitPatchRecord;$finish=Get-Command Complete-QuietGitPatch
-    $r=Invoke-QuietGitRecords $Runtime $arguments (New-QuietGitPatch $Request.Name $Runtime.State.DetectedVersion) -Codes $codes -Parser {param($record,$data)& $parser $record $data}.GetNewClosure() -Finalize {param($data)& $finish $data}.GetNewClosure()
+    $r=Invoke-QuietGitRecords $Runtime $arguments (New-QuietGitPatch $Request.Name $Runtime.State.DetectedVersion) -Codes $codes -Parser {param($record,$data)& $parser $record $data}.GetNewClosure() -Finalize {param($data)& $finish $data}.GetNewClosure() -Prepare:$Prepare
+    if($Prepare){return $r}
     return $r.Data
 }

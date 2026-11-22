@@ -79,15 +79,17 @@ function Invoke-QuietVagrantMachineReadableRun {
     Private, not exported. $Runtime.Emit(...)/$Runtime.Ui below always refer to the OUTER runtime (the one
     created for the caller's own `quiet vagrant up`/`quiet vagrant provision`, whose Listeners/Ui come from their
     own -Listeners/-UI), never $r (the runtime of the nested `quiet ... --machine-readable` call this function
-    launches internally, whose Ui is always null since -UI is never passed to it). This is what lets
+    prepares, whose Ui is always null since -UI is never passed to it). This is what lets
     -Listeners/-UI work on a plain `quiet vagrant up -Listeners {...}` / `quiet -UI vagrant provision` without the
     caller propagating anything explicitly.
     .PARAMETER Runtime
     The outer QuietRuntime for this invocation (its Request carries the caller's own FilePath/ArgumentList/WorkingDirectory).
     .PARAMETER Command
     The business command name to report back ('up' or 'provision'); purely cosmetic, does not affect parsing.
+    .PARAMETER Prepare
+    Returns the native argument vector and callbacks for Core to execute.
     #>
-    param($Runtime, [string]$Command)
+    param($Runtime, [string]$Command, [switch]$Prepare)
     if ($Runtime.Ui) {
         $vagrantfile = Join-Path $Runtime.Request.WorkingDirectory 'Vagrantfile'
         $Runtime.Ui.SetHeader([string[]]@("Project: QuietCli Vagrant | Task: $Command", $Runtime.Request.WorkingDirectory, "Vagrantfile path: $vagrantfile", "Mode: $(Get-QuietVagrantProviderLabel)"))
@@ -97,13 +99,13 @@ function Invoke-QuietVagrantMachineReadableRun {
     foreach($key in @('Environment','TimeoutSeconds','DrainTimeoutSeconds','ReadBlockBytes','MaxRecordBytes','Transport','TerminalSize','InputText','InputBytes','InputPath','Interaction','CancellationFile','CancellationToken','SuccessExitCodes')) {
         if($Runtime.Request.ContainsKey($key)){$forward[$key]=$Runtime.Request[$key]}
     }
-    $result = quiet @forward -AsObject -Role Business -WorkingDirectory $Runtime.Request.WorkingDirectory `
-        -FilePath $Runtime.Request.FilePath -ArgumentList (@($Runtime.Request.ArgumentList) + '--machine-readable') `
-        -RecordDelimiter "`n" -Data $lines `
-        -Output {
+    $arguments = @($Runtime.Request.ArgumentList) + '--machine-readable'
+    $parseLine = Get-Command ConvertFrom-QuietVagrantMachineReadableLine -CommandType Function
+    $getProvisioner = Get-Command Get-QuietVagrantProvisionerName -CommandType Function
+    $output = {
             param($e, $r)
             if ($e.Stream -ne 'stdout') { return }
-            $parsed = ConvertFrom-QuietVagrantMachineReadableLine $e.Text.TrimEnd("`r")
+            $parsed = & $parseLine $e.Text.TrimEnd("`r")
             if ($null -eq $parsed) { return }   # malformed/unrecognized line -- forward-compatible: never throw on an unknown shape
             [void]$r.Data.Add($parsed)
             $Runtime.Emit($parsed.Type,$parsed)   # outer runtime captured by closure, not $r (the nested call's own runtime)
@@ -112,7 +114,7 @@ function Invoke-QuietVagrantMachineReadableRun {
             # other machine's lane, so interleaved output from several machines never blends onto one line.
             if ($Runtime.Ui -and $parsed.Machine) { $Runtime.Ui.Write($parsed, $parsed.Machine) }
 
-            $provisionerName=Get-QuietVagrantProvisionerName $parsed
+            $provisionerName=& $getProvisioner $parsed
             if ($null -ne $provisionerName) {
                 # --no-provision handling: this branch only ever runs because Vagrant itself emitted this exact
                 # line. A caller that passed --no-provision never sees it -- Vagrant simply never writes it -- so
@@ -122,11 +124,23 @@ function Invoke-QuietVagrantMachineReadableRun {
                 $Runtime.Emit('ProvisionerStarted',$provisioner)
                 if ($Runtime.Ui -and $parsed.Machine) { $Runtime.Ui.Write($provisioner, $parsed.Machine) }   # same lane, just overwrites that machine's displayed line
             }
-        } -Complete { param($r) ,$r.Data.ToArray() }
-    if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis) {
-        throw "VagrantRunIncomplete: $($result.Outcome); $(($result.Error | ForEach-Object Message) -join '; ')"
-    }
-    [ordered]@{ Command = $Command; Lines = $result.Data.Count; Machines = @($result.Data.Machine | Where-Object { $_ } | Select-Object -Unique) }
+    }.GetNewClosure()
+    $forward.Role = 'Business'
+    $forward.WorkingDirectory = $Runtime.Request.WorkingDirectory
+    $forward.RecordDelimiter = "`n"
+    $forward.Data = $lines
+    $forward.Output = $output
+    $forward.Complete = { param($r) ,$r.Data.ToArray() }
+    $finish = {
+        param($result)
+        if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or !$result.Completeness.Analysis) {
+            throw "VagrantRunIncomplete: $($result.Outcome); $(($result.Error | ForEach-Object Message) -join '; ')"
+        }
+        [ordered]@{ Command = $Command; Lines = $result.Data.Count; Machines = @($result.Data.Machine | Where-Object { $_ } | Select-Object -Unique) }
+    }.GetNewClosure()
+    if ($Prepare) { return @{ Arguments = $arguments; Options = $forward; Finish = $finish } }
+    $result = quiet @forward -AsObject -FilePath $Runtime.Request.FilePath -ArgumentList $arguments
+    & $finish $result
 }
 
 function Invoke-QuietVagrantUp {
@@ -142,8 +156,8 @@ function Invoke-QuietVagrantUp {
     .PARAMETER Runtime
     The QuietRuntime for this invocation.
     #>
-    param($Runtime)
-    Invoke-QuietVagrantMachineReadableRun -Runtime $Runtime -Command 'up'
+    param($Runtime,[switch]$Prepare)
+    Invoke-QuietVagrantMachineReadableRun -Runtime $Runtime -Command 'up' -Prepare:$Prepare
 }
 
 function Invoke-QuietVagrantProvision {
@@ -158,6 +172,6 @@ function Invoke-QuietVagrantProvision {
     .PARAMETER Runtime
     The QuietRuntime for this invocation.
     #>
-    param($Runtime)
-    Invoke-QuietVagrantMachineReadableRun -Runtime $Runtime -Command 'provision'
+    param($Runtime,[switch]$Prepare)
+    Invoke-QuietVagrantMachineReadableRun -Runtime $Runtime -Command 'provision' -Prepare:$Prepare
 }

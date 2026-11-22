@@ -276,6 +276,7 @@ function Get-QuietVagrantLineCases {
             Assert-QuietEqual (& $original.Match @{ArgumentList=@('status')} '2.4.9') $false
             $definition=$original.Clone();$definition.Binary=[IO.Path]::GetFileNameWithoutExtension($dotnet)
             $definition.Probe={'2.4.9'};$definition.Match={param($request,$version)$true}
+            $definition.Execute={throw 'LegacyVagrantHandlerWasCalled'}
             Register-QuietHandler -Id $id -Definition $definition
             try{
                 $seen.Clear()

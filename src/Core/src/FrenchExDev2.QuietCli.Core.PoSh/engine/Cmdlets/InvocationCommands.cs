@@ -195,7 +195,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
                     else
                     {
                         runtime.Handler = handler;
-                        (bool has, object? value) = QuietRuntime.Callback(handler["Execute"], [runtime], false);
+                        (bool has, object? value) = RunHandler(handler, runtime);
                         if (has) runtime.Data = value;
                     }
                 }
@@ -319,6 +319,66 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
         QuietCallState.Current?.Children.Add(result);
         return DeliverInvocation(result, request, runtime.Delivery);
     }
+
+    /// <summary>Executes a companion's prepared call through Core and finalizes its business result.</summary>
+    /// <param name="handler">Selected handler, with a factory or legacy execution callback.</param>
+    /// <param name="runtime">Parent call and caller-owned state.</param>
+    private (bool HasValue, object? Value) RunHandler(Hashtable handler, QuietRuntime runtime)
+    {
+        if (handler.ContainsKey("CallbackFactory"))
+        {
+            (bool hasPlan, object? prepared) = QuietRuntime.Callback(handler["CallbackFactory"], [runtime], false);
+            if (hasPlan && prepared is not null)
+            {
+                if (prepared is not Hashtable plan) throw new InvalidOperationException("QuietHandlerPlanMustBeHashtable");
+                if (plan.ContainsKey("Data") && !plan.ContainsKey("Arguments")) return (true, plan["Data"]);
+                return RunHandlerPlan(plan, runtime);
+            }
+        }
+        if (!handler.ContainsKey("Execute")) throw new InvalidOperationException("QuietHandlerPlanRequired");
+        return QuietRuntime.Callback(handler["Execute"], [runtime], false);
+    }
+
+    /// <summary>Runs one validated child request without reentering the PowerShell facade.</summary>
+    /// <param name="plan">Arguments, native callback options, and optional result and cleanup callbacks.</param>
+    /// <param name="runtime">Parent invocation whose resolved executable is inherited.</param>
+    private (bool HasValue, object? Value) RunHandlerPlan(Hashtable plan, QuietRuntime runtime)
+    {
+        try
+        {
+            if (!plan.ContainsKey("Arguments") || QuietRuntime.Unwrap(plan["Options"]) is not IDictionary options)
+                throw new InvalidOperationException("QuietHandlerPlanRequiresArgumentsAndOptions");
+            foreach (string field in new[] { "Finish", "Cleanup" })
+                if (plan.ContainsKey(field) && QuietRuntime.Unwrap(plan[field]) is not ScriptBlock)
+                    throw new InvalidOperationException("CallbackMustBeScriptBlock: " + field);
+            var tokens = new List<object?> { "-AsObject" };
+            foreach (DictionaryEntry option in options)
+            {
+                if (option.Key is not string name || !HandlerPlanOptions.Contains(name))
+                    throw new InvalidOperationException("InvalidQuietHandlerPlanOption: " + option.Key);
+                tokens.Add("-" + name);
+                tokens.Add(option.Value);
+            }
+            tokens.AddRange(["-FilePath", runtime.Request["FilePath"], "-ArgumentList", plan["Arguments"]]);
+            Hashtable child = ReadQuietArgumentsCommand.Parse(tokens.ToArray(), CurrentDirectory, SessionState.Path.CurrentLocation.Path);
+            if (!QuietRuntime.HasAnalysisCallback(child)) throw new InvalidOperationException("QuietHandlerPlanRequiresCallbacks");
+            object result = Run(child) ?? throw new InvalidOperationException("QuietHandlerPlanMissingResult");
+            return plan.ContainsKey("Finish") ? QuietRuntime.Callback(plan["Finish"], [result], false) : (true, Members.Get(result, "Data"));
+        }
+        finally
+        {
+            if (QuietRuntime.Unwrap(plan["Cleanup"]) is ScriptBlock cleanup) _ = QuietRuntime.Callback(cleanup, [], true);
+        }
+    }
+
+    /// <summary>Options a companion can set for the prepared native child, without changing caller delivery.</summary>
+    private static readonly HashSet<string> HandlerPlanOptions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "WorkingDirectory", "Environment", "Role", "Data", "State", "Output", "StdOut", "StdErr", "Complete",
+        "TimeoutSeconds", "DrainTimeoutSeconds", "ReadBlockBytes", "MaxRecordBytes", "Transport", "TerminalSize",
+        "InputText", "InputBytes", "InputPath", "Interaction", "CancellationFile", "CancellationToken",
+        "SuccessExitCodes", "StdoutMode", "StderrMode", "RecordDelimiter",
+    };
 
     /// <summary>Routes quiet -RecallId before native resolution, probing or lifecycle orchestration; replays offline and delivers.</summary>
     /// <param name="request">Validated replay-only facade options.</param>
