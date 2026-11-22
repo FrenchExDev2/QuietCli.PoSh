@@ -116,13 +116,16 @@ Invokes a Git command with an explicit streaming business record parser.
     Documented successful exit conditions.
     .PARAMETER Diagnostics
     Optional caller-owned collector from New-QuietGitDiagnosticCollector; receives bounded stderr bytes.
+    .PARAMETER InputBytes
+    Companion-owned stdin bytes for the native record command.
     #>
-    param($Runtime,[string[]]$Arguments,$Data,[scriptblock]$Parser,[scriptblock]$Finalize,[byte]$Delimiter=10,[string]$Role='Business',[int[]]$Codes=@(0),[hashtable]$Diagnostics,[switch]$Prepare)
+    param($Runtime,[string[]]$Arguments,$Data,[scriptblock]$Parser,[scriptblock]$Finalize,[byte]$Delimiter=10,[string]$Role='Business',[int[]]$Codes=@(0),[hashtable]$Diagnostics,[switch]$Prepare,[byte[]]$InputBytes)
     if($Runtime.Request.Transport -ne 'Pipe' -and $Role -eq 'Business'){throw 'ByteRecordBusinessProtocolRequiresPipe: use explicit -Output for terminal control.'}
     $state=New-QuietGitRecordState $Data $Delimiter $Parser $Finalize
     $state.Diagnostics=$Diagnostics
     $receive=Get-Command Receive-QuietGitRecord;$complete=Get-Command Complete-QuietGitRecord
     $options=@{Role=$Role;Data=$state;StdoutMode='Bytes';StderrMode='Bytes';SuccessExitCodes=$Codes;Output={param($e,$r)& $receive $e $r}.GetNewClosure();Complete={param($r)& $complete $r}.GetNewClosure()}
+    if($PSBoundParameters.ContainsKey('InputBytes')){$options.InputBytes=$InputBytes}
     if($Prepare){
         try{$plan=Invoke-QuietGitNative $Runtime $Arguments @options -Prepare}
         catch{$state.Pending.Dispose();throw}
