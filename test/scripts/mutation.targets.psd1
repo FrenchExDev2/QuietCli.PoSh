@@ -5,6 +5,13 @@
 @{
     Targets = @(
         @{
+            Name = 'CiPlanReport'
+            Module = 'lib/CiPlanReport.psm1'
+            Functions = @('Write-QuietCiPlanReport')
+            UnitTestFiles = @('unit/lib/CiPlanReport.Tests.ps1')
+            Break = 80
+        }
+        @{
             Name = 'ContainerGroupScripts'
             Module = 'lib/ContainerInputs.psm1'
             Functions = @('Get-QuietContainerGroupScripts')

@@ -16,6 +16,8 @@ Write-QuietCiPlanReport -Plan $plan -Base $base -Revision $revision -Directory .
 
 Writes plan.json and impact.md; optional SummaryPath appends Markdown to the planning check summary. Below the full and smoke suites, impact.md names the tooling scope (`Tooling: full.`, `Tooling: scripts.` or `Tooling: none.`) when the plan carries one. Output labels unselected scopes as untested and does not treat a build or smoke as full qualification.
 
+The `-MarkdownPath` parameter set writes one standalone UTF-8 Markdown file and replaces it atomically. For the post-commit plan it also reports the script test count, mutation targets, build requirement, layout and distribution selection. `-WhatIf` leaves the destination untouched.
+
 ## Critical review
 
 - The implementation in scripts/lib/CiPlanReport.psm1 keeps executable orchestration in entry points and helper functions in libraries; imports do not start business operations.

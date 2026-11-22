@@ -26,6 +26,10 @@ Use the entry point from the repository root:
 `CoAuthoredBy` is opt-in and deduplicates trailers already present in the message.
 No build, companion campaign, push, tag, PR creation or publication is implicit.
 
+Each successful commit generates a standalone Markdown plan at `.artifacts/plan.md`. Use `-CiPlanPath` to override it. Relative paths are resolved from `WorkspaceRoot`. The comparison starts at the merge base with the locally available `origin/develop`, or the new commit's first parent when that tracking ref is absent. An initial commit uses the empty tree. The planner reads declarations from a temporary snapshot of the new commit, so `-NoAll` excludes unstaged files and changes to CI definitions. The report includes the selected suites, targeted scripts and mutations, and the Core/Git build requirement.
+
+`-WhatIf`, a declined commit and a failed commit leave plan files alone. A planner failure after the commit is reported separately with the intended destination. The report is a local forecast. Hosted CI recomputes the scope for the PR revision. [CI planner](../New-CiImpactPlan.md)
+
 ## Shared checks
 
 Prepared-index checks run the trusted registry in a separate PowerShell process with its normal

@@ -9,6 +9,7 @@ BeforeAll {
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -Force -DisableNameChecking -ErrorAction Stop
     Import-QuietTestLibrary -Name CiCompanions
     $entry=[IO.Path]::Combine((Get-QuietTestScriptsRoot),'New-CiImpactPlan.ps1')
+    $commitEntry=[IO.Path]::Combine((Get-QuietTestScriptsRoot),'Commit-Workspace.ps1')
     $repository=Get-QuietTestWorkspaceRoot
     $yaml='src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'
     $git={param([string[]]$Arguments)
@@ -30,6 +31,8 @@ BeforeAll {
     }
     $null=& $git @('init','-q','-b','develop')
     $null=& $git @('add','-A')
+    # The production repository tracks this lock inside the ignored resources directory.
+    $null=& $git @('add','-f','--','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json')
     $null=& $git @('commit','-q','-m','base')
     $baseRevision=& $git @('rev-parse','HEAD')
     # The pinned YAML parser is a restored, ignored resource; copy it so the child never restores from the network.
@@ -67,6 +70,22 @@ BeforeAll {
     $suites={param($Values)[string[]]@(($Values['matrix']|ConvertFrom-Json).include|ForEach-Object suite|Sort-Object -CaseSensitive)}
     $images={param($Values)[string[]]@(($Values['image_suites']|ConvertFrom-Json)|Sort-Object -CaseSensitive)}
     $smokes={param($Values)[string[]]@(($Values['smoke_suites']|ConvertFrom-Json)|Sort-Object -CaseSensitive)}
+    $commitPlanDriver=New-QuietTestFile ([IO.Path]::Combine($TestDrive,'commit-plan-driver.ps1')) @'
+param($Entry,$Workspace,[switch]$Preview,[string]$PlanPath)
+$arguments = @{
+    WorkspaceRoot = $Workspace
+    Message = 'Exercise the commit plan contract'
+    NoAll = $true
+    WhatIf = $Preview
+    Confirm = $false
+    NoCommitFileSnifferWarning = $true
+    SkipCheck = @('WorkspaceSolutions','CompanionWorkflows','ScriptLayout','PowerShellSources','TestCaseMetadata',
+        'ScriptsReadme','GitHubWorkflowDocs','ScriptShouldProcess','ScriptAnalyzer','ScriptsInventory',
+        'Resources','ScriptContracts','DocsCredits','Credits')
+}
+if ($PlanPath) { $arguments.CiPlanPath = $PlanPath }
+& $Entry @arguments
+'@
 }
 
 AfterAll {
@@ -77,6 +96,75 @@ AfterAll {
 }
 
 Describe 'New-CiImpactPlan.ps1' {
+    It 'writes a standalone Markdown plan to a path relative to the checkout and honors preview' {
+        $revision=& $commit 'docs/README-standalone-plan-fixture.md'
+        $relative='.artifacts/standalone-plan.md'
+        $markdown=[IO.Path]::Combine($workspace,$relative)
+        $arguments=@('-WorkspaceRoot',$workspace,'-Base',$baseRevision,'-Revision',$revision,'-MarkdownPath',$relative)
+        $preview=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList ($arguments+@('-WhatIf'))
+        $preview.ExitCode | Should -Be 0
+        [IO.File]::Exists($markdown) | Should -BeFalse
+        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList $arguments
+        $run.ExitCode | Should -Be 0 -Because ($run.Output+$run.Error)
+        $text=Get-Content -LiteralPath $markdown -Raw -Encoding utf8
+        $text | Should -Match ([regex]::Escape("Base: $baseRevision; candidate: $revision."))
+        $text | Should -Match 'Tooling: none\.'
+        $text | Should -Match 'Script test files: 0\.'
+    }
+
+    It 'generates the default plan from the new commit and ignores unstaged changes to a selected test' {
+        $parent=& $commit 'docs/README-before-plan-fixture.md'
+        $null=& $git @('update-ref','refs/remotes/origin/develop',$baseRevision)
+        $path='test/scripts/unit/PlanCommitFixture.Tests.ps1'
+        $file=New-QuietTestFile ([IO.Path]::Combine($workspace,$path)) "Describe 'commit plan fixture' { }`n"
+        $null=& $git @('add','--',$path)
+        Add-Content -LiteralPath $file -Encoding utf8 -Value '#ScriptsImpact: RequiresBuild'
+        try {
+            $run=Invoke-QuietTestScript -ScriptPath $commitPlanDriver -ArgumentList @($commitEntry,$workspace) -TimeoutSeconds 300
+            $run.ExitCode | Should -Be 0 -Because ($run.Output+$run.Error)
+            $revision=& $git @('rev-parse','HEAD')
+            $revision | Should -Not -BeExactly $parent
+            (& $git @('rev-parse','HEAD^')) | Should -BeExactly $parent
+            $markdown=[IO.Path]::Combine($workspace,'.artifacts','plan.md')
+            $run.Output | Should -Match ([regex]::Escape($markdown))
+            [IO.File]::Exists($markdown) | Should -BeTrue -Because ($run.Output+$run.Error)
+            $text=Get-Content -LiteralPath $markdown -Raw -Encoding utf8
+            $text | Should -Match ([regex]::Escape("Base: $baseRevision; candidate: $revision."))
+            $text | Should -Match ([regex]::Escape($path))
+            $text | Should -Match 'Script tests require a Core/Git build: False\.'
+            (& $git @('status','--porcelain')) | Should -BeExactly ('M '+$path)
+        } finally {
+            $null=& $git @('restore','--worktree','--',$path)
+        }
+    }
+
+    It 'writes an overridden destination only after a commit succeeds' {
+        $parent=& $commit 'docs/README-before-custom-plan-fixture.md'
+        $null=& $git @('update-ref','-d','refs/remotes/origin/develop')
+        $path='.artifacts/custom-commit-plan.md'
+        $markdown=[IO.Path]::Combine($workspace,$path)
+        $arguments=@($commitEntry,$workspace,'-PlanPath',$path)
+        $failed=Invoke-QuietTestScript -ScriptPath $commitPlanDriver -ArgumentList $arguments
+        $failed.ExitCode | Should -Not -Be 0
+        ($failed.Output+$failed.Error) | Should -Match 'CommitWorkspaceNothingStaged'
+        [IO.File]::Exists($markdown) | Should -BeFalse
+
+        $change='docs/README-custom-plan-fixture.md'
+        $null=New-QuietTestFile ([IO.Path]::Combine($workspace,$change)) "# custom plan fixture`n"
+        $null=& $git @('add','--',$change)
+        $preview=Invoke-QuietTestScript -ScriptPath $commitPlanDriver -ArgumentList ($arguments+@('-Preview')) -TimeoutSeconds 300
+        $preview.ExitCode | Should -Be 0 -Because ($preview.Output+$preview.Error)
+        (& $git @('rev-parse','HEAD')) | Should -BeExactly $parent
+        [IO.File]::Exists($markdown) | Should -BeFalse
+
+        $run=Invoke-QuietTestScript -ScriptPath $commitPlanDriver -ArgumentList $arguments -TimeoutSeconds 300
+        $run.ExitCode | Should -Be 0 -Because ($run.Output+$run.Error)
+        $revision=& $git @('rev-parse','HEAD')
+        $revision | Should -Not -BeExactly $parent
+        [IO.File]::Exists($markdown) | Should -BeTrue -Because ($run.Output+$run.Error)
+        (Get-Content -LiteralPath $markdown -Raw -Encoding utf8) | Should -Match ([regex]::Escape("Base: $parent; candidate: $revision."))
+    }
+
     It 'returns the same plan with a null or omitted output path without writing reports' {
         $revision=& $commit 'docs/README-impact-object.md'
         $driver=New-QuietTestFile ([IO.Path]::Combine($TestDrive,'read-plan-object.ps1')) @'

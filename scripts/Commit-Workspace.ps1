@@ -7,6 +7,7 @@ Before staging, runs Invoke-WorkspaceChecks.ps1: script layout/naming, script do
 new-script WhatIf/Confirm support, documentation credits and aggregate credits. The same registry
 validates exported staged snapshots with NoAll. Explicit skip switches or SkipCheck report omissions;
 NoSyncChecks skips documentation checks but retains independent script layout and safety checks.
+After a successful commit, writes the selective CI plan for that commit to CiPlanPath.
 Separately, warns (does not block) when a script file about to be committed (working tree, staged
 or untracked, relative to $WorkspaceRoot) has no matching change to its mirrored doc under
 docs/scripts/ - the doc Sync-ScriptsReadme.ps1 requires to exist, but whose content it never
@@ -25,6 +26,8 @@ snapshot supplies the manifest and documentation checks, including during WhatIf
 Required commit message, without trailers.
 .PARAMETER WorkspaceRoot
 QuietCli2 monorepo root.
+.PARAMETER CiPlanPath
+Markdown plan destination. Relative paths are anchored in WorkspaceRoot, with .artifacts/plan.md as the default.
 .PARAMETER Repository
 Only Workspace exists; retained to reject accidental requests for independent module commits.
 .PARAMETER CoAuthoredBy
@@ -86,6 +89,7 @@ Raises the binary/oversized-file sniffer's threshold to 2 MiB for this run only.
 param(
     [Parameter(Mandatory)][string]$Message,
     [string]$WorkspaceRoot = (Split-Path $PSScriptRoot -Parent),
+    [ValidateNotNullOrWhiteSpace()][string]$CiPlanPath = '.artifacts/plan.md',
     [ValidateSet('Workspace')][string]$Repository = 'Workspace',
     [string[]]$CoAuthoredBy = $null,
     [switch]$NoAll,
