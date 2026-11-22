@@ -86,7 +86,7 @@ function Invoke-QuietConfigurationDeliveryEngine {
             @{Name='replay-delimiter-clear';File='Cmdlets/RecallReplayCommands.cs';From='if (string.IsNullOrEmpty(options.RecordDelimiter)) request.Remove("RecordDelimiter"); else';To='if (false) request.Remove("RecordDelimiter"); else'},
             @{Name='replay-budget-range';File='Cmdlets/RecallReplayCommands.cs';From='parsed < 1 || parsed > int.MaxValue';To='parsed > int.MaxValue'},
             @{Name='replay-source-completeness';File='Cmdlets/RecallReplayCommands.cs';From='["Source"] = capture.SourceComplete && capture.CaptureComplete && readComplete';To='["Source"] = capture.SourceComplete && readComplete'},
-            @{Name='replay-routing';File='Cmdlets/InvocationCommands.cs';From='if (original.ContainsKey("RecallId")) return RunSavedRecall(original);';To='if (false) return RunSavedRecall(original);'},
+            @{Name='replay-routing';File='Cmdlets/InvocationCommands.cs';From='if (Request.ContainsKey("RecallId"))';To='if (Request.ContainsKey("IgnoredRecallId"))'},
             @{Name='gain-from-overrides-days';File='Cmdlets/GainCommands.cs';From='if (lower is null && days is { } length)';To='if (days is { } length)'},
             @{Name='gain-days-end';File='Cmdlets/GainCommands.cs';From='upper ??= now;';To='upper = now;'},
             @{Name='gain-formats-exclusive';File='Cmdlets/GainCommands.cs';From='+ (AsJson ? 1 : 0) > 1)';To='+ (AsJson ? 1 : 0) > 2)'},
@@ -131,7 +131,7 @@ function Invoke-QuietConfigurationDeliveryEngine {
             @{Name='emit-listener-array-item-not-validated';File='Cmdlets/RuntimeCommands.cs';From='Select(item => Unwrap(item) as ScriptBlock ?? throw new InvalidOperationException("ListenerMustBeScriptBlock")).ToArray();';To='Select(item => Unwrap(item) as ScriptBlock).ToArray()!;'},
             @{Name='maxlines-requires-ui-guard-removed';File='Cmdlets/InvocationPolicy.cs';From='if (request.ContainsKey("MaxLines") && !ui) throw new InvalidOperationException("MaxLinesRequiresUI");';To=';';Case=$maxLinesPolicy},
             @{Name='maxlines-nonpositive-silently-coerced';File='Cmdlets/InvocationPolicy.cs';From='if (maxLines <= 0) throw new InvalidOperationException("MaxLinesMustBePositive");';To='maxLines = Math.Max(1, maxLines.GetValueOrDefault());';Case=$maxLinesPolicy},
-            @{Name='mode-ui-override-ignored';File='Cmdlets/InvocationPolicy.cs';From='request.ContainsKey("UI") ? Flag(request, "UI") : defaults.Ui';To='defaults.Ui';Case=$invocationModePolicy},
+            @{Name='mode-ui-override-ignored';File='Cmdlets/InvocationPolicy.cs';From='request.ContainsKey("UI") ? Flag(request, "UI")';To='request.ContainsKey("IgnoredUI") ? Flag(request, "UI")';Case=$invocationModePolicy},
             @{Name='mode-agent-object-allowed';File='Cmdlets/InvocationPolicy.cs';From='defaults.Mode == "Agent" && delivery == InvocationDelivery.Object';To='false';Case=$invocationModePolicy},
             @{
                 Name='stream-callback-runs-before-output'
