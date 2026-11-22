@@ -1,7 +1,7 @@
 function New-QuietVagrantRecordingUi {
     <#
     .SYNOPSIS
-    Lightweight PowerShell test double for the `$Runtime.Ui` surface Invoke-QuietVagrantMachineReadableRun
+    Lightweight PowerShell test double for the `$Runtime.Ui` surface New-QuietVagrantMachineReadablePlan
     calls (`SetHeader`/`Write`). Records calls instead of rendering, so a case can assert exactly what the
     Vagrant module handed its Ui without constructing a real QuietUiRenderer/Spectre.Console surface.
     .DESCRIPTION
@@ -19,15 +19,13 @@ function New-QuietVagrantRecordingUi {
 function New-QuietVagrantFakeRuntime {
     <#
     .SYNOPSIS
-    Minimal stand-in for the real QuietRuntime passed to Invoke-QuietVagrantMachineReadableRun, enough to drive
-    it directly without a real `vagrant` binary or the handler registry (both tested generically elsewhere --
-    see this suite's own comments on scope).
+    Records UI and events while preparing a Vagrant fixture request.
     .PARAMETER FilePath
     Native executable this fake "vagrant" run actually launches (the dotnet host, running the shared fixture).
     .PARAMETER Arguments
-    Argument vector up to but excluding `--machine-readable`, which Invoke-QuietVagrantMachineReadableRun always appends itself.
+    Argument vector up to but excluding `--machine-readable`, which the factory appends.
     .PARAMETER WorkingDirectory
-    Working directory for the nested `quiet` call.
+    Working directory for the fixture native command.
     .PARAMETER Ui
     Optional recording double (see New-QuietVagrantRecordingUi); omit for $null (no -UI).
     #>
@@ -39,6 +37,21 @@ function New-QuietVagrantFakeRuntime {
     }
     Add-Member -InputObject $runtime -MemberType ScriptMethod -Name Emit -Value { param($kind,$data) $this.Events.Add([pscustomobject]@{Type=$kind;Data=$data}) }
     $runtime
+}
+
+function Invoke-QuietVagrantFixturePlan {
+    <#
+    .SYNOPSIS
+    Runs a prepared Vagrant request against the fixture executable and finalizes the result.
+    .PARAMETER FilePath
+    Native fixture executable.
+    .PARAMETER Plan
+    Prepared arguments, callback options and result finalizer.
+    #>
+    param([string]$FilePath, [hashtable]$Plan)
+    $options = $Plan.Options
+    $result = quiet @options -AsObject -FilePath $FilePath -ArgumentList $Plan.Arguments
+    & $Plan.Finish $result
 }
 
 function ConvertFrom-QuietVagrantOracleLine {
@@ -177,7 +190,7 @@ function Get-QuietVagrantLineCases {
         } finally { $env:DOCKER_HOST = $saved }
     }
 
-    $cases['Invoke-QuietVagrantMachineReadableRun emits one event per valid line, skips malformed ones, and sets the Ui header/lanes'] = {
+    $cases['the Vagrant factory prepares callbacks that emit valid events and set the Ui header and lanes'] = {
         $savedDockerHost = $env:DOCKER_HOST
         $env:DOCKER_HOST = $null   # pin the provider label this case asserts on ('Mode: docker'), independent of the host's own environment
         try {
@@ -189,7 +202,9 @@ function Get-QuietVagrantLineCases {
         ) -join "`n"
         $ui = New-QuietVagrantRecordingUi
         $runtime = New-QuietVagrantFakeRuntime -FilePath $dotnet -Arguments @($fixture, 'chunks', '1', $transcript) -WorkingDirectory $RootDirectory -Ui $ui
-        $report = Invoke-QuietVagrantMachineReadableRun -Runtime $runtime -Command 'up'
+        $plan = New-QuietVagrantMachineReadablePlan $runtime 'up'
+        Assert-QuietEqual $runtime.Events.Count 0 'Preparation does not execute the fixture'
+        $report = Invoke-QuietVagrantFixturePlan $dotnet $plan
         Assert-QuietEqual $report.Command 'up'
         Assert-QuietEqual $report.Lines 3
         Assert-QuietEqual (($report.Machines | Sort-Object) -join ',') 'db,web'
@@ -207,18 +222,18 @@ function Get-QuietVagrantLineCases {
         } finally { $env:DOCKER_HOST = $savedDockerHost }
     }
 
-    $cases['Invoke-QuietVagrantUp and Invoke-QuietVagrantProvision produce the same events/lanes from the same transcript'] = {
+    $cases['up and provision factories produce the same events and lanes from the same transcript'] = {
         $transcript = @(
             '1700000020,web,ui,detail,already running',
             '1700000021,db,ui,detail,already running'
         ) -join "`n"
         $upUi = New-QuietVagrantRecordingUi
         $upRuntime = New-QuietVagrantFakeRuntime -FilePath $dotnet -Arguments @($fixture, 'chunks', '2', $transcript) -WorkingDirectory $RootDirectory -Ui $upUi
-        $upReport = Invoke-QuietVagrantUp $upRuntime
+        $upReport = Invoke-QuietVagrantFixturePlan $dotnet (New-QuietVagrantMachineReadablePlan $upRuntime 'up')
 
         $provisionUi = New-QuietVagrantRecordingUi
         $provisionRuntime = New-QuietVagrantFakeRuntime -FilePath $dotnet -Arguments @($fixture, 'chunks', '2', $transcript) -WorkingDirectory $RootDirectory -Ui $provisionUi
-        $provisionReport = Invoke-QuietVagrantProvision $provisionRuntime
+        $provisionReport = Invoke-QuietVagrantFixturePlan $dotnet (New-QuietVagrantMachineReadablePlan $provisionRuntime 'provision')
 
         Assert-QuietEqual $upReport.Lines $provisionReport.Lines
         Assert-QuietEqual $upRuntime.Events.Count $provisionRuntime.Events.Count
@@ -232,19 +247,19 @@ function Get-QuietVagrantLineCases {
         $withoutProvisioning = ($machines | ForEach-Object { "170000003{0},{1},ui,detail,machine '{1}' already up" -f ([array]::IndexOf($machines, $_)), $_ }) -join "`n"
         $ui1 = New-QuietVagrantRecordingUi
         $runtime1 = New-QuietVagrantFakeRuntime -FilePath $dotnet -Arguments @($fixture, 'chunks', '3', $withoutProvisioning) -WorkingDirectory $RootDirectory -Ui $ui1
-        $report1 = Invoke-QuietVagrantMachineReadableRun -Runtime $runtime1 -Command 'up'
+        $report1 = Invoke-QuietVagrantFixturePlan $dotnet (New-QuietVagrantMachineReadablePlan $runtime1 'up')
         Assert-QuietEqual $report1.Lines 4
         Assert-QuietEqual (@($runtime1.Events | Where-Object Type -EQ 'ProvisionerStarted')).Count 0
 
         $withProvisioning = ($machines | ForEach-Object { "170000004{0},{1},ui,info,Running provisioner: shell..." -f ([array]::IndexOf($machines, $_)), $_ }) -join "`n"
         $ui2 = New-QuietVagrantRecordingUi
         $runtime2 = New-QuietVagrantFakeRuntime -FilePath $dotnet -Arguments @($fixture, 'chunks', '4', $withProvisioning) -WorkingDirectory $RootDirectory -Ui $ui2
-        $report2 = Invoke-QuietVagrantMachineReadableRun -Runtime $runtime2 -Command 'up'
+        $report2 = Invoke-QuietVagrantFixturePlan $dotnet (New-QuietVagrantMachineReadablePlan $runtime2 'up')
         $started = @($runtime2.Events | Where-Object Type -EQ 'ProvisionerStarted')
         Assert-QuietEqual $started.Count 4
         Assert-QuietEqual (($started.Data | Select-Object -ExpandProperty Machine | Sort-Object) -join ',') (($machines | Sort-Object) -join ',')
         # Same function, same code path, zero branching on --no-provision: the only difference between the two
-        # runs above is which lines Vagrant itself would have written -- nothing in Invoke-QuietVagrantMachineReadableRun
+        # runs above is which lines Vagrant itself would have written -- nothing in the factory
         # inspects an ArgumentList flag to decide whether to emit ProvisionerStarted.
     }
 
@@ -257,7 +272,7 @@ function Get-QuietVagrantLineCases {
         ) -join "`n"
         $ui = New-QuietVagrantRecordingUi
         $runtime = New-QuietVagrantFakeRuntime -FilePath $dotnet -Arguments @($fixture, 'chunks', '5', $transcript) -WorkingDirectory $RootDirectory -Ui $ui
-        $null = Invoke-QuietVagrantMachineReadableRun -Runtime $runtime -Command 'up'
+        $null = Invoke-QuietVagrantFixturePlan $dotnet (New-QuietVagrantMachineReadablePlan $runtime 'up')
         $machine00Calls = @($ui.Calls | Where-Object Key -CEQ 'machine-00')
         $machine01Calls = @($ui.Calls | Where-Object Key -CEQ 'machine-01')
         Assert-QuietEqual $machine00Calls.Count 1 'machine-00 only ever wrote once -- its lane must keep exactly that one entry'
@@ -275,7 +290,16 @@ function Get-QuietVagrantLineCases {
             Assert-QuietEqual (& $original.Match @{ArgumentList=@($command)} '2.4.9') $true
             Assert-QuietEqual (& $original.Match @{ArgumentList=@('status')} '2.4.9') $false
             $definition=$original.Clone();$definition.Binary=[IO.Path]::GetFileNameWithoutExtension($dotnet)
-            $definition.Probe={'2.4.9'};$definition.Match={param($request,$version)$true}
+            $probeFactory=$original.ProbeFactory
+            $versionFixture=$fixture
+            $definition.ProbeFactory={
+                param($runtime)
+                $plan=& $probeFactory $runtime
+                if(($plan.Arguments -join ' ') -cne '--version'){throw 'ExpectedVagrantVersionCommand'}
+                $plan.Arguments=@($versionFixture,'chunks','7','Vagrant 2.4.9')
+                $plan
+            }.GetNewClosure()
+            $definition.Match={param($request,$version)$true}
             $definition.Execute={throw 'LegacyVagrantHandlerWasCalled'}
             Register-QuietHandler -Id $id -Definition $definition
             try{
@@ -285,7 +309,7 @@ function Get-QuietVagrantLineCases {
                     {param($event,$runtime)[void]$seen.Add($event)},
                     {param($event,$runtime)throw 'ObserverFixtureFailure'}
                 ) -FilePath $dotnet -ArgumentList @($fixture,'chunks','20261108',$transcript)
-                Assert-QuietEqual $result.Outcome 'Success'
+                Assert-QuietEqual $result.Outcome 'Success' (($result.Error | ForEach-Object Message) -join ' / ')
                 Assert-QuietEqual $result.Completeness.Analysis $true
                 Assert-QuietEqual $seen.Count 3
                 Assert-QuietEqual $result.Events.Count 3
@@ -296,6 +320,7 @@ function Get-QuietVagrantLineCases {
                 Assert-QuietEqual $result.Error[0].Code 'ListenerFailed'
                 Assert-QuietEqual $result.Data.Command $command
                 Assert-QuietEqual $result.Data.Lines 2
+                Assert-QuietEqual @($result.Internal.Sources.Values|Where-Object Role -EQ Probe).Count 1
                 $failed=quiet -AsObject -HandlerId $id -WorkingDirectory $RootDirectory -FilePath $dotnet -ArgumentList @($fixture,'fail')
                 if($failed.Outcome -eq 'Success' -or $failed.Completeness.Analysis){throw 'VagrantChildFailureHidden'}
             }finally{Unregister-QuietHandler $id}

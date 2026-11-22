@@ -1,4 +1,7 @@
 #requires -Version 7.6
+if (-not [FrenchExDev2.QuietCli.Cmdlets.QuietRuntime].GetMethod('InvokeCompanionCommand')) {
+    throw 'QuietCompanionCommandContractRequired: update FrenchExDev2.QuietCli.Core.PoSh before importing the Vagrant companion.'
+}
 $script:VagrantRoot = $PSScriptRoot
 $script:VagrantModuleManifest = Import-PowerShellDataFile (Join-Path $PSScriptRoot 'FrenchExDev2.QuietCli.Vagrant.PoSh.psd1')
 $script:VagrantModuleVersion = [string]$script:VagrantModuleManifest.ModuleVersion
@@ -9,15 +12,18 @@ if ($script:VagrantModuleManifest.PrivateData.PSData.ContainsKey('Prerelease') -
 
 # Shared by both handlers below (same binary, same supported version range) -- kept in one place rather than
 # literally duplicated across the two Register-QuietHandler calls (DRY).
-$script:VagrantProbe = {
+$script:VagrantProbeFactory = {
     param($runtime)
-    $r = quiet -AsObject -Role Probe -WorkingDirectory $runtime.Request.WorkingDirectory -Environment $runtime.Request.Environment -TimeoutSeconds $runtime.Request.TimeoutSeconds `
-        -Data ([Text.StringBuilder]::new()) `
-        -Output { param($e, $r) if ($e.Stream -eq 'stdout') { if ($r.Data.Length + $e.Text.Length -gt 1024) { throw 'VersionProbeTooLarge' }; [void]$r.Data.Append($e.Text) } } `
-        -Complete { param($r) if ($r.Data.ToString().Trim() -cnotmatch '\AVagrant (\d+\.\d+\.\d+)\z') { throw 'UnexpectedVagrantVersion' }; $Matches[1] } `
-        -FilePath $runtime.Request.FilePath -ArgumentList @('--version')
-    if ($r.Outcome -ne 'Success') { throw 'VagrantVersionProbeFailed' }
-    $r.Data
+    $options = @{
+        Role = 'Probe'
+        WorkingDirectory = $runtime.Request.WorkingDirectory
+        Environment = $runtime.Request.Environment
+        TimeoutSeconds = $runtime.Request.TimeoutSeconds
+        Data = [Text.StringBuilder]::new()
+        Output = { param($e, $r) if ($e.Stream -eq 'stdout') { if ($r.Data.Length + $e.Text.Length -gt 1024) { throw 'VersionProbeTooLarge' }; [void]$r.Data.Append($e.Text) } }
+        Complete = { param($r) if ($r.Data.ToString().Trim() -cnotmatch '\AVagrant (\d+\.\d+\.\d+)\z') { throw 'UnexpectedVagrantVersion' }; $Matches[1] }
+    }
+    @{ Arguments = @('--version'); Options = $options }
 }
 $script:VagrantTestVersion = {
     param($version)
@@ -31,21 +37,19 @@ Register-QuietHandler -Id 'FrenchExDev2.QuietCli.Vagrant.PoSh.Up' -Definition @{
     Binary = 'vagrant'; ModuleVersion = $script:VagrantModuleVersion; VersionRange = 'stable >=2.3.0 <2.5.0'; Qualification = 'Partial'
     Summary = 'Observed Vagrant up (--machine-readable).'
     SupportedForms = @('up'); Documentation = @('https://developer.hashicorp.com/vagrant/docs/cli/up', 'https://developer.hashicorp.com/vagrant/docs/cli/machine-readable')
-    Probe = $script:VagrantProbe
+    ProbeFactory = $script:VagrantProbeFactory
     TestVersion = $script:VagrantTestVersion
     Match = { param($request, $version) $request.ArgumentList.Count -gt 0 -and $request.ArgumentList[0] -ceq 'up' }
-    CallbackFactory = { param($runtime) Invoke-QuietVagrantUp $runtime -Prepare }
-    Execute = { param($runtime) Invoke-QuietVagrantUp $runtime }
+    CallbackFactory = { param($runtime) New-QuietVagrantMachineReadablePlan $runtime 'up' }
 }
 Register-QuietHandler -Id 'FrenchExDev2.QuietCli.Vagrant.PoSh.Provision' -Definition @{
     Binary = 'vagrant'; ModuleVersion = $script:VagrantModuleVersion; VersionRange = 'stable >=2.3.0 <2.5.0'; Qualification = 'Partial'
     Summary = 'Observed Vagrant provision (--machine-readable).'
     SupportedForms = @('provision'); Documentation = @('https://developer.hashicorp.com/vagrant/docs/cli/provision', 'https://developer.hashicorp.com/vagrant/docs/cli/machine-readable')
-    Probe = $script:VagrantProbe
+    ProbeFactory = $script:VagrantProbeFactory
     TestVersion = $script:VagrantTestVersion
     Match = { param($request, $version) $request.ArgumentList.Count -gt 0 -and $request.ArgumentList[0] -ceq 'provision' }
-    CallbackFactory = { param($runtime) Invoke-QuietVagrantProvision $runtime -Prepare }
-    Execute = { param($runtime) Invoke-QuietVagrantProvision $runtime }
+    CallbackFactory = { param($runtime) New-QuietVagrantMachineReadablePlan $runtime 'provision' }
 }
 $ExecutionContext.SessionState.Module.OnRemove = {
     Unregister-QuietHandler -Id 'FrenchExDev2.QuietCli.Vagrant.PoSh.Up'

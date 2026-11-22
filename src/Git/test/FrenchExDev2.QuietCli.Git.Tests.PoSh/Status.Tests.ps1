@@ -43,6 +43,45 @@ function Get-QuietGitStatusCases {
     $factory=Get-Command New-QuietGitRepositoryFixture;$prepare=Get-Command Invoke-GitFixture;$step=Get-Command Invoke-QuietGitStatusFixtureStep
     $write=Get-Command Write-QuietGitStatusFixtureFile;$success=Get-Command Assert-QuietGitSuccess;$assert=Get-Command Assert-QuietEqual
     $cases=[ordered]@{}
+    $cases['status executes its probes and verbose patches through the active Core runtime']={
+        $isolated=$Environment.Clone()
+        $isolated.GIT_DEFAULT_REF_FORMAT='files'
+        $isolated.QUIETCLI_TEST_PROBE_IDENTITY=[guid]::NewGuid().ToString('N')
+        $path=& $factory $RootDirectory $isolated
+        $file=[IO.Path]::Combine($path,'file.txt')
+        & $write $file "staged change`n"
+        & $prepare $path @('add','file.txt') $isolated
+        & $write $file "unstaged change`n"
+        $companion=Get-Module FrenchExDev2.QuietCli.Git.PoSh
+        $facade=Get-Command Invoke-QuietCli -CommandType Function
+        $previous=& $companion {
+            $existing=Get-Alias -Name quiet -Scope Script -ErrorAction SilentlyContinue
+            Set-Alias -Name quiet -Value UnexpectedQuietGitFacadeReentry -Scope Script -Force
+            $existing
+        }
+        try{
+            $aliasTarget=& $companion { (Get-Alias quiet).Definition }
+            & $assert $aliasTarget 'UnexpectedQuietGitFacadeReentry'
+            $r=& $facade -AsObject -WorkingDirectory $path -Environment $isolated git status -vv
+            & $success $r
+            & $assert $r.Data.StagedPatch.Files.Count 1
+            & $assert $r.Data.UnstagedPatch.Files.Count 1
+            & $assert @($r.Internal.Sources.Values|Where-Object Role -EQ Probe).Count 1
+            & $assert @($r.Internal.Sources.Values|Where-Object Role -EQ Observation).Count 2
+            & $assert @($r.Internal.Sources.Values|Where-Object Role -EQ Business).Count 3
+            $cached=& $facade -AsObject -WorkingDirectory $path -Environment $isolated git status
+            & $success $cached
+            & $assert @($cached.Internal.Sources.Values|Where-Object Role -EQ Probe).Count 0
+            & $assert @($cached.Internal.Sources.Values|Where-Object Role -EQ Business).Count 1
+        }
+        finally{
+            & $companion {
+                param($existing)
+                if($existing){Set-Alias -Name quiet -Value $existing.Definition -Option $existing.Options -Description $existing.Description -Scope Script -Force}
+                else{Remove-Alias -Name quiet -Scope Script -Force}
+            } $previous
+        }
+    }.GetNewClosure()
     $cases['status classifies non-repository bare and git-directory locations without running status']={
         $outside=Join-Path ([IO.Path]::GetTempPath()) ('qgit-status-'+[guid]::NewGuid().ToString('N'))
         [void][IO.Directory]::CreateDirectory($outside)

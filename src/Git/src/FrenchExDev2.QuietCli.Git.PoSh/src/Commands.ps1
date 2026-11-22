@@ -22,21 +22,18 @@ Executes one Git operation with explicit business parsing, never generic raw cap
     Text or byte business events.
     .PARAMETER StderrMode
     Text or byte error events.
+    .PARAMETER Prepare
+    Returns the command and callbacks for Core to execute as the main invocation.
     #>
     param($Runtime,[string[]]$Arguments,[scriptblock]$Output,[scriptblock]$Complete,[AllowNull()]$Data,[string]$Role='Business',[string]$Delimiter,[int[]]$SuccessExitCodes=@(0),[string]$StdoutMode='Text',[string]$StderrMode='Text',[switch]$Prepare)
-    $options=@{AsObject=$true;WorkingDirectory=$Runtime.Request.WorkingDirectory;Environment=@{LC_ALL='C';LANG='C';GIT_PAGER='cat'};Role=$Role;Data=$Data;Output=$Output;Complete=$Complete;FilePath=$Runtime.Request.FilePath;ArgumentList=$Arguments;TimeoutSeconds=$Runtime.Request.TimeoutSeconds;SuccessExitCodes=$SuccessExitCodes;StdoutMode=$StdoutMode;StderrMode=$StderrMode}
+    $options=@{WorkingDirectory=$Runtime.Request.WorkingDirectory;Environment=@{LC_ALL='C';LANG='C';GIT_PAGER='cat'};Role=$Role;Data=$Data;Output=$Output;Complete=$Complete;TimeoutSeconds=$Runtime.Request.TimeoutSeconds;SuccessExitCodes=$SuccessExitCodes;StdoutMode=$StdoutMode;StderrMode=$StderrMode}
     foreach($key in $Runtime.Request.Environment.Keys){$options.Environment[$key]=$Runtime.Request.Environment[$key]}
     if($Role -ne 'Business'){$options.Environment.GIT_OPTIONAL_LOCKS='0';$options.Environment.GIT_NO_LAZY_FETCH='1'}
     if($PSBoundParameters.ContainsKey('Delimiter')){$options.RecordDelimiter=$Delimiter}
     if($Role -eq 'Business'){foreach($key in @('InputText','InputBytes','InputPath','Interaction','Transport','TerminalSize','CancellationFile','CancellationToken','ReadBlockBytes','DrainTimeoutSeconds')){if($Runtime.Request.ContainsKey($key)){$options[$key]=$Runtime.Request[$key]}}}
-    if($Prepare){
-        foreach($key in @('AsObject','FilePath','ArgumentList')){$options.Remove($key)}
-        return @{Arguments=$Arguments;Options=$options}
-    }
-    # Use a vector of explicit facade options, not a shell command string.
-    $tokens=[Collections.Generic.List[object]]::new();foreach($key in $options.Keys){$tokens.Add('-'+$key);if($key -ne 'AsObject'){$tokens.Add($options[$key])}}
-    $quietArguments=$tokens.ToArray()
-    quiet @quietArguments
+    $command=@{Arguments=$Arguments;Options=$options}
+    if($Prepare){return $command}
+    $Runtime.InvokeCompanionCommand($command)
 }
 function Read-QuietGitScalar {
     <#

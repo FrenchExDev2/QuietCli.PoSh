@@ -55,7 +55,7 @@ function Invoke-QuietVagrantParserMutation {
                     }
                     'provisioner-trigger-anchor-broken' {
                         $runtime = New-QuietVagrantFakeRuntime -FilePath $dotnet -Arguments @($fixture, 'chunks', '99', '1700000012,web,ui,info,Running provisioner: shell...') -WorkingDirectory $destination
-                        $null = Invoke-QuietVagrantMachineReadableRun -Runtime $runtime -Command 'up'
+                        $null = Invoke-QuietVagrantFixturePlan $dotnet (New-QuietVagrantMachineReadablePlan $runtime 'up')
                         (@($runtime.Events | Where-Object Type -EQ 'ProvisionerStarted')).Count -ne 1
                     }
                     'real-machine-prefix-not-stripped' {
@@ -67,7 +67,7 @@ function Invoke-QuietVagrantParserMutation {
                     'ui-write-lane-key-wrong' {
                         $ui = New-QuietVagrantRecordingUi
                         $runtime = New-QuietVagrantFakeRuntime -FilePath $dotnet -Arguments @($fixture, 'chunks', '98', '1700000012,web,ui,detail,hi') -WorkingDirectory $destination -Ui $ui
-                        $null = Invoke-QuietVagrantMachineReadableRun -Runtime $runtime -Command 'up'
+                        $null = Invoke-QuietVagrantFixturePlan $dotnet (New-QuietVagrantMachineReadablePlan $runtime 'up')
                         $ui.Calls[0].Key -cne 'web'
                     }
                 }

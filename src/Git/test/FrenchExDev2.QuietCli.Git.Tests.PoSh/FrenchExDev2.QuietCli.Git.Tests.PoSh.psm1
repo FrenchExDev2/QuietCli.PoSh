@@ -273,7 +273,8 @@ Tests independently prepared repositories, hook counts and local bare push targe
         'status classifies non-repository bare and git-directory locations without running status'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'status reports tracking state ahead behind gone and uncomputed divergence'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'status exposes unborn staged and detached HEAD states'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
-        'status reports merge conflicts and a merge ready to commit as in-progress operations'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
+    'status reports merge conflicts and a merge ready to commit as in-progress operations'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
+    'status executes its probes and verbose patches through the active Core runtime'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'status reports rebase cherry-pick revert bisect and am operations'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'status reports stash sparse linked worktree submodule and shallow structure'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'status classifies a broken gitfile and an unsupported repository format as typed failures'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}

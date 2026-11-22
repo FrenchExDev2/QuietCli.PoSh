@@ -1,4 +1,7 @@
 #requires -Version 7.6
+if (-not [FrenchExDev2.QuietCli.Cmdlets.QuietRuntime].GetMethod('InvokeCompanionCommand')) {
+    throw 'QuietCompanionCommandContractRequired: update FrenchExDev2.QuietCli.Core.PoSh before importing the Git companion.'
+}
 $script:GitRoot=$PSScriptRoot
 $script:GitModuleManifest=Import-PowerShellDataFile (Join-Path $PSScriptRoot 'FrenchExDev2.QuietCli.Git.PoSh.psd1')
 $script:GitModuleVersion=[string]$script:GitModuleManifest.ModuleVersion
@@ -25,10 +28,14 @@ Register-QuietHandler -Id 'FrenchExDev2.QuietCli.Git.PoSh' -Definition @{
  Summary='Observed Git operation.';Qualification='Partial'
  Documentation=@('https://git-scm.com/docs/git','https://git-scm.com/docs/git-status','https://git-scm.com/docs/git-commit','https://git-scm.com/docs/git-push')
  SupportedForms=@($script:GitExecutors.Keys)
- Probe={param($runtime)
-    $r=quiet -AsObject -Role Probe -WorkingDirectory $runtime.Request.WorkingDirectory -Environment $runtime.Request.Environment -TimeoutSeconds $runtime.Request.TimeoutSeconds -Data ([Text.StringBuilder]::new()) -Output {param($e,$r)if($e.Stream -eq 'stdout'){if($r.Data.Length+$e.Text.Length -gt 1024){throw 'VersionProbeTooLarge'};[void]$r.Data.Append($e.Text)}} -Complete {param($r)if($r.Data.ToString() -notmatch '^git version (\S+)'){throw 'UnexpectedGitVersion'};$Matches[1]} -FilePath $runtime.Request.FilePath -ArgumentList @('--version')
-    if($r.Outcome -ne 'Success'){throw 'GitVersionProbeFailed'}
-    $r.Data
+ ProbeFactory={param($runtime)
+    $options=@{
+        Role='Probe';WorkingDirectory=$runtime.Request.WorkingDirectory;Environment=$runtime.Request.Environment;TimeoutSeconds=$runtime.Request.TimeoutSeconds
+        Data=[Text.StringBuilder]::new()
+        Output={param($e,$r)if($e.Stream -eq 'stdout'){if($r.Data.Length+$e.Text.Length -gt 1024){throw 'VersionProbeTooLarge'};[void]$r.Data.Append($e.Text)}}
+        Complete={param($r)if($r.Data.ToString() -notmatch '^git version (\S+)'){throw 'UnexpectedGitVersion'};$Matches[1]}
+    }
+    @{Arguments=@('--version');Options=$options}
  }
  TestVersion={param($version)if($version -notmatch '^(2\.\d+\.\d+)(?:\.windows\.\d+)?$'){return $false};$numeric=[version]$Matches[1];$numeric -ge [version]'2.40.0' -and $numeric -lt [version]'2.57.0'}
  Match={param($request,$version)$parsed=Get-GitInvocation @{ArgumentList=$request.ArgumentList};!$parsed.Error}
