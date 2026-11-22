@@ -18,8 +18,8 @@ BeforeAll {
 }
 
 Describe 'Get-QuietWorkBranchKinds' {
-    It 'lists the four work branch kinds in order, without release' {
-        Get-QuietWorkBranchKinds|Should -BeExactly @('fix','feature','chore','companion') -Because 'release/* branches belong to Invoke-QuietRelease.ps1'
+    It 'lists the five work branch kinds in order, without release' {
+        Get-QuietWorkBranchKinds|Should -BeExactly @('fix','feature','chore','companion','doc') -Because 'release/* branches belong to Invoke-QuietRelease.ps1'
     }
 }
 
@@ -29,6 +29,7 @@ Describe 'Resolve-QuietWorkBranchName' {
         @{Branch='fix/suite-image-concurrency';Kind='fix';Name='suite-image-concurrency'}
         @{Branch='chore/bump.pester_6';Kind='chore';Name='bump.pester_6'}
         @{Branch='companion/packer';Kind='companion';Name='packer'}
+        @{Branch='doc/multi-version';Kind='doc';Name='multi-version'}
         @{Branch='feature/ci/split-images';Kind='feature';Name='ci/split-images'}
         @{Branch='fix/A';Kind='fix';Name='A'}
     ) {
@@ -40,7 +41,7 @@ Describe 'Resolve-QuietWorkBranchName' {
     }
 
     It 'rejects the kind of <Branch>' -ForEach @(
-        @{Branch='hotfix/x'},@{Branch='Feature/x'},@{Branch='FIX/x'},@{Branch='develop'},@{Branch='/x'},@{Branch=''},@{Branch='features/x'},@{Branch=' feature/x'},@{Branch='release/core-1.2.0'}
+        @{Branch='hotfix/x'},@{Branch='Feature/x'},@{Branch='FIX/x'},@{Branch='Doc/x'},@{Branch='develop'},@{Branch='/x'},@{Branch=''},@{Branch='features/x'},@{Branch=' feature/x'},@{Branch='release/core-1.2.0'}
     ) {
         {Resolve-QuietWorkBranchName -Branch $Branch}|Should -Throw -ExpectedMessage 'WorkBranchKindInvalid*'
     }
@@ -60,7 +61,7 @@ Describe 'Resolve-QuietWorkBranchName' {
 
     It 'explains why <Branch> is refused' -ForEach @(
         @{Branch='develop';Message='WorkBranchKindInvalid: develop has no kind/ prefix'}
-        @{Branch='/x';Message='WorkBranchKindInvalid: ; expected one of fix, feature, chore, companion'}
+        @{Branch='/x';Message='WorkBranchKindInvalid: ; expected one of fix, feature, chore, companion, doc'}
         @{Branch='feature/';Message='WorkBranchNameInvalid: empty name'}
         @{Branch='feature/a b';Message='WorkBranchNameInvalid: segment ''a b'' must start and end with a letter or digit and contain only letters, digits, ., _ and -'}
         @{Branch='feature/ok/a..b';Message='WorkBranchNameInvalid: segment ''a..b'' contains .. or ends with .lock'}
@@ -85,7 +86,7 @@ Describe 'Resolve-QuietWorkBranchName' {
 
     It 'only fails with a typed error and only accepts names that satisfy the rules' {
         $null=Invoke-QuietProperty -Name 'work-branch-fuzz' -Seed $seed -Count 300 -Generator {param($random)
-            (Get-QuietRandomItem $random @('fix','feature','chore','companion','release','hotfix','','Feature'))+(Get-QuietRandomItem $random @('/','','//'))+(New-QuietRandomString $random -Alphabet ('ab9.-_/ ~^:?*[\@{}'+[char]0xE9) -MinLength 0 -MaxLength 14)
+            (Get-QuietRandomItem $random @('fix','feature','chore','companion','doc','release','hotfix','','Feature'))+(Get-QuietRandomItem $random @('/','','//'))+(New-QuietRandomString $random -Alphabet ('ab9.-_/ ~^:?*[\@{}'+[char]0xE9) -MinLength 0 -MaxLength 14)
         } -Property {param($case)
             try{$resolved=Resolve-QuietWorkBranchName -Branch $case}catch{
                 if($_.Exception.Message -cnotmatch '\AWorkBranch(Kind|Name)Invalid: '){throw ('untyped: '+$_.Exception.Message)}
@@ -103,7 +104,7 @@ Describe 'Assert-QuietWorkBranchBase' {
     }
 
     # A transient release/* branch of Invoke-QuietRelease.ps1 is no delivery branch either.
-    It 'rejects the work or release branch <Base> as a base' -ForEach @(@{Base='feature/x'},@{Base='fix/suite-image'},@{Base='chore/a/b'},@{Base='companion/packer'},@{Base='release/1.0.0'}) {
+    It 'rejects the work or release branch <Base> as a base' -ForEach @(@{Base='feature/x'},@{Base='fix/suite-image'},@{Base='chore/a/b'},@{Base='companion/packer'},@{Base='doc/multi-version'},@{Base='release/1.0.0'}) {
         {Assert-QuietWorkBranchBase -BaseBranch $Base}|Should -Throw -ExpectedMessage ('WorkBranchBaseIsWorkBranch: '+$Base+'; start from the delivery branch, for example develop')
     }
 

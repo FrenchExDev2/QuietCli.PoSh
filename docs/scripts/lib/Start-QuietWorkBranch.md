@@ -16,13 +16,14 @@ Starts a new work branch from the freshly pulled delivery branch and moves pendi
 ./scripts/Start-QuietWorkBranch.ps1 -Kind feature -Name script-tests -WhatIf
 ./scripts/Start-QuietWorkBranch.ps1 -Kind fix -Name tag-administration
 ./scripts/Start-QuietWorkBranch.ps1 -Branch chore/bump-pester
+./scripts/Start-QuietWorkBranch.ps1 -Kind doc -Name multi-version
 ```
 
 | Option | Role |
 | --- | --- |
 | `-Branch` | Whole new branch, `<kind>/<name>`. |
-| `-Kind`, `-Name` | The same, in two parts. The kind is `fix`, `feature`, `chore` or `companion`. |
-| `-BaseBranch` | Delivery branch to start from, `develop` by default. A work or release branch (`feature/x`, `release/x`) is refused. |
+| `-Kind`, `-Name` | The same, in two parts. The kind is `fix`, `feature`, `chore`, `companion` or `doc`. |
+| `-BaseBranch` | Delivery branch to start from, `develop` by default. A work or release branch (`doc/x`, `release/x`) is refused. |
 | `-Remote` | Remote of the base, `origin` by default. Tags are never fetched. |
 | `-WorkspaceRoot` | Checkout to operate on, this one by default. |
 | `-ShelfName` | Message of the retained stash. A name is generated when it is missing. |
@@ -59,11 +60,12 @@ Native failures are not retried. The remote-base comparison is an observation, n
 
 ## Tests
 
-[`integration/entrypoints/Start-QuietWorkBranch.Tests.ps1`](../../../test/scripts/integration/entrypoints/Start-QuietWorkBranch.Tests.ps1) runs the entry point in a child `pwsh` on fixture repositories (a bare origin, a clone that moves develop, a work clone). It has 14 tests:
+[`integration/entrypoints/Start-QuietWorkBranch.Tests.ps1`](../../../test/scripts/integration/entrypoints/Start-QuietWorkBranch.Tests.ps1) runs the entry point in a child `pwsh` on fixture repositories (a bare origin, a clone that moves develop, a work clone).
 
 - the branch starts from the pulled remote develop even when started from another work branch, without that branch's commits and without tracking;
 - staged, unstaged and untracked work is restored and the stash retained;
 - a clean checkout is not shelved;
+- both parameter forms create the requested `doc/*` branch, and `-WhatIf` previews it without effects;
 - each refusal (kind, name, work branch as base, local or remote branch, missing base, detached) leaves branch, HEAD, status, files, stashes and branches unchanged;
 - a merge in progress is refused;
 - WhatIf changes nothing but still validates the name;
