@@ -66,6 +66,22 @@ Describe 'Get-QuietCiImpact' {
         }
     }
 
+    It 'keeps Git ignore files in the diff without changing selection' {
+        $null=Invoke-QuietProperty -Name 'impact-gitignore-neutral' -Seed $seed -Count 30 -Generator {param($random)
+            $catalogue=& $newCatalogue $random
+            $paths=Get-QuietRandomSubset $random @('scripts/lib/Example.psm1',(& $ownedPath $random $catalogue 'Core'),'docs/a.md') 0.5
+            [pscustomobject]@{Catalogue=$catalogue;Paths=[string[]]@($paths);Nested=('src/'+(New-QuietRandomString $random)+'/.gitignore')}
+        } -Property {param($case)
+            $before=& $impact $case.Catalogue $case.Paths
+            $paths=@($case.Paths)+@('.gitignore',$case.Nested)
+            $after=& $impact $case.Catalogue $paths
+            if (($after.ChangedPaths -join '|') -cne ($paths -join '|')) { throw 'ChangedPaths lost an input' }
+            $before=ConvertTo-Json -InputObject ($before | Select-Object * -ExcludeProperty ChangedPaths) -Depth 6 -Compress
+            $after=ConvertTo-Json -InputObject ($after | Select-Object * -ExcludeProperty ChangedPaths) -Depth 6 -Compress
+            $after -ceq $before
+        }
+    }
+
     It 'never removes a selected or smoked suite when a path is added (monotonicity)' {
         $null=Invoke-QuietProperty -Name 'impact-monotonic' -Seed $seed -Count 50 -Generator {param($random)
             $catalogue=& $newCatalogue $random
@@ -127,6 +143,11 @@ Describe 'Get-QuietCiImpact' {
         @{Path='scripts/lib/RunToolCache.psm1';Script=$true;Tooling=$false;Distribution=$false;Full='';Conservative=$false}
         @{Path='scripts/Build-Workspace.ps1';Script=$true;Tooling=$false;Distribution=$false;Full='';Conservative=$false}
         @{Path='scripts/nested/data/x.json';Script=$true;Tooling=$false;Distribution=$false;Full='';Conservative=$false}
+        @{Path='.gitignore';Tooling=$false;Distribution=$false;Full='';Conservative=$false}
+        @{Path='scripts/nested/.gitignore';Tooling=$false;Distribution=$false;Full='';Conservative=$false}
+        @{Path='src/Core/.gitignore';Tooling=$false;Distribution=$false;Full='';Conservative=$false}
+        @{Path='build/.gitignore.example';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
+        @{Path='build/.GITIGNORE';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
         @{Path='Scripts/lib/x.psm1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
         @{Path='scriptsx/a.ps1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}
         @{Path='src/Core/scripts/a.ps1';Tooling=$true;Distribution=$false;Full='Core,Git';Conservative=$true}

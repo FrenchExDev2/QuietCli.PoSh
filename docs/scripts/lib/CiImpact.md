@@ -10,6 +10,8 @@ Get-QuietCiImpact reads the validated YAML suite catalogue. Companion changes se
 
 Test-QuietDevelopReceipt requires explicit booleans, exact tree/run/attempt identities and successful required Windows, Linux, performance, tooling and mutation outcomes. Missing fields fail closed.
 
+The root and nested `.gitignore` files appear in `ChangedPaths` and have no effect on CI selection.
+
 ## Repository scripts select only their script tests
 
 A change below the exact, case-sensitive `scripts/` or `test/scripts/` prefix selects no product suite, smoke, image or tooling campaign. The plan lists it in `ScriptPaths` instead. [`New-CiImpactPlan.ps1`](../New-CiImpactPlan.md) then asks [`ScriptsImpact.psm1`](ScriptsImpact.md) which script test files and script mutation targets those paths reach, and only those run.

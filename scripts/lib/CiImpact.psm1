@@ -35,7 +35,7 @@ function Get-QuietCiImpact {
         $reasons.Add([pscustomobject]@{Input='MSBuildEvaluation';Package=$null;Project=$project.Path;Companion='*';Action='full';Reason=('EvaluationUnavailable: '+$project.EvaluationFailure)})
     }
     foreach($path in $ChangedPaths){
-        if($path -match '^docs/|\.md$|^icons/'){continue}
+        if($path -match '^docs/|\.md$|^icons/' -or [IO.Path]::GetFileName($path) -ceq '.gitignore'){continue}
         # Repository scripts and their tests never ship in a companion product: only the script tests and mutation
         # targets they reach qualify them (ScriptPaths). Products and the full tooling are a manual dispatch.
         if($path.StartsWith('scripts/',[StringComparison]::Ordinal) -or $path.StartsWith('test/scripts/',[StringComparison]::Ordinal)){$scripts.Add($path);continue}

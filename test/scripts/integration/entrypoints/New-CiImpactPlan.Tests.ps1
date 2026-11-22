@@ -309,6 +309,24 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
         @(& $images $observed.Values).Count|Should -Be 0
     }
 
+    It 'keeps the same CI job selection when a script commit also changes .gitignore' {
+        $scriptRevision=& $commit 'scripts/lib/CiPlanResults.psm1'
+        $withoutIgnore=& $plan $scriptRevision
+        $withoutIgnore.Run.ExitCode|Should -Be 0 -Because ($withoutIgnore.Run.Output+$withoutIgnore.Run.Error)
+        $withoutIgnore.Values['tooling_scope']|Should -BeExactly 'scripts'
+
+        Add-Content -LiteralPath ([IO.Path]::Combine($workspace,'.gitignore')) -Encoding utf8 -Value '/ignore-impact-fixture/'
+        $null=& $git @('add','--','.gitignore')
+        $null=& $git @('commit','-q','-m','Update Git ignore rules')
+        $withIgnore=& $plan (& $git @('rev-parse','HEAD'))
+        $withIgnore.Run.ExitCode|Should -Be 0 -Because ($withIgnore.Run.Output+$withIgnore.Run.Error)
+
+        (ConvertTo-Json -InputObject $withIgnore.Values -Compress)|Should -BeExactly (ConvertTo-Json -InputObject $withoutIgnore.Values -Compress)
+        $receipt=Get-Content -LiteralPath ([IO.Path]::Combine($workspace,'artifacts','ci-plan','plan.json')) -Raw -Encoding utf8|ConvertFrom-Json
+        $receipt.Plan.ChangedPaths|Should -Contain '.gitignore'
+        $receipt.Plan.ConservativeFull|Should -BeFalse
+    }
+
     It 'runs only the script tests <Tests> and mutation targets <Targets> when <Path> changes' -ForEach @(
         @{Path='test/scripts/unit/lib/ImpactFixture.Tests.ps1';Tests='unit/lib/ImpactFixture.Tests.ps1';Targets=''}
         @{Path='scripts/lib/ImpactFixture.psm1';Tests='';Targets=''}
