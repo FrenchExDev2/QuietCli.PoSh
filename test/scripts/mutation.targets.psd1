@@ -244,6 +244,13 @@
             )
         }
         @{
+            Name = 'MergePullRequest'
+            Module = 'lib/Merge-PullRequest.psm1'
+            Functions = @('Invoke-QuietMergePullRequest','Find-QuietPullRequestRun','Invoke-QuietCommitPullRequest')
+            UnitTestFiles = @('unit/lib/Merge-PullRequest.Tests.ps1')
+            Break = 80
+        }
+        @{
             Name = 'MergedOriginBranches'
             Module = 'lib/Remove-QuietMergedOriginBranches.psm1'
             Functions = @('Get-QuietMergedOriginBranchPlan')

@@ -76,13 +76,15 @@ BeforeAll {
     $images={param($Values)[string[]]@(($Values['image_suites']|ConvertFrom-Json)|Sort-Object -CaseSensitive)}
     $smokes={param($Values)[string[]]@(($Values['smoke_suites']|ConvertFrom-Json)|Sort-Object -CaseSensitive)}
     $commitPlanDriver=New-QuietTestFile ([IO.Path]::Combine($TestDrive,'commit-plan-driver.ps1')) @'
-param($Entry,$Workspace,[switch]$Preview,[string]$PlanPath)
+param($Entry,$Workspace,[switch]$Preview,[string]$PlanPath,[switch]$Watch,[switch]$MergePullRequest)
 $arguments = @{
     WorkspaceRoot = $Workspace
     Message = 'Exercise the commit plan contract'
     NoAll = $true
     WhatIf = $Preview
     Confirm = $false
+    Watch = $Watch
+    MergePullRequest = $MergePullRequest
     NoCommitFileSnifferWarning = $true
     SkipCheck = @('WorkspaceSolutions','CompanionWorkflows','ScriptLayout','PowerShellSources','TestCaseMetadata',
         'ScriptsReadme','GitHubWorkflowDocs','ScriptShouldProcess','ScriptAnalyzer','ScriptsInventory',
@@ -157,9 +159,10 @@ Describe 'New-CiImpactPlan.ps1' {
         $change='docs/README-custom-plan-fixture.md'
         $null=New-QuietTestFile ([IO.Path]::Combine($workspace,$change)) "# custom plan fixture`n"
         $null=& $git @('add','--',$change)
-        $preview=Invoke-QuietTestScript -ScriptPath $commitPlanDriver -ArgumentList ($arguments+@('-Preview')) -TimeoutSeconds 300
+        $preview=Invoke-QuietTestScript -ScriptPath $commitPlanDriver -ArgumentList ($arguments+@('-Preview','-Watch','-MergePullRequest')) -TimeoutSeconds 300
         $preview.ExitCode | Should -Be 0 -Because ($preview.Output+$preview.Error)
         (& $git @('rev-parse','HEAD')) | Should -BeExactly $parent
+        (& $git @('diff','--cached','--name-only')) | Should -BeExactly $change
         [IO.File]::Exists($markdown) | Should -BeFalse
 
         $run=Invoke-QuietTestScript -ScriptPath $commitPlanDriver -ArgumentList $arguments -TimeoutSeconds 300

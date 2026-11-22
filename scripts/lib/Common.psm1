@@ -149,17 +149,25 @@ function Wait-WorkspaceWorker {
     Optional dedicated visible monitor process; null in headless CI.
     .PARAMETER TimeoutSeconds
     Maximum wall-clock duration before terminating the owned worker tree.
+    .PARAMETER ShowRemoteJobs
+    Prints a bounded GitHub job summary in the current terminal from saved status.
     #>
-    param([Diagnostics.Process]$Worker,[string]$RunDirectory,[string]$WorkspaceRoot,[string]$Runner,[Diagnostics.Process]$Monitor,[int]$TimeoutSeconds)
+    param([Diagnostics.Process]$Worker,[string]$RunDirectory,[string]$WorkspaceRoot,[string]$Runner,[Diagnostics.Process]$Monitor,[int]$TimeoutSeconds,[switch]$ShowRemoteJobs)
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'ReportStreaming.psm1')) -DisableNameChecking -ErrorAction Stop
     $started=[DateTimeOffset]::UtcNow;$deadline=$started.AddSeconds($TimeoutSeconds);$timedOut=$false;$monitorRestarts=0;$monitorFailure=$false
     $monitorPath=[IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),'Watch-Tests.ps1')
     $streams=@(New-QuietReportStream ([IO.Path]::Combine($RunDirectory,'worker.stdout.log'));New-QuietReportStream ([IO.Path]::Combine($RunDirectory,'worker.stderr.log')))
+    $statusPath=[IO.Path]::Combine($RunDirectory,'status.json')
     $nextHeartbeat=$started
     while(!$Worker.HasExited){
         foreach($stream in $streams){foreach($line in (Read-QuietReportStream $stream -MaxLines 4)){if($line){Write-Host ('[report] '+$line)}}}
         if([DateTimeOffset]::UtcNow -ge $nextHeartbeat){
             Write-Host ('Progress: Follow active report | elapsed='+[int]([DateTimeOffset]::UtcNow-$started).TotalSeconds+'s | observed lines='+(($streams|ForEach-Object {$_.TotalLines}|Measure-Object -Sum).Sum)+' | PID='+$Worker.Id)
+            if($ShowRemoteJobs -and (Test-Path -LiteralPath $statusPath)){
+                $progress=Get-Content -LiteralPath $statusPath -Raw -Encoding utf8 -ErrorAction SilentlyContinue | ConvertFrom-Json -ErrorAction SilentlyContinue
+                if($progress.Case){Write-Host $progress.Case}
+                $progress.Runs | Group-Object State | Sort-Object Name | ForEach-Object {Write-Host ('[jobs] '+$_.Name+': '+$_.Count)}
+            }
             $nextHeartbeat=[DateTimeOffset]::UtcNow.AddSeconds(10)
         }
         if($Monitor -and $Monitor.HasExited){
@@ -175,7 +183,7 @@ function Wait-WorkspaceWorker {
         if([DateTimeOffset]::UtcNow -gt $deadline){$Worker.Kill($true);$timedOut=$true;break}
         [void][Threading.Tasks.Task]::Delay(500).GetAwaiter().GetResult()
     }
-    $summaryPath=[IO.Path]::Combine($RunDirectory,'summary.json');$statusPath=[IO.Path]::Combine($RunDirectory,'status.json')
+    $summaryPath=[IO.Path]::Combine($RunDirectory,'summary.json')
     if($timedOut -or $monitorFailure -or !(Test-Path -LiteralPath $summaryPath)){
         $state=if(Test-Path -LiteralPath $statusPath){Get-Content -LiteralPath $statusPath -Encoding utf8 -Raw|ConvertFrom-Json -AsHashtable}else{@{Project='FrenchExDev2.QuietCli.Core.PoSh + FrenchExDev2.QuietCli.Git.PoSh';Task='Tests compagnons';Workspace=$WorkspaceRoot;ProjectDirectory=$WorkspaceRoot;Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;StartedUtc=$started.ToString('o');ProcessId=$Worker.Id;Passed=0;Failed=0}}
         $state.State=if($timedOut){'Timeout'}else{'Crash'};$state.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o');$state.Failed=[int]$state.Failed+1
