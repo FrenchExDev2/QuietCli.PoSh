@@ -6,6 +6,8 @@ Source file: [`New-CiImpactPlan.ps1`](../../scripts/New-CiImpactPlan.ps1)
 
 Plans CI for an immutable Base/Revision pair using the complete `git diff --no-renames --name-only -z` path set. Native orchestration uses Ci.Process. With an output path, it writes `artifacts/ci-plan/plan.json`, `artifacts/ci-plan/impact.md` and the job outputs.
 
+Use `-MarkdownPath` to write a standalone Markdown forecast, independently of the standard job outputs and report bundle. Relative paths are resolved from `-WorkspaceRoot`. In revision mode, `-SourceRoot` optionally selects a materialized tree of the specified revision for reading definitions while Git history remains in `-WorkspaceRoot`. [Automatic post-commit plan](Commit-Workspace.md)
+
 For both `pull_request` and `push`, the planner selects affected suites from the diff and declared dependencies. Shared or unknown paths select every companion. Mixed paths combine their requirements.
 
 ### Preview the local branch

@@ -16,7 +16,6 @@
     "lib/CiImages.psm1::Get-QuietCiModuleImagePlan",
     "lib/CiImages.psm1::Get-QuietModuleContainerfile",
     "lib/CiImages.psm1::Read-QuietCiRegistryDocument",
-    "lib/CiPlanReport.psm1::Write-QuietCiPlanReport",
     "lib/CiProjectGraph.psm1::Get-QuietChangedPackages",
     "lib/CiProjectGraph.psm1::Get-QuietEvaluatedProjectInputs",
     "lib/CiProjectGraph.psm1::Get-QuietPackageDeclarations",

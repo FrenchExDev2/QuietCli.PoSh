@@ -10,6 +10,12 @@ This entry point preserves its parameters and defaults and forwards explicitly b
 
 ## Dependencies and effects
 
+After a successful commit, the entry point writes a CI forecast to `.artifacts/plan.md` in the selected checkout and prints its path. Use `-CiPlanPath` to choose another Markdown file. The default location is ignored by Git.
+
+```powershell
+./scripts/Commit-Workspace.ps1 -Message 'Update automation' -CiPlanPath .artifacts/review.md
+```
+
 Imports its local library using `-DisableNameChecking -ErrorAction Stop` and invokes `Invoke-QuietScriptCommitWorkspace`. The library retains the original operation guards and output contract. Import alone does not run the operation.
 
 <!-- script-contract:begin -->

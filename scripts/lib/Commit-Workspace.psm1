@@ -10,6 +10,7 @@ Before staging, runs Invoke-WorkspaceChecks.ps1: script layout/naming, script do
 new-script WhatIf/Confirm support, documentation credits and aggregate credits. The same registry
 validates exported staged snapshots with NoAll. Explicit skip switches or SkipCheck report omissions;
 NoSyncChecks skips documentation checks but retains independent script layout and safety checks.
+After a successful commit, writes the selective CI plan for that commit to CiPlanPath.
 Separately, warns (does not block) when a script file about to be committed (working tree, staged
 or untracked, relative to $WorkspaceRoot) has no matching change to its mirrored doc under
 docs/scripts/ - the doc Sync-ScriptsReadme.ps1 requires to exist, but whose content it never
@@ -28,6 +29,8 @@ snapshot supplies the manifest and documentation checks, including during WhatIf
 Required commit message, without trailers.
 .PARAMETER WorkspaceRoot
 QuietCli2 monorepo root.
+.PARAMETER CiPlanPath
+Markdown plan destination. Relative paths are anchored in WorkspaceRoot, with .artifacts/plan.md as the default.
 .PARAMETER Repository
 Only Workspace exists; retained to reject accidental requests for independent module commits.
 .PARAMETER CoAuthoredBy
@@ -89,6 +92,7 @@ Raises the binary/oversized-file sniffer's threshold to 2 MiB for this run only.
 param(
     [Parameter(Mandatory)][string]$Message,
     [string]$WorkspaceRoot = (Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),
+    [ValidateNotNullOrWhiteSpace()][string]$CiPlanPath = '.artifacts/plan.md',
     [ValidateSet('Workspace')][string]$Repository = 'Workspace',
     [string[]]$CoAuthoredBy = $null,
     [switch]$NoAll,
@@ -107,6 +111,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'Common.psm1')) -DisableNameChecking -ErrorAction Stop
+$WorkspaceRoot = [IO.Path]::GetFullPath($WorkspaceRoot, $PWD.ProviderPath)
+$planPath = [IO.Path]::GetFullPath($CiPlanPath, $WorkspaceRoot)
 $maxChangedFileBytes = ConvertTo-QuietByteCount $MaxChangedFileSize
 
 function Invoke-QuietCommitChecks {
@@ -276,6 +282,78 @@ function Test-QuietCommitFileSniffer {
     }
 }
 
+function Get-QuietCommitPlanRevision {
+    <#
+    .SYNOPSIS
+    Reads and validates a Git revision for the post-commit planner.
+    .PARAMETER Arguments
+    Git arguments for a query returning one SHA or an optional ref that does not exist.
+    #>
+    param([string[]]$Arguments)
+    $state = @{ Sha = $null }
+    $result = Invoke-CiProcess -FilePath git -ArgumentList $Arguments -WorkingDirectory $WorkspaceRoot -State $state -OnOutput {
+        param($record, $state)
+        if ($record.Stream -ceq 'stdout') { $state.Sha = $record.Text }
+    }
+    if ($result.Outcome -ceq 'Success' -and $state.Sha -cmatch '\A[a-f0-9]{40}\z') { return $state.Sha }
+    if ($result.ExitCode -ne 1 -or '--quiet' -cnotin $Arguments) { throw "CommitWorkspacePlanRevisionUnavailable: $($Arguments -join ' ')" }
+}
+
+function Write-QuietCommitCiPlan {
+    <#
+    .SYNOPSIS
+    Generates the Markdown CI forecast from the committed source tree.
+    .PARAMETER Revision
+    SHA of the newly created commit.
+    #>
+    param([string]$Revision)
+    $delivery = Get-QuietCommitPlanRevision @('rev-parse','--verify','--quiet','refs/remotes/origin/develop')
+    $base = if ($delivery) {
+        Get-QuietCommitPlanRevision @('merge-base',$delivery,$Revision)
+    } else {
+        Get-QuietCommitPlanRevision @('rev-parse','--verify','--quiet',($Revision+'^'))
+    }
+    if (!$base) { $base = '4b825dc642cb6eb9a060e54bf8d69288fbee4904' }
+
+    $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+    $snapshot = [IO.Path]::GetFullPath(('quiet-commit-plan-'+[guid]::NewGuid().ToString('N')), $temporaryRoot)
+    if ([IO.Path]::GetDirectoryName($snapshot) -ne [IO.Path]::TrimEndingDirectorySeparator($temporaryRoot)) {
+        throw 'CommitWorkspacePlanSnapshotPathInvalid'
+    }
+    $archive = $snapshot+'.tar'
+    [void][IO.Directory]::CreateDirectory($snapshot)
+    try {
+        $null = Invoke-WorkspaceNative git @('archive','--format=tar',('--output='+$archive),$Revision) $WorkspaceRoot
+        [System.Formats.Tar.TarFile]::ExtractToDirectory($archive,$snapshot,$false)
+        $coreName = 'FrenchExDev2.QuietCli.Core.PoSh'
+        $sourceCore = Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $coreName
+        $snapshotCore = Resolve-QuietWorkspacePath -WorkspaceRoot $snapshot -RelativePath $coreName
+        $parser = [IO.Path]::Combine($sourceCore,'resources/yaml/YamlDotNet.dll')
+        if ([IO.File]::Exists($parser)) {
+            $destination = [IO.Path]::Combine($snapshotCore,'resources/yaml/YamlDotNet.dll')
+            [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
+            [IO.File]::Copy($parser,$destination,$true)
+        }
+        $planner = [IO.Path]::Combine([IO.Path]::GetDirectoryName($PSScriptRoot),'New-CiImpactPlan.ps1')
+        # Loading the snapshot's YAML parser in a child releases its file before Windows cleanup.
+        $diagnostics = [Collections.Generic.Queue[string]]::new()
+        $result = Invoke-CiProcess -FilePath pwsh -ArgumentList @('-NonInteractive','-File',$planner,'-WorkspaceRoot',$WorkspaceRoot,'-SourceRoot',$snapshot,'-Base',$base,'-Revision',$Revision,'-MarkdownPath',$planPath) -WorkingDirectory $WorkspaceRoot -State $diagnostics -OnOutput {
+            param($record,$state)
+            if ($record.Stream -ceq 'stderr') {
+                if ($state.Count -eq 8) { $null = $state.Dequeue() }
+                $state.Enqueue($record.Text)
+            } else { Write-Host $record.Text }
+        }
+        if ($result.Outcome -cne 'Success' -or ![IO.File]::Exists($planPath)) {
+            throw "CommitWorkspacePlanUnavailable ($($result.Outcome)): $($diagnostics -join ' ')"
+        }
+        Write-Host "CI plan for $Revision written to $planPath"
+    } finally {
+        if ([IO.File]::Exists($archive)) { [IO.File]::Delete($archive) }
+        Remove-Item -LiteralPath $snapshot -Recurse -Force -ErrorAction Stop
+    }
+}
+
 $knownCoAuthors = @{Claude = 'Claude Sonnet 5 <noreply@anthropic.com>'; Codex = 'Codex <noreply@openai.com>' }
 $trailers = [Collections.Generic.List[string]]::new()
 foreach ($entry in $CoAuthoredBy) {
@@ -306,6 +384,13 @@ if (!$NoAll -and $PSCmdlet.ShouldProcess($WorkspaceRoot, "git add --all --")) {
 }
 if ($PSCmdlet.ShouldProcess($WorkspaceRoot, "git commit -m <message>")) {
     Invoke-WorkspaceNative git @('-C', $WorkspaceRoot, 'commit', '-m', $finalMessage) $WorkspaceRoot
+    $revision = $null
+    try {
+        $revision = Get-QuietCommitPlanRevision @('rev-parse','HEAD')
+        Write-QuietCommitCiPlan -Revision $revision
+    } catch {
+        Write-Warning "Commit succeeded ($revision). CI plan generation failed for '$planPath': $($_.Exception.Message)"
+    }
 }
 
 }
