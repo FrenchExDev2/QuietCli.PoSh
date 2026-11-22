@@ -90,11 +90,15 @@ Describe 'Start-QuietWorkBranch.ps1' {
         $run.Text|Should -Match 'Shelf retained: [0-9a-f]{40}'
     }
 
-    It 'accepts the whole branch name and does not shelve a clean checkout' {
-        $fixture=& $newFixture 'clean'
-        $run=& $start $fixture @('-Branch','chore/tidy')
+    It 'creates <Branch> using <Form> without shelving a clean checkout' -ForEach @(
+        @{Branch='chore/tidy';Form='Branch';Arguments=@('-Branch','chore/tidy')}
+        @{Branch='doc/multi-version';Form='Branch';Arguments=@('-Branch','doc/multi-version')}
+        @{Branch='doc/multi-version';Form='Kind and Name';Arguments=@('-Kind','doc','-Name','multi-version')}
+    ) {
+        $fixture=& $newFixture ('clean-'+$Form.Replace(' ','-')+'-'+$Branch.Replace('/','-'))
+        $run=& $start $fixture $Arguments
         $run.ExitCode|Should -Be 0 -Because $run.Text
-        & $git $fixture.Work @('branch','--show-current')|Should -BeExactly 'chore/tidy'
+        & $git $fixture.Work @('branch','--show-current')|Should -BeExactly $Branch
         & $git $fixture.Work @('stash','list')|Should -BeNullOrEmpty
         $run.Text|Should -Not -Match 'Shelf retained'
     }
@@ -151,11 +155,11 @@ Describe 'Start-QuietWorkBranch.ps1' {
         $null=& $advance $fixture 'upstream.txt'
         $before=& $snapshot $fixture
 
-        $run=& $start $fixture @('-Kind','feature','-Name','x','-WhatIf')
+        $run=& $start $fixture @('-Kind','doc','-Name','multi-version','-WhatIf')
 
         $run.ExitCode|Should -Be 0 -Because $run.Text
         # The WhatIf prefix is localized; the operation text is ours.
-        $run.Text|Should -Match ([regex]::Escape('Shelve pending work, pull origin/develop and create feature/x'))
+        $run.Text|Should -Match ([regex]::Escape('Shelve pending work, pull origin/develop and create doc/multi-version'))
         $after=& $snapshot $fixture
         foreach($property in 'Branch','Head','Status','Readme','Stashes','Branches'){$after.$property|Should -BeExactly $before.$property}
     }

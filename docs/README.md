@@ -14,6 +14,10 @@ Start with the [product README](../README.md) for installation, requirements and
 - [QuietCli with AI agents](../readmes/README-agents.md): install production instructions for an agent.
 - [PowerShell Gallery installation](README-PSGallery.md): install packages and check runtime and platform requirements.
 
+## How to
+
+- [Support multiple versions of a native executable](README-how-to-multi-versions.md) · choose an installation, register version-specific handlers and verify routing.
+
 ## Companions
 
 - [Use a companion](../readmes/README-modules.md) · import a module, inspect its handlers and check a first result.

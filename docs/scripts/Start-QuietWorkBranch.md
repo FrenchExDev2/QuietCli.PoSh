@@ -9,10 +9,10 @@ Source file: [`Start-QuietWorkBranch.ps1`](../../scripts/Start-QuietWorkBranch.p
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Start-QuietWorkBranch.psm1](lib/Start-QuietWorkBranch.md). See that library for the full operation, dependencies, examples, effects and validation limits.
 
 ```powershell
-./scripts/Start-QuietWorkBranch.ps1 -Kind feature -Name script-tests
+./scripts/Start-QuietWorkBranch.ps1 -Kind doc -Name multi-version
 ```
 
-The kind is `fix`, `feature`, `chore` or `companion`; releases are tags, created by `Invoke-QuietRelease.ps1`. The branch always starts from the freshly pulled `develop` (or `-BaseBranch`, never a work branch), not from the current branch. Pending work follows through a retained stash.
+Use `doc` for documentation branches. The other kinds are `fix`, `feature`, `chore` and `companion`. `-Branch doc/multi-version` is equivalent to the example above. The script starts from the freshly pulled delivery branch, `develop` by default, and restores pending work from a retained stash. Release branches belong to `Invoke-QuietRelease.ps1`.
 
 ## Dependencies and effects
 
