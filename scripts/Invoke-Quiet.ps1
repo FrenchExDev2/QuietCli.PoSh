@@ -6,7 +6,8 @@ Runs a PowerShell block with the checkout's local QuietCli Core and selected com
 .DESCRIPTION
 Imports the exact local Core manifest into script scope without rebuilding. ForceReload
 optionally forces module reimport; imports otherwise reuse loaded modules. Selected local
-companion manifests are imported after Core. The block runs in the current process, can call quiet, and receives a local
+companion manifests are imported after Core. An interactive console selects the built local Git companion by default.
+The block runs in the current process, can call quiet, and receives a local
 orchestration context with fresh Data and State hashtables unless Runtime is supplied.
 This context is separate from the native runtime passed to Output/Complete callbacks.
 Pipeline output and terminating errors from Code are passed to the caller unchanged.
@@ -16,7 +17,8 @@ PowerShell block invoked once with Runtime as its first positional argument.
 .PARAMETER Runtime
 Optional non-null caller-owned context, passed by reference without serialization.
 .PARAMETER Companion
-Optional local business companions loaded after Core.
+Local business companions loaded after Core. Omit to include built Git in an interactive console.
+Pass an empty array to select only Core.
 .PARAMETER ForceReload
 Passes Force to each selected local module import. Does not replace loaded assemblies.
 .EXAMPLE
@@ -49,9 +51,23 @@ $ErrorActionPreference = 'Stop'
 $workspaceRoot = Split-Path $PSScriptRoot -Parent
 $moduleNames = [Collections.Generic.List[string]]::new()
 $moduleNames.Add('FrenchExDev2.QuietCli.Core.PoSh')
-if($Companion.Count){
+$consoleDefaults = !$PSBoundParameters.ContainsKey('Companion') -and $Host.Name -eq 'ConsoleHost' -and
+    ![Console]::IsInputRedirected -and ![Console]::IsOutputRedirected
+if($Companion.Count -or $consoleDefaults){
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
     $available=@(Get-QuietWorkspaceProjects $workspaceRoot | Where-Object { !$_.IsTest -and $_.Suite -cne 'Core' })
+    if($consoleDefaults){
+        $git = $available | Where-Object Suite -CEQ 'Git'
+        if($git){
+            $framework = 'net{0}.0' -f [Math]::Min(11,[Environment]::Version.Major)
+            $gitBuilds = Get-QuietWorkspaceBuildProjects $workspaceRoot |
+                Where-Object { $_.Package -ceq $git.Name -and $_.TargetFramework -ceq $framework }
+            foreach($build in $gitBuilds){
+                $receipt = [IO.Path]::Combine($workspaceRoot,$build.Output,'build-manifest.json')
+                if(Test-Path -LiteralPath $receipt -PathType Leaf){$Companion=@($git.Suite);break}
+            }
+        }
+    }
     foreach($name in $Companion){
         $match=@($available | Where-Object Suite -IEQ $name)
         if($match.Count -ne 1){throw ('QuietLocalCompanionUnknown: '+$name)}

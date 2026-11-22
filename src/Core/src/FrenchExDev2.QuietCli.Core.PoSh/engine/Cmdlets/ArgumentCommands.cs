@@ -48,7 +48,13 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
     /// <inheritdoc />
     protected override void EndProcessing()
     {
-        try { WriteObject(Parse(Arguments ?? [], CurrentDirectory, SessionState.Path.CurrentLocation.Path, InteractivePrompt && QuietCallState.Depth == 0)); }
+        try
+        {
+            bool topLevel = QuietCallState.Depth == 0;
+            bool interactiveConsole = topLevel && Host.Name == "ConsoleHost" && !Console.IsInputRedirected && !Console.IsOutputRedirected;
+            WriteObject(Parse(Arguments ?? [], CurrentDirectory, SessionState.Path.CurrentLocation.Path,
+                InteractivePrompt && topLevel, interactiveConsole));
+        }
         catch (Exception error) when (error is not PipelineStoppedException) { FailWith(error); }
     }
 
@@ -59,7 +65,8 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
     private static string Text(object? value) => LanguagePrimitives.ConvertTo<string>(value) ?? "";
 
     /// <summary>Parses, validates and completes the request.</summary>
-    internal static Hashtable Parse(object?[] args, string currentDirectory, string location, bool interactivePrompt = false)
+    internal static Hashtable Parse(object?[] args, string currentDirectory, string location,
+        bool interactivePrompt = false, bool interactiveConsole = false)
     {
         var request = new Hashtable(StringComparer.OrdinalIgnoreCase);
         int index = 0;
@@ -146,7 +153,7 @@ public sealed class ReadQuietArgumentsCommand : QuietCmdlet
         };
         foreach (DictionaryEntry entry in defaults) if (!request.ContainsKey(entry.Key)) request[entry.Key] = entry.Value;
         if (request.ContainsKey("RecallId")) _ = InvocationPolicy.ExplicitDelivery(request);
-        else request["InvocationPolicy"] = InvocationPolicy.Resolve(request, interactivePrompt && exportRequest is null);
+        else request["InvocationPolicy"] = InvocationPolicy.Resolve(request, interactivePrompt && exportRequest is null, interactiveConsole);
         if (request.ContainsKey("AllowPartial") && !request.ContainsKey("RecallId")) throw new InvalidOperationException("AllowPartialRequiresReplay");
         if (saving && !Flag(request, "AsObject")) throw new InvalidOperationException("SaveRecallRequiresExplicitAsObject");
         if (request.ContainsKey("RecallName"))

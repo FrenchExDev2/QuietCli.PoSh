@@ -5,7 +5,23 @@ Source file: [`Invoke-Quiet.ps1`](../../scripts/Invoke-Quiet.ps1)
 <!-- script-source:end -->
 
 Runs a PowerShell scriptblock in the current process after importing the exact local
-Core manifest and optional selected companion manifests relative to `$PSScriptRoot`. Run from a built source checkout:
+Core manifest and the selected companion manifests relative to `$PSScriptRoot`. An
+attached interactive console includes the built local Git companion by default.
+Run from a built source checkout:
+
+```powershell
+./scripts/Invoke-Quiet.ps1 -Code { quiet -WatchOnKeypress git status }
+```
+
+The Spectre dashboard opens immediately. Press a key to refresh or Ctrl+C to stop.
+
+```powershell
+./scripts/Invoke-Quiet.ps1 -Companion Git -Code {
+    quiet -Watch 1s -AsObject git status | Select-Object -First 3
+}
+```
+
+The timer example returns three objects through the pipeline.
 
 ```powershell
 $result = ./scripts/Invoke-Quiet.ps1 -Code {
@@ -29,7 +45,7 @@ $result = ./scripts/Invoke-Quiet.ps1 -Code {
 if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
     !$result.Completeness.Analysis -or $result.Error.Count) { throw 'IncompleteSdkVersion' }
 # The runner imports Core into its own scope. Import it in the caller for delivery commands.
-Import-Module ./Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
+Import-Module ./src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1
 Out-QuietResult $result -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 ```
 
@@ -41,7 +57,8 @@ Out-QuietResult $result -AsYaml -MaxItems 5 -MaxOutputBytes 4096
   invocation creates a context containing fresh `Data` and `State` hashtables.
 - `Companion` accepts one or more discovered local companion names, such as `Git` and `Vagrant`. Core
   is always imported first; selected companions are deduplicated and imported from
-  their exact local manifests before `Code` runs. For companion dependency resolution,
+  their exact local manifests before `Code` runs. Use `-Companion @()` for Core alone.
+  With redirected input or output, select the required companions explicitly. For companion dependency resolution,
   Core is temporarily exposed in the process-global scope. Modules newly introduced by
   this invocation are removed in reverse order after `Code`; matching modules that were
   already loaded by the caller are retained.
@@ -75,7 +92,7 @@ The orchestration context is separate from each native call's callback runtime. 
 does not implement native runtime methods such as `Emit` or `Cancel`, and the runner
 does not synthesize an envelope, parent invocation, measurement context or native
 process. `quiet` retains its normal callback/registered-handler requirements.
-Select a companion explicitly when registered executable semantics are required:
+Select additional companions or declare script dependencies with `-Companion`:
 
 ```powershell
 ./scripts/Invoke-Quiet.ps1 -Companion Git -Code {
@@ -84,10 +101,9 @@ Select a companion explicitly when registered executable semantics are required:
 }
 ```
 
-The fixed set is intentional: arbitrary names never become import paths. Add a new
-reviewed companion to the set when it joins this source workspace. Dynamic parameter
-discovery is unnecessary for the current two companions and would make help and static
-automation analysis less predictable.
+Companion names resolve through the workspace catalogue. When Git is selected automatically,
+the catalogue supplies the build location for the current CLR, and the Git module verifies the
+assembly during import.
 
 ## Dependencies and effects
 
@@ -158,7 +174,7 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- grouped-layout-review:begin -->
 ## Grouped workspace contract
 
-Reviewed source: scripts/Invoke-Quiet.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
+Reviewed source: scripts/Invoke-Quiet.ps1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Imports do not execute business operations.
 
 Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.
 

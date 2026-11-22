@@ -26,7 +26,10 @@ internal sealed record InvocationPolicy(string Mode, int? UiMaxLines, Invocation
     internal static bool IsWatch(Hashtable request) => request.ContainsKey("Watch") || Flag(request, "WatchOnKeypress");
 
     /// <summary>Validates explicit overrides and supplies the defaults for the selected mode.</summary>
-    internal static InvocationPolicy Resolve(Hashtable request, bool interactivePrompt)
+    /// <param name="request">Validated facade options.</param>
+    /// <param name="interactivePrompt">Called directly from the console prompt.</param>
+    /// <param name="interactiveConsole">Console attached even when the call is made from a script.</param>
+    internal static InvocationPolicy Resolve(Hashtable request, bool interactivePrompt, bool interactiveConsole = false)
     {
         string mode = request.ContainsKey("Mode")
             ? LanguagePrimitives.ConvertTo<string>(request["Mode"]) ?? ""
@@ -38,8 +41,10 @@ internal sealed record InvocationPolicy(string Mode, int? UiMaxLines, Invocation
         if (defaults.Mode == "Agent" && delivery == InvocationDelivery.Object)
             throw new InvalidOperationException("AgentModeRequiresJsonOrYaml");
 
-        bool ui = request.ContainsKey("UI") ? Flag(request, "UI") : defaults.Ui;
-        if (IsWatch(request) && explicitDelivery is not null)
+        bool watching = IsWatch(request);
+        bool ui = request.ContainsKey("UI") ? Flag(request, "UI")
+            : defaults.Ui || (watching && interactiveConsole && !request.ContainsKey("Mode"));
+        if (watching && explicitDelivery is not null)
         {
             if (Flag(request, "UI")) throw new InvalidOperationException("WatchUiAndOutputFormatAreExclusive");
             ui = false;

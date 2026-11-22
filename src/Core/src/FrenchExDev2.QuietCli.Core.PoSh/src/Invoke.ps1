@@ -15,7 +15,8 @@ Executes a streaming command or registered handler; options precede the binary.
     -DataFactory and -StateFactory initialize fresh business values once per real call.
     -Watch 200ms or -Watch 1s repeats the call after each completed execution.
     -WatchOnKeypress runs again on a console key and can be combined with -Watch.
-    Watch uses a live dashboard at the console, or streams one result per execution when a format is selected.
+    Watch defaults to a live dashboard in an attached console, including from a script.
+    Selecting a delivery format streams one result per execution.
     Press Ctrl+C to stop, or supply -CancellationToken or -CancellationFile.
     .EXAMPLE
     $result = quiet -AsObject -Data @{Bytes=0L} -Output {param($e,$r) $r.Data.Bytes+=$e.ByteCount} pwsh -Command '"hello"'
