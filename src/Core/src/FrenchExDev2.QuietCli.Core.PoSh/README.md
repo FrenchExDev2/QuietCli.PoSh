@@ -207,7 +207,7 @@ quiet -Watch 1s -AsJson git status
 quiet -Watch 1s -AsYaml git status
 ```
 
-At an interactive prompt, one Spectre dashboard refreshes the latest snapshot in place. The Git view includes the branch, change counts and the presented paths. Use `-UI` to request the dashboard in a script attached to a terminal. Choose an explicit format (`-AsObject`, `-AsJson` or `-AsYaml`) to stream one result per execution using the normal delivery limits. JSON emits one compact document per result, and YAML starts each document with `---`. When terminal rendering is unavailable, Watch uses the selected mode's delivery defaults.
+In an attached interactive console, one Spectre dashboard refreshes the latest snapshot in place, including when a script calls `quiet`. The Git view includes the branch, change counts and the presented paths. Use `-UI` or `-UI:$false` to override the dashboard default for the selected mode. Choose an explicit format (`-AsObject`, `-AsJson` or `-AsYaml`) to stream one result per execution using the normal delivery limits. JSON emits one compact document per result, and YAML starts each document with `---`. When terminal rendering is unavailable, Watch uses the selected mode's delivery defaults.
 
 Ctrl+C, `-CancellationToken`, `-CancellationFile` and a pipeline consumer such as `Select-Object -First 3` can stop the watcher. A failed execution remains visible in its own result and later cycles can recover. A command with no available handler or callback returns `Unsupported` and ends the watcher. Use `-DataFactory` and `-StateFactory` for fresh per-execution values when callbacks mutate data or state. Watch is a top-level invocation option and requires a console input stream for keypresses.
 

@@ -7,9 +7,11 @@ Selected source workspace containing the built local engine.
 New external report directory; generated when omitted.
 .PARAMETER Worker
 Internal unredirected console worker. Use the ordinary entry point to retain the visible monitor.
+.PARAMETER GitWatch
+Also verifies that the local launcher loads Git and opens the Watch dashboard with its defaults.
 #>
 [CmdletBinding()]
-param([string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))),[string]$RunDirectory,[switch]$Worker)
+param([string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))),[string]$RunDirectory,[switch]$Worker,[switch]$GitWatch)
 $ErrorActionPreference='Stop'
 $root=$WorkspaceRoot
 $run=$RunDirectory
@@ -21,7 +23,9 @@ if(!$Worker){
     [void][IO.Directory]::CreateDirectory($run)
     $runner=Join-Path $PSHOME 'pwsh.exe'
     # This worker must own a real console: redirecting stdout would select a different product surface.
-    $process=Start-Process $runner -WindowStyle Normal -PassThru -ArgumentList @('-File',(ConvertTo-CiArgument $PSCommandPath),'-WorkspaceRoot',(ConvertTo-CiArgument $root),'-RunDirectory',(ConvertTo-CiArgument $run),'-Worker')
+    $workerArguments=@('-File',(ConvertTo-CiArgument $PSCommandPath),'-WorkspaceRoot',(ConvertTo-CiArgument $root),'-RunDirectory',(ConvertTo-CiArgument $run),'-Worker')
+    if($GitWatch){$workerArguments+='-GitWatch'}
+    $process=Start-Process $runner -WindowStyle Normal -PassThru -ArgumentList $workerArguments
     $monitorPath=Join-Path $root 'scripts/Watch-Tests.ps1'
     $monitor=Start-Process $runner -WindowStyle Normal -PassThru -ArgumentList @('-File',(ConvertTo-CiArgument $monitorPath),'-RunDirectory',(ConvertTo-CiArgument $run)) -RedirectStandardError (Join-Path $run 'monitor.stderr.log')
     'Monitor: pwsh -File '+(ConvertTo-CiArgument $monitorPath)+' -RunDirectory '+(ConvertTo-CiArgument $run)
@@ -160,6 +164,38 @@ public static class QuietUiConsoleProbe {
         }
         $state.Passed++
         Write-WorkspaceJson ([IO.Path]::Combine($run,$mode+'.json')) @{Cycles=$data.Cycles;Rows=$rows}
+    }
+    if($GitWatch){
+        $state.Case='Git Watch through the local launcher with default arguments'
+        Write-WorkspaceJson ([IO.Path]::Combine($run,'status.json')) $state
+        $ready=[IO.Path]::Combine($run,'git-watch.ready')
+        $cancel=[IO.Path]::Combine($run,'git-watch.cancel')
+        $data=@{Cycles=0;Ready=$ready}
+        $observe={
+            param($event,$runtime)
+            if($event.Type -eq 'GitStatusSummary'){
+                $data.Cycles++
+                if($data.Cycles -eq 1){[IO.File]::WriteAllText($data.Ready,'ready',[Text.UTF8Encoding]::new($false))}
+            }
+        }.GetNewClosure()
+        $launcher=[IO.Path]::Combine($root,'scripts/Invoke-Quiet.ps1')
+        if(Get-Module FrenchExDev2.QuietCli.Git.PoSh){throw 'Git was already loaded before testing launcher defaults.'}
+        Push-Location -LiteralPath $root
+        try{
+            $pending=[QuietUiConsoleProbe]::ExerciseWatchKeysAsync($ready,$cancel)
+            $output=@(& $launcher -Code {quiet -WatchOnKeypress -CancellationFile $cancel -Listeners $observe git status})
+            if($output.Count){throw "Git Watch did not open its dashboard; first outcome: $($output[0].Outcome)"}
+            $rows=$pending.GetAwaiter().GetResult()
+        }finally{Pop-Location}
+        if($data.Cycles -ne 3 -or ($rows -join "`n") -notmatch 'Watch git status' -or ($rows -join "`n") -notmatch 'Branch:'){
+            throw "Git Watch did not refresh its dashboard: cycles=$($data.Cycles)"
+        }
+        if(Get-Module FrenchExDev2.QuietCli.Git.PoSh){throw 'Git remained loaded after the launcher returned.'}
+        & $launcher -Companion @() -Code {
+            if(Get-Module FrenchExDev2.QuietCli.Git.PoSh){throw 'Core-only selection unexpectedly loaded Git.'}
+        }
+        $state.Passed++
+        Write-WorkspaceJson ([IO.Path]::Combine($run,'git-watch.json')) @{Cycles=$data.Cycles;Rows=$rows}
     }
     if([QuietUiConsoleProbe]::Errors.Count){$state.Failed++;$state.Error=[QuietUiConsoleProbe]::Errors.ToArray() -join '; '}
     $state.State=if($state.Failed){'Failed'}else{'Success'}
