@@ -14,11 +14,13 @@ internal static class UiFrameLayout
     /// <param name="glyph">Current animation frame.</param><param name="header">Project/task and path lines.</param>
     /// <param name="lanes">Ordered lane histories.</param><param name="width">Available display cells.</param>
     /// <param name="height">Available rows.</param>
-    internal static string[] Create(string glyph, IReadOnlyList<string> header, IReadOnlyList<LaneSnapshot> lanes, int width, int height)
+    /// <param name="minimumHeaderLines">Heading lines retained when lanes fill the viewport.</param>
+    internal static string[] Create(string glyph, IReadOnlyList<string> header, IReadOnlyList<LaneSnapshot> lanes, int width, int height, int minimumHeaderLines)
     {
         width = Math.Max(1, width); height = Math.Max(1, height);
         var rows = new List<string>();
-        int headerCount = Math.Min(header.Count, Math.Max(1, height - Math.Min(lanes.Count, height - 1)));
+        int reserved = Math.Min(minimumHeaderLines, Math.Max(1, height - 1));
+        int headerCount = Math.Min(header.Count, Math.Max(reserved, height - Math.Min(lanes.Count, height - 1)));
         for (int i = 0; i < headerCount; i++) rows.Add(i == 0 ? Heading(header[i], width) : Fit(header[i], width));
         int available = height - rows.Count;
         int visible = Math.Min(lanes.Count, available);

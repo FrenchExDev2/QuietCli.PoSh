@@ -63,7 +63,7 @@ $result.OnFailure({
 
 ## Companion modules
 
-- [Git](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md) supplies command handlers. With the companion imported, `quiet -AsObject git status` returns the branch, working tree entries and change counts.
+- [Git](src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/README.md) supplies command handlers. With the companion imported, `quiet -Watch 200ms git status` opens a live working-tree monitor. [Watch options](src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/README.md#watch-a-command)
 - [Vagrant](src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/README.md) provides structured events and a live dashboard for `vagrant up` and `vagrant provision`.
 
 ## Documentation

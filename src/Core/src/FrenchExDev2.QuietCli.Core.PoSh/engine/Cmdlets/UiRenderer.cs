@@ -33,13 +33,19 @@ public sealed class SpectreLiveSurface : IUiSurface
     private readonly ManualResetEventSlim started = new(false);
     private readonly ManualResetEventSlim stop = new(false);
     private readonly Thread thread;
+    private readonly int minimumHeaderLines;
     private LiveDisplayContext? context;
     private Exception? startupError;
 
     /// <summary>Starts the background Live session and waits for it to attach. Rethrows synchronously if Spectre
     /// refuses a nested Live/Status/Progress session in this process.</summary>
-    public SpectreLiveSurface()
+    public SpectreLiveSurface() : this(1) { }
+
+    /// <summary>Starts a live surface that preserves headings when lanes fill the viewport.</summary>
+    /// <param name="minimumHeaderLines">Heading rows protected from overflowing lanes.</param>
+    internal SpectreLiveSurface(int minimumHeaderLines)
     {
+        this.minimumHeaderLines = minimumHeaderLines;
         thread = new Thread(Run) { IsBackground = true, Name = "QuietUiLive" };
         thread.Start();
         started.Wait();
@@ -75,11 +81,11 @@ public sealed class SpectreLiveSurface : IUiSurface
         }
     }
 
-    private static IRenderable Compose(string spinnerGlyph, IReadOnlyList<string> header, IReadOnlyList<LaneSnapshot> lanes)
+    private IRenderable Compose(string spinnerGlyph, IReadOnlyList<string> header, IReadOnlyList<LaneSnapshot> lanes)
     {
         int width = Math.Max(1, AnsiConsole.Profile.Width - 1);
         int height = Math.Max(1, AnsiConsole.Profile.Height - 1);
-        return new Rows(UiFrameLayout.Create(spinnerGlyph, header, lanes, width, height).Select(line => new Text(line)));
+        return new Rows(UiFrameLayout.Create(spinnerGlyph, header, lanes, width, height, minimumHeaderLines).Select(line => new Text(line)));
     }
 
     /// <inheritdoc />
@@ -157,6 +163,8 @@ public sealed class QuietUiRenderer : IDisposable
     private readonly Action<string, string, string> logFailure;
     private readonly Stopwatch clock = Stopwatch.StartNew();
     private readonly System.Threading.Timer tickTimer;
+    private readonly string[]? watchHeader;
+    private (string[] Header, IReadOnlyList<LaneSnapshot> Lanes) watchFrame;
     private string[] header = [];
     private volatile bool failed;
     private volatile bool disposed;
@@ -177,12 +185,41 @@ public sealed class QuietUiRenderer : IDisposable
     /// <param name="surface">Render target; swappable for testing.</param>
     /// <param name="logFailure">Reports a non-fatal rendering failure (code, phase, message) without throwing.</param>
     public QuietUiRenderer(int maxLines, IUiSurface surface, Action<string, string, string> logFailure)
+        : this(maxLines, surface, logFailure, null) { }
+
+    /// <summary>Creates a renderer that can hold a completed Watch frame while the next one is being prepared.</summary>
+    /// <param name="maxLines">History depth per lane within a cycle.</param>
+    /// <param name="surface">Render target.</param>
+    /// <param name="logFailure">Reports a non-fatal rendering failure.</param>
+    /// <param name="watchHeader">Persistent Watch heading, or null for the ordinary live dashboard.</param>
+    internal QuietUiRenderer(int maxLines, IUiSurface surface, Action<string, string, string> logFailure, string[]? watchHeader)
     {
         if (maxLines <= 0) throw new ArgumentOutOfRangeException(nameof(maxLines), "MaxLinesMustBePositive");
         this.maxLines = maxLines;
         this.surface = surface;
         this.logFailure = logFailure;
+        this.watchHeader = watchHeader;
+        watchFrame = (watchHeader ?? [], []);
         tickTimer = new System.Threading.Timer(_ => Tick(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
+    }
+
+    /// <summary>Replaces the completed Watch frame and clears per-cycle staging, so removed lanes disappear.</summary>
+    /// <param name="status">Time and outcome of the completed cycle.</param>
+    /// <param name="preview">Bounded fallback lines when the cycle did not supply its own lanes.</param>
+    internal void PublishWatchFrame(string status, Func<string[]> preview)
+    {
+        IReadOnlyList<LaneSnapshot> snapshot;
+        string[] headings;
+        lock (sync)
+        {
+            snapshot = SnapshotLanes();
+            headings = [.. watchHeader!, status, .. header];
+            header = [];
+            lanes.Clear();
+            laneOrder.Clear();
+        }
+        if (snapshot.Count == 0) headings = [.. headings, .. preview()];
+        lock (sync) watchFrame = (headings, snapshot);
     }
 
     /// <summary>Sets the static lines drawn above the lanes (e.g. Vagrantfile path, provider mode); replaces any previous header.</summary>
@@ -242,25 +279,32 @@ public sealed class QuietUiRenderer : IDisposable
     {
         string glyph;
         string[] snapshotHeader;
-        var snapshotLanes = new List<LaneSnapshot>();
+        IReadOnlyList<LaneSnapshot> snapshotLanes;
         lock (sync)
         {
-            int frame = (int)(clock.ElapsedMilliseconds / Math.Max(1, (long)AnimatedGlyph.Interval.TotalMilliseconds)) % AnimatedGlyph.Frames.Count;
+            int frame = (int)((clock.ElapsedMilliseconds / Math.Max(1, (long)AnimatedGlyph.Interval.TotalMilliseconds)) % AnimatedGlyph.Frames.Count);
             glyph = AnimatedGlyph.Frames[frame];
-            snapshotHeader = header;
-            foreach (string key in laneOrder)
-            {
-                Lane lane = lanes[key];
-                var lines = new List<string>(ReadTail(lane));
-                if (lane.Current is not null) lines.Add(Format(lane.Current, key));
-                if (lines.Count > maxLines) lines = lines.GetRange(lines.Count - maxLines, maxLines);
-                snapshotLanes.Add(new LaneSnapshot(key, lines));
-            }
+            (snapshotHeader, snapshotLanes) = watchHeader is null ? (header, SnapshotLanes()) : watchFrame;
         }
         var watch = Stopwatch.StartNew();
         try { surface.Draw(glyph, snapshotHeader, snapshotLanes); }
         catch (Exception error) { failed = true; logFailure("UiRenderFailed", "Ui", error.Message); }
         finally { RenderMs += watch.Elapsed.TotalMilliseconds; }
+    }
+
+    /// <summary>Copies the current lane histories into a frame. The caller holds the state lock.</summary>
+    private IReadOnlyList<LaneSnapshot> SnapshotLanes()
+    {
+        var snapshot = new List<LaneSnapshot>(laneOrder.Count);
+        foreach (string key in laneOrder)
+        {
+            Lane lane = lanes[key];
+            var lines = new List<string>(ReadTail(lane));
+            if (lane.Current is not null) lines.Add(Format(lane.Current, key));
+            if (lines.Count > maxLines) lines = lines.GetRange(lines.Count - maxLines, maxLines);
+            snapshot.Add(new LaneSnapshot(key, lines));
+        }
+        return snapshot;
     }
 
     private static PSObject? AsPSObject(object? value) => value is null ? null : value as PSObject ?? PSObject.AsPSObject(value);

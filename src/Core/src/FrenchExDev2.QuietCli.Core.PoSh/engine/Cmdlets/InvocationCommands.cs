@@ -98,8 +98,10 @@ internal static class ApplicationResolver
 
 /// <summary>Owns one caller-local invocation lifecycle: native execution or handler, result envelope, telemetry and delivery.</summary>
 [Cmdlet(VerbsLifecycle.Invoke, "QuietCall")]
-public sealed class InvokeQuietCallCommand : DeliveryCmdlet
+public sealed partial class InvokeQuietCallCommand : DeliveryCmdlet
 {
+    private volatile bool stopping;
+
     /// <summary>Validated facade options.</summary>
     [Parameter(Position = 0, Mandatory = true)]
     public Hashtable Request { get; set; } = new();
@@ -107,9 +109,37 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
     /// <inheritdoc />
     protected override void EndProcessing()
     {
-        try { if (Run(Request) is { } output) WriteObject(output); }
+        try
+        {
+            if (Request.ContainsKey("RecallId"))
+            {
+                WriteObject(RunSavedRecall(Request));
+                return;
+            }
+            InvocationPolicy policy = InvocationPolicy.ForRequest(Request);
+            bool watching = InvocationPolicy.IsWatch(Request);
+
+            bool Execute(QuietUiRenderer? ui, Func<bool>? cancelled)
+            {
+                PSObject result = RunInvocation(Request, ui, cancelled);
+                if (stopping) return false;
+                var call = (Hashtable)Members.Get(Members.Get(result, "Internal"), "Request")!;
+                string outcome = Text(Members.Get(result, "Outcome"));
+                if (ui is null)
+                    WriteObject(DeliverInvocation(result, call, policy.Delivery, yamlDocumentStart: watching));
+                else
+                    ui.PublishWatchFrame($"{DateTime.Now:HH:mm:ss} | {outcome}", () => WatchPreview(result, call));
+                return outcome != "Unsupported";
+            }
+
+            if (watching) RunWatch(Request, policy.UiMaxLines, Execute);
+            else Execute(null, null);
+        }
         catch (Exception error) when (error is not PipelineStoppedException) { FailWith(error); }
     }
+
+    /// <inheritdoc />
+    protected override void StopProcessing() => stopping = true;
 
     /// <summary>Evaluates zero-argument factories on a copy so each real call gets fresh business values.</summary>
     internal static Hashtable ApplyFactories(Hashtable request)
@@ -160,18 +190,20 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
 
     private static string StorageMessage(Exception error) => error is RuntimeException { InnerException: { } inner } ? inner.Message : error.Message;
 
-    /// <summary>Runs one invocation and returns its result, or the delivered text.</summary>
+    /// <summary>Runs one invocation through finalization and returns its local result.</summary>
     /// <param name="original">Validated facade options.</param>
-    private object? Run(Hashtable original)
+    /// <param name="watchUi">Caller-owned dashboard shared by all Watch cycles.</param>
+    /// <param name="watchCancellation">Stop check for the Watch cycle and its native children.</param>
+    private PSObject RunInvocation(Hashtable original, QuietUiRenderer? watchUi = null, Func<bool>? watchCancellation = null)
     {
         bool measurePhases = original.ContainsKey("MeasurePhases") && LanguagePrimitives.IsTrue(original["MeasurePhases"]);
-        if (original.ContainsKey("RecallId")) return RunSavedRecall(original);
         if (QuietCallState.RecallDepth > 0) throw new InvalidOperationException("NativeExecutionUnavailableDuringRecall");
         Hashtable request = ApplyFactories(original);
         var allocation = new AllocationMeter();
         // A new root request may establish a fresh engine; no outstanding invocation is retried.
         if (QuietCallState.Depth == 0 && QuietSession.Engine is { Broken: true }) EngineLifecycle.Stop(IpcTimeout);
-        QuietRuntime runtime = CreateRuntime(request, QuietCallState.Current, QuietSession.SessionId);
+        QuietRuntime runtime = CreateRuntime(request, QuietCallState.Current, QuietSession.SessionId,
+            watchUi: watchUi, watchCancellation: watchCancellation);
         var watch = System.Diagnostics.Stopwatch.StartNew();
         string outcome = "Success";
         PSObject result;
@@ -205,7 +237,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
                     catch (Exception) { runtime.Execution = Execution("Failed", false, "Unknown"); }
                 }
             }
-            finally { runtime.Ui?.Dispose(); }
+            finally { if (watchUi is null) runtime.Ui?.Dispose(); }
             if (runtime.Execution is not null && Text(PropertyReader.Get(runtime.Execution, "Outcome")) != "Success") outcome = Text(PropertyReader.Get(runtime.Execution, "Outcome"));
             RecallCapture? diskRecall = null;
             if (runtime.RecallWriter is { } writer)
@@ -302,7 +334,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
             }
         }
         QuietCallState.Current?.Children.Add(result);
-        return DeliverInvocation(result, request, runtime.Delivery);
+        return result;
     }
 
     /// <summary>Resolves and runs a handler with access to Core for version probes and complementary commands.</summary>
@@ -386,7 +418,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
         tokens.AddRange(["-FilePath", runtime.Request["FilePath"], "-ArgumentList", command["Arguments"]]);
         Hashtable child = ReadQuietArgumentsCommand.Parse(tokens.ToArray(), CurrentDirectory, Text(runtime.Request["WorkingDirectory"]));
         if (!QuietRuntime.HasAnalysisCallback(child)) throw new InvalidOperationException("QuietHandlerPlanRequiresCallbacks");
-        return Run(child) ?? throw new InvalidOperationException("QuietHandlerPlanMissingResult");
+        return RunInvocation(child);
     }
 
     /// <summary>Options a companion can set for the prepared native child, without changing caller delivery.</summary>
@@ -400,7 +432,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
 
     /// <summary>Routes quiet -RecallId before native resolution, probing or lifecycle orchestration; replays offline and delivers.</summary>
     /// <param name="request">Validated replay-only facade options.</param>
-    private object? RunSavedRecall(Hashtable request)
+    private object RunSavedRecall(Hashtable request)
     {
         var replay = request["ReplayOptions"] as Hashtable ?? new Hashtable(StringComparer.OrdinalIgnoreCase);
         string root = request.ContainsKey("RecallRoot") ? Text(request["RecallRoot"]) : "";
@@ -410,11 +442,15 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
     }
 
     /// <summary>Returns the local result or applies the selected bounded serializer.</summary>
-    private object DeliverInvocation(PSObject result, Hashtable request, InvocationDelivery delivery)
+    /// <param name="result">Finalized result of one invocation.</param>
+    /// <param name="request">Caller delivery options.</param>
+    /// <param name="delivery">Selected output format.</param>
+    /// <param name="yamlDocumentStart">Includes the YAML stream separator in the delivered representation.</param>
+    private object DeliverInvocation(PSObject result, Hashtable request, InvocationDelivery delivery, bool yamlDocumentStart = false)
     {
         if (delivery == InvocationDelivery.Object) return result;
         return Deliver(result, Convert.ToInt32(QuietRuntime.Unwrap(request["MaxItems"]), CultureInfo.InvariantCulture), Convert.ToInt32(QuietRuntime.Unwrap(request["MaxOutputBytes"]), CultureInfo.InvariantCulture),
-            Text(request["Tokenizer"]), delivery == InvocationDelivery.Yaml);
+            Text(request["Tokenizer"]), delivery == InvocationDelivery.Yaml, yamlDocumentStart);
     }
 
     /// <summary>Saves counters without serializing or enumerating Result.Data.</summary>

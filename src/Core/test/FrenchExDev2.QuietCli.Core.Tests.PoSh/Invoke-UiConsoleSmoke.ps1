@@ -52,6 +52,16 @@ public static class QuietUiConsoleProbe {
     /// <summary>Reads visible console cells without changing the console.</summary>
     [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
     private static extern bool ReadConsoleOutputCharacterW(IntPtr handle, StringBuilder text, uint length, Coord origin, out uint read);
+    [StructLayout(LayoutKind.Explicit, Size=20)]
+    private struct KeyInput {
+        [FieldOffset(0)] public ushort EventType;
+        [FieldOffset(4)] public int KeyDown;
+        [FieldOffset(8)] public ushort Repeat;
+        [FieldOffset(10)] public ushort VirtualKey;
+        [FieldOffset(14)] public ushort Character;
+    }
+    [DllImport("kernel32.dll", EntryPoint="WriteConsoleInputW", SetLastError=true)]
+    private static extern bool WriteConsoleInput(IntPtr handle, ref KeyInput input, uint length, out uint written);
     /// <summary>Failures collected by the renderer's timer thread.</summary>
     public static readonly ConcurrentQueue<string> Errors = new();
     /// <summary>Records an observer error without requiring a PowerShell runspace.</summary>
@@ -62,6 +72,25 @@ public static class QuietUiConsoleProbe {
     public static async System.Threading.Tasks.Task CancelAfterAsync(string path) {
         await System.Threading.Tasks.Task.Delay(1000);
         await System.IO.File.WriteAllTextAsync(path,"cancel",new UTF8Encoding(false));
+    }
+    /// <summary>Sends two key-down events to this worker's own console and records the last visible frame.</summary>
+    /// <param name="ready">Signal created by the first completed Watch cycle.</param>
+    /// <param name="cancel">Signal that stops the watcher after the capture.</param>
+    public static async System.Threading.Tasks.Task<string[]> ExerciseWatchKeysAsync(string ready, string cancel) {
+        try {
+            for(int i=0; i<300 && !System.IO.File.Exists(ready); i++) await System.Threading.Tasks.Task.Delay(25);
+            if(!System.IO.File.Exists(ready)) throw new TimeoutException("Watch did not complete its first cycle.");
+            for(int i=0; i<2; i++) {
+                await System.Threading.Tasks.Task.Delay(500);
+                var key=new KeyInput { EventType=1, KeyDown=1, Repeat=1, VirtualKey=0x20, Character=0x20 };
+                if(!WriteConsoleInput(GetStdHandle(-10),ref key,1,out uint written) || written!=1)
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+            await System.Threading.Tasks.Task.Delay(750);
+            return Capture();
+        } finally {
+            await System.IO.File.WriteAllTextAsync(cancel,"cancel",new UTF8Encoding(false));
+        }
     }
     /// <summary>Captures the current viewport as rows of console cells.</summary>
     public static string[] Capture() {
@@ -110,6 +139,28 @@ public static class QuietUiConsoleProbe {
     $next=quiet -AsObject -Ui -TimeoutSeconds 10 -FilePath $dotnet -ArgumentList @($fixture,'args','after-cancel') -Output {param($event,$runtime)}
     if($next.Outcome -eq 'Success' -and !@($next.Error | Where-Object Code -Like 'Ui*').Count){$state.Passed++}else{$state.Failed++}
     Write-WorkspaceJson (Join-Path $run 'cancellation.json') @{Outcome=$cancelled.Outcome;Execution=$cancelled.Execution;Error=$cancelled.Error;ChildRemoved=[bool]$removed;NextOutcome=$next.Outcome;NextErrors=$next.Error}
+    foreach($mode in 'keypress','keypress-or-timer'){
+        $state.Case='Watch '+$mode
+        Write-WorkspaceJson ([IO.Path]::Combine($run,'status.json')) $state
+        $ready = [IO.Path]::Combine($run,$mode+'.ready')
+        $cancel = [IO.Path]::Combine($run,$mode+'.cancel')
+        $data = @{ Cycles = 0; Ready = $ready }
+        $pending = [QuietUiConsoleProbe]::ExerciseWatchKeysAsync($ready,$cancel)
+        $conditions = if($mode -eq 'keypress'){@{WatchOnKeypress=$true}}else{@{Watch='30s';WatchOnKeypress=$true}}
+        $output = @(quiet @conditions -UI -CancellationFile $cancel -TimeoutSeconds 5 -Data $data -Complete {
+            param($runtime)
+            $data = $runtime.Data
+            $data.Cycles++
+            $runtime.Ui.Write('Completed cycle '+$data.Cycles,'watch-test')
+            if($data.Cycles -eq 1){[IO.File]::WriteAllText($data.Ready,'ready',[Text.UTF8Encoding]::new($false))}
+        } -FilePath $dotnet -ArgumentList @($fixture,'args','watch'))
+        $rows = $pending.GetAwaiter().GetResult()
+        if($data.Cycles -ne 3 -or $output.Count -ne 0 -or ($rows -join "`n") -notmatch 'Completed cycle 3'){
+            throw "Watch keyboard or live output changed: $mode, cycles=$($data.Cycles), outputs=$($output.Count)"
+        }
+        $state.Passed++
+        Write-WorkspaceJson ([IO.Path]::Combine($run,$mode+'.json')) @{Cycles=$data.Cycles;Rows=$rows}
+    }
     if([QuietUiConsoleProbe]::Errors.Count){$state.Failed++;$state.Error=[QuietUiConsoleProbe]::Errors.ToArray() -join '; '}
     $state.State=if($state.Failed){'Failed'}else{'Success'}
 }catch{$state.State='Failed';$state.Failed++;$state.Error=$_.ToString()}
@@ -117,6 +168,6 @@ finally{
     if($renderer){$renderer.Dispose()}
     [Console]::CursorVisible=$true
     $state.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o')
-    Write-WorkspaceJson (Join-Path $run 'summary.json') @{State=$state;Frames=$frames.ToArray();Scope='Real console/Spectre resize, native cancellation, child termination and surface reuse; physical Ctrl+C not exercised'}
+    Write-WorkspaceJson (Join-Path $run 'summary.json') @{State=$state;Frames=$frames.ToArray();Scope='Real console and Spectre resize, native cancellation, child termination, surface reuse and Watch keyboard input; physical Ctrl+C not exercised'}
     Write-WorkspaceJson (Join-Path $run 'status.json') $state
 }

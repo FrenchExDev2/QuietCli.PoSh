@@ -210,6 +210,7 @@ Tests independently prepared repositories, hook counts and local bare push targe
         'compiled Git parsers preserve migration vectors and measure local costs'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'compiled Git formats and argument bindings satisfy independent assertions'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'status distinguishes unborn state and Unicode untracked paths'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
+        'status Watch observes working tree changes between snapshots'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'commit mutates once and exposes independently observed HEAD'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'status preserves staged and unstaged observation scope'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}
         'push observes porcelain references against a local bare target'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','GitProcess','EngineState')}

@@ -20,6 +20,8 @@ public sealed class QuietRuntime
     internal Func<Hashtable, object>? CompanionCommandRunner { get; set; }
     /// <summary>Resolved telemetry policy, copied into native start metadata without business data.</summary>
     internal bool PrepareMeasurements { get; set; }
+    /// <summary>Watch cancellation shared by a cycle and any native children it owns.</summary>
+    internal Func<bool>? WatchCancellation { get; init; }
 
     /// <summary>Unique identity of this invocation.</summary>
     public string InvocationId { get; internal set; } = "";
@@ -37,8 +39,6 @@ public sealed class QuietRuntime
     public string Mode { get; internal init; } = "Script";
     /// <summary>Display form of the original native command, when known.</summary>
     public string? ArgvString { get; internal init; }
-    /// <summary>Caller-side delivery chosen with the runtime's mode.</summary>
-    internal InvocationDelivery Delivery { get; init; }
     /// <summary>Caller-owned business value.</summary>
     public object? Data { get; set; }
     /// <summary>Caller-owned auxiliary state.</summary>
@@ -319,9 +319,14 @@ public sealed class QuietRuntime
                 Cancel();
             }
         }
+        bool cancelled = false;
         while (!Completed)
         {
-            if ((request.ContainsKey("CancellationFile") && PathExists(Convert.ToString(QuietRuntime.Unwrap(request["CancellationFile"]), CultureInfo.InvariantCulture)!)) || (request.ContainsKey("CancellationToken") && IsCancelled(request["CancellationToken"]))) Cancel();
+            if (!cancelled && (WatchCancellation?.Invoke() == true || CancellationRequested(request)))
+            {
+                Cancel();
+                cancelled = true;
+            }
             ReadEvent();
         }
         CompleteStreams();
@@ -435,6 +440,12 @@ public sealed class QuietRuntime
 
     /// <summary>Reads IsCancellationRequested from a token or a token-like object.</summary>
     private static bool IsCancelled(object? token) => Unwrap(token) is CancellationToken real ? real.IsCancellationRequested : LanguagePrimitives.IsTrue(PropertyReader.Get(token, "IsCancellationRequested"));
+
+    /// <summary>Checks the caller's explicit cancellation file or token.</summary>
+    /// <param name="request">Validated facade options.</param>
+    internal static bool CancellationRequested(Hashtable request) =>
+        (request.ContainsKey("CancellationFile") && PathExists(Convert.ToString(Unwrap(request["CancellationFile"]), CultureInfo.InvariantCulture)!))
+        || (request.ContainsKey("CancellationToken") && IsCancelled(request["CancellationToken"]));
 }
 
 /// <summary>Builds caller-local runtimes bound to the engine exchange; shared by the cmdlets that start invocations.</summary>
@@ -445,7 +456,10 @@ public abstract class RuntimeCmdlet : EngineCmdlet
     /// <param name="parent">Enclosing runtime, if the call is nested.</param>
     /// <param name="sessionId">Identity of the PowerShell session.</param>
     /// <param name="recall">Captured evidence for an offline replay, or null for a live invocation.</param>
-    internal QuietRuntime CreateRuntime(Hashtable request, QuietRuntime? parent, object? sessionId, RecallCapture? recall = null)
+    /// <param name="watchUi">Shared dashboard owned by the watcher.</param>
+    /// <param name="watchCancellation">Cancellation check owned by the watcher.</param>
+    internal QuietRuntime CreateRuntime(Hashtable request, QuietRuntime? parent, object? sessionId, RecallCapture? recall = null,
+        QuietUiRenderer? watchUi = null, Func<bool>? watchCancellation = null)
     {
         string id = Guid.NewGuid().ToString("N");
         InvocationPolicy policy = InvocationPolicy.ForRequest(request);
@@ -455,8 +469,9 @@ public abstract class RuntimeCmdlet : EngineCmdlet
             Context = request.ContainsKey("Context") ? request["Context"] : parent?.Context,
             State = request.ContainsKey("State") ? request["State"] : new Hashtable(),
             PrepareMeasurements = LanguagePrimitives.IsTrue(Setting("telemetry.enabled")),
-            Mode = policy.Mode, Delivery = policy.Delivery, ArgvString = recall?.ArgvString ?? NativeCommandLine.Display(request),
-            IsRecall = recall is not null, Recall = recall,
+            Mode = policy.Mode, ArgvString = recall?.ArgvString ?? NativeCommandLine.Display(request),
+            IsRecall = recall is not null, Recall = recall, Ui = watchUi,
+            WatchCancellation = watchCancellation ?? parent?.WatchCancellation,
         };
         if (request.ContainsKey("Data")) runtime.Data = request["Data"];
         runtime.CollectEvents = request.ContainsKey("CollectEvents") && LanguagePrimitives.IsTrue(request["CollectEvents"]);
@@ -470,7 +485,7 @@ public abstract class RuntimeCmdlet : EngineCmdlet
         }
         if (request.ContainsKey("RecallOptions"))
             runtime.RecallCollector = new RecallCollector((RecallOptions)LanguagePrimitives.ConvertTo(request["RecallOptions"], typeof(RecallOptions)), runtime.RecallWriter?.RecallId, name);
-        if (policy.UiMaxLines is { } maxLines)
+        if (watchCancellation is null && policy.UiMaxLines is { } maxLines)
         {
             IUiSurface surface;
             try { surface = AnsiConsole.Profile.Capabilities.Interactive ? new SpectreLiveSurface() : new AppendOnlySurface(); }

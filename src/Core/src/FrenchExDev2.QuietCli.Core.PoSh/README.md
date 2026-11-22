@@ -193,6 +193,24 @@ It clips paths and messages at Unicode text-element boundaries, strips terminal 
 the project/task heading in narrow windows and reduces visible lane history to the available height.
 These presentation limits do not truncate business events explicitly retained with `-CollectEvents`. Collection is local to each invocation and does not propagate to nested calls. JSON/YAML delivery includes `Events` only when requested and applies the normal delivery budgets.
 
+### Watch a command
+
+`-Watch` starts the command immediately and waits the requested delay after each completed execution. Use a positive whole number with an `ms` or `s` suffix, such as `200ms` or `1s`. Executions are sequential. `-WatchOnKeypress` starts immediately and waits for a console key between executions. Combine both options to refresh on a keypress or when the delay expires, whichever comes first.
+
+```powershell
+Import-Module FrenchExDev2.QuietCli.Git.PoSh
+quiet -Watch 200ms git status
+quiet -WatchOnKeypress git status
+quiet -Watch 1s -WatchOnKeypress git status
+quiet -Watch 200ms -AsObject git status | Select-Object -First 3
+quiet -Watch 1s -AsJson git status
+quiet -Watch 1s -AsYaml git status
+```
+
+At an interactive prompt, one Spectre dashboard refreshes the latest snapshot in place. The Git view includes the branch, change counts and the presented paths. Use `-UI` to request the dashboard in a script attached to a terminal. Choose an explicit format (`-AsObject`, `-AsJson` or `-AsYaml`) to stream one result per execution using the normal delivery limits. JSON emits one compact document per result, and YAML starts each document with `---`. When terminal rendering is unavailable, Watch uses the selected mode's delivery defaults.
+
+Ctrl+C, `-CancellationToken`, `-CancellationFile` and a pipeline consumer such as `Select-Object -First 3` can stop the watcher. A failed execution remains visible in its own result and later cycles can recover. A command with no available handler or callback returns `Unsupported` and ends the watcher. Use `-DataFactory` and `-StateFactory` for fresh per-execution values when callbacks mutate data or state. Watch is a top-level invocation option and requires a console input stream for keypresses.
+
 ## Configuration
 
 Settings live in `~/.quietcli/config.yaml`; `QUIETCLI_CONFIG_DIRECTORY` is the sole product configuration environment override. Use `New-QuietCliConfiguration`, `Test-QuietCliConfiguration`, `Get-QuietCliConfiguration` and `Import-QuietCliConfiguration` to manage them explicitly.
