@@ -185,7 +185,7 @@ internal static class RecallReplayer
             ("Internal", new Hashtable(StringComparer.OrdinalIgnoreCase) { ["Sources"] = new System.Collections.Specialized.OrderedDictionary(), ["Request"] = request, ["Administrative"] = true, ["Offline"] = true }),
         })
             result.Properties.Add(new PSNoteProperty(name, value));
-        result.TypeNames.Insert(0, "QuietCli2.Result");
+        ResultMethods.Attach(result);
         FinalProperties.Set(result, "Execution", execution);
         FinalProperties.Set(result, "Completeness", completeness);
         FinalProperties.Set(result, "Recall", capture);

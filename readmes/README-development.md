@@ -59,9 +59,7 @@ $r = quiet -AsObject -C sdk-version -WorkingDirectory (Get-Location).Path `
         [pscustomobject]@{ SdkVersion = $runtime.Data.Version }
     } `
     dotnet --version
-if ($r.Outcome -ne 'Success' -or !$r.Completeness.Source -or !$r.Completeness.Analysis -or $r.Error.Count) {
-    throw 'IncompleteSdkVersion'
-}
+[void]$r.OnFailure({ throw 'IncompleteSdkVersion' })
 Out-QuietResult $r -AsYaml -MaxItems 5 -MaxOutputBytes 4096
 ```
 

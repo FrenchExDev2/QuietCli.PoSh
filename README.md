@@ -52,11 +52,9 @@ $result = quiet -AsObject -RecordDelimiter "`n" -Data @{ Version = $null } `
         [pscustomobject]@{ SdkVersion = $runtime.Data.Version }
     } dotnet --version
 
-if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
-    !$result.Completeness.Analysis -or $result.Error.Count) {
+$result.OnFailure({
     throw 'Could not read the .NET SDK version.'
-}
-$result.Data
+}).Data
 ```
 
 [Streaming, callbacks and results](readmes/README-streaming.md) · [Bounded delivery and privacy](readmes/README-measurements.md)

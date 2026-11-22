@@ -270,7 +270,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
             })
                 result.Properties.Add(new PSNoteProperty(name, value));
             if (runtime.CollectEvents) result.Properties.Add(new PSNoteProperty("Events", runtime.Events.ToArray()));
-            result.TypeNames.Insert(0, "QuietCli2.Result");
+            ResultMethods.Attach(result);
             FinalProperties.Set(result, "Execution", execution);
             FinalProperties.Set(result, "Completeness", completeness);
             if (diskRecall is not null)

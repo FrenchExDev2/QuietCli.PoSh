@@ -24,10 +24,9 @@ On first boot, Vagrant can run the provisioners defined in that file. To start w
 
 ```powershell
 $result = quiet -AsObject -UI -CollectEvents vagrant up
-if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
-    !$result.Completeness.Analysis -or $result.Error.Count) {
+[void]$result.OnFailure({
     throw 'Vagrant up failed or its result is incomplete.'
-}
+})
 $result.Events | Select-Object Type, @{ Name = "Machine"; Expression = { $_.Data.Machine } }
 ```
 
@@ -55,10 +54,9 @@ $listener = {
 }.GetNewClosure()
 
 $result = quiet -AsObject -UI -MaxLines 4 -Listeners $listener -CollectEvents vagrant provision web
-if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
-    !$result.Completeness.Analysis -or $result.Error.Count) {
+[void]$result.OnFailure({
     throw 'Vagrant provision or its analysis failed'
-}
+})
 $starts | Select-Object Machine, Provisioner, Timestamp
 $result.Data | Select-Object Command, Lines, Machines
 ```

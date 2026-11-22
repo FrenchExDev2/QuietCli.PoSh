@@ -22,10 +22,8 @@ $readVersion = {
             }
             $runtime.Data.Version = $Matches[1]
         }
-    if ($child.Outcome -ne 'Success' -or !$child.Completeness.Source -or
-        !$child.Completeness.Analysis -or $child.Error.Count -or !$child.Data.Version) {
-        throw 'Git version observation failed'
-    }
+    [void]$child.OnFailure({ throw 'Git version observation failed' })
+    if (!$child.Data.Version) { throw 'Git version observation failed' }
     $child.Data.Version
 }
 
@@ -58,19 +56,15 @@ Register-QuietHandler -Id $id -Definition @{
 
 try {
     $result = quiet -AsObject -HandlerId $id -FilePath git -ArgumentList @('version')
-    if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
-        !$result.Completeness.Analysis -or $result.Error.Count) {
-        throw 'The registered handler failed'
-    }
+    [void]$result.OnFailure({ throw 'The registered handler failed' })
 
     $control = quiet -AsObject -FilePath git -ArgumentList @('--version') `
         -RecordDelimiter "`n" -MaxRecordBytes 1024 -Data @{ Line = $null } -StdOut {
             param($event, $runtime)
             $runtime.Data.Line = $event.Text.Trim()
         }
-    if ($control.Outcome -ne 'Success' -or !$control.Completeness.Source -or
-        !$control.Completeness.Analysis -or $control.Error.Count -or
-        $result.Data.Command -cne 'version' -or ('git version ' + $result.Data.Version) -cne $control.Data.Line) {
+    [void]$control.OnFailure({ throw 'The Git control invocation failed' })
+    if ($result.Data.Command -cne 'version' -or ('git version ' + $result.Data.Version) -cne $control.Data.Line) {
         throw 'The handler result disagrees with Git'
     }
     $result.Data
@@ -117,9 +111,8 @@ $manifestPath = [IO.Path]::Combine($scaffold.Module, "$name.psd1")
 
        $result = quiet -AsObject -HandlerId $name -WorkingDirectory $PWD.Path `
            -FilePath git -ArgumentList @('version')
-       if ($result.Outcome -ne 'Success' -or !$result.Completeness.Source -or
-           !$result.Completeness.Analysis -or $result.Error.Count -or
-           $result.Data.Command -cne 'version' -or !$result.Data.Version) {
+       [void]$result.OnFailure({ throw 'Could not read the Git version through the module.' })
+       if ($result.Data.Command -cne 'version' -or !$result.Data.Version) {
            throw 'Could not read the Git version through the module.'
        }
        $result.Data
