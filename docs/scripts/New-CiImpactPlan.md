@@ -10,6 +10,8 @@ Use `-MarkdownPath` to write a standalone Markdown forecast, independently of th
 
 For both `pull_request` and `push`, the planner selects affected suites from the diff and declared dependencies. Shared or unknown paths select every companion. Mixed paths combine their requirements.
 
+The root and nested `.gitignore` files remain visible in the plan's changed paths and have no effect on job selection. For a working-tree preview, Git still applies its ignore rules when deciding which untracked paths enter the diff.
+
 ### Preview the local branch
 
 Use [New-CiImpactPlanFile.ps1](New-CiImpactPlanFile.md) to generate a temporary output file using the merge base with `origin/develop`:
