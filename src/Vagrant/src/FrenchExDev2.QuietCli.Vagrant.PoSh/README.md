@@ -10,7 +10,7 @@ The Vagrant companion turns `vagrant up` and `vagrant provision` into structured
 
 ## Installation
 
-Use PowerShell Core 7.6+, a separate Vagrant installation and the provider required by your `Vagrantfile`. Load the companion from a [built source checkout](../../../../README.md#from-a-source-checkout). In a fresh PowerShell session at the repository root, import both modules.
+Use PowerShell Core 7.6+, a separate Vagrant installation and the provider required by your `Vagrantfile`. The companion requires Core with the companion command contract. Load both modules from the same [built source checkout](../../../../README.md#from-a-source-checkout) in a fresh PowerShell session at the repository root.
 
 ```powershell
 Import-Module ./src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1 -ErrorAction Stop

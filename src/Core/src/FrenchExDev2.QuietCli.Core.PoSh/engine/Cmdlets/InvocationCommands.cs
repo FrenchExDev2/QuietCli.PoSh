@@ -183,22 +183,7 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
                 runtime.Transition("Running");
                 request["FilePath"] = ApplicationResolver.Resolve(Text(request["FilePath"]), CurrentDirectory);
                 if (QuietRuntime.HasAnalysisCallback(request)) runtime.RunNative();
-                else
-                {
-                    Hashtable? handler = HandlerRegistry.Resolve(runtime);
-                    if (handler is null && request.ContainsKey("SaveRecall") && LanguagePrimitives.IsTrue(request["SaveRecall"])) runtime.RunNative();
-                    else if (handler is null)
-                    {
-                        outcome = "Unsupported";
-                        runtime.Errors.Add(new Hashtable { ["Code"] = "HandlerNotFound", ["Phase"] = "Resolve", ["Message"] = "No compatible handler is registered. Supply -Output, -StdOut, -StdErr or -Complete for direct execution." });
-                    }
-                    else
-                    {
-                        runtime.Handler = handler;
-                        (bool has, object? value) = RunHandler(handler, runtime);
-                        if (has) runtime.Data = value;
-                    }
-                }
+                else outcome = RunCompanion(runtime);
             }
             catch (Exception error) when (error is not PipelineStoppedException)
             {
@@ -320,6 +305,31 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
         return DeliverInvocation(result, request, runtime.Delivery);
     }
 
+    /// <summary>Resolves and runs a handler with access to Core for version probes and complementary commands.</summary>
+    /// <param name="runtime">Active parent invocation.</param>
+    private string RunCompanion(QuietRuntime runtime)
+    {
+        runtime.CompanionCommandRunner = command => RunCompanionCommand(command, runtime);
+        try
+        {
+            Hashtable? handler = HandlerRegistry.Resolve(runtime);
+            if (handler is not null)
+            {
+                runtime.Handler = handler;
+                (bool has, object? value) = RunHandler(handler, runtime);
+                if (has) runtime.Data = value;
+            }
+            else if (runtime.Request.ContainsKey("SaveRecall") && LanguagePrimitives.IsTrue(runtime.Request["SaveRecall"])) runtime.RunNative();
+            else
+            {
+                runtime.Errors.Add(new Hashtable { ["Code"] = "HandlerNotFound", ["Phase"] = "Resolve", ["Message"] = "No compatible handler is registered. Supply -Output, -StdOut, -StdErr or -Complete for direct execution." });
+                return "Unsupported";
+            }
+            return "Success";
+        }
+        finally { runtime.CompanionCommandRunner = null; }
+    }
+
     /// <summary>Executes a companion's prepared call through Core and finalizes its business result.</summary>
     /// <param name="handler">Selected handler, with a factory or legacy execution callback.</param>
     /// <param name="runtime">Parent call and caller-owned state.</param>
@@ -339,36 +349,44 @@ public sealed class InvokeQuietCallCommand : DeliveryCmdlet
         return QuietRuntime.Callback(handler["Execute"], [runtime], false);
     }
 
-    /// <summary>Runs one validated child request without reentering the PowerShell facade.</summary>
+    /// <summary>Runs and finalizes a factory's main request.</summary>
     /// <param name="plan">Arguments, native callback options, and optional result and cleanup callbacks.</param>
     /// <param name="runtime">Parent invocation whose resolved executable is inherited.</param>
     private (bool HasValue, object? Value) RunHandlerPlan(Hashtable plan, QuietRuntime runtime)
     {
         try
         {
-            if (!plan.ContainsKey("Arguments") || QuietRuntime.Unwrap(plan["Options"]) is not IDictionary options)
-                throw new InvalidOperationException("QuietHandlerPlanRequiresArgumentsAndOptions");
             foreach (string field in new[] { "Finish", "Cleanup" })
                 if (plan.ContainsKey(field) && QuietRuntime.Unwrap(plan[field]) is not ScriptBlock)
                     throw new InvalidOperationException("CallbackMustBeScriptBlock: " + field);
-            var tokens = new List<object?> { "-AsObject" };
-            foreach (DictionaryEntry option in options)
-            {
-                if (option.Key is not string name || !HandlerPlanOptions.Contains(name))
-                    throw new InvalidOperationException("InvalidQuietHandlerPlanOption: " + option.Key);
-                tokens.Add("-" + name);
-                tokens.Add(option.Value);
-            }
-            tokens.AddRange(["-FilePath", runtime.Request["FilePath"], "-ArgumentList", plan["Arguments"]]);
-            Hashtable child = ReadQuietArgumentsCommand.Parse(tokens.ToArray(), CurrentDirectory, SessionState.Path.CurrentLocation.Path);
-            if (!QuietRuntime.HasAnalysisCallback(child)) throw new InvalidOperationException("QuietHandlerPlanRequiresCallbacks");
-            object result = Run(child) ?? throw new InvalidOperationException("QuietHandlerPlanMissingResult");
+            object result = RunCompanionCommand(plan, runtime);
             return plan.ContainsKey("Finish") ? QuietRuntime.Callback(plan["Finish"], [result], false) : (true, Members.Get(result, "Data"));
         }
         finally
         {
             if (QuietRuntime.Unwrap(plan["Cleanup"]) is ScriptBlock cleanup) _ = QuietRuntime.Callback(cleanup, [], true);
         }
+    }
+
+    /// <summary>Executes a validated native request with its own result and source metadata.</summary>
+    /// <param name="command">Exact native arguments and caller-local callback options.</param>
+    /// <param name="runtime">Active parent that supplies the resolved executable and default working directory and environment.</param>
+    private object RunCompanionCommand(Hashtable command, QuietRuntime runtime)
+    {
+        if (!command.ContainsKey("Arguments") || QuietRuntime.Unwrap(command["Options"]) is not IDictionary options)
+            throw new InvalidOperationException("QuietHandlerPlanRequiresArgumentsAndOptions");
+        var tokens = new List<object?> { "-AsObject", "-Environment", runtime.Request["Environment"] };
+        foreach (DictionaryEntry option in options)
+        {
+            if (option.Key is not string name || !HandlerPlanOptions.Contains(name))
+                throw new InvalidOperationException("InvalidQuietHandlerPlanOption: " + option.Key);
+            tokens.Add("-" + name);
+            tokens.Add(option.Value);
+        }
+        tokens.AddRange(["-FilePath", runtime.Request["FilePath"], "-ArgumentList", command["Arguments"]]);
+        Hashtable child = ReadQuietArgumentsCommand.Parse(tokens.ToArray(), CurrentDirectory, Text(runtime.Request["WorkingDirectory"]));
+        if (!QuietRuntime.HasAnalysisCallback(child)) throw new InvalidOperationException("QuietHandlerPlanRequiresCallbacks");
+        return Run(child) ?? throw new InvalidOperationException("QuietHandlerPlanMissingResult");
     }
 
     /// <summary>Options a companion can set for the prepared native child, without changing caller delivery.</summary>

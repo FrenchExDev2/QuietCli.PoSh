@@ -17,7 +17,7 @@ Install-PSResource -Name FrenchExDev2.QuietCli.Git.PoSh -Prerelease -Repository 
 Import-Module FrenchExDev2.QuietCli.Git.PoSh -ErrorAction Stop
 ```
 
-The package requires a compatible `FrenchExDev2.QuietCli.Core.PoSh` installation. [Gallery details](../../../../docs/README-PSGallery.md#companion-packages)
+The package requires `FrenchExDev2.QuietCli.Core.PoSh` with the companion command contract. If import reports `QuietCompanionCommandContractRequired`, update Core and import both modules in a fresh session. [Gallery details](../../../../docs/README-PSGallery.md#companion-packages)
 
 For a [built source checkout](../../../../README.md#from-a-source-checkout), open a fresh PowerShell session at the repository root and load both local modules.
 

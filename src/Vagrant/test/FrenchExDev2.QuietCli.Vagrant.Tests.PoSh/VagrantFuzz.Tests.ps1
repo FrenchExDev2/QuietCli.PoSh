@@ -52,7 +52,7 @@ function Get-QuietVagrantFuzzCases {
             $chunkSeed = $random.Next()
             try {
                 $runtime = New-QuietVagrantFakeRuntime -FilePath $dotnet -Arguments @($fixture, 'chunks', $chunkSeed, $transcript) -WorkingDirectory $RootDirectory
-                $report = Invoke-QuietVagrantMachineReadableRun -Runtime $runtime -Command 'up'
+            $report = Invoke-QuietVagrantFixturePlan $dotnet (New-QuietVagrantMachineReadablePlan $runtime 'up')
                 if ($report.Lines -ne $entries.Count) { throw "Expected $($entries.Count) parsed lines, observed $($report.Lines)" }
                 if ($runtime.Events.Count -ne $entries.Count) { throw "Expected $($entries.Count) emitted events, observed $($runtime.Events.Count)" }
                 for ($i = 0; $i -lt $entries.Count; $i++) {

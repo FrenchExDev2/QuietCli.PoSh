@@ -159,7 +159,7 @@ Before and After are active index entries with stage, mode, object ID and path. 
 | `cherry-pick` | `Git.CherryPick` | [`Invoke-QuietGitRepositoryMutation`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/RepositoryCommands.ps1#L22) |
 | `clean` | `Git.Clean` | [`Invoke-QuietGitRepositoryMutation`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/RepositoryCommands.ps1#L22) |
 | `clone` | `git.clone.v1` | [`Invoke-QuietGitCreate`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/RepositoryCommands.ps1#L155) |
-| `commit` | `Git.Commit` | [`Invoke-QuietGitCommit`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Commands.ps1#L109) |
+| `commit` | `Git.Commit` | [`Invoke-QuietGitCommit`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Commands.ps1#L106) |
 | `config` | `git.config.v1` | [`Invoke-QuietGitConfig`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/RepositoryCommands.ps1#L121) |
 | `count-objects` | `git.count-objects.v1` | [`Invoke-QuietGitCountQuery`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Queries.ps1#L102) |
 | `describe` | `git.describe.v1` | [`Invoke-QuietGitDescribe`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Revisions.ps1#L40) |
@@ -181,7 +181,7 @@ Before and After are active index entries with stage, mode, object ID and path. 
 | `mv` | `Git.Mv` | [`Invoke-QuietGitRepositoryMutation`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/RepositoryCommands.ps1#L22) |
 | `name-rev` | `git.name-rev.v1` | [`Invoke-QuietGitRevisionNames`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Revisions.ps1#L62) |
 | `pull` | `git.pull.v1` | [`Invoke-QuietGitMutation`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Semantics.ps1#L1) |
-| `push` | `git.push.v1` | [`Invoke-QuietGitPush`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Commands.ps1#L133) |
+| `push` | `git.push.v1` | [`Invoke-QuietGitPush`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Commands.ps1#L130) |
 | `read-tree` | `Git.ReadTree` | [`Invoke-QuietGitIndexMutation`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/IndexOperations.ps1#L31) |
 | `rebase` | `git.rebase.v1` | [`Invoke-QuietGitRepositoryMutation`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/RepositoryCommands.ps1#L22) |
 | `reflog` | `git.reflog.v1` | [`Invoke-QuietGitReflog`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Attribution.ps1#L30) |
@@ -205,7 +205,7 @@ Before and After are active index entries with stage, mode, object ID and path. 
 | `worktree` | `git.worktree.v1` | [`Invoke-QuietGitWorktree`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Repository.ps1#L99) |
 | `write-tree` | `git.write-tree.v1` | [`Invoke-QuietGitObjectQuery`](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Queries.ps1#L1) |
 
-Source input SHA-256 `0a37c935c9e4d96f2c5ce8b99ca57b127de7ea0d171f7dd06adc92de0ea8213a`.
+Source input SHA-256 `84b312818c9af9c9b4ba06e1e558d569118dc78f67977add390e3ce11e131279`.
 
 <!-- credits:begin -->
 ## Credits

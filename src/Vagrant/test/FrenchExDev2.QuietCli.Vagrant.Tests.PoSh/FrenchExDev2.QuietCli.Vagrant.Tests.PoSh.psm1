@@ -49,8 +49,8 @@ function Invoke-QuietVagrantTests {
         'an escaped comma in Vagrant data is correctly un-escaped'=@{TestKind='Unit';Dependencies=@()}
         'a malformed or truncated line is dropped without throwing'=@{TestKind='Unit';Dependencies=@()}
         'Get-QuietVagrantProviderLabel reports docker by default and docker via podman when DOCKER_HOST points at a podman socket'=@{TestKind='Integration';Dependencies=@('ProcessEnvironment')}
-        'Invoke-QuietVagrantMachineReadableRun emits one event per valid line, skips malformed ones, and sets the Ui header/lanes'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState','ProcessEnvironment')}
-        'Invoke-QuietVagrantUp and Invoke-QuietVagrantProvision produce the same events/lanes from the same transcript'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
+        'the Vagrant factory prepares callbacks that emit valid events and set the Ui header and lanes'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState','ProcessEnvironment')}
+        'up and provision factories produce the same events and lanes from the same transcript'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         '--no-provision is purely the absence of the trigger line: zero ProvisionerStarted events, no special-casing'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'a silent machine keeps its last-written lane entry while another machine keeps advancing'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
         'registered Vagrant handlers deliver live events through the outer native pipeline and preserve failure visibility'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}

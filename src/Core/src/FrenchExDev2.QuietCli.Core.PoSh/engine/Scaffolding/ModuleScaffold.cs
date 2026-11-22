@@ -30,7 +30,7 @@ internal static class ModuleScaffold
             $"@{{QuietCli=@{{Binary='{binary}';TestsModule='{testName}';Qualification='NotImplemented'}}}}"));
         Write(Path.Combine(tests, testName + ".psm1"), TestSource);
         Write(Path.Combine(tests, testName + ".psd1"), Manifest(testName, [(name, "0.1.0"), ("FrenchExDev2.QuietCli.Core.Tests.PoSh", "0.1.0")], "'Invoke-ModuleTests'", null));
-        Write(Path.Combine(target, "README.md"), $"# {name}\n\nHandler for {binary}. Qualification: not implemented. Import registers an inert catalogue. Edit src/Handler.ps1: document the official sources, implement Probe and TestVersion, declare supported forms in Match, then implement Execute with explicit quiet callbacks. Keep business data local; never gather raw output for accounting. Add schemas, examples and qualification limits before general use.");
+        Write(Path.Combine(target, "README.md"), $"# {name}\n\nHandler for {binary}. Qualification: not implemented. Import registers an inert catalogue. Edit src/Handler.ps1: document the official sources, implement ProbeFactory and TestVersion, declare supported forms in Match, then implement CallbackFactory. Return Arguments and Options with PowerShell stream or completion callbacks for Core to execute. Keep business data local and add schemas, examples and qualification limits before general use.");
         Write(Path.Combine(tests, "README.md"), $"# {testName}\n\nIndependent tests for {name}. An empty generated suite fails explicitly. Keep fixtures and assertions in this repository. Use Invoke-QuietConformance for shared envelope invariants and independently authored assertions for business effects. The business module must never depend on this companion.");
         return (target, tests);
     }
@@ -77,17 +77,16 @@ internal static class ModuleScaffold
             Qualification='NotImplemented'
             Documentation=@()
             SupportedForms=@()
-            Probe={
+            ProbeFactory={
                 param($runtime)
-                # Use quiet -AsObject -Role Probe with explicit Output/Complete callbacks.
-                # Return exactly one observed version. Keep native version rules in this module.
+                # Return Arguments and Options with Role='Probe'. Complete produces the observed version.
                 throw 'ConfigureDocumentedVersionProbe'
             }
             TestVersion={param($version) $false}
             Match={param($request,$version) $false}
-            Execute={
+            CallbackFactory={
                 param($runtime)
-                # Use quiet -AsObject with explicit Output/Complete callbacks for native work.
+                # Return the native Arguments and Options with explicit Output/Complete callbacks.
                 # Preserve request arguments, environment, input and cancellation deliberately.
                 # Retain only business data; return that data to the enclosing invocation.
                 throw 'ImplementBusinessHandler'

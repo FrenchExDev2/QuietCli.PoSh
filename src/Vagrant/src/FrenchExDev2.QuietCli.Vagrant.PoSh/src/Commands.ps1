@@ -69,16 +69,15 @@ function Get-QuietVagrantProviderLabel {
     return 'docker'
 }
 
-function Invoke-QuietVagrantMachineReadableRun {
+function New-QuietVagrantMachineReadablePlan {
     <#
     .SYNOPSIS
-    Shared engine behind the up/provision handlers: runs the given Vagrant subcommand with --machine-readable,
-    emits one structured event per output line (for -Listeners), and drives $Runtime.Ui (for -UI) via one lane
-    per machine plus a static header.
+    Prepares --machine-readable arguments and callbacks for up and provision. The callbacks emit structured
+    events and update the caller's live dashboard lane for each machine. Vagrant controls which provisioners run.
     .DESCRIPTION
     Private, not exported. $Runtime.Emit(...)/$Runtime.Ui below always refer to the OUTER runtime (the one
     created for the caller's own `quiet vagrant up`/`quiet vagrant provision`, whose Listeners/Ui come from their
-    own -Listeners/-UI), never $r (the runtime of the nested `quiet ... --machine-readable` call this function
+    own -Listeners/-UI), never $r (the runtime of the prepared native `--machine-readable` command this function
     prepares, whose Ui is always null since -UI is never passed to it). This is what lets
     -Listeners/-UI work on a plain `quiet vagrant up -Listeners {...}` / `quiet -UI vagrant provision` without the
     caller propagating anything explicitly.
@@ -86,10 +85,8 @@ function Invoke-QuietVagrantMachineReadableRun {
     The outer QuietRuntime for this invocation (its Request carries the caller's own FilePath/ArgumentList/WorkingDirectory).
     .PARAMETER Command
     The business command name to report back ('up' or 'provision'); purely cosmetic, does not affect parsing.
-    .PARAMETER Prepare
-    Returns the native argument vector and callbacks for Core to execute.
     #>
-    param($Runtime, [string]$Command, [switch]$Prepare)
+    param($Runtime, [string]$Command)
     if ($Runtime.Ui) {
         $vagrantfile = Join-Path $Runtime.Request.WorkingDirectory 'Vagrantfile'
         $Runtime.Ui.SetHeader([string[]]@("Project: QuietCli Vagrant | Task: $Command", $Runtime.Request.WorkingDirectory, "Vagrantfile path: $vagrantfile", "Mode: $(Get-QuietVagrantProviderLabel)"))
@@ -138,40 +135,5 @@ function Invoke-QuietVagrantMachineReadableRun {
         }
         [ordered]@{ Command = $Command; Lines = $result.Data.Count; Machines = @($result.Data.Machine | Where-Object { $_ } | Select-Object -Unique) }
     }.GetNewClosure()
-    if ($Prepare) { return @{ Arguments = $arguments; Options = $forward; Finish = $finish } }
-    $result = quiet @forward -AsObject -FilePath $Runtime.Request.FilePath -ArgumentList $arguments
-    & $finish $result
-}
-
-function Invoke-QuietVagrantUp {
-    <#
-    .SYNOPSIS
-    Runs `vagrant up --machine-readable` via Invoke-QuietVagrantMachineReadableRun.
-    .DESCRIPTION
-    Vagrant's own default behavior -- not something this handler decides or injects -- is that the FIRST `up` of
-    a given machine auto-runs its provisioners unless the caller passed --no-provision. This handler forwards the
-    caller's own ArgumentList verbatim (only appending --machine-readable), so `quiet vagrant up` provisions on
-    first boot and `quiet vagrant up --no-provision` does not, exactly as plain `vagrant up` would -- no
-    conditional logic here reproduces that choice.
-    .PARAMETER Runtime
-    The QuietRuntime for this invocation.
-    #>
-    param($Runtime,[switch]$Prepare)
-    Invoke-QuietVagrantMachineReadableRun -Runtime $Runtime -Command 'up' -Prepare:$Prepare
-}
-
-function Invoke-QuietVagrantProvision {
-    <#
-    .SYNOPSIS
-    Runs `vagrant provision --machine-readable` via Invoke-QuietVagrantMachineReadableRun.
-    .DESCRIPTION
-    Unlike `up`, `vagrant provision` always re-runs provisioners on already-running machines and has no
-    --no-provision equivalent of its own -- that flag only affects `up`'s automatic first-boot provisioning. The
-    caller's ArgumentList (e.g. `provision --provision-with shell`) is forwarded verbatim; this handler only
-    observes and reports what Vagrant itself decides to run, it never filters provisioners on its own.
-    .PARAMETER Runtime
-    The QuietRuntime for this invocation.
-    #>
-    param($Runtime,[switch]$Prepare)
-    Invoke-QuietVagrantMachineReadableRun -Runtime $Runtime -Command 'provision' -Prepare:$Prepare
+    return @{ Arguments = $arguments; Options = $forward; Finish = $finish }
 }

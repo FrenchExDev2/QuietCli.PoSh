@@ -16,6 +16,8 @@ public sealed class QuietRuntime
 
     /// <summary>Sends one bounded exchange to the engine; replaceable by a session-level Send-QuietRequest function in tests.</summary>
     internal Func<Hashtable, byte[], EngineReply>? Exchange { get; set; }
+    /// <summary>Core command executor bound while resolving and running a companion.</summary>
+    internal Func<Hashtable, object>? CompanionCommandRunner { get; set; }
     /// <summary>Resolved telemetry policy, copied into native start metadata without business data.</summary>
     internal bool PrepareMeasurements { get; set; }
 
@@ -97,6 +99,15 @@ public sealed class QuietRuntime
     private HashSet<int>? disabledListeners;
     /// <summary>Live presentation frame when enabled by the invocation policy.</summary>
     public QuietUiRenderer? Ui { get; internal set; }
+
+    /// <summary>Runs a companion probe or complementary command and returns its caller-local execution result.</summary>
+    /// <param name="command">Exact Arguments and native Options, including the analysis scriptblocks.</param>
+    public object InvokeCompanionCommand(Hashtable command)
+    {
+        if (CompanionCommandRunner is not { } run || !ReferenceEquals(QuietCallState.Current, this))
+            throw new InvalidOperationException("CompanionCommandUnavailable");
+        return run(command);
+    }
 
     /// <summary>Moves the lifecycle forward; any other transition is rejected.</summary>
     /// <param name="next">Running, Draining, Completing or Finalized.</param>

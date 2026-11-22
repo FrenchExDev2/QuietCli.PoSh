@@ -32,7 +32,7 @@ public static class HandlerRegistry
         foreach (string field in RequiredFields) if (!definition.ContainsKey(field)) throw new InvalidOperationException("MissingHandlerField: " + field);
         if (!definition.ContainsKey("Execute") && !definition.ContainsKey("CallbackFactory"))
             throw new InvalidOperationException("MissingHandlerField: Execute or CallbackFactory");
-        foreach (string field in new[] { "Execute", "CallbackFactory" })
+        foreach (string field in new[] { "Execute", "CallbackFactory", "ProbeFactory" })
             if (definition.ContainsKey(field)) _ = Block(definition[field]);
         if (Handlers.Contains(id)) throw new InvalidOperationException("HandlerAlreadyRegistered: " + id);
         var copy = (Hashtable)definition.Clone();
@@ -60,10 +60,23 @@ public static class HandlerRegistry
             string key = ProbeIdentity.Build(Text(handler["Id"]), filePath, (IDictionary)QuietRuntime.Unwrap(request["Environment"])!);
             if (!ProbeCache.TryGetValue(key, out object? version))
             {
-                if (!handler.ContainsKey("Probe")) continue;
-                var probed = Block(handler["Probe"]).Invoke(runtime);
-                if (probed.Count != 1) throw new InvalidOperationException("VersionProbeMustReturnOneValue");
-                version = ProbeCache[key] = probed[0];
+                if (handler.ContainsKey("ProbeFactory") && runtime is QuietRuntime active)
+                {
+                    (bool hasCommand, object? command) = QuietRuntime.Callback(handler["ProbeFactory"], [active], false);
+                    if (!hasCommand || command is not Hashtable probe) throw new InvalidOperationException("VersionProbeFactoryMustReturnCommand");
+                    object result = active.InvokeCompanionCommand(probe);
+                    if (!Equals(QuietRuntime.Unwrap(Members.Get(result, "Outcome")), "Success"))
+                        throw new InvalidOperationException("VersionProbeFailed: " + handler["Id"]);
+                    version = Members.Get(result, "Data") ?? throw new InvalidOperationException("VersionProbeMustReturnOneValue");
+                }
+                else
+                {
+                    if (!handler.ContainsKey("Probe")) continue;
+                    var probed = Block(handler["Probe"]).Invoke(runtime);
+                    if (probed.Count != 1) throw new InvalidOperationException("VersionProbeMustReturnOneValue");
+                    version = probed[0];
+                }
+                ProbeCache[key] = version;
             }
             if (!OneBoolean(Block(handler["TestVersion"]).Invoke(version), "VersionPredicateMustReturnOneBoolean")) continue;
             bool shape = !handler.ContainsKey("Match") || OneBoolean(Block(handler["Match"]).Invoke(request, version), "ShapePredicateMustReturnOneBoolean");
