@@ -13,7 +13,7 @@ BeforeAll {
     $repository=Get-QuietTestWorkspaceRoot
     $yaml='src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'
     $git={param([string[]]$Arguments)
-        $output=& git -C $workspace -c user.name=quiet-test -c user.email=quiet-test@invalid -c core.autocrlf=false -c commit.gpgsign=false @Arguments 2>&1
+        $output=& git -C $workspace @Arguments 2>&1
         if($LASTEXITCODE){throw ('git '+($Arguments -join ' ')+': '+($output -join "`n"))}
         ($output -join "`n").Trim()
     }
@@ -30,6 +30,11 @@ BeforeAll {
         [IO.File]::Copy($source,$target)
     }
     $null=& $git @('init','-q','-b','develop')
+    # Child commit commands inherit this repository-local fixture configuration.
+    $null=& $git @('config','--local','user.name','quiet-test')
+    $null=& $git @('config','--local','user.email','quiet-test@invalid')
+    $null=& $git @('config','--local','core.autocrlf','false')
+    $null=& $git @('config','--local','commit.gpgsign','false')
     $null=& $git @('add','-A')
     # The production repository tracks this lock inside the ignored resources directory.
     $null=& $git @('add','-f','--','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json')
