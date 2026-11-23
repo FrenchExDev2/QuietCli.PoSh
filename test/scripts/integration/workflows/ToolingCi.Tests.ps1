@@ -135,3 +135,28 @@ Describe 'tooling-ci.yml results' {
         (& $runs $jobs['results'])|Should -Match ([regex]::Escape('./scripts/Write-ToolingResults.ps1 -NeedsJson $env:TOOLING_NEEDS'))
     }
 }
+
+Describe 'Campaign report artifacts' {
+    It 'renders the <Kind> report after the campaign and before upload, even on failure' -ForEach @(
+        @{JobName='script-mutation'; StepId='script_mutation'; Kind='ScriptMutation'; ArtifactPath='artifacts/script-mutation/*/report.html'}
+        @{JobName='run-profiles-mutation'; StepId='run_profiles_mutation'; Kind='RunProfilesMutation'; ArtifactPath='artifacts/run-profiles'}
+        @{JobName='component'; StepId='campaign'; Kind='Component'; ArtifactPath='artifacts/component'}
+    ) {
+        $job=if($Kind -ceq 'Component'){
+            $path=[IO.Path]::Combine($root,'.github','workflows','workspace-component-ci.yml')
+            $component=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build().Deserialize([IO.File]::ReadAllText($path,[Text.Encoding]::UTF8))
+            $component['jobs'][$JobName]
+        }else{$jobs[$JobName]}
+        $campaign=@($job['steps']|Where-Object {$_['id'] -ceq $StepId})[0]
+        $render=@($job['steps']|Where-Object {([string]$_['run']).Contains('./scripts/Export-CampaignReport.ps1')})[0]
+        $upload=@(& $uses $job 'actions/upload-artifact@')[0]
+        (& $indexOf $job $campaign)|Should -BeLessThan (& $indexOf $job $render)
+        (& $indexOf $job $render)|Should -BeLessThan (& $indexOf $job $upload)
+        [string]$render['if']|Should -Match '^always\(\)'
+        [string]$upload['if']|Should -Match '^always\(\)'
+        [string]$render['env']['CAMPAIGN_OUTCOME']|Should -BeExactly ('${{ steps.'+$StepId+'.outcome }}')
+        [string]$render['run']|Should -Match ([regex]::Escape('-Kind '+$Kind))
+        [string]$render['run']|Should -Match ([regex]::Escape('-SummaryPath $env:GITHUB_STEP_SUMMARY'))
+        ([string]$upload['with']['path']).Split("`n")|Should -Contain $ArtifactPath
+    }
+}

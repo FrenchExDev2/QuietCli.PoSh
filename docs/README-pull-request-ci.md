@@ -13,6 +13,8 @@ Use [Publish-WorkspacePullRequest.ps1](scripts/Publish-WorkspacePullRequest.md) 
 
 The diff controls obligatory qualification. Checked options add work, and a change to the description starts a fresh PR run. The standard Core profiling follows Core qualification. ReadyToRun requires complete measurements when selected. Either direction of the performance result is valid. A manual ReadyToRun run remains informational.
 
+For mutation or companion profiling results, open the GitHub Actions run summary and download the campaign artifact. Open `report.html` in a browser for offline charts or `report.md` in a Markdown viewer with Mermaid support. Both reports show the original campaign outcome. The artifact also contains the available JSON evidence. [Campaign report evidence](scripts/lib/CampaignReports.md)
+
 The required check records the PR, source SHA, tested merge SHA, normalized choices and attempt. Use [Merge-PullRequest.ps1](scripts/Merge-PullRequest.md) or the scripted commit or release flow to require fresh evidence. A green check for a different selection cannot authorize scripted merge. For existing PRs, rerun on the updated workflow to obtain the receipt. The GitHub merge button can still display the previous conclusion while the new run starts. GitHub's merge API pins the source SHA.
 
 To qualify product suites manually, dispatch `companions-ci.yml` with `suites`. For a smoke or build, dispatch `ci.yml` with the suite, mode and optional tooling disabled.

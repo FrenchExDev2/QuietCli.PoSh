@@ -2,6 +2,8 @@
 
 The optional `-Campaign mutation`, `profiling` and `profiled-mutation` modes run one declared companion. Mutation reads the focused suite or mutation environment from `build/companions.yaml`. Profiling runs the PowerShell test suite with PSProfiler and saves its report under `profiling/`. `profiled-mutation` enables both in the same test pass. `-Parallel:$false` selects one test worker.
 
+With an explicit `-RunDirectory`, Git and Vagrant also save their mutation catalogue summaries under `mutation-evidence/`. GitHub Actions adds Mermaid Markdown and standalone HTML to the campaign artifact after the test step. [Export-CampaignReport](Export-CampaignReport.md)
+
 <!-- script-source:begin -->
 Source file: [`Invoke-ComponentCheck.ps1`](../../scripts/Invoke-ComponentCheck.ps1)
 <!-- script-source:end -->
