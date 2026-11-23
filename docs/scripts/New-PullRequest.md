@@ -4,11 +4,11 @@
 Source file: [`New-PullRequest.ps1`](../../scripts/New-PullRequest.ps1)
 <!-- script-source:end -->
 
-Creates a GitHub pull request from a branch already pushed to the selected remote. It uses the repository's English CI checklist and accepts an optional Markdown footer.
+Creates a GitHub pull request from a branch already pushed to the selected remote. It expands the repository's English CI checklist from `build/companions.yaml` and accepts an optional Markdown footer.
 
 ```powershell
-./scripts/New-PullRequest.ps1 -BodyFile ./description.md -FooterFile ./notes.md -CiOption mutation,preview -PreviewBody
-./scripts/New-PullRequest.ps1 -Title 'Explain the change' -BodyFile ./description.md -FooterFile ./notes.md -CiOption mutation,preview
+./scripts/New-PullRequest.ps1 -BodyFile ./description.md -FooterFile ./notes.md -CiOption run-profile-mutation-git,profiling-git -PreviewBody
+./scripts/New-PullRequest.ps1 -Title 'Explain the change' -BodyFile ./description.md -FooterFile ./notes.md -CiOption run-profile-mutation-git,profiling-git
 ```
 
 The defaults are the checked-out branch, `origin` and `develop`. Override them with `-Head`, `-Remote` and `-Base`. An existing open PR for the same source and target is returned as-is. The source Markdown files remain unchanged. `-WhatIf` makes no remote call and creates no temporary file. `-PreviewBody` returns the exact composed text. Passing an empty `-CiOption @()` clears a selection already present in the description.

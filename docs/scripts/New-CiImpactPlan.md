@@ -10,6 +10,8 @@ Use `-MarkdownPath` to write a standalone Markdown forecast, independently of th
 
 For both `pull_request` and `push`, the planner selects affected suites from the diff and declared dependencies. Shared or unknown paths select every companion. Mixed paths combine their requirements.
 
+With `-Event pull_request`, pass the Markdown description as `-PullRequestBody`. The plan merges the checked options with the mandatory diff scope and exposes the companion campaign matrix. Selecting mutation and profiling for the same companion profiles a single mutation run.
+
 The root and nested `.gitignore` files remain visible in the plan's changed paths and have no effect on job selection. For a working-tree preview, Git still applies its ignore rules when deciding which untracked paths enter the diff.
 
 ### Preview the local branch

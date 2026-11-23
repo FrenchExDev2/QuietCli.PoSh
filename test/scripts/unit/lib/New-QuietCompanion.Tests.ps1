@@ -38,6 +38,8 @@ Describe 'Add-QuietCompanionRegistration' {
                 '    requires: []'
                 '    image: base'
                 '  Packer:'
+                '    src: src/Packer/src/FrenchExDev2.QuietCli.Packer.PoSh'
+                '    test: src/Packer/test/FrenchExDev2.QuietCli.Packer.Tests.PoSh'
                 '    requires: [Core]'
                 '    image: none'
                 'suites: # keep'

@@ -8,6 +8,8 @@ Source file: [`lib/PullRequestChecklist.psm1`](../../../scripts/lib/PullRequestC
 
 `New-QuietPullRequestBody` composes a description, the standard checklist and an optional footer without changing input files. An explicit option array overrides the checks in the supplied description.
 
+`Expand-QuietPullRequestTemplate` generates unchecked profiling rows for every declared companion and mutation rows for companions that declare a campaign. The generator keeps the Markdown outside those generated rows and uses the catalogue names to form stable checkbox identifiers.
+
 <!-- script-contract:begin -->
 ## Execution contract
 
