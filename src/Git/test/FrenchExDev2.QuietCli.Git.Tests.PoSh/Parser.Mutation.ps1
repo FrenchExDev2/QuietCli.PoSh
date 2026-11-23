@@ -81,6 +81,10 @@ function Invoke-QuietGitParserMutation {
     }finally{
         $summary=[ordered]@{Catalogue=$Catalogue;StagingDirectory=$staging;BuildCount=$buildCount;RestoreCount=$restoreCount;ForcedCompilation=$true;Sources=@(foreach($file in @($mutants.File|Sort-Object -Unique)){@{File=$file;SHA256=(Get-FileHash -LiteralPath (Join-Path $production $file)).Hash}});Selected=$mutants.Count;Killed=@($results|Where-Object State -EQ Killed).Count;Completed=$results.Count;Survived=@($results|Where-Object State -EQ Survived).Count;Invalid=@($results|Where-Object State -EQ Invalid).Count;Timeout=@($results|Where-Object State -EQ Timeout).Count;InfrastructureError=@($results|Where-Object State -EQ InfrastructureError).Count;Results=$results.ToArray()}
         [void][IO.File]::WriteAllTextAsync((Join-Path $run 'summary.json'),($summary|ConvertTo-Json -Depth 6),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+        if($env:QUIETCLI_CAMPAIGN_REPORT_ROOT){
+            [void][IO.Directory]::CreateDirectory($env:QUIETCLI_CAMPAIGN_REPORT_ROOT)
+            [IO.File]::Copy([IO.Path]::Combine($run,'summary.json'),[IO.Path]::Combine($env:QUIETCLI_CAMPAIGN_REPORT_ROOT,"git-$Catalogue.json"))
+        }
     }
     return $run
 }

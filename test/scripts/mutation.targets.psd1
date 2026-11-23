@@ -343,5 +343,13 @@
             UnitTestFiles = @('unit/lib/PerformanceCharts.Tests.ps1')
             Break = 100
         }
+        @{
+            Name = 'CampaignReports'
+            Module = 'lib/CampaignReports.psm1'
+            Functions = @('Read-QuietCampaignEvidence','Get-QuietCampaignCharts')
+            UnitTestFiles = @('unit/lib/CampaignReports.Tests.ps1')
+            Inputs = @('lib/PerformanceCharts.psm1','lib/ScriptMutation.psm1')
+            Break = 100
+        }
     )
 }

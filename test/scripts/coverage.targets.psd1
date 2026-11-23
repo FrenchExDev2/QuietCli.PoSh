@@ -21,6 +21,7 @@
         'lib/PerformanceStatistics.psm1'
         'lib/PerformanceWorkloads.psm1'
         'lib/PerformanceCharts.psm1'
+        'lib/CampaignReports.psm1'
         'lib/New-CorePerformanceReport.psm1'
         'lib/MergedBranches.psm1'
     )

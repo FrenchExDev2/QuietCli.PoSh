@@ -74,6 +74,7 @@ if($QualificationMode -ceq 'smoke'){
     if($Campaign -cne 'qualification'){$parameters.MaxConcurrency=$budget}
     $environment=@{}
     if($mutation -and $mutation['environment']){foreach($key in $mutation['environment'].Keys){$environment[$key]='1'}}
+    if($mutate -and $RunDirectory){$environment.QUIETCLI_CAMPAIGN_REPORT_ROOT=[IO.Path]::Combine([IO.Path]::GetFullPath($RunDirectory,$PWD.Path),'mutation-evidence')}
     if($profileEnabled){$environment.QUIETCLI_PROFILE_COMPANION=$testSuite}
     $previous=@{}
     try {
