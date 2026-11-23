@@ -6,7 +6,7 @@ BeforeAll {
     $null=Import-QuietTestLibrary -Name CiPlanResults
     $seed=Get-QuietTestSeed
     $prerequisites=@('plan','source-checks')
-    $scoped=[ordered]@{'layout-tests'='run_layout';products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';distribution='run_distribution'}
+    $scoped=[ordered]@{'layout-tests'='run_layout';products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';distribution='run_distribution';readytorun='run_readytorun'}
     $results=@('success','skipped','failure','cancelled','Success',$null)
     $flags=@('true','false','True','',$null,'<absent>')
     # Builds a needs object; '<absent>' removes the job or the flag.

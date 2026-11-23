@@ -138,3 +138,7 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+## Pull request body
+
+Pass the raw description with `-PullRequestBody` to include its checked options. This parameter also works in `-WorkingTree` mode. See [the checklist contract](../README-pull-request-ci.md).

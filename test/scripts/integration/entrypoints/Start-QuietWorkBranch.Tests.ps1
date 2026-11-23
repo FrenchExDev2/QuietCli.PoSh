@@ -216,7 +216,7 @@ Describe 'New-QuietCompanion.ps1' {
             $coreTests = 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh'
             foreach ($relative in @(
                 'LICENSE',
-                '.github/workflows/core-ci.yml',
+            '.github/workflows/ci.yml',
                 'docs/ci/github/script-core-ci.md',
                 "$core/resources/yaml/YamlDotNet.dll",
                 "$core/resources/dependencies.lock.json",

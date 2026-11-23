@@ -183,9 +183,12 @@ function Test-QuietCiCompanions {
     if(Test-Path -LiteralPath $missing){throw 'CompanionLibraryPreviewCreatedFiles'}
     $entry=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/companions-ci.yml'),[Text.Encoding]::UTF8)
     $workflow=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build().Deserialize($entry)
-    if(!$workflow['on'].ContainsKey('pull_request') -or $null -ne $workflow['on']['pull_request'] -or !$workflow['jobs'].ContainsKey('plan') -or
+    if('edited' -cnotin $workflow['on']['pull_request']['types'] -or !$workflow['jobs'].ContainsKey('plan') -or
         $workflow['jobs']['products']['with']['suite'] -cne '${{ matrix.suite }}' -or
+        $workflow['jobs']['products']['uses'] -cne './.github/workflows/ci.yml' -or
         $workflow['jobs']['ci-status']['name'] -cne 'QuietCli required CI' -or
-        !(Test-Path (Join-Path $WorkspaceRoot '.github/workflows/git-ci.yml')) -or !(Test-Path (Join-Path $WorkspaceRoot '.github/workflows/core-ci.yml'))){throw 'PerCompanionEntryWorkflowRequired'}
+        @(Get-ChildItem -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'.github/workflows')) -File | Where-Object Name -CIn @('core-ci.yml','git-ci.yml','vagrant-ci.yml')).Count){
+        throw 'SharedProductWorkflowRequired'
+    }
     Write-WorkspaceJson (Join-Path $RunDirectory 'ci-companions.json') @{Seed=20261111;GeneratedCompanions=100;DependencyProperties=$properties;MalformedYamlInputs=$invalid.Count;ParentIdentityRejections=$imageChecks;MutantsKilled=3;DedicatedIntegrationRunner=$true;ReverseCoreDependency=$false;NativeExecutions=0;SourceSHA256=(Get-FileHash $library).Hash}
 }

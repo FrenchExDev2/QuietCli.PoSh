@@ -37,7 +37,7 @@ Describe 'CompanionWorkflows' {
                 if((@($profiles.Suite) -join ',') -cne ($groups -join ',')){throw "groups $(@($profiles.Suite) -join ',')"}
                 foreach($companionProfile in $profiles){
                     $product=$case.Catalogue.Configuration.Companions.Contains($companionProfile.Suite)
-                    $file=if($companionProfile.Suite -ceq 'Tooling'){'tooling-component-ci.yml'}else{$companionProfile.Suite.ToLowerInvariant()+'-ci.yml'}
+                    $file=if($product){'ci.yml'}elseif($companionProfile.Suite -ceq 'Tooling'){'tooling-component-ci.yml'}else{'distribution-ci.yml'}
                     if($companionProfile.Workflow -cne ".github/workflows/$file"){throw "workflow $($companionProfile.Suite)"}
                     if($companionProfile.Engine -cne $(if($product){'ci.yml'}else{'workspace-component-ci.yml'})){throw "engine $($companionProfile.Suite)"}
                     if($companionProfile.SolutionPath -cne "src/$($companionProfile.Suite)/$($companionProfile.Suite).slnx" -or $companionProfile.TestPath -cne "src/$($companionProfile.Suite)/test" -or $companionProfile.Root -cne "src/$($companionProfile.Suite)"){throw "paths $($companionProfile.Suite)"}
@@ -71,7 +71,9 @@ Describe 'CompanionWorkflows' {
         It 'renders parseable workflows that call the profile engine with the profile paths' {
             $null=Invoke-QuietProperty -Name 'workflow-render' -Seed $seed -Count 25 -Generator {param($random)New-QuietCiCatalogue $random} -Property {param($catalogue)
                 & $use $catalogue
-                foreach($entry in @(Get-QuietCompanionWorkflowDefinitions -WorkspaceRoot $root)){
+                $entries=@(Get-QuietCompanionWorkflowDefinitions -WorkspaceRoot $root)
+                if(($entries.Profile.Suite -join ',') -cne 'Distribution,Tooling'){throw 'component entries'}
+                foreach($entry in $entries){
                     $companionProfile=$entry.Profile
                     if($entry.Path -cne $companionProfile.Workflow){throw 'path'}
                     if($entry.Content.Contains('%') -or !$entry.Content.EndsWith("`n") -or $entry.Content.EndsWith("`n`n") -or $entry.Content.Contains("`r")){throw "layout $($companionProfile.Suite)"}

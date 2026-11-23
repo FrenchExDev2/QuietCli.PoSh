@@ -232,4 +232,17 @@ Describe 'Get-QuietGitHubActionFiles' {
     It 'returns nothing for a checkout without .github' {
         @(Get-QuietGitHubActionFiles -WorkspaceRoot ([IO.Path]::Combine($TestDrive,'empty'))).Count|Should -Be 0
     }
+
+    It 'rejects a matching action flagged as a reparse point' {
+        $root=[IO.Path]::Combine($TestDrive,'linked')
+        $linked=New-QuietTestFile ([IO.Path]::Combine($root,'.github','actions','sample','action.yml')) 'x'
+        Mock Get-Item -ModuleName GitHubActionReferences { [pscustomobject]@{Attributes=[IO.FileAttributes]::ReparsePoint} } -ParameterFilter { $LiteralPath -eq $linked }
+
+        {Get-QuietGitHubActionFiles -WorkspaceRoot $root} | Should -Throw -ExpectedMessage ('GitHubActionFileLinked: '+$linked)
+    }
+
+    It 'identifies the exact line and reference of a reserved repository name' {
+        {ConvertFrom-QuietGitHubActionUses -Path 'sample.yml' -Text "jobs:`n  uses: owner/.@v1"} |
+            Should -Throw -ExpectedMessage 'GitHubActionReferenceInvalid: sample.yml:2 owner/.@v1'
+    }
 }

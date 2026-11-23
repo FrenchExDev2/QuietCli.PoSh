@@ -85,6 +85,7 @@ Describe 'Get-QuietScriptsTestPlan' {
             {Get-QuietScriptsTestPlan -TestsRoot $kindRoot -Kind Unit}|Should -Throw -ExpectedMessage 'ScriptsTestSelectionEmpty'
             {Resolve-QuietScriptsTestPath -Path 'unit' -TestsRoot $kindRoot}|Should -Throw -ExpectedMessage 'ScriptsTestPathInvalid: link'
             Resolve-QuietScriptsTestPath -Path 'unit' -TestsRoot $linkedRoot|Should -BeExactly ([IO.Path]::Combine($linkedRoot,'unit')) -Because 'the root itself is trusted; only the path below it is walked'
+            Resolve-QuietScriptsTestPath -Path '.' -TestsRoot $linkedRoot|Should -BeExactly $linkedRoot
         }finally{[IO.Directory]::Delete($linkedRoot);[IO.Directory]::Delete($linkedKind)}
     }
 

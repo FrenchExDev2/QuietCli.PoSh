@@ -196,12 +196,16 @@ function Find-QuietScriptMutantMethodExpression {
     #>
     param([Parameter(Mandatory)][Management.Automation.Language.Ast]$Ast)
     $swap=@{StartsWith='EndsWith';EndsWith='StartsWith';ToUpperInvariant='ToLowerInvariant';ToLowerInvariant='ToUpperInvariant';ToUpper='ToLower';ToLower='ToUpper';Min='Max';Max='Min'}
-    foreach($node in $Ast.FindAll({param($n)$n -is [Management.Automation.Language.InvokeMemberExpressionAst] -and $n.Member -is [Management.Automation.Language.StringConstantExpressionAst]},$true)){
+    foreach($node in $Ast.FindAll({param($n)$n -is [Management.Automation.Language.InvokeMemberExpressionAst]},$true)){
         if(!(Test-QuietScriptMutableNode $node)){continue}
-        $name=$node.Member.Value
+        $member=$node.Member -as [Management.Automation.Language.StringConstantExpressionAst]
+        $name=${member}?.Value
         $key=@($swap.Keys|Where-Object {$_ -ceq $name})
         if($key.Count){New-QuietScriptMutant 'MethodExpression' $node.Member.Extent $swap[$key[0]]}
-        if($name -ceq 'Add' -and $node.Parent -is [Management.Automation.Language.CommandExpressionAst] -and $node.Parent.Parent -is [Management.Automation.Language.PipelineAst] -and $node.Parent.Parent.PipelineElements.Count -eq 1){
+        if($name -ceq 'Add' -and $node.Parent -is [Management.Automation.Language.CommandExpressionAst] -and $node.Parent.Parent -is [Management.Automation.Language.PipelineAst] -and
+            $node.Parent.Parent.PipelineElements.Count -eq 1 -and
+            ($node.Parent.Parent.Parent -is [Management.Automation.Language.StatementBlockAst] -or
+             $node.Parent.Parent.Parent -is [Management.Automation.Language.NamedBlockAst])){
             New-QuietScriptMutant 'MethodExpression' $node.Parent.Parent.Extent ''
         }
     }

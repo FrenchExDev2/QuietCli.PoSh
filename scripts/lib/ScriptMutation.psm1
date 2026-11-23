@@ -118,8 +118,10 @@ function Get-QuietScriptMutationFocus {
         $ast=[Management.Automation.Language.Parser]::ParseInput($text,[ref]$null,[ref]$errors)
         if($errors.Count){return [ordered]@{}}
         foreach($block in $ast.FindAll($isBlock,$true)){
-            $parent=$block.Parent;$nested=$false
-            while($null -ne $parent -and !$nested){$nested=& $isBlock $parent;$parent=$parent.Parent}
+            $nested=$false
+            for($parent=$block.Parent;$parent;$parent=$parent.Parent){
+                $nested=$nested -or (& $isBlock $parent)
+            }
             if($nested){continue}
             $name=$block.CommandElements[1]
             if($name -is [Management.Automation.Language.CommandParameterAst] -and $name.ParameterName -ieq 'Name'){$name=if($null -ne $name.Argument){$name.Argument}else{$block.CommandElements[2]}}
@@ -143,13 +145,14 @@ function Get-QuietScriptMutationFocus {
 function Measure-QuietScriptMutationScore {
     <#
     .SYNOPSIS
-    Counts mutant statuses and computes the score (Killed + Timeout) / (Killed + Timeout + Survived), as a percentage.
+    Counts mutant statuses and scores the campaign against its configured threshold.
     .DESCRIPTION
-    CompileError and declared Equivalent mutants are excluded. With no valid mutant the score is 100: nothing could survive.
+    The legacy score below Break 100 counts timeouts as detected and excludes compile errors.
+    At Break 100 every non-equivalent mutant must be killed, with at least one executed mutant.
     .PARAMETER Results
     Objects with a Status property.
     .PARAMETER Break
-    Minimum score; Passed is Score >= Break.
+    Minimum score from zero to 100. At 100 the exact counts determine the verdict.
     #>
     param([AllowEmptyCollection()][object[]]$Results=@(),[ValidateRange(0,100)][double]$Break=0)
     $counts=[ordered]@{Killed=0;Survived=0;Timeout=0;CompileError=0;Equivalent=0}
@@ -158,9 +161,16 @@ function Measure-QuietScriptMutationScore {
         if($status -cnotin @('Killed','Survived','Timeout','CompileError','Equivalent')){throw "ScriptMutationStatusInvalid: $status"}
         $counts[$status]++
     }
-    $detected=$counts.Killed+$counts.Timeout;$valid=$detected+$counts.Survived
-    $score=if($valid -eq 0){100.0}else{[Math]::Round(100.0*$detected/$valid,2)}
-    [pscustomobject][ordered]@{Killed=$counts.Killed;Survived=$counts.Survived;Timeout=$counts.Timeout;CompileError=$counts.CompileError;Equivalent=$counts.Equivalent;Valid=$valid;Score=$score;Break=$Break;Passed=($score -ge $Break)}
+    $strict=$Break -eq 100
+    $valid=$counts.Killed+$counts.Timeout+$counts.Survived
+    $detected=$counts.Killed+$counts.Timeout
+    if($strict){
+        $valid+=$counts.CompileError
+        $detected=$counts.Killed
+    }
+    $score=if($valid){[Math]::Round(100.0*$detected/$valid,2)}elseif($strict){0.0}else{100.0}
+    $passed=if($strict){$valid -gt 0 -and $detected -eq $valid}else{$score -ge $Break}
+    [pscustomobject][ordered]@{Killed=$counts.Killed;Survived=$counts.Survived;Timeout=$counts.Timeout;CompileError=$counts.CompileError;Equivalent=$counts.Equivalent;Valid=$valid;Score=$score;Break=$Break;Passed=$passed}
 }
 
 function Read-QuietScriptMutationTargets {
@@ -259,7 +269,11 @@ function Select-QuietScriptMutationEquivalents {
         $copy.Reason=$entries[$match].Reason
         $covered.Add([pscustomobject]$copy)
     }
-    $stale=@(for($index=0;$index -lt $entries.Count;$index++){if(!$used[$index]){'{0} {1} {2} -> {3}{4}' -f $entries[$index].Function,$entries[$index].Mutator,$entries[$index].Original,$entries[$index].Replacement,$(if($entries[$index].Platform){' on '+$entries[$index].Platform})}})
+    $index=-1
+    $stale=@(foreach($entry in $entries){
+        $index++
+        if(!$used[$index]){'{0} {1} {2} -> {3}{4}' -f $entry.Function,$entry.Mutator,$entry.Original,$entry.Replacement,$(if($entry.Platform){' on '+$entry.Platform})}
+    })
     if($stale.Count){throw ("ScriptMutationEquivalentStale: $Target`: "+($stale -join '; '))}
     [pscustomobject]@{Run=$run.ToArray();Equivalent=$covered.ToArray()}
 }

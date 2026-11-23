@@ -45,7 +45,7 @@ Tests: `test/scripts/unit/lib/ScriptsTests.Tests.ps1`. It covers:
 - status transitions;
 - the exhaustive applicability product (test tree as directory, file or absent, crossed with `src/`).
 
-The library is a mutation target in `test/scripts/mutation.targets.psd1` (break 80 %), run by [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). The platform comparison of `Test-QuietScriptsPathWithin` is a single ternary, so coverage sees the same command on Windows and Linux. Forcing its `$IsWindows` condition to the platform's own value is the one platform-scoped equivalent mutant.
+The library is a mutation target in `test/scripts/mutation.targets.psd1` (`Break = 100`), run by [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). The platform comparison of `Test-QuietScriptsPathWithin` is a single ternary, so coverage sees the same command on Windows and Linux. Forcing its `$IsWindows` condition to the platform's own value is the one platform-scoped equivalent mutant.
 
 <!-- script-contract:begin -->
 ## Execution contract

@@ -4,7 +4,7 @@
 Source file: [`Merge-PullRequest.ps1`](../../scripts/Merge-PullRequest.ps1)
 <!-- script-source:end -->
 
-Merge an existing workspace PR by number once `QuietCli required CI` has succeeded.
+Merge an existing workspace PR by number once `QuietCli required CI` has succeeded and the latest receipt matches its current revision and options. See [PR checklist and merge evidence](../README-pull-request-ci.md).
 
 ```powershell
 ./scripts/Merge-PullRequest.ps1 -PullRequest 123 -WhatIf

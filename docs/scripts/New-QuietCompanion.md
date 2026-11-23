@@ -19,7 +19,7 @@ Use `-WithCSharp` to declare a parser project for both supported .NET targets. T
 
 ## Effects and recovery
 
-`-WhatIf` reports the destination and the branch operation before any write or remote access. `-Confirm` covers the complete operation. The generator stages and checks all files before installing them and rejects an existing group or generated workflow contract. If generation fails after the branch is created, fix the cause and retry with `-NoGitBranch`. The work branch and any retained stash remain available. See the [library implementation contract](lib/New-QuietCompanion.md).
+`-WhatIf` reports the destination and the branch operation before any write or remote access. `-Confirm` covers the complete operation. The generator stages and checks all files before installing them and rejects an existing group. If generation fails after the branch is created, fix the cause and retry with `-NoGitBranch`. The work branch and any retained stash remain available. See the [library implementation contract](lib/New-QuietCompanion.md).
 
 <!-- script-contract:begin -->
 ## Execution contract

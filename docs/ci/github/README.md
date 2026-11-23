@@ -10,9 +10,7 @@ Run ./scripts/Sync-GitHubWorkflowsReadme.ps1 -Apply to regenerate graphs and thi
 | --- | --- |
 | [ci.yml](../../../.github/workflows/ci.yml) | [documentation](script-ci.md) |
 | [companions-ci.yml](../../../.github/workflows/companions-ci.yml) | [documentation](script-companions-ci.md) |
-| [core-ci.yml](../../../.github/workflows/core-ci.yml) | [documentation](script-core-ci.md) |
 | [distribution-ci.yml](../../../.github/workflows/distribution-ci.yml) | [documentation](script-distribution-ci.md) |
-| [git-ci.yml](../../../.github/workflows/git-ci.yml) | [documentation](script-git-ci.md) |
 | [packages-update.yml](../../../.github/workflows/packages-update.yml) | [documentation](script-packages-update.md) |
 | [preview-psgallery.yml](../../../.github/workflows/preview-psgallery.yml) | [documentation](script-preview-psgallery.md) |
 | [publish-psgallery.yml](../../../.github/workflows/publish-psgallery.yml) | [documentation](script-publish-psgallery.md) |
@@ -25,7 +23,6 @@ Run ./scripts/Sync-GitHubWorkflowsReadme.ps1 -Apply to regenerate graphs and thi
 | [sync-credits-check.yml](../../../.github/workflows/sync-credits-check.yml) | [documentation](script-sync-credits-check.md) |
 | [tooling-ci.yml](../../../.github/workflows/tooling-ci.yml) | [documentation](script-tooling-ci.md) |
 | [tooling-component-ci.yml](../../../.github/workflows/tooling-component-ci.yml) | [documentation](script-tooling-component-ci.md) |
-| [vagrant-ci.yml](../../../.github/workflows/vagrant-ci.yml) | [documentation](script-vagrant-ci.md) |
 | [workspace-component-ci.yml](../../../.github/workflows/workspace-component-ci.yml) | [documentation](script-workspace-component-ci.md) |
 
 [Execution model](../execution-model.md) and [automation requirements](../../README-automation-contracts.md).

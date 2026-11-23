@@ -103,6 +103,24 @@ AfterAll {
 }
 
 Describe 'New-CiImpactPlan.ps1' {
+    It 'keeps layout enabled when ReadyToRun is checked on a scripts-only pull request' {
+        $revision=& $commit 'test/scripts/unit/lib/ImpactFixture.Tests.ps1'
+        $root=Get-QuietTestWorkspaceRoot
+        $description=[IO.File]::ReadAllText([IO.Path]::Combine($root,'.github/pull_request_template.md'),[Text.Encoding]::UTF8)
+        $description=$description -creplace '(?m)^- \[ \](.*ci:readytorun -->)$','- [x]$1'
+        $output=[IO.Path]::Combine($TestDrive,'checklist-plan.txt')
+        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @(
+            '-WorkspaceRoot',$workspace,'-Base',$baseRevision,'-Revision',$revision,'-PullRequestBody',$description,'-OutputPath',$output
+        ) -Environment @{GITHUB_STEP_SUMMARY=''}
+        $run.ExitCode | Should -Be 0 -Because ($run.Output+$run.Error)
+        $values=[IO.File]::ReadAllLines($output,[Text.Encoding]::UTF8)
+        $values | Should -Contain 'tooling_scope=scripts'
+        $values | Should -Contain 'run_products=false'
+        $values | Should -Contain 'run_layout=true'
+        $values | Should -Contain 'run_readytorun=true'
+        $values | Should -Contain 'pr_ci_options=["readytorun"]'
+    }
+
     It 'writes a standalone Markdown plan to a path relative to the checkout and honors preview' {
         $revision=& $commit 'docs/README-standalone-plan-fixture.md'
         $relative='.artifacts/standalone-plan.md'
@@ -408,7 +426,7 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
 
     It 'writes every output key once, in a stable order' {
         $observed=& $plan (& $commit 'docs/README-impact-keys.md')
-        @($observed.Values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,run_distribution,run_layout,run_smokes,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
+        @($observed.Values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,pr_ci_options,run_distribution,run_layout,run_readytorun,run_smokes,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
     }
 
     It 'qualifies <Expected> in full on a manual dispatch of <Suite>, without reading a diff' -ForEach @(
@@ -432,7 +450,7 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
         $values['script_mutation_targets']|Should -BeExactly $(if($Tooling -ceq 'full'){'all'}else{'[]'})
         $values['run_layout']|Should -BeExactly 'true'
         $values['run_distribution']|Should -BeExactly 'false'
-        @($values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,run_distribution,run_layout,run_smokes,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
+        @($values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,pr_ci_options,run_distribution,run_layout,run_readytorun,run_smokes,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
         $report=[IO.File]::ReadAllText([IO.Path]::Combine($workspace,'artifacts','ci-plan','impact.md'))
         $report|Should -Match 'Base: manual-dispatch;'
         $report|Should -Match '\| workflow_dispatch \|.*\| full \| ManualDispatch \|'

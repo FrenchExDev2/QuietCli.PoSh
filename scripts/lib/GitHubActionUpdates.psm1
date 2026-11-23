@@ -14,8 +14,7 @@ function ConvertTo-QuietGitHubActionVersion {
     param([AllowEmptyString()][AllowNull()][string]$Text)
     $match=[regex]::Match([string]$Text,'\Av?(?<major>\d{1,9})(?:\.(?<minor>\d{1,9}))?(?:\.(?<patch>\d{1,9}))?\z')
     if(!$match.Success){return $null}
-    $part={param($name)if($match.Groups[$name].Success){[int]$match.Groups[$name].Value}else{0}}
-    [version]::new((& $part 'major'),(& $part 'minor'),(& $part 'patch'))
+    [version]::new([int]$match.Groups['major'].Value,[int]$match.Groups['minor'].Value,[int]$match.Groups['patch'].Value)
 }
 
 function Get-QuietGitHubActionComment {
@@ -53,8 +52,7 @@ function Get-QuietGitHubActionCurrentVersion {
     param([Parameter(Mandatory)][object]$Reference)
     if($Reference.RefKind -ceq 'Version'){return ConvertTo-QuietGitHubActionVersion -Text $Reference.Ref}
     $token=[regex]::Match(([string]$Reference.Comment).Trim(),'\Av?\d{1,9}(?:\.\d{1,9}){0,2}(?![\w.])')
-    if($token.Success){return ConvertTo-QuietGitHubActionVersion -Text $token.Value}
-    $null
+    ConvertTo-QuietGitHubActionVersion -Text $token.Value
 }
 
 function Get-QuietGitHubActionUpdate {
