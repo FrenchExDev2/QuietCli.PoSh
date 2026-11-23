@@ -1,6 +1,6 @@
 # workspace-component-ci.yml
 
-<!-- workflow-source-sha256: BD19E3AA73E4D943BE77511A61D6B195E37A431FFB420D3C7C8BA0A736A9D655 -->
+<!-- workflow-source-sha256: 24CAAF898487CFF905EC757249399A95E4B766A882B298C79A15956C715E0E59 -->
 
 ## Purpose
 
@@ -11,6 +11,8 @@ Shared profile-validated workspace build/smoke engine. Supports individual compo
 Reusable workflow_call.
 
 ## Scripts and effects
+
+The optional campaign input runs the requested companion mutation, PowerShell profiling, or mutation with profiling in the same pass. Artifacts include the campaign name to distinguish reports from the same companion.
 
 Before build-cache restoration and execution, Initialize-CiEnvironment selects the checkout's GitHub Docker preset and Initialize-Workspace restores checksum-pinned runtime resources. A cold cache therefore has the same dependency prerequisites as a product job.
 

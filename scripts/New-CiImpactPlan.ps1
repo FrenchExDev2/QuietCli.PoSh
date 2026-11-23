@@ -98,7 +98,7 @@ Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $sourceTree -Options 
 $scriptsImpact=if(!$plan.RunTooling -and @($plan.ScriptPaths).Count){
     Get-QuietScriptsImpact -WorkspaceRoot $sourceTree -ChangedPaths @($plan.ScriptPaths) -PreviousMutationCatalogue $previous['test/scripts/mutation.targets.psd1']
 }
-$scope=if($plan.RunTooling){'full'}elseif($scriptsImpact -and ($scriptsImpact.TestFiles.Count -or $scriptsImpact.MutationTargets.Count)){'scripts'}else{'none'}
+$scope=if($plan.RunTooling){'full'}elseif($plan.RunAllScriptMutations -or ($scriptsImpact -and ($scriptsImpact.TestFiles.Count -or $scriptsImpact.MutationTargets.Count))){'scripts'}else{'none'}
 $plan|Add-Member -NotePropertyName ToolingScope -NotePropertyValue $scope
 if($scriptsImpact){
     $plan.Reasons=@($plan.Reasons)+@(foreach($reason in $scriptsImpact.Reasons){
@@ -127,12 +127,15 @@ $outputs=@{
     run_smokes=($plan.SmokeSuites.Count -gt 0).ToString().ToLowerInvariant()
     run_distribution=$plan.RunDistribution.ToString().ToLowerInvariant()
     run_readytorun=$plan.RunReadyToRun.ToString().ToLowerInvariant()
+    companion_checks=(@{include=$plan.CompanionChecks}|ConvertTo-Json -Depth 4 -Compress)
+    run_companion_checks=($plan.CompanionChecks.Count -gt 0).ToString().ToLowerInvariant()
+    mutation_parallel=$plan.MutationParallel.ToString().ToLowerInvariant()
     pr_ci_options=ConvertTo-Json -InputObject $selection.Selected -Compress
     # The generated-layout campaign is skipped only when script tests are the whole selected work.
-    run_layout=!($scope -ceq 'scripts' -and !$plan.RunProducts -and !$plan.SmokeSuites.Count -and !$plan.RunDistribution -and !$plan.RunReadyToRun)
+    run_layout=!($scope -ceq 'scripts' -and !$plan.RunProducts -and !$plan.SmokeSuites.Count -and !$plan.RunDistribution -and !$plan.RunReadyToRun -and !$plan.CompanionChecks.Count)
     tooling_scope=$scope
     script_tests=$(if($scope -ceq 'full' -or ($scriptsImpact -and $scriptsImpact.AllTests)){'all'}elseif($scriptsImpact){ConvertTo-Json -InputObject @($scriptsImpact.TestFiles) -Compress}else{'[]'})
-    script_mutation_targets=$(if($scope -ceq 'full' -or ($scriptsImpact -and $scriptsImpact.AllTargets)){'all'}elseif($scriptsImpact){ConvertTo-Json -InputObject @($scriptsImpact.MutationTargets) -Compress}else{'[]'})
+    script_mutation_targets=$(if($scope -ceq 'full' -or $plan.RunAllScriptMutations -or ($scriptsImpact -and $scriptsImpact.AllTargets)){'all'}elseif($scriptsImpact){ConvertTo-Json -InputObject @($scriptsImpact.MutationTargets) -Compress}else{'[]'})
 }
 $outputs.run_layout=$outputs.run_layout.ToString().ToLowerInvariant()
 if($localPreview -or $MarkdownPath){
@@ -140,7 +143,7 @@ if($localPreview -or $MarkdownPath){
         Resolve-QuietScriptsCiSelection -WorkspaceRoot $sourceTree -Scope $scope -Tests $outputs.script_tests -Targets $outputs.script_mutation_targets
     }
     $plan|Add-Member -NotePropertyMembers ([ordered]@{
-        RunScriptTooling=$scope -cne 'none'
+        RunScriptTooling=[bool]($scriptSelection.TestFiles.Count -or $scriptSelection.MutationTargets.Count)
         ScriptTests=[string[]]@($scriptSelection.TestFiles | Where-Object {$_})
         ScriptMutationTargets=[string[]]@($scriptSelection.MutationTargets | Where-Object {$_})
         ScriptTestsRequireBuild=[bool]$scriptSelection.RequiresBuild

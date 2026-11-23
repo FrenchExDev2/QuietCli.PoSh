@@ -14,7 +14,7 @@ function Get-QuietCompanionProfiles {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot)
     $modules=@(Get-QuietWorkspaceProjects $WorkspaceRoot)
-    if(!(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/companions.yml')))){
+    if(!(Get-QuietCiCompanionCataloguePath $WorkspaceRoot)){
         if(@($modules|Where-Object {$_.Path.StartsWith('src/',[StringComparison]::Ordinal)}).Count){throw 'CompanionCiCatalogueRequired'}
         return # Isolated legacy manifest fixtures do not declare CI profiles.
     }
@@ -22,12 +22,13 @@ function Get-QuietCompanionProfiles {
     foreach($group in @($modules.SolutionGroup|Sort-Object -Unique)){
         $members=@($modules|Where-Object SolutionGroup -CEQ $group)
         $product=$configuration.Companions.Contains($group)
+        $declaration=if($product){$configuration.Companions[$group]}
         if(!$product -and $group -cnotin @('Tooling','Distribution')){throw ('CompanionCiProfileMissing: '+$group)}
         $file=if($product){'ci.yml'}elseif($group -ceq 'Tooling'){'tooling-component-ci.yml'}else{'distribution-ci.yml'}
         [pscustomobject]@{
             Suite=$group;Root='src/'+$group;SolutionPath='src/'+$group+'/'+$group+'.slnx'
-            SourcePath=$(if(@($members|Where-Object {!$_.IsTest}).Count){'src/'+$group+'/src'}else{''})
-            TestPath='src/'+$group+'/test';Workflow='.github/workflows/'+$file
+            SourcePath=$(if($declaration.SourcePath){$declaration.SourcePath.Substring(0,$declaration.SourcePath.LastIndexOf('/'))}elseif(@($members|Where-Object {!$_.IsTest}).Count){'src/'+$group+'/src'}else{''})
+            TestPath=$(if($declaration.TestPath){$declaration.TestPath.Substring(0,$declaration.TestPath.LastIndexOf('/'))}else{'src/'+$group+'/test'});Workflow='.github/workflows/'+$file
             Engine=$(if($product){'ci.yml'}else{'workspace-component-ci.yml'})
             Sources=@($members|Where-Object {!$_.IsTest}|ForEach-Object {$_.Path});Tests=@($members|Where-Object IsTest|ForEach-Object {$_.Path})
             CollectPerformance=($product -and @($configuration.Suites.Values|Where-Object {$_.Group -ceq $group -and $_.CoreEvidence}).Count -gt 0)
@@ -92,8 +93,21 @@ function Sync-QuietCompanionWorkflows {
     # The generated workflows warm only overlay images; a companion image outside that contract fails first.
     # Without a catalogue there is no image to check: profiles then either reject a grouped workspace
     # (CompanionCiCatalogueRequired) or, for a legacy fixture, declare nothing.
-    if(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/companions.yml'))){
-        $null=Assert-QuietCiCompanionImages -WorkspaceRoot $WorkspaceRoot -Configuration (Read-QuietCiCompanions $WorkspaceRoot)
+    if(Get-QuietCiCompanionCataloguePath $WorkspaceRoot){
+        $configuration=Read-QuietCiCompanions $WorkspaceRoot
+        $null=Assert-QuietCiCompanionImages -WorkspaceRoot $WorkspaceRoot -Configuration $configuration
+        if([IO.Path]::GetFileName($configuration.Path) -ceq 'companions.yaml'){
+            Import-Module ([IO.Path]::Combine($PSScriptRoot,'PullRequestChecklist.psm1')) -DisableNameChecking -ErrorAction Stop
+            $templatePath=[IO.Path]::Combine($WorkspaceRoot,'.github','pull_request_template.md')
+            $current=[IO.File]::ReadAllText($templatePath,[Text.Encoding]::UTF8).Replace("`r`n","`n")
+            $expected=Expand-QuietPullRequestTemplate -Template $current -Configuration $configuration
+            if($expected -cne $current){
+                if(!$Apply){throw 'CompanionPullRequestTemplateDrift'}
+                if($PSCmdlet.ShouldProcess($templatePath,'Synchronize the companion checkboxes')){
+                    [IO.File]::WriteAllText($templatePath,$expected,[Text.UTF8Encoding]::new($false))
+                }
+            }
+        }
     }
     foreach($entry in Get-QuietCompanionWorkflowDefinitions $WorkspaceRoot){
         $path=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $entry.Path)

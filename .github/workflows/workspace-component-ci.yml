@@ -23,6 +23,12 @@ on:
       runner:
         type: string
         default: windows-latest
+      campaign:
+        type: string
+        default: qualification
+      mutation_parallel:
+        type: boolean
+        default: true
 permissions:
   contents: read
 jobs:
@@ -46,7 +52,8 @@ jobs:
           SOURCE: ${{ inputs.source_path }}
           TEST: ${{ inputs.test_path }}
           SUITES_JSON: ${{ inputs.suites_json }}
-        run: ./scripts/Invoke-ComponentCheck.ps1 -Suite $env:SUITE -QualificationMode $env:MODE -SolutionPath $env:SOLUTION -SourcePath $env:SOURCE -TestPath $env:TEST -SuitesJson $env:SUITES_JSON -ValidateOnly
+          CAMPAIGN: ${{ inputs.campaign }}
+        run: ./scripts/Invoke-ComponentCheck.ps1 -Suite $env:SUITE -QualificationMode $env:MODE -SolutionPath $env:SOLUTION -SourcePath $env:SOURCE -TestPath $env:TEST -SuitesJson $env:SUITES_JSON -Campaign $env:CAMPAIGN -ValidateOnly
   tooling:
     needs: validate
     if: inputs.suite == 'Tooling' && inputs.qualification_mode == 'full'
@@ -97,10 +104,12 @@ jobs:
           SOURCE: ${{ inputs.source_path }}
           TEST: ${{ inputs.test_path }}
           SUITES_JSON: ${{ inputs.suites_json }}
-        run: ./scripts/Invoke-ComponentCheck.ps1 -Suite $env:SUITE -QualificationMode $env:MODE -SolutionPath $env:SOLUTION -SourcePath $env:SOURCE -TestPath $env:TEST -SuitesJson $env:SUITES_JSON -RunDirectory ./artifacts/component
+          CAMPAIGN: ${{ inputs.campaign }}
+          MUTATION_PARALLEL: ${{ inputs.mutation_parallel }}
+        run: ./scripts/Invoke-ComponentCheck.ps1 -Suite $env:SUITE -QualificationMode $env:MODE -SolutionPath $env:SOLUTION -SourcePath $env:SOURCE -TestPath $env:TEST -SuitesJson $env:SUITES_JSON -Campaign $env:CAMPAIGN -Parallel:($env:MUTATION_PARALLEL -ceq 'true') -RunDirectory ./artifacts/component
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: quietcli-component-${{ inputs.suite }}-${{ inputs.qualification_mode }}-${{ runner.os }}-${{ github.run_attempt }}
+          name: quietcli-component-${{ inputs.suite }}-${{ inputs.qualification_mode }}-${{ inputs.campaign }}-${{ runner.os }}-${{ github.run_attempt }}
           path: artifacts/component
           retention-days: 14

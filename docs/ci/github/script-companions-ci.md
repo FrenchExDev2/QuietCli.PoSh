@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: 4669C0F76D14BFD6FC6027F2D4131ABDB29D0E3876021E7CBB176AEE5BE71E72 -->
+<!-- workflow-source-sha256: 255476E44455BFE63EE041D0FBB1ECF1E28DB5D63804D7F9A83FDD53DC210E28 -->
 
 ## Purpose
 
@@ -19,6 +19,8 @@ A manual `workflow_dispatch` on any branch takes a `suites` input: comma-separat
 - `all` runs every companion plus the full tooling. Dependents of the chosen companions get their usual smoke. On develop, the run also warms and publishes the Linux images. See [New-CiImpactPlan](../../scripts/New-CiImpactPlan.md#manual-dispatch).
 
 ## Scripts and effects
+
+The planner supplies a companion-check matrix for requested mutation and profiling. When both options select the same companion, one matrix row profiles its mutation pass. The matrix result is required when the PR selects a pass. Each matrix respects the declared parallelism.
 
 Selected campaigns wait for successful planning, source checks and layout validation, so invalid shared inputs stop before costly builds and test campaigns.
 
@@ -44,6 +46,7 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 flowchart TD
     event["Triggers: pull_request, push, workflow_dispatch"]
     job_ci_status["ci-status"]
+    job_companion_checks["companion-checks"]
     job_distribution["distribution"]
     job_images["images"]
     job_layout_tests["layout-tests"]
@@ -60,8 +63,12 @@ flowchart TD
     job_products --> job_ci_status
     job_smokes --> job_ci_status
     job_tooling_only --> job_ci_status
+    job_companion_checks --> job_ci_status
     job_distribution --> job_ci_status
     job_readytorun --> job_ci_status
+    job_plan --> job_companion_checks
+    job_source_checks --> job_companion_checks
+    job_layout_tests --> job_companion_checks
     job_plan --> job_distribution
     job_source_checks --> job_distribution
     job_layout_tests --> job_distribution
@@ -87,7 +94,8 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, images, products, smokes, tooling-only, distribution, readytorun | <code>&#36;{{ always() }}</code> | [`./scripts/Assert-CiPlanResults.ps1`](../../scripts/Assert-CiPlanResults.md) |
+| ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, images, products, smokes, tooling-only, companion-checks, distribution, readytorun | <code>&#36;{{ always() }}</code> | [`./scripts/Assert-CiPlanResults.ps1`](../../scripts/Assert-CiPlanResults.md) |
+| companion-checks | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;companion&#95;checks == 'true'</code> |  |
 | distribution | reuses ./.github/workflows/distribution-ci.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;distribution == 'true'</code> |  |
 | images | <code>runner &#36;{{ matrix.runner }}</code> | plan, source-checks | <code>needs.plan.outputs.run&#95;products == 'true' &#38;&#38; github.repository == 'FrenchExDev2/QuietCli.PoSh' &#38;&#38; github.ref == 'refs/heads/develop' &#38;&#38; (github.event&#95;name == 'push' &#124;&#124; github.event&#95;name == 'workflow&#95;dispatch')</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/New-CiSuiteImage.ps1`](../../scripts/New-CiSuiteImage.md) |
 | layout-tests | runner windows-latest | plan | <code>needs.plan.outputs.run&#95;layout == 'true'</code> | [`./scripts/Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.md), [`./scripts/Invoke-WorkspaceCi.ps1`](../../scripts/Invoke-WorkspaceCi.md) |

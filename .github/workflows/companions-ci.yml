@@ -42,6 +42,9 @@ jobs:
       run_tooling: ${{ steps.plan.outputs.run_tooling }}
       run_distribution: ${{ steps.plan.outputs.run_distribution }}
       run_readytorun: ${{ steps.plan.outputs.run_readytorun }}
+      companion_checks: ${{ steps.plan.outputs.companion_checks }}
+      run_companion_checks: ${{ steps.plan.outputs.run_companion_checks }}
+      mutation_parallel: ${{ steps.plan.outputs.mutation_parallel }}
       pr_ci_options: ${{ steps.plan.outputs.pr_ci_options }}
       pr_number: ${{ steps.plan.outputs.pr_number }}
       pr_head: ${{ steps.plan.outputs.pr_head }}
@@ -194,6 +197,19 @@ jobs:
       scope: ${{ needs.plan.outputs.tooling_scope }}
       script_tests: ${{ needs.plan.outputs.script_tests }}
       script_mutation_targets: ${{ needs.plan.outputs.script_mutation_targets }}
+      mutation_parallel: ${{ needs.plan.outputs.mutation_parallel == 'true' }}
+  companion-checks:
+    needs: [plan, source-checks, layout-tests]
+    if: needs.plan.outputs.run_companion_checks == 'true'
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ needs.plan.outputs.mutation_parallel == 'true' && 6 || 1 }}
+      matrix: ${{ fromJson(needs.plan.outputs.companion_checks) }}
+    uses: ./.github/workflows/workspace-component-ci.yml
+    with:
+      suite: ${{ matrix.suite }}
+      campaign: ${{ matrix.campaign }}
+      mutation_parallel: ${{ needs.plan.outputs.mutation_parallel == 'true' }}
   distribution:
     needs: [plan, source-checks, layout-tests]
     if: needs.plan.outputs.run_distribution == 'true'
@@ -207,7 +223,7 @@ jobs:
       require_complete: true
   ci-status:
     name: QuietCli required CI
-    needs: [plan, source-checks, layout-tests, images, products, smokes, tooling-only, distribution, readytorun]
+    needs: [plan, source-checks, layout-tests, images, products, smokes, tooling-only, companion-checks, distribution, readytorun]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

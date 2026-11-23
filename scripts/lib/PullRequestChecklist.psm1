@@ -11,7 +11,9 @@ function Read-QuietPullRequestChecklist {
     param([AllowNull()][AllowEmptyString()][string]$Body)
 
     $lines = $Body -split '\r\n|\n|\r'
-    $options = [ordered]@{mutation=$false; readytorun=$false; preview=$false}
+    $options = [ordered]@{mutation=$false; 'script-mutation'=$false; 'mutation-serial'=$false; readytorun=$false; preview=$false}
+    $legacy = [string[]]@('mutation','readytorun','preview')
+    $standard = [string[]]@($options.Keys | Where-Object {$_ -cne 'mutation'})
     $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $start = $end = -1
     $fence = ''
@@ -27,21 +29,30 @@ function Read-QuietPullRequestChecklist {
             if ($start -ne -1) {throw 'PullRequestCiChecklistDuplicate'}
             $start = $index
         } elseif ($line -ceq '<!-- quietcli-ci:end -->') {
-            if (!$inside -or $seen.Count -ne $options.Count) {throw 'PullRequestCiChecklistIncomplete'}
+            if(!$inside -or (!$seen.SetEquals($legacy) -and (!$seen.IsSupersetOf($standard) -or $seen.Contains('mutation')))){
+                throw 'PullRequestCiChecklistIncomplete'
+            }
             $end = $index
         } elseif ($inside -and ![string]::IsNullOrWhiteSpace($line)) {
-            if ($line -cnotmatch '^\s*- \[([ xX])\] .+ <!-- ci:([a-z-]+) -->\s*$') {throw 'PullRequestCiChecklistInvalidRow'}
+            if ($line -cnotmatch '^\s*- \[([ xX])\] .+ <!-- ci:([a-z0-9-]+) -->\s*$') {throw 'PullRequestCiChecklistInvalidRow'}
             $id = $Matches[2]
-            if ($id -cnotin $options.Keys) {throw 'PullRequestCiChecklistUnknownOption'}
+            $checked=$Matches[1] -cne ' '
+            if($id -cnotin $options.Keys -and $id -cnotmatch '\A(?:run-profile-mutation|profiling)-[a-z][a-z0-9]*\z'){
+                throw 'PullRequestCiChecklistUnknownOption'
+            }
             if (!$seen.Add($id)) {throw 'PullRequestCiChecklistDuplicateOption'}
-            $options[$id] = $Matches[1] -cne ' '
+            $options[$id] = $checked
         }
     }
     if ($start -ne -1 -and $end -eq -1) {throw 'PullRequestCiChecklistIncomplete'}
+    $companionOptions=[string[]]@($options.Keys|Where-Object {$_ -cnotin @('mutation','script-mutation','mutation-serial','readytorun','preview')})
+    [Array]::Sort($companionOptions,[StringComparer]::Ordinal)
+    $canonical=@('mutation','script-mutation')+$companionOptions+@('mutation-serial','readytorun','preview')
     [pscustomobject]@{
         StartLine = $start
         EndLine = $end
-        Selected = [string[]]@($options.Keys | Where-Object {$options[$_]})
+        Available = [string[]]@($canonical | Where-Object {$seen.Contains($_)})
+        Selected = [string[]]@($canonical | Where-Object {$options[$_]})
     }
 }
 
@@ -71,8 +82,11 @@ function New-QuietPullRequestBody {
     if ($standard.StartLine -lt 0 -or $standard.Selected.Count) {throw 'PullRequestCiChecklistTemplateInvalid'}
     if ((Read-QuietPullRequestChecklist $Footer).StartLine -ge 0) {throw 'PullRequestCiChecklistFooterDuplicate'}
     $selection = if ($PSBoundParameters.ContainsKey('CiOption')) {$CiOption} else {$source.Selected}
+    if ('mutation' -cin $selection -and 'script-mutation' -cin $standard.Available) {
+        $selection = @($selection | Where-Object {$_ -cne 'mutation'}) + @('script-mutation','run-profile-mutation-core')
+    }
     foreach ($id in $selection) {
-        if ($id -cnotin @('mutation','readytorun','preview')) {throw 'PullRequestCiChecklistUnknownOption'}
+        if ($id -cnotin $standard.Available) {throw 'PullRequestCiChecklistUnknownOption'}
     }
     $checklist = ($Template -split '\r\n|\n|\r')[$standard.StartLine..$standard.EndLine]
     foreach ($id in $selection) {
@@ -94,4 +108,31 @@ function New-QuietPullRequestBody {
     $result
 }
 
-Export-ModuleMember -Function Read-QuietPullRequestChecklist,New-QuietPullRequestBody
+function Expand-QuietPullRequestTemplate {
+    <#
+    .SYNOPSIS
+    Renders companion checkbox rows from the validated YAML catalogue.
+    .PARAMETER Template
+    Markdown containing the standard checklist and shared options.
+    .PARAMETER Configuration
+    Validated companion catalogue.
+    #>
+    param([Parameter(Mandatory)][string]$Template,[Parameter(Mandatory)]$Configuration)
+    $lines=$Template -split '\r\n|\n|\r'
+    $body=Read-QuietPullRequestChecklist $Template
+    if('script-mutation' -cnotin $body.Available){throw 'PullRequestCiChecklistTemplateInvalid'}
+    $expanded=foreach($line in $lines){
+        if($line -cmatch '<!-- ci:(?:run-profile-mutation|profiling)-[a-z][a-z0-9]* -->\s*$'){continue}
+        $line
+        if($line -cmatch '<!-- ci:script-mutation -->\s*$'){
+            foreach($companion in $Configuration.Companions.Values){
+                $id=$companion.Name.ToLowerInvariant()
+                if($companion.Mutation){"- [ ] Run $($companion.Name) mutation testing <!-- ci:run-profile-mutation-$id -->"}
+                "- [ ] Profile the $($companion.Name) PowerShell tests <!-- ci:profiling-$id -->"
+            }
+        }
+    }
+    $expanded -join [char]10
+}
+
+Export-ModuleMember -Function Read-QuietPullRequestChecklist,New-QuietPullRequestBody,Expand-QuietPullRequestTemplate

@@ -33,7 +33,7 @@ src/
 Module names, GUIDs and Gallery identities do not depend on directory locations.
 PrivateData.QuietCli.SolutionGroup associates each inert manifest with its group.
 A group can contain several source modules and several test modules. Register every
-test runner in build/companions.yml; runners declaring the same group are selected
+test runner in build/companions.yaml; runners declaring the same group are selected
 together when that product group is qualified. Module RequiredModules still controls
 technical dependency order, and BuildProjects declares compiled distributions.
 

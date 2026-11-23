@@ -33,7 +33,7 @@ With PushTag, atomically push existing local annotated release tags, for example
 
 ## Parameters and discovery
 
-Module accepts exactly one component alias or full package name. Several values or All fail with `PreviewTagRequiresOneModule` before any Git call; use the facade for a multi-module release. Existing WorkspaceProjects/manifests supply module names, dependencies and PrivateData.QuietCli.Publishable; test modules and disabled companions are excluded. build/companions.yml still owns CI suite/image declarations, without a duplicate publication YAML.
+Module accepts exactly one component alias or full package name. Several values or All fail with `PreviewTagRequiresOneModule` before any Git call; use the facade for a multi-module release. Existing WorkspaceProjects/manifests supply module names, dependencies and PrivateData.QuietCli.Publishable; test modules and disabled companions are excluded. build/companions.yaml still owns CI suite/image declarations, without a duplicate publication YAML.
 
 Version is a numeric base or complete Gallery version. A numeric base without Preview/NextPreview requests stable publication and clears the source prerelease label. NextPreview computes the numeric maximum plus one per package/base version from local and remote tags. Preview accepts a positive number or explicit null for NextPreview; PowerShell requires that nullable argument, so NextPreview is the argument-free spelling. Complete suffixed versions cannot also request Preview.
 
