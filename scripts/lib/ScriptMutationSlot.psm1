@@ -176,11 +176,10 @@ function Wait-QuietScriptsMutationJob {
     Delay between checks.
     #>
     param([Parameter(Mandatory)]$Slot,[ValidateRange(1,5000)][int]$PollMilliseconds=25)
-    while($true){
-        $outcome=Receive-QuietScriptsMutationJob -Slot $Slot
-        if($null -ne $outcome){return $outcome}
+    while(!($outcome=Receive-QuietScriptsMutationJob -Slot $Slot)){
         [void][Threading.Tasks.Task]::Delay($PollMilliseconds).GetAwaiter().GetResult()
     }
+    $outcome
 }
 
 function Stop-QuietScriptsMutationSlot {
@@ -316,7 +315,17 @@ function Invoke-QuietScriptsMutationSlotWorker {
         }
         $jobPath=[IO.Path]::Combine($request.Directory,'job-'+$sequence+'.json')
         if(![IO.File]::Exists($jobPath)){[void][Threading.Tasks.Task]::Delay(20).GetAwaiter().GetResult();continue}
-        $job=Get-Content -LiteralPath $jobPath -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable
+        try{
+            $jobJson=Get-Content -LiteralPath $jobPath -Raw -Encoding utf8 -ErrorAction Stop
+        }catch{
+            $cause=$_.Exception.GetBaseException()
+            $code=$cause.HResult -band 65535
+            if(!$IsWindows -or $cause -isnot [IO.IOException] -or $code -notin @(32,33)){throw}
+            # The queue file is already published atomically. Leave this sequence pending while the share is held.
+            [void][Threading.Tasks.Task]::Delay(20).GetAwaiter().GetResult()
+            continue
+        }
+        $job=$jobJson|ConvertFrom-Json -AsHashtable
         $result=Invoke-QuietScriptsMutationSlotJob -Request $request -Job $job -State $state -Scope $scope
         Write-WorkspaceJson ([IO.Path]::Combine($request.Directory,'result-'+$sequence+'.json')) $result
         $sequence++

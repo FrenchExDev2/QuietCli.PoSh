@@ -25,12 +25,13 @@ function Get-QuietGitHubActionFiles {
     }
     $actions=[IO.Path]::Combine($root,'.github','actions')
     if([IO.Directory]::Exists($actions)){
-        foreach($file in [IO.Directory]::EnumerateFiles($actions,'*',[IO.SearchOption]::AllDirectories)){
+        foreach($file in [IO.Directory]::EnumerateFiles($actions,[string]::Empty,[IO.SearchOption]::AllDirectories)){
             if([IO.Path]::GetFileName($file) -cin @('action.yml','action.yaml')){$files.Add($file)}
         }
     }
     $items=@(foreach($file in $files){
-        if(([IO.File]::GetAttributes($file) -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw ('GitHubActionFileLinked: '+$file)}
+        $attributes=(Get-Item -LiteralPath $file -Force -ErrorAction Stop).Attributes
+        if(($attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw ('GitHubActionFileLinked: '+$file)}
         [pscustomobject]@{RelativePath=[IO.Path]::GetRelativePath($root,$file).Replace('\','/');FullPath=$file}
     })
     # Sort-Object is culture-aware; an ordinal sort keeps the order identical on every host.
@@ -60,12 +61,12 @@ function ConvertFrom-QuietGitHubActionUses {
     param([Parameter(Mandatory)][AllowEmptyString()][string]$Text,[Parameter(Mandatory)][string]$Path)
     $lines=$Text.Split("`n")
     for($index=0;$index -lt $lines.Count;$index++){
-        $line=$lines[$index].TrimEnd("`r")
+        $line=$lines[$index].TrimEnd([char]13)
         $match=[regex]::Match($line,'\A(?<prefix>[ \t]*(?:-[ \t]+)?uses:[ \t]*)(?<quote>[''"]?)(?<value>[^\s''"#]+)\k<quote>(?:[ \t]+#[ \t]?(?<comment>.*?))?[ \t]*\z')
         if(!$match.Success){continue}
         $value=$match.Groups['value'].Value
-        $comment=if($match.Groups['comment'].Success){$match.Groups['comment'].Value}else{$null}
-        $reference=[ordered]@{Path=$Path;LineNumber=$index+1;Line=$line;Prefix=$match.Groups['prefix'].Value;Quote=$match.Groups['quote'].Value;Value=$value;Comment=$comment;Kind='Remote';Owner=$null;Repository=$null;SubPath=$null;Ref=$null;RefKind=$null;Action=$null}
+        $reference=[ordered]@{Path=$Path;LineNumber=$index+1;Line=$line;Prefix=$match.Groups['prefix'].Value;Quote=$match.Groups['quote'].Value;Value=$value;Comment=$null;Kind='Remote';Owner=$null;Repository=$null;SubPath=$null;Ref=$null;RefKind=$null;Action=$null}
+        if($match.Groups['comment'].Success){$reference.Comment=$match.Groups['comment'].Value}
         if($value.StartsWith('./',[StringComparison]::Ordinal) -or $value.StartsWith('../',[StringComparison]::Ordinal)){$reference.Kind='Local'}
         elseif($value.StartsWith('docker://',[StringComparison]::Ordinal)){$reference.Kind='Docker'}
         else{
@@ -73,7 +74,7 @@ function ConvertFrom-QuietGitHubActionUses {
             if(!$remote.Success -or $remote.Groups['repository'].Value -cin @('.','..')){throw ('GitHubActionReferenceInvalid: '+$Path+':'+($index+1)+' '+$value)}
             $reference.Owner=$remote.Groups['owner'].Value
             $reference.Repository=$remote.Groups['repository'].Value
-            $reference.SubPath=if($remote.Groups['sub'].Success){$remote.Groups['sub'].Value.Substring(1)}else{$null}
+            if($remote.Groups['sub'].Success){$reference.SubPath=$remote.Groups['sub'].Value.Substring(1)}
             $reference.Ref=$remote.Groups['ref'].Value
             $reference.RefKind=Get-QuietGitHubActionRefKind -Ref $reference.Ref
             $reference.Action=$reference.Owner+'/'+$reference.Repository
@@ -117,7 +118,9 @@ function Format-QuietGitHubActionUses {
     param([Parameter(Mandatory)][object]$Reference,[Parameter(Mandatory)][string]$Ref,[AllowEmptyString()][AllowNull()][string]$Comment)
     if($Reference.Kind -cne 'Remote'){throw ('GitHubActionReferenceInvalid: only a Remote reference can be rendered, not '+$Reference.Kind)}
     if($Ref -cnotmatch '\A[A-Za-z0-9._/+-]{1,255}\z' -or ([string]$Comment).IndexOfAny([char[]]"`r`n") -ge 0){throw 'GitHubActionReferenceInvalid: ref or comment cannot be rendered on one line'}
-    $value=$Reference.Action+$(if($Reference.SubPath){'/'+$Reference.SubPath}else{''})+'@'+$Ref
+    $action=$Reference.Action
+    if($Reference.SubPath){$action+='/'+$Reference.SubPath}
+    $value=$action+'@'+$Ref
     $line=$Reference.Prefix+$Reference.Quote+$value+$Reference.Quote
     if(![string]::IsNullOrWhiteSpace($Comment)){$line+=' # '+$Comment.Trim()}
     $line

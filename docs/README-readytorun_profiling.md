@@ -8,7 +8,7 @@ walkthrough on top of it.
 ## Why ReadyToRun is being profiled here
 
 The main GitHub qualification and Gallery package builds now explicitly enable ReadyToRun.
-This manual benchmark remains a separate IL-versus-R2R experiment, runs only on demand,
+This on-demand benchmark compares IL and ReadyToRun and can also run as a checked PR option,
 and never gates develop delivery. Linux transport explicitly uses Docker on GitHub; local
 callers can select Docker or Podman. See [the CI execution model](ci/execution-model.md).
 
@@ -19,7 +19,7 @@ of effect, instead of assuming it.
 
 ## Manual GitHub runs and PR evidence
 
-The [ReadyToRun workflow](../.github/workflows/quietcli2-readytorun.yml) runs only through `workflow_dispatch`. It has no `develop` branch filter and no PR/push trigger. Choose the pushed PR branch through **Actions → QuietCli2 ReadyToRun profiling → Run workflow**, or use the existing automation entry point from the workspace root:
+A PR can request strictly complete reports by checking ReadyToRun in its [CI checklist](README-pull-request-ci.md). For a manual informational run of the [ReadyToRun workflow](../.github/workflows/quietcli2-readytorun.yml), choose the pushed PR branch through **Actions → QuietCli2 ReadyToRun profiling → Run workflow**, or use the existing automation entry point from the workspace root:
 
 ```powershell
 ./scripts/Invoke-RemoteWorkflow.ps1 -Repository FrenchExDev2/QuietCli.PoSh -Workflow quietcli2-readytorun.yml -Ref fix/develop-pr-gh-wf

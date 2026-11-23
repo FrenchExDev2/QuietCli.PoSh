@@ -47,22 +47,21 @@ No artificial CSharp wrapper is required for a PowerShell-only module.
 ./scripts/Sync-WorkspaceSolutions.ps1 -Apply
 ~~~
 
-## Individual workflows and automatic selection
+## Shared product CI and automatic selection
 
 GitHub workflow files remain under the root .github/workflows directory:
 
-| Group | Individual entry point | Solution |
+| Group | CI engine | Solution |
 |---|---|---|
-| Core | core-ci.yml | src/Core/Core.slnx |
-| Git | git-ci.yml | src/Git/Git.slnx |
-| Vagrant | vagrant-ci.yml | src/Vagrant/Vagrant.slnx |
+| Core | ci.yml | src/Core/Core.slnx |
+| Git | ci.yml | src/Git/Git.slnx |
+| Vagrant | ci.yml | src/Vagrant/Vagrant.slnx |
 | Tooling | tooling-component-ci.yml | src/Tooling/Tooling.slnx |
 | Distribution | distribution-ci.yml | src/Distribution/Distribution.slnx |
 
-Each entry point explicitly passes suite, solution_path, source_path, test_path and
-qualification_mode through uses/with. Modes are full, smoke and build. Individual
-entry points support workflow_call and workflow_dispatch; automatic PR/develop work
-uses a matrix of the shared engine from those same generated profiles.
+The planner supplies product profiles to the shared CI matrix from the companion catalogue.
+For a manual product smoke or build, use `ci.yml` with `suite`, `qualification_mode` and
+`run_tooling=false`. Tooling and Distribution keep their dedicated component workflows.
 
 A change limited to repository scripts (`scripts/**`, `test/scripts/**`) runs only the script tests and
 script mutation targets it reaches, through
@@ -76,6 +75,8 @@ This keeps product requirements readable while avoiding a caller tree containing
 one unique reusable workflow for every future companion. GitHub limits such a tree
 to 50 unique reusable workflows. The automatic matrix calls the same engine for
 each selected profile instead.
+
+See [PR options and scripted merge](README-pull-request-ci.md) for the optional controls.
 
 ~~~powershell
 ./scripts/Sync-CompanionWorkflows.ps1

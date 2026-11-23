@@ -26,6 +26,7 @@ Describe 'Workspace pull request delivery' {
         $script:mergeAccepted=$true
         $script:watchState='Success'
         $script:watchRun=102
+        $script:afterPush=@{}
         $script:view=@{
             number=7;url="https://github.com/$script:repository/pull/7";headRefName=$script:branch;headRefOid=$script:head
             baseRefName='develop';isCrossRepository=$false;isDraft=$false;state='OPEN';mergeCommit=@{oid='c'*40}
@@ -35,6 +36,7 @@ Describe 'Workspace pull request delivery' {
         $script:runs=@(@{id=102;event='pull_request';head_branch=$script:branch;head_sha=$script:head;pull_requests=@()})
         $script:trace=[Collections.Generic.List[string]]::new()
         $script:mergeArguments=@()
+        Mock Assert-QuietPullRequestCiEvidence -ModuleName 'Merge-PullRequest' {}
         Mock Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' {
             param($WorkspaceRoot,$FilePath,$ArgumentList)
             $Arguments=$ArgumentList
@@ -77,6 +79,7 @@ Describe 'Workspace pull request delivery' {
             if($Name -ceq 'Push-Workspace.ps1'){
                 $script:trace.Add("push:$($Arguments.Branch):$($Arguments.ExpectedHead)")
                 if($script:pushChangesHead){$script:view.headRefOid=$Arguments.ExpectedHead}
+                foreach($field in $script:afterPush.Keys){$script:view[$field]=$script:afterPush[$field]}
                 return
             }
             if($Name -cne 'Watch-GitHubRun.ps1'){throw "Unexpected entry point: $Name"}
@@ -88,14 +91,25 @@ Describe 'Workspace pull request delivery' {
     }
 
     It 'previews both entry points without touching Git, GitHub or the watcher' {
-        Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -WhatIf
-        Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -MergePullRequest -WhatIf
+        $transcript=[IO.Path]::Combine($TestDrive,'pull-request-preview.txt')
+        $null=Start-Transcript -LiteralPath $transcript
+        try {
+            Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -WhatIf
+            Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -NoRebase -NoBranchDelete -WhatIf
+            Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -MergePullRequest -WhatIf
+        } finally {$null=Stop-Transcript}
+        $preview=[IO.File]::ReadAllText($transcript,[Text.Encoding]::UTF8)
+        $preview | Should -Match 'Merge with --rebase and delete the source branch.*workspace pull request #7 via origin'
+        $preview | Should -Match 'Merge with --merge and preserve the branch.*workspace pull request #7 via origin'
+        $preview | Should -Match 'Push and watch the existing pull request'
         Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 0 -Exactly
         Should -Invoke Invoke-QuietPullRequestScript -ModuleName 'Merge-PullRequest' -Times 0 -Exactly
     }
 
     It 'rebases the pinned head and verifiably removes both source refs by default' {
-        $result=Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -Confirm:$false
+        $result=Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -Confirm:$false -WarningVariable warnings -WarningAction SilentlyContinue -ErrorVariable mergeErrors
+        @($warnings).Count | Should -Be 0
+        @($mergeErrors).Count | Should -Be 0
         ($script:mergeArguments -join ' ') | Should -BeExactly "pr merge 7 --repo $script:repository --rebase --match-head-commit $script:head --delete-branch"
         $result.State | Should -BeExactly Merged
         $result.PullRequest | Should -Be 7
@@ -107,6 +121,16 @@ Describe 'Workspace pull request delivery' {
         Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 1 -Exactly -ParameterFilter {
             $FilePath -ceq 'git' -and ($ArgumentList -join ' ') -ceq 'ls-remote --heads origin refs/heads/feature/work'
         }
+        Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 1 -Exactly -ParameterFilter {
+            $FilePath -ceq 'git' -and ($ArgumentList -join ' ') -ceq 'branch --show-current'
+        }
+        Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 1 -Exactly -ParameterFilter {
+            $FilePath -ceq 'git' -and ($ArgumentList -join ' ') -ceq 'status --porcelain=v1 --untracked-files=normal'
+        }
+        Should -Invoke Assert-QuietPullRequestCiEvidence -ModuleName 'Merge-PullRequest' -Exactly -Times 1 -ParameterFilter {
+            $Number -eq 7 -and $ExpectedHead -ceq ('a'*40) -and $CheckRollup.Count -eq 1 -and
+            $CheckRollup[0].detailsUrl -ceq 'https://github.com/example/QuietCli/actions/runs/102/job/77'
+        }
     }
 
     It 'uses a merge commit and preserves the source branch when requested' {
@@ -114,6 +138,9 @@ Describe 'Workspace pull request delivery' {
         ($script:mergeArguments -join ' ') | Should -BeExactly "pr merge 7 --repo $script:repository --merge --match-head-commit $script:head"
         $result.Method | Should -BeExactly merge
         $result.BranchDeleted | Should -BeNullOrEmpty
+        Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 1 -Exactly -ParameterFilter {
+            $FilePath -ceq 'gh' -and ($ArgumentList -join ' ') -ceq 'api repos/example/QuietCli --jq {delete_branch_on_merge}'
+        }
     }
 
     It 'rejects a PR whose <Field> is invalid' -ForEach @(
@@ -197,9 +224,11 @@ Describe 'Workspace pull request delivery' {
     ) {
         if($Location -eq 'local'){$script:removeLocal=$false}
         else{$script:remoteRef="$script:head refs/heads/$script:branch"}
-        $result=Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -Confirm:$false -WarningAction SilentlyContinue
+        $result=Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -Confirm:$false -WarningAction SilentlyContinue -WarningVariable warnings
         $result.State | Should -BeExactly Merged
         $result.BranchDeleted | Should -BeFalse
+        @($warnings).Count | Should -Be 1
+        $warnings[0].Message | Should -BeExactly 'Pull request #7 merged, but the source branch still exists.'
     }
 
     It 'refuses to cross from the selected fetch repository to another push repository' {
@@ -210,7 +239,8 @@ Describe 'Workspace pull request delivery' {
 
     It 'pushes the exact revision and watches its linked run, without merging by default' {
         $script:view.headRefOid=$script:oldHead
-        $result=@(Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -DiscoverySeconds 0 -Confirm:$false)
+        $result=@(Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -DiscoverySeconds 0 -Confirm:$false -ErrorVariable watchErrors)
+        @($watchErrors).Count | Should -Be 0
         ($script:trace -join '|') | Should -BeExactly "push:$script:branch`:$script:head|watch:$script:repository`:102"
         $result.Count | Should -Be 2
         $result[-1].State | Should -BeExactly Success
@@ -223,6 +253,12 @@ Describe 'Workspace pull request delivery' {
         }
         Should -Invoke Invoke-QuietPullRequestScript -ModuleName 'Merge-PullRequest' -Times 1 -Exactly -ParameterFilter {
             $Name -ceq 'Push-Workspace.ps1' -and $Arguments.WorkspaceRoot -eq $TestDrive -and $Arguments.Remote -ceq 'origin' -and $Arguments.Confirm -eq $false
+        }
+        Should -Invoke Invoke-QuietPullRequestScript -ModuleName 'Merge-PullRequest' -Times 1 -Exactly -ParameterFilter {
+            $Name -ceq 'Watch-GitHubRun.ps1' -and $Arguments.RunId -eq 102 -and $Arguments.Confirm -eq $false
+        }
+        Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 1 -Exactly -ParameterFilter {
+            $FilePath -ceq 'git' -and ($ArgumentList -join ' ') -ceq 'branch --show-current'
         }
     }
 
@@ -245,8 +281,91 @@ Describe 'Workspace pull request delivery' {
         @{Field='id';Value=0}
     ) {
         $script:runs[0][$Field]=$Value
+        if($Field -ceq 'id' -and $Value -eq 0){$script:runs[0].pull_requests=@(7)}
         {Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -MergePullRequest -DiscoverySeconds 0 -Confirm:$false} | Should -Throw '*PullRequestRunUnavailable*'
         $script:trace.Count | Should -Be 1
+    }
+
+    It 'rejects a check URL containing the workflow URL inside a redirect' {
+        $script:view.statusCheckRollup[0].detailsUrl='https://example.invalid/?redirect=https://github.com/example/QuietCli/actions/runs/102/job/77'
+        {Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -DiscoverySeconds 0 -Confirm:$false} |
+            Should -Throw '*PullRequestRunUnavailable*'
+    }
+
+    It 'stops before sleeping when the discovery deadline is reached exactly' {
+        $script:runs=@()
+        $script:instant=[datetime]::new(2026,1,1,0,0,0,[DateTimeKind]::Utc)
+        $script:clockReads=0
+        Mock Get-Date -ModuleName 'Merge-PullRequest' {
+            $script:clockReads++
+            if($script:clockReads -eq 1){$script:instant}else{$script:instant.AddSeconds(5)}
+        }
+
+        {Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -DiscoverySeconds 5 -Confirm:$false} |
+            Should -Throw '*PullRequestRunUnavailable*'
+        Should -Invoke Wait-QuietReleaseInterval -ModuleName 'Merge-PullRequest' -Exactly -Times 0
+        Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Exactly -Times 1 -ParameterFilter {
+            $FilePath -ceq 'gh' -and $ArgumentList -contains 'event=pull_request'
+        }
+    }
+
+    It 'stops at the poll budget even if the clock has not advanced' {
+        $script:runs=@()
+        Mock Get-Date -ModuleName 'Merge-PullRequest' {[datetime]::new(2026,1,1,0,0,0,[DateTimeKind]::Utc)}
+        Mock Wait-QuietReleaseInterval -ModuleName 'Merge-PullRequest' {}
+
+        {Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -DiscoverySeconds 5 -Confirm:$false} |
+            Should -Throw '*PullRequestRunUnavailable*'
+        Should -Invoke Wait-QuietReleaseInterval -ModuleName 'Merge-PullRequest' -Exactly -Times 1 -ParameterFilter {$Seconds -eq 5}
+        Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Exactly -Times 2 -ParameterFilter {
+            $FilePath -ceq 'gh' -and $ArgumentList -contains 'event=pull_request'
+        }
+    }
+
+    It 'waits once for a missing run and rereads the PR only after a candidate is available' {
+        $script:readyRuns=$script:runs
+        $script:runs=@()
+        Mock Wait-QuietReleaseInterval -ModuleName 'Merge-PullRequest' {$script:runs=$script:readyRuns}
+        $result=@(Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -DiscoverySeconds 60 -Confirm:$false)
+        $result[-1].RunId | Should -Be 102
+        $script:viewReads | Should -Be 3
+        Should -Invoke Wait-QuietReleaseInterval -ModuleName 'Merge-PullRequest' -Exactly -Times 1 -ParameterFilter {$Seconds -eq 5}
+    }
+
+    It 'blocks unsafe PR state <Field> before push' -ForEach @(
+        @{Field='state';Value='CLOSED'},@{Field='headRefName';Value='feature/other'},@{Field='isDraft';Value=$true}
+    ) {
+        $script:view[$Field]=$Value
+        {Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -MergePullRequest -DiscoverySeconds 0 -Confirm:$false} |
+            Should -Throw '*CommitWorkspacePullRequestChanged*'
+        $script:trace.Count | Should -Be 0
+    }
+
+    It 'blocks unsafe PR state <Field> after push' -ForEach @(
+        @{Field='state';Value='CLOSED'},@{Field='headRefName';Value='feature/other'},@{Field='headRefOid';Value='b'*40}
+    ) {
+        $script:afterPush[$Field]=$Value
+        {Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -DiscoverySeconds 0 -Confirm:$false} |
+            Should -Throw '*PullRequestCheckpointChanged*'
+        $script:trace.Count | Should -Be 1
+        Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Exactly -Times 0 -ParameterFilter {
+            $FilePath -ceq 'gh' -and $ArgumentList -contains 'event=pull_request'
+        }
+    }
+
+    It 'stops before calling the watcher if its run identifier is invalid' {
+        Mock Find-QuietPullRequestRun -ModuleName 'Merge-PullRequest' {0}
+        {Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -DiscoverySeconds 0 -Confirm:$false} |
+            Should -Throw '*PullRequestRunIdentityInvalid*'
+        $script:trace.Count | Should -Be 1
+    }
+
+    It 'uses the checkout owning the module when no merge workspace is given' {
+        $expectedRoot=Split-Path -Parent (Get-QuietTestScriptsRoot)
+        Invoke-QuietMergePullRequest -PullRequest 7 -Confirm:$false | Out-Null
+        Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -ParameterFilter {
+            $WorkspaceRoot -ceq $expectedRoot -and $FilePath -ceq 'gh' -and $ArgumentList[1] -ceq 'merge'
+        } -Exactly -Times 1
     }
 
     It 'selects the newest matching run from several candidates' {

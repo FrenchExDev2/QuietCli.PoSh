@@ -73,9 +73,36 @@ function Test-QuietReleaseFlow {
         param([hashtable]$World,[string[]]$Arguments)
         [void]$World.Calls.Add(($Arguments -join ' '))
         if($Arguments -ccontains '--admin' -or $Arguments -ccontains '--auto' -or $Arguments -ccontains '--squash' -or $Arguments -ccontains '--rebase'){throw 'FakeGitHubUnsafeMergeRequested'}
+        $value={param($name) $position=[array]::IndexOf($Arguments,$name);if($position -lt 0){throw ('FakeGitHubMissingArgument: '+$name)};$Arguments[$position+1]}
+        if($Arguments[0] -ceq 'api'){
+            if($Arguments[1] -cmatch '\Arepos/fixture/repo/pulls/([1-9][0-9]*)\z'){
+                $item=$World.PullRequests[$Matches[1]]
+                return ConvertTo-Json -Depth 5 -Compress @{
+                    number=$item.Number;state=$item.State.ToLowerInvariant();draft=$false;body=$item.Body
+                    head=@{sha=$item.HeadOid;ref=$item.Head};base=@{sha='e'*40;ref='develop'};merge_commit_sha='f'*40
+                }
+            }
+            if($Arguments -ccontains 'repos/fixture/repo/actions/workflows/companions-ci.yml/runs'){
+                $releaseHead=($Arguments | Where-Object {$_ -clike 'head_sha=*'}).Substring(9)
+                $item=$World.PullRequests.Values | Where-Object HeadOid -CEQ $releaseHead | Select-Object -First 1
+                return ConvertTo-Json -AsArray -Compress @{
+                    id=$item.Number;head_sha=$item.HeadOid;head_branch=$item.Head;event='pull_request';status='completed';conclusion='success'
+                    run_attempt=1;pulls=@($item.Number)
+                }
+            }
+            throw 'FakeGitHubUnexpectedApi'
+        }
+        if($Arguments[0] -ceq 'run' -and $Arguments[1] -ceq 'download'){
+            $item=$World.PullRequests[$Arguments[2]]
+            $proof=@{
+                Revision='f'*40;RunId=$item.Number;RunAttempt=1;Result=@{Ready=$true}
+                PullRequest=@{Number=$item.Number;Head=$item.HeadOid;Base='e'*40;Revision='f'*40;Options=@()}
+            }
+            [IO.File]::WriteAllText([IO.Path]::Combine((& $value '--dir'),'receipt.json'),(ConvertTo-Json $proof -Depth 5 -Compress),[Text.UTF8Encoding]::new($false))
+            return
+        }
         $index=[array]::IndexOf($Arguments,'--repo')
         if($Arguments[0] -cne 'pr' -or $index -lt 0 -or $Arguments[$index+1] -cne $World.Repository){throw 'FakeGitHubWrongRepository'}
-        $value={param($name) $position=[array]::IndexOf($Arguments,$name);if($position -lt 0){throw ('FakeGitHubMissingArgument: '+$name)};$Arguments[$position+1]}
         switch -CaseSensitive ($Arguments[1]){
             'list'{
                 $head=& $value '--head'
@@ -196,6 +223,9 @@ function Test-QuietReleaseFlow {
     }
     $mutantLibrary=[IO.Path]::Combine($root,'mutants/lib')
     Copy-Item ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) $mutantLibrary -Recurse
+    $templateDirectory=[IO.Path]::Combine($root,'.github')
+    [void][IO.Directory]::CreateDirectory($templateDirectory)
+    Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'.github/pull_request_template.md')) -Destination $templateDirectory
     $source=[IO.File]::ReadAllText($library,[Text.UTF8Encoding]::new($false,$true))
     $newMutant={
         param([string]$Name,[string]$Anchor,[string]$Replacement,[switch]$Regex)
@@ -237,6 +267,7 @@ function Test-QuietReleaseFlow {
     if(@($world.Pushes).Count -ne 1 -or $world.Pushes[0] -cne $nominal.Branch -or @((& $fixtureGit @('ls-remote','--heads','origin')).Lines).Count -ne 2){throw 'ReleaseFlowPushedAnotherBranch'}
     if(@($world.Calls|Where-Object {$_ -clike 'pr merge *'}) -cne ('pr merge 1 --repo fixture/repo --merge --match-head-commit '+$nominal.CommitRevision)){throw 'ReleaseFlowMergeNotPinnedToHead'}
     $body=$world.PullRequests['1'].Body
+    if(!$body.Contains('## Additional CI validation') -or $body -notmatch '\[ \].*ci:preview'){throw 'ReleaseFlowPullRequestChecklistMissing'}
     foreach($tag in & $tags 3 6){if(!$body.Contains($tag)){throw 'ReleaseFlowPullRequestBodyIncomplete'}}
     $receipt=Read-QuietReleaseFlowState -Path $world.LastReceipt
     if(!$receipt.Completed -or $receipt.Interrupted -or $receipt.Failure){throw 'ReleaseFlowCompletedReceiptInvalid'}

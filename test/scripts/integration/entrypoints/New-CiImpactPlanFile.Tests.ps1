@@ -8,8 +8,11 @@ BeforeAll {
         $null = New-QuietTestFile ([IO.Path]::Combine($root, 'New-CiImpactPlanFile.ps1')) ([IO.File]::ReadAllText($entry, [Text.Encoding]::UTF8))
         $null = New-QuietTestFile ([IO.Path]::Combine($root, 'New-CiImpactPlan.ps1')) @'
 [CmdletBinding(SupportsShouldProcess)]
-param([string]$Base, [switch]$WorkingTree, [string]$OutputPath)
+param([string]$Base, [switch]$WorkingTree, [string]$OutputPath, [string]$PullRequestBody)
 [IO.File]::WriteAllText([IO.Path]::Combine($PSScriptRoot, 'invocation.txt'), $OutputPath, [Text.Encoding]::UTF8)
+if ($PSBoundParameters.ContainsKey('PullRequestBody')) {
+    [IO.File]::WriteAllText([IO.Path]::Combine($PSScriptRoot, 'body.txt'), $PullRequestBody, [Text.Encoding]::UTF8)
+}
 if ($env:QUIETCLI_TEST_PLAN_FAIL) { throw 'FixturePlannerFailure' }
 if (!$WorkingTree) { throw 'ExpectedWorkingTree' }
 [IO.File]::AppendAllText($OutputPath, "# base=$Base`n# scope=scripts — aperçu`n", [Text.UTF8Encoding]::new($false))
@@ -52,6 +55,14 @@ Export-ModuleMember -Function Resolve-FixtureEditor -Alias $commandName
 
 Describe 'New-CiImpactPlanFile.ps1' {
     BeforeEach { $root = & $newFixture }
+
+    It 'passes the supplied body verbatim to the planner' {
+        $body = "Détails de la PR`n- [x] A selection"
+        $outputFile = [IO.Path]::Combine($root, 'plan.txt')
+        $run = & $invoke $root @('-Base', $sha, '-Output', $outputFile, '-PullRequestBody', $body)
+        $run.ExitCode | Should -Be 0 -Because ($run.Output + $run.Error)
+        [IO.File]::ReadAllText([IO.Path]::Combine($root, 'body.txt'), [Text.Encoding]::UTF8) | Should -BeExactly $body
+    }
 
     It 'uses both defaults and returns the UTF-8 file contents' {
         $run = & $invoke $root @('-GetContent')

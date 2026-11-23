@@ -8,15 +8,22 @@ function Get-QuietCiCompanionOrder {
     Product roots required by the selected test suites.
     #>
     param([Collections.IDictionary]$Companions,[string[]]$Roots)
-    $active=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    $done=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $state=[Collections.Generic.Dictionary[string,int]]::new([StringComparer]::Ordinal)
+    $visiting=1
+    $visited=2
     $ordered=[Collections.Generic.List[string]]::new()
     function Visit-Companion([string]$name) {
         if($name -cnotin $Companions.Keys){throw ('CiCompanionUnknown: '+$name)}
-        if($done.Contains($name)){return}
-        if(!$active.Add($name)){throw ('CiCompanionCycle: '+$name)}
-        foreach($dependency in $Companions[$name].requires){Visit-Companion $dependency}
-        [void]$active.Remove($name);[void]$done.Add($name);$ordered.Add($name)
+        switch($state[$name]){
+            $visiting {throw ('CiCompanionCycle: '+$name)}
+            $visited {}
+            default {
+                $state[$name]=$visiting
+                foreach($dependency in $Companions[$name].requires){Visit-Companion $dependency}
+                $state[$name]=$visited
+                $ordered.Add($name)
+            }
+        }
     }
     foreach($name in $Roots){Visit-Companion $name}
     $ordered.ToArray()

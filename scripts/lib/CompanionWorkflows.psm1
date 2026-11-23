@@ -23,7 +23,7 @@ function Get-QuietCompanionProfiles {
         $members=@($modules|Where-Object SolutionGroup -CEQ $group)
         $product=$configuration.Companions.Contains($group)
         if(!$product -and $group -cnotin @('Tooling','Distribution')){throw ('CompanionCiProfileMissing: '+$group)}
-        $file=if($group -ceq 'Tooling'){'tooling-component-ci.yml'}else{$group.ToLowerInvariant()+'-ci.yml'}
+        $file=if($product){'ci.yml'}elseif($group -ceq 'Tooling'){'tooling-component-ci.yml'}else{'distribution-ci.yml'}
         [pscustomobject]@{
             Suite=$group;Root='src/'+$group;SolutionPath='src/'+$group+'/'+$group+'.slnx'
             SourcePath=$(if(@($members|Where-Object {!$_.IsTest}).Count){'src/'+$group+'/src'}else{''})
@@ -38,7 +38,7 @@ function Get-QuietCompanionProfiles {
 function Get-QuietCompanionWorkflowDefinitions {
     <#
     .SYNOPSIS
-    Renders workflow entry points from the profiles also consumed by the PR matrix.
+    Renders dedicated Tooling and Distribution workflow entry points.
     .PARAMETER WorkspaceRoot
     Checkout providing the profiles.
     #>
@@ -61,7 +61,7 @@ on:
         default: full
 permissions:
   contents: read
-%PACKAGES%
+
 jobs:
   qualify:
     uses: ./.github/workflows/%ENGINE%
@@ -71,12 +71,9 @@ jobs:
       source_path: '%SOURCE%'
       test_path: '%TEST%'
       qualification_mode: %MODE%
-%PRODUCT%
 '@
-    foreach($profile in Get-QuietCompanionProfiles $WorkspaceRoot){
-        $product=if($profile.Engine -ceq 'ci.yml'){'      run_tooling: false'+[char]10+'      collect_performance: '+$profile.CollectPerformance.ToString().ToLowerInvariant()}
-        $packages=if($profile.Engine -ceq 'ci.yml'){'  packages: write'}  # String.Replace with null removes the placeholder
-        $content=$template.Replace('%SUITE%',$profile.Suite).Replace('%ENGINE%',$profile.Engine).Replace('%SOLUTION%',$profile.SolutionPath).Replace('%SOURCE%',$profile.SourcePath).Replace('%TEST%',$profile.TestPath).Replace('%PRODUCT%',$product).Replace('%PACKAGES%',$packages).Replace('%MODE%',('$'+'{{ inputs.qualification_mode || ''full'' }}')).TrimEnd()+[char]10
+    foreach($profile in Get-QuietCompanionProfiles $WorkspaceRoot | Where-Object Engine -CEQ 'workspace-component-ci.yml'){
+        $content=$template.Replace('%SUITE%',$profile.Suite).Replace('%ENGINE%',$profile.Engine).Replace('%SOLUTION%',$profile.SolutionPath).Replace('%SOURCE%',$profile.SourcePath).Replace('%TEST%',$profile.TestPath).Replace('%MODE%',('$'+'{{ inputs.qualification_mode || ''full'' }}')).TrimEnd()+[char]10
         [pscustomobject]@{Path=$profile.Workflow;Content=$content;Profile=$profile}
     }
 }

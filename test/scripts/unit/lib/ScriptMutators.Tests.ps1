@@ -89,9 +89,21 @@ Describe 'Mutator <Mutator>' -ForEach @(
     @{Mutator='BlockStatement';Code='return';Expected=@()}
     @{Mutator='MethodExpression';Code="'a'.StartsWith('b')";Expected=@('EndsWith')}
     @{Mutator='MethodExpression';Code="'a'.ToLowerInvariant()";Expected=@('ToUpperInvariant')}
+    @{Mutator='MethodExpression';Code="'a'.ToUpperInvariant()";Expected=@('ToLowerInvariant')}
+    @{Mutator='MethodExpression';Code="'a'.ToLower()";Expected=@('ToUpper')}
+    @{Mutator='MethodExpression';Code="'a'.ToUpper()";Expected=@('ToLower')}
     @{Mutator='MethodExpression';Code='[Math]::Max(1,2)';Expected=@('Min')}
+    @{Mutator='MethodExpression';Code='[Math]::Min(1,2)';Expected=@('Max')}
+    @{Mutator='MethodExpression';Code="'abc'.StartsWith('a')";Expected=@('EndsWith')}
+    @{Mutator='MethodExpression';Code="'abc'.EndsWith('c')";Expected=@('StartsWith')}
+    @{Mutator='MethodExpression';Code='$invoke={ [Math]::Min(1,2) }';Expected=@('Max')}
     @{Mutator='MethodExpression';Code='$list.Add(1)';Expected=@('')}
+    @{Mutator='MethodExpression';Code='if($flag){ $list.Add(1) }';Expected=@('')}
     @{Mutator='MethodExpression';Code='$null=$list.Add(1)';Expected=@()}
+    @{Mutator='MethodExpression';Code='if($seen.Add($key)){ return }';Expected=@()}
+    @{Mutator='MethodExpression';Code='while($seen.Add($key)){ break }';Expected=@()}
+    @{Mutator='MethodExpression';Code='$list.$name(1)';Expected=@()}
+    @{Mutator='MethodExpression';Code='param([ValidateScript({ $_.EndsWith("x") })]$Path)';Expected=@()}
     @{Mutator='MethodExpression';Code="'a'.startswith('b')";Expected=@()}
 ) {
     It 'mutates <Code> into <Expected>' {

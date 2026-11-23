@@ -85,6 +85,14 @@ Describe 'Get-QuietPerformanceChartSeries' {
         $series=@(Get-QuietPerformanceChartSeries -Workloads @((& $row 'h1' -Measure 'ab' -Variant 'c'),(& $row 'h1' -Measure 'a' -Variant 'bc')))
         $series.Count|Should -Be 2
     }
+
+    It 'keeps workloads apart when concatenating their names and measures would collide' {
+        $series=@(Get-QuietPerformanceChartSeries -Workloads @(
+            (& $row 'h1' -Workload 'ab' -Measure 'c')
+            (& $row 'h1' -Workload 'a' -Measure 'bc')
+        ))
+        $series.Workload|Should -BeExactly @('ab','a')
+    }
 }
 
 Describe 'Get-QuietPerformanceChartTitle and caption' {
@@ -101,6 +109,12 @@ Describe 'Get-QuietPerformanceChartTitle and caption' {
     It 'prints a plain p95 from 20 observations and no missing clause when every environment has data' {
         $series=@(Get-QuietPerformanceChartSeries -Workloads @(& $row 'h1' -Values ([double[]](1..20))))
         Get-QuietPerformanceChartCaption $series[0]|Should -BeExactly 'h1: 10.50 ms, Q1–Q3 5.00–15.00, N=20, p95 19.00'
+    }
+
+    It 'separates multiple missing environments in the caption' {
+        $series=& $chart
+        $series.Missing=@('runner-a','runner-b')
+        Get-QuietPerformanceChartCaption $series|Should -Match 'no observation: runner-a, runner-b$'
     }
 }
 
@@ -203,6 +217,10 @@ Describe 'Golden renderings' {
 }
 
 Describe 'ConvertTo-QuietPerformanceMermaidChart' {
+    It 'keeps the axis upper bound in decimal notation for a large finite sample' {
+        $series=@(Get-QuietPerformanceChartSeries -Workloads @(& $row 'large' -Values @(1e21)))[0]
+        ConvertTo-QuietPerformanceMermaidChart $series|Should -Match '(?m)^    y-axis "Median ms" 0 --> [0-9]{22}$'
+    }
     It 'renders a horizontal xychart with one label and one value per bar' {
         $text=ConvertTo-QuietPerformanceMermaidChart (& $chart)
         $text.StartsWith('```mermaid'+"`n")|Should -BeTrue
@@ -240,6 +258,23 @@ Describe 'ConvertTo-QuietPerformanceMermaidChart' {
 }
 
 Describe 'ConvertTo-QuietPerformanceSvgChart' {
+    It 'uses a square path at four pixels and limits fractional coordinates to two decimals' {
+        $series=@(Get-QuietPerformanceChartSeries -Workloads @(
+            (& $row 'boundary' -Values @(1))
+            (& $row 'fraction' -Values @(1.23456))
+            (& $row 'longest' -Values @(75))
+        ))[0]
+        $svg=ConvertTo-QuietPerformanceSvgChart $series
+        $svg|Should -Match 'd="M300 34h4v16h-4z"'
+        $svg|Should -Match 'class="qc-whisker" x1="304\.94" x2="304\.94"'
+    }
+
+    It 'normalizes the line ending of a tooltip in the SVG source' {
+        $series=& $chart @("run`r`nlabel")
+        $svg=ConvertTo-QuietPerformanceSvgChart $series
+        $svg.Contains("run`nlabel: median")|Should -BeTrue
+        $svg.Contains("`r")|Should -BeFalse
+    }
     It 'is well-formed XML with one row, bar and value per environment, and no active content' {
         $svg=ConvertTo-QuietPerformanceSvgChart (& $chart @('a','b','c'))
         $svg.Contains("`r")|Should -BeFalse
@@ -338,5 +373,20 @@ Describe 'Workload coverage and overview' {
         ([regex]::Matches($svg,'qc-gap')).Count|Should -Be 3
         $svg|Should -Match '14 obs · 2 env'
         $svg|Should -Match 'not profiled'
+    }
+
+    It 'sizes the SVG for a larger profiled lane and distinguishes profile gaps' {
+        $entries=@(
+            [pscustomobject]@{Workload='ImportFirstCall';Instrumented=$false;Observations=0;Hosts=0;Measures=0}
+            foreach($name in @('ImportFirstCall',"run`r`nlabel",'one','two')){
+                [pscustomobject]@{Workload=$name;Instrumented=$true;Observations=0;Hosts=0;Measures=0}
+            }
+        )
+        $svg=ConvertTo-QuietPerformanceSvgOverview $entries
+        $svg|Should -Match 'viewBox="0 0 622 176"'
+        ([regex]::Matches($svg,'>not profiled</text>')).Count|Should -Be 1
+        ([regex]::Matches($svg,'>no observation</text>')).Count|Should -Be 4
+        $svg.Contains("run`nlabel:")|Should -BeTrue
+        $svg.Contains("`r")|Should -BeFalse
     }
 }

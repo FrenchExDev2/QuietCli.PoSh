@@ -326,7 +326,7 @@ Describe 'Get-QuietCiImpact over the .NET project graph' {
             Native="$core/Net/Core.Native/Core.Native.csproj";Base="$core/Net/Core.Base/Core.Base.csproj";Nat="$core/Net/Core.Nat/Core.Nat.csproj"
             Over="$core/Net/Core.Over/Core.Over.csproj";Shadow="$core/Net/Core.Native/Shadow.csproj";Git="$git/Net/Git.Native/Git.Native.csproj";Tool="$tool/Net/Tool/Tool.csproj"
         }
-        # Order matters: Tool precedes Git.Native and Git.Native precedes Core.Native, so both closures need several passes.
+        # Consumers precede their dependencies so a single directional scan cannot find the full closure.
         $graph=@(
             (& $node $p.Tool 'FrenchExDev2.QuietCli.Tooling.Tests.PoSh' 'Tooling' @('Directory.Build.props') @() @($p.Git))
             (& $node $p.Git 'FrenchExDev2.QuietCli.Git.PoSh' 'Git' @('Directory.Packages.props') @((& $package 'Other.Pkg')) @($p.Native))
@@ -404,6 +404,21 @@ Describe 'Get-QuietCiImpact over the .NET project graph' {
         @($result.BuildProjects)|Should -Be @(@($p.Native,$p.Base,$p.Git,$p.Tool)|Sort-Object)
         (@($result.FullSuites) -join ',')|Should -BeExactly 'Git'
         @($result.SmokeSuites).Count|Should -Be 0
+    }
+
+    It 'visits cyclic prerequisites once without selecting their unrelated consumers' {
+        $script:graph=@(
+            (& $node $p.Shadow 'FrenchExDev2.QuietCli.Git.PoSh' 'Git' -References @($p.Base))
+            (& $node $p.Git 'FrenchExDev2.QuietCli.Git.PoSh' 'Git' -References @($p.Native))
+            (& $node $p.Native 'FrenchExDev2.QuietCli.Core.PoSh' 'Core' -References @($p.Base))
+            (& $node $p.Base 'FrenchExDev2.QuietCli.Core.PoSh' 'Core' -References @($p.Nat))
+            (& $node $p.Nat 'FrenchExDev2.QuietCli.Core.PoSh' 'Core' -References @($p.Base))
+        )
+
+        $result=& $run @("$core/Net/Core.Native/Interop.cs")
+        @($result.BuildProjects)|Should -Be @(@($p.Native,$p.Base,$p.Nat,$p.Git)|Sort-Object)
+        @($result.FullSuites)|Should -Be @('Core')
+        @($result.SmokeSuites)|Should -Be @('Git')
     }
 
     It 'owns <Path> by module name only up to a separator' -ForEach @(

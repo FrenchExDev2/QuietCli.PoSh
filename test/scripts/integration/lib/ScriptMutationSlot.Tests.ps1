@@ -72,6 +72,32 @@ Describe 'Persistent mutation slot worker (Start-QuietScriptsMutationSlot, Invok
         $slot.Alive|Should -BeTrue
     }
 
+    It 'runs the same sequence after Windows releases the job file' -Skip:(-not $IsWindows) {
+        $slot=& $newSlot
+        $files=@('unit/Value.Tests.ps1')
+        (& $runJob $slot $files).State|Should -BeExactly 'Success'
+        $processId=$slot.Process.Id
+        $sequence=$slot.Sequence+1
+        $path=[IO.Path]::Combine($slot.Directory,"job-$sequence.json")
+        $payload=@{Sequence=$sequence;Name='locked job fixture';UnitTestFiles=$files;Bail=$false;Phases=@()}|ConvertTo-Json -Compress
+        $bytes=[Text.Encoding]::UTF8.GetBytes($payload)
+        $lock=[IO.File]::Open($path,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+        try{
+            $lock.Write($bytes,0,$bytes.Length)
+            $lock.Flush()
+            $slot.Process.WaitForExit(1000)|Should -BeFalse -Because ((& $diagnosis $slot) -join "`n")
+        }finally{$lock.Dispose()}
+
+        $now=[DateTimeOffset]::UtcNow
+        $slot.Sequence=$sequence
+        $slot.Job=[pscustomobject]@{Sequence=$sequence;Name='locked job fixture';Started=$now;Deadline=$now.AddSeconds(60)}
+        $result=Wait-QuietScriptsMutationJob -Slot $slot
+        $result.State|Should -BeExactly 'Success' -Because ((& $diagnosis $slot) -join "`n")
+        $result.Passed|Should -Be 1
+        $slot.Process.Id|Should -Be $processId
+        $slot.Jobs|Should -Be 2
+    }
+
     It 'stops a mutant run at its first failure with bail, and runs every test without it' {
         $slot=& $newSlot
         [IO.File]::WriteAllText([IO.Path]::Combine($slot.ScriptsRoot,'lib','Value.psm1'),"function Get-Value { 2 }`nExport-ModuleMember -Function Get-Value`n")

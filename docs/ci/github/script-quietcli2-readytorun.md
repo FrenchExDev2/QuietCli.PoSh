@@ -1,6 +1,6 @@
 # quietcli2-readytorun.yml
 
-<!-- workflow-source-sha256: 2BE33980CACCC651F770F475E487C69F4FA3EEF30BDD30AC8837C332B877C295 -->
+<!-- workflow-source-sha256: BAF2807CFDA900D9BEF202FB1B8FAF79310FD6C94B57541EDB14875949E33D23 -->
 
 ## Purpose
 
@@ -10,7 +10,7 @@ Native orchestration and test/smoke steps select checksum-pinned GA PowerShell t
 
 ## Triggers
 
-Manual workflow_dispatch only. No push, schedule or reusable caller; no qualification/publication job depends on this workflow.
+Manual workflow_dispatch is informational. A workflow_call from a PR with require_complete enabled requires usable A/A and A/B reports on each target. The automatic develop and publication flows do not call this benchmark.
 
 
 ## .NET SDK source pin
@@ -31,7 +31,7 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 
 ~~~mermaid
 flowchart TD
-    event["Triggers: workflow_dispatch"]
+    event["Triggers: workflow_call, workflow_dispatch"]
     job_readytorun["readytorun"]
     job_readytorun_linux["readytorun-linux"]
     event --> job_readytorun

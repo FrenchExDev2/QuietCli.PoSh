@@ -108,7 +108,7 @@ function Invoke-RunToolDownload {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Url, [Parameter(Mandatory)][scriptblock]$Download, [ValidateRange(1,10)][int]$MaxAttempts = 5, [ValidateRange(0,60000)][int]$InitialDelayMilliseconds = 2000, [scriptblock]$Sleep = { param([int]$Milliseconds) Start-Sleep -Milliseconds $Milliseconds })
     $delay = $InitialDelayMilliseconds
-    for ($attempt = 1; ; $attempt++) {
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
         try { return ,[byte[]](& $Download $Url) }
         catch {
             if ($attempt -ge $MaxAttempts -or -not (Test-RunToolTransientDownloadError -Exception $_.Exception)) { throw }

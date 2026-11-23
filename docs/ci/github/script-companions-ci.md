@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: CC7BE0543AB68168A3E6838F11844665EB9F79CBEBF7EB71BFEF5423FE27A357 -->
+<!-- workflow-source-sha256: 4669C0F76D14BFD6FC6027F2D4131ABDB29D0E3876021E7CBB176AEE5BE71E72 -->
 
 ## Purpose
 
@@ -49,6 +49,7 @@ flowchart TD
     job_layout_tests["layout-tests"]
     job_plan["plan"]
     job_products["products"]
+    job_readytorun["readytorun"]
     job_smokes["smokes"]
     job_source_checks["source-checks"]
     job_tooling_only["tooling-only"]
@@ -60,6 +61,7 @@ flowchart TD
     job_smokes --> job_ci_status
     job_tooling_only --> job_ci_status
     job_distribution --> job_ci_status
+    job_readytorun --> job_ci_status
     job_plan --> job_distribution
     job_source_checks --> job_distribution
     job_layout_tests --> job_distribution
@@ -71,6 +73,9 @@ flowchart TD
     job_source_checks --> job_products
     job_layout_tests --> job_products
     job_images --> job_products
+    job_plan --> job_readytorun
+    job_source_checks --> job_readytorun
+    job_layout_tests --> job_readytorun
     job_plan --> job_smokes
     job_source_checks --> job_smokes
     job_layout_tests --> job_smokes
@@ -82,12 +87,13 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, images, products, smokes, tooling-only, distribution | <code>&#36;{{ always() }}</code> | [`./scripts/Assert-CiPlanResults.ps1`](../../scripts/Assert-CiPlanResults.md) |
+| ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, images, products, smokes, tooling-only, distribution, readytorun | <code>&#36;{{ always() }}</code> | [`./scripts/Assert-CiPlanResults.ps1`](../../scripts/Assert-CiPlanResults.md) |
 | distribution | reuses ./.github/workflows/distribution-ci.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;distribution == 'true'</code> |  |
 | images | <code>runner &#36;{{ matrix.runner }}</code> | plan, source-checks | <code>needs.plan.outputs.run&#95;products == 'true' &#38;&#38; github.repository == 'FrenchExDev2/QuietCli.PoSh' &#38;&#38; github.ref == 'refs/heads/develop' &#38;&#38; (github.event&#95;name == 'push' &#124;&#124; github.event&#95;name == 'workflow&#95;dispatch')</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/New-CiSuiteImage.ps1`](../../scripts/New-CiSuiteImage.md) |
 | layout-tests | runner windows-latest | plan | <code>needs.plan.outputs.run&#95;layout == 'true'</code> | [`./scripts/Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.md), [`./scripts/Invoke-WorkspaceCi.ps1`](../../scripts/Invoke-WorkspaceCi.md) |
-| plan | runner ubuntu-latest |  | default success condition | [`./scripts/New-CiImpactPlan.ps1`](../../scripts/New-CiImpactPlan.md) |
+| plan | runner ubuntu-latest |  | default success condition | [`./scripts/Invoke-GitHubCiPlan.ps1`](../../scripts/Invoke-GitHubCiPlan.md) |
 | products | reuses ./.github/workflows/ci.yml | plan, source-checks, layout-tests, images | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; needs.layout-tests.result == 'success' &#38;&#38; (needs.images.result == 'success' &#124;&#124; needs.images.result == 'skipped') &#38;&#38; needs.plan.outputs.run&#95;products == 'true' }}</code> |  |
+| readytorun | reuses ./.github/workflows/quietcli2-readytorun.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;readytorun == 'true'</code> |  |
 | smokes | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;smokes == 'true'</code> |  |
 | source-checks | runner ubuntu-latest |  | default success condition | [`./scripts/Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.md) |
 | tooling-only | reuses ./.github/workflows/tooling-ci.yml | plan, source-checks, layout-tests | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; (needs.layout-tests.result == 'success' &#124;&#124; (needs.layout-tests.result == 'skipped' &#38;&#38; needs.plan.outputs.run&#95;layout == 'false')) &#38;&#38; needs.plan.outputs.run&#95;tooling == 'true' }}</code> |  |
@@ -101,3 +107,7 @@ See [companion layout and selective CI](../../README-companion-layout-and-ci.md)
 
 This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
+
+## Pull request checklist
+
+PR description edits recompute the plan. Invoke-GitHubCiPlan passes the raw description to New-CiImpactPlan, and the required check verifies complete evidence from the selected jobs and the current PR. See [PR options](../../README-pull-request-ci.md).

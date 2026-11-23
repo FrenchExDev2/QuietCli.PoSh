@@ -37,6 +37,10 @@ function Write-QuietCiPlanReport {
     $lines.Add('Full suites: '+(@($Plan.FullSuites) -join ', ')+'.')
     $lines.Add('Smoke suites: '+(@($Plan.SmokeSuites) -join ', ')+'.')
     if($Plan.PSObject.Properties['ToolingScope']){$lines.Add('Tooling: '+$Plan.ToolingScope+'.')}
+    if($Plan.PSObject.Properties['PullRequestOptions']){
+        $choices=if($Plan.PullRequestOptions.Count){$Plan.PullRequestOptions -join ', '}else{'none'}
+        $lines.Add('Requested PR options: '+$choices+'.')
+    }
     if($Plan.PSObject.Properties['RunLayout']){
         $lines.Add('Layout tests: '+$Plan.RunLayout+'.')
         $lines.Add('Distribution: '+$Plan.RunDistribution+'.')
@@ -53,11 +57,11 @@ function Write-QuietCiPlanReport {
     }
     $lines.Add('');$lines.Add('Unselected scopes were not tested. Build/cache preparation is separate from qualification.')
     $text=($lines -join [char]10)+[char]10
-    $temporary=$MarkdownPath+'.'+[guid]::NewGuid().ToString('N')+'.tmp'
+    $temporary=[IO.Path]::Combine([IO.Path]::GetDirectoryName($MarkdownPath),[IO.Path]::GetRandomFileName())
     try{
         [IO.File]::WriteAllText($temporary,$text,[Text.UTF8Encoding]::new($false))
         [IO.File]::Move($temporary,$MarkdownPath,$true)
-    }finally{if([IO.File]::Exists($temporary)){[IO.File]::Delete($temporary)}}
+    }finally{[IO.File]::Delete($temporary)}
     if($SummaryPath){[IO.File]::AppendAllText($SummaryPath,$text,[Text.UTF8Encoding]::new($false))}
 }
 Export-ModuleMember -Function Write-QuietCiPlanReport

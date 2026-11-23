@@ -20,7 +20,7 @@ Persistent test workers of [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutatio
 | `Invoke-QuietScriptsMutationSlotJob` | Worker side of one job: restores the state, runs Pester on the job's files and saves the result. Without phases the files run once unfiltered. With phases, each runs in order in the same state, as the blocks of one run would. `Passed` and `Failed` add up over the phases run, the state is `Failed` when any phase fails, and a phase that selects no test fails. With bail, a failing phase is the last one run. When the worker no longer holds exactly the pinned Pester, it returns `Corrupted` without running anything. `-PesterModules` replaces `Get-Module Pester` for that check. The tests pass it instead of mocking, because `Mock -ModuleName ScriptMutationSlot` is ambiguous inside a slot that already loaded the trusted copy of this module. |
 | `Test-QuietScriptsMutationSlotPester` | True when exactly one Pester module is loaded and it is the pinned 6.2.0. Shared by the job check and the worker start, which throws `ScriptsTestPesterVersionMismatch`. |
 | `Test-QuietScriptsMutationSlotParent` | True while the recorded parent still runs: the process exists, has not exited, and started within one second of the recorded start time. On Linux, .NET recomputes a process start time from the boot time in each process, with a few milliseconds of drift, so an exact comparison would stop every worker after its first job. |
-| `Invoke-QuietScriptsMutationSlotWorker` | Worker body. It runs the jobs in order until a stop request, or until its parent process exits (`Test-QuietScriptsMutationSlotParent`). |
+| `Invoke-QuietScriptsMutationSlotWorker` | Worker body. It runs jobs in order until a stop request or until its parent process exits (`Test-QuietScriptsMutationSlotParent`). If Windows temporarily locks a published job file, the worker retries the same sequence within the coordinator's existing deadline. |
 
 ## Dependencies and side effects
 
@@ -46,7 +46,7 @@ Reusing a process is only sound if every run starts from the same state. Environ
 Tests:
 
 - `test/scripts/unit/lib/ScriptMutationSlot.Tests.ps1` (39 tests): the job protocol and its rejections, including an empty phase, crash, timeout and corruption outcomes, the pinned-Pester check (none, another version, two copies), stop and kill, state restore and module unloading by root (a sibling sharing the prefix is not under the root);
-- `test/scripts/integration/lib/ScriptMutationSlot.Tests.ps1` (9 tests): real workers running several jobs in one process, reloading an edited library, bail, phases that add up, bail across phases, a phase that selects nothing, a crash that keeps the worker serving, corruption after Pester is unloaded, a deadline kill and a clean stop.
+- `test/scripts/integration/lib/ScriptMutationSlot.Tests.ps1`: real workers running several jobs in one process, reloading an edited library, bail, phases that add up, bail across phases, a phase that selects nothing, a crash that keeps the worker serving, corruption after Pester is unloaded, a deadline kill, a clean stop, and recovery from an exclusive Windows lock on a job file.
 
 The library is itself a mutation target.
 

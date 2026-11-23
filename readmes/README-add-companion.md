@@ -264,7 +264,7 @@ Review the documentation affected by the actual change. Regenerate the relevant 
 
 A real workflow edit also requires reviewing its `docs/ci/github/` contract, updating its SHA-256
 receipt and running `Sync-GitHubWorkflowsReadme.ps1 -Apply`. Registering another companion or suite
-in the catalogue uses the existing workflow generator.
+in the catalogue supplies a product profile to the existing shared CI planner.
 
 Internal projects are discovered from their Git-tracked manifests; no workspace source lock is
 generated. Change dedicated external dependency locks only when their reviewed inputs change.
