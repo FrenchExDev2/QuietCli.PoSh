@@ -99,6 +99,23 @@ Describe 'Read-QuietCiCompanions' {
         foreach($name in $configuration.Suites.Keys){[IO.File]::Exists($configuration.Suites[$name].TestsManifest)|Should -BeTrue}
     }
 
+    It 'resolves Core when another companion source is absent from the checkout' {
+        $missing='src/Git/src/Absent.Git.PoSh'
+        [IO.Directory]::Exists([IO.Path]::Combine($workspace,$missing))|Should -BeFalse
+        $configuration=& $read ($valid.Replace('    image: overlay',"    image: overlay`n    src: $missing"))
+        $configuration.Companions['Git'].SourcePath|Should -BeExactly $missing
+        (Resolve-QuietCiCompanions $configuration -Suite Core).Dependencies|Should -BeExactly @('Core')
+    }
+
+    It 'rejects malformed paths even when the checkout can omit a companion' -ForEach @(
+        @{Path='src/Git/src/..'},
+        @{Path='src/Git/test/FrenchExDev2.QuietCli.Git.PoSh'},
+        @{Path='../Git/src/FrenchExDev2.QuietCli.Git.PoSh'}
+    ) {
+        {& $read ($valid.Replace('    image: overlay',"    image: overlay`n    src: $Path"))}|
+            Should -Throw -ExpectedMessage 'CiCompanionPathInvalid: Git/src'
+    }
+
     It 'round-trips random acyclic catalogues and resolves them in dependency order' {
         $null=Invoke-QuietProperty -Name 'companions-roundtrip' -Seed $seed -Count 40 -Generator {param($random)& $newDocument $random} -Property {param($case)
             $configuration=& $read $case.Text

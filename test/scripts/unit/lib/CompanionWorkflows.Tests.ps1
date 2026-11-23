@@ -109,6 +109,18 @@ Describe 'CompanionWorkflows' {
             Should -Invoke -ModuleName CompanionWorkflows Assert-QuietCiCompanionImages -Times 1 -Exactly -ParameterFilter {$WorkspaceRoot -ceq $root -and [object]::ReferenceEquals($Configuration,$script:catalogue.Configuration)}
         }
 
+        It 'requires declared <Property> to exist before generating a workflow' -ForEach @(
+            @{Property='SourcePath';Relative='src/Core/src/FrenchExDev2.QuietCli.Core.PoSh'},
+            @{Property='TestPath';Relative='src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh'}
+        ) {
+            $script:catalogue.Configuration.Companions['Core']|Add-Member -NotePropertyName $Property -NotePropertyValue $Relative -Force
+            {Sync-QuietCompanionWorkflows -WorkspaceRoot $root -Apply -Confirm:$false}|
+                Should -Throw -ExpectedMessage ('CiCompanionPathMissing: '+$Relative)
+            Should -Invoke -ModuleName CompanionWorkflows Assert-QuietCiCompanionImages -Times 0 -Exactly
+            $null=New-Item -Path ([IO.Path]::Combine($root,$Relative)) -ItemType Directory
+            {Sync-QuietCompanionWorkflows -WorkspaceRoot $root -Apply -Confirm:$false}|Should -Not -Throw
+        }
+
         It 'skips the image rule without a catalogue, then still requires one for grouped projects' {
             $bare=[IO.Path]::Combine($TestDrive,'sync-bare');[void][IO.Directory]::CreateDirectory([IO.Path]::Combine($bare,'.github','workflows'))
             $script:catalogue.Modules=@([pscustomobject]@{Name='FrenchExDev2.QuietCli.Legacy.PoSh';Path='FrenchExDev2.QuietCli.Legacy.PoSh';SolutionGroup='Legacy';IsTest=$false})

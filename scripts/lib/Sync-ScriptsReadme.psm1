@@ -93,7 +93,7 @@ function Set-QuietScriptsDocSourceLink {
     param([AllowEmptyString()][string]$Text,[psobject]$Entry)
 
     $relative = [IO.Path]::GetRelativePath([IO.Path]::GetDirectoryName($Entry.DocFullPath),$Entry.ScriptFullPath)
-    $link = ($relative.Replace('\','/').Split('/') | ForEach-Object { [uri]::EscapeDataString($_) }) -join '/'
+    $link = ($relative.Split([IO.Path]::DirectorySeparatorChar) | ForEach-Object { [uri]::EscapeDataString($_) }) -join '/'
     $begin = '<!-- script-source:begin -->'
     $end = '<!-- script-source:end -->'
     $block = @($begin,('Source file: [`'+$Entry.ScriptRelative+'`]('+$link+')'),$end) -join "`n"
