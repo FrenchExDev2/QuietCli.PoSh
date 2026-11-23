@@ -382,8 +382,8 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
         $null=& $git @('checkout','-q','--detach',$baseRevision)
         $absolute=[IO.Path]::Combine($workspace,$path)
         $catalogueText=[IO.File]::ReadAllText($absolute,[Text.Encoding]::UTF8)
-        $pattern=[regex]::new("(?s)(Name = 'SqliteDocumentation'.*?Break = )80")
-        $edited=$pattern.Replace($catalogueText,'${1}81',1)
+        $pattern=[regex]::new("(?s)(Name = 'SqliteDocumentation'.*?Break = )100")
+        $edited=$pattern.Replace($catalogueText,'${1}99',1)
         $edited | Should -Not -BeExactly $catalogueText
         [IO.File]::WriteAllText($absolute,$edited,[Text.UTF8Encoding]::new($false))
         $null=& $git @('add','--',$path)
@@ -426,7 +426,7 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
 
     It 'writes every output key once, in a stable order' {
         $observed=& $plan (& $commit 'docs/README-impact-keys.md')
-        @($observed.Values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,pr_ci_options,run_distribution,run_layout,run_readytorun,run_smokes,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
+        @($observed.Values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,companion_checks,image_suites,matrix,mutation_parallel,pr_ci_options,run_companion_checks,run_distribution,run_layout,run_readytorun,run_smokes,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
     }
 
     It 'qualifies <Expected> in full on a manual dispatch of <Suite>, without reading a diff' -ForEach @(
@@ -450,7 +450,7 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
         $values['script_mutation_targets']|Should -BeExactly $(if($Tooling -ceq 'full'){'all'}else{'[]'})
         $values['run_layout']|Should -BeExactly 'true'
         $values['run_distribution']|Should -BeExactly 'false'
-        @($values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,pr_ci_options,run_distribution,run_layout,run_readytorun,run_smokes,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
+        @($values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,companion_checks,image_suites,matrix,mutation_parallel,pr_ci_options,run_companion_checks,run_distribution,run_layout,run_readytorun,run_smokes,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
         $report=[IO.File]::ReadAllText([IO.Path]::Combine($workspace,'artifacts','ci-plan','impact.md'))
         $report|Should -Match 'Base: manual-dispatch;'
         $report|Should -Match '\| workflow_dispatch \|.*\| full \| ManualDispatch \|'

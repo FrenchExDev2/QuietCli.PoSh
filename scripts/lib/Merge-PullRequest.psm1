@@ -5,6 +5,7 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkBranch.psm1')) -DisableName
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'ReleaseFlow.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'PullRequestCi.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'PullRequestChecklist.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'CiCompanions.psm1')) -DisableNameChecking -ErrorAction Stop
 
 function Get-QuietPullRequestRepository {
     <#
@@ -267,10 +268,17 @@ function Invoke-QuietPublishPullRequest {
     try {
         $encoding=[Text.UTF8Encoding]::new($false,$true)
         $template=[IO.File]::ReadAllText([IO.Path]::Combine($WorkspaceRoot,'.github/pull_request_template.md'),$encoding)
+        if(Get-QuietCiCompanionCataloguePath $WorkspaceRoot){
+            $template=Expand-QuietPullRequestTemplate -Template $template -Configuration (Read-QuietCiCompanions $WorkspaceRoot)
+        }
         $selected=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         $selected.UnionWith((Read-QuietPullRequestChecklist $Body).Selected)
+        $available=(Read-QuietPullRequestChecklist $template).Available
+        if('script-mutation' -cin $available -and $selected.Remove('mutation')){
+            $selected.UnionWith([string[]]@('script-mutation','run-profile-mutation-core'))
+        }
         foreach($option in $Options.Keys){
-            if($option -cnotin @('mutation','readytorun','preview')){throw 'PullRequestCiChecklistUnknownOption'}
+            if($option -cnotin $available){throw 'PullRequestCiChecklistUnknownOption'}
             if($Options[$option]){[void]$selected.Add($option)}else{[void]$selected.Remove($option)}
         }
         $description=(New-QuietPullRequestBody -Body $Body -Template $template -Footer $Footer -CiOption ([string[]]@($selected))).Replace("`r`n","`n").Replace("`r","`n")

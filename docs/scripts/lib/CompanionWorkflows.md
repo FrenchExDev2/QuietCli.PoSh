@@ -14,7 +14,7 @@ Get-QuietCompanionProfiles -WorkspaceRoot $checkout
 
 ## Dependencies and side effects
 
-Grouped workspaces require build/companions.yml. Isolated legacy flat manifest fixtures without that catalogue declare no workflow profiles.
+Grouped workspaces require build/companions.yaml. Isolated legacy flat manifest fixtures without that catalogue declare no workflow profiles.
 
 When the catalogue exists, the companion images are checked first with `Assert-QuietCiCompanionImages` (see [CiCompanions.psm1](CiCompanions.md)). A companion either has no CI image (`image: none`, without `ci/Get-CiImageArguments.ps1`) or is an `overlay` of its parent image, with that contract. The generated workflows warm only overlay images, so any other combination fails before a profile is rendered.
 

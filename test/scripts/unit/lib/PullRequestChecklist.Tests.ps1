@@ -1,11 +1,46 @@
 #requires -Version 7.6
+
+Describe 'Expandable companion checklist rows' {
+    BeforeAll {
+        Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -DisableNameChecking -ErrorAction Stop
+        $null=Import-QuietTestLibrary -Name PullRequestChecklist
+        $template=@'
+<!-- quietcli-ci:begin -->
+- [ ] Repository scripts <!-- ci:script-mutation -->
+- [ ] Sequential <!-- ci:mutation-serial -->
+- [ ] ReadyToRun <!-- ci:readytorun -->
+- [ ] Preview <!-- ci:preview -->
+<!-- quietcli-ci:end -->
+'@
+    }
+
+    It 'renders a new companion with a digit in its name and leaves generated items unchecked' {
+        $catalogue=@{Companions=[ordered]@{Box2=@{Name='Box2';Mutation=$true};Extra=@{Name='Extra'}}}
+        $expanded=Expand-QuietPullRequestTemplate -Template $template -Configuration $catalogue
+        $parsed=Read-QuietPullRequestChecklist $expanded
+        $parsed.Available|Should -Contain 'run-profile-mutation-box2'
+        $parsed.Available|Should -Contain 'profiling-extra'
+        $parsed.Available|Should -Not -Contain 'run-profile-mutation-extra'
+        $parsed.Selected.Count|Should -Be 0
+        $body=New-QuietPullRequestBody -Body 'Description' -Template $expanded -CiOption @('profiling-box2','run-profile-mutation-box2')
+        (Read-QuietPullRequestChecklist $body).Selected|Should -BeExactly @('profiling-box2','run-profile-mutation-box2')
+    }
+}
 BeforeAll {
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -DisableNameChecking -ErrorAction Stop
     $null=Import-QuietTestLibrary -Name PullRequestChecklist
     $null=Import-QuietTestLibrary -Name PullRequestCi
     $null=Import-QuietTestLibrary -Name CiImpact
     $root=Get-QuietTestWorkspaceRoot
-    $template=[IO.File]::ReadAllText([IO.Path]::Combine($root,'.github/pull_request_template.md'),[Text.Encoding]::UTF8).Replace("`r`n","`n")
+    $template=@'
+## Additional CI validation
+
+<!-- quietcli-ci:begin -->
+- [ ] Run extended mutation testing <!-- ci:mutation -->
+- [ ] Compare IL and ReadyToRun cold-start performance <!-- ci:readytorun -->
+- [ ] Add PowerShell Preview hosts to the Core matrix <!-- ci:preview -->
+<!-- quietcli-ci:end -->
+'@
 }
 
 Describe 'Pull request CI checklist' {
@@ -52,10 +87,10 @@ Describe 'Pull request CI checklist' {
     }
 
     It 'rejects missing rows and delimiters and rejects ordinary text inside the block' {
-        {Read-QuietPullRequestChecklist ($template -creplace '(?m)^- .* ci:preview -->\n','')} | Should -Throw '*PullRequestCiChecklistIncomplete*'
+        {Read-QuietPullRequestChecklist ($template -creplace '(?m)^- .* ci:preview -->\r?\n?','')} | Should -Throw '*PullRequestCiChecklistIncomplete*'
         {Read-QuietPullRequestChecklist ($template.Replace('<!-- quietcli-ci:end -->',''))} | Should -Throw '*PullRequestCiChecklistIncomplete*'
         {Read-QuietPullRequestChecklist ($template.Replace('<!-- quietcli-ci:begin -->',''))} | Should -Throw '*PullRequestCiChecklistIncomplete*'
-        {Read-QuietPullRequestChecklist ($template+"<!-- quietcli-ci:end -->`n")} | Should -Throw '*PullRequestCiChecklistIncomplete*'
+        {Read-QuietPullRequestChecklist ($template+"`n<!-- quietcli-ci:end -->`n")} | Should -Throw '*PullRequestCiChecklistIncomplete*'
         {Read-QuietPullRequestChecklist ($template.Replace('- [ ]','- [o]'))} | Should -Throw '*PullRequestCiChecklistInvalidRow*'
         {Read-QuietPullRequestChecklist ($template.Replace('<!-- quietcli-ci:begin -->',"<!-- quietcli-ci:begin -->`n~~~markdown"))} |
             Should -Throw '*PullRequestCiChecklistInvalidRow*'

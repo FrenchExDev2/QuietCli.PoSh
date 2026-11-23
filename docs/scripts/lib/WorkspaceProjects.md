@@ -25,7 +25,7 @@ When the CI catalogue exists, every discovered business module must declare its 
 
 Get-QuietWorkspaceBuildSelection resolves inert test manifests and transitive RequiredModules, rejecting missing local dependencies. Core selects only Core/Core.Tests. The Module parameter set resolves exact package roots and their dependencies through that same closure; Core packaging never requires Git outputs. Distribution selects its own private test manifest and Core.Tests. Tooling and public package campaigns retain the complete build; RunProfiles selects Core helpers only. Tooling is an orchestration mode, separate from product All.
 
-When build/companions.yml exists, suite names and runner selection come from its independent
+When build/companions.yaml exists, suite names and runner selection come from its independent
 suite declarations through lib/CiCompanions.psm1. Integration suites can name a dedicated exported
 runner and require multiple products without reverse product dependencies. Manifest discovery
 remains available for package/build inventory and fixtures without the YAML.

@@ -1,4 +1,24 @@
 #requires -Version 7.6
+
+Describe 'Get-QuietCompanions' {
+    BeforeAll {
+        Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -DisableNameChecking -ErrorAction Stop
+        $null=Import-QuietTestLibrary -Name CiCompanions
+        $catalogue=@{Companions=[ordered]@{
+            Box2=[pscustomobject]@{Name='Box2';Mutation=@{environment=@{QUIETCLI_BOX_MUTATION='1'}};Workstation=$false}
+            Demo=[pscustomobject]@{Name='Demo';Mutation=$null;Workstation=$true}
+        }}
+    }
+    It 'validates against new declarations in catalogue order and canonicalises names' {
+        @(Get-QuietCompanions -Configuration $catalogue -Name demo,box2,Box2)|Should -BeExactly @('Box2','Demo')
+        @(Get-QuietCompanions -Configuration $catalogue -Name box2 -Capability Mutation)|Should -BeExactly @('Box2')
+        @(Get-QuietCompanions -Configuration $catalogue -Name demo -Capability Workstation)|Should -BeExactly @('Demo')
+    }
+    It 'refuses unknown names and missing capabilities' {
+        {Get-QuietCompanions -Configuration $catalogue -Name Ghost}|Should -Throw '*CiCompanionNotAvailable*'
+        {Get-QuietCompanions -Configuration $catalogue -Name Demo -Capability Mutation}|Should -Throw '*CiCompanionNotAvailable*'
+    }
+}
 BeforeAll {
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -Force -DisableNameChecking -ErrorAction Stop
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','Generators.psm1')) -Force -DisableNameChecking -ErrorAction Stop
@@ -56,8 +76,23 @@ suites:
 }
 
 Describe 'Read-QuietCiCompanions' {
+    It 'reads the build catalogue and resolves old checkout fixtures when it is absent' {
+        $root=[IO.Path]::Combine($TestDrive,'catalogue-path')
+        $null=New-Item -Path ([IO.Path]::Combine($root,'build')) -ItemType Directory -Force
+        [IO.File]::WriteAllText([IO.Path]::Combine($root,'.companions.yaml'),'obsolete root file',[Text.UTF8Encoding]::new($false))
+        Get-QuietCiCompanionCataloguePath -WorkspaceRoot $root | Should -BeNullOrEmpty
+        $legacy=[IO.Path]::Combine($root,'build','companions.yml')
+        [IO.File]::WriteAllText($legacy,'legacy',[Text.UTF8Encoding]::new($false))
+        Get-QuietCiCompanionCataloguePath -WorkspaceRoot $root | Should -BeExactly $legacy
+        $current=[IO.Path]::Combine($root,'build','companions.yaml')
+        [IO.File]::WriteAllText($current,'current',[Text.UTF8Encoding]::new($false))
+        Get-QuietCiCompanionCataloguePath -WorkspaceRoot $root | Should -BeExactly $current
+    }
+
     It 'reads the repository catalogue with Core as the unique base' {
         $configuration=Read-QuietCiCompanions -WorkspaceRoot $workspace
+        $configuration.Path | Should -BeExactly ([IO.Path]::Combine($workspace,'build','companions.yaml'))
+        @(Get-QuietCompanions -WorkspaceRoot $workspace) | Should -BeExactly @('Core','Git','Vagrant')
         $configuration.Base|Should -BeExactly 'Core'
         $configuration.SHA256|Should -Match '\A[A-F0-9]{64}\z'
         foreach($name in $configuration.Companions.Keys){$configuration.Companions[$name].Image|Should -BeIn @('base','overlay','none')}

@@ -98,7 +98,7 @@ function Get-Fixture {
     foreach($result in @('skipped','failure','cancelled','')){
         $rejected=$false
         # Isolate the source prerequisite: all other planning flags and job results are valid.
-        $needs=@{plan=@{result='success';outputs=@{run_products='false';run_smokes='false';run_tooling='false';run_distribution='false';run_layout='true'}};'source-checks'=@{result=$result};'layout-tests'=@{result='success'};products=@{result='skipped'};smokes=@{result='skipped'};'tooling-only'=@{result='skipped'};distribution=@{result='skipped'}}
+        $needs=@{plan=@{result='success';outputs=@{run_products='false';run_smokes='false';run_tooling='false';run_distribution='false';run_layout='true';run_readytorun='false';run_companion_checks='false'}};'source-checks'=@{result=$result};'layout-tests'=@{result='success'};products=@{result='skipped'};smokes=@{result='skipped'};'tooling-only'=@{result='skipped'};distribution=@{result='skipped'};readytorun=@{result='skipped'};'companion-checks'=@{result='skipped'}}
         try{$null=Assert-QuietCiPlanResults -Needs $needs}catch{$rejected=$_.Exception.Message -ceq 'CiPlanPrerequisiteRequired: source-checks'}
         if(!$rejected){throw 'PowerShellSourceSkippedJobAccepted'}
     }

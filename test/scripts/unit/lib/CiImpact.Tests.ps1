@@ -1,4 +1,38 @@
 #requires -Version 7.6
+
+Describe 'Add-QuietCiPullRequestSelection companion campaigns' {
+    BeforeAll {
+        Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -DisableNameChecking -ErrorAction Stop
+        $null=Import-QuietTestLibrary -Name CiImpact
+    }
+    It 'uses the catalogue for a new companion and selects mutation and profiling independently' {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact {
+            @{Companions=[ordered]@{
+                Box2=[pscustomobject]@{Name='Box2';Mutation=@{environment=@{QUIETCLI_BOX_MUTATION='1'}}}
+                Demo=[pscustomobject]@{Name='Demo';Mutation=$null}
+            }}
+        }
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options @('run-profile-mutation-box2','profiling-demo','mutation-serial','script-mutation')
+        $plan.MutationParallel|Should -BeFalse
+        $plan.RunAllScriptMutations|Should -BeTrue
+        $plan.CompanionChecks.suite|Should -BeExactly @('Box2','Demo')
+        $plan.CompanionChecks.campaign|Should -BeExactly @('mutation','profiling')
+        $plan.FullSuites.Count|Should -Be 0
+    }
+
+    It 'profiles the actual mutation pass when both options select the same companion' {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact {
+            @{Companions=[ordered]@{Box2=[pscustomobject]@{Name='Box2';Mutation=@{environment=@{QUIETCLI_BOX_MUTATION='1'}}}}}
+        }
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options @('profiling-box2','run-profile-mutation-box2')
+        $plan.CompanionChecks.Count|Should -Be 1
+        $plan.CompanionChecks[0].suite|Should -BeExactly 'Box2'
+        $plan.CompanionChecks[0].campaign|Should -BeExactly 'profiled-mutation'
+        $plan.MutationParallel|Should -BeTrue
+    }
+}
 BeforeAll {
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -Force -DisableNameChecking -ErrorAction Stop
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','Generators.psm1')) -Force -DisableNameChecking -ErrorAction Stop

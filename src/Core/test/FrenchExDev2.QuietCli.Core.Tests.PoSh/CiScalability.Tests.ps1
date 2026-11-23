@@ -117,7 +117,7 @@ function Test-QuietCiScalability {
         $destination=Join-Path $coverage $project.Name;[void][IO.Directory]::CreateDirectory($destination)
         Copy-Item -LiteralPath $project.ManifestPath -Destination (Join-Path $destination ($project.Name+'.psd1'))
     }
-    foreach($path in @('build/companions.yml','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll')){
+    foreach($path in @('build/companions.yaml','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll')){
         $destination=Join-Path $coverage ($path.Replace('src/Core/src/',''));[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
         Copy-Item -LiteralPath (Join-Path $WorkspaceRoot $path) -Destination $destination
     }
@@ -126,8 +126,11 @@ function Test-QuietCiScalability {
     New-QuietWorkspaceFixtureProject $coverage $tests @($product,'FrenchExDev2.QuietCli.Core.Tests.PoSh') -Command Invoke-QuietNimbusCustomTests -Metadata "@{TestCatalogue=@{Runner='Invoke-QuietNimbusCustomTests';Sources=@()}}"
     $rejected=$false;try{$null=Get-QuietWorkspaceSuiteSelection $coverage All}catch{$rejected=$_.Exception.Message -ceq 'WorkspaceCompanionQualificationUndeclared: Nimbus'}
     Assert-QuietEqual $rejected $true 'A newly generated product cannot be silently omitted from All'
-    $catalogue=Join-Path $coverage 'build/companions.yml'
+    $catalogue=Join-Path $coverage 'build/companions.yaml'
     $yaml=[IO.File]::ReadAllText($catalogue,[Text.Encoding]::UTF8)
+    # The fixture uses flat project directories, so it has no grouped layout paths.
+    $yaml=$yaml -creplace '(?m)^    (?:src|test): .+\r?\n',''
+    [IO.File]::WriteAllText($catalogue,$yaml,[Text.UTF8Encoding]::new($false))
     $yaml=$yaml.Replace('companions:',"companions:`n  Nimbus:`n    requires: [Core]`n    image: none")
     $yaml=$yaml.Replace('suites:',"suites:`n  Nimbus:`n    test_project: $tests`n    command: Invoke-QuietNimbusCustomTests`n    requires: [Nimbus]`n    core_evidence: false")
     [IO.File]::WriteAllText($catalogue,$yaml,[Text.UTF8Encoding]::new($false))

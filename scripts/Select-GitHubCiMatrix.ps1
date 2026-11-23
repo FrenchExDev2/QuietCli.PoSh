@@ -5,7 +5,7 @@ Resolves verified digests and emits disjoint GitHub container and non-publishing
 .PARAMETER WorkspaceRoot
 Selected checkout, including shared recipe and consumer image declarations.
 .PARAMETER Suite
-Suite whose image requirements are declared in build/companions.yml.
+Suite whose image requirements are declared in build/companions.yaml.
 .PARAMETER OutputPath
 GitHub output file, normally GITHUB_OUTPUT.
 #>

@@ -10,7 +10,7 @@ Registry preparation first resolves the final suite image and attempts a CacheOn
 
 Producer-only ResolveOnly verifies the final registry configuration without pulling any layer. A miss still builds/publishes through the same reviewed layer path. Owned fixtures reject any attempt to prepare parents on either a final-image pull hit or a metadata-only producer hit.
 
-`scripts/lib/CiCompanions.psm1` reads `build/companions.yml`. Import declares functions only;
+`scripts/lib/CiCompanions.psm1` reads `build/companions.yaml`. Import declares functions only;
 reading configuration uses the checksum-pinned YamlDotNet resource through `Resources.ps1`,
 without importing the QuietCli engine. Missing parser resources are prepared by that consumer.
 
@@ -19,6 +19,13 @@ without importing the QuietCli engine. Missing parser resources are prepared by 
 An integration suite can require Core and Vagrant while keeping Core's product dependencies empty.
 Its dedicated test module must exist and export the declared command. Running two functional suites
 does not establish an integration test between them.
+
+`Get-QuietCompanions` reads companion names from `companions`. Use `-Name` to validate a selection case-insensitively and return the catalogue spelling. `-Capability Mutation` and `-Capability Workstation` require the corresponding declaration. Omitting `-Name` lists every eligible companion. Launchers pass a previously read `-Configuration` when they also need suite or campaign details.
+
+```powershell
+Import-Module ./scripts/lib/CiCompanions.psm1 -DisableNameChecking
+Get-QuietCompanions -WorkspaceRoot $PWD.ProviderPath -Name git,vagrant -Capability Mutation
+```
 
 `Read-QuietCiCompanions` rejects duplicate YAML keys, unknown fields/names, malformed policies,
 missing test manifests/exports, dependency cycles and missing or multiple base declarations.

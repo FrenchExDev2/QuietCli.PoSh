@@ -29,7 +29,7 @@ creation from absent directories, GitHub output append and WhatIf no-write behav
 access. This is filesystem integration evidence, not a hosted-runner or registry qualification.
 
 `-WorkspaceRoot` defaults to the repository. `-Suite` accepts a suite declared in
-`build/companions.yml` or `All`, including every declared suite. `-OutputPath` defaults to
+`build/companions.yaml` or `All`, including every declared suite. `-OutputPath` defaults to
 `GITHUB_OUTPUT`; a missing output path is an error. Core's Git test requirement belongs in
 the YAML, so image selection has no companion-specific branch.
 

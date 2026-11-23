@@ -5,6 +5,7 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'CompanionWorkflows.psm1')) -Dis
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'SourceIdentity.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'Resources.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'CiCompanions.psm1')) -DisableNameChecking -ErrorAction Stop
 
 function Resolve-NewCompanionBranch {
     <#
@@ -260,7 +261,7 @@ function Add-QuietCompanionRegistration {
     $text = $Text.Replace("`r`n", "`n")
     $sections = [regex]::Matches($text, '(?m)^suites:[ \t]*(?:#[^\n]*)?$')
     if ($sections.Count -ne 1) { throw 'CompanionCatalogueSuitesSectionInvalid' }
-    $companion = "  $($Name):`n    requires: [Core]`n    image: none`n"
+    $companion = "  $($Name):`n    src: src/$Name/src/FrenchExDev2.QuietCli.$Name.PoSh`n    test: src/$Name/test/FrenchExDev2.QuietCli.$Name.Tests.PoSh`n    requires: [Core]`n    image: none`n"
     $suite = "  $($Name):`n    test_project: FrenchExDev2.QuietCli.$Name.Tests.PoSh`n    command: Invoke-Quiet$($Name)Tests`n    requires: [$Name]`n    core_evidence: false`n"
     $text.Insert($sections[0].Index, $companion).TrimEnd("`n") + "`n" + $suite
 }
@@ -271,7 +272,7 @@ function New-QuietCompanionStage {
     Builds and validates the companion and its generated repository files in isolation.
     #>
     param([string]$Root, [string]$Stage, [string]$ScriptRoot, [string]$Name, [string]$Executable, [string]$LicenseText, [switch]$WithCSharp)
-    $cataloguePath = 'build/companions.yml'
+    $cataloguePath = [IO.Path]::GetRelativePath($Root,(Get-QuietCiCompanionCataloguePath $Root)).Replace('\','/')
     $resource = 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'
     foreach ($file in Get-QuietSourceFiles ([IO.Path]::Combine($Root, 'src'))) {
         # The solution generator observes these sources, and the catalogue reads the Core resource lock.
@@ -285,6 +286,12 @@ function New-QuietCompanionStage {
     New-QuietCompanionFiles $Root $Stage $Name  $Executable $LicenseText -WithCSharp:$WithCSharp
     $catalogue = [IO.File]::ReadAllText((Resolve-NewCompanionPath $Root $cataloguePath), [Text.UTF8Encoding]::new($false, $true))
     Write-NewCompanionText ([IO.Path]::Combine($Stage, $cataloguePath)) (Add-QuietCompanionRegistration $catalogue $Name)
+    if($cataloguePath -ceq 'build/companions.yaml'){
+        Import-Module ([IO.Path]::Combine($PSScriptRoot,'PullRequestChecklist.psm1')) -DisableNameChecking -ErrorAction Stop
+        $templatePath='.github/pull_request_template.md'
+        $template=[IO.File]::ReadAllText((Resolve-NewCompanionPath $Root $templatePath),[Text.Encoding]::UTF8)
+        Write-NewCompanionText ([IO.Path]::Combine($Stage,$templatePath)) (Expand-QuietPullRequestTemplate -Template $template -Configuration (Read-QuietCiCompanions $Stage))
+    }
 
     $null = Get-QuietWorkspaceSuiteSelection -WorkspaceRoot $Stage -Suite $Name
     $null = Get-QuietWorkspaceBuildProjects -WorkspaceRoot $Stage
@@ -413,7 +420,10 @@ function Get-QuietCompanionScaffoldPlan {
         "$groupPath/$Name.slnx"
     )
     if ($WithCSharp) { $paths += @("$productPath/engine/QuietCli.$Name.Parser.csproj", "$productPath/engine/Parser.cs") }
-    $sharedPaths = @('build/companions.yml', 'Quietly.slnx', 'CREDITS.md')
+    $catalogue = Get-QuietCiCompanionCataloguePath $root
+    $cataloguePath = if($catalogue){[IO.Path]::GetRelativePath($root,$catalogue).Replace('\','/')}else{'build/companions.yaml'}
+    $sharedPaths = @($cataloguePath, 'Quietly.slnx', 'CREDITS.md')
+    if($cataloguePath -ceq 'build/companions.yaml'){$sharedPaths+='.github/pull_request_template.md'}
     $action = if ($branch) { "Create $branch from origin/develop and generate the companion" } else { 'Generate the companion on the active companion branch' }
     [pscustomobject]@{
         Root=$root; Branch=$branch; Executable=$Executable; LicenseText=$licenseText

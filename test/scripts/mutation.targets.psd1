@@ -146,7 +146,7 @@
         @{
             Name = 'CiImpact'
             Module = 'lib/CiImpact.psm1'
-            Functions = @('Get-QuietCiImpact','Get-QuietCiDependentSmokes','Get-QuietCiDispatchImpact','Test-QuietDevelopReceipt')
+            Functions = @('Get-QuietCiImpact','Get-QuietCiDependentSmokes','Get-QuietCiDispatchImpact','Test-QuietDevelopReceipt','Add-QuietCiPullRequestSelection')
             UnitTestFiles = @('unit/lib/CiImpact.Tests.ps1')
             Break = 100
             Equivalent = @(
@@ -165,7 +165,7 @@
             # Invoke-QuietCiSuiteImage drives a container runtime; its guards are tested, its body is covered by the image workflows.
             Name = 'CiCompanions'
             Module = 'lib/CiCompanions.psm1'
-            Functions = @('Get-QuietCiCompanionOrder','Read-QuietCiCompanions','Resolve-QuietCiCompanions','Get-QuietCiSuiteImagePlan','Invoke-QuietCiSuiteImages','Assert-QuietCiCompanionImages')
+            Functions = @('Get-QuietCiCompanionCataloguePath','Get-QuietCiCompanionOrder','Read-QuietCiCompanions','Resolve-QuietCiCompanions','Get-QuietCompanions','Get-QuietCiSuiteImagePlan','Invoke-QuietCiSuiteImages','Assert-QuietCiCompanionImages')
             UnitTestFiles = @('unit/lib/CiCompanions.Tests.ps1')
             Equivalent = @(
                 @{Function = 'Invoke-QuietCiSuiteImages'; Mutator = 'StringLiteral'; Original = "'Prepare the image chains of the selected suites'"; Replacement = "''"; Reason = 'ShouldProcess action text is only shown by the host under -WhatIf or -Confirm; no result depends on it.'}
@@ -174,7 +174,7 @@
             # The unit tests read the real catalogue, test manifests, image contexts, module contracts and the locks those
             # contracts hash, and scan every product module for container files. Not src/**: build outputs under obj/
             # would change the key on every local build.
-            Inputs = @('build/**','global.json','.github/containers/**','src/*/test/*/*.psd1','src/*/src/*/ci/**','src/*/src/*/.github/containers/**','src/*/src/*/metadata/locks/**','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json','src/*/src/**/Dockerfile*','src/*/src/**/Containerfile*','src/*/src/**/*.Dockerfile','src/*/src/**/*.Containerfile')
+            Inputs = @('build/companions.yaml','build/**','global.json','.github/containers/**','src/*/test/*/*.psd1','src/*/src/*/ci/**','src/*/src/*/.github/containers/**','src/*/src/*/metadata/locks/**','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json','src/*/src/**/Dockerfile*','src/*/src/**/Containerfile*','src/*/src/**/*.Dockerfile','src/*/src/**/*.Containerfile')
             Break = 100
         }
         @{
@@ -199,9 +199,17 @@
         @{
             Name = 'PullRequestChecklist'
             Module = 'lib/PullRequestChecklist.psm1'
-            Functions = @('Read-QuietPullRequestChecklist','New-QuietPullRequestBody')
+            Functions = @('Read-QuietPullRequestChecklist','New-QuietPullRequestBody','Expand-QuietPullRequestTemplate')
             UnitTestFiles = @('unit/lib/PullRequestChecklist.Tests.ps1')
             Inputs = @('.github/pull_request_template.md')
+            Break = 100
+        }
+        @{
+            Name = 'RunProfiler'
+            Module = 'lib/RunProfiler.psm1'
+            Functions = @('Invoke-QuietProfiledTestCommand')
+            UnitTestFiles = @('unit/lib/RunProfiler.Tests.ps1')
+            Inputs = @('scripts/Initialize-Profilers.ps1')
             Break = 100
         }
         @{

@@ -99,7 +99,7 @@ function Test-QuietCiCompanions {
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
     $base=Get-QuietCiImagePlan $WorkspaceRoot linux-x64
     $fragment=[pscustomobject]@{Platform='debian';Objective='Synthetic independent layer';Stages=@([pscustomobject]@{Name='ci';Run=@('true')})}
-    $inputPaths=@('build/companions.yml')
+    $inputPaths=@('build/companions.yaml')
     $first=Get-QuietCiModuleImagePlan $WorkspaceRoot linux-x64 First $fragment @{} $inputPaths -ParentPlan $base
     $second=Get-QuietCiModuleImagePlan $WorkspaceRoot linux-x64 Second $fragment @{} $inputPaths -ParentPlan $first
     $changed=$first.PSObject.Copy();$changed.Fingerprint='f'*64

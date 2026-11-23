@@ -1,5 +1,11 @@
 # Workspace projects, suites and package eligibility
 
+## Companion selector audit
+
+Generic companion selection uses `build/companions.yaml` through `Read-QuietCiCompanions` and `Get-QuietCompanions`. The workspace launchers add focused execution modes through `New-QuietWorkspaceSuiteParameter`. PR publication validates mutation capabilities against the same catalogue. Workstation installation uses the catalogue's `workstation` capability.
+
+The remaining named restrictions define specific implementations. `New-CorePerformanceReport` accepts the evidence formats it can read, `Test-CoreIndependence` runs its focused proof, `ModuleWorkstation` implements the Git and Vagrant installer adapters, and the source-test fixtures exercise particular named suites.
+
 [`scripts/lib/WorkspaceProjects.psm1`](../scripts/lib/WorkspaceProjects.psm1) is an engine-independent, reusable
 PowerShell module. Import it to inspect the selected source workspace without importing business
 modules, starting native tools or publishing anything:
@@ -23,7 +29,7 @@ are mutually exclusive filters.
 
 ## Projects are actual source modules
 
-CI suite selection additionally reads [build/companions.yml](../build/companions.yml) through
+CI suite selection additionally reads [build/companions.yaml](../build/companions.yaml) through
 [CiCompanions](scripts/lib/CiCompanions.md). Its suite declarations can name dedicated integration
 test projects independently of product dependencies. Manifest discovery remains the source/build
 inventory; fixtures without the YAML retain manifest-based suite selection.
@@ -65,7 +71,7 @@ PrivateData = @{
 }
 ```
 
-Project and output paths are relative to that package. Projects must exist, declared frameworks must match the project XML, outputs must be distinct non-overlapping paths under `lib/`, and links, traversal, DTDs, unknown declaration fields and malformed values fail explicitly. Existing suite/dependency/publication declarations remain independent. This example does not create or qualify a Packer module or authorize publication. Declare its group in build/companions.yml. The shared workflow takes its product profile from the project catalogue.
+Project and output paths are relative to that package. Projects must exist, declared frameworks must match the project XML, outputs must be distinct non-overlapping paths under `lib/`, and links, traversal, DTDs, unknown declaration fields and malformed values fail explicitly. Existing suite/dependency/publication declarations remain independent. This example does not create or qualify a Packer module or authorize publication. Declare its group in build/companions.yaml. The shared workflow takes its product profile from the project catalogue.
 
 `Build-Workspace.ps1` compiles the solution once, then uses `dotnet publish --no-build` to prepare each declared distribution and its integrity receipt. Source identity follows explicit `ProjectReference` edges and linked `Compile Include` paths, rather than consumer names, and hashes `Directory.Build.props` with the SDK/package/protocol inputs. Dynamic MSBuild expressions and wildcard includes in those explicit edges are not supported by this input resolver and fail rather than silently dropping evidence. Core's architecture-specific ReadyToRun publications retain their separate RID policy.
 
@@ -113,7 +119,7 @@ their metadata asks for publication. The reasons are:
 | `PublicationNotDeclared` | Eligibility is absent and defaults to false |
 | `TestProject` | A test companion is excluded |
 
-Core and Git explicitly declare publication eligibility; Vagrant remains disabled and every test companion is excluded. Package identity follows the root .psm1/matching manifest through [Get-ModulePackageName](scripts/Get-ModulePackageName.md). GalleryRelease reuses this workspace discovery for release aliases, full names and All; no duplicate publication YAML is introduced. Each prepared artifact contains exactly one selected business module with validated identity, dependencies and declared compiled outputs. The existing build/companions.yml still declares the CI suites/images that must qualify a new companion before publication.
+Core and Git explicitly declare publication eligibility; Vagrant remains disabled and every test companion is excluded. Package identity follows the root .psm1/matching manifest through [Get-ModulePackageName](scripts/Get-ModulePackageName.md). GalleryRelease reuses this workspace discovery for release aliases, full names and All; no duplicate publication YAML is introduced. Each prepared artifact contains exactly one selected business module with validated identity, dependencies and declared compiled outputs. The existing build/companions.yaml still declares the CI suites/images that must qualify a new companion before publication.
 
 ## Validation
 
