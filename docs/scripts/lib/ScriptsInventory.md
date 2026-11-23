@@ -19,6 +19,8 @@ Pure functions behind [Test-ScriptsInventory.ps1](../Test-ScriptsInventory.md). 
 
 Only the PowerShell parser, `ConvertFrom-Json` and .NET file reads.
 
+The inventory converts the host directory separator in relative test paths to `/` before emitting them.
+
 ## Critical review and verdict
 
 Requiring a single literal export list keeps the inventory exact. A module that computes its exports would make the ratchet unverifiable, so it is rejected instead of skipped. The reference scan is a textual proxy, and line coverage and mutation complement it (see [the check](../Test-ScriptsInventory.md)).

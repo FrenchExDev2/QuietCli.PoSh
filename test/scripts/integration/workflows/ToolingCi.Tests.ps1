@@ -18,7 +18,9 @@ BeforeAll {
 Describe 'tooling-ci.yml selection' {
     It 'defaults every input to the full campaign, so callers without inputs keep it' {
         $inputs=$workflow['on']['workflow_call']['inputs']
-        (@($inputs.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'scope,script_mutation_targets,script_tests'
+        (@($inputs.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'mutation_parallel,scope,script_mutation_targets,script_tests'
+        [string]$inputs['mutation_parallel']['type']|Should -BeExactly 'boolean'
+        [string]$inputs['mutation_parallel']['default']|Should -BeExactly 'true'
         [string]$inputs['scope']['default']|Should -BeExactly 'full'
         [string]$inputs['script_tests']['default']|Should -BeExactly 'all'
         [string]$inputs['script_mutation_targets']['default']|Should -BeExactly 'all'
