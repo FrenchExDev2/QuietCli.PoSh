@@ -27,8 +27,7 @@ Import-Module ./scripts/lib/CiCompanions.psm1 -DisableNameChecking
 Get-QuietCompanions -WorkspaceRoot $PWD.ProviderPath -Name git,vagrant -Capability Mutation
 ```
 
-`Read-QuietCiCompanions` rejects duplicate YAML keys, unknown fields/names, malformed policies,
-missing test manifests/exports, dependency cycles and missing or multiple base declarations.
+`Read-QuietCiCompanions` rejects duplicate YAML keys, malformed paths or policies, unknown fields or names, missing test manifests or exports, dependency cycles and missing or multiple base declarations. The reader can resolve test suites in a source subset such as the Core-independence checkout. `Sync-CompanionWorkflows.ps1` verifies the declared directories in a full checkout.
 `Resolve-QuietCiCompanions` selects one suite or every declared suite for All, expands only product
 dependencies and deduplicates image layers. Tool-only dependencies do not enable Core performance
 qualification or another companion's mutations. Declared mutation controls apply only to selected

@@ -95,6 +95,13 @@ function Sync-QuietCompanionWorkflows {
     # (CompanionCiCatalogueRequired) or, for a legacy fixture, declare nothing.
     if(Get-QuietCiCompanionCataloguePath $WorkspaceRoot){
         $configuration=Read-QuietCiCompanions $WorkspaceRoot
+        foreach($companion in $configuration.Companions.Values){
+            foreach($path in @($companion.SourcePath,$companion.TestPath)){
+                if($path -and ![IO.Directory]::Exists([IO.Path]::Combine($WorkspaceRoot,$path))){
+                    throw ('CiCompanionPathMissing: '+$path)
+                }
+            }
+        }
         $null=Assert-QuietCiCompanionImages -WorkspaceRoot $WorkspaceRoot -Configuration $configuration
         if([IO.Path]::GetFileName($configuration.Path) -ceq 'companions.yaml'){
             Import-Module ([IO.Path]::Combine($PSScriptRoot,'PullRequestChecklist.psm1')) -DisableNameChecking -ErrorAction Stop
