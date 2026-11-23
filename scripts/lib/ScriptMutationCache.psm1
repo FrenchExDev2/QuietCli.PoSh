@@ -38,8 +38,9 @@ function Get-QuietScriptMutationTreeFiles {
     param([Parameter(Mandatory)][string]$Directory)
     if(![IO.Directory]::Exists($Directory)){return}
     $pending=[Collections.Generic.Stack[string]]::new();$pending.Push($Directory)
-    while($pending.Count){
-        foreach($entry in [IO.DirectoryInfo]::new($pending.Pop()).EnumerateFileSystemInfos()){
+    [string]$current=$null
+    while($pending.TryPop([ref]$current)){
+        foreach($entry in [IO.DirectoryInfo]::new($current).EnumerateFileSystemInfos()){
             if($entry.Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){continue}
             if($entry -is [IO.DirectoryInfo]){$pending.Push($entry.FullName)}else{$entry.FullName}
         }
@@ -137,8 +138,11 @@ function Get-QuietScriptMutationSourceFiles {
         if(![IO.File]::Exists($path)){throw "ScriptMutationCacheTestMissing: $relative"}
         $path
     })+@(Get-QuietScriptMutationTreeFiles ([IO.Path]::Combine($TestsRoot,'support')))
-    foreach($root in $roots){foreach($path in & $referenced $root){if($included.Add($path)){$pending.Enqueue($path)}}}
-    while($pending.Count){foreach($path in & $referenced $pending.Dequeue()){if($included.Add($path)){$pending.Enqueue($path)}}}
+    foreach($root in $roots){foreach($path in (& $referenced $root | Where-Object {$included.Add($_)})){$pending.Enqueue($path)}}
+    [string]$current=$null
+    while($pending.TryDequeue([ref]$current)){
+        foreach($path in (& $referenced $current | Where-Object {$included.Add($_)})){$pending.Enqueue($path)}
+    }
     $files=[string[]]@($included);[Array]::Sort($files,[StringComparer]::Ordinal)
     $files
 }

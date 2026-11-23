@@ -54,7 +54,6 @@ function Get-QuietPerformanceNumbers {
     param([AllowNull()][AllowEmptyCollection()][object[]]$Items,[Parameter(Mandatory)][string]$Member,[Parameter(Mandatory)][ref]$Rejected)
     $values=[Collections.Generic.List[double]]::new()
     foreach($item in @($Items)){
-        if($null -eq $item){continue}
         $present=@(Get-QuietPerformanceMember $item $Member)
         if(!$present.Count){continue}
         $raw=$present[0]

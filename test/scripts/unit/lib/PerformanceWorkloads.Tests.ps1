@@ -141,6 +141,17 @@ Describe 'Get-QuietPerformanceWorkloadCatalog' {
         }
     }
 
+    It 'assigns startup diagnostics to their evidence lane and exact stage' {
+        $catalog=@(Get-QuietPerformanceWorkloadCatalog | Where-Object {$_.PSObject.Properties['StartupMetric']})
+        @($catalog | Where-Object {!$_.Instrumented} | ForEach-Object { $_.Measure+'|'+$_.Stage }) |
+            Should -BeExactly @('Fresh-process startup import|','Fresh-process first short call|FirstCall','Fresh-process warm short call|WarmCall')
+        @($catalog | Where-Object Instrumented).StartupMetric |
+            Should -BeExactly @('InvocationMs','ResultConstructionMs','MetadataProjectionMs','SaveRoundTripMs','QueueWaitMs','WriteGateWaitMs','ValidationMs','WriterPreparationMs','SqliteWriteMs')
+        foreach($entry in $catalog | Where-Object Instrumented){
+            $entry.Stage | Should -BeExactly ''
+        }
+    }
+
     It 'lists the measures in report order' {
         @(Get-QuietPerformanceWorkloadCatalog|ForEach-Object {$_.Workload+' / '+$_.Measure})|Should -Be @(
             'ImportFirstCall / Fresh-process import','ImportFirstCall / Import minus paired baseline','ImportFirstCall / First call, cold engine','ImportFirstCall / Engine startup'
@@ -190,6 +201,7 @@ Describe 'Get-QuietPerformanceWorkloadRows' {
         $result=Get-QuietPerformanceWorkloadRows -Label 'host' -Core $null -ProfiledWorkloads $profiled
         $instrumented=@($result.Rows|Where-Object {$_.Measure -ceq 'Instrumented iteration'})
         $instrumented.Workload|Should -Be @('Events','Framing')
+        $instrumented.Instrumented|Should -Be @($true,$true)
         $instrumented[0].Statistics.Median|Should -Be 3
         $instrumented[0].Measure|Should -BeExactly 'Instrumented iteration'
         $instrumented[0].Variant|Should -BeExactly '-'
@@ -248,6 +260,12 @@ Describe 'Fresh-process phase selectors' {
             )}
         }})}
         $rows=(Get-QuietPerformanceWorkloadRows -Label h -Core @{Performance=@($startup)} -ProfiledWorkloads @()).Rows
+        $imports=@($rows|Where-Object Measure -CEQ 'Fresh-process startup import')
+        $imports.Variant|Should -BeExactly @('telemetry=off','telemetry=on')
+        $imports.Statistics.Median|Should -Be @(100,100)
+        $warm=@($rows|Where-Object Measure -CEQ 'Fresh-process warm short call')
+        $warm.Variant|Should -BeExactly @('telemetry=off, WarmCall','telemetry=on, WarmCall')
+        $warm.Statistics.Median|Should -Be @(10,10)
         $ordinary=@($rows|Where-Object Measure -CEQ 'Fresh-process first short call')
         $ordinary.Count|Should -Be 2
         @($ordinary|Where-Object Instrumented).Count|Should -Be 0
@@ -257,5 +275,18 @@ Describe 'Fresh-process phase selectors' {
         $write[0].Instrumented|Should -BeTrue
         @($rows|Where-Object {$_.Measure -ceq 'SQLite write' -and $_.Variant -like 'telemetry=off*' -and $null -ne $_.Statistics}).Count|Should -Be 0
         @($rows|Where-Object {$_.Measure -ceq 'Diagnostic short call'}).Count|Should -Be 4
+    }
+
+    It 'retains missing timings without counting them as rejected measurements' {
+        $samples=@(
+            @{MeasurePhases=$false;TelemetryEnabled=$false;Calls=@(@{Stage='FirstCall';InvocationMs=20},@{Stage='WarmCall'})}
+            @{MeasurePhases=$false;TelemetryEnabled=$true;ImportMs=0;Calls=@(@{Stage='FirstCall'})}
+        )
+        $result=Get-QuietPerformanceWorkloadRows -Label h -Core @{Performance=@(@{Kind='FreshProcessStartup';Samples=$samples})}
+        $result.Rejected|Should -Be 0
+        (& $find $result.Rows 'Fresh-process startup import' 'telemetry=off')[0].Statistics|Should -BeNullOrEmpty
+        (& $find $result.Rows 'Fresh-process startup import' 'telemetry=on')[0].Statistics.Median|Should -Be 0
+        (& $find $result.Rows 'Fresh-process first short call' 'telemetry=on, FirstCall')[0].Statistics|Should -BeNullOrEmpty
+        (& $find $result.Rows 'Fresh-process warm short call' 'telemetry=off, WarmCall')[0].Statistics|Should -BeNullOrEmpty
     }
 }

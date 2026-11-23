@@ -65,7 +65,7 @@ PrivateData = @{
 }
 ```
 
-Project and output paths are relative to that package. Projects must exist, declared frameworks must match the project XML, outputs must be distinct non-overlapping paths under `lib/`, and links, traversal, DTDs, unknown declaration fields and malformed values fail explicitly. Existing suite/dependency/publication declarations remain independent. This example does not create or qualify a Packer module or authorize publication. Declare its group in build/companions.yml and regenerate its explicit reusable workflow with Sync-CompanionWorkflows.ps1.
+Project and output paths are relative to that package. Projects must exist, declared frameworks must match the project XML, outputs must be distinct non-overlapping paths under `lib/`, and links, traversal, DTDs, unknown declaration fields and malformed values fail explicitly. Existing suite/dependency/publication declarations remain independent. This example does not create or qualify a Packer module or authorize publication. Declare its group in build/companions.yml. The shared workflow takes its product profile from the project catalogue.
 
 `Build-Workspace.ps1` compiles the solution once, then uses `dotnet publish --no-build` to prepare each declared distribution and its integrity receipt. Source identity follows explicit `ProjectReference` edges and linked `Compile Include` paths, rather than consumer names, and hashes `Directory.Build.props` with the SDK/package/protocol inputs. Dynamic MSBuild expressions and wildcard includes in those explicit edges are not supported by this input resolver and fail rather than silently dropping evidence. Core's architecture-specific ReadyToRun publications retain their separate RID policy.
 

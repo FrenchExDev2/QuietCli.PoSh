@@ -24,6 +24,7 @@ Describe 'ConvertTo-QuietGitHubActionVersion' {
     }
 
     It 'returns null for <Text>' -ForEach @(@{Text=''},@{Text='main'},@{Text='v'},@{Text='v4.3.1.2'},@{Text='v4-beta'},@{Text='V4'},@{Text=' v4'}) {
+        @(ConvertTo-QuietGitHubActionVersion -Text $Text).Count|Should -Be 1
         ConvertTo-QuietGitHubActionVersion -Text $Text|Should -BeNullOrEmpty
     }
 
@@ -149,8 +150,8 @@ Describe 'Get-QuietGitHubActionUpdate' {
     }
 
     It 'refuses a <Name>' -ForEach @(
-        @{Name='local reference';Line='- uses: ./x';Action='actions/checkout';Message='GitHubActionReferenceInvalid*'}
-        @{Name='release of another action';Line='- uses: actions/checkout@v4';Action='actions/cache';Message='GitHubActionReleaseMismatch*'}
+        @{Name='local reference';Line='- uses: ./x';Action='actions/checkout';Message='GitHubActionReferenceInvalid: Local references have no release'}
+        @{Name='release of another action';Line='- uses: actions/checkout@v4';Action='actions/cache';Message='GitHubActionReleaseMismatch: actions/cache for actions/checkout'}
     ) {
         {Get-QuietGitHubActionUpdate -Reference (& $reference $Line) -Release (& $release 'v7' $new $Action)}|Should -Throw -ExpectedMessage $Message
     }
@@ -182,6 +183,7 @@ Describe 'Get-QuietGitHubActionWorkflowDocumentPath' {
     }
 
     It 'has no document for <Path>' -ForEach @(@{Path='.github/actions/cache-resources/action.yml'},@{Path='.github/workflows/nested/ci.yml'},@{Path='.github/workflows/ci.json'},@{Path='x/.github/workflows/ci.yml'}) {
+        @(Get-QuietGitHubActionWorkflowDocumentPath -RelativePath $Path).Count|Should -Be 1
         Get-QuietGitHubActionWorkflowDocumentPath -RelativePath $Path|Should -BeNullOrEmpty
     }
 }

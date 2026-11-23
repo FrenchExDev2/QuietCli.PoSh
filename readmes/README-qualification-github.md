@@ -154,3 +154,5 @@ The [full Git qualification workflow](../.github/workflows/qualification.yml) ex
 
 This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
+
+See [the PR checklist and scripted merge guide](../docs/README-pull-request-ci.md) to request additional validation and confirm its current result.

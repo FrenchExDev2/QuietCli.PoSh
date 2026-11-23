@@ -104,17 +104,25 @@ Describe 'companions-ci.yml image warm-up' {
 Describe 'companions-ci.yml manual qualification' {
     BeforeAll {
         $planStep=@($companions['jobs']['plan']['steps']|Where-Object {[string]$_['id'] -ceq 'plan'})[0]
-        # Runs the plan step's own script against a stub planner that records how it was called.
+        # Runs the production entry point against a stub that records the actual planner arguments.
         $invokePlanStep={param([string]$EventName)
             $directory=[IO.Path]::Combine($TestDrive,'plan-step-'+[guid]::NewGuid().ToString('N'))
             $null=New-QuietTestFile ([IO.Path]::Combine($directory,'scripts','New-CiImpactPlan.ps1')) @'
-param([string]$Base,[string]$Revision,[string]$Event,[string[]]$Suite,[string]$OutputPath)
-[IO.File]::WriteAllText($OutputPath,(ConvertTo-Json -Compress -InputObject ([ordered]@{Bound=@($PSBoundParameters.Keys|Sort-Object);Base=$Base;Revision=$Revision;Event=$Event;Suite=@($Suite)})))
+[CmdletBinding(SupportsShouldProcess)]
+param([string]$Base,[string]$Revision,[string]$Event,[string[]]$Suite,[string]$OutputPath,[string]$PullRequestBody)
+[IO.File]::WriteAllText($env:RECORDED_CALL,(ConvertTo-Json -Compress -InputObject ([ordered]@{Bound=@($PSBoundParameters.Keys|Where-Object {$_ -cne 'Confirm'}|Sort-Object);Base=$Base;Revision=$Revision;Event=$Event;Suite=@($Suite);Body=$PullRequestBody})))
 '@
+            Copy-Item -LiteralPath ([IO.Path]::Combine($root,'scripts','Invoke-GitHubCiPlan.ps1')) -Destination ([IO.Path]::Combine($directory,'scripts'))
             $step=[IO.Path]::Combine($directory,'step.ps1')
             $null=New-QuietTestFile $step ("Set-Location -LiteralPath `$PSScriptRoot`n"+[string]$planStep['run'])
             $output=[IO.Path]::Combine($directory,'called.json')
-            $run=Invoke-QuietTestScript -ScriptPath $step -Environment @{GITHUB_EVENT_NAME=$EventName;GITHUB_SHA=('b'*40);GITHUB_OUTPUT=$output;BASE_SHA=('a'*40);DISPATCH_SUITES='Core,Git'} -TimeoutSeconds 120
+            $payloadPath=[IO.Path]::Combine($directory,'event.json')
+            $data=@{before='a'*40;pull_request=@{number=42;body="Résumé`n~~~`n- [x] raw`n~~~";head=@{sha='c'*40};base=@{sha='a'*40}}}
+            [IO.File]::WriteAllText($payloadPath,(ConvertTo-Json $data -Depth 5 -Compress))
+            $run=Invoke-QuietTestScript -ScriptPath $step -Environment @{
+                GITHUB_EVENT_NAME=$EventName;GITHUB_SHA=('b'*40);GITHUB_OUTPUT=[IO.Path]::Combine($directory,'outputs.txt')
+                GITHUB_EVENT_PATH=$payloadPath;GITHUB_REF='refs/pull/42/merge';RECORDED_CALL=$output;DISPATCH_SUITES='Core,Git'
+            } -TimeoutSeconds 120
             $run.ExitCode|Should -Be 0 -Because ($run.Output+$run.Error)
             [IO.File]::ReadAllText($output)|ConvertFrom-Json
         }
@@ -140,9 +148,18 @@ param([string]$Base,[string]$Revision,[string]$Event,[string[]]$Suite,[string]$O
 
     It 'plans <EventName> from the diff base, without a suite' -ForEach @(@{EventName='pull_request'},@{EventName='push'}) {
         $called=& $invokePlanStep $EventName
-        ($called.Bound -join ',')|Should -BeExactly 'Base,Event,OutputPath,Revision'
+        ($called.Bound -join ',')|Should -BeExactly $(if($EventName -ceq 'pull_request'){'Base,Event,OutputPath,PullRequestBody,Revision'}else{'Base,Event,OutputPath,Revision'})
+        if($EventName -ceq 'pull_request'){$called.Body|Should -BeExactly "Résumé`n~~~`n- [x] raw`n~~~"}
         $called.Base|Should -BeExactly ('a'*40)
         $called.Event|Should -BeExactly $EventName
+    }
+
+    It 'replans edits and gates the strict ReadyToRun call' {
+        $companions['on']['pull_request']['types'] | Should -Contain 'edited'
+        $companions['jobs']['readytorun']['if'] | Should -BeExactly "needs.plan.outputs.run_readytorun == 'true'"
+        $companions['jobs']['readytorun']['with']['require_complete'] | Should -Be 'true'
+        $companions['jobs']['ci-status']['needs'] | Should -Contain 'readytorun'
+        $companions['jobs']['products']['with']['run_preview'] | Should -BeExactly '${{ matrix.run_preview }}'
     }
 }
 

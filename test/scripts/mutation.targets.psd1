@@ -1,5 +1,5 @@
 # Mutation targets of Invoke-ScriptsMutation.ps1. Module is relative to the scripts root, UnitTestFiles to test/scripts.
-# Break is the minimum score (killed + timeout over valid mutants, in percent); raise it, never lower it.
+# Break 100 requires every non-equivalent mutant to be killed and at least one executed mutant.
 # Inputs (optional) names the repository files outside scripts/ and test/scripts/ that the unit tests read, so the
 # incremental cache invalidates their outcomes when those files change.
 @{
@@ -23,49 +23,49 @@
             Module = 'lib/CiPlanReport.psm1'
             Functions = @('Write-QuietCiPlanReport')
             UnitTestFiles = @('unit/lib/CiPlanReport.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'ContainerGroupScripts'
             Module = 'lib/ContainerInputs.psm1'
             Functions = @('Get-QuietContainerGroupScripts')
             UnitTestFiles = @('unit/lib/ContainerInputs.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'DocsCreditsBlock'
             Module = 'lib/Sync-DocsCredits.psm1'
             Functions = @('Format-QuietDocsCreditsBlock')
             UnitTestFiles = @('unit/lib/Sync-DocsCredits.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'GitHubWorkflowMap'
             Module = 'lib/GitHubWorkflowMap.psm1'
             Functions = @('Get-QuietWorkflowMapTarget','Format-QuietWorkflowMapText','Format-QuietWorkflowMapClick')
             UnitTestFiles = @('unit/lib/GitHubWorkflowMap.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'WorkflowDocumentation'
             Module = 'lib/WorkflowDocumentation.psm1'
             Functions = @('Get-QuietWorkflowScriptPaths','Format-QuietWorkflowLiteral')
             UnitTestFiles = @('unit/lib/GitHubWorkflowMap.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'ScriptsDocsLinks'
             Module = 'lib/Sync-ScriptsReadme.psm1'
             Functions = @('Set-QuietScriptsDocSourceLink')
             UnitTestFiles = @('unit/lib/Sync-ScriptsReadme.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'ReadmeGuideCredits'
             Module = 'lib/Sync-DocsCredits.psm1'
             Functions = @('Get-QuietReadmeGuideFiles')
             UnitTestFiles = @('unit/lib/ReadmeRelocation.Tests.ps1')
-            Break = 80
+            Break = 100
         }
 
         @{
@@ -73,7 +73,7 @@
             Module = 'lib/ResourceDocumentation.psm1'
             Functions = @('Get-QuietResourceInventoryFooter')
             UnitTestFiles = @('unit/lib/ReadmeRelocation.Tests.ps1')
-            Break = 80
+            Break = 100
         }
 
         @{
@@ -81,7 +81,7 @@
             Module = 'lib/New-QuietCompanion.psm1'
             Functions = @('Resolve-NewCompanionBranch','Add-QuietCompanionRegistration')
             UnitTestFiles = @('unit/lib/New-QuietCompanion.Tests.ps1')
-            Break = 80
+            Break = 100
         }
 
         @{
@@ -89,7 +89,7 @@
             Module = 'lib/SqliteDocumentation.psm1'
             Functions = @('Get-QuietSqliteSourceStatement', 'Get-QuietSqliteSchema', 'Get-QuietSqliteCheckConstraint', 'ConvertTo-QuietSqliteMarkdown', 'ConvertTo-QuietSqliteMermaid', 'ConvertTo-QuietSqliteMarkdownTable', 'Format-QuietSqliteMarkdownCode', 'Format-QuietSqliteCodeBlock')
             UnitTestFiles = @('unit/lib/SqliteDocumentation.Tests.ps1')
-            Break = 80
+            Break = 100
             Equivalent = @(
                 @{Function = 'Get-QuietSqliteCheckConstraint'; Mutator = 'EqualityOperator'; Original = '-lt'; Replacement = '-le'; Reason = 'The extra iteration reads a null token in the module scope, which matches neither a parenthesis nor CHECK and emits nothing.'}
             )
@@ -100,7 +100,7 @@
             Module = 'lib/ScriptsTests.psm1'
             Functions = @('ConvertTo-QuietScriptsXmlText','Protect-QuietScriptsTestResult','Get-QuietScriptsTestPlan','Get-QuietScriptsTestValue','Test-QuietScriptsPathWithin','Resolve-QuietScriptsTestPath','Get-QuietScriptsCoverageTargets','New-QuietScriptsPesterConfiguration','ConvertTo-QuietScriptsTestCount','ConvertTo-QuietScriptsTestReport','New-QuietScriptsTestStatus','Update-QuietScriptsTestStatus','Get-QuietScriptsTestExitCode','Test-QuietScriptsTestsApplicable')
             UnitTestFiles = @('unit/lib/ScriptsTests.Tests.ps1')
-            Break = 80
+            Break = 100
             Equivalent = @(
                 @{Function = 'Get-QuietScriptsTestValue'; Mutator = 'ConditionalExpression'; Original = '$null -ne $property'; Replacement = '$true'; Reason = 'Outside strict mode the Value of a null property reads as null, the value already held; the guard keeps strict-mode callers safe.'}
                 @{Function = 'Test-QuietScriptsPathWithin'; Mutator = 'ConditionalExpression'; Original = '$IsWindows'; Replacement = '$true'; Reason = 'On Windows $IsWindows is already true, so forcing it changes nothing.'; Platform = 'Windows'}
@@ -115,7 +115,7 @@
             Functions = @('Compare-QuietScriptAnalysisBaseline','Get-QuietScriptAnalysisFindingKey','Get-QuietScriptAnalysisSha256','Get-QuietScriptAnalysisFunctionName','ConvertTo-QuietScriptAnalysisFinding','ConvertTo-QuietScriptAnalysisBaseline','Read-QuietScriptAnalysisBaseline','Read-QuietScriptAnalysisSettings','Test-QuietScriptAnalysisTestContainer','Get-QuietScriptAnalysisFiles','Get-QuietScriptAnalysisCacheKey')
             UnitTestFiles = @('unit/lib/ScriptAnalysis.Tests.ps1')
             Inputs = @('scripts/lib/RunToolCache.psm1')
-            Break = 80
+            Break = 100
             # Equivalent mutants: the tests cannot tell them apart, for the reason given. A stale entry fails the run.
             Equivalent = @(
                 @{Function = 'Compare-QuietScriptAnalysisBaseline'; Mutator = 'ConditionalExpression'; Original = '$expected.ContainsKey($key)'; Replacement = '$true'; Reason = 'Outside strict mode a missing key reads as null, whose Count is 0; the guard only keeps the module strict-mode safe.'}
@@ -127,21 +127,28 @@
             Module = 'lib/ScriptMutation.psm1'
             Functions = @('Get-QuietScriptMutants','New-QuietScriptMutantSource','Get-QuietScriptMutantStatus','Get-QuietScriptMutantTimeout','Get-QuietScriptMutationFocus','Measure-QuietScriptMutationScore','Read-QuietScriptMutationTargets','Select-QuietScriptMutationEquivalents','New-QuietScriptMutationReport','ConvertTo-QuietScriptMutationMarkdown','Assert-QuietScriptMutationShards')
             UnitTestFiles = @('unit/lib/ScriptMutation.Tests.ps1','unit/lib/ScriptMutators.Tests.ps1')
-            Break = 80
+            Break = 100
+        }
+        @{
+            Name = 'ScriptMutators'
+            Module = 'lib/ScriptMutators.psm1'
+            Functions = @('Find-QuietScriptMutantMethodExpression')
+            UnitTestFiles = @('unit/lib/ScriptMutators.Tests.ps1')
+            Break = 100
         }
         @{
             Name = 'ScriptsInventory'
             Module = 'lib/ScriptsInventory.psm1'
             Functions = @('Get-QuietScriptsLibraryExports','Get-QuietScriptsTestInventory','Read-QuietScriptsTestInventoryBaseline','Compare-QuietScriptsTestInventory')
             UnitTestFiles = @('unit/lib/ScriptsInventory.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'CiImpact'
             Module = 'lib/CiImpact.psm1'
             Functions = @('Get-QuietCiImpact','Get-QuietCiDependentSmokes','Get-QuietCiDispatchImpact','Test-QuietDevelopReceipt')
             UnitTestFiles = @('unit/lib/CiImpact.Tests.ps1')
-            Break = 80
+            Break = 100
             Equivalent = @(
                 @{Function = 'Get-QuietCiImpact'; Mutator = 'StringLiteral'; Original = "'Stop'"; Replacement = "''"; Reason = 'Every failure in the function is a terminating throw or a -ErrorAction Stop call, so no non-terminating error reaches the preference.'}
                 @{Function = 'Get-QuietCiDispatchImpact'; Mutator = 'StringLiteral'; Original = "'Stop'"; Replacement = "''"; Reason = 'Every failure in the function is a terminating throw, so no non-terminating error reaches the preference.'}
@@ -152,7 +159,7 @@
             Module = 'lib/CiImages.psm1'
             Functions = @('Receive-QuietCiRegistryImage')
             UnitTestFiles = @('unit/lib/CiImages.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             # Invoke-QuietCiSuiteImage drives a container runtime; its guards are tested, its body is covered by the image workflows.
@@ -168,7 +175,7 @@
             # contracts hash, and scan every product module for container files. Not src/**: build outputs under obj/
             # would change the key on every local build.
             Inputs = @('build/**','global.json','.github/containers/**','src/*/test/*/*.psd1','src/*/src/*/ci/**','src/*/src/*/.github/containers/**','src/*/src/*/metadata/locks/**','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json','src/*/src/**/Dockerfile*','src/*/src/**/Containerfile*','src/*/src/**/*.Dockerfile','src/*/src/**/*.Containerfile')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'CompanionWorkflows'
@@ -180,28 +187,44 @@
             )
             # YamlDotNet is resolved through Core's dependency lock.
             Inputs = @('src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'CiPlanResults'
             Module = 'lib/CiPlanResults.psm1'
             Functions = @('Assert-QuietCiPlanResults')
             UnitTestFiles = @('unit/lib/CiPlanResults.Tests.ps1')
-            Break = 80
+            Break = 100
+        }
+        @{
+            Name = 'PullRequestChecklist'
+            Module = 'lib/PullRequestChecklist.psm1'
+            Functions = @('Read-QuietPullRequestChecklist','New-QuietPullRequestBody')
+            UnitTestFiles = @('unit/lib/PullRequestChecklist.Tests.ps1')
+            Inputs = @('.github/pull_request_template.md')
+            Break = 100
+        }
+        @{
+            Name = 'PullRequestCi'
+            Module = 'lib/PullRequestCi.psm1'
+            Functions = @('Read-QuietPullRequestCiSnapshot','Test-QuietPullRequestCiSelection','Assert-QuietPullRequestCiEvidence')
+            UnitTestFiles = @('unit/lib/PullRequestChecklist.Tests.ps1')
+            Inputs = @('.github/pull_request_template.md')
+            Break = 100
         }
         @{
             Name = 'ScriptsImpact'
             Module = 'lib/ScriptsImpact.psm1'
             Functions = @('Get-QuietScriptsTestFiles','Get-QuietScriptsImpact','Resolve-QuietScriptsCiSelection')
             UnitTestFiles = @('unit/lib/ScriptsImpact.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'ScriptMutationCache'
             Module = 'lib/ScriptMutationCache.psm1'
             Functions = @('Get-QuietScriptMutationSha256','Get-QuietScriptMutationFilesDigest','Get-QuietScriptMutationTreeFiles','Get-QuietScriptMutationTestFingerprint','Get-QuietScriptMutationSourceFingerprint','Get-QuietScriptMutationSourceFiles','Get-QuietScriptMutationInputsFingerprint','Get-QuietScriptMutationInputFiles','Get-QuietScriptMutationTargetFingerprint','Get-QuietScriptMutantCacheKeys','Get-QuietScriptMutantCachePath','Read-QuietScriptMutationCacheDocument','Get-QuietScriptMutationCacheValue','Read-QuietScriptMutantCache','Write-QuietScriptMutantCache','Get-QuietScriptMutationBaselineKey','Read-QuietScriptMutationBaseline','Write-QuietScriptMutationBaseline','Remove-QuietScriptMutantCacheUnused')
             UnitTestFiles = @('unit/lib/ScriptMutationCache.Tests.ps1')
-            Break = 80
+            Break = 100
             Equivalent = @(
                 @{Function = 'Get-QuietScriptMutationTargetFingerprint'; Mutator = 'ConditionalExpression'; Original = '$Target.Contains(''Inputs'')'; Replacement = '$true'; Reason = 'Outside strict mode an absent Inputs key reads as null, which the empty-pattern filter drops; the guard keeps strict-mode callers safe.'}
                 @{Function = 'Get-QuietScriptMutationTargetFingerprint'; Mutator = 'ConditionalExpression'; Original = '$Target.PSObject.Properties[''Inputs'']'; Replacement = '$true'; Reason = 'Outside strict mode an absent Inputs property reads as null, which the empty-pattern filter drops; the guard keeps strict-mode callers safe.'}
@@ -215,7 +238,7 @@
             Module = 'lib/ScriptMutationSlot.psm1'
             Functions = @('Test-QuietScriptsMutationSlotPester','Test-QuietScriptsMutationSlotParent','Restore-QuietScriptsMutationSlotState','Submit-QuietScriptsMutationJob','Receive-QuietScriptsMutationJob','Wait-QuietScriptsMutationJob','Stop-QuietScriptsMutationSlot')
             UnitTestFiles = @('unit/lib/ScriptMutationSlot.Tests.ps1')
-            Break = 80
+            Break = 100
             Equivalent = @(
                 @{Function = 'Restore-QuietScriptsMutationSlotState'; Mutator = 'ConditionalExpression'; Original = '$IsWindows'; Replacement = '$true'; Reason = 'On Windows $IsWindows is already true, so forcing it changes nothing.'; Platform = 'Windows'}
                 @{Function = 'Restore-QuietScriptsMutationSlotState'; Mutator = 'BlockStatement'; Original = '{[StringComparison]::Ordinal}'; Replacement = '{}'; Reason = 'The Ordinal branch only runs off Windows; on Windows it is unreachable.'; Platform = 'Windows'}
@@ -238,7 +261,7 @@
             Module = 'lib/RunToolCache.psm1'
             Functions = @('Test-RunToolTransientDownloadError','Invoke-RunToolDownload')
             UnitTestFiles = @('unit/lib/RunToolCache.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'ModuleVersion'
@@ -259,14 +282,14 @@
             Module = 'lib/WorkBranch.psm1'
             Functions = @('Get-QuietWorkBranchKinds','Resolve-QuietWorkBranchName','Assert-QuietWorkBranchBase','Get-QuietWorkBranchStatusProblems','ConvertFrom-QuietWorkBranchLsRemote','Compare-QuietWorkBranchShelf')
             UnitTestFiles = @('unit/lib/WorkBranch.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'MergedBranches'
             Module = 'lib/MergedBranches.psm1'
             Functions = @('Get-QuietMergedBranchRepository','ConvertFrom-QuietMergedBranchRefs','ConvertFrom-QuietMergedBranchPullRequests','ConvertTo-QuietMergedBranchRelation','Get-QuietMergedBranchDecision','Get-QuietMergedBranchConfigSections')
             UnitTestFiles = @('unit/lib/MergedBranches.Tests.ps1')
-            Break = 80
+            Break = 100
             Equivalent = @(
                 @{Function = 'ConvertFrom-QuietMergedBranchPullRequests'; Mutator = 'EqualityOperator'; Original = '-gt'; Replacement = '-ge'; Reason = 'A number listed twice throws before the comparison, so two pull requests never have equal numbers and the boundary is unreachable.'}
             )
@@ -276,56 +299,63 @@
             Module = 'lib/Merge-PullRequest.psm1'
             Functions = @('Invoke-QuietMergePullRequest','Find-QuietPullRequestRun','Invoke-QuietCommitPullRequest')
             UnitTestFiles = @('unit/lib/Merge-PullRequest.Tests.ps1')
-            Break = 80
+            Break = 100
+        }
+        @{
+            Name = 'PublishWorkspacePullRequest'
+            Module = 'lib/Merge-PullRequest.psm1'
+            Functions = @('Invoke-QuietPublishPullRequest')
+            UnitTestFiles = @('unit/lib/Publish-WorkspacePullRequest.Tests.ps1')
+            Break = 100
         }
         @{
             Name = 'MergedOriginBranches'
             Module = 'lib/Remove-QuietMergedOriginBranches.psm1'
             Functions = @('Get-QuietMergedOriginBranchPlan')
             UnitTestFiles = @('unit/lib/Remove-QuietMergedOriginBranches.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'GitHubActionReferences'
             Module = 'lib/GitHubActionReferences.psm1'
             Functions = @('Get-QuietGitHubActionFiles','ConvertFrom-QuietGitHubActionUses','Get-QuietGitHubActionRefKind','Format-QuietGitHubActionUses','Get-QuietGitHubActionRewrittenText')
             UnitTestFiles = @('unit/lib/GitHubActionReferences.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'GitHubActionReleases'
             Module = 'lib/GitHubActionReleases.psm1'
             Functions = @('Invoke-QuietGitHubActionApi','Get-QuietGitHubActionLatestRelease','Assert-QuietGitHubActionTag','Read-QuietGitHubActionReleaseCatalog','Resolve-QuietGitHubActionReleases')
             UnitTestFiles = @('unit/lib/GitHubActionReleases.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'GitHubActionUpdates'
             Module = 'lib/GitHubActionUpdates.psm1'
             Functions = @('ConvertTo-QuietGitHubActionVersion','Get-QuietGitHubActionComment','Get-QuietGitHubActionCurrentVersion','Get-QuietGitHubActionUpdate','Get-QuietGitHubActionWorkflowDocumentPath','Get-QuietGitHubActionReceiptText')
             UnitTestFiles = @('unit/lib/GitHubActionUpdates.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'PerformanceStatistics'
             Module = 'lib/PerformanceStatistics.psm1'
             Functions = @('Get-QuietPerformanceRank','Get-QuietPerformanceStatistics')
             UnitTestFiles = @('unit/lib/PerformanceStatistics.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'PerformanceWorkloads'
             Module = 'lib/PerformanceWorkloads.psm1'
             Functions = @('Get-QuietPerformanceMember','Get-QuietPerformanceItems','Get-QuietPerformanceNumbers','New-QuietPerformanceGroup','Get-QuietPerformanceHumanSamples','Get-QuietPerformanceVariantGroups','Get-QuietPerformanceWorkloadCatalog','Get-QuietPerformanceWorkloadRows','Get-QuietPerformanceRuntimeNote')
             UnitTestFiles = @('unit/lib/PerformanceWorkloads.Tests.ps1')
-            Break = 80
+            Break = 100
         }
         @{
             Name = 'PerformanceCharts'
             Module = 'lib/PerformanceCharts.psm1'
             Functions = @('ConvertTo-QuietChartText','ConvertTo-QuietChartXml','Format-QuietChartNumber','Get-QuietPerformanceChartSeries','Get-QuietPerformanceChartTitle','ConvertTo-QuietPerformanceMermaidChart','Get-QuietPerformanceChartCaption','ConvertTo-QuietPerformanceSvgChart','Get-QuietPerformanceWorkloadCoverage','Get-QuietCoverageText','ConvertTo-QuietPerformanceMermaidOverview','ConvertTo-QuietPerformanceSvgOverview')
             UnitTestFiles = @('unit/lib/PerformanceCharts.Tests.ps1')
-            Break = 80
+            Break = 100
         }
     )
 }

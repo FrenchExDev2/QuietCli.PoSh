@@ -21,7 +21,7 @@ Only the PowerShell AST types. Import is inert and nothing is written.
 
 ## Critical review and verdict
 
-Replacements are chosen so that the mutated source still parses. `!$x` becomes `($x)`, and a removed statement leaves an empty line. The unit property test checks this on generated programs, and the engine still classifies any unparsable result as `CompileError`. `ForEach` collections are not loop conditions and are not mutated. `MethodExpression` matches method names case-sensitively, so `.startswith` is left alone.
+Replacements are chosen so that the mutated source still parses. `!$x` becomes `($x)`, and a removed statement leaves an empty line. The unit property test checks this on generated programs, and the engine still classifies any unparsable result as `CompileError`. `ForEach` collections are not loop conditions and are not mutated. `MethodExpression` matches method names case-sensitively, so `.startswith` is left alone. An `.Add(...)` removal applies only to a standalone statement in a statement block. Calls used as conditions or assignment values stay intact.
 
 Tests: `test/scripts/unit/lib/ScriptMutators.Tests.ps1`.
 

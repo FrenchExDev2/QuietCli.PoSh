@@ -123,7 +123,12 @@ function Write-QuietBuildManifest { param($WorkspaceRoot,$Project,$Output,$Input
         if($job -eq 'publish-psgallery.yml' -and $workflow -notmatch 'New-QuietGalleryPackage.ps1[^\r\n]+-RequireReadyToRun'){throw 'ReadyToRunPackageRequirementMissing'}
     }
     $manual=Get-Content -LiteralPath (Join-Path $WorkspaceRoot '.github/workflows/quietcli2-readytorun.yml') -Raw -Encoding utf8
-    if($manual -notmatch '(?m)^  workflow_dispatch:' -or $manual -match '(?m)^  (push|pull_request|schedule|workflow_call):' -or $manual -match 'Invoke-ContainerColdStart.ps1|--runtime podman|-PublishCache' -or $manual -notmatch 'Invoke-ContainerColdStartWorker.ps1[^\r\n]+-ContainerRuntime docker'){throw 'ReadyToRunManualWorkflowPolicyChanged'}
+    if($manual -notmatch '(?m)^  workflow_dispatch:' -or $manual -notmatch '(?m)^  workflow_call:' -or
+        $manual -notmatch '(?ms)^      require_complete:.*?^        default: false' -or
+        $manual -match '(?m)^  (push|pull_request|schedule):' -or $manual -match 'Invoke-ContainerColdStart.ps1|--runtime podman|-PublishCache' -or
+        $manual -notmatch 'Invoke-ContainerColdStartWorker.ps1[^\r\n]+-ContainerRuntime docker'){
+        throw 'ReadyToRunWorkflowPolicyChanged'
+    }
     $build=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/build-manifest.json') -Raw -Encoding utf8|ConvertFrom-Json
     $packaged=$false
     if(@($build.ReadyToRunTargets).Count -eq 6){

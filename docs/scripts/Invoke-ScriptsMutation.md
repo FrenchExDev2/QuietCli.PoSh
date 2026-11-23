@@ -35,7 +35,7 @@ Targets file:
 ```powershell
 @{ Targets = @(
     @{ Name = 'ScriptsTests'; Module = 'lib/ScriptsTests.psm1'; Functions = @('Get-QuietScriptsTestPlan', '...')
-       UnitTestFiles = @('unit/lib/ScriptsTests.Tests.ps1'); Break = 80 }
+       UnitTestFiles = @('unit/lib/ScriptsTests.Tests.ps1'); Break = 100 }
 ) }
 ```
 
@@ -79,10 +79,10 @@ flowchart LR
 Classification:
 - **Killed.** A failing test, a crash or a worker error.
 - **Survived.** A complete passing run, even one where every test was skipped.
-- **Timeout.** The per-mutant deadline, `max(60, 3 × baseline + 30)` seconds, was reached. A timeout counts as detected.
-- **CompileError.** The mutated source does not parse. The mutant is not run and does not count.
+- **Timeout.** The per-mutant deadline, `max(60, 3 × baseline + 30)` seconds, was reached. This outcome blocks `Break = 100`.
+- **CompileError.** The mutated source fails to parse. This outcome blocks `Break = 100`.
 
-The score is (killed + timeout) / (killed + timeout + survived). A target without valid mutants scores 100.
+At `Break = 100`, the score is killed divided by all non-equivalent mutants. The exact counts determine the verdict, with at least one executed mutant and every non-equivalent mutant killed. Below `Break = 100`, the legacy formula counts timeouts as detected, excludes compile errors and assigns 100 to a target without valid mutants.
 
 ## Dependencies and side effects
 

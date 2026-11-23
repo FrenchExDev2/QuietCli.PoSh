@@ -94,18 +94,28 @@ function Get-QuietCiImpact {
         }
     }
     # Reverse C# dependencies require compilation and their owning suite, not every runtime consumer.
-    $progress=$true
-    while($progress){$progress=$false;foreach($project in $graph){
-        if(!$builds.Contains($project.Path) -and @($project.References|Where-Object {$builds.Contains($_)}).Count){
-            [void]$builds.Add($project.Path);$progress=$true
+    $pending=[Collections.Generic.Queue[string]]::new([string[]]@($builds))
+    [string]$current=$null
+    while($pending.TryDequeue([ref]$current)){
+        $dependents=@(foreach($project in $graph){
+            if([Array]::Exists([string[]]@($project.References),[Predicate[string]]{param($reference)[string]::Equals($reference,$current,[StringComparison]::Ordinal)})){
+                $project.Path
+            }
+        })
+        foreach($path in ($dependents | Where-Object {$builds.Add($_)})){
+            $pending.Enqueue($path)
         }
-    }}
+    }
     foreach($suite in @(Get-QuietCiDependentSmokes $configuration $selected)){[void]$smokes.Add($suite)}
-    # A build also needs the forward project-reference closure.
-    $progress=$true
-    while($progress){$progress=$false;foreach($project in $graph|Where-Object {$builds.Contains($_.Path)}){
-        foreach($reference in $project.References){if($builds.Add($reference)){$progress=$true}}
-    }}
+    # A build also needs its forward dependencies. Do not expand the reverse closure from these prerequisites.
+    $pending=[Collections.Generic.Queue[string]]::new([string[]]@($builds))
+    while($pending.TryDequeue([ref]$current)){
+        foreach($project in ($graph | Where-Object {[string]::Equals($_.Path,$current,[StringComparison]::Ordinal)})){
+            foreach($reference in ($project.References | Where-Object {$_} | Where-Object {$builds.Add($_)})){
+                $pending.Enqueue($reference)
+            }
+        }
+    }
     $names=@($configuration.Companions.Keys|Where-Object {$selected.Contains($_)})
     foreach($name in $smokes){$reasons.Add([pscustomobject]@{Input='DependencyGraph';Package=$null;Project=$null;Companion=$name;Action='smoke';Reason='ChangedRuntimeDependency'})}
     [pscustomobject]@{SchemaVersion=2;Suite=$(if($names.Count -eq 1){$names[0]}elseif($names.Count){'Selected'}else{'None'});RunProducts=($names.Count -gt 0);RunTooling=$tooling;RunDistribution=$distribution;ChangedPaths=@($ChangedPaths);SelectedSuites=$names;FullSuites=$names;SmokeSuites=@($smokes|Sort-Object);BuildProjects=@($builds|Sort-Object);Reasons=$reasons.ToArray();ConservativeFull=$conservative;ScriptPaths=[string[]]$scripts.ToArray()}
@@ -188,4 +198,48 @@ function Test-QuietDevelopReceipt {
         $Receipt.MutationRequired -isnot [bool] -or $Receipt.Mutation -cne $(if($Receipt.MutationRequired){'success'}else{'skipped'})){return $false}
     return $true
 }
-Export-ModuleMember -Function Get-QuietCiImpact,Get-QuietCiDispatchImpact,Test-QuietDevelopReceipt
+function Add-QuietCiPullRequestSelection {
+    <#
+    .SYNOPSIS
+    Adds explicitly requested PR checks to the existing mandatory plan.
+    .PARAMETER Plan
+    Calculated impact plan, updated in place.
+    .PARAMETER WorkspaceRoot
+    Source checkout owning the companion catalogue.
+    .PARAMETER Options
+    Validated identifiers from the pull request checklist.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][psobject]$Plan,
+        [Parameter(Mandatory)][string]$WorkspaceRoot,
+        [AllowEmptyCollection()][string[]]$Options
+    )
+    $Plan | Add-Member -NotePropertyMembers ([ordered]@{
+        PullRequestOptions=[string[]]@($Options)
+        RunReadyToRun='readytorun' -cin $Options
+        RunPreview='preview' -cin $Options
+    })
+    if('mutation' -cin $Options){$Plan.RunTooling=$true}
+    if($Plan.RunPreview -and 'Core' -cnotin $Plan.FullSuites){
+        $configuration=Read-QuietCiCompanions $WorkspaceRoot
+        if(!$configuration.Companions.Contains('Core')){throw 'CiPreviewCoreUnavailable'}
+        $selected=[Collections.Generic.HashSet[string]]::new([string[]]@($Plan.FullSuites),[StringComparer]::Ordinal)
+        [void]$selected.Add('Core')
+        $Plan.FullSuites=@($configuration.Companions.Keys | Where-Object {$selected.Contains($_)})
+        $Plan.SelectedSuites=$Plan.FullSuites
+        $Plan.SmokeSuites=@(Get-QuietCiDependentSmokes $configuration $selected | Sort-Object)
+        $Plan.RunProducts=$true
+        $Plan.Suite=if($selected.Count -eq 1){'Core'}else{'Selected'}
+    }
+    $Plan.Reasons=@($Plan.Reasons)+@(foreach($option in $Options){
+        $target=switch -CaseSensitive ($option) {
+            'mutation' {'Tooling'}
+            'readytorun' {'ReadyToRun'}
+            'preview' {'Core'}
+        }
+        [pscustomobject]@{Input='pull_request.body';Package=$null;Project=$null;Companion=$target;Action=$option;Reason='RequestedByPullRequestChecklist'}
+    })
+}
+
+Export-ModuleMember -Function Get-QuietCiImpact,Get-QuietCiDispatchImpact,Test-QuietDevelopReceipt,Add-QuietCiPullRequestSelection
