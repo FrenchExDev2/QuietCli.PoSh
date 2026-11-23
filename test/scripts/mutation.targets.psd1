@@ -91,6 +91,12 @@
                 @{Function = 'Get-QuietScriptsTestValue'; Mutator = 'ConditionalExpression'; Original = '$null -ne $property'; Replacement = '$true'; Reason = 'Outside strict mode the Value of a null property reads as null, the value already held; the guard keeps strict-mode callers safe.'}
                 @{Function = 'Test-QuietScriptsPathWithin'; Mutator = 'ConditionalExpression'; Original = '$IsWindows'; Replacement = '$true'; Reason = 'On Windows $IsWindows is already true, so forcing it changes nothing.'; Platform = 'Windows'}
                 @{Function = 'Test-QuietScriptsPathWithin'; Mutator = 'ConditionalExpression'; Original = '$IsWindows'; Replacement = '$false'; Reason = 'Off Windows $IsWindows is already false, so forcing it changes nothing.'; Platform = 'Linux'}
+                # Linux lists only NUL in Path.GetInvalidPathChars. The preceding control-character check already rejects it.
+                @{Function = 'Resolve-QuietScriptsTestPath'; Mutator = 'ConditionalExpression'; Original = '$Path.IndexOfAny([IO.Path]::GetInvalidPathChars()) -ge 0'; Replacement = '$false'; Reason = 'The invalid-character condition cannot match a path that passes the control-character check on Linux.'; Platform = 'Linux'}
+                @{Function = 'Resolve-QuietScriptsTestPath'; Mutator = 'EqualityOperator'; Original = '-ge'; Replacement = '-gt'; Reason = 'The invalid-character condition cannot match a path that passes the control-character check on Linux.'; Platform = 'Linux'}
+                @{Function = 'Resolve-QuietScriptsTestPath'; Mutator = 'BlockStatement'; Original = "{throw 'ScriptsTestPathInvalid: invalid-character'}"; Replacement = '{}'; Reason = 'The invalid-character condition cannot match a path that passes the control-character check on Linux.'; Platform = 'Linux'}
+                @{Function = 'Resolve-QuietScriptsTestPath'; Mutator = 'BlockStatement'; Original = "throw 'ScriptsTestPathInvalid: invalid-character'"; Replacement = ''; Reason = 'The invalid-character condition cannot match a path that passes the control-character check on Linux.'; Platform = 'Linux'}
+                @{Function = 'Resolve-QuietScriptsTestPath'; Mutator = 'StringLiteral'; Original = "'ScriptsTestPathInvalid: invalid-character'"; Replacement = "''"; Reason = 'The invalid-character condition cannot match a path that passes the control-character check on Linux.'; Platform = 'Linux'}
             )
         }
 

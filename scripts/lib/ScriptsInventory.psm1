@@ -45,7 +45,7 @@ function Get-QuietScriptsTestInventory {
     $TestsRoot=[IO.Path]::GetFullPath($TestsRoot)
     if(![IO.Directory]::Exists($TestsRoot)){throw 'ScriptsInventoryPathInvalid: tests-root'}
     $files=@(Get-ChildItem -LiteralPath $TestsRoot -Filter '*.Tests.ps1' -File -Recurse|Sort-Object FullName|ForEach-Object {
-        [pscustomobject]@{Path=[IO.Path]::GetRelativePath($TestsRoot,$_.FullName).Replace('\','/');Text=[IO.File]::ReadAllText($_.FullName)}
+        [pscustomobject]@{Path=[IO.Path]::GetRelativePath($TestsRoot,$_.FullName).Replace([IO.Path]::DirectorySeparatorChar,[char]'/');Text=[IO.File]::ReadAllText($_.FullName)}
     })
     foreach($export in @(Get-QuietScriptsLibraryExports -ScriptsRoot $ScriptsRoot)){
         $pattern='(?<![A-Za-z0-9_-])'+[regex]::Escape($export.Name)+'(?![A-Za-z0-9_-])'

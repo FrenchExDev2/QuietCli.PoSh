@@ -22,6 +22,8 @@ Pure functions behind [Invoke-ScriptsTests.ps1](../Invoke-ScriptsTests.md). Impo
 | `Get-QuietScriptsTestExitCode` | Returns 0 for `Success` only and 1 for every other state. |
 | `Test-QuietScriptsTestsApplicable` | Returns `True` when `<WorkspaceRoot>/test/scripts` is a directory and `False` when it is not and `src/` is absent (a flat commit fixture). With `src/` and no test tree it throws `ScriptsTestsRootMissing: test/scripts`. The ScriptAnalyzer and ScriptsInventory checks call it first. |
 
+Path validation rejects control characters before testing platform-specific invalid characters. On Linux, .NET identifies NUL as the sole invalid path character and the earlier check already rejects it. The mutation catalogue records those equivalents for Linux. Windows tests cover the additional invalid characters, including at the start of a path. [.NET Unix implementation](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Private.CoreLib/src/System/IO/Path.Unix.cs#L11-L13)
+
 Rules applied by `ConvertTo-QuietScriptsTestReport`:
 - `Failed` counts failed tests, failed blocks and failed containers.
 - `Passed + Failed + Skipped = Total` always holds.
