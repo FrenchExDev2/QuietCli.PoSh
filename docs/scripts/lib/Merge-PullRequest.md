@@ -10,6 +10,8 @@ Source file: [`lib/Merge-PullRequest.psm1`](../../../scripts/lib/Merge-PullReque
 
 `Invoke-QuietPublishPullRequest` implements [Publish-WorkspacePullRequest.ps1](../Publish-WorkspacePullRequest.md). It composes the reviewed checklist, verifies the commit and its CI plan, and publishes it through the existing commit, push and PR scripts. It switches to `develop` before monitoring the exact PR head. It verifies the required check and CI receipt before the fast-forward-only pull. A failure reports the phase and the references available for human follow-up.
 
+Publication expands the checklist from `build/companions.yaml` and applies explicit switch values to the selection in the supplied description. The description on an existing PR is updated before the branch push so the new revision runs with the requested checks.
+
 The operations use the bounded Git/GitHub adapter and standard preview guards. Unit tests use offline module-bound doubles for GitHub and entry points. The integration preview exercises the real entry points.
 
 <!-- credits:begin -->

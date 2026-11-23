@@ -22,6 +22,7 @@ Planning outputs are closed boolean strings. The stable gate requires success fr
 | `products` | `run_products` |
 | `smokes` | `run_smokes` |
 | `tooling-only` | `run_tooling` |
+| `companion-checks` | `run_companion_checks` |
 | `distribution` | `run_distribution` |
 
 `run_layout` is false only for a plan whose sole work is the script tests (see [`New-CiImpactPlan.md`](../New-CiImpactPlan.md)). `scripts-docs-check.yml` still runs every workspace check for such a change.
