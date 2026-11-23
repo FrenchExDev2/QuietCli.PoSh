@@ -4,6 +4,8 @@
 Source file: [`lib/ScriptAnalysis.psm1`](../../../scripts/lib/ScriptAnalysis.psm1)
 <!-- script-source:end -->
 
+Analysis inventory paths use `/` on every host. The library normalizes the host directory separator before comparing or caching relative paths.
+
 ## Purpose and usage
 
 Pure functions behind [Test-ScriptAnalysis.ps1](../Test-ScriptAnalysis.md). Import is inert. Nothing here loads PSScriptAnalyzer, starts a process or writes a file.

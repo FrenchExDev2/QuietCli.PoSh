@@ -154,6 +154,8 @@ Describe 'Resolve-QuietScriptsTestPath' {
         @{Case='an empty string';Selector='';Reason='empty'}
         @{Case='whitespace';Selector="`t ";Reason='empty'}
         @{Case='a tab inside';Selector="unit/a`t.Tests.ps1";Reason='control-character'}
+        @{Case='a leading NUL';Selector=([string][char]0)+'unit/a.Tests.ps1';Reason='control-character'}
+        @{Case='an embedded NUL';Selector='unit/a'+[char]0+'.Tests.ps1';Reason='control-character'}
         @{Case='a parent segment';Selector='unit\..\unit';Reason='parent-segment'}
         @{Case='a leading parent';Selector='../tests/unit';Reason='parent-segment'}
         @{Case='a missing directory';Selector='nowhere';Reason='missing'}

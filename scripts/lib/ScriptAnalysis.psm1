@@ -208,7 +208,7 @@ function Get-QuietScriptAnalysisFiles {
         if(![IO.Directory]::Exists($directory)){continue}
         foreach($file in [IO.Directory]::EnumerateFiles($directory,'*',$options)){
             if([IO.Path]::GetExtension($file) -cnotin @('.ps1','.psm1')){continue}
-            $files.Add([IO.Path]::GetRelativePath($root,$file).Replace('\','/'))
+            $files.Add([IO.Path]::GetRelativePath($root,$file).Replace([IO.Path]::DirectorySeparatorChar,[char]'/'))
         }
     }
     $sorted=$files.ToArray();[Array]::Sort($sorted,[StringComparer]::Ordinal)

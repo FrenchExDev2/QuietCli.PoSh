@@ -8,7 +8,7 @@ function Test-QuietCiCompanions {
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     $library=Join-Path $WorkspaceRoot 'scripts/lib/CiCompanions.psm1'
-    Import-Module $library
+    $module=Import-Module $library -PassThru -DisableNameChecking -ErrorAction Stop
     $configuration=Read-QuietCiCompanions $WorkspaceRoot
     $core=Resolve-QuietCiCompanions $configuration -Suite Core -RuntimeIdentifier win-x64 -RuntimeMajor 11
     if(($core.Images -join ',') -cne 'Core' -or ($core.Dependencies -join ',') -cne 'Core' -or @($core.Environment.Values|Where-Object {$_ -cne '0'}).Count){throw 'CoreTestToolDependencyChanged'}
@@ -89,7 +89,6 @@ function Test-QuietCiCompanions {
         if(!$rejected){throw 'MalformedCompanionDeclarationAccepted'}
     }
     [IO.File]::WriteAllText($path,$yaml,$utf8)
-    $module=Get-Module CiCompanions
     $resolverSource=& $module {(Get-Command Resolve-QuietCiCompanions).ScriptBlock.ToString()}
     $anchor='$suites[$name].Requires'
     if(([regex]::Matches($resolverSource,[regex]::Escape($anchor))).Count -ne 1){throw 'CompanionDependencyMutationAnchorChanged'}
