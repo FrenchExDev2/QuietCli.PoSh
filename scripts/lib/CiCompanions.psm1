@@ -99,7 +99,7 @@ function Read-QuietCiCompanions {
         foreach($kind in 'src','test'){
             if($kind -cnotin $entry.Keys){continue}
             $relative=[string]$entry[$kind] -replace '\\','/'
-            if($relative -cnotmatch '\Asrc/[A-Za-z0-9]+/'+$kind+'/[A-Za-z0-9.]+\z' -or ![IO.Directory]::Exists([IO.Path]::Combine($WorkspaceRoot,$relative))){
+            if($relative -cnotmatch '\Asrc/[A-Za-z0-9]+/'+$kind+'/[A-Za-z0-9][A-Za-z0-9.]*\z'){
                 throw ('CiCompanionPathInvalid: '+$name+'/'+$kind)
             }
             $paths[$kind]=$relative
