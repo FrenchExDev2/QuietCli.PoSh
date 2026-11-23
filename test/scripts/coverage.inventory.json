@@ -174,7 +174,6 @@
     "lib/RunFormat.psm1::Format-RunDuration",
     "lib/RunFormat.psm1::Format-RunTable",
     "lib/RunLog.psm1::New-RunLogger",
-    "lib/RunProfiler.psm1::Invoke-RunProfiled",
     "lib/RunProfiler.psm1::Resolve-RunProfilerModule",
     "lib/RunProfileStore.psm1::Assert-RunProfile",
     "lib/RunProfileStore.psm1::Assert-RunTargetParameters",

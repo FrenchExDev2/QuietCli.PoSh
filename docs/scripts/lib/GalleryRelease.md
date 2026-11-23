@@ -18,7 +18,7 @@ Resolve-QuietGalleryReleaseTag accepts the exact package namespace and full vers
 
 ## Dependencies and effects
 
-Imports the pure ModulePackage reader and privately loads WorkspaceProjects inside discovery. Import declares/exports three functions only. Calls read literal manifests/source and return metadata; no product import, native command, write, network access or publication occurs. build/companions.yml continues to own test/image declarations and must cover new publication targets.
+Imports the pure ModulePackage reader and privately loads WorkspaceProjects inside discovery. Import declares/exports three functions only. Calls read literal manifests/source and return metadata; no product import, native command, write, network access or publication occurs. build/companions.yaml continues to own test/image declarations and must cover new publication targets.
 
 ## Review and validation
 

@@ -64,6 +64,9 @@ Write-WorkspaceJson $statusPath $state
 $summaries=[Collections.Generic.List[object]]::new()
 $sourceIdentity=$null;$engineIdentity=$null;$profiling=$null
 try{
+    if($env:QUIETCLI_PROFILE_COMPANION){
+        Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/RunProfiler.psm1')) -DisableNameChecking -ErrorAction Stop
+    }
     if($env:QUIETCLI_EXPECT_RUNTIME_MAJOR -and [Environment]::Version.Major -ne [int]$env:QUIETCLI_EXPECT_RUNTIME_MAJOR){throw 'PowerShellRuntimeMajorMismatch'}
     if($env:QUIETCLI_EXPECT_HOST_VERSION -and $PSVersionTable.PSVersion.ToString() -cne $env:QUIETCLI_EXPECT_HOST_VERSION){throw 'PowerShellVersionMismatch'}
     if($ExpectedRuntimeIdentifier -and $state.Platform -cne $ExpectedRuntimeIdentifier){throw "HostRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($state.Platform)"}
@@ -118,7 +121,17 @@ try{
         . ([IO.Path]::Combine($WorkspaceRoot,'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/Invoke-RunProfileQualification.ps1'))
         $state.Project='FrenchExDev2.QuietCli.Core.Tests.PoSh';$state.ProjectDirectory=(Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $state.Project);$state.Task=$Suite
         $runProfileState=$state
-        $summary=Invoke-RunProfileQualification -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Mutation:($Suite -eq 'RunProfilesMutation') -MaxConcurrency ([Math]::Min(2,$MaxConcurrency)) -OnProgress {param($name,$passed,$failed)$runProfileState.Case=$name;$runProfileState.Passed=$passed;$runProfileState.Failed=$failed;Write-WorkspaceJson $statusPath $runProfileState}
+        $parameters=@{
+            WorkspaceRoot=$WorkspaceRoot;RunDirectory=$RunDirectory;Mutation=($Suite -eq 'RunProfilesMutation')
+            MaxConcurrency=[Math]::Min(2,$MaxConcurrency)
+            OnProgress={param($name,$passed,$failed)$runProfileState.Case=$name;$runProfileState.Passed=$passed;$runProfileState.Failed=$failed;Write-WorkspaceJson $statusPath $runProfileState}
+        }
+        if($env:QUIETCLI_PROFILE_COMPANION -ceq $Suite){
+            $command=Get-Command Invoke-RunProfileQualification -CommandType Function -ErrorAction Stop
+            $profiled=Invoke-QuietProfiledTestCommand -TestCommand ({& $command @parameters}.GetNewClosure()) -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Suite $Suite
+            $summary=$profiled.Output[0]
+            $profiling=$profiled.Profiling
+        }else{$summary=Invoke-RunProfileQualification @parameters}
         $state.Passed=$summary.Passed;$state.Failed=$summary.Failed;$summaries.Add($summary)
     }elseif($Suite -eq 'GalleryPreview'){
         . ([IO.Path]::Combine($WorkspaceRoot,'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/GalleryPreview.Tests.ps1'))
@@ -200,7 +213,11 @@ try{
             $command=Get-Command ($selection.TestsModule+'\'+$selection.Command) -ErrorAction Stop
             $parameters=@{WorkspaceRoot=$WorkspaceRoot;OnProgress=$progress}
             if($command.Parameters.ContainsKey('RunDirectory')){$parameters.RunDirectory=$RunDirectory}
-            $outputs=@(& $command @parameters)
+            if($env:QUIETCLI_PROFILE_COMPANION -ceq $selected){
+                $profiled=Invoke-QuietProfiledTestCommand -TestCommand ({& $command @parameters}.GetNewClosure()) -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Suite $selected
+                $outputs=$profiled.Output
+                $profiling=$profiled.Profiling
+            }else{$outputs=@(& $command @parameters)}
             if($outputs.Count -ne 1){throw ('CompanionRunnerMustReturnOneSummary: '+$selection.Name)}
             $summary=$outputs[0]
             $summaries.Add($summary)

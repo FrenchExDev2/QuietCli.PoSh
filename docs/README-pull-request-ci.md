@@ -4,7 +4,10 @@ Use [Publish-WorkspacePullRequest.ps1](scripts/Publish-WorkspacePullRequest.md) 
 
 | Option | Additional work |
 | --- | --- |
-| Extended mutation | Full Tooling, including the existing script and run-profile mutation campaigns |
+| Repository script mutation | Every target declared by `test/scripts/mutation.targets.psd1` |
+| Companion mutation | The selected companion's mutation campaign declared in `build/companions.yaml` |
+| Companion profiling | Profiles the selected companion's test pass with PSProfiler. If mutation is selected for the same companion, the profiler runs during that mutation pass. |
+| Sequential mutation workers | Serial companion checks, serial shards within each matrix and one worker per shard |
 | ReadyToRun | A/A noise control and an IL/ReadyToRun comparison for the same revision on each existing target |
 | PowerShell Preview | Core qualification with the locked Windows Preview hosts in addition to the production matrix |
 

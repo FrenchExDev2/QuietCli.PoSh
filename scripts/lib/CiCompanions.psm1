@@ -29,20 +29,35 @@ function Get-QuietCiCompanionOrder {
     $ordered.ToArray()
 }
 
+function Get-QuietCiCompanionCataloguePath {
+    <#
+    .SYNOPSIS
+    Finds the companion catalogue of a checkout, including legacy fixture layouts.
+    .PARAMETER WorkspaceRoot
+    Checkout whose companion declarations are requested.
+    #>
+    param([Parameter(Mandatory)][string]$WorkspaceRoot)
+    $current=[IO.Path]::Combine($WorkspaceRoot,'build','companions.yaml')
+    if([IO.File]::Exists($current)){return $current}
+    $legacy=[IO.Path]::Combine($WorkspaceRoot,'build','companions.yml')
+    if([IO.File]::Exists($legacy)){return $legacy}
+}
+
 function Read-QuietCiCompanions {
     <# .SYNOPSIS
     Reads the closed, duplicate-key-checked companion YAML without loading the product engine.
     .PARAMETER WorkspaceRoot
     Checkout owning the checksum-pinned YAML reader.
     .PARAMETER ConfigurationPath
-    YAML declaration; defaults to build/companions.yml in the selected checkout.
+    YAML declaration; defaults to build/companions.yaml in the selected checkout.
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[string]$ConfigurationPath)
-    if(!$ConfigurationPath){$ConfigurationPath=[IO.Path]::Combine($WorkspaceRoot,'build/companions.yml')}
+    if(!$ConfigurationPath){$ConfigurationPath=Get-QuietCiCompanionCataloguePath $WorkspaceRoot}
+    if(!$ConfigurationPath){throw 'CiCompanionCatalogueMissing'}
     $file=Get-Item -LiteralPath $ConfigurationPath -Force -ErrorAction Stop
     if($file.Length -gt 262144 -or $file.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'CiCompanionsFileInvalid'}
-Import-Module ([IO.Path]::Combine($PSScriptRoot,'Resources.psm1')) -DisableNameChecking -ErrorAction Stop
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'Resources.psm1')) -DisableNameChecking -ErrorAction Stop
     $null=Ensure-QuietResource -WorkspaceRoot $WorkspaceRoot -RelativePath resources/yaml/YamlDotNet.dll -AssemblyType YamlDotNet.Serialization.DeserializerBuilder
     # Strict UTF-8: an invalid byte fails the read instead of decoding to U+FFFD.
     $strict=[Text.Encoding]::GetEncoding('utf-8',[Text.EncoderFallback]::ExceptionFallback,[Text.DecoderFallback]::ExceptionFallback)
@@ -55,14 +70,41 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'Resources.psm1')) -DisableNameC
         if($name -isnot [string] -or $name -cnotmatch '\A[A-Z][A-Za-z0-9]*\z' -or $name -ieq 'All'){throw 'CiCompanionNameInvalid'}
         $entry=$document['companions'][$name]
         if($entry -isnot [Collections.IDictionary]){throw ('CiCompanionDeclarationInvalid: '+$name)}
-        foreach($key in $entry.Keys){if($key -cnotin @('requires','image')){throw ('CiCompanionFieldUnknown: '+$key)}}
+        foreach($key in $entry.Keys){if($key -cnotin @('src','test','requires','image','mutation','workstation')){throw ('CiCompanionFieldUnknown: '+$key)}}
         foreach($key in @('requires')){
             if($key -cnotin $entry.Keys -or $entry[$key] -isnot [Collections.IList]){throw ('CiCompanionDependenciesInvalid: '+$name)}
             $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
             foreach($dependency in $entry[$key]){if($dependency -isnot [string] -or $dependency -ceq $name -or !$seen.Add($dependency)){throw ('CiCompanionDependenciesInvalid: '+$name)}}
         }
         if($entry['image'] -cnotin @('base','overlay','none')){throw ('CiCompanionPolicyInvalid: '+$name)}
-        $companions.Add($name,[pscustomobject]@{Name=$name;requires=@($entry['requires']);Image=$entry['image']})
+        $mutation=$entry['mutation']
+        if('mutation' -cin $entry.Keys){
+            if($mutation -isnot [Collections.IDictionary] -or $mutation.Count -ne 1){
+                throw ('CiCompanionMutationInvalid: '+$name)
+            }
+            if('suite' -cin $mutation.Keys){
+                if($mutation['suite'] -cne 'RunProfilesMutation'){throw ('CiCompanionMutationInvalid: '+$name)}
+            }elseif($mutation['environment'] -is [Collections.IDictionary] -and $mutation['environment'].Count){
+                foreach($key in $mutation['environment'].Keys){
+                    if($key -cnotmatch '\AQUIETCLI_[A-Z0-9_]+_MUTATION\z' -or [string]$mutation['environment'][$key] -cne '1'){
+                        throw 'CiCompanionEnvironmentInvalid'
+                    }
+                }
+            }else{throw ('CiCompanionMutationInvalid: '+$name)}
+        }
+        if('workstation' -cin $entry.Keys -and $entry['workstation'] -isnot [bool]){
+            throw ('CiCompanionWorkstationInvalid: '+$name)
+        }
+        $paths=@{}
+        foreach($kind in 'src','test'){
+            if($kind -cnotin $entry.Keys){continue}
+            $relative=[string]$entry[$kind] -replace '\\','/'
+            if($relative -cnotmatch '\Asrc/[A-Za-z0-9]+/'+$kind+'/[A-Za-z0-9.]+\z' -or ![IO.Directory]::Exists([IO.Path]::Combine($WorkspaceRoot,$relative))){
+                throw ('CiCompanionPathInvalid: '+$name+'/'+$kind)
+            }
+            $paths[$kind]=$relative
+        }
+        $companions.Add($name,[pscustomobject]@{Name=$name;requires=@($entry['requires']);Image=$entry['image'];Mutation=$mutation;Workstation=[bool]$entry['workstation'];SourcePath=$paths.src;TestPath=$paths.test})
     }
     $bases=@($companions.Values|Where-Object Image -CEQ base)
     if($bases.Count -ne 1){throw 'CiCompanionBaseNotUnique'}
@@ -292,4 +334,35 @@ function Assert-QuietCiCompanionImages {
     }
 }
 
-Export-ModuleMember -Function Read-QuietCiCompanions,Resolve-QuietCiCompanions,Get-QuietCiSuiteImagePlan,Invoke-QuietCiSuiteImage,Invoke-QuietCiSuiteImages,Assert-QuietCiCompanionImages
+function Get-QuietCompanions {
+    <#
+    .SYNOPSIS
+    Lists or validates companion names declared under companions in build/companions.yaml.
+    .PARAMETER WorkspaceRoot
+    Checkout owning build/companions.yaml when a parsed catalogue is not supplied.
+    .PARAMETER Configuration
+    Catalogue returned by Read-QuietCiCompanions.
+    .PARAMETER Name
+    Optional selection to validate. Omit to list all eligible names in catalogue order.
+    .PARAMETER Capability
+    Optional required mutation or workstation declaration.
+    #>
+    [CmdletBinding(DefaultParameterSetName='Workspace')]
+    param(
+        [Parameter(ParameterSetName='Workspace')][string]$WorkspaceRoot=[IO.Path]::GetFullPath('../..',$PSScriptRoot),
+        [Parameter(Mandatory,ParameterSetName='Configuration')]$Configuration,
+        [AllowEmptyCollection()][string[]]$Name,
+        [ValidateSet('Companion','Mutation','Workstation')][string]$Capability='Companion'
+    )
+    if($PSCmdlet.ParameterSetName -ceq 'Workspace'){$Configuration=Read-QuietCiCompanions $WorkspaceRoot}
+    $eligible=@($Configuration.Companions.Values | Where-Object {
+        $Capability -eq 'Companion' -or [bool]$_.PSObject.Properties[$Capability].Value
+    })
+    if(!$PSBoundParameters.ContainsKey('Name')){return $eligible.Name}
+    foreach($requested in $Name){
+        if($requested -notin $eligible.Name){throw "CiCompanionNotAvailable: $requested ($Capability)"}
+    }
+    $eligible | Where-Object Name -In $Name | ForEach-Object Name
+}
+
+Export-ModuleMember -Function Get-QuietCiCompanionCataloguePath,Read-QuietCiCompanions,Resolve-QuietCiCompanions,Get-QuietCompanions,Get-QuietCiSuiteImagePlan,Invoke-QuietCiSuiteImage,Invoke-QuietCiSuiteImages,Assert-QuietCiCompanionImages

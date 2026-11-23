@@ -107,4 +107,32 @@ function Invoke-RunProfiled {
     return $path
 }
 
-Export-ModuleMember -Function Resolve-RunProfilerModule, Invoke-RunProfiled
+function Invoke-QuietProfiledTestCommand {
+    <#
+    .SYNOPSIS
+    Profiles a bound test command and returns its output and report.
+    .PARAMETER TestCommand
+    Test invocation with its caller state.
+    .PARAMETER WorkspaceRoot
+    Checkout owning the profiler tools cache.
+    .PARAMETER RunDirectory
+    Report directory of the test worker.
+    .PARAMETER Suite
+    Selected suite and profile report label.
+    #>
+    param([scriptblock]$TestCommand,[string]$WorkspaceRoot,[string]$RunDirectory,[string]$Suite)
+    $tools=& ([IO.Path]::Combine($PSScriptRoot,'../Initialize-Profilers.ps1')) -OutputDirectory ([IO.Path]::Combine($WorkspaceRoot,'.cache','profilers')) -Module profiler -Confirm:$false
+    $captured=[Collections.Generic.List[object]]::new()
+    $boundTest=$TestCommand
+    $invoke={foreach($item in (& $boundTest)){$captured.Add($item)}}.GetNewClosure()
+    $caseWorkerBefore=$env:QUIETCLI_TEST_CASE_WORKER
+    try{
+        # Keep PowerShell assertions in the traced process where the runner supports it.
+        $env:QUIETCLI_TEST_CASE_WORKER='1'
+        $trace=Invoke-RunProfiled -ScriptBlock $invoke -OutputDirectory ([IO.Path]::Combine($RunDirectory,'profiling')) -Label $Suite -ProfilerModulePath $tools.ProfilerModulePath
+        if(![IO.File]::Exists($trace)){throw 'CompanionProfilingReportMissing'}
+        [pscustomobject]@{Output=$captured.ToArray();Profiling=[pscustomobject]@{State='Success';Companion=$Suite;Report=$trace}}
+    }finally{$env:QUIETCLI_TEST_CASE_WORKER=$caseWorkerBefore}
+}
+
+Export-ModuleMember -Function Resolve-RunProfilerModule, Invoke-RunProfiled, Invoke-QuietProfiledTestCommand

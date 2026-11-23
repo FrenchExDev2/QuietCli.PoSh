@@ -12,7 +12,7 @@ Wraps the checksum-pinned `PSProfiler` (Profiler 4.3.0) module so run-profile to
 
 Exported functions:
 - `Resolve-RunProfilerModule([string] $Path)` — optional explicit manifest path. Resolution order: `$Path` → `$env:QUIETCLI_PROFILER_MODULE` → newest `Profiler.psd1` under `%TEMP%/QuietCli2/.../profilers/pinned/Profiler/`. Throws `RunProfilerVersionMismatch` if the found manifest's `ModuleVersion` isn't exactly `4.3.0`, or `RunProfilerNotFound` if nothing resolves.
-- `Convert-RunTraceRows($Rows)` — projects `Profiler.Trace` rows (`Top50SelfDuration` / `Top50FunctionSelfDuration`) into plain `pscustomobject`s with millisecond durations rounded to 3 decimals, truncating `Text` at 200 chars with an ellipsis.
+- `Invoke-QuietProfiledTestCommand` prepares the pinned profiler in the workspace cache, profiles the selected test invocation, and returns its test output and report together. The report describes PowerShell activity in the worker process.
 - `Invoke-RunProfiled` — parameters: `-ScriptBlock` (Mandatory, `[scriptblock]`), `-OutputDirectory` (Mandatory, `[string]`), `-Label` (Mandatory, `[string]`, must match `^[A-Za-z0-9._-]{1,80}\z`), `-ProfilerModulePath` (optional, `[string]`), `-Logger` (optional, duck-typed `Info`/`Increment`). Runs the block under `Trace-Script -DisableWarning`, builds a report (`Label`, `ProfilerVersion`, `PowerShell`, `TotalMs`, `TopLinesBySelfDuration`, `TopFunctionsBySelfDuration`) and writes it to `<OutputDirectory>/<Label>.profile.json`. Returns the written path.
 
 Example:

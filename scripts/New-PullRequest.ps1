@@ -9,7 +9,7 @@ UTF-8 Markdown file containing the description.
 .PARAMETER FooterFile
 Optional UTF-8 Markdown file appended below the checklist.
 .PARAMETER CiOption
-Explicit options to preselect: mutation, readytorun, preview.
+Explicit checkbox identifiers from the workspace pull request template.
 .PARAMETER PreviewBody
 Returns the composed body without contacting GitHub.
 .PARAMETER WorkspaceRoot
@@ -40,6 +40,10 @@ $sourceRoot=Split-Path $PSScriptRoot -Parent
 $parts=@{
     Body=[IO.File]::ReadAllText([IO.Path]::GetFullPath($BodyFile,$PWD.ProviderPath),$encoding)
     Template=[IO.File]::ReadAllText([IO.Path]::Combine($sourceRoot,'.github/pull_request_template.md'),$encoding)
+}
+if([IO.File]::Exists([IO.Path]::Combine($sourceRoot,'build/companions.yaml'))){
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiCompanions.psm1')) -DisableNameChecking -ErrorAction Stop
+    $parts.Template=Expand-QuietPullRequestTemplate -Template $parts.Template -Configuration (Read-QuietCiCompanions $sourceRoot)
 }
 if($FooterFile){$parts.Footer=[IO.File]::ReadAllText([IO.Path]::GetFullPath($FooterFile,$PWD.ProviderPath),$encoding)}
 if($PSBoundParameters.ContainsKey('CiOption')){$parts.CiOption=$CiOption}

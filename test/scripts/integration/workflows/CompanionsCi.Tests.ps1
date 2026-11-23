@@ -209,8 +209,16 @@ Describe 'companions-ci.yml script-only plans' {
         @{Name='scope';Source='tooling_scope'},@{Name='script_tests';Source='script_tests'},@{Name='script_mutation_targets';Source='script_mutation_targets'}
     ) {
         $with=$companions['jobs']['tooling-only']['with']
-        (@($with.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'scope,script_mutation_targets,script_tests'
+        (@($with.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'mutation_parallel,scope,script_mutation_targets,script_tests'
         [string]$with[$Name]|Should -BeExactly ('${{ needs.plan.outputs.'+$Source+' }}')
+    }
+
+    It 'consumes the companion checks matrix and makes its results required' {
+        $job=$companions['jobs']['companion-checks']
+        $job['strategy']['matrix']|Should -BeExactly '${{ fromJson(needs.plan.outputs.companion_checks) }}'
+        $job['strategy']['max-parallel']|Should -BeExactly '${{ needs.plan.outputs.mutation_parallel == ''true'' && 6 || 1 }}'
+        $job['with']['campaign']|Should -BeExactly '${{ matrix.campaign }}'
+        $companions['jobs']['ci-status']['needs']|Should -Contain 'companion-checks'
     }
 
     It 'keeps every product, smoke and distribution job behind the layout tests' -ForEach @(@{Job='products'},@{Job='smokes'},@{Job='distribution'}) {

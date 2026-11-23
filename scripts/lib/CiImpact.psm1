@@ -215,14 +215,33 @@ function Add-QuietCiPullRequestSelection {
         [Parameter(Mandatory)][string]$WorkspaceRoot,
         [AllowEmptyCollection()][string[]]$Options
     )
+    if('mutation' -cin $Options){$Plan.RunTooling=$true}
+    $requested=@($Options|Where-Object {$_ -cmatch '\A(?:run-profile-mutation|profiling)-'})
+    $configuration=if($requested.Count){Read-QuietCiCompanions $WorkspaceRoot}
+    $byCompanion=[ordered]@{}
+    foreach($option in $requested){
+        $prefix,$name=$option -split '-(?=[a-z0-9]+$)',2
+        $capability=if($prefix -ceq 'profiling'){'Companion'}else{'Mutation'}
+        $companion=Get-QuietCompanions -Configuration $configuration -Name $name -Capability $capability
+        if(!$byCompanion.Contains($companion)){$byCompanion[$companion]=@{Mutation=$false;Profiling=$false}}
+        if($capability -ceq 'Mutation'){$byCompanion[$companion].Mutation=$true}else{$byCompanion[$companion].Profiling=$true}
+    }
+    $checks=@(foreach($companion in $byCompanion.Keys){
+        $selection=$byCompanion[$companion]
+        $campaign=if($selection.Mutation -and $selection.Profiling){'profiled-mutation'}elseif($selection.Profiling){'profiling'}else{'mutation'}
+        if($campaign -ceq 'mutation' -and $Plan.RunTooling -and $configuration.Companions[$companion].Mutation['suite'] -ceq 'RunProfilesMutation'){continue}
+        [ordered]@{suite=$companion;campaign=$campaign}
+    })
     $Plan | Add-Member -NotePropertyMembers ([ordered]@{
         PullRequestOptions=[string[]]@($Options)
         RunReadyToRun='readytorun' -cin $Options
         RunPreview='preview' -cin $Options
+        RunAllScriptMutations='script-mutation' -cin $Options
+        CompanionChecks=$checks
+        MutationParallel='mutation-serial' -cnotin $Options
     })
-    if('mutation' -cin $Options){$Plan.RunTooling=$true}
     if($Plan.RunPreview -and 'Core' -cnotin $Plan.FullSuites){
-        $configuration=Read-QuietCiCompanions $WorkspaceRoot
+        if(!$configuration){$configuration=Read-QuietCiCompanions $WorkspaceRoot}
         if(!$configuration.Companions.Contains('Core')){throw 'CiPreviewCoreUnavailable'}
         $selected=[Collections.Generic.HashSet[string]]::new([string[]]@($Plan.FullSuites),[StringComparer]::Ordinal)
         [void]$selected.Add('Core')
@@ -235,6 +254,11 @@ function Add-QuietCiPullRequestSelection {
     $Plan.Reasons=@($Plan.Reasons)+@(foreach($option in $Options){
         $target=switch -CaseSensitive ($option) {
             'mutation' {'Tooling'}
+            'script-mutation' {'Scripts'}
+            {$_ -cmatch '\A(?:run-profile-mutation|profiling)-([a-z][a-z0-9]*)\z'} {
+                Get-QuietCompanions -Configuration $configuration -Name $Matches[1]
+            }
+            'mutation-serial' {'Mutations'}
             'readytorun' {'ReadyToRun'}
             'preview' {'Core'}
         }

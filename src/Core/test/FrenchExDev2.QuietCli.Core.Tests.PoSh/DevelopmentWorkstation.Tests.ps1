@@ -346,6 +346,22 @@ function Test-QuietModuleWorkstation {
     $root=Join-Path $RunDirectory 'module-workstation'
     [void][IO.Directory]::CreateDirectory((Join-Path $root 'scripts'))
     Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib')) -Destination ([IO.Path]::Combine($root,'scripts/lib')) -Recurse
+    [void][IO.Directory]::CreateDirectory([IO.Path]::Combine($root,'build'))
+    Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build','companions.yaml')) -Destination ([IO.Path]::Combine($root,'build','companions.yaml'))
+    foreach($name in 'Core','Git','Vagrant'){
+        $source='src/'+$name+'/src/FrenchExDev2.QuietCli.'+$name+'.PoSh'
+        $test='src/'+$name+'/test/FrenchExDev2.QuietCli.'+$name+'.Tests.PoSh'
+        [void][IO.Directory]::CreateDirectory([IO.Path]::Combine($root,$source))
+        [void][IO.Directory]::CreateDirectory([IO.Path]::Combine($root,$test))
+        $manifest=$test+'/FrenchExDev2.QuietCli.'+$name+'.Tests.PoSh.psd1'
+        Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$manifest)) -Destination ([IO.Path]::Combine($root,$manifest))
+    }
+    $coreResources='src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources'
+    $fixtureResources=[IO.Path]::Combine($root,$coreResources)
+    [void][IO.Directory]::CreateDirectory([IO.Path]::Combine($fixtureResources,'yaml'))
+    foreach($file in 'dependencies.lock.json','yaml/YamlDotNet.dll'){
+        Copy-Item -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$coreResources,$file)) -Destination ([IO.Path]::Combine($fixtureResources,$file))
+    }
     $selector=Join-Path $WorkspaceRoot 'scripts/Install-ModuleWorkstation.ps1'
     $selectorSource=[IO.File]::ReadAllTextAsync($selector,[Text.Encoding]::UTF8).GetAwaiter().GetResult()
     $verifySelector={
@@ -364,18 +380,18 @@ function Test-QuietModuleWorkstation {
         }
     }
     foreach($name in @('Git','Vagrant','Core')){
-        $directory=Join-Path $root "FrenchExDev2.QuietCli.$name.PoSh/scripts"
+        $directory=[IO.Path]::Combine($root,"src/$name/src/FrenchExDev2.QuietCli.$name.PoSh/scripts")
         [void][IO.Directory]::CreateDirectory($directory)
         $stub='[CmdletBinding(SupportsShouldProcess)]param([switch]$CheckOnly,[switch]$Download) [pscustomobject]@{Module='''+$name+''';CheckOnly=[bool]$CheckOnly;Download=[bool]$Download;WhatIf=[bool]$WhatIfPreference}'
         [void][IO.File]::WriteAllTextAsync((Join-Path $directory 'Install-Workstation.ps1'),$stub,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
     }
     & $verifySelector $selectorSource
     $mutations=@(
-        @{Name='selector-reverses-order';From='foreach ($module in $Modules)';To='foreach ($module in @($Modules | Sort-Object -Descending))'},
+        @{Name='selector-reverses-order';From='foreach ($requested in $Modules)';To='foreach ($requested in @($Modules | Sort-Object -Descending))'},
         @{Name='selector-download-lost';From='-Download:$Download';To='-Download:$false'},
         @{Name='selector-whatif-lost';From='-WhatIf:$WhatIfPreference';To='-WhatIf:$false'},
         @{Name='selector-conflict-accepted';From="if (`$CheckOnly -and `$Download) { throw 'CheckOnlyAndDownloadAreMutuallyExclusive' }";To=''},
-        @{Name='selector-validation-removed';From="[ValidateSet('Git', 'Vagrant')]";To=''}
+        @{Name='selector-validation-removed';From='@(Get-QuietCompanions -WorkspaceRoot $root -Name $Modules -Capability Workstation)';To='$Modules'}
     )
     $killed=[Collections.Generic.List[string]]::new()
     foreach($mutation in $mutations){

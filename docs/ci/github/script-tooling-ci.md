@@ -1,6 +1,6 @@
 # tooling-ci.yml
 
-<!-- workflow-source-sha256: E245A39F3385F7B647671B22590FE61FEF9CE6101A633277CC242477C95B41EB -->
+<!-- workflow-source-sha256: 3816FAA4EA3A36FF2736321B3492A5E6B570263A3D02A662463982967492B74B -->
 
 ## Purpose
 
@@ -93,6 +93,8 @@ Native orchestration and test/smoke steps select checksum-pinned GA PowerShell t
 Reusable workflow_call from CI or the tooling-only entry point; no independent publication trigger.
 
 ## Scripts and effects
+
+The mutation_parallel input limits shard scheduling and worker counts. Full tooling still requires the complete Core profile catalogue and script mutation evidence.
 
 Uses the shared scripts/ entry points, discovered manifests, selected source-bound builds and private artifacts described above. Git identifies committed internal sources; generated execution receipts retain actual source hashes and dirty state. Pinned external resources retain their dedicated locks. Network access is limited to pinned dependency preparation, verified image caches and explicit GitHub evidence reads. No module publication occurs here.
 

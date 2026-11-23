@@ -1,5 +1,7 @@
 # Invoke-TestWorker.ps1
 
+The dedicated companion profile job selects its suite through `QUIETCLI_PROFILE_COMPANION`. The worker runs that suite's PowerShell assertions in-process during collection and saves its trace under `profiling/`. GitHub schedules the optional profile pass separately from mutation and ordinary qualification.
+
 <!-- script-source:begin -->
 Source file: [`Invoke-TestWorker.ps1`](../../scripts/Invoke-TestWorker.ps1)
 <!-- script-source:end -->

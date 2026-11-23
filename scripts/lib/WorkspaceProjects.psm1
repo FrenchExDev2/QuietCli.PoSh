@@ -1,4 +1,5 @@
 #requires -Version 7.6
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'CiCompanions.psm1')) -DisableNameChecking -ErrorAction Stop
 function Get-QuietWorkspaceProjects {
     <#
     .SYNOPSIS
@@ -158,8 +159,7 @@ function Get-QuietWorkspaceBuildSelection {
     $projects=@(Get-QuietWorkspaceProjects $WorkspaceRoot)
     if($PSCmdlet.ParameterSetName -ceq 'Suite' -and $Suite -in @('All','Tooling','GalleryPreview','DotNet')){return $projects.Name}
     $roots=if($PSCmdlet.ParameterSetName -ceq 'Module'){@($Module)}elseif($Suite -in @('Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','Mutation','RunProfiles','RunProfilesMutation')){@('FrenchExDev2.QuietCli.Core.Tests.PoSh')}else{@('FrenchExDev2.QuietCli.'+$Suite+'.Tests.PoSh')}
-    if($PSCmdlet.ParameterSetName -ceq 'Suite' -and (Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/companions.yml')))){
-        Import-Module ([IO.Path]::Combine($PSScriptRoot,'CiCompanions.psm1')) -DisableNameChecking -ErrorAction Stop
+    if($PSCmdlet.ParameterSetName -ceq 'Suite' -and (Get-QuietCiCompanionCataloguePath $WorkspaceRoot)){
         $configuration=Read-QuietCiCompanions $WorkspaceRoot
         if($configuration.Companions.Contains($Suite) -or $configuration.Suites.Contains($Suite)){
             $selection=Resolve-QuietCiCompanions $configuration -Suite $Suite
@@ -248,14 +248,13 @@ function Get-QuietWorkspaceSuiteNames {
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[ValidateSet('Host','Container')][string]$Scope='Host')
     $special=if($Scope -eq 'Container'){@('All','Import','Integration','Mutation','Tooling')}else{@('All','Import','Integration','RealStatus','Recall','RecallMutation','RecallLarge','ConfigurationDelivery','AgentInstructions','Script','RunProfiles','RunProfilesMutation','GalleryPreview','DotNet','Tooling','Distribution','WorkspaceLayout','CompanionSmoke')}
     $configuration=$null
-    $suites=@(if(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/companions.yml'))){
-        Import-Module ([IO.Path]::Combine($PSScriptRoot,'CiCompanions.psm1')) -DisableNameChecking
+    $suites=@(if(Get-QuietCiCompanionCataloguePath $WorkspaceRoot){
         $configuration=Read-QuietCiCompanions $WorkspaceRoot
         $configuration.Suites.Values
     }else{Get-QuietWorkspaceTestSuites $WorkspaceRoot})
     foreach($suite in $suites){if($special -contains $suite.Name){throw ('WorkspaceSuiteNameConflict: '+$suite.Name)}}
     $names=@($suites.Name)
-    if($configuration){$names+=@($configuration.Companions.Keys|Where-Object {$_ -cnotin $names})}
+    if($configuration){$names+=@(Get-QuietCompanions -Configuration $configuration|Where-Object {$_ -cnotin $names})}
     $names+$special
 }
 
@@ -290,8 +289,7 @@ function Get-QuietWorkspaceSuiteSelection {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkspaceRoot,[string]$Suite='All')
-    if(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'build/companions.yml'))){
-        Import-Module ([IO.Path]::Combine($PSScriptRoot,'CiCompanions.psm1')) -DisableNameChecking
+    if(Get-QuietCiCompanionCataloguePath $WorkspaceRoot){
         $configuration=Read-QuietCiCompanions $WorkspaceRoot
         foreach($owned in @(Get-QuietWorkspaceTestSuites $WorkspaceRoot)){
             $registered=@($configuration.Suites.Values|Where-Object {$_.TestsModule -ceq $owned.TestsModule -and $_.Command -ceq $owned.Command -and $_.Group -ceq $owned.Group})
