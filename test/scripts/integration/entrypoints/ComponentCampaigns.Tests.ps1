@@ -29,7 +29,7 @@ if($Suite -cne 'Box' -or !$ReuseVerifiedBuild){throw 'Unexpected build selection
 param($WorkspaceRoot,$Suite,[switch]$SkipBuild,[switch]$SkipTty,$MaxConcurrency,$RunDirectory)
 @{
     Suite=$Suite; Mutation=$env:QUIETCLI_BOX_MUTATION; Profile=$env:QUIETCLI_PROFILE_COMPANION
-    Workers=$MaxConcurrency; SkipBuild=[bool]$SkipBuild
+    Workers=$MaxConcurrency; SkipBuild=[bool]$SkipBuild; EvidenceRoot=$env:QUIETCLI_CAMPAIGN_REPORT_ROOT
 } | ConvertTo-Json -Compress
 '@
     foreach($runner in 'Invoke-GitHubCi.ps1','Invoke-WorkspaceCi.ps1'){
@@ -51,19 +51,21 @@ Describe 'Component mutation and profiling campaigns' {
     }
 
     It 'selects the PowerShell profiling lane independently of the mutation flags' {
-        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @('-Suite','Box','-Campaign','profiling') -TimeoutSeconds 30
+        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @('-Suite','Box','-Campaign','profiling','-RunDirectory',$TestDrive) -TimeoutSeconds 30
         $run.ExitCode|Should -Be 0 -Because ($run.Output+$run.Error)
         $actual=$run.Output|ConvertFrom-Json
         $actual.Profile|Should -BeExactly 'Box'
         $actual.Mutation|Should -BeNullOrEmpty
+        $actual.EvidenceRoot|Should -BeNullOrEmpty
         $actual.Workers|Should -BeGreaterOrEqual 1
     }
 
     It 'passes profiling and mutation settings to the same test runner' {
-        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @('-Suite','box','-Campaign','profiled-mutation') -TimeoutSeconds 30
+        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @('-Suite','box','-Campaign','profiled-mutation','-RunDirectory',$TestDrive) -TimeoutSeconds 30
         $run.ExitCode|Should -Be 0 -Because ($run.Output+$run.Error)
         $actual=$run.Output|ConvertFrom-Json
         $actual.Profile|Should -BeExactly 'Box'
         $actual.Mutation|Should -BeExactly '1'
+        $actual.EvidenceRoot|Should -BeExactly ([IO.Path]::Combine($TestDrive,'mutation-evidence'))
     }
 }

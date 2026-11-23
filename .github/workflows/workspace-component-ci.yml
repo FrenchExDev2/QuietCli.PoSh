@@ -96,6 +96,7 @@ jobs:
           key: ${{ steps.build_key.outputs.cache_key }}
           restore-keys: ${{ steps.build_key.outputs.cache_prefix }}
       - name: Run the selected component check
+        id: campaign
         shell: pwsh
         env:
           SUITE: ${{ inputs.suite }}
@@ -107,6 +108,14 @@ jobs:
           CAMPAIGN: ${{ inputs.campaign }}
           MUTATION_PARALLEL: ${{ inputs.mutation_parallel }}
         run: ./scripts/Invoke-ComponentCheck.ps1 -Suite $env:SUITE -QualificationMode $env:MODE -SolutionPath $env:SOLUTION -SourcePath $env:SOURCE -TestPath $env:TEST -SuitesJson $env:SUITES_JSON -Campaign $env:CAMPAIGN -Parallel:($env:MUTATION_PARALLEL -ceq 'true') -RunDirectory ./artifacts/component
+      - name: Render companion campaign results
+        if: always() && inputs.campaign != 'qualification' && steps.campaign.outcome != '' && steps.campaign.outcome != 'skipped'
+        shell: pwsh
+        env:
+          SUITE: ${{ inputs.suite }}
+          CAMPAIGN: ${{ inputs.campaign }}
+          CAMPAIGN_OUTCOME: ${{ steps.campaign.outcome }}
+        run: ./scripts/Export-CampaignReport.ps1 -Kind Component -Title "$env:SUITE $env:CAMPAIGN" -Outcome $env:CAMPAIGN_OUTCOME -Directory ./artifacts/component -SummaryPath $env:GITHUB_STEP_SUMMARY
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

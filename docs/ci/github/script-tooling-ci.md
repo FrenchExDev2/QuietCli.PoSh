@@ -1,6 +1,6 @@
 # tooling-ci.yml
 
-<!-- workflow-source-sha256: 3816FAA4EA3A36FF2736321B3492A5E6B570263A3D02A662463982967492B74B -->
+<!-- workflow-source-sha256: CC058F8F49ACAF7C7335607BE6C7065B0690EFBBD9809622D0A3EABB87723494 -->
 
 ## Purpose
 
@@ -51,6 +51,8 @@ Some test files drive git through `quiet` and declare `#ScriptsImpact: RequiresB
 The job uploads the report, JUnit, coverage and log.
 
 The `script-mutation` matrix has one job per selected target (`fromJson` of the `script-selection` targets), with `fail-fast: false`. It runs when `run_mutation` is true. Each job runs [Invoke-ScriptsMutation](../../scripts/Invoke-ScriptsMutation.md) `-Offline -PruneCache -Target <name>` and uploads an artifact named for the SHA, target and attempt.
+
+Each script mutation target and each run-profile mutation shard publishes `report.md` with Mermaid charts and `report.html` for offline viewing alongside the JSON evidence. The renderer runs after the campaign, including after a failed step, and adds the outcome and charts to the job summary. Run-profile charts cover the individual shard. [Export-CampaignReport](../../scripts/Export-CampaignReport.md)
 
 Each shard also keeps its own incremental mutation cache in `.cache/script-mutation`:
 
@@ -162,8 +164,8 @@ flowchart TD
 | core-independence | runner windows-latest |  | <code>inputs.scope == 'full'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Test-CoreIndependence.ps1`](../../scripts/Test-CoreIndependence.md) |
 | mutation-complete | runner ubuntu-latest | run-profiles-mutation | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; inputs.scope == 'full' }}</code> | [`./scripts/Assert-RunProfileMutationShards.ps1`](../../scripts/Assert-RunProfileMutationShards.md) |
 | results | runner ubuntu-latest | core-independence, tooling, script-tests, run-profiles-mutation, script-mutation, mutation-complete, script-mutation-complete | <code>&#36;{{ always() }}</code> | [`./scripts/Write-ToolingResults.ps1`](../../scripts/Write-ToolingResults.md) |
-| run-profiles-mutation | runner windows-latest |  | <code>inputs.scope == 'full'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.md) |
-| script-mutation | runner ubuntu-latest | script-selection | <code>needs.script-selection.outputs.run&#95;mutation == 'true'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-TestTools.ps1`](../../scripts/Initialize-TestTools.md), [`./scripts/Invoke-ScriptsMutation.ps1`](../../scripts/Invoke-ScriptsMutation.md) |
+| run-profiles-mutation | runner windows-latest |  | <code>inputs.scope == 'full'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.md), [`./scripts/Export-CampaignReport.ps1`](../../scripts/Export-CampaignReport.md) |
+| script-mutation | runner ubuntu-latest | script-selection | <code>needs.script-selection.outputs.run&#95;mutation == 'true'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-TestTools.ps1`](../../scripts/Initialize-TestTools.md), [`./scripts/Invoke-ScriptsMutation.ps1`](../../scripts/Invoke-ScriptsMutation.md), [`./scripts/Export-CampaignReport.ps1`](../../scripts/Export-CampaignReport.md) |
 | script-mutation-complete | runner ubuntu-latest | script-selection, script-mutation | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.script-selection.outputs.run&#95;mutation != 'false' }}</code> | [`./scripts/Assert-ScriptMutationShards.ps1`](../../scripts/Assert-ScriptMutationShards.md) |
 | script-selection | runner ubuntu-latest |  | default success condition | [`./scripts/lib/ScriptsImpact.psm1`](../../scripts/lib/ScriptsImpact.md) |
 | script-tests | <code>runner &#36;{{ matrix.os }}</code> | script-selection | <code>needs.script-selection.outputs.run&#95;tests == 'true'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-TestTools.ps1`](../../scripts/Initialize-TestTools.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/Invoke-ScriptsTests.ps1`](../../scripts/Invoke-ScriptsTests.md) |

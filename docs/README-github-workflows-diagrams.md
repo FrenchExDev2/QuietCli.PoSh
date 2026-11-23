@@ -1364,7 +1364,8 @@ Declared matrix · <code>{"shard"&#58;&#91;"0","1"&#93;}</code>
 | 3 |  | [./.github/actions/setup-powershell](#action-setup-powershell-3) |  |
 | 4 | Verify source inputs without a product build | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md), [scripts/Initialize-Workspace.ps1](scripts/Initialize-Workspace.md) |  |
 | 5 | Require every run-profile tooling mutant to be detected | [scripts/Invoke-GitHubCi.ps1](scripts/Invoke-GitHubCi.md) |  |
-| 6 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always() &#38;&#38; steps.run&#95;profiles&#95;mutation.outcome != '' &#38;&#38; steps.run&#95;profiles&#95;mutation.outcome != 'skipped'</code> |
+| 6 | Render run-profile mutation results | [scripts/Export-CampaignReport.ps1](scripts/Export-CampaignReport.md) | <code>always() &#38;&#38; steps.run&#95;profiles&#95;mutation.outcome != '' &#38;&#38; steps.run&#95;profiles&#95;mutation.outcome != 'skipped'</code> |
+| 7 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always() &#38;&#38; steps.run&#95;profiles&#95;mutation.outcome != '' &#38;&#38; steps.run&#95;profiles&#95;mutation.outcome != 'skipped'</code> |
 
 <a name="workflow-tooling-ci-yml-17-job-j5"></a>
 
@@ -1417,8 +1418,9 @@ Declared matrix · <code>{"target"&#58;"&#36;{{ fromJson(needs.script-selection.
 | 6 | Initialize the checkout and the pinned test tools | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md), [scripts/Initialize-TestTools.ps1](scripts/Initialize-TestTools.md) |  |
 | 7 | Restore the target's incremental mutation cache | actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 |  |
 | 8 | Require the target's mutation score | [scripts/Invoke-ScriptsMutation.ps1](scripts/Invoke-ScriptsMutation.md) |  |
-| 9 | Save the target's incremental mutation cache | actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>always() &#38;&#38; steps.script&#95;mutation.outcome != '' &#38;&#38; steps.script&#95;mutation.outcome != 'skipped'</code> |
-| 10 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always() &#38;&#38; steps.script&#95;mutation.outcome != '' &#38;&#38; steps.script&#95;mutation.outcome != 'skipped'</code> |
+| 9 | Render script mutation results | [scripts/Export-CampaignReport.ps1](scripts/Export-CampaignReport.md) | <code>always() &#38;&#38; steps.script&#95;mutation.outcome != '' &#38;&#38; steps.script&#95;mutation.outcome != 'skipped'</code> |
+| 10 | Save the target's incremental mutation cache | actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>always() &#38;&#38; steps.script&#95;mutation.outcome != '' &#38;&#38; steps.script&#95;mutation.outcome != 'skipped'</code> |
+| 11 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always() &#38;&#38; steps.script&#95;mutation.outcome != '' &#38;&#38; steps.script&#95;mutation.outcome != 'skipped'</code> |
 
 <a name="workflow-tooling-ci-yml-17-job-j8"></a>
 
@@ -1538,7 +1540,8 @@ Condition · <code>inputs.suite != 'Tooling' &#124;&#124; inputs.qualification&#
 | 6 | Compute selected build cache key | [scripts/Get-CompanionBuildKey.ps1](scripts/Get-CompanionBuildKey.md) |  |
 | 7 |  | actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 |  |
 | 8 | Run the selected component check | [scripts/Invoke-ComponentCheck.ps1](scripts/Invoke-ComponentCheck.md) |  |
-| 9 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+| 9 | Render companion campaign results | [scripts/Export-CampaignReport.ps1](scripts/Export-CampaignReport.md) | <code>always() &#38;&#38; inputs.campaign != 'qualification' &#38;&#38; steps.campaign.outcome != '' &#38;&#38; steps.campaign.outcome != 'skipped'</code> |
+| 10 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
 
 <a name="action-cache-ci-layers-0"></a>
 
