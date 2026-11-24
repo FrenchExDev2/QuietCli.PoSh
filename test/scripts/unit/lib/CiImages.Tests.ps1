@@ -170,3 +170,49 @@ Describe 'GHCR image download' {
         Should -Invoke -ModuleName CiImages Write-Warning -Times 0 -Exactly
     }
 }
+
+Describe 'CI image bundle handoff' {
+    BeforeEach {
+        $directory=[IO.Path]::Combine($TestDrive,[guid]::NewGuid().ToString('N'))
+        $revision='a'*40
+        $plan=@{Rid='linux-musl-arm64';Fingerprint=('b'*64)}
+        $imageId='sha256:'+('c'*64)
+        $receipts=@([pscustomobject]@{RuntimeIdentifier=$plan.Rid;Fingerprint=$plan.Fingerprint;Image=$imageId})
+        Mock -ModuleName CiImages Invoke-WorkspaceNative {
+            if($Arguments[1] -ceq 'save'){[IO.File]::WriteAllText($Arguments[3],'archive',[Text.Encoding]::UTF8)}
+        }
+        Mock -ModuleName CiImages Get-QuietCiVerifiedImage { [pscustomobject]@{Id=$Reference} }
+    }
+
+    It 'saves and loads the exact verified image without a registry operation' {
+        Export-QuietCiImageBundle -WorkspaceRoot $TestDrive -RuntimeIdentifier $plan.Rid -Directory $directory -Revision $revision -RunId 314 -Receipts $receipts
+        Import-QuietCiImageBundle -Directory $directory -Plan $plan -Revision $revision -RunId 314 | Should -BeExactly $imageId
+        Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 2 -Exactly
+        Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 1 -Exactly -ParameterFilter {
+            $FilePath -ceq 'docker' -and ($Arguments -join '|') -ceq ('image|save|--output|'+[IO.Path]::Combine($directory,'images.tar')+'|'+$imageId)
+        }
+        Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 1 -Exactly -ParameterFilter {
+            $FilePath -ceq 'docker' -and ($Arguments -join '|') -ceq ('image|load|--input|'+[IO.Path]::Combine($directory,'images.tar'))
+        }
+        Should -Invoke -ModuleName CiImages Get-QuietCiVerifiedImage -Times 1 -Exactly -ParameterFilter {
+            $Reference -ceq $imageId -and $Plan.Fingerprint -ceq ('b'*64) -and $ContainerRuntime -ceq 'docker'
+        }
+    }
+
+    It 'rejects a <Field> mismatch before loading' -ForEach @(
+        @{Field='SchemaVersion';Value=2;ErrorText='RunIdentityMismatch'}
+        @{Field='Revision';Value=('f'*40);ErrorText='RunIdentityMismatch'}
+        @{Field='RunId';Value='315';ErrorText='RunIdentityMismatch'}
+        @{Field='RuntimeIdentifier';Value='linux-arm64';ErrorText='RunIdentityMismatch'}
+        @{Field='Images';Value=@{('f'*64)=('sha256:'+('c'*64))};ErrorText='ExpectedImageMissing'}
+        @{Field='ArchiveSha256';Value=('F'*64);ErrorText='ArchiveMismatch'}
+    ) {
+        Export-QuietCiImageBundle -WorkspaceRoot $TestDrive -RuntimeIdentifier $plan.Rid -Directory $directory -Revision $revision -RunId 314 -Receipts $receipts
+        $path=[IO.Path]::Combine($directory,'bundle.json')
+        $receipt=Get-Content -LiteralPath $path -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable
+        $receipt[$Field]=$Value
+        [IO.File]::WriteAllText($path,($receipt|ConvertTo-Json -Depth 5),[Text.Encoding]::UTF8)
+        {Import-QuietCiImageBundle -Directory $directory -Plan $plan -Revision $revision -RunId 314}|Should -Throw "*CiImageBundle$ErrorText*"
+        Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 0 -Exactly -ParameterFilter { $Arguments[1] -ceq 'load' }
+    }
+}

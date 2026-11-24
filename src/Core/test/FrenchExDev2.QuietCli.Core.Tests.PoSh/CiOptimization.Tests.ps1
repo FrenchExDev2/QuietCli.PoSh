@@ -452,16 +452,16 @@ $source=if($RegistryCache){'cache'}else{'local'}
     $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
     $yaml=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build()
     $workflows=@{}
-    foreach($name in @('ci','companions-ci','preview-psgallery','publish-psgallery','release-tags')){$workflows[$name]=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot ".github/workflows/$name.yml"),[Text.Encoding]::UTF8))}
+    foreach($name in @('ci','companions-ci','linux-images','preview-psgallery','publish-psgallery','release-tags')){$workflows[$name]=$yaml.Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot ".github/workflows/$name.yml"),[Text.Encoding]::UTF8))}
     $jobs=$workflows.ci['jobs']
     if($jobs.ContainsKey('linux-suite-images') -or @($jobs['linux-images']['needs']).Count -ne 1 -or @($jobs['linux-images']['needs'])[0] -cne 'linux-matrix'){throw 'DuplicateImageProducerMatrix'}
-    $producer=@($jobs['linux-images']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
-    if(!$producer.Contains('-ResolveOnly') -or !$producer.Contains('-PublishCache')){throw 'ProducerDownloadsUnusedCachedImages'}
-    # companions-ci calls ci.yml once per suite; its single `images` job owns the producer per RID for the run.
+    $producer=$jobs['linux-images']
     $warm=$workflows['companions-ci']['jobs']['images']
-    if(![string]$jobs['linux-images']['if'] -or !([string]$jobs['linux-images']['if']).Contains('!inputs.images_prepared') -or !$warm -or ([string]$warm['concurrency']['group']) -cne 'quietcli2-ci-images-${{ matrix.rid }}' -or ([string]$warm['concurrency']['cancel-in-progress']) -cne 'false'){throw 'DuplicateImageProducerPerSuite'}
-    $warmRuns=@($warm['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
-    if(!$warmRuns.Contains('-ResolveOnly') -or !$warmRuns.Contains('-PublishCache') -or @($workflows['companions-ci']['jobs']['products']['needs']) -cnotcontains 'images' -or [string]$workflows['companions-ci']['jobs']['products']['with']['images_prepared'] -cne '${{ needs.images.result == ''success'' }}'){throw 'QualificationRacesImageWarmup'}
+    $implementation=$workflows['linux-images']['jobs']['prepare']
+    if([string]$producer['uses'] -cne './.github/workflows/linux-images.yml' -or [string]$warm['uses'] -cne [string]$producer['uses'] -or !([string]$producer['if']).Contains('!inputs.images_prepared')){throw 'DuplicateImageProducerPerSuite'}
+    $producerRuns=@($implementation['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
+    if(!$producerRuns.Contains('Export-CiImageBundle.ps1') -or !$producerRuns.Contains('-ResolveOnly') -or !$producerRuns.Contains('-PublishCache')){throw 'ProducerImagePreparationMissing'}
+    if(@($workflows['companions-ci']['jobs']['products']['needs']) -cnotcontains 'images' -or [string]$workflows['companions-ci']['jobs']['products']['with']['images_prepared'] -cne '${{ needs.images.result == ''success'' }}'){throw 'QualificationRacesImageWarmup'}
     if($workflows['preview-psgallery']['on'].ContainsKey('push') -or $workflows['companions-ci']['jobs'].ContainsKey('preview') -or $workflows['preview-psgallery']['jobs']['preview']['with']['publish'] -cne 'false'){throw 'DevelopStillPublishesGalleryPackages'}
     $publication=$workflows['publish-psgallery']['jobs']
     if($publication['qualification']['if'] -cne "inputs.qualified_sha == ''" -or $publication['reuse-qualification']['steps'][-1]['run'] -notmatch 'Assert-QualificationReceipt.ps1' -or $publication['package']['needs'] -cne 'checkpoint'){throw 'UnverifiedQualificationReuse'}

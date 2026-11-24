@@ -55,7 +55,7 @@ Outputs are written once each, in a stable order:
 | --- | --- |
 | `suite`, `run_products`, `matrix` | The product qualification. |
 | `run_tooling` | Whether `tooling-ci.yml` runs at all. |
-| `image_suites` | The compact JSON array of the fully qualified suites. The `images` warm-up job of `companions-ci.yml` passes it to `New-CiSuiteImage.ps1`, so every chain of the run is prepared once per RID before qualification. |
+| `image_suites` | JSON array of suites needed by the shared Linux producer. Fully qualified suites contribute their image chains. Selecting ReadyToRun also includes Core. |
 | `run_distribution` | The distribution campaign. |
 | `run_layout` | Whether `layout-tests` runs. It is false only when script tests are the whole plan. |
 | `run_smokes`, `smoke_suites` | The dependent smokes. |

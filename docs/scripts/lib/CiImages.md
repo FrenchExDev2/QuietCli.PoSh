@@ -28,6 +28,7 @@ Function library for native image plans, recipe rendering, verified GHCR lookup 
 | `Get-QuietCiBuildCacheOptions`, `Get-QuietCiBuildCommand` | Plan Docker-only intermediate caches and exact build arguments. |
 | `ConvertTo-QuietCiRegistryDiagnostic` | Redact credentials and bound retained diagnostics. |
 | `Invoke-QuietCiImageBuild` | Pull and verify cache images, build when the read-only cache is unavailable, optionally publish trusted cache entries, and save receipts. |
+| `Export-QuietCiImageBundle`, `Import-QuietCiImageBundle` | Transfer one native Docker archive and verify the run, revision, RID, archive hash and selected image before execution. |
 
 Use the guarded [base](../New-CiImage.md), [overlay](../New-CiModuleImage.md) or [suite](../New-CiSuiteImage.md) entry points for normal operations.
 

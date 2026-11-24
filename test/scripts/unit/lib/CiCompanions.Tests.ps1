@@ -457,7 +457,7 @@ Describe 'Invoke-QuietCiSuiteImages' {
         }
         Mock -ModuleName CiCompanions Invoke-QuietCiSuiteImage {
             $chain=@($Selection.Images) -join '>'
-            $script:calls.Add([pscustomobject]@{Chain=$chain;Confirmed=!($PesterBoundParameters.ContainsKey('Confirm') -and !$PesterBoundParameters['Confirm']);Rid=$RuntimeIdentifier;Runtime=$ContainerRuntime;RegistryCache=[bool]$RegistryCache;PublishCache=[bool]$PublishCache;ResolveOnly=[bool]$ResolveOnly;ProbeOnly=[bool]$ProbeOnly})
+            $script:calls.Add([pscustomobject]@{Chain=$chain;Confirmed=!($PesterBoundParameters.ContainsKey('Confirm') -and !$PesterBoundParameters['Confirm']);Rid=$RuntimeIdentifier;Runtime=$ContainerRuntime;RegistryCache=[bool]$RegistryCache;PublishCache=[bool]$PublishCache;ResolveOnly=[bool]$ResolveOnly;ProbeOnly=[bool]$ProbeOnly;PreparedLayers=$PreparedLayers})
             [pscustomobject]@{CacheHit=[bool]$script:hits[$chain]}
         }
     }
@@ -520,6 +520,8 @@ Describe 'Invoke-QuietCiSuiteImages' {
             $call.Rid|Should -BeExactly 'linux-arm64'
             $call.Runtime|Should -BeExactly 'docker'
             $call.Confirmed|Should -BeFalse -Because 'the aggregate already passed ShouldProcess'
+            $call.PreparedLayers|Should -BeOfType ([hashtable])
+            [object]::ReferenceEquals($call.PreparedLayers,$script:calls[0].PreparedLayers)|Should -BeTrue
             foreach($name in 'RegistryCache','PublishCache','ResolveOnly','ProbeOnly'){$call.$name|Should -Be ([bool]$Switches[$name]) -Because $name}
         }
     }
