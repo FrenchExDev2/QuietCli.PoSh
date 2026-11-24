@@ -14,6 +14,8 @@ Test-QuietDevelopReceipt requires explicit booleans, exact tree/run/attempt iden
 
 The root and nested `.gitignore` files appear in `ChangedPaths` and have no effect on CI selection.
 
+C# changes match the owning project directory and its descendants using the graph's slash-separated repository paths on Windows and Linux. Directories that only share the same name prefix are excluded.
+
 ## Repository scripts select only their script tests
 
 A change below the exact, case-sensitive `scripts/` or `test/scripts/` prefix selects no product suite, smoke, image or tooling campaign. The plan lists it in `ScriptPaths` instead. [`New-CiImpactPlan.ps1`](../New-CiImpactPlan.md) then asks [`ScriptsImpact.psm1`](ScriptsImpact.md) which script test files and script mutation targets those paths reach, and only those run.

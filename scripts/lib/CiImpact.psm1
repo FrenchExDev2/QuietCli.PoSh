@@ -68,7 +68,13 @@ function Get-QuietCiImpact {
                         if($configuration.Suites[$suite].TestsModule -ceq $owner.Name -or $configuration.Suites[$suite].Group -ceq $owner.SolutionGroup){[void]$selected.Add($configuration.Suites[$suite].Group)}
                     }
                     $reasons.Add([pscustomobject]@{Input=$path;Package=$null;Project=$owner.Path;Companion=$owner.SolutionGroup;Action='full';Reason=$reason})
-                    if($path -match '\.(cs|csproj)$'){$affected+=@($graph|Where-Object {$_.Module -ceq $owner.Name -and $path.StartsWith(([IO.Path]::GetDirectoryName($_.Path).Replace('\','/')+'/'),[StringComparison]::Ordinal)})}
+                    if ($path -match '\.(cs|csproj)$') {
+                        $affected += @($graph | Where-Object {
+                            # Graph paths already use repository separators on every host.
+                            $projectDirectory = $_.Path.Substring(0, $_.Path.LastIndexOf('/') + 1)
+                            $_.Module -ceq $owner.Name -and $path.StartsWith($projectDirectory, [StringComparison]::Ordinal)
+                        })
+                    }
                 }
             }elseif($path -ceq '.github/workflows/distribution-ci.yml'){
                 $distribution=$true
