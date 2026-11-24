@@ -241,6 +241,20 @@
             Break = 80
         }
         @{
+            Name = 'ModuleVersion'
+            Module = 'lib/ModuleVersion.psm1'
+            Functions = @('Get-QuietBumpedModuleVersion','Invoke-QuietScriptNewVersion')
+            UnitTestFiles = @('unit/lib/ModuleVersion.Tests.ps1')
+            Break = 80
+        }
+        @{
+            Name = 'ReleaseManifestVersion'
+            Module = 'lib/ReleaseTags.psm1'
+            Functions = @('Get-QuietReleaseManifestText')
+            UnitTestFiles = @('unit/lib/ReleaseTags.Tests.ps1')
+            Break = 80
+        }
+        @{
             Name = 'WorkBranch'
             Module = 'lib/WorkBranch.psm1'
             Functions = @('Get-QuietWorkBranchKinds','Resolve-QuietWorkBranchName','Assert-QuietWorkBranchBase','Get-QuietWorkBranchStatusProblems','ConvertFrom-QuietWorkBranchLsRemote','Compare-QuietWorkBranchShelf')
