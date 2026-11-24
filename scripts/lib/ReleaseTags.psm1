@@ -38,28 +38,51 @@ function Get-QuietReleaseManifestText {
     param([Parameter(Mandatory)][string]$Text,[Parameter(Mandatory)][string]$Version)
     if($Version -cnotmatch '\A((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))(?:-([A-Za-z][A-Za-z0-9-]*))?\z'){throw 'ReleaseVersionInvalid'}
     $base=$Matches[1];$suffix=if($Matches.ContainsKey(2)){$Matches[2]}else{''}
+    try{$null=[semver]$Version}catch{throw 'ReleaseVersionInvalid'}
     $tokens=$null;$errors=$null
     $ast=[Management.Automation.Language.Parser]::ParseInput($Text,[ref]$tokens,[ref]$errors)
-    if($errors.Count -or $ast.EndBlock.Statements.Count -ne 1){throw 'ReleaseManifestInvalid'}
+    if($errors.Count -or $ast.EndBlock.Statements.Count -ne 1 -or
+        $ast.EndBlock.Statements[0] -isnot [Management.Automation.Language.PipelineAst] -or
+        $ast.EndBlock.Statements[0].PipelineElements.Count -ne 1){throw 'ReleaseManifestInvalid'}
     $root=$ast.EndBlock.Statements[0].PipelineElements[0].Expression
     if($root -isnot [Management.Automation.Language.HashtableAst]){throw 'ReleaseManifestInvalid'}
-    try{$null=$root.SafeGetValue()}catch{throw 'ReleaseManifestMustBeLiteral'}
+    try{$manifest=$root.SafeGetValue()}catch{throw 'ReleaseManifestMustBeLiteral'}
     $versionPair=@($root.KeyValuePairs|Where-Object {$_.Item1.Value -ieq 'ModuleVersion'})
     $privatePair=@($root.KeyValuePairs|Where-Object {$_.Item1.Value -ieq 'PrivateData'})
-    if($versionPair.Count -ne 1 -or $privatePair.Count -ne 1){throw 'ReleaseManifestPublicationMetadataRequired'}
-    $versionExtent=$versionPair[0].Item2.Extent
+    if($versionPair.Count -ne 1){throw 'ReleaseManifestPublicationMetadataRequired'}
     $edits=[Collections.Generic.List[object]]::new()
-    $edits.Add(@{Start=$versionExtent.StartOffset;End=$versionExtent.EndOffset;Value="'$base'"})
-    $private=$privatePair[0].Item2.PipelineElements[0].Expression
-    $psDataPair=@($private.KeyValuePairs|Where-Object {$_.Item1.Value -ieq 'PSData'})
-    if(!$psDataPair.Count){
-        $position=$private.Extent.EndOffset-1
-        $edits.Add(@{Start=$position;End=$position;Value=";PSData=@{Prerelease='$suffix'}"})
+    if([string]$manifest.ModuleVersion -cne $base){
+        $extent=$versionPair[0].Item2.Extent
+        $edits.Add(@{Start=$extent.StartOffset;End=$extent.EndOffset;Value="'$base'"})
+    }
+    if(!$privatePair.Count){
+        if($suffix){
+            $position=$root.Extent.StartOffset+2
+            $edits.Add(@{Start=$position;End=$position;Value="PrivateData=@{PSData=@{Prerelease='$suffix'}};"})
+        }
     }else{
-        $psData=$psDataPair[0].Item2.PipelineElements[0].Expression
-        $labelPair=@($psData.KeyValuePairs|Where-Object {$_.Item1.Value -ieq 'Prerelease'})
-        if($labelPair.Count){$extent=$labelPair[0].Item2.Extent;$edits.Add(@{Start=$extent.StartOffset;End=$extent.EndOffset;Value="'$suffix'"})}
-        else{$position=$psData.Extent.EndOffset-1;$edits.Add(@{Start=$position;End=$position;Value=";Prerelease='$suffix'"})}
+        $private=$privatePair[0].Item2.PipelineElements[0].Expression
+        if($private -isnot [Management.Automation.Language.HashtableAst]){throw 'ReleaseManifestPublicationMetadataRequired'}
+        $psDataPair=@($private.KeyValuePairs|Where-Object {$_.Item1.Value -ieq 'PSData'})
+        if(!$psDataPair.Count){
+            if($suffix){
+                $position=$private.Extent.StartOffset+2
+                $edits.Add(@{Start=$position;End=$position;Value="PSData=@{Prerelease='$suffix'};"})
+            }
+        }else{
+            $psData=$psDataPair[0].Item2.PipelineElements[0].Expression
+            if($psData -isnot [Management.Automation.Language.HashtableAst]){throw 'ReleaseManifestPublicationMetadataRequired'}
+            $labelPair=@($psData.KeyValuePairs|Where-Object {$_.Item1.Value -ieq 'Prerelease'})
+            if($labelPair.Count){
+                if([string]$manifest.PrivateData.PSData.Prerelease -cne $suffix){
+                    $extent=$labelPair[0].Item2.Extent
+                    $edits.Add(@{Start=$extent.StartOffset;End=$extent.EndOffset;Value="'$suffix'"})
+                }
+            }elseif($suffix){
+                $position=$psData.Extent.StartOffset+2
+                $edits.Add(@{Start=$position;End=$position;Value="Prerelease='$suffix';"})
+            }
+        }
     }
     foreach($edit in $edits|Sort-Object Start -Descending){$Text=$Text.Substring(0,$edit.Start)+$edit.Value+$Text.Substring($edit.End)}
     $Text.Replace("`r`n","`n").Replace("`r","`n")

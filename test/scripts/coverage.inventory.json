@@ -152,7 +152,6 @@
     "lib/ReleaseTags.psm1::Assert-QuietReleaseTagSet",
     "lib/ReleaseTags.psm1::Get-QuietModuleReleaseSelection",
     "lib/ReleaseTags.psm1::Get-QuietNextPreviewNumber",
-    "lib/ReleaseTags.psm1::Get-QuietReleaseManifestText",
     "lib/ReleaseTags.psm1::Invoke-QuietModuleRelease",
     "lib/ReleaseTags.psm1::Push-QuietReleaseTags",
     "lib/Remove-QuietTags.psm1::Invoke-QuietScriptRemoveQuietTags",
