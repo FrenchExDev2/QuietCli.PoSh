@@ -10,6 +10,8 @@ Registry preparation first resolves the final suite image and attempts a CacheOn
 
 Producer-only ResolveOnly verifies the final registry configuration without pulling any layer. A miss still builds/publishes through the same reviewed layer path. Owned fixtures reject any attempt to prepare parents on either a final-image pull hit or a metadata-only producer hit.
 
+When preparing multiple suites for an archive, the producer shares locally verified base and overlay layers between chains on the same Docker daemon. Receipt-only registry resolutions never stand in for a loaded layer. [Export-CiImageBundle](../Export-CiImageBundle.md)
+
 `scripts/lib/CiCompanions.psm1` reads `build/companions.yaml`. Import declares functions only;
 reading configuration uses the checksum-pinned YamlDotNet resource through `Resources.ps1`,
 without importing the QuietCli engine. Missing parser resources are prepared by that consumer.

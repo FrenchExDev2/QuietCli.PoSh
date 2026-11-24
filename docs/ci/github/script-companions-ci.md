@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: 255476E44455BFE63EE041D0FBB1ECF1E28DB5D63804D7F9A83FDD53DC210E28 -->
+<!-- workflow-source-sha256: A979AAA21B6619B228D3BC6DB6D762FB94E8F0C13FFAB467372C6451F31AE412 -->
 
 ## Purpose
 
@@ -24,7 +24,7 @@ The planner supplies a companion-check matrix for requested mutation and profili
 
 Selected campaigns wait for successful planning, source checks and layout validation, so invalid shared inputs stop before costly builds and test campaigns.
 
-On develop pushes and dispatches that qualify products, the `images` job is the single Linux image producer of the run: one job per RID, serialized across runs by `quietcli2-ci-images-<rid>` without cancelling a publication. It passes the plan's `image_suites` to New-CiSuiteImage.ps1, which resolves or builds each distinct chain once, base first, then caches the intermediate layers. `products` starts only after that job succeeded or was skipped (pull requests, other repositories) and passes `images_prepared`, so the per-suite calls of ci.yml do not race it. A failed warm-up blocks qualification and fails the required status.
+When the plan selects products or ReadyToRun, the `images` job calls the shared image workflow once for the run. Four native jobs prepare the selected chains and upload one bundle per RID. `products` and `readytorun` wait for the producer and use those bundles. Registry publication is restricted to upstream develop pushes and dispatches. A failed producer blocks its consumers and fails the required status.
 
 Uses profile validation, source-bound build preparation, explicit selected qualification/smoke entry points and private artifacts. The PR planner publishes plan.json and impact.md; build_projects_json passes affected CSharp paths to Build-Workspace. GitHub may prepare pinned SDK/PowerShell resources and verified image caches. No module publication or repository setting change is performed here.
 
@@ -83,6 +83,7 @@ flowchart TD
     job_plan --> job_readytorun
     job_source_checks --> job_readytorun
     job_layout_tests --> job_readytorun
+    job_images --> job_readytorun
     job_plan --> job_smokes
     job_source_checks --> job_smokes
     job_layout_tests --> job_smokes
@@ -97,11 +98,11 @@ flowchart TD
 | ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, images, products, smokes, tooling-only, companion-checks, distribution, readytorun | <code>&#36;{{ always() }}</code> | [`./scripts/Assert-CiPlanResults.ps1`](../../scripts/Assert-CiPlanResults.md) |
 | companion-checks | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;companion&#95;checks == 'true'</code> |  |
 | distribution | reuses ./.github/workflows/distribution-ci.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;distribution == 'true'</code> |  |
-| images | <code>runner &#36;{{ matrix.runner }}</code> | plan, source-checks | <code>needs.plan.outputs.run&#95;products == 'true' &#38;&#38; github.repository == 'FrenchExDev2/QuietCli.PoSh' &#38;&#38; github.ref == 'refs/heads/develop' &#38;&#38; (github.event&#95;name == 'push' &#124;&#124; github.event&#95;name == 'workflow&#95;dispatch')</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/New-CiSuiteImage.ps1`](../../scripts/New-CiSuiteImage.md) |
+| images | reuses ./.github/workflows/linux-images.yml | plan, source-checks | <code>needs.plan.outputs.run&#95;products == 'true' &#124;&#124; needs.plan.outputs.run&#95;readytorun == 'true'</code> |  |
 | layout-tests | runner windows-latest | plan | <code>needs.plan.outputs.run&#95;layout == 'true'</code> | [`./scripts/Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.md), [`./scripts/Invoke-WorkspaceCi.ps1`](../../scripts/Invoke-WorkspaceCi.md) |
 | plan | runner ubuntu-latest |  | default success condition | [`./scripts/Invoke-GitHubCiPlan.ps1`](../../scripts/Invoke-GitHubCiPlan.md) |
-| products | reuses ./.github/workflows/ci.yml | plan, source-checks, layout-tests, images | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; needs.layout-tests.result == 'success' &#38;&#38; (needs.images.result == 'success' &#124;&#124; needs.images.result == 'skipped') &#38;&#38; needs.plan.outputs.run&#95;products == 'true' }}</code> |  |
-| readytorun | reuses ./.github/workflows/quietcli2-readytorun.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;readytorun == 'true'</code> |  |
+| products | reuses ./.github/workflows/ci.yml | plan, source-checks, layout-tests, images | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; needs.layout-tests.result == 'success' &#38;&#38; needs.images.result == 'success' &#38;&#38; needs.plan.outputs.run&#95;products == 'true' }}</code> |  |
+| readytorun | reuses ./.github/workflows/quietcli2-readytorun.yml | plan, source-checks, layout-tests, images | <code>needs.plan.outputs.run&#95;readytorun == 'true'</code> |  |
 | smokes | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;smokes == 'true'</code> |  |
 | source-checks | runner ubuntu-latest |  | default success condition | [`./scripts/Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.md) |
 | tooling-only | reuses ./.github/workflows/tooling-ci.yml | plan, source-checks, layout-tests | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; (needs.layout-tests.result == 'success' &#124;&#124; (needs.layout-tests.result == 'skipped' &#38;&#38; needs.plan.outputs.run&#95;layout == 'false')) &#38;&#38; needs.plan.outputs.run&#95;tooling == 'true' }}</code> |  |

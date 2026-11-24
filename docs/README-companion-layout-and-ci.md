@@ -116,19 +116,9 @@ target side effects are not inferred from XML alone.
 Transitive central pinning without a proven resolved consumer graph conservatively
 selects importers; such a package is never silently classified as unused.
 
-## Linux image warm-up
+## Shared Linux image production
 
-The plan also emits `image_suites`: the selected suites whose Linux execution needs a CI image.
-On develop pushes and manual runs of this repository, companions-ci's `images` job warms them
-before any qualification starts:
-- one job per RID, in the `quietcli2-ci-images-<rid>` group, with `cancel-in-progress: false`;
-- each job probes the registry, then prepares and publishes missing layers sequentially, base first
-  and then each overlay after its parent.
-
-The product matrix waits for it and passes `images_prepared`, so the per-suite `linux-images`
-producer of ci.yml is skipped. A warm-up failure or cancellation blocks the required check. PRs
-and direct calls keep the per-suite producer, which never publishes from a PR. Its concurrency
-group includes the suite, so parallel suites never evict one another.
+The plan emits `image_suites` for product qualification and ReadyToRun. The `images` job of `companions-ci.yml` prepares these chains once per native RID and publishes a run-scoped bundle. The product and ReadyToRun jobs wait for that producer and load their image from the bundle. Standalone workflows call the same producer. Trusted upstream develop runs can also publish missing GHCR cache entries. [Linux CI images](ci/linux-images.md)
 
 Image participation per companion is `none` or `overlay` (see
 [Add a companion](../readmes/README-add-companion.md)). Test files under `test/scripts/` select the

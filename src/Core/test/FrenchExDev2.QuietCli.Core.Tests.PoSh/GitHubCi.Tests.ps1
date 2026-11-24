@@ -342,17 +342,13 @@ function Test-QuietGitHubCi {
             if($index+1 -ge $steps.Count -or [string]$steps[$index+1]['run'] -notmatch '\./scripts/Initialize-CiEnvironment\.ps1 -Target GitHub -ContainerRuntime docker' -or $steps[$index+1]['shell'] -cne 'pwsh'){throw ('GitHubEnvironmentInitializationMissing: '+$name)}
         }
     }
-    foreach($entry in @(@{Job='linux';Flag='has_container'},@{Job='linux-test-driver';Flag='has_docker_container_runtime'})){
-        $condition=[string]$jobs[$entry.Job]['if']
-        if(!$condition.Contains('!cancelled()') -or !$condition.Contains("needs.linux-selection.result == 'success'") -or !$condition.Contains(("needs.linux-selection.outputs."+$entry.Flag+" == 'true'"))){throw ('GitHubCiSelectedJobInheritedSkip: '+$entry.Job)}
-    }
     foreach($name in $jobs.Keys){foreach($dependency in @($jobs[$name]['needs'])){if($dependency -and !$jobs.ContainsKey($dependency)){throw 'GitHubWorkflowDanglingDependency'}}}
-    if(!$jobs['linux']['container'] -or $jobs['windows']['container'] -or $jobs['linux-test-driver']['container']){throw 'GitHubWorkflowExecutionEnvironmentChanged'}
-    $direct=@($jobs['linux']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
-    if(!$direct.Contains('Invoke-GitHubCi.ps1') -or $direct -match 'Invoke-ContainerCi|New-CiImage|podman'){throw 'GitHubContainerNestedRuntimeDetected'}
-    $fallback=@($jobs['linux-test-driver']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
-    if(!$fallback.Contains('-ContainerRuntime docker') -or $fallback.Contains('-PublishCache')){throw 'GitHubFallbackPublicationOrRuntimeChanged'}
-    if($fallback -notmatch 'New-CiSuiteImage\.ps1 -Suite' -or $fallback -match '-Module Git' -or $jobs.ContainsKey('linux-git-images')){throw 'CompanionSpecificWorkflowImageBranch'}
+    $driver=$jobs['linux-test-driver']
+    $condition=[string]$driver['if']
+    if(@($driver['needs']) -cnotcontains 'linux-images' -or !$condition.Contains("needs.linux-images.result == 'success'") -or !$condition.Contains("inputs.images_prepared && needs.linux-images.result == 'skipped'")){throw 'GitHubCiImageDependencyMissing'}
+    if($driver['container'] -or $jobs['windows']['container']){throw 'GitHubWorkflowExecutionEnvironmentChanged'}
+    $commands=@($driver['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
+    if(!$commands.Contains('Import-CiImageBundle.ps1') -or !$commands.Contains('Invoke-GitHubCi.ps1') -or $commands -match 'New-Ci(?:Suite)?Image\.ps1|QUIETCLI_REGISTRY_TOKEN'){throw 'GitHubImagePreparationDuplicated'}
     $workflowSource=[IO.File]::ReadAllText($workflowPath,[Text.Encoding]::UTF8)
     if($workflowSource -match "QUIETCLI_GIT_|inputs\.suite\s*!=\s*'Git'"){throw 'CompanionSpecificWorkflowControls'}
     Write-WorkspaceJson (Join-Path $RunDirectory 'github-ci-campaign.json') @{Seed=$seed;PartitionProperties=$properties;MalformedCases=$badInputs.Count;GateCases=$gateCases;MutantsKilled=2;DirectWorkerSameProcess=$true;Workflow=$workflowPath;RealHostedRunner=$false}
