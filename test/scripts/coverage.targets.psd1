@@ -23,5 +23,7 @@
         'lib/PerformanceCharts.psm1'
         'lib/New-CorePerformanceReport.psm1'
         'lib/MergedBranches.psm1'
+        'lib/Enable-WindowsLongPaths.psm1'
+        'lib/Fix-WindowsDefender.psm1'
     )
 }
