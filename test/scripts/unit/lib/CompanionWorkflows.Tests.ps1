@@ -203,7 +203,7 @@ Describe 'CompanionWorkflows' {
         & $use @{Modules=@();Configuration=@{Path=$cataloguePath;Companions=[ordered]@{Box2=@{Name='Box2';Mutation=$true}}}}
         Mock -ModuleName CompanionWorkflows Assert-QuietCiCompanionImages {}
         $path=[IO.Path]::Combine($currentRoot,'.github','pull_request_template.md')
-        $expected=("<!-- quietcli-ci:begin -->`n- [ ] Scripts <!-- ci:script-mutation -->`n- [ ] Run Box2 mutation testing <!-- ci:run-profile-mutation-box2 -->`n- [ ] Profile the Box2 PowerShell tests <!-- ci:profiling-box2 -->`n- [ ] Serial <!-- ci:mutation-serial -->`n- [ ] R2R <!-- ci:readytorun -->`n- [ ] Preview <!-- ci:preview -->`n<!-- quietcli-ci:end -->`n")
+        $expected=("<!-- quietcli-ci:begin -->`n- [ ] Scripts <!-- ci:script-mutation -->`n- [ ] Run Box2 mutation testing [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#companion-mutation) <!-- ci:run-profile-mutation-box2 -->`n- [ ] Profile the Box2 PowerShell tests [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#companion-profiling) <!-- ci:profiling-box2 -->`n- [ ] Serial <!-- ci:mutation-serial -->`n- [ ] R2R <!-- ci:readytorun -->`n- [ ] Preview <!-- ci:preview -->`n<!-- quietcli-ci:end -->`n")
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))
         [IO.File]::WriteAllText($path,($expected.Replace("`n","`r`n")),[Text.UTF8Encoding]::new($false))
         {Sync-QuietCompanionWorkflows -WorkspaceRoot $currentRoot}|Should -Not -Throw

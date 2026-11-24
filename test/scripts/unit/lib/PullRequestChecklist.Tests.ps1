@@ -65,6 +65,8 @@ Describe 'Expandable companion checklist rows' {
         $expanded=Expand-QuietPullRequestTemplate -Template $obsolete -Configuration $catalogue
         $expanded|Should -Match 'Run Box2 mutation testing'
         $expanded|Should -Match 'Profile the Box2 PowerShell tests'
+        $expanded|Should -Match '\[Details\]\(https://[^)]+#companion-mutation\) <!-- ci:run-profile-mutation-box2 -->'
+        $expanded|Should -Match '\[Details\]\(https://[^)]+#companion-profiling\) <!-- ci:profiling-box2 -->'
         $expanded|Should -Not -Match 'ci:.*-old'
     }
 }

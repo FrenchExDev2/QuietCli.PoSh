@@ -63,9 +63,9 @@ BeforeAll {
         $null=& $git @('commit','-q','-m',('touch '+$Path))
         & $git @('rev-parse','HEAD')
     }
-    $plan={param([string]$Revision,[string[]]$Extra=@())
+    $plan={param([string]$Revision,[string[]]$Extra=@(),[string]$Trigger='push')
         $outputPath=[IO.Path]::Combine($TestDrive,'output-'+[guid]::NewGuid().ToString('N')+'.txt')
-        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList (@('-WorkspaceRoot',$workspace,'-Base',$baseRevision,'-Revision',$Revision,'-Event','push','-OutputPath',$outputPath)+$Extra) -Environment @{GITHUB_STEP_SUMMARY=''} -TimeoutSeconds 300
+        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList (@('-WorkspaceRoot',$workspace,'-Base',$baseRevision,'-Revision',$Revision,'-Event',$Trigger,'-OutputPath',$outputPath)+$Extra) -Environment @{GITHUB_STEP_SUMMARY=''} -TimeoutSeconds 300
         $values=[ordered]@{}
         if([IO.File]::Exists($outputPath)){
             foreach($line in [IO.File]::ReadAllLines($outputPath)){$index=$line.IndexOf('=');$values[$line.Substring(0,$index)]=$line.Substring($index+1)}
@@ -434,7 +434,7 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
 - [ ] Preview <!-- ci:preview -->
 <!-- quietcli-ci:end -->
 '@
-        $observed=& $plan (& $commit 'scripts/lib/SqliteDocumentation.psm1') @('-PullRequestBody',$body)
+        $observed=& $plan (& $commit 'scripts/lib/SqliteDocumentation.psm1') @('-PullRequestBody',$body) 'pull_request'
         $observed.Run.ExitCode|Should -Be 0 -Because ($observed.Run.Output+$observed.Run.Error)
         $observed.Values['script_mutation_no_input_cache']|Should -BeExactly 'true'
         $observed.Values['script_mutation_targets']|Should -BeExactly '["SqliteDocumentation"]'

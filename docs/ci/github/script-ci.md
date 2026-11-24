@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: F49E8791867F802914E7717D571D3310AB46724635EF53149D5BAC8E3EE731E9 -->
+<!-- workflow-source-sha256: 3509F457AAF798F3232137546ECD60EA0B386353E009E72B31AECB4F5F8C4ECA -->
 
 ## Purpose
 
@@ -12,7 +12,7 @@ Reusable workflow_call and explicit workflow_dispatch.
 
 ## Scripts and effects
 
-Profile validation initializes the checkout's deterministic GitHub environment immediately after checkout, like execution jobs; it performs no product build.
+Profile validation initializes the checkout's deterministic GitHub environment immediately after checkout, like execution jobs. It performs no product build. The Linux matrix job restores the pinned resource archive cache before `Initialize-CiCompanions.ps1` reads the YAML catalogue. The consumer extracts and verifies YamlDotNet in the current checkout.
 
 Uses profile validation, source-bound build preparation, explicit selected qualification/smoke entry points and private artifacts. The PR planner publishes plan.json and impact.md; build_projects_json passes affected CSharp paths to Build-Workspace. GitHub may prepare pinned SDK/PowerShell resources and verified image caches. No module publication or repository setting change is performed here.
 

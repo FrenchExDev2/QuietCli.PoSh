@@ -21,7 +21,7 @@ imported this library, then call `Ensure-QuietResource -RelativePath resources/y
 
 ## Dependencies and effects
 
-Reads the resource lock; verifies bytes before reuse; delegates selected package preparation to Restore-CoreResources; optionally loads the pinned assembly. `-WhatIf` returns Planned without restoring. `-Confirm` controls preparation. Loaded assembly identity is checked by hash.
+Reads the resource lock; verifies bytes before reuse; delegates selected package preparation to Restore-CoreResources; optionally loads the pinned assembly. `-WhatIf` returns Planned without restoring. `-Confirm` controls preparation. Loaded assembly identity is checked by hash. Progress distinguishes extraction into a fresh checkout from replacement of a resource with a mismatched checksum.
 
 ## Critical review and verdict
 

@@ -53,7 +53,7 @@ The job uploads the report, JUnit, coverage and log.
 
 The `script-mutation` matrix has one job per selected target (`fromJson` of the `script-selection` targets), with `fail-fast: false`. It runs when `run_mutation` is true. Each job runs [Invoke-ScriptsMutation](../../scripts/Invoke-ScriptsMutation.md) `-Offline -PruneCache -Target <name>` and uploads an artifact named for the SHA, target and attempt.
 
-Each script mutation target and each run-profile mutation shard publishes `report.md` with Mermaid charts and `report.html` for offline viewing alongside the JSON evidence. The renderer runs after the campaign, including after a failed step, and adds the outcome and charts to the job summary. Run-profile charts cover the individual shard. [Export-CampaignReport](../../scripts/Export-CampaignReport.md)
+Each script mutation target and each run-profile mutation shard publishes measurement tables in `report.md` and `report.html` alongside the JSON evidence. The renderer runs after the campaign, including after a failed step, and adds the outcome and tables to the job summary. Run-profile tables cover the individual shard. [Export-CampaignReport](../../scripts/Export-CampaignReport.md)
 
 Each shard also keeps its own incremental mutation cache in `.cache/script-mutation`:
 

@@ -19,12 +19,14 @@ function Ensure-QuietResource {
     $entries=@($manifest.Files|Where-Object Path -CEQ $RelativePath)
     if($entries.Count -ne 1 -or $RelativePath -notmatch '^resources/[A-Za-z0-9_./-]+$' -or $RelativePath -match '(^|/)\.\.(/|$)'){throw ('ResourceNotDeclared: '+$RelativePath)}
     $entry=$entries[0];$path=[IO.Path]::Combine($module,$RelativePath)
-    $valid=(Test-Path -LiteralPath $path -PathType Leaf) -and (Get-FileHash -LiteralPath $path).Hash -ceq $entry.SHA256
+    $exists=Test-Path -LiteralPath $path -PathType Leaf
+    $valid=$exists -and (Get-FileHash -LiteralPath $path).Hash -ceq $entry.SHA256
     $restored=$false
     if(!$valid){
         if($entry.Package -ceq 'quietcli-pty'){throw ('SourceBuiltResourceMissing: '+$RelativePath+'; run Build-PtyBridge.ps1 explicitly.')}
         if(!$PSCmdlet.ShouldProcess($path,('Restore checksum-pinned package '+$entry.Package))){return [pscustomobject]@{State='Planned';Path=$path;Loaded=$false;Restored=$false}}
-        Write-Host ('Progress: Restore missing or invalid pinned resource '+$RelativePath)
+        if($exists){Write-Host ('Progress: Replace pinned resource with mismatched checksum '+$RelativePath)}
+        else{Write-Host ('Progress: Extract pinned resource for this checkout '+$RelativePath)}
         $null=& ([IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),'Restore-CoreResources.ps1')) -WorkspaceRoot $WorkspaceRoot -IncludePackage $entry.Package -Confirm:$false
         $restored=$true
     }
