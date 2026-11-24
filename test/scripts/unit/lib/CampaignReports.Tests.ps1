@@ -76,6 +76,16 @@ Describe 'Write-QuietCampaignReport' {
         $html|Should -Not -Match '<script>'
     }
 
+    It 'reports measured companion performance from the unprofiled test run' {
+        $directory=[IO.Path]::Combine($TestDrive,'performance')
+        $null=New-QuietTestFile ([IO.Path]::Combine($directory,'component-performance.json')) '{"Suite":"Git","Workers":4,"TestRunElapsedMs":123.456}'
+        Write-QuietCampaignReport -Directory $directory -Kind Component -Title 'Git performance' -Outcome success
+        $md=[IO.File]::ReadAllText([IO.Path]::Combine($directory,'report.md'),[Text.Encoding]::UTF8)
+        $md|Should -Match '## Performance'
+        $md|Should -Match '\| Item \| Milliseconds \|'
+        $md|Should -Match '\| Test run elapsed time \| 123\.456 \|'
+    }
+
     It 'previews without creating files and marks missing evidence on failure' {
         $directory=[IO.Path]::Combine($TestDrive,'missing')
         Write-QuietCampaignReport -Directory $directory -Kind Component -Title 'Missing evidence' -Outcome cancelled -WhatIf

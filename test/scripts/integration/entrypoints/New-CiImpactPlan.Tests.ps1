@@ -440,6 +440,19 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
         $observed.Values['script_mutation_targets']|Should -BeExactly '["SqliteDocumentation"]'
     }
 
+    It 'plans only the selected companion effects from the Git and Vagrant table cells' {
+        $template=Get-Content -LiteralPath ([IO.Path]::Combine($repository,'.github','pull_request_template.md')) -Raw -Encoding utf8
+        $body=$template.Replace('`[ ]` <!-- ci:performance-git -->','`[x]` <!-- ci:performance-git -->').Replace('`[ ]` <!-- ci:profiling-vagrant -->','`[x]` <!-- ci:profiling-vagrant -->')
+        $observed=& $plan (& $commit 'docs/README-ci-table.md') @('-PullRequestBody',$body) 'pull_request'
+        $observed.Run.ExitCode|Should -Be 0 -Because ($observed.Run.Output+$observed.Run.Error)
+        $checks=($observed.Values['companion_checks']|ConvertFrom-Json).include
+        $checks.suite|Should -BeExactly @('Git','Vagrant')
+        $checks.campaign|Should -BeExactly @('performance','profiling')
+        $observed.Values['run_companion_checks']|Should -BeExactly 'true'
+        $observed.Values['run_products']|Should -BeExactly 'false'
+        $observed.Values['script_mutation_targets']|Should -BeExactly '[]'
+    }
+
     It 'writes every output key once, in a stable order' {
         $observed=& $plan (& $commit 'docs/README-impact-keys.md')
         $observed.Values['script_mutation_no_input_cache']|Should -BeExactly 'false'

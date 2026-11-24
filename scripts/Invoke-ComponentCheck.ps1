@@ -21,12 +21,12 @@ Optional owned report destination.
 .PARAMETER ValidateOnly
 Checks the mode and declared paths without building or running tests.
 .PARAMETER Campaign
-Selects normal qualification, mutation, profiling, or both mutation and profiling in the same pass.
+Selects normal qualification, mutation, profiling, profiled mutation, or a timed unprofiled test run.
 .PARAMETER Parallel
 Enables the normal worker budget. False restricts the requested campaign to one worker.
 #>
 [CmdletBinding(SupportsShouldProcess)]
-param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$Suite,[ValidateSet('full','smoke','build')][string]$QualificationMode='full',[string]$SuitesJson='[]',[string]$SolutionPath,[string]$SourcePath,[string]$TestPath,[string]$RunDirectory,[switch]$ValidateOnly,[ValidateSet('qualification','mutation','profiling','profiled-mutation')][string]$Campaign='qualification',[switch]$Parallel)
+param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$Suite,[ValidateSet('full','smoke','build')][string]$QualificationMode='full',[string]$SuitesJson='[]',[string]$SolutionPath,[string]$SourcePath,[string]$TestPath,[string]$RunDirectory,[switch]$ValidateOnly,[ValidateSet('qualification','mutation','profiling','profiled-mutation','performance')][string]$Campaign='qualification',[switch]$Parallel)
 if(!$PSCmdlet.ShouldProcess($Suite,('Run component '+$QualificationMode))){return}
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CompanionWorkflows.psm1')) -DisableNameChecking -ErrorAction Stop
@@ -52,6 +52,11 @@ foreach($selected in $suites){
     Assert-QuietCompanionProfile -WorkspaceRoot $WorkspaceRoot -Suite $selected -SolutionPath $SolutionPath -SourcePath $SourcePath -TestPath $TestPath
 }
 if($ValidateOnly){return}
+$measurePerformance=$Campaign -ceq 'performance'
+if($measurePerformance -and !$RunDirectory){
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/ReportPaths.psm1')) -DisableNameChecking -ErrorAction Stop
+    $RunDirectory=[IO.Path]::Combine((Get-QuietReportRoot -WorkspaceRoot $WorkspaceRoot -Category 'component-performance'),[guid]::NewGuid().ToString('N'))
+}
 $entry=if($env:GITHUB_ACTIONS -ceq 'true'){'Invoke-GitHubCi.ps1'}else{'Invoke-WorkspaceCi.ps1'}
 $launch=[IO.Path]::Combine($PSScriptRoot,$entry)
 $budget=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount))
@@ -82,7 +87,20 @@ if($QualificationMode -ceq 'smoke'){
             $previous[$key]=[Environment]::GetEnvironmentVariable($key)
             [Environment]::SetEnvironmentVariable($key,$environment[$key])
         }
+        if($measurePerformance){$timer=[Diagnostics.Stopwatch]::StartNew()}
         & $launch @parameters
+        if($measurePerformance){
+            $timer.Stop()
+            Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceJson.psm1')) -DisableNameChecking -ErrorAction Stop
+            $path=[IO.Path]::Combine([IO.Path]::GetFullPath($RunDirectory,$PWD.ProviderPath),'component-performance.json')
+            Write-WorkspaceJson $path ([ordered]@{
+                Suite=$testSuite
+                RuntimeIdentifier=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+                Workers=$budget
+                TestRunElapsedMs=$timer.Elapsed.TotalMilliseconds
+            })
+            Write-Host "Component performance receipt: $path"
+        }
     } finally {
         foreach($key in $previous.Keys){[Environment]::SetEnvironmentVariable($key,$previous[$key])}
     }

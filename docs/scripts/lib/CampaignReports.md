@@ -8,7 +8,7 @@ Source file: [`lib/CampaignReports.psm1`](../../../scripts/lib/CampaignReports.p
 
 - `ScriptMutation` reads `report.json` and retains the detailed score, survivor and equivalent tables in Markdown.
 - `RunProfilesMutation` reads `run-profiles-mutation.json`. Each sharded report identifies its shard.
-- `Component` reads the run-profile mutation file or the JSON catalogues under `mutation-evidence/`. It reads PowerShell profiling traces under `profiling/` and shows up to eight functions and lines by self time in milliseconds.
+- `Component` reads the run-profile mutation file or the JSON catalogues under `mutation-evidence/`. It reads PowerShell profiling traces under `profiling/` and shows up to eight functions and lines by self time in milliseconds. A companion performance run provides `component-performance.json`, whose measured test-run duration is rendered in the report.
 
 The report prints the original step outcome even if evidence is missing or partial. The renderer reads only the campaign's owned evidence and keeps the machine-readable files intact.
 

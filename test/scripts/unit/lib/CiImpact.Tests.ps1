@@ -38,6 +38,18 @@ Describe 'Add-QuietCiPullRequestSelection companion campaigns' {
         $plan.Reasons.Action|Should -BeExactly 'script-mutation-no-input-cache'
     }
 
+    It 'schedules performance independently of profiling and mutation on the selected companion' {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact {
+            @{Companions=[ordered]@{Git=[pscustomobject]@{Name='Git';Mutation=@{environment=@{QUIETCLI_GIT_MUTATION='1'}}};Demo=[pscustomobject]@{Name='Demo'}}}
+        }
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options @('performance-git','profiling-git','run-profile-mutation-git','performance-demo')
+        $plan.CompanionChecks.suite|Should -BeExactly @('Git','Git','Demo')
+        $plan.CompanionChecks.campaign|Should -BeExactly @('performance','profiled-mutation','performance')
+        $plan.Reasons.Companion|Should -BeExactly @('Git','Git','Git','Demo')
+        $plan.FullSuites.Count|Should -Be 0
+    }
+
     It 'profiles the actual mutation pass when both options select the same companion' {
         Mock Read-QuietCiCompanions -ModuleName CiImpact {
             @{Companions=[ordered]@{Box2=[pscustomobject]@{Name='Box2';Mutation=@{environment=@{QUIETCLI_BOX_MUTATION='1'}}}}}

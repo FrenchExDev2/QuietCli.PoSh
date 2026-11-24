@@ -22,6 +22,8 @@ Select the supported mutation campaign of every companion in RunProfile.
 Select mutation campaigns directly for one or more companions with a declared mutation campaign.
 .PARAMETER Profiling
 Profile the PowerShell tests of the selected companions. Defaults on for -RunProfile with -Mutation; use -Profiling:$false for mutation only.
+.PARAMETER Performance
+Measure an unprofiled test run for the companions selected by -RunProfile.
 .PARAMETER Parallel
 Run mutation matrices and workers in parallel by default. Pass -Parallel:$false to run each matrix and worker sequentially.
 .PARAMETER ReadyToRun
@@ -45,6 +47,7 @@ param(
     [switch]$Mutation,
     [AllowEmptyCollection()][string[]]$RunProfileMutation,
     [switch]$Profiling,
+    [switch]$Performance,
     [switch]$Parallel,
     [switch]$ReadyToRun,
     [switch]$Preview,
@@ -75,9 +78,11 @@ if($PSBoundParameters.ContainsKey('RunProfileMutation')){
 if(($Mutation -or $Profiling) -and !$RunProfile.Count -and !$RunProfileMutation.Count){
     throw 'WorkspacePullRequestRunProfileRequired: choose at least one companion for mutation or profiling.'
 }
+if($Performance -and !$RunProfile.Count){throw 'WorkspacePullRequestRunProfileRequired: choose companions for performance.'}
 foreach($companion in $RunProfile){
     $id=$companion.ToLowerInvariant()
     if($PSBoundParameters.ContainsKey('Mutation')){$options['run-profile-mutation-'+$id]=[bool]$Mutation}
+    if($PSBoundParameters.ContainsKey('Performance')){$options['performance-'+$id]=[bool]$Performance}
     if($PSBoundParameters.ContainsKey('Profiling') -or $Mutation){$options['profiling-'+$id]=if($PSBoundParameters.ContainsKey('Profiling')){[bool]$Profiling}else{$true}}
 }
 if(!$RunProfile.Count -and $PSBoundParameters.ContainsKey('Profiling')){
