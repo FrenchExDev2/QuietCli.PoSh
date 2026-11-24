@@ -50,6 +50,15 @@ Describe 'Add-QuietCiPullRequestSelection companion campaigns' {
         $plan.FullSuites.Count|Should -Be 0
     }
 
+    It 'rejects a mutation option on a companion without a mutation campaign' {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact {
+            @{Companions=[ordered]@{Demo=[pscustomobject]@{Name='Demo';Mutation=$null}}}
+        }
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@()}
+        {Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options @('run-profile-mutation-demo')} |
+            Should -Throw '*CiCompanionNotAvailable: demo (Mutation)*'
+    }
+
     It 'profiles the actual mutation pass when both options select the same companion' {
         Mock Read-QuietCiCompanions -ModuleName CiImpact {
             @{Companions=[ordered]@{Box2=[pscustomobject]@{Name='Box2';Mutation=@{environment=@{QUIETCLI_BOX_MUTATION='1'}}}}}
