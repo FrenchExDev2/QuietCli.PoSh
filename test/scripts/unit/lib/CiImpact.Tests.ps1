@@ -17,6 +17,7 @@ Describe 'Add-QuietCiPullRequestSelection companion campaigns' {
         $plan.MutationParallel|Should -BeFalse
         $plan.RunAllScriptMutations|Should -BeTrue
         $plan.ScriptMutationNoInputCache|Should -BeFalse
+        $plan.RenewImageCaches|Should -BeFalse
         $plan.CompanionChecks.suite|Should -BeExactly @('Box2','Demo')
         $plan.CompanionChecks.campaign|Should -BeExactly @('mutation','profiling')
         $plan.FullSuites.Count|Should -Be 0
@@ -25,6 +26,18 @@ Describe 'Add-QuietCiPullRequestSelection companion campaigns' {
         $plan.RunReadyToRun|Should -BeFalse
         $plan.PullRequestOptions|Should -BeExactly @('run-profile-mutation-box2','profiling-demo','mutation-serial','script-mutation')
         $plan.Reasons.Companion|Should -BeExactly @('Box2','Demo','Mutations','Scripts')
+    }
+
+    It 'selects Linux image renewal without adding product or tooling qualification' {
+        $plan=[pscustomobject]@{RunProducts=$false;RunTooling=$false;FullSuites=@();Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options @('renew-images-caches')
+        $plan.RenewImageCaches|Should -BeTrue
+        $plan.RunProducts|Should -BeFalse
+        $plan.RunTooling|Should -BeFalse
+        $plan.FullSuites.Count|Should -Be 0
+        $plan.Reasons.Count|Should -Be 1
+        $plan.Reasons[0].Companion|Should -BeExactly 'Linux images'
+        $plan.Reasons[0].Action|Should -BeExactly 'renew-images-caches'
     }
 
     It 'bypasses cache input without adding any mutation targets' {
