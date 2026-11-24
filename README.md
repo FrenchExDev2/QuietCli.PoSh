@@ -4,7 +4,7 @@
 
 # QuietCli
 
-QuietCli (pronouced **Quietly**) turns native command output into structured PowerShell results for scripts and AI agents. The `quiet` command streams stdout and stderr, then uses your PowerShell callbacks or a companion module to extract the data you need.
+QuietCli (_pronouced **Quietly**_) turns native command output into structured PowerShell results for scripts and AI agents. The `quiet` command streams stdout and stderr, then uses your PowerShell callbacks or a companion module to extract the data you need.
 
 Keep the result local with `-AsObject`, or share a bounded JSON or YAML view. Each result reports the execution outcome and whether the output and analysis are complete.
 
