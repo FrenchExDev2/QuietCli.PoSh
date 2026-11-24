@@ -46,7 +46,7 @@ on:
         required: false
         default: true
       images_prepared:
-        description: Use the shared image archives supplied by the caller of this workflow
+        description: Use the shared image handoff supplied by the caller of this workflow
         type: boolean
         required: false
         default: false
@@ -366,7 +366,7 @@ jobs:
     if: ${{ !cancelled() && !inputs.images_only && (inputs.qualification_mode == '' || inputs.qualification_mode == 'full') && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' || (inputs.images_prepared && needs.linux-images.result == 'skipped')) }}
     env:
       QUIETCLI_SUITE_HAS_CORE: ${{ needs.linux-matrix.outputs.has_core }}
-    permissions: {contents: read}
+    permissions: {contents: read, packages: read}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     strategy:
@@ -407,17 +407,18 @@ jobs:
       - name: Build engines for the six distributions
         shell: pwsh
         run: ./scripts/Build-Workspace.ps1 -Project @(ConvertFrom-Json $env:QUIETCLI_BUILD_PROJECTS) -ReuseVerifiedBuild -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - uses: ./.github/actions/load-ci-image-bundle
+        id: image
         with:
-          name: quietcli-prepared-images-${{ inputs.images_prepared && 'workspace' || 'standalone' }}-${{ matrix.rid }}
-          path: artifacts/prepared-ci-images
+          suite: ${{ inputs.suite || 'All' }}
+          rid: ${{ matrix.rid }}
+          artifact_scope: ${{ inputs.images_prepared && 'workspace' || 'standalone' }}
       - name: Load the verified image produced for this run
         shell: pwsh
         env:
-          EXPECTED_RID: ${{ matrix.rid }}
+          NATIVE_IMAGE: ${{ steps.image.outputs.image }}
         run: |
-          $image=./scripts/Import-CiImageBundle.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -Directory ./artifacts/prepared-ci-images -Revision $env:GITHUB_SHA -RunId $env:GITHUB_RUN_ID
-          [IO.File]::AppendAllText($env:GITHUB_ENV,"QUIETCLI_NATIVE_IMAGE=$image`n",[Text.UTF8Encoding]::new($false))
+          [IO.File]::AppendAllText($env:GITHUB_ENV,"QUIETCLI_NATIVE_IMAGE=$env:NATIVE_IMAGE`n",[Text.UTF8Encoding]::new($false))
       - name: Run selected suites and Core integration in the native image
         shell: pwsh
         env:

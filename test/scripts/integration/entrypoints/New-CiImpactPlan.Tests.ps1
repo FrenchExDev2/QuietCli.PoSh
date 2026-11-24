@@ -457,10 +457,20 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
         $observed.Values['script_mutation_targets']|Should -BeExactly '[]'
     }
 
+    It 'selects image preparation without product tests for a renewal-only PR' {
+        $body=Get-Content -LiteralPath ([IO.Path]::Combine($repository,'.github','pull_request_template.md')) -Raw -Encoding utf8
+        $body=$body -creplace '(?m)^- \[ \](?= .*<!-- ci:renew-images-caches -->)', '- [x]'
+        $observed=& $plan (& $commit 'docs/README-ci-image-renewal.md') @('-PullRequestBody',$body) 'pull_request'
+        $observed.Run.ExitCode|Should -Be 0 -Because ($observed.Run.Output+$observed.Run.Error)
+        $observed.Values['renew_image_caches']|Should -BeExactly 'true'
+        $observed.Values['run_products']|Should -BeExactly 'false'
+        (& $images $observed.Values) -join ','|Should -BeExactly ((@($catalogue.Companions.Keys)|Sort-Object -CaseSensitive) -join ',')
+    }
+
     It 'writes every output key once, in a stable order' {
         $observed=& $plan (& $commit 'docs/README-impact-keys.md')
         $observed.Values['script_mutation_no_input_cache']|Should -BeExactly 'false'
-        @($observed.Values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,companion_checks,image_suites,matrix,mutation_parallel,pr_ci_options,run_companion_checks,run_distribution,run_layout,run_readytorun,run_smokes,script_mutation_no_input_cache,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
+        @($observed.Values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,companion_checks,image_suites,matrix,mutation_parallel,pr_ci_options,renew_image_caches,run_companion_checks,run_distribution,run_layout,run_readytorun,run_smokes,script_mutation_no_input_cache,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
     }
 
     It 'qualifies <Expected> in full on a manual dispatch of <Suite>, without reading a diff' -ForEach @(
@@ -484,7 +494,7 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
         $values['script_mutation_targets']|Should -BeExactly $(if($Tooling -ceq 'full'){'all'}else{'[]'})
         $values['run_layout']|Should -BeExactly 'true'
         $values['run_distribution']|Should -BeExactly 'false'
-        @($values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,companion_checks,image_suites,matrix,mutation_parallel,pr_ci_options,run_companion_checks,run_distribution,run_layout,run_readytorun,run_smokes,script_mutation_no_input_cache,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
+        @($values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,companion_checks,image_suites,matrix,mutation_parallel,pr_ci_options,renew_image_caches,run_companion_checks,run_distribution,run_layout,run_readytorun,run_smokes,script_mutation_no_input_cache,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
         $report=[IO.File]::ReadAllText([IO.Path]::Combine($workspace,'artifacts','ci-plan','impact.md'))
         $report|Should -Match 'Base: manual-dispatch;'
         $report|Should -Match '\| workflow_dispatch \|.*\| full \| ManualDispatch \|'

@@ -11,20 +11,20 @@ Four native targets use Ubuntu runners matching their CPU. Debian and Alpine are
 
 ## Image production and handoff
 
-`linux-images.yml` supplies one bundle per RID for the selected chains. It first looks for a final archive keyed by the native RID and the exact set of recipe fingerprints. An exact hit skips Docker setup, BuildKit and archive creation. The producer verifies the archive SHA-256 and issues a receipt for the current run and revision. A changed recipe, a different image set, or a missing cache entry takes the preparation path. The producer then reuses verified GHCR images or builds missing layers, sharing verified parents between chains. Read-only timeouts and unavailable final images use the verified local build path. A locally built image enables the final archive cache save. A bundle assembled entirely from GHCR images is uploaded as the current-run artifact only. The intermediate BuildKit cache is saved after successful preparation if its exact key missed and its nonempty indexes changed.
+`linux-images.yml` supplies one handoff per RID. A cached archive is keyed by the native RID and the exact set of recipe fingerprints. The producer verifies its SHA-256 and uploads only the receipt and cache reference. On an archive miss it reuses verified GHCR images or builds missing images, sharing verified parents. When every image came from GHCR it uploads only their digest receipt. A local build supplies `images.tar` as an artifact and allows an archive cache save. The intermediate BuildKit cache is saved after successful preparation if its exact key missed and its nonempty indexes changed.
 
 ```mermaid
 flowchart TD
     PLAN[Select suites and native targets] --> CACHE{Exact final archive cached?}
-    CACHE -->|Yes| REUSE[Verify archive and issue current receipt]
+    CACHE -->|Yes| REUSE[Verify archive and publish cache reference]
     CACHE -->|No| PREPARE[Prepare the selected image chains]
-    REUSE --> BUNDLE[Upload image archive and identity receipt]
+    REUSE --> BUNDLE[Upload current-run handoff]
     PREPARE --> BUNDLE
-    BUNDLE --> VERIFY[Verify and load the suite image on each test runner]
+    BUNDLE --> VERIFY[Restore archive or pull image and verify it]
     VERIFY --> TEST[Execute qualification or ReadyToRun]
 ```
 
-GitHub starts the Linux consumers after successful preparation. Each consumer downloads the current run's archive, verifies the revision, RID and SHA-256, selects the image by its independently calculated recipe fingerprint and verifies its native architecture and source labels after loading. It runs with `--network none` and `--pull=never`. Reruns can reuse a successful producer from the same run and revision. Image preparation alone does not qualify a target.
+GitHub starts the Linux consumers after successful preparation. Each consumer downloads the handoff, checks the run, revision and RID, then restores the exact Actions cache, reads the new archive or pulls the selected GHCR image. It verifies the archive SHA-256 or GHCR digest and checks the independently calculated recipe fingerprint, native architecture and source labels. It runs with `--network none` and `--pull=never`. Reruns can reuse a successful producer from the same run and revision. If the referenced cache was evicted, rerun preparation to obtain a current handoff. Image preparation alone does not qualify a target.
 
 The archive retains a local transfer tag for each fingerprint. Docker image stores can assign different IDs to the same imported image. Consumers resolve the transfer tag, validate the loaded image and use their own daemon's immutable ID for execution.
 

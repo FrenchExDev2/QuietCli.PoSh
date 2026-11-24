@@ -33,13 +33,21 @@ Describe 'Expandable companion task list' {
         $catalogue=@{Companions=[ordered]@{Core=@{Name='Core';Mutation=$true};Box2=@{Name='Box2';Mutation=$true}}}
         $expanded=Expand-QuietPullRequestTemplate -Template $template -Configuration $catalogue
         $parsed=Read-QuietPullRequestChecklist $expanded
-        $parsed.Available|Should -BeExactly @('script-mutation','performance-box2','performance-core','profiling-box2','profiling-core','run-profile-mutation-box2','run-profile-mutation-core','script-mutation-no-input-cache','mutation-serial','readytorun','preview')
+        $parsed.Available|Should -BeExactly @('script-mutation','performance-box2','performance-core','profiling-box2','profiling-core','run-profile-mutation-box2','run-profile-mutation-core','script-mutation-no-input-cache','mutation-serial','readytorun','preview','renew-images-caches')
         foreach($id in 'script-mutation','mutation-serial','readytorun','preview'){
             $incomplete=$template -creplace ("(?m)^- .* ci:$id -->\r?\n"),''
             {Read-QuietPullRequestChecklist $incomplete}|Should -Throw '*PullRequestCiChecklistIncomplete*'
         }
         $mixed=$template.Replace('<!-- quietcli-ci:end -->',"- [ ] Legacy <!-- ci:mutation -->`n<!-- quietcli-ci:end -->")
         {Read-QuietPullRequestChecklist $mixed}|Should -Throw '*PullRequestCiChecklistIncomplete*'
+    }
+
+    It 'renders the optional Linux cache renewal box and retains a checked selection' {
+        $catalogue=@{Companions=[ordered]@{Core=@{Name='Core';Mutation=$true}}}
+        $expanded=Expand-QuietPullRequestTemplate -Template $template -Configuration $catalogue
+        $body=New-QuietPullRequestBody -Body 'Description' -Template $expanded -CiOption @('renew-images-caches')
+        (Read-QuietPullRequestChecklist $body).Selected|Should -BeExactly @('renew-images-caches')
+        (Read-QuietPullRequestChecklist $template).Available|Should -Not -Contain 'renew-images-caches'
     }
 
     It 'accepts both old descriptions and the optional cache checkbox in canonical order' {
@@ -80,7 +88,7 @@ Describe 'Expandable companion task list' {
         $body|Should -Not -Match '(?m)^\|'
         $body|Should -Match '(?m)^- \[x\] \*\*Git\*\* .+ <!-- ci:performance-git -->$'
         $body|Should -Match '(?m)^- \[ \] \*\*Core\*\* .+ <!-- ci:performance-core -->$'
-        ([regex]::Matches($body,'(?m)^- \[[ x]\] .+ <!-- ci:[a-z0-9-]+ -->$')).Count|Should -Be 14
+        ([regex]::Matches($body,'(?m)^- \[[ x]\] .+ <!-- ci:[a-z0-9-]+ -->$')).Count|Should -Be 15
         (Read-QuietPullRequestChecklist $body).Selected|Should -BeExactly @('script-mutation','performance-git','profiling-vagrant','mutation-serial')
         (Read-QuietPullRequestChecklist ($body.Replace('[x]','[X]').Replace("`n","`r`n"))).Selected|Should -BeExactly @('script-mutation','performance-git','profiling-vagrant','mutation-serial')
         $cleared=New-QuietPullRequestBody -Body $body -Template $expanded -CiOption @()

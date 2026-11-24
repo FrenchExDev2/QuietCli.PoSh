@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: 7436BECDF0DB0D58BDC73553FF5C7429B6AD1F90E7C1B12515361420BF3DFF1A -->
+<!-- workflow-source-sha256: 8EFEF452E81E07906C74391FE895857CFE0C3992EA19084868646BF3059099E5 -->
 
 ## Purpose
 
@@ -24,7 +24,7 @@ The planner supplies a companion-check matrix for requested mutation and profili
 
 Selected campaigns wait for successful planning, source checks and layout validation, so invalid shared inputs stop before costly builds and test campaigns.
 
-When the plan selects products or ReadyToRun, the `images` job calls the shared image workflow once for the run. Four native jobs prepare the selected chains and upload one bundle per RID. `products` and `readytorun` wait for the producer and use those bundles. Registry publication is restricted to upstream develop pushes and dispatches. A failed producer blocks its consumers and fails the required status.
+When the plan selects products, ReadyToRun or image cache renewal, the `images` job calls the shared image workflow once for the run. Four native jobs prepare the selected chains and upload one handoff per RID. `products` and `readytorun` restore or load the identified images. Checking **Renew images caches** forces fresh images and records the option in the CI plan. Registry publication is restricted to upstream develop pushes and dispatches. A failed producer blocks its consumers and fails the required status.
 
 Uses profile validation, source-bound build preparation, explicit selected qualification/smoke entry points and private artifacts. The PR planner publishes plan.json and impact.md; build_projects_json passes affected CSharp paths to Build-Workspace. GitHub may prepare pinned SDK/PowerShell resources and verified image caches. No module publication or repository setting change is performed here.
 
@@ -98,7 +98,7 @@ flowchart TD
 | ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, images, products, smokes, tooling-only, companion-checks, distribution, readytorun | <code>&#36;{{ always() }}</code> | [`./scripts/Assert-CiPlanResults.ps1`](../../scripts/Assert-CiPlanResults.md) |
 | companion-checks | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;companion&#95;checks == 'true'</code> |  |
 | distribution | reuses ./.github/workflows/distribution-ci.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;distribution == 'true'</code> |  |
-| images | reuses ./.github/workflows/linux-images.yml | plan, source-checks | <code>needs.plan.outputs.run&#95;products == 'true' &#124;&#124; needs.plan.outputs.run&#95;readytorun == 'true'</code> |  |
+| images | reuses ./.github/workflows/linux-images.yml | plan, source-checks | <code>needs.plan.outputs.run&#95;products == 'true' &#124;&#124; needs.plan.outputs.run&#95;readytorun == 'true' &#124;&#124; needs.plan.outputs.renew&#95;image&#95;caches == 'true'</code> |  |
 | layout-tests | runner windows-latest | plan | <code>needs.plan.outputs.run&#95;layout == 'true'</code> | [`./scripts/Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.md), [`./scripts/Invoke-WorkspaceCi.ps1`](../../scripts/Invoke-WorkspaceCi.md) |
 | plan | runner ubuntu-latest |  | default success condition | [`./scripts/Invoke-GitHubCiPlan.ps1`](../../scripts/Invoke-GitHubCiPlan.md) |
 | products | reuses ./.github/workflows/ci.yml | plan, source-checks, layout-tests, images | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; needs.layout-tests.result == 'success' &#38;&#38; needs.images.result == 'success' &#38;&#38; needs.plan.outputs.run&#95;products == 'true' }}</code> |  |

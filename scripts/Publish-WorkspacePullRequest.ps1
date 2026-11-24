@@ -30,6 +30,8 @@ Run mutation matrices and workers in parallel by default. Pass -Parallel:$false 
 Check Compare IL and ReadyToRun cold-start performance.
 .PARAMETER Preview
 Check Add PowerShell Preview hosts to the Core matrix.
+.PARAMETER RenewImageCaches
+Check Renew images caches for the PR's Linux image preparation.
 .PARAMETER WorkspaceRoot
 Checkout containing the active work branch and local develop.
 .PARAMETER DiscoverySeconds
@@ -51,6 +53,7 @@ param(
     [switch]$Parallel,
     [switch]$ReadyToRun,
     [switch]$Preview,
+    [switch]$RenewImageCaches,
     [string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),
     [ValidateRange(0,600)][int]$DiscoverySeconds=120
 )
@@ -58,7 +61,7 @@ if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Commit, push, publish the pull reque
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Merge-PullRequest.psm1')) -DisableNameChecking -ErrorAction Stop
 $options=@{}
-$checkboxes=@{ScriptMutation='script-mutation';ScriptMutationNoInputCache='script-mutation-no-input-cache';ReadyToRun='readytorun';Preview='preview'}
+$checkboxes=@{ScriptMutation='script-mutation';ScriptMutationNoInputCache='script-mutation-no-input-cache';ReadyToRun='readytorun';Preview='preview';RenewImageCaches='renew-images-caches'}
 foreach($name in $checkboxes.Keys){
     if($PSBoundParameters.ContainsKey($name)){$options[$checkboxes[$name]]=[bool]$PSBoundParameters[$name]}
 }

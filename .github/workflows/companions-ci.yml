@@ -42,6 +42,7 @@ jobs:
       run_tooling: ${{ steps.plan.outputs.run_tooling }}
       run_distribution: ${{ steps.plan.outputs.run_distribution }}
       run_readytorun: ${{ steps.plan.outputs.run_readytorun }}
+      renew_image_caches: ${{ steps.plan.outputs.renew_image_caches }}
       companion_checks: ${{ steps.plan.outputs.companion_checks }}
       run_companion_checks: ${{ steps.plan.outputs.run_companion_checks }}
       mutation_parallel: ${{ steps.plan.outputs.mutation_parallel }}
@@ -97,12 +98,13 @@ jobs:
   images:
     name: Prepare shared Linux images
     needs: [plan, source-checks]
-    if: needs.plan.outputs.run_products == 'true' || needs.plan.outputs.run_readytorun == 'true'
+    if: needs.plan.outputs.run_products == 'true' || needs.plan.outputs.run_readytorun == 'true' || needs.plan.outputs.renew_image_caches == 'true'
     permissions: {contents: read, packages: write}
     uses: ./.github/workflows/linux-images.yml
     with:
       suites_json: ${{ needs.plan.outputs.image_suites }}
       artifact_scope: workspace
+      renew_cache: ${{ needs.plan.outputs.renew_image_caches == 'true' }}
       publish_cache: ${{ github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
   products:
     name: Qualify ${{ matrix.suite }}

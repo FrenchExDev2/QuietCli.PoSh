@@ -4,7 +4,7 @@
 Source file: [`lib/PullRequestChecklist.psm1`](../../../scripts/lib/PullRequestChecklist.psm1)
 <!-- script-source:end -->
 
-`Read-QuietPullRequestChecklist` parses the GitHub task-list items in the managed Markdown block and returns options in canonical order. The parser ignores fenced examples and rejects malformed, duplicate or unknown choices. The `script-mutation-no-input-cache` item is optional when reading older checklists.
+`Read-QuietPullRequestChecklist` parses the GitHub task-list items in the managed Markdown block and returns options in canonical order. The parser ignores fenced examples and rejects malformed, duplicate or unknown choices. The `script-mutation-no-input-cache` and `renew-images-caches` items are optional when reading older checklists.
 
 `New-QuietPullRequestBody` composes a description, the standard checklist and an optional footer without changing input files. An explicit option array overrides the checks in the supplied description. Pass `-GuideUrl` to pin links inside the checklist to a published revision. Local preview uses the companion catalogue, including under `-WhatIf`.
 

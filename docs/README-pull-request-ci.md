@@ -12,6 +12,10 @@ Run every target declared by `test/scripts/mutation.targets.psd1`. Each target c
 
 Rerun the baselines and mutants for the selected script targets and save fresh verdicts. This applies to diff-selected targets or every target when repository script mutation is checked.
 
+## Renew images caches
+
+Check **Renew images caches** to rebuild the selected Linux image chains. The run skips the existing Actions archive, BuildKit cache and GHCR images. It saves the new archive under a key for this PR run and attempt when the workflow has cache write access. Later runs prefer the newest renewed cache for the same recipe fingerprint when it is visible to them. A renewal-only PR prepares all declared Linux image chains without adding product suites. PRs have no GHCR publication path. Clear the checkbox to resume normal cache reuse. The publish script also accepts `-RenewImageCaches`.
+
 ## Companion mutation
 
 Run the selected companion's mutation campaign as declared in `build/companions.yaml`. The campaign checks whether the tests detect changes to the companion's behavior. The **Scripts** mutation checkbox selects all repository script mutation targets.

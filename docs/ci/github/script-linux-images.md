@@ -1,6 +1,6 @@
 # linux-images.yml
 
-<!-- workflow-source-sha256: 517E2CCF7397C43E11774047A33D3CF6A766BA670111423C2CFAF5F632DA1C5A -->
+<!-- workflow-source-sha256: A40D8C5672F8DE4C7F8C800846B9C533A5B1DB12F3825BFE298678CEBD6051E2 -->
 
 ## Purpose
 
@@ -12,13 +12,13 @@ Reusable `workflow_call` from companion CI, standalone qualification or ReadyToR
 
 ## Scripts and effects
 
-For test runs, the producer fingerprints the exact image recipes selected per RID and restores the final archive with an exact GitHub Actions cache key. On a hit it verifies the receipt and archive SHA-256, then binds the receipt to the current run. On a miss it starts Docker and resolves or builds the required images. The producer saves a new archive to the Actions cache only when it built a required image. Both paths upload a current-run bundle using [Export-CiImageBundle](../../scripts/Export-CiImageBundle.md). Failed consumers can reuse the same-run artifact on rerun. Cache-only preparation checks GHCR and uploads receipts without exporting the test archive.
+For test runs, the producer fingerprints the exact image recipes selected per RID. A verified Actions archive supplies a current-run receipt and cache key. On a miss, the producer supplies GHCR digests if every required image came from GHCR. It uploads an archive only after a local build. [Export-CiImageBundle](../../scripts/Export-CiImageBundle.md) prepares the handoff. A PR renewal skips all cache reads and saves a new archive key scoped to the run and attempt. Cache-only preparation checks GHCR and uploads receipts without exporting the test archive.
 
 Trusted runs publish an image to GHCR when its fingerprint tag is missing. The workflow reuses the original restore key to save intermediate BuildKit layers after successful preparation, when the exact key missed and the local cache indexes changed.
 
 ## Validation and limits
 
-Consumers depend on successful preparation and validate the run, revision, RID, archive hash, suite fingerprint and loaded image. See [Linux CI images](../linux-images.md).
+Consumers depend on successful preparation and validate the run, revision, RID, archive hash or registry digest, suite fingerprint and loaded image. See [Linux CI images](../linux-images.md).
 
 <!-- workflow-generated:begin -->
 
