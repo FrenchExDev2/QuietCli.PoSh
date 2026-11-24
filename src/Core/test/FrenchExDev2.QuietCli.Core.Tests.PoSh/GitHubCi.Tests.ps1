@@ -347,8 +347,13 @@ function Test-QuietGitHubCi {
     $condition=[string]$driver['if']
     if(@($driver['needs']) -cnotcontains 'linux-images' -or !$condition.Contains("needs.linux-images.result == 'success'") -or !$condition.Contains("inputs.images_prepared && needs.linux-images.result == 'skipped'")){throw 'GitHubCiImageDependencyMissing'}
     if($driver['container'] -or $jobs['windows']['container']){throw 'GitHubWorkflowExecutionEnvironmentChanged'}
+    $imageLoaders=@($driver['steps']|Where-Object {$_['uses'] -ceq './.github/actions/load-ci-image-bundle'})
     $commands=@($driver['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
-    if(!$commands.Contains('Import-CiImageBundle.ps1') -or !$commands.Contains('Invoke-GitHubCi.ps1') -or $commands -match 'New-Ci(?:Suite)?Image\.ps1|QUIETCLI_REGISTRY_TOKEN'){throw 'GitHubImagePreparationDuplicated'}
+    if($imageLoaders.Count -ne 1 -or !$commands.Contains('Invoke-GitHubCi.ps1') -or $commands -match 'Import-CiImageBundle\.ps1|New-Ci(?:Suite)?Image\.ps1|QUIETCLI_REGISTRY_TOKEN'){throw 'GitHubImagePreparationDuplicated'}
+    $loaderPath=[IO.Path]::Combine($WorkspaceRoot,'.github','actions','load-ci-image-bundle','action.yml')
+    $loader=$parser.Deserialize([IO.File]::ReadAllText($loaderPath,[Text.Encoding]::UTF8),[object])
+    $loaderCommands=@($loader['runs']['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
+    if(!$loaderCommands.Contains('Import-CiImageBundle.ps1') -or $loaderCommands -match 'New-Ci(?:Suite)?Image\.ps1'){throw 'GitHubImageLoaderContractChanged'}
     $workflowSource=[IO.File]::ReadAllText($workflowPath,[Text.Encoding]::UTF8)
     if($workflowSource -match "QUIETCLI_GIT_|inputs\.suite\s*!=\s*'Git'"){throw 'CompanionSpecificWorkflowControls'}
     Write-WorkspaceJson (Join-Path $RunDirectory 'github-ci-campaign.json') @{Seed=$seed;PartitionProperties=$properties;MalformedCases=$badInputs.Count;GateCases=$gateCases;MutantsKilled=2;DirectWorkerSameProcess=$true;Workflow=$workflowPath;RealHostedRunner=$false}
