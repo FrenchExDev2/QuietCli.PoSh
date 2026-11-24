@@ -8,7 +8,7 @@ Source file: [`lib/PullRequestChecklist.psm1`](../../../scripts/lib/PullRequestC
 
 `New-QuietPullRequestBody` composes a description, the standard checklist and an optional footer without changing input files. An explicit option array overrides the checks in the supplied description.
 
-`Expand-QuietPullRequestTemplate` generates a column for each declared companion plus `Scripts`. Rows describe effects, and the marked cells carry stable option identifiers. A dash indicates an unavailable combination. The parser checks each cell against its row and column so moving an option to a different target is rejected. The generator preserves Markdown outside the managed block and links each effect to the [PR CI guide](../../README-pull-request-ci.md).
+`Expand-QuietPullRequestTemplate` generates a column for each declared companion plus `Scripts`. Rows describe effects, and the marked cells carry stable option identifiers. A dash indicates an unavailable combination. The parser validates row width, effect links and cell identities. It accepts trailing whitespace on table rows. The generator preserves Markdown outside the managed block and links each effect to the [PR CI guide](../../README-pull-request-ci.md).
 
 <!-- script-contract:begin -->
 ## Execution contract
