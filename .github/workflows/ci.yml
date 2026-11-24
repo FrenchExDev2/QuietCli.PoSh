@@ -136,7 +136,7 @@ jobs:
       test_path: ${{ inputs.test_path }}
   qualification-gate:
     name: QuietCli2 qualification gate
-    needs: [linux-matrix, windows, linux-test-driver, performance-results, tooling]
+    needs: [linux-matrix, windows, linux-result, performance-results, tooling]
     if: ${{ always() && !inputs.images_only && (inputs.qualification_mode == '' || inputs.qualification_mode == 'full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -156,7 +156,7 @@ jobs:
         env:
           QUIETCLI_SUITE: ${{ inputs.suite || 'All' }}
           WINDOWS_RESULT: ${{ needs.windows.result }}
-          LINUX_RESULT: ${{ needs.linux-test-driver.result }}
+          LINUX_RESULT: ${{ needs.linux-result.result }}
           PERFORMANCE_RESULT: ${{ needs.performance-results.result }}
           TOOLING_WORKFLOW_RESULT: ${{ needs.tooling.result }}
           TOOLING_RESULT: ${{ !inputs.run_tooling && 'skipped' || needs.tooling.outputs.functional_result }}
@@ -359,7 +359,7 @@ jobs:
       artifact_scope: standalone
       publish_cache: ${{ github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
       images_only: ${{ inputs.images_only == true }}
-  linux-test-driver:
+  linux-result:
     name: Linux test driver (${{ matrix.rid }})
     needs: [linux-matrix, linux-images]
     if: ${{ !cancelled() && !inputs.images_only && (inputs.qualification_mode == '' || inputs.qualification_mode == 'full') && needs.linux-matrix.result == 'success' && (needs.linux-images.result == 'success' || (inputs.images_prepared && needs.linux-images.result == 'skipped')) }}
@@ -472,7 +472,7 @@ jobs:
           compression-level: 6
   performance-results:
     name: Readable performance evidence for the complete matrix
-    needs: [linux-matrix, windows, linux-test-driver]
+    needs: [linux-matrix, windows, linux-result]
     if: ${{ always() && !inputs.images_only && (inputs.qualification_mode == '' || inputs.qualification_mode == 'full') && inputs.collect_performance && needs.linux-matrix.outputs.has_core == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

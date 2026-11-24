@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 09F525D0E4AA4A75C392114788E59267F67B8A36F966242DAA5CF18B06CFCABE -->
+<!-- workflow-source-sha256: 70416DEE66503FD89156B3E187E08BCC94CE28E1F3CA3A2AE00DAFCC039D57BF -->
 
 ## Purpose
 
@@ -38,7 +38,7 @@ flowchart TD
     job_component_check["component-check"]
     job_linux_images["linux-images"]
     job_linux_matrix["linux-matrix"]
-    job_linux_test_driver["linux-test-driver"]
+    job_linux_result["linux-result"]
     job_performance_results["performance-results"]
     job_qualification_gate["qualification-gate"]
     job_tooling["tooling"]
@@ -47,14 +47,14 @@ flowchart TD
     job_validate --> job_component_check
     job_linux_matrix --> job_linux_images
     job_validate --> job_linux_matrix
-    job_linux_matrix --> job_linux_test_driver
-    job_linux_images --> job_linux_test_driver
+    job_linux_matrix --> job_linux_result
+    job_linux_images --> job_linux_result
     job_linux_matrix --> job_performance_results
     job_windows --> job_performance_results
-    job_linux_test_driver --> job_performance_results
+    job_linux_result --> job_performance_results
     job_linux_matrix --> job_qualification_gate
     job_windows --> job_qualification_gate
-    job_linux_test_driver --> job_qualification_gate
+    job_linux_result --> job_qualification_gate
     job_performance_results --> job_qualification_gate
     job_tooling --> job_qualification_gate
     event --> job_tooling
@@ -67,9 +67,9 @@ flowchart TD
 | component-check | reuses ./.github/workflows/workspace-component-ci.yml | validate | <code>inputs.qualification&#95;mode == 'smoke' &#124;&#124; inputs.qualification&#95;mode == 'build'</code> |  |
 | linux-images | reuses ./.github/workflows/linux-images.yml | linux-matrix | <code>&#36;{{ !inputs.images&#95;prepared &#38;&#38; (inputs.images&#95;only &#124;&#124; inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full') }}</code> |  |
 | linux-matrix | runner ubuntu-latest | validate | <code>inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Select-PowerShellCiMatrix.ps1`](../../scripts/Select-PowerShellCiMatrix.md), [`./scripts/lib/GitHubCi.psm1`](../../scripts/lib/GitHubCi.md), [`./scripts/Initialize-CiCompanions.ps1`](../../scripts/Initialize-CiCompanions.md) |
-| linux-test-driver | <code>runner &#36;{{ matrix.runner }}</code> | linux-matrix, linux-images | <code>&#36;{{ !cancelled() &#38;&#38; !inputs.images&#95;only &#38;&#38; (inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full') &#38;&#38; needs.linux-matrix.result == 'success' &#38;&#38; (needs.linux-images.result == 'success' &#124;&#124; (inputs.images&#95;prepared &#38;&#38; needs.linux-images.result == 'skipped')) }}</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Get-CompanionBuildKey.ps1`](../../scripts/Get-CompanionBuildKey.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/Import-CiImageBundle.ps1`](../../scripts/Import-CiImageBundle.md), [`./scripts/Initialize-Profilers.ps1`](../../scripts/Initialize-Profilers.md), [`./scripts/Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.md), [`./scripts/New-CoreEvidenceBundle.ps1`](../../scripts/New-CoreEvidenceBundle.md), [`./scripts/New-CorePerformanceReport.ps1`](../../scripts/New-CorePerformanceReport.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
-| performance-results | runner ubuntu-latest | linux-matrix, windows, linux-test-driver | <code>&#36;{{ always() &#38;&#38; !inputs.images&#95;only &#38;&#38; (inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full') &#38;&#38; inputs.collect&#95;performance &#38;&#38; needs.linux-matrix.outputs.has&#95;core == 'true' }}</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/New-CorePerformanceReport.ps1`](../../scripts/New-CorePerformanceReport.md) |
-| qualification-gate | runner ubuntu-latest | linux-matrix, windows, linux-test-driver, performance-results, tooling | <code>&#36;{{ always() &#38;&#38; !inputs.images&#95;only &#38;&#38; (inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full') }}</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Assert-QualificationGate.ps1`](../../scripts/Assert-QualificationGate.md) |
+| linux-result | <code>runner &#36;{{ matrix.runner }}</code> | linux-matrix, linux-images | <code>&#36;{{ !cancelled() &#38;&#38; !inputs.images&#95;only &#38;&#38; (inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full') &#38;&#38; needs.linux-matrix.result == 'success' &#38;&#38; (needs.linux-images.result == 'success' &#124;&#124; (inputs.images&#95;prepared &#38;&#38; needs.linux-images.result == 'skipped')) }}</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Get-CompanionBuildKey.ps1`](../../scripts/Get-CompanionBuildKey.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/Import-CiImageBundle.ps1`](../../scripts/Import-CiImageBundle.md), [`./scripts/Initialize-Profilers.ps1`](../../scripts/Initialize-Profilers.md), [`./scripts/Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.md), [`./scripts/New-CoreEvidenceBundle.ps1`](../../scripts/New-CoreEvidenceBundle.md), [`./scripts/New-CorePerformanceReport.ps1`](../../scripts/New-CorePerformanceReport.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
+| performance-results | runner ubuntu-latest | linux-matrix, windows, linux-result | <code>&#36;{{ always() &#38;&#38; !inputs.images&#95;only &#38;&#38; (inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full') &#38;&#38; inputs.collect&#95;performance &#38;&#38; needs.linux-matrix.outputs.has&#95;core == 'true' }}</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/New-CorePerformanceReport.ps1`](../../scripts/New-CorePerformanceReport.md) |
+| qualification-gate | runner ubuntu-latest | linux-matrix, windows, linux-result, performance-results, tooling | <code>&#36;{{ always() &#38;&#38; !inputs.images&#95;only &#38;&#38; (inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full') }}</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Assert-QualificationGate.ps1`](../../scripts/Assert-QualificationGate.md) |
 | tooling | reuses ./.github/workflows/tooling-ci.yml |  | <code>inputs.run&#95;tooling &#38;&#38; !inputs.images&#95;only &#38;&#38; (inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full')</code> |  |
 | validate | runner ubuntu-latest |  | default success condition | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Invoke-ComponentCheck.ps1`](../../scripts/Invoke-ComponentCheck.md) |
 | windows | <code>runner &#36;{{ matrix.image }}</code> | linux-matrix | <code>&#36;{{ !inputs.images&#95;only &#38;&#38; (inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full') }}</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Initialize-PowerShellHost.ps1`](../../scripts/Initialize-PowerShellHost.md), [`./scripts/Get-CompanionBuildKey.ps1`](../../scripts/Get-CompanionBuildKey.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/Initialize-CiCompanions.ps1`](../../scripts/Initialize-CiCompanions.md), [`./scripts/Initialize-Profilers.ps1`](../../scripts/Initialize-Profilers.md), [`./scripts/Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.md), [`./scripts/New-CoreEvidenceBundle.ps1`](../../scripts/New-CoreEvidenceBundle.md), [`./scripts/New-CorePerformanceReport.ps1`](../../scripts/New-CorePerformanceReport.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
