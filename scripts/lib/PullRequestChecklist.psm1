@@ -81,13 +81,17 @@ function New-QuietPullRequestBody {
     Optional Markdown appended below the checklist.
     .PARAMETER CiOption
     Explicit selection overriding the incoming checklist; an empty array deselects every option.
+    .PARAMETER GuideUrl
+    Published GitHub URL of the CI guide at the pull request revision.
     #>
     [CmdletBinding()]
     param(
         [AllowEmptyString()][string]$Body,
         [Parameter(Mandatory)][string]$Template,
         [AllowEmptyString()][string]$Footer,
-        [AllowEmptyCollection()][string[]]$CiOption
+        [AllowEmptyCollection()][string[]]$CiOption,
+        [ValidatePattern('\Ahttps://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/blob/[a-f0-9]{40}/docs/README-pull-request-ci\.md\z')]
+        [string]$GuideUrl
     )
 
     $source = Read-QuietPullRequestChecklist $Body
@@ -102,6 +106,9 @@ function New-QuietPullRequestBody {
         if ($id -cnotin $standard.Available) {throw 'PullRequestCiChecklistUnknownOption'}
     }
     $checklist = ($Template -split '\r\n|\n|\r')[$standard.StartLine..$standard.EndLine]
+    if ($GuideUrl) {
+        $checklist = $checklist.Replace('https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md', $GuideUrl)
+    }
     foreach ($id in $selection) {
         $checklist = $checklist -creplace ("^- \[ \](.*<!-- ci:" + [regex]::Escape($id) + " -->\s*)$"), '- [x]$1'
         $checklist = $checklist -creplace ('\x60\[ \]\x60(?= <!-- ci:' + [regex]::Escape($id) + ' -->)'), '`[x]`'
@@ -118,6 +125,7 @@ function New-QuietPullRequestBody {
         $parts = @($Body; ($Template -creplace '(?s)<!-- quietcli-ci:begin -->.*?<!-- quietcli-ci:end -->', ($checklist -join "`n")); $Footer)
     }
     $result = (($parts | Where-Object {![string]::IsNullOrWhiteSpace($_)} | ForEach-Object {$_.TrimEnd("`r", "`n")}) -join "`n`n") + "`n"
+    $result = $result -creplace '\r\n?', "`n"
     if ((Read-QuietPullRequestChecklist $result).StartLine -lt 0) {throw 'PullRequestCiChecklistNotVisible'}
     $result
 }
@@ -125,7 +133,7 @@ function New-QuietPullRequestBody {
 function Expand-QuietPullRequestTemplate {
     <#
     .SYNOPSIS
-    Renders a CI effect table with one column per companion and a Scripts column.
+    Renders clickable GitHub task-list items for the supported effects of each target.
     .PARAMETER Template
     Markdown containing the standard checklist and shared options.
     .PARAMETER Configuration
@@ -136,27 +144,22 @@ function Expand-QuietPullRequestTemplate {
     $body=Read-QuietPullRequestChecklist $Template
     if('script-mutation' -cnotin $body.Available){throw 'PullRequestCiChecklistTemplateInvalid'}
     $helpUrl='https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md'
-    $targets = @($Configuration.Companions.Values | ForEach-Object Name) + @('Scripts')
+    $targets = @($Configuration.Companions.Values | ForEach-Object { $_.Name }) + @('Scripts')
     $effects = Get-QuietPullRequestEffectMap
     $expanded = @(
         if ($body.StartLine -gt 0) { $lines[0..($body.StartLine - 1)] }
         '<!-- quietcli-ci:begin -->'
         ''
-        '| Effect | ' + ($targets -join ' | ') + ' |'
-        '| --- | ' + ((@('---') * $targets.Count) -join ' | ') + ' |'
-        foreach ($effect in $effects.Keys) {
-            $definition = $effects[$effect]
-            $cells = foreach ($target in $targets) {
+        foreach ($target in $targets) {
+            foreach ($effect in $effects.Keys) {
+                $definition = $effects[$effect]
                 $option = Get-QuietPullRequestCellOption $definition $target
-                if (!$option -or ($effect -ceq 'Mutation testing' -and $target -cne 'Scripts' -and !$Configuration.Companions[$target].Mutation)) {
-                    '—'
-                } else {
-                    '`[ ]` <!-- ci:' + $option + ' -->'
+                if ($option -and ($effect -cne 'Mutation testing' -or $target -ceq 'Scripts' -or $Configuration.Companions[$target].Mutation)) {
+                    $anchor = if ($option -ceq 'script-mutation') { 'repository-script-mutation' } else { $definition.Anchor }
+                    "- [ ] **$target** — [$effect]($helpUrl#$anchor) <!-- ci:$option -->"
                 }
             }
-            '| [' + $effect + '](' + $helpUrl + '#' + $definition.Anchor + ') | ' + ($cells -join ' | ') + ' |'
         }
-        ''
         "- [ ] Run mutation workers sequentially for all targets [Details]($helpUrl#sequential-mutation-workers) <!-- ci:mutation-serial -->"
         '<!-- quietcli-ci:end -->'
         if ($body.EndLine + 1 -lt $lines.Count) { $lines[($body.EndLine + 1)..($lines.Count - 1)] }
@@ -184,9 +187,9 @@ function Get-QuietPullRequestCellOption {
     .SYNOPSIS
     Resolves the stable CI option for one effect and target.
     .PARAMETER Effect
-    Effect definition from the shared table map.
+    Effect definition from the shared effect map.
     .PARAMETER Target
-    Named companion or Scripts column.
+    Named companion or Scripts.
     #>
     param([hashtable]$Effect,[string]$Target)
     if ($Target -cin @('Core','Scripts') -and $Effect.ContainsKey($Target)) { return $Effect[$Target] }

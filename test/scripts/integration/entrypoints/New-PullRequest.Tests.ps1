@@ -11,7 +11,7 @@ Describe 'New-PullRequest' {
     It 'previews the complete body locally' {
         $result=Invoke-QuietTestScript -ScriptPath $scriptPath -ArgumentList @('-BodyFile',$body,'-FooterFile',$footer,'-CiOption','preview','-PreviewBody') -TimeoutSeconds 30
         $result.ExitCode|Should -Be 0 -Because ($result.Output+$result.Error)
-        $result.Output|Should -Match '(?s)Résumé.*Additional CI validation.*\[x\] Add PowerShell Preview.*Pièce jointe'
+        $result.Output|Should -Match '(?ms)Résumé.*Additional CI validation.*^- \[x\] \*\*Core\*\* — \[PowerShell Preview\].*<!-- ci:preview -->.*Pièce jointe'
     }
 
     It 'does not resolve a remote or write the source files in WhatIf' {
@@ -57,7 +57,11 @@ Export-ModuleMember Invoke-QuietPullRequestTool
         $created=Invoke-QuietTestScript -ScriptPath $path -ArgumentList $arguments -Environment @{FIXTURE_EXISTING='no';FIXTURE_PR_BODY=$captured} -TimeoutSeconds 30
         $created.ExitCode | Should -Be 0 -Because ($created.Output+$created.Error)
         $created.Output | Should -Match '/pull/7'
-        [IO.File]::ReadAllText($captured,[Text.Encoding]::UTF8) | Should -Match '(?s)Résumé.*\[x\] Add PowerShell Preview.*Pièce jointe'
+        $description=[IO.File]::ReadAllText($captured,[Text.Encoding]::UTF8)
+        $description | Should -Match '(?ms)Résumé.*^- \[x\] \*\*Core\*\* — \[PowerShell Preview\].*<!-- ci:preview -->.*Pièce jointe'
+        $guide='https://github.com/example/QuietCli/blob/'+('a'*40)+'/docs/README-pull-request-ci.md'
+        [regex]::Matches($description,[regex]::Escape($guide)).Count | Should -Be 14
+        $description | Should -Match ([regex]::Escape("$guide#repository-script-mutation"))
         [IO.File]::Delete($captured)
         $existing=Invoke-QuietTestScript -ScriptPath $path -ArgumentList $arguments -Environment @{FIXTURE_EXISTING='yes';FIXTURE_PR_BODY=$captured} -TimeoutSeconds 30
         $existing.ExitCode | Should -Be 0 -Because ($existing.Output+$existing.Error)
