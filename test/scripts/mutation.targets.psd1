@@ -5,6 +5,20 @@
 @{
     Targets = @(
         @{
+            Name = 'EnableWindowsLongPaths'
+            Module = 'lib/Enable-WindowsLongPaths.psm1'
+            Functions = @('Invoke-QuietScriptEnableWindowsLongPaths')
+            UnitTestFiles = @('unit/lib/Enable-WindowsLongPaths.Tests.ps1')
+            Break = 80
+        }
+        @{
+            Name = 'FixWindowsDefender'
+            Module = 'lib/Fix-WindowsDefender.psm1'
+            Functions = @('Invoke-QuietScriptFixWindowsDefender')
+            UnitTestFiles = @('unit/lib/Fix-WindowsDefender.Tests.ps1')
+            Break = 80
+        }
+        @{
             Name = 'CiPlanReport'
             Module = 'lib/CiPlanReport.psm1'
             Functions = @('Write-QuietCiPlanReport')
