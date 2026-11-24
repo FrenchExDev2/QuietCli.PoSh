@@ -25,7 +25,7 @@ Parameters (all optional except `-CandidateModule`):
 - `-BaselineLabel [string]` (default `'baseline'`), `-CandidateLabel [string]` (default `'candidate'`) — display names, `ValidateNotNullOrEmpty`.
 - `-Runs [int]` (default `30`, range 3-100000) — measured pairs.
 - `-Warmup [int]` (default `2`, range 0-1000) — discarded pairs executed first.
-- `-ChildCommand [string[]]` — native command timed inside each child; default `cmd /c exit 0` on Windows, `true` elsewhere.
+- `-ChildCommand [string[]]` selects the native workload for each sample. Windows defaults to the system `cmd.exe` by absolute path with `/d /c exit 0`. Linux defaults to `true`.
 - `-Seed [int]` (default `20261107`) — pair-order and bootstrap seed.
 - `-RunTimeoutSeconds [int]` (default `120`, range 10-3600).
 - `-MaxFailedPairs [int]` (default `5`) — campaign aborts past this many discarded pairs.
@@ -48,7 +48,7 @@ Direct invocation:
 ## Dependencies
 
 - Uses `RunLog`, `RunFormat`, `RunStatistics`, `RunProfiler`, `RunEncoding`, and `RunColdStart` from `lib/`.
-- Uses [Ci.Process.psm1](Ci.Process.md) to start each child by absolute path from the current `$PSHOME`. Each child imports the measured module and runs the user-supplied `-ChildCommand` through its `quiet` alias (default `cmd` on Windows and `true` on Linux).
+- Starts each child from the current `$PSHOME` by absolute path. Each child imports the measured module and runs the selected workload through its `quiet` alias. Failure diagnostics retain the phase and a bounded error identifier. [Ci.Process.psm1](Ci.Process.md)
 - `Get-ProfiledWorkerScript` depends on `Profiler` (pinned 4.3.0) transitively through `RunProfiler.psm1`.
 - Both `-BaselineModule` and `-CandidateModule` must exist before measurement starts.
 

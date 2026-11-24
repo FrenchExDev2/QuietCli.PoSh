@@ -75,6 +75,7 @@
     @{ Name = 'benchmark-profile-path-split'; File = 'lib/Measure-ColdStart.psm1'; From = '($fields -join '' '')'; To = '$fields[0]' }
     @{ Name = 'benchmark-launch-host-from-path'; File = 'lib/Measure-ColdStart.psm1'; From = '-FilePath $powerShell -ArgumentList'; To = '-FilePath pwsh -ArgumentList' }
     @{ Name = 'benchmark-child-failure-stage-omitted'; File = 'lib/Measure-ColdStart.psm1'; From = 'stage=$($state.FailureStage)'; To = 'stage=' }
+    @{ Name = 'benchmark-child-failure-code-omitted'; File = 'lib/Measure-ColdStart.psm1'; From = 'code=$($state.FailureCode)'; To = 'code=' }
     @{ Name = 'profiler-version-ignored'; File = 'lib/RunProfiler.psm1'; From = '$manifest.ModuleVersion -ne $script:PinnedVersion'; To = '$false' }
     @{ Name = 'profiler-explicit-path-ignored'; File = 'lib/RunProfiler.psm1'; From = 'if ($Path) { $candidates += $Path }'; To = 'if ($false) { $candidates += $Path }' }
     @{ Name = 'profiler-environment-ignored'; File = 'lib/RunProfiler.psm1'; From = '$candidates += $env:QUIETCLI_PROFILER_MODULE'; To = '$candidates += "absent-profiler.psd1"' }

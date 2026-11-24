@@ -97,7 +97,9 @@ param(
     [ValidateNotNullOrEmpty()][string]$CandidateLabel = 'candidate',
     [ValidateRange(3, 100000)][int]$Runs = 30,
     [ValidateRange(0, 1000)][int]$Warmup = 2,
-    [ValidateNotNullOrEmpty()][string[]]$ChildCommand = $(if ($IsWindows) { @('cmd', '/c', 'exit', '0') } else { @('true') }),
+    [ValidateNotNullOrEmpty()][string[]]$ChildCommand = $(if ($IsWindows) {
+        @([IO.Path]::Combine([Environment]::SystemDirectory, 'cmd.exe'), '/d', '/c', 'exit', '0')
+    } else { @('true') }),
     [int]$Seed = 20261107,
     [ValidateRange(10, 3600)][int]$RunTimeoutSeconds = 120,
     [ValidateRange(0, 100000)][int]$MaxFailedPairs = 5,
@@ -135,6 +137,7 @@ function Get-WorkerScript {
 `$env:QUIETCLI_RECALL = '0'
 `$culture = [Globalization.CultureInfo]::InvariantCulture
 `$stage = 'import'
+`$call = `$null
 try {
     `$watch = [Diagnostics.Stopwatch]::StartNew()
     Import-Module $(ConvertTo-RunSingleQuoted $Module) -Force
@@ -142,17 +145,20 @@ try {
     `$child = @(ConvertFrom-Json $commandJson)
     `$stage = 'first-call'
     `$watch.Restart()
-    `$first = quiet -AsObject -Output { param(`$event, `$runtime) } -Complete { param(`$runtime) } @child
+    `$call = quiet -AsObject -Output { param(`$event, `$runtime) } -Complete { param(`$runtime) } @child
     `$firstMs = `$watch.Elapsed.TotalMilliseconds
-    if (`$first.Outcome -ne 'Success') { throw 'ChildCommandFailed' }
+    if (`$call.Outcome -ne 'Success') { throw 'ChildCommandFailed' }
+    `$call = `$null
     `$stage = 'second-call'
     `$watch.Restart()
-    `$second = quiet -AsObject -Output { param(`$event, `$runtime) } -Complete { param(`$runtime) } @child
+    `$call = quiet -AsObject -Output { param(`$event, `$runtime) } -Complete { param(`$runtime) } @child
     `$secondMs = `$watch.Elapsed.TotalMilliseconds
-    if (`$second.Outcome -ne 'Success') { throw 'ChildCommandFailed' }
+    if (`$call.Outcome -ne 'Success') { throw 'ChildCommandFailed' }
     [string]::Format(`$culture, 'RESULT {0:F3} {1:F3} {2:F3}', `$import, `$firstMs, `$secondMs)
 } catch {
-    [Console]::Error.WriteLine('COLDSTART-FAILURE ' + `$stage)
+    `$code = (@(`$call.Error)[0]).Code
+    if (`$code -cnotmatch '^[A-Za-z][A-Za-z0-9_]{0,63}$') { `$code = `$_.Exception.GetType().Name }
+    [Console]::Error.WriteLine('COLDSTART-FAILURE ' + `$stage + ' code=' + `$code)
     exit 1
 }
 "@
@@ -191,7 +197,7 @@ function Invoke-BenchmarkChild {
     #>
     param([string]$Worker, [string]$Marker)
     $logger.Increment('run.started')
-    $state = @{ Marker = $Marker; Line = $null; Matches = 0; FailureStage = $null }
+    $state = @{ Marker = $Marker; Line = $null; Matches = 0; FailureStage = $null; FailureCode = $null }
     try {
         $result = Invoke-CiProcess -FilePath $powerShell -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', $Worker) `
             -TimeoutSeconds $RunTimeoutSeconds -State $state -OnOutput {
@@ -200,8 +206,9 @@ function Invoke-BenchmarkChild {
                     $state.Line = $record.Text.Trim()
                     $state.Matches++
                 }
-                elseif ($record.Stream -ceq 'stderr' -and $record.Text -cmatch '^COLDSTART-FAILURE (import|first-call|second-call)$') {
+                elseif ($record.Stream -ceq 'stderr' -and $record.Text -cmatch '^COLDSTART-FAILURE (import|first-call|second-call) code=([A-Za-z][A-Za-z0-9_]{0,63})$') {
                     $state.FailureStage = $Matches[1]
+                    $state.FailureCode = $Matches[2]
                 }
             }
     }
@@ -211,7 +218,7 @@ function Invoke-BenchmarkChild {
     }
     if ($result.Outcome -ne 'Success' -or $state.Matches -ne 1) {
         $logger.Increment('run.failed')
-        throw "ChildRunFailed: outcome=$($result.Outcome) exit=$($result.ExitCode) marker=$Marker count=$($state.Matches) stage=$($state.FailureStage)"
+        throw "ChildRunFailed: outcome=$($result.Outcome) exit=$($result.ExitCode) marker=$Marker count=$($state.Matches) stage=$($state.FailureStage) code=$($state.FailureCode)"
     }
     $logger.Increment('run.succeeded')
     return @($state.Line.Split(' ') | Select-Object -Skip 1)

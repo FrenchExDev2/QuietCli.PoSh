@@ -94,7 +94,7 @@ param(
     [ValidateNotNullOrEmpty()][string]$CandidateLabel = 'candidate',
     [ValidateRange(3, 100000)][int]$Runs = 30,
     [ValidateRange(0, 1000)][int]$Warmup = 2,
-    [ValidateNotNullOrEmpty()][string[]]$ChildCommand = $(if ($IsWindows) { @('cmd', '/c', 'exit', '0') } else { @('true') }),
+    [ValidateNotNullOrEmpty()][string[]]$ChildCommand,
     [int]$Seed = 20261107,
     [ValidateRange(10, 3600)][int]$RunTimeoutSeconds = 120,
     [ValidateRange(0, 100000)][int]$MaxFailedPairs = 5,
