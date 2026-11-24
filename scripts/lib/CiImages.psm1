@@ -372,6 +372,28 @@ function Get-QuietCiBuildCommand {
     return @('build')
 }
 
+function Resolve-QuietCiImageCacheDigest {
+    <#
+    .SYNOPSIS
+    Resolves a cache digest and treats HTTP timeouts as misses for read-only image preparation.
+    .PARAMETER Plan
+    Validated image plan.
+    .PARAMETER Token
+    Optional ephemeral registry credential.
+    .PARAMETER Actor
+    Workflow actor used for authentication.
+    .PARAMETER PublishCache
+    Requires lookup failures to stop a publishable cache build.
+    #>
+    param($Plan,[string]$Token,[string]$Actor,[switch]$PublishCache)
+    try{
+        Get-QuietCiRegistryDigest $Plan $Token $Actor
+    }catch [OperationCanceledException]{
+        if($PublishCache){throw}
+        Write-Warning "CI registry cache lookup timed out for $($Plan.Rid) ($($Plan.RegistryPath))."
+    }
+}
+
 function Receive-QuietCiRegistryImage {
     <#
     .SYNOPSIS
@@ -459,7 +481,7 @@ function Invoke-QuietCiImageBuild {
     $previousDockerConfig=$env:DOCKER_CONFIG
     $registry='ghcr.io/'+$Plan.RegistryPath;$tag=$registry+':'+$Plan.Fingerprint
     try{
-        if($RegistryCache){$digest=Get-QuietCiRegistryDigest $Plan $token $env:GITHUB_ACTOR}
+        if($RegistryCache){$digest=Resolve-QuietCiImageCacheDigest -Plan $Plan -Token $token -Actor $env:GITHUB_ACTOR -PublishCache:$PublishCache}
         if($CacheOnly -and !$digest){return}
         if($token -and ($digest -or $PublishCache)){
             $authDirectory=[IO.Path]::Combine(([IO.Path]::GetTempPath()),('quietcli2-registry-'+[guid]::NewGuid().ToString('N')))
