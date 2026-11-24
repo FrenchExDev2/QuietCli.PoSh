@@ -83,7 +83,7 @@ Describe 'Shared Linux image production' {
     }
 
     It 'requires a published archive before each Linux consumer starts' {
-        foreach($job in $engine['jobs']['linux-test-driver'],$ready['jobs']['readytorun-linux']){
+        foreach($job in $engine['jobs']['linux-result'],$ready['jobs']['readytorun-linux']){
             @($job['needs'])|Should -Contain 'linux-images'
             [string]$job['if']|Should -Match "needs.linux-images.result == 'success'"
             [string]$job['if']|Should -Match "inputs.images_prepared && needs.linux-images.result == 'skipped'"
