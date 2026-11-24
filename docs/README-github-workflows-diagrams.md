@@ -637,13 +637,13 @@ Declared matrix · <code>{"include"&#58;&#91;{"rid"&#58;"linux-x64","runner"&#58
 | 3 |  | [./.github/actions/setup-powershell](#action-setup-powershell-3) |  |
 | 4 | Fingerprint the selected image chains | [scripts/Export-CiImageBundle.ps1](scripts/Export-CiImageBundle.md) | <code>&#36;{{ !inputs.images&#95;only }}</code> |
 | 5 | Restore the exact final image archive | actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>&#36;{{ !inputs.images&#95;only }}</code> |
-| 6 |  | [./.github/actions/cache-ci-layers](#action-cache-ci-layers-0) | <code>&#36;{{ inputs.images&#95;only &#124;&#124; steps.image&#95;cache.outputs.cache-hit != 'true' }}</code> |
+| 6 | layer&#95;cache | [./.github/actions/cache-ci-layers](#action-cache-ci-layers-0) | <code>&#36;{{ inputs.images&#95;only &#124;&#124; steps.image&#95;cache.outputs.cache-hit != 'true' }}</code> |
 | 7 | Prepare and archive the selected image chains | [scripts/Export-CiImageBundle.ps1](scripts/Export-CiImageBundle.md) | <code>&#36;{{ !inputs.images&#95;only &#38;&#38; steps.image&#95;cache.outputs.cache-hit != 'true' }}</code> |
 | 8 | Verify the cached archive for this run | [scripts/Export-CiImageBundle.ps1](scripts/Export-CiImageBundle.md) | <code>&#36;{{ !inputs.images&#95;only &#38;&#38; steps.image&#95;cache.outputs.cache-hit == 'true' }}</code> |
 | 9 | Warm only the trusted cache | [scripts/New-CiSuiteImage.ps1](scripts/New-CiSuiteImage.md) | <code>&#36;{{ inputs.images&#95;only }}</code> |
 | 10 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>&#36;{{ !inputs.images&#95;only }}</code> |
-| 11 | Save the exact final image archive | actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>&#36;{{ !inputs.images&#95;only &#38;&#38; steps.image&#95;cache.outputs.cache-hit != 'true' }}</code> |
-| 12 |  | [./.github/actions/cache-ci-layers](#action-cache-ci-layers-0) | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; (inputs.images&#95;only &#124;&#124; steps.image&#95;cache.outputs.cache-hit != 'true') }}</code> |
+| 11 | Save the exact final image archive | actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>&#36;{{ steps.prepare&#95;bundle.outputs.registry-hit == 'false' }}</code> |
+| 12 |  | [./.github/actions/cache-ci-layers](#action-cache-ci-layers-0) | <code>&#36;{{ steps.layer&#95;cache.outcome == 'success' &#38;&#38; steps.layer&#95;cache.outputs.cache-hit != 'true' &#38;&#38; hashFiles('.cache/ci-buildkit/&#42;/index.json') != '' &#38;&#38; hashFiles('.cache/ci-buildkit/&#42;/index.json') != steps.layer&#95;cache.outputs.restored-indexes }}</code> |
 | 13 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
 
 <a name="workflow-packages-update-yml-8"></a>
@@ -1544,7 +1544,7 @@ sequenceDiagram
 | Order | Step | Action or script | Condition |
 | ---: | --- | --- | --- |
 | 1 |  | docker/setup-docker-action@3f1ab1ab0e29231562e4db4ca600c1a49653bac6 | <code>inputs.mode == 'restore'</code> |
-| 2 |  | actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>inputs.mode == 'restore'</code> |
+| 2 | restore | actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>inputs.mode == 'restore'</code> |
 | 3 | Enable the checkout-owned intermediate cache | `run` | <code>inputs.mode == 'restore'</code> |
 | 4 |  | actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>inputs.mode == 'save'</code> |
 
