@@ -219,10 +219,12 @@ function Add-QuietCiPullRequestSelection {
     $requested=@($Options|Where-Object {$_ -cmatch '\A(?:run-profile-mutation|profiling)-'})
     $configuration=if($requested.Count){Read-QuietCiCompanions $WorkspaceRoot}
     $byCompanion=[ordered]@{}
+    $companionByOption=@{}
     foreach($option in $requested){
         $prefix,$name=$option -split '-(?=[a-z0-9]+$)',2
         $capability=if($prefix -ceq 'profiling'){'Companion'}else{'Mutation'}
         $companion=Get-QuietCompanions -Configuration $configuration -Name $name -Capability $capability
+        $companionByOption[$option]=$companion
         if(!$byCompanion.Contains($companion)){$byCompanion[$companion]=@{Mutation=$false;Profiling=$false}}
         if($capability -ceq 'Mutation'){$byCompanion[$companion].Mutation=$true}else{$byCompanion[$companion].Profiling=$true}
     }
@@ -255,12 +257,10 @@ function Add-QuietCiPullRequestSelection {
         $target=switch -CaseSensitive ($option) {
             'mutation' {'Tooling'}
             'script-mutation' {'Scripts'}
-            {$_ -cmatch '\A(?:run-profile-mutation|profiling)-([a-z][a-z0-9]*)\z'} {
-                Get-QuietCompanions -Configuration $configuration -Name $Matches[1]
-            }
             'mutation-serial' {'Mutations'}
             'readytorun' {'ReadyToRun'}
             'preview' {'Core'}
+            default {$companionByOption[$option]}
         }
         [pscustomobject]@{Input='pull_request.body';Package=$null;Project=$null;Companion=$target;Action=$option;Reason='RequestedByPullRequestChecklist'}
     })

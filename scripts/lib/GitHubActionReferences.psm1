@@ -32,7 +32,7 @@ function Get-QuietGitHubActionFiles {
     $items=@(foreach($file in $files){
         $attributes=(Get-Item -LiteralPath $file -Force -ErrorAction Stop).Attributes
         if(($attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw ('GitHubActionFileLinked: '+$file)}
-        [pscustomobject]@{RelativePath=[IO.Path]::GetRelativePath($root,$file).Replace('\','/');FullPath=$file}
+        [pscustomobject]@{RelativePath=[IO.Path]::GetRelativePath($root,$file).Replace([IO.Path]::DirectorySeparatorChar,[char]'/');FullPath=$file}
     })
     # Sort-Object is culture-aware; an ordinal sort keeps the order identical on every host.
     [Array]::Sort([object[]]$items,[Comparison[object]]{param($left,$right)[string]::CompareOrdinal($left.RelativePath,$right.RelativePath)})

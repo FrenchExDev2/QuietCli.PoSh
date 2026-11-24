@@ -253,7 +253,7 @@ function Invoke-QuietToolingTests {
                 }
             }
             if($file.Name -ceq 'ci.yml'){
-                foreach($name in @('windows','linux')){
+                foreach($name in @('windows','linux-result')){
                     $runs=@($jobs[$name]['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
                     if(!$runs.Contains('SkipTty=$true')){throw ('TtyScopeNotForwarded: '+$name)}
                 }
@@ -285,7 +285,7 @@ function Invoke-QuietToolingTests {
                     if(!$rejected){throw 'PerformanceAggregationGuardMutantSurvived'}
                 }
                 Write-WorkspaceJson (Join-Path $RunDirectory 'ci-performance-aggregation-scope.json') @{ScopeProperties=80;GuardMutantsRejected=4;CachePreparationProducesQualification=$false}
-                foreach($name in @('windows','linux','linux-test-driver')){
+                foreach($name in @('windows','linux-result')){
                     $runs=@($jobs[$name]['steps']|ForEach-Object {[string]$_['run']}) -join "`n"
                     if($runs.Contains('if($env:QUIETCLI_SUITE -ne ''Git'')')){throw ('UnconditionalProfiling: '+$name)}
                     $reportSteps=@($jobs[$name]['steps']|Where-Object {$_['run'] -match 'New-CorePerformanceReport.ps1'})

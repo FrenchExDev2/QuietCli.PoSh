@@ -23,6 +23,13 @@ Describe 'CompanionWorkflows' {
     }
 
     Context 'Get-QuietCompanionProfiles' {
+        It 'takes both parent directories from the catalogue declaration' {
+            & $use (New-QuietCiCatalogue ([Random]::new(3)))
+            $script:catalogue.Configuration.Companions['Core']|Add-Member -Force -NotePropertyMembers @{SourcePath='src/Alternate/src/Product';TestPath='src/Alternate/test/Product.Tests'}
+            $definition=Get-QuietCompanionProfiles -WorkspaceRoot $root|Where-Object Suite -CEQ Core
+            $definition.SourcePath|Should -BeExactly 'src/Alternate/src'
+            $definition.TestPath|Should -BeExactly 'src/Alternate/test'
+        }
         It 'derives one profile per solution group with its engine, paths and performance policy' {
             $null=Invoke-QuietProperty -Name 'workflow-profiles' -Seed $seed -Count 40 -Generator {param($random)
                 $catalogue=New-QuietCiCatalogue $random
@@ -188,5 +195,24 @@ Describe 'CompanionWorkflows' {
         It 'rejects an unknown or differently cased suite' -ForEach @(@{Suite='Nope'},@{Suite='core'}) {
             {Assert-QuietCompanionProfile -WorkspaceRoot $root -Suite $Suite}|Should -Throw -ExpectedMessage ('CompanionProfileUnknown: '+$Suite)
         }
+    }
+
+    It 'checks, previews and refreshes the current YAML catalogue checklist using its exact path' {
+        $currentRoot=[IO.Path]::Combine($TestDrive,'current-checklist')
+        $cataloguePath=New-QuietTestFile ([IO.Path]::Combine($currentRoot,'build','companions.yaml')) 'fixture'
+        & $use @{Modules=@();Configuration=@{Path=$cataloguePath;Companions=[ordered]@{Box2=@{Name='Box2';Mutation=$true}}}}
+        Mock -ModuleName CompanionWorkflows Assert-QuietCiCompanionImages {}
+        $path=[IO.Path]::Combine($currentRoot,'.github','pull_request_template.md')
+        $expected=("<!-- quietcli-ci:begin -->`n- [ ] Scripts <!-- ci:script-mutation -->`n- [ ] Run Box2 mutation testing <!-- ci:run-profile-mutation-box2 -->`n- [ ] Profile the Box2 PowerShell tests <!-- ci:profiling-box2 -->`n- [ ] Serial <!-- ci:mutation-serial -->`n- [ ] R2R <!-- ci:readytorun -->`n- [ ] Preview <!-- ci:preview -->`n<!-- quietcli-ci:end -->`n")
+        $null=New-QuietTestFile $path ($expected.Replace("`n","`r`n"))
+        {Sync-QuietCompanionWorkflows -WorkspaceRoot $currentRoot}|Should -Not -Throw
+        $stale=$expected.Replace('Box2','Old').Replace('box2','old')
+        [IO.File]::WriteAllText($path,$stale,[Text.Encoding]::UTF8)
+        {Sync-QuietCompanionWorkflows -WorkspaceRoot $currentRoot}|Should -Throw '*CompanionPullRequestTemplateDrift*'
+        Sync-QuietCompanionWorkflows -WorkspaceRoot $currentRoot -Apply -WhatIf
+        [IO.File]::ReadAllText($path,[Text.Encoding]::UTF8)|Should -BeExactly $stale
+        Sync-QuietCompanionWorkflows -WorkspaceRoot $currentRoot -Apply -Confirm:$false
+        [IO.File]::ReadAllText($path,[Text.Encoding]::UTF8)|Should -BeExactly $expected
+        [IO.File]::ReadAllBytes($path)[0]|Should -Be ([byte][char]'<')
     }
 }

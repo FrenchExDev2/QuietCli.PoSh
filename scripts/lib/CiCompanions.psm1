@@ -341,7 +341,7 @@ function Assert-QuietCiCompanionImages {
         $moduleRoot=Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath ('FrenchExDev2.QuietCli.'+$companion.Name+'.PoSh')
         $contract=[IO.File]::Exists([IO.Path]::Combine($moduleRoot,'ci','Get-CiImageArguments.ps1'))
         $containerFiles=[string[]]@(if([IO.Directory]::Exists($moduleRoot)){
-            [IO.Directory]::EnumerateFiles($moduleRoot,'*',[IO.SearchOption]::AllDirectories)|Where-Object {[IO.Path]::GetFileName($_) -match '\A(?:Dockerfile|Containerfile)(?:\..+)?\z|\.(?:Dockerfile|Containerfile)\z'}|ForEach-Object {[IO.Path]::GetRelativePath($WorkspaceRoot,$_).Replace('\','/')}|Sort-Object -CaseSensitive
+            [IO.Directory]::EnumerateFiles($moduleRoot,'*',[IO.SearchOption]::AllDirectories)|Where-Object {[IO.Path]::GetFileName($_) -match '\A(?:Dockerfile|Containerfile)(?:\..+)?\z|\.(?:Dockerfile|Containerfile)\z'}|ForEach-Object {[IO.Path]::GetRelativePath($WorkspaceRoot,$_).Replace([IO.Path]::DirectorySeparatorChar,[char]'/')}|Sort-Object -CaseSensitive
         })
         if($companion.Image -ceq 'overlay' -and !$contract){throw ('CiCompanionOverlayContractMissing: '+$companion.Name)}
         if($companion.Image -ceq 'none' -and ($contract -or $containerFiles.Count)){throw ('CiCompanionImageMustBeOverlay: '+$companion.Name)}

@@ -25,6 +25,38 @@ Describe 'Expandable companion checklist rows' {
         $body=New-QuietPullRequestBody -Body 'Description' -Template $expanded -CiOption @('profiling-box2','run-profile-mutation-box2')
         (Read-QuietPullRequestChecklist $body).Selected|Should -BeExactly @('profiling-box2','run-profile-mutation-box2')
     }
+
+    It 'requires every shared option and preserves its canonical position' {
+        $catalogue=@{Companions=[ordered]@{Box2=@{Name='Box2';Mutation=$true}}}
+        $expanded=Expand-QuietPullRequestTemplate -Template $template -Configuration $catalogue
+        $parsed=Read-QuietPullRequestChecklist $expanded
+        $parsed.Available|Should -BeExactly @('script-mutation','profiling-box2','run-profile-mutation-box2','mutation-serial','readytorun','preview')
+        foreach($id in 'script-mutation','mutation-serial','readytorun','preview'){
+            $incomplete=$template -creplace ("(?m)^- .* ci:$id -->\r?\n"),''
+            {Read-QuietPullRequestChecklist $incomplete}|Should -Throw '*PullRequestCiChecklistIncomplete*'
+        }
+        $mixed=$template.Replace('<!-- quietcli-ci:end -->',"- [ ] Legacy <!-- ci:mutation -->`n<!-- quietcli-ci:end -->")
+        {Read-QuietPullRequestChecklist $mixed}|Should -Throw '*PullRequestCiChecklistIncomplete*'
+    }
+
+    It 'migrates a legacy selection to script and Core mutation, retaining the other selected options' {
+        $catalogue=@{Companions=[ordered]@{Core=@{Name='Core';Mutation=$true}}}
+        $expanded=Expand-QuietPullRequestTemplate -Template $template -Configuration $catalogue
+        $legacy=$template -creplace '(?m)^- .* ci:mutation-serial -->\r?\n',''
+        $legacy=$legacy.Replace('- [ ] Repository scripts <!-- ci:script-mutation -->','- [x] Legacy <!-- ci:mutation -->').Replace('- [ ] Preview','- [x] Preview')
+        $body=New-QuietPullRequestBody -Body $legacy -Template $expanded
+        (Read-QuietPullRequestChecklist $body).Selected|Should -BeExactly @('script-mutation','run-profile-mutation-core','preview')
+        {Expand-QuietPullRequestTemplate -Template $legacy -Configuration $catalogue}|Should -Throw '*PullRequestCiChecklistTemplateInvalid*'
+    }
+
+    It 'replaces every old companion row and refreshes the captions from the catalogue' {
+        $catalogue=@{Companions=[ordered]@{Box2=@{Name='Box2';Mutation=$true}}}
+        $obsolete=$template.Replace('<!-- quietcli-ci:end -->',"- [ ] Old <!-- ci:profiling-old -->`n- [ ] Old mutation <!-- ci:run-profile-mutation-old -->`n<!-- quietcli-ci:end -->")
+        $expanded=Expand-QuietPullRequestTemplate -Template $obsolete -Configuration $catalogue
+        $expanded|Should -Match 'Run Box2 mutation testing'
+        $expanded|Should -Match 'Profile the Box2 PowerShell tests'
+        $expanded|Should -Not -Match 'ci:.*-old'
+    }
 }
 BeforeAll {
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -DisableNameChecking -ErrorAction Stop
