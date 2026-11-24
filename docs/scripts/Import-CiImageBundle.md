@@ -4,7 +4,7 @@
 Source file: [`Import-CiImageBundle.ps1`](../../scripts/Import-CiImageBundle.ps1)
 <!-- script-source:end -->
 
-Loads a downloaded `images.tar` into the runner's Docker daemon. It checks `bundle.json` against the current run, revision and native RID, verifies the archive hash, and finds the image matching the suite's computed fingerprint. Docker inspection verifies the loaded image before the script returns its immutable ID. `-WhatIf` previews the load.
+Loads a downloaded `images.tar` into the runner's Docker daemon. It checks `bundle.json` against the current run, revision and native RID, verifies the archive hash, and inspects the imported transfer tag derived from the suite's computed fingerprint. The script verifies image labels and architecture before returning the consumer daemon's own immutable ID. `-WhatIf` previews the load.
 
 See [Linux CI images](../ci/linux-images.md) and [Export-CiImageBundle](Export-CiImageBundle.md).
 

@@ -19,6 +19,11 @@ Describe 'Add-QuietCiPullRequestSelection companion campaigns' {
         $plan.CompanionChecks.suite|Should -BeExactly @('Box2','Demo')
         $plan.CompanionChecks.campaign|Should -BeExactly @('mutation','profiling')
         $plan.FullSuites.Count|Should -Be 0
+        $plan.RunTooling|Should -BeFalse
+        $plan.RunPreview|Should -BeFalse
+        $plan.RunReadyToRun|Should -BeFalse
+        $plan.PullRequestOptions|Should -BeExactly @('run-profile-mutation-box2','profiling-demo','mutation-serial','script-mutation')
+        $plan.Reasons.Companion|Should -BeExactly @('Box2','Demo','Mutations','Scripts')
     }
 
     It 'profiles the actual mutation pass when both options select the same companion' {
@@ -31,6 +36,67 @@ Describe 'Add-QuietCiPullRequestSelection companion campaigns' {
         $plan.CompanionChecks[0].suite|Should -BeExactly 'Box2'
         $plan.CompanionChecks[0].campaign|Should -BeExactly 'profiled-mutation'
         $plan.MutationParallel|Should -BeTrue
+    }
+
+    It 'covers Core mutation once when Tooling already runs it, but keeps profiled mutation and other companions' {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact {
+            @{Companions=[ordered]@{
+                Core=[pscustomobject]@{Name='Core';Mutation=@{suite='RunProfilesMutation'}}
+                Git=[pscustomobject]@{Name='Git';Mutation=@{environment=@{QUIETCLI_GIT_MUTATION='1'}}}
+            }}
+        }
+        $options=@('mutation','run-profile-mutation-core','run-profile-mutation-git','readytorun')
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@([pscustomobject]@{Input='original'})}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options $options
+        $plan.RunTooling|Should -BeTrue
+        $plan.RunReadyToRun|Should -BeTrue
+        $plan.CompanionChecks.suite|Should -BeExactly 'Git'
+        $plan.CompanionChecks.campaign|Should -BeExactly 'mutation'
+        $plan.Reasons[0].Input|Should -BeExactly 'original'
+        $optionsReasons=@($plan.Reasons|Select-Object -Skip 1)
+        $optionsReasons.Companion|Should -BeExactly @('Tooling','Core','Git','ReadyToRun')
+        $optionsReasons.Action|Should -BeExactly $options
+        foreach($reason in $optionsReasons){
+            $reason.Input|Should -BeExactly 'pull_request.body'
+            $reason.Reason|Should -BeExactly 'RequestedByPullRequestChecklist'
+        }
+        $profiled=[pscustomobject]@{RunTooling=$true;FullSuites=@();Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $profiled -WorkspaceRoot $TestDrive -Options @('run-profile-mutation-core','profiling-core')
+        $profiled.CompanionChecks.campaign|Should -BeExactly 'profiled-mutation'
+    }
+
+    It 'requires Preview qualification exactly once and recomputes the dependent smokes <Case>' -ForEach @(
+        @{Case='on its own';Existing=@();Options=@('preview');Full=@('Core');Smokes=@('Git','Demo');Suite='Core';Reads=1}
+        @{Case='alongside an existing suite';Existing=@('Git');Options=@('profiling-git','preview');Full=@('Core','Git');Smokes=@('Demo');Suite='Selected';Reads=1}
+        @{Case='with Core already qualified';Existing=@('Core');Options=@('preview');Full=@('Core');Smokes=@('Demo','Git');Suite='Core';Reads=0}
+    ) {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact {
+            @{Base='Core';Companions=[ordered]@{
+                Core=[pscustomobject]@{Name='Core';Image='base';requires=@();Mutation=@{suite='RunProfilesMutation'}}
+                Git=[pscustomobject]@{Name='Git';Image='overlay';requires=@('Core');Mutation=$null}
+                Demo=[pscustomobject]@{Name='Demo';Image='none';requires=@('Git');Mutation=$null}
+            };Suites=[ordered]@{
+                Core=@{Group='Core';Requires=@('Core')}
+                Git=@{Group='Git';Requires=@('Git')}
+                Demo=@{Group='Demo';Requires=@('Demo')}
+            }}
+        }
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=$Existing;SelectedSuites=$Existing;RunProducts=($Reads -eq 0);Suite=$(if($Reads -eq 0){'Core'}else{'None'});SmokeSuites=$(if($Reads -eq 0){$Smokes}else{@()});Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options $Options
+        $plan.RunPreview|Should -BeTrue
+        $plan.RunProducts|Should -BeTrue
+        $plan.FullSuites|Should -BeExactly $Full
+        $plan.SelectedSuites|Should -BeExactly $Full
+        @($plan.SmokeSuites)|Should -BeExactly @($Smokes|Sort-Object)
+        $plan.Suite|Should -BeExactly $Suite
+        $plan.Reasons[-1].Companion|Should -BeExactly 'Core'
+        Should -Invoke Read-QuietCiCompanions -ModuleName CiImpact -Exactly -Times $Reads
+    }
+
+    It 'fails explicitly when Preview cannot select Core' {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact { @{Companions=[ordered]@{Demo=@{Name='Demo'}}} }
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@()}
+        {Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options preview}|Should -Throw '*CiPreviewCoreUnavailable*'
     }
 }
 BeforeAll {
@@ -85,6 +151,15 @@ Describe 'Get-QuietCiImpact' {
             $expectedSuite=if($order.Count -eq 1){$order[0]}elseif($order.Count){'Selected'}else{'None'}
             $result.Suite -ceq $expectedSuite
         }
+    }
+
+    It 'does not select a compiled project from a sibling directory sharing its prefix' {
+        $catalogue=New-QuietCiCatalogue ([Random]::new(3))
+        $owner=@($catalogue.Modules|Where-Object {$_.SolutionGroup -ceq 'Core' -and !$_.IsTest})[0]
+        $script:project=[pscustomobject]@{Module=$owner.Name;Path=($owner.Path+'/Native/Core.csproj');Group='Core';References=@();Packages=@();Imports=@();EvaluationFailure=$null}
+        Mock -ModuleName CiImpact Get-QuietCiProjectGraph { $script:project }
+        $plan=& $impact $catalogue @($owner.Path+'/NativeExtra/file.cs')
+        @($plan.BuildProjects).Count|Should -Be 0
     }
 
     It 'selects nothing for documentation-only changes' {

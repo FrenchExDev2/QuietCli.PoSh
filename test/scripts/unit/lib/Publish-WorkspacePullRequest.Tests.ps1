@@ -177,6 +177,34 @@ Describe 'Invoke-QuietPublishPullRequest' {
         }
     }
 
+    It 'migrates legacy mutation selections using the actual companion declarations <Case>' -ForEach @(
+        @{Case='with both migrated checks';Disabled='';Scripts='x';Core='x'}
+        @{Case='with an explicit script opt-out';Disabled='script-mutation';Scripts=' ';Core='x'}
+        @{Case='with an explicit Core opt-out';Disabled='run-profile-mutation-core';Scripts='x';Core=' '}
+    ) {
+        $path=[IO.Path]::Combine($workspace,'.github','pull_request_template.md')
+        $run.Body=([IO.File]::ReadAllText($path,[Text.Encoding]::UTF8)).Replace('- [ ] Mutation','- [x] Mutation').Replace('- [ ] Preview','- [x] Preview')
+        $template=@'
+<!-- quietcli-ci:begin -->
+- [ ] Scripts <!-- ci:script-mutation -->
+- [ ] Serial <!-- ci:mutation-serial -->
+- [ ] ReadyToRun <!-- ci:readytorun -->
+- [ ] Preview <!-- ci:preview -->
+<!-- quietcli-ci:end -->
+'@
+        [IO.File]::WriteAllText($path,$template,[Text.Encoding]::UTF8)
+        Mock Get-QuietCiCompanionCataloguePath -ModuleName Merge-PullRequest { 'fixture.yaml' }
+        Mock Read-QuietCiCompanions -ModuleName Merge-PullRequest { @{Companions=[ordered]@{Core=@{Name='Core';Mutation=$true};Box=@{Name='Box';Mutation=$true}}} }
+        if($Disabled){$run.Options=@{$Disabled=$false}}
+        $result=Invoke-QuietPublishPullRequest @run
+        $result.State|Should -BeExactly 'Success'
+        $script:body|Should -Match "- \[$Scripts\] Scripts <!-- ci:script-mutation -->"
+        $script:body|Should -Match "- \[$Core\] Run Core mutation testing <!-- ci:run-profile-mutation-core -->"
+        $script:body|Should -Match '- \[ \] Run Box mutation testing <!-- ci:run-profile-mutation-box -->'
+        $script:body|Should -Match '- \[x\] Preview <!-- ci:preview -->'
+        Should -Invoke Read-QuietCiCompanions -ModuleName Merge-PullRequest -Exactly -Times 1
+    }
+
     It 'edits an existing description before push and preserves only the requested boxes' {
         $script:existing=$true
         $run.Body=@'

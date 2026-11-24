@@ -12,9 +12,14 @@ BeforeAll {
     $null=New-QuietTestFile ([IO.Path]::Combine($scripts,'Initialize-Profilers.ps1')) @'
 [CmdletBinding(SupportsShouldProcess)]
 param($OutputDirectory,$Module)
+if($PSBoundParameters['Confirm']){throw 'UnexpectedProfilerConfirmation'}
 @{ProfilerModulePath=[IO.Path]::Combine($OutputDirectory,$Module+'.psd1')}
 '@
-    Import-Module ([IO.Path]::Combine($library,'RunProfiler.psm1')) -DisableNameChecking -ErrorAction Stop
+    $fixtureModule=Import-Module ([IO.Path]::Combine($library,'RunProfiler.psm1')) -PassThru -DisableNameChecking -ErrorAction Stop
+}
+
+AfterAll {
+    if($fixtureModule){Remove-Module -ModuleInfo $fixtureModule -Force}
 }
 
 Describe 'Invoke-QuietProfiledTestCommand' {
@@ -27,12 +32,18 @@ Describe 'Invoke-QuietProfiledTestCommand' {
             $path
         }
         $before=$env:QUIETCLI_TEST_CASE_WORKER
-        $result=Invoke-QuietProfiledTestCommand -TestCommand {"worker=$env:QUIETCLI_TEST_CASE_WORKER"; 'summary'} -WorkspaceRoot $TestDrive -RunDirectory $TestDrive -Suite Box
+        try{
+            $env:QUIETCLI_TEST_CASE_WORKER='previous-worker'
+            $result=Invoke-QuietProfiledTestCommand -TestCommand {"worker=$env:QUIETCLI_TEST_CASE_WORKER"; 'summary'} -WorkspaceRoot $TestDrive -RunDirectory $TestDrive -Suite Box
+            $env:QUIETCLI_TEST_CASE_WORKER|Should -BeExactly 'previous-worker'
+        }finally{$env:QUIETCLI_TEST_CASE_WORKER=$before}
         $result.Output|Should -BeExactly @('worker=1','summary')
         $result.Profiling.State|Should -BeExactly 'Success'
         $result.Profiling.Companion|Should -BeExactly 'Box'
         $result.Profiling.Report|Should -BeExactly ([IO.Path]::Combine($TestDrive,'profiling','Box.profile.json'))
-        $env:QUIETCLI_TEST_CASE_WORKER|Should -Be $before
+        Should -Invoke Invoke-RunProfiled -ModuleName RunProfiler -Exactly -Times 1 -ParameterFilter {
+            $Label -ceq 'Box' -and $ProfilerModulePath -ceq [IO.Path]::Combine($TestDrive,'.cache','profilers','profiler.psd1')
+        }
     }
 
     It 'requires a written trace before reporting success and restores the worker environment on failure' {

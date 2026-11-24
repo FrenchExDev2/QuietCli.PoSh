@@ -4,7 +4,7 @@
 Source file: [`Export-CiImageBundle.ps1`](../../scripts/Export-CiImageBundle.ps1)
 <!-- script-source:end -->
 
-Prepares the selected suite images on the native Docker runner, then saves one `images.tar` and `bundle.json` for the RID. The receipt binds the archive hash and verified image IDs to the workflow run, tested revision and image fingerprints. The bundle contains toolchain images. `-PublishCache` follows the existing upstream develop guard. `-WhatIf` previews preparation and archive creation.
+Prepares the selected suite images on the native Docker runner, then saves one `images.tar` and `bundle.json` for the RID. The producer adds a local transfer tag derived from each verified recipe fingerprint and saves the archive by those tags. The receipt binds the archive hash and fingerprints to the run and revision. `-PublishCache` follows the existing upstream develop guard. `-WhatIf` previews preparation and archive creation.
 
 See [Linux CI images](../ci/linux-images.md) and [Import-CiImageBundle](Import-CiImageBundle.md).
 

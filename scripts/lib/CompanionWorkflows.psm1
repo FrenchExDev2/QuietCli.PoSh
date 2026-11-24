@@ -21,8 +21,8 @@ function Get-QuietCompanionProfiles {
     $configuration=Read-QuietCiCompanions $WorkspaceRoot
     foreach($group in @($modules.SolutionGroup|Sort-Object -Unique)){
         $members=@($modules|Where-Object SolutionGroup -CEQ $group)
-        $product=$configuration.Companions.Contains($group)
-        $declaration=if($product){$configuration.Companions[$group]}
+        $declaration=$configuration.Companions[$group]
+        $product=$null -ne $declaration
         if(!$product -and $group -cnotin @('Tooling','Distribution')){throw ('CompanionCiProfileMissing: '+$group)}
         $file=if($product){'ci.yml'}elseif($group -ceq 'Tooling'){'tooling-component-ci.yml'}else{'distribution-ci.yml'}
         [pscustomobject]@{
@@ -106,7 +106,7 @@ function Sync-QuietCompanionWorkflows {
         if([IO.Path]::GetFileName($configuration.Path) -ceq 'companions.yaml'){
             Import-Module ([IO.Path]::Combine($PSScriptRoot,'PullRequestChecklist.psm1')) -DisableNameChecking -ErrorAction Stop
             $templatePath=[IO.Path]::Combine($WorkspaceRoot,'.github','pull_request_template.md')
-            $current=[IO.File]::ReadAllText($templatePath,[Text.Encoding]::UTF8).Replace("`r`n","`n")
+            $current=[regex]::Replace([IO.File]::ReadAllText($templatePath,[Text.Encoding]::UTF8),'\r(?=\n)',[string]::Empty)
             $expected=Expand-QuietPullRequestTemplate -Template $current -Configuration $configuration
             if($expected -cne $current){
                 if(!$Apply){throw 'CompanionPullRequestTemplateDrift'}
