@@ -62,7 +62,7 @@ function Get-QuietCompanions {
 '@
         Copy-Item -LiteralPath $scriptPath -Destination $copy
         $driver=New-QuietTestFile ([IO.Path]::Combine([IO.Path]::GetDirectoryName($copy),'Invoke-Fixture.ps1')) @'
-& ([IO.Path]::Combine($PSScriptRoot,'Publish-WorkspacePullRequest.ps1')) -Message 'Commit' -Body 'Body' -RunProfile Git,Box -Mutation -Parallel:$false -Confirm:$false
+& ([IO.Path]::Combine($PSScriptRoot,'Publish-WorkspacePullRequest.ps1')) -Message 'Commit' -Body 'Body' -RunProfile Git,Box -Mutation -Parallel:$false -ScriptMutationNoInputCache -Confirm:$false
 '@
         $result=Invoke-QuietTestScript -ScriptPath $driver -TimeoutSeconds 30
         $result.ExitCode|Should -Be 0 -Because ($result.Output+$result.Error)
@@ -72,5 +72,6 @@ function Get-QuietCompanions {
         $actual.'profiling-git'|Should -BeTrue
         $actual.'profiling-box'|Should -BeTrue
         $actual.'mutation-serial'|Should -BeTrue
+        $actual.'script-mutation-no-input-cache'|Should -BeTrue
     }
 }

@@ -19,6 +19,11 @@ on:
         type: string
         required: false
         default: all
+      script_mutation_no_input_cache:
+        description: Rerun selected script mutants and save fresh cache entries
+        type: boolean
+        required: false
+        default: false
       mutation_parallel:
         description: Run mutation shards and their workers in parallel
         type: boolean
@@ -354,6 +359,7 @@ jobs:
       # Outcomes are keyed by everything the target's tests can observe, so the newest cache of the target is
       # always safe to reuse; a pull request restores develop's cache but can only save into its own scope.
       - name: Restore the target's incremental mutation cache
+        if: ${{ !inputs.script_mutation_no_input_cache }}
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .cache/script-mutation
@@ -365,8 +371,9 @@ jobs:
         shell: pwsh
         env:
           MUTATION_TARGET: ${{ matrix.target }}
+          SCRIPT_MUTATION_NO_INPUT_CACHE: ${{ inputs.script_mutation_no_input_cache }}
           MUTATION_WORKERS: ${{ inputs.mutation_parallel && 4 || 1 }}
-        run: ./scripts/Invoke-ScriptsMutation.ps1 -Headless -Offline -PruneCache -Target $env:MUTATION_TARGET -ThrottleLimit ([int]$env:MUTATION_WORKERS) -TimeoutSeconds 8400 -RunDirectory ./artifacts/script-mutation/$env:MUTATION_TARGET
+        run: ./scripts/Invoke-ScriptsMutation.ps1 -Headless -Offline -PruneCache -Target $env:MUTATION_TARGET -ThrottleLimit ([int]$env:MUTATION_WORKERS) -TimeoutSeconds 8400 -RunDirectory ./artifacts/script-mutation/$env:MUTATION_TARGET -NoInputCache:($env:SCRIPT_MUTATION_NO_INPUT_CACHE -ceq 'true')
       - name: Render script mutation results
         if: always() && steps.script_mutation.outcome != '' && steps.script_mutation.outcome != 'skipped'
         shell: pwsh

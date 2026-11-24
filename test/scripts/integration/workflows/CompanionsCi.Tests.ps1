@@ -183,7 +183,7 @@ Describe 'companions-ci.yml qualification ordering' {
 
 Describe 'companions-ci.yml script-only plans' {
     It 'exposes the plan output <Name> from the plan step' -ForEach @(
-        @{Name='run_layout'},@{Name='tooling_scope'},@{Name='script_tests'},@{Name='script_mutation_targets'},@{Name='run_tooling'}
+        @{Name='run_layout'},@{Name='tooling_scope'},@{Name='script_tests'},@{Name='script_mutation_targets'},@{Name='script_mutation_no_input_cache'},@{Name='run_tooling'}
     ) {
         [string]$companions['jobs']['plan']['outputs'][$Name]|Should -BeExactly ('${{ steps.plan.outputs.'+$Name+' }}')
     }
@@ -208,8 +208,12 @@ Describe 'companions-ci.yml script-only plans' {
         @{Name='scope';Source='tooling_scope'},@{Name='script_tests';Source='script_tests'},@{Name='script_mutation_targets';Source='script_mutation_targets'}
     ) {
         $with=$companions['jobs']['tooling-only']['with']
-        (@($with.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'mutation_parallel,scope,script_mutation_targets,script_tests'
+        (@($with.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'mutation_parallel,scope,script_mutation_no_input_cache,script_mutation_targets,script_tests'
         [string]$with[$Name]|Should -BeExactly ('${{ needs.plan.outputs.'+$Source+' }}')
+    }
+
+    It 'passes the cache choice as a boolean to tooling' {
+        $companions['jobs']['tooling-only']['with']['script_mutation_no_input_cache']|Should -BeExactly '${{ needs.plan.outputs.script_mutation_no_input_cache == ''true'' }}'
     }
 
     It 'consumes the companion checks matrix and makes its results required' {

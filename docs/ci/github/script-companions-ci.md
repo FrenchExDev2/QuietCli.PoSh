@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: A979AAA21B6619B228D3BC6DB6D762FB94E8F0C13FFAB467372C6451F31AE412 -->
+<!-- workflow-source-sha256: 7436BECDF0DB0D58BDC73553FF5C7429B6AD1F90E7C1B12515361420BF3DFF1A -->
 
 ## Purpose
 
@@ -118,5 +118,7 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 <!-- credits:end -->
 
 ## Pull request checklist
+
+The script mutation cache checkbox passes `script_mutation_no_input_cache` to `tooling-ci.yml`. It changes how the selected script mutation shards run. Their selection still comes from the diff and the repository script mutation checkbox.
 
 PR description edits recompute the plan. Invoke-GitHubCiPlan passes the raw description to New-CiImpactPlan, and the required check verifies complete evidence from the selected jobs and the current PR. See [PR options](../../README-pull-request-ci.md).

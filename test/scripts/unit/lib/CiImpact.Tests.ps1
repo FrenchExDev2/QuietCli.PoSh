@@ -16,6 +16,7 @@ Describe 'Add-QuietCiPullRequestSelection companion campaigns' {
         Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options @('run-profile-mutation-box2','profiling-demo','mutation-serial','script-mutation')
         $plan.MutationParallel|Should -BeFalse
         $plan.RunAllScriptMutations|Should -BeTrue
+        $plan.ScriptMutationNoInputCache|Should -BeFalse
         $plan.CompanionChecks.suite|Should -BeExactly @('Box2','Demo')
         $plan.CompanionChecks.campaign|Should -BeExactly @('mutation','profiling')
         $plan.FullSuites.Count|Should -Be 0
@@ -24,6 +25,17 @@ Describe 'Add-QuietCiPullRequestSelection companion campaigns' {
         $plan.RunReadyToRun|Should -BeFalse
         $plan.PullRequestOptions|Should -BeExactly @('run-profile-mutation-box2','profiling-demo','mutation-serial','script-mutation')
         $plan.Reasons.Companion|Should -BeExactly @('Box2','Demo','Mutations','Scripts')
+    }
+
+    It 'bypasses cache input without adding any mutation targets' {
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options @('script-mutation-no-input-cache')
+        $plan.ScriptMutationNoInputCache|Should -BeTrue
+        $plan.RunAllScriptMutations|Should -BeFalse
+        $plan.RunTooling|Should -BeFalse
+        $plan.MutationParallel|Should -BeTrue
+        $plan.Reasons.Companion|Should -BeExactly 'Scripts'
+        $plan.Reasons.Action|Should -BeExactly 'script-mutation-no-input-cache'
     }
 
     It 'profiles the actual mutation pass when both options select the same companion' {

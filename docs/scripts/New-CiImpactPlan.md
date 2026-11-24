@@ -59,6 +59,7 @@ Outputs are written once each, in a stable order:
 | `run_distribution` | The distribution campaign. |
 | `run_layout` | Whether `layout-tests` runs. It is false only when script tests are the whole plan. |
 | `run_smokes`, `smoke_suites` | The dependent smokes. |
+| `script_mutation_no_input_cache` | `true` when the PR asks to rerun selected script mutants and refresh the cache. |
 | `script_mutation_targets`, `script_tests` | `all`, or the compact JSON array of the selected names. |
 | `tooling_scope` | `full`, `scripts` or `none`. |
 
