@@ -318,17 +318,19 @@ Declared matrix · <code>&#36;{{ fromJson(needs.linux-matrix.outputs.matrix) }}<
 | 3 |  | [./.github/actions/setup-powershell](#action-setup-powershell-3) |  |
 | 4 |  | actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 |  |
 | 5 |  | [./.github/actions/cache-resources](#action-cache-resources-1) |  |
-| 6 | Verify monorepo structure and external resources | [scripts/Initialize-Workspace.ps1](scripts/Initialize-Workspace.md) |  |
-| 7 | Fingerprint the selected build closure | [scripts/Get-CompanionBuildKey.ps1](scripts/Get-CompanionBuildKey.md) |  |
-| 8 |  | actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 |  |
-| 9 | Build engines for the six distributions | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) |  |
-| 10 |  | actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 |  |
-| 11 | Load the verified image produced for this run | [scripts/Import-CiImageBundle.ps1](scripts/Import-CiImageBundle.md) |  |
-| 12 | Run selected suites and Core integration in the native image | [scripts/Initialize-Profilers.ps1](scripts/Initialize-Profilers.md), [scripts/Invoke-GitHubCi.ps1](scripts/Invoke-GitHubCi.md) |  |
-| 13 | Assemble revision-bound guest reports and profiling traces | [scripts/New-CoreEvidenceBundle.ps1](scripts/New-CoreEvidenceBundle.md), [scripts/New-CorePerformanceReport.ps1](scripts/New-CorePerformanceReport.md) | <code>always()</code> |
-| 14 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
-| 15 | Prepare bounded redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
-| 16 | Save redacted Linux failure diagnostics and image identity | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
+| 6 | Restore NuGet packages before build and tests | actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 |  |
+| 7 | Verify monorepo structure and external resources | [scripts/Initialize-Workspace.ps1](scripts/Initialize-Workspace.md) |  |
+| 8 | Fingerprint the selected build closure | [scripts/Get-CompanionBuildKey.ps1](scripts/Get-CompanionBuildKey.md) |  |
+| 9 |  | actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 |  |
+| 10 | Build engines for the six distributions | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) |  |
+| 11 |  | actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 |  |
+| 12 | Load the verified image produced for this run | [scripts/Import-CiImageBundle.ps1](scripts/Import-CiImageBundle.md) |  |
+| 13 | Run selected suites and Core integration in the native image | [scripts/Initialize-Profilers.ps1](scripts/Initialize-Profilers.md), [scripts/Invoke-GitHubCi.ps1](scripts/Invoke-GitHubCi.md) |  |
+| 14 | Assemble revision-bound guest reports and profiling traces | [scripts/New-CoreEvidenceBundle.ps1](scripts/New-CoreEvidenceBundle.md), [scripts/New-CorePerformanceReport.ps1](scripts/New-CorePerformanceReport.md) | <code>always()</code> |
+| 15 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+| 16 | Prepare bounded redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
+| 17 | Save redacted Linux failure diagnostics and image identity | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
+| 18 | Save NuGet packages using the resolved restore key | actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>&#36;{{ success() &#38;&#38; steps.nuget-cache.outputs.cache-hit != 'true' }}</code> |
 
 <a name="workflow-ci-yml-4-job-j8"></a>
 
