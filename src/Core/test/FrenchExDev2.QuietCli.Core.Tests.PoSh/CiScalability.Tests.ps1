@@ -28,7 +28,7 @@ function Test-QuietCiScalability {
     $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
     $cacheWorkflow=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build().Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/ci.yml'),[Text.Encoding]::UTF8))
     if($cacheWorkflow['on']['workflow_dispatch']['inputs']['images_only']['default'] -cne 'false'){throw 'CacheOnlyMustBeOptIn'}
-    foreach($job in @('qualification-gate','windows','tooling','linux-selection','linux-result','performance-results')){
+    foreach($job in @('qualification-gate','windows','tooling','linux-result','performance-results')){
         if([string]$cacheWorkflow['jobs'][$job]['if'] -notmatch '!inputs\.images_only'){throw ('CacheOnlyStartsQualification: '+$job)}
     }
     $vectors=@(

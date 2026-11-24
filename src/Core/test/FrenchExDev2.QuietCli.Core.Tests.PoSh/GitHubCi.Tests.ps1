@@ -343,7 +343,7 @@ function Test-QuietGitHubCi {
         }
     }
     foreach($name in $jobs.Keys){foreach($dependency in @($jobs[$name]['needs'])){if($dependency -and !$jobs.ContainsKey($dependency)){throw 'GitHubWorkflowDanglingDependency'}}}
-    $driver=$jobs['linux-test-driver']
+    $driver=$jobs['linux-result']
     $condition=[string]$driver['if']
     if(@($driver['needs']) -cnotcontains 'linux-images' -or !$condition.Contains("needs.linux-images.result == 'success'") -or !$condition.Contains("inputs.images_prepared && needs.linux-images.result == 'skipped'")){throw 'GitHubCiImageDependencyMissing'}
     if($driver['container'] -or $jobs['windows']['container']){throw 'GitHubWorkflowExecutionEnvironmentChanged'}

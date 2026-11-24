@@ -175,7 +175,7 @@ flowchart TD
     j6["linux-images"]
     click j6 href "#workflow-ci-yml-4-job-j6" "Open section" _self
     entry -->|declares| j6
-    j7["linux-test-driver"]
+    j7["linux-result"]
     click j7 href "#workflow-ci-yml-4-job-j7" "Open section" _self
     entry -->|declares| j7
     j8["performance-results"]
@@ -212,7 +212,7 @@ flowchart TD
     j8 -. depends on .-> j7
 ~~~
 
-Jobs · [validate](#workflow-ci-yml-4-job-j0) · [component-check](#workflow-ci-yml-4-job-j1) · [qualification-gate](#workflow-ci-yml-4-job-j2) · [tooling](#workflow-ci-yml-4-job-j3) · [windows](#workflow-ci-yml-4-job-j4) · [linux-matrix](#workflow-ci-yml-4-job-j5) · [linux-images](#workflow-ci-yml-4-job-j6) · [linux-test-driver](#workflow-ci-yml-4-job-j7) · [performance-results](#workflow-ci-yml-4-job-j8)
+Jobs · [validate](#workflow-ci-yml-4-job-j0) · [component-check](#workflow-ci-yml-4-job-j1) · [qualification-gate](#workflow-ci-yml-4-job-j2) · [tooling](#workflow-ci-yml-4-job-j3) · [windows](#workflow-ci-yml-4-job-j4) · [linux-matrix](#workflow-ci-yml-4-job-j5) · [linux-images](#workflow-ci-yml-4-job-j6) · [linux-result](#workflow-ci-yml-4-job-j7) · [performance-results](#workflow-ci-yml-4-job-j8)
 
 <a name="workflow-ci-yml-4-job-j0"></a>
 
@@ -305,7 +305,7 @@ Calls [./.github/workflows/linux-images.yml](#workflow-linux-images-yml-7).
 
 <a name="workflow-ci-yml-4-job-j7"></a>
 
-### linux-test-driver
+### linux-result
 
 Condition · <code>&#36;{{ !cancelled() &#38;&#38; !inputs.images&#95;only &#38;&#38; (inputs.qualification&#95;mode == '' &#124;&#124; inputs.qualification&#95;mode == 'full') &#38;&#38; needs.linux-matrix.result == 'success' &#38;&#38; (needs.linux-images.result == 'success' &#124;&#124; (inputs.images&#95;prepared &#38;&#38; needs.linux-images.result == 'skipped')) }}</code>
 
