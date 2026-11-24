@@ -200,6 +200,7 @@ flowchart TD
     j4 -. depends on .-> j5
     j4 -. uses .-> n1
     j5 -. depends on .-> j0
+    j5 -. uses .-> n1
     j6 -. depends on .-> j5
     j6 -. calls .-> cj6["./.github/workflows/linux-images.yml"]
     click cj6 href "#workflow-linux-images-yml-7" "Open section" _self
@@ -293,7 +294,8 @@ Condition · <code>inputs.qualification&#95;mode == '' &#124;&#124; inputs.quali
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
 | 2 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
 | 3 | Select locked production hosts and optional next-version preview | [scripts/Select-PowerShellCiMatrix.ps1](scripts/Select-PowerShellCiMatrix.md) | <code>&#36;{{ !inputs.images&#95;only }}</code> |
-| 4 | Define the native Linux platform/RID/runner matrix once for every consumer job | [scripts/lib/GitHubCi.psm1](scripts/lib/GitHubCi.md), [scripts/Initialize-CiCompanions.ps1](scripts/Initialize-CiCompanions.md) |  |
+| 4 |  | [./.github/actions/cache-resources](#action-cache-resources-1) |  |
+| 5 | Define the native Linux platform/RID/runner matrix once for every consumer job | [scripts/lib/GitHubCi.psm1](scripts/lib/GitHubCi.md), [scripts/Initialize-CiCompanions.ps1](scripts/Initialize-CiCompanions.md) |  |
 
 <a name="workflow-ci-yml-4-job-j6"></a>
 
@@ -1392,7 +1394,7 @@ Declared matrix · <code>{"target"&#58;"&#36;{{ fromJson(needs.script-selection.
 | 4 |  | [./.github/actions/cache-test-tools](#action-cache-test-tools-2) |  |
 | 5 |  | [./.github/actions/setup-powershell](#action-setup-powershell-3) |  |
 | 6 | Initialize the checkout and the pinned test tools | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md), [scripts/Initialize-TestTools.ps1](scripts/Initialize-TestTools.md) |  |
-| 7 | Restore the target's incremental mutation cache | actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 |  |
+| 7 | Restore the target's incremental mutation cache | actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>&#36;{{ !inputs.script&#95;mutation&#95;no&#95;input&#95;cache }}</code> |
 | 8 | Require the target's mutation score | [scripts/Invoke-ScriptsMutation.ps1](scripts/Invoke-ScriptsMutation.md) |  |
 | 9 | Render script mutation results | [scripts/Export-CampaignReport.ps1](scripts/Export-CampaignReport.md) | <code>always() &#38;&#38; steps.script&#95;mutation.outcome != '' &#38;&#38; steps.script&#95;mutation.outcome != 'skipped'</code> |
 | 10 | Save the target's incremental mutation cache | actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>always() &#38;&#38; steps.script&#95;mutation.outcome != '' &#38;&#38; steps.script&#95;mutation.outcome != 'skipped'</code> |
