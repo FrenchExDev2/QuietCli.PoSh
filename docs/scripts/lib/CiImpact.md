@@ -6,7 +6,7 @@ Source file: [`lib/CiImpact.psm1`](../../../scripts/lib/CiImpact.psm1)
 
 Exports `Get-QuietCiImpact`, `Get-QuietCiDispatchImpact`, `Test-QuietDevelopReceipt` and `Add-QuietCiPullRequestSelection`.
 
-`Add-QuietCiPullRequestSelection` adds checked options to the diff-based plan. Each selected performance option adds its own unprofiled companion test campaign, independently of the mutation and profiling choices. It resolves companion names through `Get-QuietCompanions` and uses one profiled mutation pass when both options select the same companion. Each `pull_request.body` reason uses the same resolved companion as the execution plan. The cache refresh checkbox sets `ScriptMutationNoInputCache` for selected script mutation targets.
+`Add-QuietCiPullRequestSelection` adds checked options to the diff-based plan. Each selected performance option adds its own unprofiled companion test campaign, independently of the mutation and profiling choices. It resolves companion names through `Get-QuietCompanions` and uses one profiled mutation pass when both options select the same companion. The script mutation cache checkbox sets `ScriptMutationNoInputCache` for selected targets. **Renew images caches** sets `RenewImageCaches` and adds a Linux image preparation reason.
 
 Get-QuietCiImpact reads the validated YAML suite catalogue. Companion changes select all suites whose transitive requirements include that product. Core changes select Core and smoke its dependents; shared or unknown changes select All plus tooling. Multiple affected suites share one matrix. Tooling.Tests belongs to its own campaign. Existing FrenchExDev application modules consume Core and separate executable companions; application membership does not qualify a CLI handler.
 
