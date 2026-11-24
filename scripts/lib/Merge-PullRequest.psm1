@@ -281,8 +281,7 @@ function Invoke-QuietPublishPullRequest {
             if($option -cnotin $available){throw 'PullRequestCiChecklistUnknownOption'}
             if($Options[$option]){[void]$selected.Add($option)}else{[void]$selected.Remove($option)}
         }
-        $description=(New-QuietPullRequestBody -Body $Body -Template $template -Footer $Footer -CiOption ([string[]]@($selected))).Replace("`r`n","`n").Replace("`r","`n")
-        if($description.Length -gt 60000){throw 'PullRequestDescriptionInvalid'}
+        $bodyParts=@{Body=$Body;Template=$template;Footer=$Footer;CiOption=[string[]]@($selected)}
         if(!$Title){$Title=($Message.Trim() -split '\r\n|\r|\n',2)[0]}
 
         $branch=Invoke-QuietPullRequestTool $WorkspaceRoot git @('branch','--show-current')
@@ -290,6 +289,10 @@ function Invoke-QuietPublishPullRequest {
         $null=Invoke-QuietPullRequestTool $WorkspaceRoot git @('rev-parse','--verify','refs/heads/develop')
         $before=Invoke-QuietPullRequestTool $WorkspaceRoot git @('rev-parse','--verify','HEAD')
         $repository=Get-QuietPullRequestRepository -WorkspaceRoot $WorkspaceRoot -Remote origin
+        $guideRoot="https://github.com/$repository/blob"
+        $guidePath='docs/README-pull-request-ci.md'
+        $description=New-QuietPullRequestBody @bodyParts -GuideUrl "$guideRoot/$before/$guidePath"
+        if($description.Length -gt 60000){throw 'PullRequestDescriptionInvalid'}
         $items=@(Invoke-QuietPullRequestTool $WorkspaceRoot gh @('pr','list','--repo',$repository,'--head',$branch,'--base','develop','--state','open','--limit','2','--json','number') | ConvertFrom-Json)
         if($items.Count -gt 1){throw 'WorkspacePullRequestAmbiguous'}
         $number=0
@@ -302,7 +305,6 @@ function Invoke-QuietPublishPullRequest {
             $url=$existing.url
         }
         $temporary=[IO.Path]::GetTempFileName()
-        [IO.File]::WriteAllText($temporary,$description,$encoding)
 
         $step='commit'
         Invoke-QuietPullRequestScript -Name 'Commit-Workspace.ps1' -Arguments @{WorkspaceRoot=$WorkspaceRoot;Message=$Message;Confirm=$false}
@@ -316,6 +318,9 @@ function Invoke-QuietPublishPullRequest {
         if(![IO.File]::Exists($plan) -or [IO.File]::ReadAllText($plan,$encoding) -cnotmatch "(?m)^Base: [a-f0-9]{40}; candidate: $revision\.\r?$"){
             throw 'WorkspacePullRequestPlanUnavailable'
         }
+
+        $description=New-QuietPullRequestBody @bodyParts -GuideUrl "$guideRoot/$revision/$guidePath"
+        [IO.File]::WriteAllText($temporary,$description,$encoding)
 
         # The synchronize event must see the revised checklist for the new SHA.
         if($number -and ([string]$existing.body).TrimEnd() -cne $description.TrimEnd()){

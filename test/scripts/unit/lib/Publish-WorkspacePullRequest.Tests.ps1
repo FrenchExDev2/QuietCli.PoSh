@@ -12,7 +12,7 @@ Describe 'Invoke-QuietPublishPullRequest' {
 <!-- quietcli-ci:begin -->
 - [ ] Mutation <!-- ci:mutation -->
 - [ ] ReadyToRun <!-- ci:readytorun -->
-- [ ] Preview <!-- ci:preview -->
+- [ ] Preview [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#powershell-preview) <!-- ci:preview -->
 <!-- quietcli-ci:end -->
 '@
         $script:trace=[Collections.Generic.List[string]]::new()
@@ -157,7 +157,8 @@ Describe 'Invoke-QuietPublishPullRequest' {
     It 'creates the PR with the explicit selections, monitors the pinned SHA and pulls develop' {
         $result=Invoke-QuietPublishPullRequest @run -Options @{mutation=$true;readytorun=$true}
         $script:trace.ToArray()|Should -BeExactly @('commit','push','create','switch','discover','watch','receipt','pull')
-        $script:body|Should -BeExactly (@('Résumé','','## Additional CI validation','<!-- quietcli-ci:begin -->','- [x] Mutation <!-- ci:mutation -->','- [x] ReadyToRun <!-- ci:readytorun -->','- [ ] Preview <!-- ci:preview -->','<!-- quietcli-ci:end -->','','Validation locale','') -join "`n")
+        $guide="https://github.com/example/quiet/blob/$script:head/docs/README-pull-request-ci.md#powershell-preview"
+        $script:body|Should -BeExactly (@('Résumé','','## Additional CI validation','<!-- quietcli-ci:begin -->','- [x] Mutation <!-- ci:mutation -->','- [x] ReadyToRun <!-- ci:readytorun -->',"- [ ] Preview [Details]($guide) <!-- ci:preview -->",'<!-- quietcli-ci:end -->','','Validation locale','') -join "`n")
         Test-Path -LiteralPath $script:workingPath|Should -BeFalse
         $result.State|Should -BeExactly 'Success'
         $result.Url|Should -BeExactly $script:pr
@@ -198,10 +199,10 @@ Describe 'Invoke-QuietPublishPullRequest' {
         if($Disabled){$run.Options=@{$Disabled=$false}}
         $result=Invoke-QuietPublishPullRequest @run
         $result.State|Should -BeExactly 'Success'
-        $script:body|Should -Match "- \[$Scripts\] Scripts <!-- ci:script-mutation -->"
-        $script:body|Should -Match "- \[$Core\] Run Core mutation testing <!-- ci:run-profile-mutation-core -->"
-        $script:body|Should -Match '- \[ \] Run Box mutation testing <!-- ci:run-profile-mutation-box -->'
-        $script:body|Should -Match '- \[x\] Preview <!-- ci:preview -->'
+        $script:body|Should -Match "(?m)^- \[$Scripts\] \*\*Scripts\*\* .*#repository-script-mutation\) <!-- ci:script-mutation -->$"
+        $script:body|Should -Match "(?m)^- \[$Core\] \*\*Core\*\* .*#companion-mutation\) <!-- ci:run-profile-mutation-core -->$"
+        $script:body|Should -Match '(?m)^- \[ \] \*\*Box\*\* .*#companion-mutation\) <!-- ci:run-profile-mutation-box -->$'
+        $script:body|Should -Match '(?m)^- \[x\] \*\*Core\*\* .*#powershell-preview\) <!-- ci:preview -->$'
         Should -Invoke Read-QuietCiCompanions -ModuleName Merge-PullRequest -Exactly -Times 1
     }
 
@@ -219,6 +220,7 @@ Details
         $script:trace.ToArray()|Should -BeExactly @('commit','edit','push','switch','discover','watch','receipt','pull')
         $script:body|Should -Match '(?m)^- \[ \] Mutation '
         $script:body|Should -Match '(?m)^- \[x\] Preview '
+        $script:body|Should -Match ([regex]::Escape("https://github.com/example/quiet/blob/$script:head/docs/README-pull-request-ci.md#powershell-preview"))
     }
 
     It 'stops at <Phase> for human action and never pulls develop' -ForEach @(

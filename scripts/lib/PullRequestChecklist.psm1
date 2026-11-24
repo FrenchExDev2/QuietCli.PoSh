@@ -81,13 +81,17 @@ function New-QuietPullRequestBody {
     Optional Markdown appended below the checklist.
     .PARAMETER CiOption
     Explicit selection overriding the incoming checklist; an empty array deselects every option.
+    .PARAMETER GuideUrl
+    Published GitHub URL of the CI guide at the pull request revision.
     #>
     [CmdletBinding()]
     param(
         [AllowEmptyString()][string]$Body,
         [Parameter(Mandatory)][string]$Template,
         [AllowEmptyString()][string]$Footer,
-        [AllowEmptyCollection()][string[]]$CiOption
+        [AllowEmptyCollection()][string[]]$CiOption,
+        [ValidatePattern('\Ahttps://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/blob/[a-f0-9]{40}/docs/README-pull-request-ci\.md\z')]
+        [string]$GuideUrl
     )
 
     $source = Read-QuietPullRequestChecklist $Body
@@ -102,6 +106,9 @@ function New-QuietPullRequestBody {
         if ($id -cnotin $standard.Available) {throw 'PullRequestCiChecklistUnknownOption'}
     }
     $checklist = ($Template -split '\r\n|\n|\r')[$standard.StartLine..$standard.EndLine]
+    if ($GuideUrl) {
+        $checklist = $checklist.Replace('https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md', $GuideUrl)
+    }
     foreach ($id in $selection) {
         $checklist = $checklist -creplace ("^- \[ \](.*<!-- ci:" + [regex]::Escape($id) + " -->\s*)$"), '- [x]$1'
         $checklist = $checklist -creplace ('\x60\[ \]\x60(?= <!-- ci:' + [regex]::Escape($id) + ' -->)'), '`[x]`'
@@ -118,6 +125,7 @@ function New-QuietPullRequestBody {
         $parts = @($Body; ($Template -creplace '(?s)<!-- quietcli-ci:begin -->.*?<!-- quietcli-ci:end -->', ($checklist -join "`n")); $Footer)
     }
     $result = (($parts | Where-Object {![string]::IsNullOrWhiteSpace($_)} | ForEach-Object {$_.TrimEnd("`r", "`n")}) -join "`n`n") + "`n"
+    $result = $result -creplace '\r\n?', "`n"
     if ((Read-QuietPullRequestChecklist $result).StartLine -lt 0) {throw 'PullRequestCiChecklistNotVisible'}
     $result
 }
@@ -147,7 +155,8 @@ function Expand-QuietPullRequestTemplate {
                 $definition = $effects[$effect]
                 $option = Get-QuietPullRequestCellOption $definition $target
                 if ($option -and ($effect -cne 'Mutation testing' -or $target -ceq 'Scripts' -or $Configuration.Companions[$target].Mutation)) {
-                    "- [ ] **$target** — [$effect]($helpUrl#$($definition.Anchor)) <!-- ci:$option -->"
+                    $anchor = if ($option -ceq 'script-mutation') { 'repository-script-mutation' } else { $definition.Anchor }
+                    "- [ ] **$target** — [$effect]($helpUrl#$anchor) <!-- ci:$option -->"
                 }
             }
         }

@@ -112,6 +112,25 @@ Describe 'Expandable companion task list' {
         (Read-QuietPullRequestChecklist $spaced).Available|Should -Contain 'performance-box2'
     }
 
+    It 'pins only the managed guide links and sends script mutation to its own section' {
+        $catalogue=@{Companions=[ordered]@{Core=@{Name='Core';Mutation=$true}}}
+        $canonical='https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md'
+        $guide='https://github.com/example/quiet/blob/'+('a'*40)+'/docs/README-pull-request-ci.md'
+        $expanded=Expand-QuietPullRequestTemplate -Template $template -Configuration $catalogue
+        $text="See [current guide]($canonical#companion-mutation).`r`nChoose a check.`rReview the results."
+        $body=New-QuietPullRequestBody -Body $text -Template $expanded -CiOption script-mutation -GuideUrl $guide
+
+        $expectedText="See [current guide]($canonical#companion-mutation).`nChoose a check.`nReview the results."
+        $body.StartsWith($expectedText,[StringComparison]::Ordinal)|Should -BeTrue
+        [regex]::Matches($body,[regex]::Escape($canonical)).Count|Should -Be 1
+        $body|Should -Match ([regex]::Escape("[Mutation testing]($guide#repository-script-mutation) <!-- ci:script-mutation -->"))
+        $body|Should -Match ([regex]::Escape("[Mutation testing]($guide#companion-mutation) <!-- ci:run-profile-mutation-core -->"))
+        $body|Should -Match ([regex]::Escape("[Details]($guide#sequential-mutation-workers) <!-- ci:mutation-serial -->"))
+        (Read-QuietPullRequestChecklist $body).Selected|Should -BeExactly 'script-mutation'
+        $preview=New-QuietPullRequestBody -Body $text -Template $expanded
+        $preview|Should -Match ([regex]::Escape("[Mutation testing]($canonical#repository-script-mutation) <!-- ci:script-mutation -->"))
+    }
+
     It 'migrates an existing table without changing its available or selected options' {
         $catalogue=@{Companions=[ordered]@{Core=@{Name='Core';Mutation=$true};Git=@{Name='Git';Mutation=$true}}}
         $expanded=Expand-QuietPullRequestTemplate -Template $template -Configuration $catalogue
