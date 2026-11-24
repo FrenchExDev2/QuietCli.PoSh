@@ -160,6 +160,20 @@ param([string]$Base,[string]$Revision,[string]$Event,[string[]]$Suite,[string]$O
         $companions['jobs']['ci-status']['needs'] | Should -Contain 'readytorun'
         $companions['jobs']['products']['with']['run_preview'] | Should -BeExactly '${{ matrix.run_preview }}'
     }
+
+    It 'retains ReadyToRun reports after either comparison outcome and leaves build failures to diagnostics' {
+        foreach ($job in $ready['jobs']['readytorun'],$ready['jobs']['readytorun-linux']) {
+            $steps = @($job['steps'])
+            $comparison = @($steps | Where-Object { $_['id'] -ceq 'comparison' })
+            $comparison.Count | Should -Be 1
+            $comparison[0]['run'] | Should -Match 'REQUIRE_COMPLETE'
+            $comparison[0]['run'] | Should -Match 'ReadyToRunComparisonMissing'
+            $reports = @($steps | Where-Object { $_['with'] -and $_['with']['path'] -like 'artifacts/coldstart*' })
+            $reports.Count | Should -Be 1
+            $reports[0]['if'] | Should -BeExactly "`${{ !cancelled() && (steps.comparison.outcome == 'success' || steps.comparison.outcome == 'failure') }}"
+            $reports[0]['with']['if-no-files-found'] | Should -BeExactly 'warn'
+        }
+    }
 }
 
 Describe 'companions-ci.yml qualification ordering' {

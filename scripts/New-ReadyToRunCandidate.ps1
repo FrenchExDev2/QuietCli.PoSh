@@ -4,10 +4,9 @@
 Builds a ReadyToRun copy of FrenchExDev2.QuietCli.Core.PoSh for cold-start A/B profiling.
 
 .DESCRIPTION
-Copies global.json and the Core module tree into a throwaway directory (the source workspace's own build is
-never touched), then republishes only that copy's engine project with -p:PublishReadyToRun=true. This is
-intentionally narrower than Build-Workspace.ps1, which needs all four project directories present; a cold-start
-candidate only needs the Core module to exist side by side with the untouched baseline build. See
+Copies the compiler policy and the Core module into a separate workspace using the same grouped layout.
+Publishes the net10.0 and net11.0 engines with ReadyToRun for the selected RID so that the benchmark uses
+the precompiled engine on either supported host CLR. See
 docs/README-readytorun_profiling.md for the statistical protocol this candidate feeds into.
 
 .PARAMETER WorkspaceRoot
@@ -46,23 +45,36 @@ $CandidateRoot=[IO.Path]::GetFullPath($CandidateRoot,$PWD.Path)
 $sourceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.Path)
 if($CandidateRoot -eq [IO.Path]::GetPathRoot($CandidateRoot) -or $sourceRoot.StartsWith($CandidateRoot.TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or $CandidateRoot.StartsWith($sourceRoot.TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or $CandidateRoot -eq $sourceRoot){throw 'ReadyToRunCandidateUnsafeDestination'}
 if(Test-Path -LiteralPath $CandidateRoot){throw 'ReadyToRunCandidateDestinationExists: choose a new owned directory.'}
-New-Item -ItemType Directory -Path $CandidateRoot | Out-Null
-Copy-Item ([IO.Path]::Combine($WorkspaceRoot,'global.json')) $CandidateRoot
-Copy-Item ([IO.Path]::Combine($WorkspaceRoot,'Directory.Packages.props')) $CandidateRoot
-Copy-Item ([IO.Path]::Combine($WorkspaceRoot,'Directory.Build.props')) $CandidateRoot
-Copy-Item ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')) ([IO.Path]::Combine($CandidateRoot,'FrenchExDev2.QuietCli.Core.PoSh')) -Recurse
+$moduleName = 'FrenchExDev2.QuietCli.Core.PoSh'
+$sourceModule = Resolve-QuietWorkspacePath -WorkspaceRoot $sourceRoot -RelativePath $moduleName
+$relativeModule = [IO.Path]::GetRelativePath($sourceRoot,$sourceModule).Replace('\','/')
+$candidateModule = [IO.Path]::Combine($CandidateRoot,$relativeModule)
+$target = Get-QuietRuntimeTargets $sourceRoot | Where-Object Rid -CEQ $RuntimeIdentifier
+[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($candidateModule))
+foreach ($file in 'global.json','Directory.Packages.props','Directory.Build.props') {
+    Copy-Item -LiteralPath ([IO.Path]::Combine($sourceRoot,$file)) -Destination $CandidateRoot
+}
+Copy-Item -LiteralPath $sourceModule -Destination $candidateModule -Recurse
 
-$project = 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/engine/QuietCli.Engine.csproj'
-$output = 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/'+$RuntimeIdentifier
+$project = "$relativeModule/engine/QuietCli.Engine.csproj"
 $inputs = @(Get-QuietBinaryInputs $CandidateRoot $project)
-$null = Invoke-WorkspaceNative dotnet @('publish', ([IO.Path]::Combine($CandidateRoot,$project)), '-f', 'net10.0', '-c', $Configuration, '-r', $RuntimeIdentifier, '--self-contained', 'false', '-p:PublishReadyToRun=true', '-o', ([IO.Path]::Combine($CandidateRoot,$output)), '--nologo') $CandidateRoot
-$target=Get-QuietRuntimeTargets $WorkspaceRoot|Where-Object Rid -CEQ $RuntimeIdentifier
-Write-QuietBuildManifest $CandidateRoot $project $output -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $RuntimeIdentifier -PlatformTarget $target.PlatformTarget -ReadyToRun
-$portable=[IO.Path]::Combine($CandidateRoot,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/build-manifest.json')
-$manifest=Get-Content -LiteralPath $portable -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable
-$manifest.ReadyToRunTargets=@($RuntimeIdentifier)
-Write-WorkspaceJson $portable $manifest
+$distributions = [ordered]@{'net10.0'='lib/inprocess'; 'net11.0'='lib/engine'}
+foreach ($framework in $distributions.Keys) {
+    $distribution = "$relativeModule/$($distributions[$framework])"
+    $output = "$distribution/$RuntimeIdentifier"
+    $outputPath = [IO.Path]::Combine($CandidateRoot,$output)
+    $publishArguments = @('publish', ([IO.Path]::Combine($CandidateRoot,$project)), '-f', $framework,
+        '-c', $Configuration, '-r', $RuntimeIdentifier, '--self-contained', 'false',
+        ('-p:PlatformTarget=' + $target.PlatformTarget), '-p:PublishReadyToRun=true', '-o', $outputPath, '--nologo')
+    $null = Invoke-WorkspaceNative dotnet $publishArguments $CandidateRoot
+    Assert-QuietRuntimePublication $outputPath $target
+    Write-QuietBuildManifest $CandidateRoot $project $output -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $RuntimeIdentifier -PlatformTarget $target.PlatformTarget -ReadyToRun
+    $portable = [IO.Path]::Combine($CandidateRoot,$distribution,'build-manifest.json')
+    $manifest = Get-Content -LiteralPath $portable -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
+    $manifest.ReadyToRunTargets = @($RuntimeIdentifier)
+    Write-WorkspaceJson $portable $manifest
+}
 
-$manifestPath = [IO.Path]::Combine($CandidateRoot,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
+$manifestPath = [IO.Path]::Combine($candidateModule,$moduleName+'.psd1')
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "ReadyToRunCandidateManifestMissing: $manifestPath" }
 Write-Output $manifestPath

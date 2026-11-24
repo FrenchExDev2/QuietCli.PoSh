@@ -44,6 +44,7 @@ jobs:
           $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -CandidateRoot (Join-Path $env:RUNNER_TEMP ('quietcli-r2r-'+[guid]::NewGuid().ToString('N')))
           "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV -Encoding utf8
       - name: Run the A/A-gated A/B cold-start comparison
+        id: comparison
         shell: pwsh
         env:
           CANDIDATE_MODULE: ${{ env.CANDIDATE_MODULE }}
@@ -76,11 +77,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
+        if: ${{ !cancelled() && (steps.comparison.outcome == 'success' || steps.comparison.outcome == 'failure') }}
         with:
           name: quietcli2-readytorun-${{ github.sha }}
           path: artifacts/coldstart
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
 
   linux-images:
@@ -149,6 +150,7 @@ jobs:
           name: quietcli-prepared-images-${{ inputs.images_prepared && 'workspace' || 'readytorun' }}-${{ matrix.rid }}
           path: artifacts/prepared-ci-images
       - name: Run the A/A-gated A/B cold-start comparison inside the prepared platform image
+        id: comparison
         shell: pwsh
         env:
           PLATFORM: ${{ matrix.platform }}
@@ -188,9 +190,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
+        if: ${{ !cancelled() && (steps.comparison.outcome == 'success' || steps.comparison.outcome == 'failure') }}
         with:
           name: quietcli2-readytorun-${{ matrix.rid }}-${{ github.sha }}
           path: artifacts/coldstart-containers
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30

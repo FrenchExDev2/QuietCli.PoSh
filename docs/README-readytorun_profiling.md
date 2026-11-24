@@ -37,10 +37,10 @@ A matching PR push separately runs Core's eight-target PowerShell/CLR profiling 
 `-CandidateModule` must point at an already-built module manifest; the gate only orchestrates measurement, it does
 not build anything. `scripts/New-ReadyToRunCandidate.ps1` builds that candidate as a **separate copy**, never
 overwriting the baseline module you want to compare against — the gate needs both to exist side by side. It copies
-`global.json`, `Directory.Packages.props` and the Core module into a new owned directory, then republishes only that copy's net10.0 engine project into `lib/inprocess/<rid>`
-with `-p:PublishReadyToRun=true` (the only difference from a normal publish, which is why the A/B comparison
-isolates exactly the effect ReadyToRun has), recording the build's input hashes and configuration next to the
-output the same way `./scripts/Build-Workspace.ps1` does. From
+`global.json`, `Directory.Build.props`, `Directory.Packages.props` and the grouped Core module into a new owned directory.
+It publishes the chosen RID with `-p:PublishReadyToRun=true` to `lib/inprocess/<rid>` for .NET 10 and
+`lib/engine/<rid>` for .NET 11. Each host selects the engine for its actual CLR. Both publications record
+source hashes, the target architecture and the verified ReadyToRun format. From
 `PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh`, with the baseline already built normally
 (`./scripts/Build-Workspace.ps1`, left in place and untouched):
 

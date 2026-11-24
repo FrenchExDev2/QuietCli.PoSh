@@ -937,7 +937,7 @@ Jobs · [readytorun](#workflow-quietcli2-readytorun-yml-12-job-j0) · [linux-ima
 | 9 | Render the latest report | [scripts/Show-ColdStartReport.ps1](scripts/Show-ColdStartReport.md) | <code>always()</code> |
 | 10 | Export redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
 | 11 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
-| 12 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+| 12 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>&#36;{{ !cancelled() &#38;&#38; (steps.comparison.outcome == 'success' &#124;&#124; steps.comparison.outcome == 'failure') }}</code> |
 
 <a name="workflow-quietcli2-readytorun-yml-12-job-j1"></a>
 
@@ -970,7 +970,7 @@ Declared matrix · <code>{"include"&#58;&#91;{"platform"&#58;"debian","rid"&#58;
 | 11 | Render the latest report | [scripts/Show-ColdStartReport.ps1](scripts/Show-ColdStartReport.md) | <code>always()</code> |
 | 12 | Export redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
 | 13 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
-| 14 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+| 14 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>&#36;{{ !cancelled() &#38;&#38; (steps.comparison.outcome == 'success' &#124;&#124; steps.comparison.outcome == 'failure') }}</code> |
 
 <a name="workflow-release-tags-yml-13"></a>
 

@@ -1,6 +1,6 @@
 # quietcli2-readytorun.yml
 
-<!-- workflow-source-sha256: 94553F32F83CC312B331BA8D644653DA9B69DFCECF016EC61804A0E5B60BBD72 -->
+<!-- workflow-source-sha256: 2602568811FB7477D9DF73C18C1A63451368815F656F3818FAA01FF9C54C8A6A -->
 
 ## Purpose
 
@@ -61,7 +61,7 @@ dependency is added. See [environment resolution](../environment.md).
 
 The Linux preparation path optionally reuses resource archives through the shared cache action. Missing cache entries follow normal verified restoration; this adds no trigger, publication or qualification dependency.
 
-Windows runs the baseline and separate net10.0 R2R candidate directly. Linux rows use native Ubuntu CPU runners, explicit Docker image preparation and Invoke-ContainerColdStartWorker directly; no desktop launcher or Watch-Tests is started. Candidate roots are fresh RUNNER_TEMP paths. Reports upload with always(); job failures also export bounded redacted diagnostics for 14 days.
+Windows runs the comparison directly. Linux rows use native Ubuntu CPU runners and the prepared Docker image. The Linux worker stages the IL baseline at its grouped checkout-relative location. Each candidate is built in a fresh RUNNER_TEMP directory and offers ReadyToRun for .NET 10 and .NET 11 on the selected RID. Report uploads run after the comparison is attempted, so partial reports can be retained. A strict PR run still requires a complete A/B report. Job failures also export bounded redacted diagnostics for 14 days.
 
 ## Validation and limits
 

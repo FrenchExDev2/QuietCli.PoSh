@@ -6,23 +6,23 @@ Source file: [`New-ReadyToRunCandidate.ps1`](../../scripts/New-ReadyToRunCandida
 
 ## Purpose and usage
 
-Creates a separate net10.0 ReadyToRun candidate for the manual cold-start comparison. The baseline remains unchanged.
+Creates a separate Core module with .NET 10 and .NET 11 ReadyToRun engines for the cold-start comparison.
 
 ```powershell
 $candidate=./scripts/New-ReadyToRunCandidate.ps1 -CandidateRoot <new-owned-directory> -RuntimeIdentifier linux-arm64
 ```
 
-WorkspaceRoot defaults to the repository root. CandidateRoot defaults to the temporary quietcli-r2r-candidate path and must not already exist. RuntimeIdentifier defaults to the actual host RID, including musl/ARM64; Configuration defaults to Release. The result is the candidate module manifest path. The candidate is for the stable CLR 10 profiling host; the release build script separately publishes both CLR builds.
+WorkspaceRoot defaults to the repository root. CandidateRoot defaults to the temporary quietcli-r2r-candidate path and must not already exist. RuntimeIdentifier defaults to the actual host RID, including musl/ARM64. Configuration defaults to Release. The result is the candidate module manifest path.
 
 ## Dependencies and side effects
 
-Requires Common.ps1, the pinned SDK/runtime packs and an already-built baseline. Copies Core, global.json, Directory.Build.props and Directory.Packages.props; publishes into `lib/inprocess/<rid>`, verifies its R2R header and updates only the candidate portable manifest's selected slots. The isolated Core candidate preserves the same warning policy and compiler-input hashes, without requiring the full workspace solution. No baseline mutation, tests or publication.
+Requires the pinned SDK/runtime packs and an already-built baseline. Copies Core at its relative workspace path together with `global.json`, `Directory.Build.props` and `Directory.Packages.props`. Publishes and verifies ReadyToRun in `lib/inprocess/<rid>` and `lib/engine/<rid>`, and marks the selected RID in both candidate manifests. The Core copy preserves the compiler policy and is built independently of the workspace solution.
 
 ## Critical review
 
 - `scripts/New-ReadyToRunCandidate.ps1:45` rejects existing destinations and workspace overlap rather than recursively deleting arbitrary paths. Choose a fresh owned destination for each attempt.
-- `scripts/New-ReadyToRunCandidate.ps1:56` records the actual RID, architecture and verified format. Copying the source module also copies unused baseline binaries; hosted-path footprint is separate from whole-package footprint.
-- The manual workflow builds an IL baseline first and supplies a fresh RUNNER_TEMP directory. It never measures the production R2R build against an identical R2R baseline.
+- Each RID-specific receipt records the architecture and verified ReadyToRun format. The hosted footprint measures the selected engine; whole-package footprint includes unused binaries.
+- The workflow builds an IL baseline first and supplies a fresh RUNNER_TEMP directory.
 - Compilation and architecture checks do not establish a speedup. The A/A noise floor and A/B results remain informational on shared runners.
 
 ## Verdict

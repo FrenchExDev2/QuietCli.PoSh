@@ -4,7 +4,7 @@
 Source file: [`Invoke-ContainerColdStartWorker.ps1`](../../scripts/Invoke-ContainerColdStartWorker.ps1)
 <!-- script-source:end -->
 
-The staged baseline manifest resolves beneath `/workspace/src/Core/src/`, matching the grouped checkout.
+The worker preserves the baseline module's checkout-relative path when staging it. It passes the same path under `/workspace` to the guest, including `src/Core/src/` in the grouped checkout.
 
 Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
 
