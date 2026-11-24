@@ -498,7 +498,7 @@ Describe 'Get-QuietCiImpact over the .NET project graph' {
     }
 
     It 'builds the owning project of <Leaf>, its reverse and forward closures, without selecting dependents' -ForEach @(
-        @{Leaf='Interop.cs'},@{Leaf='Core.Native.csproj'}
+        @{Leaf='Interop.cs'},@{Leaf='Nested/Interop.cs'},@{Leaf='Core.Native.csproj'}
     ) {
         $path="$core/Net/Core.Native/$Leaf"
         $result=& $run @($path)
