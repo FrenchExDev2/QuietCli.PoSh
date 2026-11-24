@@ -206,7 +206,7 @@
         @{
             Name = 'PullRequestChecklist'
             Module = 'lib/PullRequestChecklist.psm1'
-            Functions = @('Get-QuietPullRequestCellOption','Read-QuietPullRequestTable','Read-QuietPullRequestChecklist','New-QuietPullRequestBody','Expand-QuietPullRequestTemplate')
+            Functions = @('Get-QuietPullRequestEffectOption','Read-QuietPullRequestChecklist','New-QuietPullRequestBody','Expand-QuietPullRequestTemplate')
             UnitTestFiles = @('unit/lib/PullRequestChecklist.Tests.ps1')
             Inputs = @('.github/pull_request_template.md')
             Break = 100

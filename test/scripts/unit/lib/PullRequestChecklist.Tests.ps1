@@ -12,20 +12,6 @@ Describe 'Expandable companion task list' {
 - [ ] Preview <!-- ci:preview -->
 <!-- quietcli-ci:end -->
 '@
-        $legacyTable=@'
-<!-- quietcli-ci:begin -->
-| Effect | Core | Git | Scripts |
-| --- | --- | --- | --- |
-| [Mutation testing](https://example.test/mutation) | `[ ]` <!-- ci:run-profile-mutation-core --> | `[ ]` <!-- ci:run-profile-mutation-git --> | `[ ]` <!-- ci:script-mutation --> |
-| [Performance](https://example.test/performance) | `[ ]` <!-- ci:performance-core --> | `[ ]` <!-- ci:performance-git --> | — |
-| [Profiling](https://example.test/profiling) | `[ ]` <!-- ci:profiling-core --> | `[ ]` <!-- ci:profiling-git --> | — |
-| [Refresh mutation cache](https://example.test/cache) | — | — | `[ ]` <!-- ci:script-mutation-no-input-cache --> |
-| [ReadyToRun comparison](https://example.test/readytorun) | `[ ]` <!-- ci:readytorun --> | — | — |
-| [PowerShell Preview](https://example.test/preview) | `[ ]` <!-- ci:preview --> | — | — |
-
-- [ ] Sequential <!-- ci:mutation-serial -->
-<!-- quietcli-ci:end -->
-'@
     }
 
     It 'renders a new companion with a digit in its name and leaves generated items unchecked' {
@@ -129,63 +115,6 @@ Describe 'Expandable companion task list' {
         (Read-QuietPullRequestChecklist $body).Selected|Should -BeExactly 'script-mutation'
         $preview=New-QuietPullRequestBody -Body $text -Template $expanded
         $preview|Should -Match ([regex]::Escape("[Mutation testing]($canonical#repository-script-mutation) <!-- ci:script-mutation -->"))
-    }
-
-    It 'migrates an existing table without changing its available or selected options' {
-        $catalogue=@{Companions=[ordered]@{Core=@{Name='Core';Mutation=$true};Git=@{Name='Git';Mutation=$true}}}
-        $expanded=Expand-QuietPullRequestTemplate -Template $template -Configuration $catalogue
-        $choices=@('script-mutation','performance-git','profiling-core','mutation-serial','preview')
-        $old=New-QuietPullRequestBody -Body 'Original description' -Template $legacyTable -Footer 'Original footer' -CiOption $choices
-        $old=$old -creplace '(?m)^(\| \[Performance\][^\r\n]*)$', '$1  '
-        $parsedOld=Read-QuietPullRequestChecklist $old
-        $parsedOld.Selected|Should -BeExactly $choices
-        $updated=New-QuietPullRequestBody -Body $old -Template $expanded
-        $updated|Should -Match '(?s)^Original description.*quietcli-ci:begin.*quietcli-ci:end.*Original footer'
-        $updated|Should -Not -Match '(?m)^\|'
-        $parsed=Read-QuietPullRequestChecklist $updated
-        $parsed.Available|Should -BeExactly $parsedOld.Available
-        $parsed.Selected|Should -BeExactly $choices
-    }
-
-    It 'rejects malformed legacy tables and mismatched options' {
-        $expanded=$legacyTable
-        foreach($invalid in @(
-            $expanded.Replace('| Effect | Core | Git | Scripts |','| Effect | Core | core | Scripts |'),
-            $expanded.Replace('| Effect | Core | Git | Scripts |','| Effect | Core | ? | Scripts |'),
-            $expanded.Replace('| Effect | Core | Git | Scripts |','| Effect | Core | Git | Other |'),
-            $expanded.Replace('| Effect | Core | Git | Scripts |','| Target | Core | Git | Scripts |'),
-            $expanded.Replace('| --- | --- | --- | --- |','| --- | --- | --- |'),
-            $expanded.Replace('| --- | --- | --- | --- |','| --- | --- | BAD | --- |'),
-            $expanded.Replace('| --- | --- | --- | --- |','| --- | --- |  | --- |'),
-            ($expanded -creplace '(?m)^- .*ci:mutation-serial -->\r?\n','')
-        )){
-            {Read-QuietPullRequestChecklist $invalid}|Should -Throw '*PullRequestCiChecklistInvalidTable*'
-        }
-        foreach($invalid in @(
-            $expanded.Replace('ci:performance-git','ci:performance-core'),
-            $expanded.Replace('ci:performance-git -->','ci:performance-git --> foo'),
-            $expanded.Replace('`[ ]` <!-- ci:performance-git -->','—'),
-            $expanded.Replace('`[ ]` <!-- ci:preview --> | —','`[ ]` <!-- ci:preview --> | `[x]` <!-- ci:preview -->')
-        )){
-            {Read-QuietPullRequestChecklist $invalid}|Should -Throw '*PullRequestCiChecklistInvalidCell*'
-        }
-        {Read-QuietPullRequestChecklist ($expanded.Replace('[Profiling]','[Performance]'))}|Should -Throw '*PullRequestCiChecklistInvalidRow*'
-        {Read-QuietPullRequestChecklist ($expanded.Replace('[Profiling]','[Other]'))}|Should -Throw '*PullRequestCiChecklistInvalidRow*'
-        {Read-QuietPullRequestChecklist ($expanded.Replace('[Profiling]','Profiling'))}|Should -Throw '*PullRequestCiChecklistMalformedEffectRow*'
-        $extraCell=$expanded -creplace '(?m)^(\| \[Performance\][^\r\n]+\|)$', '$1 — |'
-        {Read-QuietPullRequestChecklist $extraCell}|Should -Throw '*PullRequestCiChecklistMalformedEffectRow*'
-        {Read-QuietPullRequestChecklist ($expanded -creplace '(?m)^\| \[Performance\][^\r\n]+\r?\n','')}|Should -Throw '*PullRequestCiChecklistIncomplete*'
-    }
-
-    It 'reads a legacy table with one companion and no companion mutation capability' {
-        $single=$legacyTable -creplace '(?m)^(\|[^|]+\|[^|]+\|)[^|]+\|', '$1'
-        $single=$single.Replace('`[ ]` <!-- ci:run-profile-mutation-core -->','—')
-
-        $parsed=Read-QuietPullRequestChecklist $single
-        $parsed.Available|Should -BeExactly @(
-            'script-mutation','performance-core','profiling-core','script-mutation-no-input-cache','mutation-serial','readytorun','preview'
-        )
-        $parsed.Selected.Count|Should -Be 0
     }
 }
 BeforeAll {
