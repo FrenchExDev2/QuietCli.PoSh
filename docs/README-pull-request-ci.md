@@ -5,6 +5,7 @@ Use [Publish-WorkspacePullRequest.ps1](scripts/Publish-WorkspacePullRequest.md) 
 | Option | Additional work |
 | --- | --- |
 | Repository script mutation | Every target declared by `test/scripts/mutation.targets.psd1` |
+| Rerun selected script mutants and refresh the cache | Run the baselines and mutants for the selected script targets afresh, then save fresh verdicts. Applies to diff-selected targets or every target when repository script mutation is checked. |
 | Companion mutation | The selected companion's mutation campaign declared in `build/companions.yaml` |
 | Companion profiling | Profiles the selected companion's test pass with PSProfiler. If mutation is selected for the same companion, the profiler runs during that mutation pass. |
 | Sequential mutation workers | Serial companion checks, serial shards within each matrix and one worker per shard |

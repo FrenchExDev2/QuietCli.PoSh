@@ -36,6 +36,8 @@ function Invoke-QuietScriptInvokeScriptsMutation {
     Requires the pinned test tools to be cached already.
     .PARAMETER NoCache
     Neither reads nor writes the incremental cache: every mutant runs (qualification).
+    .PARAMETER NoInputCache
+    Bypasses saved mutant outcomes and baseline evidence while retaining cache writes.
     .PARAMETER CacheDirectory
     Incremental cache root; defaults to <WorkspaceRoot>/.cache/script-mutation.
     .PARAMETER PruneCache
@@ -45,8 +47,8 @@ function Invoke-QuietScriptInvokeScriptsMutation {
     .PARAMETER RecycleAfter
     Jobs after which a slot worker is replaced by a fresh process.
     #>
-    param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$ScriptsRoot,[Parameter(Mandatory)][string]$TestsRoot,[Parameter(Mandatory)][string]$TargetsPath,[string[]]$Target=@(),[ValidateRange(1,32)][int]$ThrottleLimit=1,[int]$Seed,[switch]$Headless,[string]$RunDirectory,[int]$TimeoutSeconds=3600,[switch]$Offline,[switch]$NoCache,[string]$CacheDirectory,[switch]$PruneCache,[ValidateRange(1,100000)][int]$RecycleAfter=200)
-    if($NoCache -and $PruneCache){throw 'ScriptMutationCacheOptionsConflict'}
+    param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$ScriptsRoot,[Parameter(Mandatory)][string]$TestsRoot,[Parameter(Mandatory)][string]$TargetsPath,[string[]]$Target=@(),[ValidateRange(1,32)][int]$ThrottleLimit=1,[int]$Seed,[switch]$Headless,[string]$RunDirectory,[int]$TimeoutSeconds=3600,[switch]$Offline,[switch]$NoCache,[switch]$NoInputCache,[string]$CacheDirectory,[switch]$PruneCache,[ValidateRange(1,100000)][int]$RecycleAfter=200)
+    if($NoCache -and ($PruneCache -or $NoInputCache)){throw 'ScriptMutationCacheOptionsConflict'}
     $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot);$ScriptsRoot=[IO.Path]::GetFullPath($ScriptsRoot);$TestsRoot=[IO.Path]::GetFullPath($TestsRoot)
     if(![IO.Directory]::Exists($ScriptsRoot)){throw 'ScriptMutationPathInvalid: scripts-root'}
     if(![IO.Directory]::Exists($TestsRoot)){throw 'ScriptMutationPathInvalid: tests-root'}
@@ -68,7 +70,7 @@ function Invoke-QuietScriptInvokeScriptsMutation {
     [void][IO.Directory]::CreateDirectory($RunDirectory)
     $request=[ordered]@{
         WorkspaceRoot=$WorkspaceRoot;ScriptsRoot=$ScriptsRoot;TestsRoot=$TestsRoot;RunDirectory=$RunDirectory;Seed=$Seed;ThrottleLimit=$ThrottleLimit
-        PesterModulePath=$tools.PesterModulePath;CacheDirectory=$cache;PruneCache=[bool]$PruneCache;RecycleAfter=$RecycleAfter
+        PesterModulePath=$tools.PesterModulePath;CacheDirectory=$cache;NoInputCache=[bool]$NoInputCache;PruneCache=[bool]$PruneCache;RecycleAfter=$RecycleAfter
         Targets=@($targets|ForEach-Object {[ordered]@{Name=$_.Name;Module=$_.Module;Functions=$_.Functions;UnitTestFiles=$_.UnitTestFiles;Break=$_.Break;Inputs=[string[]]@($_.Inputs);Equivalent=@($_.Equivalent)}})
     }
     $requestPath=[IO.Path]::Combine($RunDirectory,'request.json')
@@ -143,6 +145,7 @@ function Invoke-QuietScriptsMutationWorker {
     $request=Get-Content -LiteralPath $RequestPath -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable
     $runDirectory=$request.RunDirectory
     $cache=[string]$request.CacheDirectory
+    $readCache=$cache -and !$request.NoInputCache
     $statusPath=[IO.Path]::Combine($runDirectory,'status.json');$summaryPath=[IO.Path]::Combine($runDirectory,'summary.json')
     $status=[ordered]@{
         Project='FrenchExDev2.QuietCli.Scripts.Mutation';Task=('Mutation scripts ('+(@($request.Targets|ForEach-Object {$_.Name}) -join ', ')+')')
@@ -222,6 +225,7 @@ function Invoke-QuietScriptsMutationWorker {
     try{
         Write-Host ("Seed: $($request.Seed) (replay with -Seed $($request.Seed))")
         Write-Host ('Cache: '+$(if($cache){$cache}else{'disabled'}))
+        if($request.NoInputCache){Write-Host 'Cache: skipping saved outcomes and baselines; writing fresh results.'}
         for($index=0;$index -lt $count;$index++){
             $roots[$index]=Copy-QuietScriptsMutationTree -Source $request.ScriptsRoot -Destination ([IO.Path]::Combine($slotsRoot,[string]$index,'scripts'))
             & $startSlot $index
@@ -247,7 +251,7 @@ function Invoke-QuietScriptsMutationWorker {
             foreach($mutant in $split.Run){
                 $source=New-QuietScriptMutantSource -Text $text -Mutant $mutant
                 if(!$source.Compiles){$results.Add((& $toResult $targetEntry.Name $mutant 'CompileError' 0 $false));continue}
-                $hit=if($cache){Read-QuietScriptMutantCache -Directory $cache -Key $keys[[string]$mutant.Id]}else{$null}
+                $hit=if($readCache){Read-QuietScriptMutantCache -Directory $cache -Key $keys[[string]$mutant.Id]}else{$null}
                 if($null -ne $hit){$results.Add((& $toResult $targetEntry.Name $mutant $hit.Status $hit.Seconds $true));$reused++;continue}
                 $queue.Enqueue([pscustomobject]@{Mutant=$mutant;Text=$source.Text;Retries=0})
             }
@@ -257,7 +261,7 @@ function Invoke-QuietScriptsMutationWorker {
                 continue
             }
             # A baseline already proven on this machine for the same engine, sources and tests is not run again.
-            $known=if($baselineKey){Read-QuietScriptMutationBaseline -Directory $cache -Key $baselineKey}else{$null}
+            $known=if($readCache){Read-QuietScriptMutationBaseline -Directory $cache -Key $baselineKey}else{$null}
             if($null -ne $known){
                 $timeout=Get-QuietScriptMutantTimeout $known.Seconds
                 $proven=@($known.Focus|Where-Object {$focus.Contains($_)})

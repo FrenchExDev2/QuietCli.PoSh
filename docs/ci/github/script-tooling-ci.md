@@ -1,6 +1,6 @@
 # tooling-ci.yml
 
-<!-- workflow-source-sha256: CC058F8F49ACAF7C7335607BE6C7065B0690EFBBD9809622D0A3EABB87723494 -->
+<!-- workflow-source-sha256: E27D1469C06BEF5CFA8748A7184971908FF28C64D40ED5FFE47CDF3897542755 -->
 
 ## Purpose
 
@@ -19,13 +19,14 @@ Run-profile mutation uses two independent matrix shards, each with two isolated 
 
 ## Scope and selection
 
-Three optional `workflow_call` inputs choose what runs. Their defaults run every campaign, so callers that pass no input, such as `ci.yml`, keep the full campaign.
+Optional `workflow_call` inputs choose what runs and how the mutation jobs execute. Callers that pass no inputs, such as `ci.yml`, keep the full incremental campaign.
 
 | Input | Default | Values |
 | --- | --- | --- |
 | `scope` | `full` | `full` runs every job. `scripts` runs only the script tests and the script mutation targets. |
 | `script_tests` | `all` | `all`, or a JSON array of test files relative to `test/scripts`. |
 | `script_mutation_targets` | `all` | `all`, or a JSON array of target names from `test/scripts/mutation.targets.psd1`. |
+| `script_mutation_no_input_cache` | `false` | `true` skips cache restoration and runs each selected script mutant and baseline afresh. The shard still saves fresh cache entries. |
 
 `companions-ci.yml` passes `scope: scripts` when only `scripts/` or `test/scripts/` changed. It then passes the files and targets those changes reach, as computed by [ScriptsImpact](../../scripts/lib/ScriptsImpact.md). In that case `core-independence`, `tooling`, `run-profiles-mutation` and `mutation-complete` are skipped. A manual `Tooling` dispatch of `companions-ci.yml` runs them again.
 

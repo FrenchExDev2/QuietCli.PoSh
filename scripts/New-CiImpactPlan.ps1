@@ -131,6 +131,7 @@ $outputs=@{
     run_companion_checks=($plan.CompanionChecks.Count -gt 0).ToString().ToLowerInvariant()
     mutation_parallel=$plan.MutationParallel.ToString().ToLowerInvariant()
     pr_ci_options=ConvertTo-Json -InputObject $selection.Selected -Compress
+    script_mutation_no_input_cache=$plan.ScriptMutationNoInputCache.ToString().ToLowerInvariant()
     # The generated-layout campaign is skipped only when script tests are the whole selected work.
     run_layout=!($scope -ceq 'scripts' -and !$plan.RunProducts -and !$plan.SmokeSuites.Count -and !$plan.RunDistribution -and !$plan.RunReadyToRun -and !$plan.CompanionChecks.Count)
     tooling_scope=$scope

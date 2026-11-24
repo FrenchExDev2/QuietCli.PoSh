@@ -122,6 +122,26 @@ Describe 'Invoke-ScriptsMutation.ps1' {
         $again.Output|Should -Match 'Cache: pruned 0 unused documents'
     }
 
+    It 'replays every mutant and baseline with -NoInputCache and refreshes saved verdicts' {
+        $workspace=& $newWorkspace @((& $target 'Strong' 'Strong.Tests.ps1'))
+        $first=& $run $workspace @() 'initial'
+        $first.ExitCode|Should -Be 0 -Because ($first.Output+$first.Error)
+        $files=@([IO.Directory]::EnumerateFiles([IO.Path]::Combine($workspace,'cache'),'*.json',[IO.SearchOption]::AllDirectories))
+        $record=@($files|Where-Object { (Get-Content -LiteralPath $_ -Raw -Encoding utf8|ConvertFrom-Json).Status -ceq 'Killed' })[0]
+        $cached=Get-Content -LiteralPath $record -Raw -Encoding utf8|ConvertFrom-Json
+        $cached.Status='Survived'
+        [IO.File]::WriteAllText($record,($cached|ConvertTo-Json),[Text.UTF8Encoding]::new($false))
+
+        $refresh=& $run $workspace @('-NoInputCache','-PruneCache') 'refresh'
+        $refresh.ExitCode|Should -Be 0 -Because ($refresh.Output+$refresh.Error)
+        $refresh.Report.Targets[0].Cached|Should -Be 0
+        $refresh.Output|Should -Match 'Progress: Baseline Strong \|'
+        (Get-Content -LiteralPath $record -Raw -Encoding utf8|ConvertFrom-Json).Status|Should -BeExactly 'Killed'
+        $after=& $run $workspace @() 'reuse'
+        $after.ExitCode|Should -Be 0 -Because ($after.Output+$after.Error)
+        $after.Report.Targets[0].Cached|Should -Be $refresh.Report.Targets[0].Mutants
+    }
+
     It 'runs only the selected target and passes when it reaches its break' {
         $workspace=& $newWorkspace @((& $target 'Strong' 'Strong.Tests.ps1'),(& $target 'Weak' 'Weak.Tests.ps1'))
         $outcome=& $run $workspace @('-Target','Strong')
@@ -157,6 +177,7 @@ Describe 'Invoke-ScriptsMutation.ps1' {
         @{Case='a missing function';Targets=@("@{Name='Strong';Module='lib/Sign.psm1';Functions=@('Get-Nothing');UnitTestFiles=@('unit/Strong.Tests.ps1');Break=100}");Arguments=@();Expected='ScriptMutationFunctionMissing: Get-Nothing'}
         @{Case='an invalid targets file';Targets=@("@{Name='Strong'}");Arguments=@();Expected='ScriptMutationTargetsInvalid: module'}
         @{Case='pruning a disabled cache';Targets=@("@{Name='Strong';Module='lib/Sign.psm1';Functions=@('Get-Sign');UnitTestFiles=@('unit/Strong.Tests.ps1');Break=100}");Arguments=@('-NoCache','-PruneCache');Expected='ScriptMutationCacheOptionsConflict'}
+        @{Case='refreshing a disabled cache';Targets=@("@{Name='Strong';Module='lib/Sign.psm1';Functions=@('Get-Sign');UnitTestFiles=@('unit/Strong.Tests.ps1');Break=100}");Arguments=@('-NoCache','-NoInputCache');Expected='ScriptMutationCacheOptionsConflict'}
     ) {
         $workspace=& $newWorkspace $Targets
         $outcome=& $run $workspace $Arguments

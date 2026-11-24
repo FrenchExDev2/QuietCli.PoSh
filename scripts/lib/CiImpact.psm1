@@ -245,6 +245,7 @@ function Add-QuietCiPullRequestSelection {
         RunReadyToRun='readytorun' -cin $Options
         RunPreview='preview' -cin $Options
         RunAllScriptMutations='script-mutation' -cin $Options
+        ScriptMutationNoInputCache='script-mutation-no-input-cache' -cin $Options
         CompanionChecks=$checks
         MutationParallel='mutation-serial' -cnotin $Options
     })
@@ -263,6 +264,7 @@ function Add-QuietCiPullRequestSelection {
         $target=switch -CaseSensitive ($option) {
             'mutation' {'Tooling'}
             'script-mutation' {'Scripts'}
+            'script-mutation-no-input-cache' {'Scripts'}
             'mutation-serial' {'Mutations'}
             'readytorun' {'ReadyToRun'}
             'preview' {'Core'}

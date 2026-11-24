@@ -25,7 +25,9 @@ Targets file; defaults to <TestsRoot>/mutation.targets.psd1.
 .PARAMETER Offline
 Requires the pinned test tools to be cached already.
 .PARAMETER NoCache
-Runs every mutant and leaves the incremental cache untouched (CI qualification).
+Runs every mutant and leaves the incremental cache untouched.
+.PARAMETER NoInputCache
+Runs every mutant without using saved outcomes or baselines, and saves fresh results.
 .PARAMETER CacheDirectory
 Incremental cache root; defaults to <WorkspaceRoot>/.cache/script-mutation.
 .PARAMETER PruneCache
@@ -35,12 +37,12 @@ targets, as each CI shard does). Rejected with -NoCache.
 Jobs after which a slot worker is replaced by a fresh process (default 200).
 #>
 [CmdletBinding(SupportsShouldProcess)]
-param([string[]]$Target=@(),[ValidateRange(1,32)][int]$ThrottleLimit=([Math]::Max(1,[Math]::Min(32,[int][Math]::Floor([Environment]::ProcessorCount/2)))),[ValidateRange(0,2147483647)][int]$Seed=0,[switch]$Headless,[string]$RunDirectory,[ValidateRange(60,86400)][int]$TimeoutSeconds=3600,[string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'..'))),[string]$ScriptsRoot=$PSScriptRoot,[string]$TestsRoot,[string]$TargetsPath,[switch]$Offline,[switch]$NoCache,[string]$CacheDirectory,[switch]$PruneCache,[ValidateRange(1,100000)][int]$RecycleAfter=200)
+param([string[]]$Target=@(),[ValidateRange(1,32)][int]$ThrottleLimit=([Math]::Max(1,[Math]::Min(32,[int][Math]::Floor([Environment]::ProcessorCount/2)))),[ValidateRange(0,2147483647)][int]$Seed=0,[switch]$Headless,[string]$RunDirectory,[ValidateRange(60,86400)][int]$TimeoutSeconds=3600,[string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'..'))),[string]$ScriptsRoot=$PSScriptRoot,[string]$TestsRoot,[string]$TargetsPath,[switch]$Offline,[switch]$NoCache,[switch]$NoInputCache,[string]$CacheDirectory,[switch]$PruneCache,[ValidateRange(1,100000)][int]$RecycleAfter=200)
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ScriptsMutation')){return}
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Invoke-ScriptsMutation.psm1')) -DisableNameChecking -ErrorAction Stop
 if([string]::IsNullOrWhiteSpace($TestsRoot)){$TestsRoot=[IO.Path]::Combine($WorkspaceRoot,'test','scripts')}
 if([string]::IsNullOrWhiteSpace($TargetsPath)){$TargetsPath=[IO.Path]::Combine($TestsRoot,'mutation.targets.psd1')}
-$outcome=Invoke-QuietScriptInvokeScriptsMutation -WorkspaceRoot $WorkspaceRoot -ScriptsRoot $ScriptsRoot -TestsRoot $TestsRoot -TargetsPath $TargetsPath -Target $Target -ThrottleLimit $ThrottleLimit -Seed $Seed -Headless:$Headless -RunDirectory $RunDirectory -TimeoutSeconds $TimeoutSeconds -Offline:$Offline -NoCache:$NoCache -CacheDirectory $CacheDirectory -PruneCache:$PruneCache -RecycleAfter $RecycleAfter
+$outcome=Invoke-QuietScriptInvokeScriptsMutation -WorkspaceRoot $WorkspaceRoot -ScriptsRoot $ScriptsRoot -TestsRoot $TestsRoot -TargetsPath $TargetsPath -Target $Target -ThrottleLimit $ThrottleLimit -Seed $Seed -Headless:$Headless -RunDirectory $RunDirectory -TimeoutSeconds $TimeoutSeconds -Offline:$Offline -NoCache:$NoCache -NoInputCache:$NoInputCache -CacheDirectory $CacheDirectory -PruneCache:$PruneCache -RecycleAfter $RecycleAfter
 $outcome
 if($outcome.ExitCode -ne 0){throw "Scripts mutation $($outcome.State); passed=$($outcome.Passed). See $($outcome.Markdown)"}

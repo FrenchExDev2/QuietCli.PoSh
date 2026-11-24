@@ -45,6 +45,7 @@ jobs:
       companion_checks: ${{ steps.plan.outputs.companion_checks }}
       run_companion_checks: ${{ steps.plan.outputs.run_companion_checks }}
       mutation_parallel: ${{ steps.plan.outputs.mutation_parallel }}
+      script_mutation_no_input_cache: ${{ steps.plan.outputs.script_mutation_no_input_cache }}
       pr_ci_options: ${{ steps.plan.outputs.pr_ci_options }}
       pr_number: ${{ steps.plan.outputs.pr_number }}
       pr_head: ${{ steps.plan.outputs.pr_head }}
@@ -148,6 +149,7 @@ jobs:
       script_tests: ${{ needs.plan.outputs.script_tests }}
       script_mutation_targets: ${{ needs.plan.outputs.script_mutation_targets }}
       mutation_parallel: ${{ needs.plan.outputs.mutation_parallel == 'true' }}
+      script_mutation_no_input_cache: ${{ needs.plan.outputs.script_mutation_no_input_cache == 'true' }}
   companion-checks:
     needs: [plan, source-checks, layout-tests]
     if: needs.plan.outputs.run_companion_checks == 'true'
