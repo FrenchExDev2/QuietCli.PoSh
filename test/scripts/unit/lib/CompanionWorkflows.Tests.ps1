@@ -204,7 +204,8 @@ Describe 'CompanionWorkflows' {
         Mock -ModuleName CompanionWorkflows Assert-QuietCiCompanionImages {}
         $path=[IO.Path]::Combine($currentRoot,'.github','pull_request_template.md')
         $expected=("<!-- quietcli-ci:begin -->`n- [ ] Scripts <!-- ci:script-mutation -->`n- [ ] Run Box2 mutation testing <!-- ci:run-profile-mutation-box2 -->`n- [ ] Profile the Box2 PowerShell tests <!-- ci:profiling-box2 -->`n- [ ] Serial <!-- ci:mutation-serial -->`n- [ ] R2R <!-- ci:readytorun -->`n- [ ] Preview <!-- ci:preview -->`n<!-- quietcli-ci:end -->`n")
-        $null=New-QuietTestFile $path ($expected.Replace("`n","`r`n"))
+        [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))
+        [IO.File]::WriteAllText($path,($expected.Replace("`n","`r`n")),[Text.UTF8Encoding]::new($false))
         {Sync-QuietCompanionWorkflows -WorkspaceRoot $currentRoot}|Should -Not -Throw
         $stale=$expected.Replace('Box2','Old').Replace('box2','old')
         [IO.File]::WriteAllText($path,$stale,[Text.Encoding]::UTF8)

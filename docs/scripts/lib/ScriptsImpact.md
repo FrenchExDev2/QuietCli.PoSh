@@ -6,6 +6,8 @@ Source file: [`lib/ScriptsImpact.psm1`](../../../scripts/lib/ScriptsImpact.psm1)
 
 ## Purpose and usage
 
+Test discovery reports relative paths with `/` as the directory separator on every host.
+
 Chooses which script tests and mutation targets must run after a change below `scripts/` or `test/scripts/`. Without it, every such change would rerun the whole script test suite and every mutation shard.
 
 ```powershell
