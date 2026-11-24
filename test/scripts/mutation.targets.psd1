@@ -149,7 +149,7 @@
         @{
             Name = 'CiImages'
             Module = 'lib/CiImages.psm1'
-            Functions = @('Receive-QuietCiRegistryImage')
+            Functions = @('Resolve-QuietCiImageCacheDigest','Receive-QuietCiRegistryImage')
             UnitTestFiles = @('unit/lib/CiImages.Tests.ps1')
             Break = 100
         }
