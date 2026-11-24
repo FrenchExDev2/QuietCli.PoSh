@@ -14,6 +14,8 @@ Revision under test.
 GitHub Actions run supplying the image.
 .PARAMETER PublishCache
 Allows the existing upstream develop GHCR publication policy.
+.PARAMETER PassThru
+Returns whether every image chain came from the verified registry cache after the archive has been written.
 .PARAMETER CacheKey
 Returns the exact recipe-set hash without contacting Docker or a registry.
 .PARAMETER ReuseArchive
@@ -30,6 +32,7 @@ param(
     [Parameter(Mandatory,ParameterSetName='Prepare')]
     [Parameter(Mandatory,ParameterSetName='Reuse')][ValidatePattern('\A[0-9]+\z')][string]$RunId,
     [Parameter(ParameterSetName='Prepare')][switch]$PublishCache,
+    [Parameter(ParameterSetName='Prepare')][switch]$PassThru,
     [Parameter(Mandatory,ParameterSetName='Key')][ValidateScript({$_.IsPresent})][switch]$CacheKey,
     [Parameter(Mandatory,ParameterSetName='Reuse')][ValidateScript({$_.IsPresent})][switch]$ReuseArchive
 )
@@ -61,3 +64,4 @@ $directory=[IO.Path]::GetFullPath($OutputDirectory,$PWD.ProviderPath)
 if(Test-Path -LiteralPath $directory){throw 'CiImageBundleDirectoryExists'}
 $selection=Invoke-QuietCiSuiteImages -WorkspaceRoot $root -Configuration $configuration -Suite $Suite -RuntimeIdentifier $RuntimeIdentifier -ContainerRuntime docker -RegistryCache -PublishCache:$PublishCache -Confirm:$false
 Export-QuietCiImageBundle -WorkspaceRoot $root -RuntimeIdentifier $RuntimeIdentifier -Directory $directory -Revision $Revision -RunId $RunId -Receipts @($selection.Chains.Receipt)
+if($PassThru){return [pscustomobject]@{CacheHit=$selection.CacheHit}}

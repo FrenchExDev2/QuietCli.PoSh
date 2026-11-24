@@ -8,7 +8,7 @@ Prepares the selected suite images on the native Docker runner, then saves one `
 
 `-CacheKey` reads the declared suite plans and returns a hash of their distinct final fingerprints. It needs only `-Suite` and `-RuntimeIdentifier` and accesses neither Docker nor the registry. `-ReuseArchive` checks the restored archive in `-OutputDirectory` against the expected RID, fingerprint set and SHA-256 before writing a receipt for `-Revision` and `-RunId`. Its `-WhatIf` performs no file access or writes.
 
-The workflow uses exact cache matches only. A missing cache prepares a fresh bundle. A receipt or archive mismatch fails before upload. Local tests check both the receipt handoff with a Docker double and the workflow conditions. Hosted cache restore and save still require a GitHub Actions run.
+The workflow uses exact archive cache matches only. A missing archive cache prepares a fresh bundle. With `-PassThru`, successful preparation returns `CacheHit`, which is true when every selected image chain was reused from the verified registry cache. The workflow uses this result to save the archive to the Actions cache only after a local build. A receipt or archive mismatch fails before upload. Local tests check both the receipt handoff with a Docker double and the workflow conditions. Hosted cache restore and save still require a GitHub Actions run.
 
 See [Linux CI images](../ci/linux-images.md) and [Import-CiImageBundle](Import-CiImageBundle.md).
 

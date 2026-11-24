@@ -7,9 +7,19 @@ inputs:
   rid:
     description: Native target architecture and libc scope
     required: true
-  fingerprint:
-    description: Final image plan fingerprint including every declared recipe input and parent
+  key:
+    description: Primary BuildKit cache key selected by the workflow
     required: true
+outputs:
+  cache-hit:
+    description: Whether the primary key was restored exactly
+    value: ${{ steps.restore.outputs.cache-hit }}
+  cache-primary-key:
+    description: Primary cache key used during restore
+    value: ${{ steps.restore.outputs.cache-primary-key }}
+  restored-indexes:
+    description: SHA-256 of the BuildKit indexes immediately after restore
+    value: ${{ steps.enable.outputs.restored-indexes }}
 runs:
   using: composite
   steps:
@@ -20,18 +30,25 @@ runs:
         daemon-config: |
           {"features":{"containerd-snapshotter":true}}
     - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      id: restore
       if: inputs.mode == 'restore'
       with:
         path: .cache/ci-buildkit
-        key: quietcli-buildkit-v2-${{ inputs.rid }}-${{ inputs.fingerprint }}
+        key: ${{ inputs.key }}
         restore-keys: quietcli-buildkit-v2-${{ inputs.rid }}-
     - name: Enable the checkout-owned intermediate cache
+      id: enable
       if: inputs.mode == 'restore'
       shell: pwsh
+      env:
+        RESTORED_INDEXES: ${{ hashFiles('.cache/ci-buildkit/*/index.json') }}
       run: |
-        [IO.File]::AppendAllText($env:GITHUB_ENV,"QUIETCLI_BUILDKIT_CACHE_DIR=$((Join-Path $env:GITHUB_WORKSPACE '.cache/ci-buildkit'))`n",[Text.UTF8Encoding]::new($false))
+        $encoding=[Text.UTF8Encoding]::new($false)
+        $directory=[IO.Path]::Combine($env:GITHUB_WORKSPACE,'.cache/ci-buildkit')
+        [IO.File]::AppendAllText($env:GITHUB_ENV,"QUIETCLI_BUILDKIT_CACHE_DIR=$directory`n",$encoding)
+        [IO.File]::AppendAllText($env:GITHUB_OUTPUT,"restored-indexes=$env:RESTORED_INDEXES`n",$encoding)
     - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       if: inputs.mode == 'save'
       with:
         path: .cache/ci-buildkit
-        key: quietcli-buildkit-v2-${{ inputs.rid }}-${{ inputs.fingerprint }}
+        key: ${{ inputs.key }}

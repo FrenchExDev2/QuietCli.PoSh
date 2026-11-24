@@ -76,7 +76,7 @@ Describe 'Shared Linux image production' {
         [string]$imageJob['steps'][$upload]['with']['if-no-files-found']|Should -BeExactly 'error'
     }
 
-    It 'starts Docker and saves a new archive only when an exact cached archive is unavailable' {
+    It 'starts Docker on an archive miss and saves a new archive only after a local build' {
         $key=& $stepIndex $imageJob {param($step)$step['id'] -ceq 'image_key'}
         $cache=& $stepIndex $imageJob {param($step)$step['id'] -ceq 'image_cache'}
         $docker=& $stepIndex $imageJob {param($step)$step['uses'] -ceq './.github/actions/cache-ci-layers' -and $step['with']['mode'] -ceq 'restore'}
@@ -94,12 +94,32 @@ Describe 'Shared Linux image production' {
         $steps[$cache]['with']['key'] | Should -BeExactly 'quietcli-ci-archive-v1-${{ matrix.rid }}-${{ steps.image_key.outputs.fingerprint }}'
         $steps[$cache]['with'].ContainsKey('restore-keys') | Should -BeFalse
         $steps[$docker]['if'] | Should -BeExactly '${{ inputs.images_only || steps.image_cache.outputs.cache-hit != ''true'' }}'
-        foreach($index in $prepare,$save){
-            $steps[$index]['if'] | Should -BeExactly '${{ !inputs.images_only && steps.image_cache.outputs.cache-hit != ''true'' }}'
-        }
+        $steps[$prepare]['id'] | Should -BeExactly 'prepare_bundle'
+        $steps[$prepare]['if'] | Should -BeExactly '${{ !inputs.images_only && steps.image_cache.outputs.cache-hit != ''true'' }}'
+        $steps[$prepare]['run'] | Should -Match '-PassThru'
         $steps[$reuse]['if'] | Should -BeExactly '${{ !inputs.images_only && steps.image_cache.outputs.cache-hit == ''true'' }}'
+        $steps[$save]['if'] | Should -BeExactly '${{ steps.prepare_bundle.outputs.registry-hit == ''false'' }}'
         $steps[$save]['with']['path'] | Should -BeExactly $steps[$cache]['with']['path']
         $steps[$save]['with']['key'] | Should -BeExactly '${{ steps.image_cache.outputs.cache-primary-key }}'
+    }
+
+    It 'saves BuildKit layers only for a missed primary key with changed nonempty indexes' {
+        $steps=$imageJob['steps']
+        $restore=& $stepIndex $imageJob {param($step)$step['id'] -ceq 'layer_cache'}
+        $save=& $stepIndex $imageJob {param($step)$step['uses'] -ceq './.github/actions/cache-ci-layers' -and $step['with']['mode'] -ceq 'save'}
+        $restore|Should -BeGreaterOrEqual 0
+        $save|Should -BeGreaterThan $restore
+        $steps[$restore]['with']['mode']|Should -BeExactly 'restore'
+        $steps[$save]['with']['key']|Should -BeExactly '${{ steps.layer_cache.outputs.cache-primary-key }}'
+        $condition=$steps[$save]['if']
+        $condition|Should -Match ([regex]::Escape("steps.layer_cache.outcome == 'success' && steps.layer_cache.outputs.cache-hit != 'true'"))
+        $condition|Should -Match ([regex]::Escape("hashFiles('.cache/ci-buildkit/*/index.json') != ''"))
+        $condition|Should -Match ([regex]::Escape("hashFiles('.cache/ci-buildkit/*/index.json') != steps.layer_cache.outputs.restored-indexes"))
+        $action=$parser.Deserialize([IO.File]::ReadAllText([IO.Path]::Combine($root,'.github','actions','cache-ci-layers','action.yml'),[Text.Encoding]::UTF8))
+        $action['outputs']['cache-primary-key']['value']|Should -BeExactly '${{ steps.restore.outputs.cache-primary-key }}'
+        $action['outputs']['cache-hit']['value']|Should -BeExactly '${{ steps.restore.outputs.cache-hit }}'
+        $action['outputs']['restored-indexes']['value']|Should -BeExactly '${{ steps.enable.outputs.restored-indexes }}'
+        $action['runs']['steps'][2]['env']['RESTORED_INDEXES']|Should -BeExactly '${{ hashFiles(''.cache/ci-buildkit/*/index.json'') }}'
     }
 
     It 'keys the archive by its unique native image plans, independently of suite order and aliases' {

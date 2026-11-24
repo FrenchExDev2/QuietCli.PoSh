@@ -11,7 +11,7 @@ Four native targets use Ubuntu runners matching their CPU. Debian and Alpine are
 
 ## Image production and handoff
 
-`linux-images.yml` supplies one bundle per RID for the selected chains. It first looks for a final archive keyed by the native RID and the exact set of recipe fingerprints. An exact hit skips Docker setup, BuildKit and archive creation. The producer verifies the archive SHA-256 and issues a receipt for the current run and revision. A changed recipe, a different image set, or a missing cache entry takes the preparation path. The producer then reuses verified GHCR images or builds missing layers, sharing verified parents between chains. Read-only timeouts and unavailable final images use the verified local build path. Only trusted upstream develop runs can publish to GHCR.
+`linux-images.yml` supplies one bundle per RID for the selected chains. It first looks for a final archive keyed by the native RID and the exact set of recipe fingerprints. An exact hit skips Docker setup, BuildKit and archive creation. The producer verifies the archive SHA-256 and issues a receipt for the current run and revision. A changed recipe, a different image set, or a missing cache entry takes the preparation path. The producer then reuses verified GHCR images or builds missing layers, sharing verified parents between chains. Read-only timeouts and unavailable final images use the verified local build path. A locally built image enables the final archive cache save. A bundle assembled entirely from GHCR images is uploaded as the current-run artifact only. The intermediate BuildKit cache is saved after successful preparation if its exact key missed and its nonempty indexes changed.
 
 ```mermaid
 flowchart TD
@@ -28,7 +28,7 @@ GitHub starts the Linux consumers after successful preparation. Each consumer do
 
 The archive retains a local transfer tag for each fingerprint. Docker image stores can assign different IDs to the same imported image. Consumers resolve the transfer tag, validate the loaded image and use their own daemon's immutable ID for execution.
 
-The registry reader verifies OCI images or the single matching Linux descriptor in an OCI index. The producer records immutable cache identity and checks image labels and native architecture. Sources, environment files and credentials stay outside the image archive. [CiImages](../scripts/lib/CiImages.md)
+Each recipe fingerprint is a SHA-256 over the sorted declared paths and their content hashes, the generated Containerfile hash and the parent fingerprint for overlays. The producer uses the resulting fingerprint as the GHCR tag and checks it against the image label, along with the source, Linux OS and target architecture. The registry reader resolves the immutable digest from an OCI manifest or the matching Linux platform in an OCI index. Trusted upstream `develop` runs publish only missing fingerprint tags. Sources, environment files and credentials stay outside the image archive. [CiImages](../scripts/lib/CiImages.md)
 
 ## Trusted cache-only preparation
 
