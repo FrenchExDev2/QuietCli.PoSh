@@ -19,7 +19,6 @@ function Read-QuietPullRequestChecklist {
     # Existing PR descriptions predate this optional row.
     $options['script-mutation-no-input-cache']=$false
     $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    $table = [Collections.Generic.List[string]]::new()
     $start = $end = -1
     $fence = ''
     $index = -1
@@ -35,18 +34,11 @@ function Read-QuietPullRequestChecklist {
             $start = $index
         } elseif ($line -ceq '<!-- quietcli-ci:end -->') {
             if (!$inside) { throw 'PullRequestCiChecklistIncomplete' }
-            if ($table.Count) {
-                if (!$seen.SetEquals([string[]]@('mutation-serial'))) { throw 'PullRequestCiChecklistInvalidTable' }
-                foreach ($cell in Read-QuietPullRequestTable $table.ToArray()) {
-                    [void]$seen.Add($cell.Id)
-                    $options[$cell.Id] = $cell.Checked
-                }
-            } elseif (!$seen.SetEquals($legacy) -and (!$seen.IsSupersetOf($standard) -or $seen.Contains('mutation'))) {
+            if (!$seen.SetEquals($legacy) -and (!$seen.IsSupersetOf($standard) -or $seen.Contains('mutation'))) {
                 throw 'PullRequestCiChecklistIncomplete'
             }
             $end = $index
         } elseif ($inside -and ![string]::IsNullOrWhiteSpace($line)) {
-            if ($line.TrimStart().StartsWith('|')) { $table.Add($line); continue }
             if ($line -cnotmatch '^\s*- \[([ xX])\] .+ <!-- ci:([a-z0-9-]+) -->\s*$') {throw 'PullRequestCiChecklistInvalidRow'}
             $id = $Matches[2]
             $checked=$Matches[1] -cne ' '
@@ -111,7 +103,6 @@ function New-QuietPullRequestBody {
     }
     foreach ($id in $selection) {
         $checklist = $checklist -creplace ("^- \[ \](.*<!-- ci:" + [regex]::Escape($id) + " -->\s*)$"), '- [x]$1'
-        $checklist = $checklist -creplace ('\x60\[ \]\x60(?= <!-- ci:' + [regex]::Escape($id) + ' -->)'), '`[x]`'
     }
     if ($source.StartLine -ge 0) {
         $lines = $Body -split '\r\n|\n|\r'
@@ -153,7 +144,7 @@ function Expand-QuietPullRequestTemplate {
         foreach ($target in $targets) {
             foreach ($effect in $effects.Keys) {
                 $definition = $effects[$effect]
-                $option = Get-QuietPullRequestCellOption $definition $target
+                $option = Get-QuietPullRequestEffectOption $definition $target
                 if ($option -and ($effect -cne 'Mutation testing' -or $target -ceq 'Scripts' -or $Configuration.Companions[$target].Mutation)) {
                     $anchor = if ($option -ceq 'script-mutation') { 'repository-script-mutation' } else { $definition.Anchor }
                     "- [ ] **$target** — [$effect]($helpUrl#$anchor) <!-- ci:$option -->"
@@ -182,7 +173,7 @@ function Get-QuietPullRequestEffectMap {
     }
 }
 
-function Get-QuietPullRequestCellOption {
+function Get-QuietPullRequestEffectOption {
     <#
     .SYNOPSIS
     Resolves the stable CI option for one effect and target.
@@ -195,45 +186,6 @@ function Get-QuietPullRequestCellOption {
     if ($Target -cin @('Core','Scripts') -and $Effect.ContainsKey($Target)) { return $Effect[$Target] }
     if ($Target -cne 'Scripts' -and $Effect.Companion) {
         return ($Effect.Companion -f $Target.ToLowerInvariant())
-    }
-}
-
-function Read-QuietPullRequestTable {
-    <#
-    .SYNOPSIS
-    Reads the target columns and effect rows of the generated CI table.
-    .PARAMETER Lines
-    Markdown table header, separator and effect rows.
-    #>
-    param([string[]]$Lines)
-    $effects = Get-QuietPullRequestEffectMap
-    if ($Lines.Count -ne ($effects.Count + 2)) { throw 'PullRequestCiChecklistIncomplete' }
-    $headers = @($Lines[0].Trim().Trim('|').Split('|').Trim())
-    if ($headers.Count -lt 3 -or $headers[0] -cne 'Effect' -or $headers[-1] -cne 'Scripts') {
-        throw 'PullRequestCiChecklistInvalidTable'
-    }
-    $targets = $headers[1..($headers.Count - 1)]
-    $unique = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    foreach ($target in $targets) {
-        if ($target -cnotmatch '^[A-Za-z][A-Za-z0-9]*$' -or !$unique.Add($target)) { throw 'PullRequestCiChecklistInvalidTable' }
-    }
-    $separator = @($Lines[1].Trim().Trim('|').Split('|').Trim())
-    if ($separator.Count -ne $headers.Count -or @($separator -cnotmatch '^:?-{3,}:?$').Count) { throw 'PullRequestCiChecklistInvalidTable' }
-    $rows = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    foreach ($line in $Lines[2..($Lines.Count - 1)]) {
-        $cells = @($line.Trim().Trim('|').Split('|').Trim())
-        if ($cells.Count -ne $headers.Count -or $cells[0] -cnotmatch '^\[([^\]]+)\]\(https://[^)]+\)$') { throw 'PullRequestCiChecklistMalformedEffectRow' }
-        $effect = $Matches[1]
-        if ($effect -cnotin $effects.Keys -or !$rows.Add($effect)) { throw 'PullRequestCiChecklistInvalidRow' }
-        for ($i = 0; $i -lt $targets.Count; $i++) {
-            $option = Get-QuietPullRequestCellOption $effects[$effect] $targets[$i]
-            $cell = $cells[$i + 1]
-            if ((!$option -or $option.StartsWith('run-profile-mutation-')) -and $cell -ceq '—') { continue }
-            if (!$option -or $cell -cnotmatch ('^\x60\[([ xX])\]\x60 <!-- ci:' + [regex]::Escape($option) + ' -->$')) {
-                throw 'PullRequestCiChecklistInvalidCell'
-            }
-            [pscustomobject]@{Id=$option; Checked=$Matches[1] -cne ' '}
-        }
     }
 }
 

@@ -8,8 +8,7 @@ QuietCli v2 is under active development. Security fixes are applied to the lates
 
 | Version                         | Supported          |
 | ------------------------------- | ------------------ |
-| 2.x (latest release)            | :white_check_mark: |
-| 2.x (older pre-releases)        | :x:                |
+| 0.2.x (latest release)          | :white_check_mark: |
 | 1.x (FrenchExDev.QuietCli.PoSh) | :x:                |
 
 If you are running an older version, please upgrade before reporting an issue, as it may already be fixed.

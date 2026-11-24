@@ -200,12 +200,13 @@ Describe 'CompanionWorkflows' {
     It 'checks, previews and refreshes the current YAML catalogue checklist using its exact path' {
         $currentRoot=[IO.Path]::Combine($TestDrive,'current-checklist')
         $cataloguePath=New-QuietTestFile ([IO.Path]::Combine($currentRoot,'build','companions.yaml')) 'fixture'
-        & $use @{Modules=@();Configuration=@{Path=$cataloguePath;Companions=[ordered]@{Box2=@{Name='Box2';Mutation=$true}}}}
+        $companions=[ordered]@{Core=@{Name='Core';Mutation=$true};Box2=@{Name='Box2';Mutation=$true}}
+        & $use @{Modules=@();Configuration=@{Path=$cataloguePath;Companions=$companions}}
         Mock -ModuleName CompanionWorkflows Assert-QuietCiCompanionImages {}
         $path=[IO.Path]::Combine($currentRoot,'.github','pull_request_template.md')
         $null=Import-QuietTestLibrary -Name PullRequestChecklist
         $template="<!-- quietcli-ci:begin -->`n- [ ] Scripts <!-- ci:script-mutation -->`n- [ ] Serial <!-- ci:mutation-serial -->`n- [ ] R2R <!-- ci:readytorun -->`n- [ ] Preview <!-- ci:preview -->`n<!-- quietcli-ci:end -->`n"
-        $expected=Expand-QuietPullRequestTemplate -Template $template -Configuration @{Companions=[ordered]@{Box2=@{Name='Box2';Mutation=$true}}}
+        $expected=Expand-QuietPullRequestTemplate -Template $template -Configuration @{Companions=$companions}
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))
         [IO.File]::WriteAllText($path,($expected.Replace("`n","`r`n")),[Text.UTF8Encoding]::new($false))
         {Sync-QuietCompanionWorkflows -WorkspaceRoot $currentRoot}|Should -Not -Throw

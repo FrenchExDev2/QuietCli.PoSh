@@ -440,10 +440,14 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
         $observed.Values['script_mutation_targets']|Should -BeExactly '["SqliteDocumentation"]'
     }
 
-    It 'plans only the selected companion effects from the Git and Vagrant table cells' {
-        $template=Get-Content -LiteralPath ([IO.Path]::Combine($repository,'.github','pull_request_template.md')) -Raw -Encoding utf8
-        $body=$template.Replace('`[ ]` <!-- ci:performance-git -->','`[x]` <!-- ci:performance-git -->').Replace('`[ ]` <!-- ci:profiling-vagrant -->','`[x]` <!-- ci:profiling-vagrant -->')
-        $observed=& $plan (& $commit 'docs/README-ci-table.md') @('-PullRequestBody',$body) 'pull_request'
+    It 'plans only the selected companion effects from the Git and Vagrant task-list checkboxes' {
+        $body=Get-Content -LiteralPath ([IO.Path]::Combine($repository,'.github','pull_request_template.md')) -Raw -Encoding utf8
+        foreach ($option in @('performance-git','profiling-vagrant')) {
+            $checkbox=[regex]::new('(?m)^- \[ \](?= [^\r\n]* <!-- ci:' + $option + ' -->\r?$)')
+            $checkbox.Matches($body).Count|Should -Be 1 -Because "the PR template has one unchecked $option item"
+            $body=$checkbox.Replace($body,'- [x]')
+        }
+        $observed=& $plan (& $commit 'docs/README-ci-checklist.md') @('-PullRequestBody',$body) 'pull_request'
         $observed.Run.ExitCode|Should -Be 0 -Because ($observed.Run.Output+$observed.Run.Error)
         $checks=($observed.Values['companion_checks']|ConvertFrom-Json).include
         $checks.suite|Should -BeExactly @('Git','Vagrant')
