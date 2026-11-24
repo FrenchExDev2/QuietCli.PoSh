@@ -18,6 +18,7 @@ Explain the change and its local validation.
 
 - `-RunProfile` selects companions from `build/companions.yaml`. Combine `-Mutation` and `-Profiling` to profile each companion's mutation pass. Mutation with `-RunProfile` enables profiling by default. Use `-Profiling:$false` for a mutation-only pass.
 - `-RunProfileMutation` accepts a list of companions with a declared mutation campaign.
+- `-RunProfile Git,Vagrant -Performance` checks the performance cell in each named companion column. This runs a timed, unprofiled test pass in a separate job.
 - `-ScriptMutation` selects the repository script mutation catalogue.
 - `-ScriptMutationNoInputCache` checks the box to rerun selected script mutants and refresh the cache.
 - `-Parallel:$false` runs the requested companion checks one at a time and selects one worker per mutation shard. Each mutation matrix also runs one shard at a time in this mode.

@@ -222,21 +222,25 @@ function Add-QuietCiPullRequestSelection {
         [AllowEmptyCollection()][string[]]$Options
     )
     if('mutation' -cin $Options){$Plan.RunTooling=$true}
-    $requested=@($Options|Where-Object {$_ -cmatch '\A(?:run-profile-mutation|profiling)-'})
+    $requested=@($Options|Where-Object {$_ -cmatch '\A(?:run-profile-mutation|profiling|performance)-'})
     $configuration=if($requested.Count){Read-QuietCiCompanions $WorkspaceRoot}
     $byCompanion=[ordered]@{}
     $companionByOption=@{}
     foreach($option in $requested){
         $prefix,$name=$option -split '-(?=[a-z0-9]+$)',2
-        $capability=if($prefix -ceq 'profiling'){'Companion'}else{'Mutation'}
+        $capability=if($prefix -ceq 'run-profile-mutation'){'Mutation'}else{'Companion'}
         $companion=Get-QuietCompanions -Configuration $configuration -Name $name -Capability $capability
         $companionByOption[$option]=$companion
-        if(!$byCompanion.Contains($companion)){$byCompanion[$companion]=@{Mutation=$false;Profiling=$false}}
-        if($capability -ceq 'Mutation'){$byCompanion[$companion].Mutation=$true}else{$byCompanion[$companion].Profiling=$true}
+        if(!$byCompanion.Contains($companion)){$byCompanion[$companion]=@{}}
+        $byCompanion[$companion][$prefix]=$true
     }
     $checks=@(foreach($companion in $byCompanion.Keys){
         $selection=$byCompanion[$companion]
-        $campaign=if($selection.Mutation -and $selection.Profiling){'profiled-mutation'}elseif($selection.Profiling){'profiling'}else{'mutation'}
+        if($selection.performance){[ordered]@{suite=$companion;campaign='performance'}}
+        $mutation=$selection['run-profile-mutation']
+        $profiling=$selection.profiling
+        if(!$mutation -and !$profiling){continue}
+        $campaign=if($mutation -and $profiling){'profiled-mutation'}elseif($profiling){'profiling'}else{'mutation'}
         if($campaign -ceq 'mutation' -and $Plan.RunTooling -and $configuration.Companions[$companion].Mutation['suite'] -ceq 'RunProfilesMutation'){continue}
         [ordered]@{suite=$companion;campaign=$campaign}
     })

@@ -31,6 +31,14 @@ function Get-QuietCampaignCharts {
         }
         return
     }
+    $performance=Read-QuietCampaignEvidence ([IO.Path]::Combine($Directory,'component-performance.json'))
+    if($performance){
+        [pscustomobject]@{
+            Heading='Performance'
+            Unit='Milliseconds'
+            Rows=@([pscustomobject]@{Label='Test run elapsed time';Value=$performance.TestRunElapsedMs})
+        }
+    }
     $profiles=Read-QuietCampaignEvidence ([IO.Path]::Combine($Directory,'run-profiles-mutation.json'))
     if($profiles){
         $label=if($profiles.Partial){"Run profiles (shard $($profiles.ShardIndex + 1)/$($profiles.ShardCount))"}else{'Run profiles'}
