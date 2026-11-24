@@ -111,10 +111,14 @@ try{
         $observation=@{Lines=0}
         $progress=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('cp',($name+':/workspace/artifacts/tests/container-run/status.json'),$progressPath) -TimeoutSeconds 15 -State $observation -OnOutput {param($e,$s)$s.Lines++}
         if($progress.Outcome -eq 'Success'){
-            $guest=Get-Content $progressPath -Encoding utf8 -Raw|ConvertFrom-Json
-            $state.Passed=$guest.Passed;$state.Failed=$guest.Failed;$state.Case=$guest.Case;$state.GuestProcessId=$guest.ProcessId
-            Write-WorkspaceJson $status $state
-            # A report is not sufficient: the guest process must also reach a terminal state.
+            # Container copy can race with a status replacement. Progress is advisory.
+            $guest=try {
+                Get-Content -LiteralPath $progressPath -Encoding utf8 -Raw | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+            } catch [ArgumentException] { $null }
+            if($guest -is [Collections.IDictionary]){
+                $state.Passed=$guest.Passed;$state.Failed=$guest.Failed;$state.Case=$guest.Case;$state.GuestProcessId=$guest.ProcessId
+                Write-WorkspaceJson $status $state
+            }
         }
         $containerState=@{Value=''}
         $inspection=Invoke-CiProcess -FilePath $ContainerRuntime -ArgumentList @('inspect','--format','{{.State.Status}}',$name) -TimeoutSeconds 15 -State $containerState -OnOutput {param($e,$s)if($e.Stream -eq 'stdout'){$s.Value=$e.Text.Trim()}}
