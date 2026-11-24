@@ -1,6 +1,6 @@
 # quietcli2-readytorun.yml
 
-<!-- workflow-source-sha256: 94553F32F83CC312B331BA8D644653DA9B69DFCECF016EC61804A0E5B60BBD72 -->
+<!-- workflow-source-sha256: ECE79F5F5BBEBAFE3E3564A9D2234DA76DA07C4A36F1D40A6C8D2D6717F53440 -->
 
 ## Purpose
 
@@ -10,7 +10,7 @@ Native orchestration and test/smoke steps select checksum-pinned GA PowerShell t
 
 ## Triggers
 
-Manual workflow_dispatch is informational. A workflow_call from a PR with require_complete enabled requires usable A/A and A/B reports on each target. The automatic develop and publication flows do not call this benchmark.
+Manual workflow dispatch is informational and offers the optional `aa_control` switch. A PR workflow call with `require_complete` requires a usable A/B report on each target. The benchmark is outside the automatic develop and publication flows.
 
 
 ## .NET SDK source pin
@@ -19,7 +19,7 @@ The reviewed setup-dotnet steps read the checked-out global.json through global-
 
 ## Measurement and artifacts
 
-Builds the IL baseline and ReadyToRun candidate from the same selected revision, rather than comparing PR head with develop. A/A noise control precedes paired A/B; instrumentation is separate from timed samples. Windows and native Linux paths save source-bound cold-start reports. A green informational run does not prove a speedup. See [the report/dispatch guide](../../README-readytorun_profiling.md).
+Windows and Linux restore pinned Core resources before building the IL baseline and copying it into the ReadyToRun candidate. Both variants carry the native runtime files that Core verifies on engine startup. Windows and native Linux run paired A/B directly by default and save source-bound reports. Instrumentation runs outside timed samples. [Report and dispatch guide](../../README-readytorun_profiling.md)
 
 Linux comparisons wait for the Core image bundle. A PR reuses its workspace producer. A standalone dispatch calls the same producer for Core. The Linux runner verifies and loads the archive before executing the comparison. [Linux CI images](../linux-images.md)
 
@@ -45,7 +45,7 @@ flowchart TD
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
 | linux-images | reuses ./.github/workflows/linux-images.yml |  | <code>&#36;{{ !inputs.images&#95;prepared }}</code> |  |
-| readytorun | runner windows-latest |  | default success condition | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/New-ReadyToRunCandidate.ps1`](../../scripts/New-ReadyToRunCandidate.md), [`./scripts/Invoke-ColdStartGate.ps1`](../../scripts/Invoke-ColdStartGate.md), [`./scripts/Show-ColdStartReport.ps1`](../../scripts/Show-ColdStartReport.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
+| readytorun | runner windows-latest |  | default success condition | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/New-ReadyToRunCandidate.ps1`](../../scripts/New-ReadyToRunCandidate.md), [`./scripts/Invoke-ColdStartGate.ps1`](../../scripts/Invoke-ColdStartGate.md), [`./scripts/Show-ColdStartReport.ps1`](../../scripts/Show-ColdStartReport.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
 | readytorun-linux | <code>runner &#36;{{ matrix.runner }}</code> | linux-images | <code>&#36;{{ !cancelled() &#38;&#38; (needs.linux-images.result == 'success' &#124;&#124; (inputs.images&#95;prepared &#38;&#38; needs.linux-images.result == 'skipped')) }}</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/New-ReadyToRunCandidate.ps1`](../../scripts/New-ReadyToRunCandidate.md), [`./scripts/Import-CiImageBundle.ps1`](../../scripts/Import-CiImageBundle.md), [`./scripts/Invoke-ContainerColdStartWorker.ps1`](../../scripts/Invoke-ContainerColdStartWorker.md), [`./scripts/Show-ColdStartReport.ps1`](../../scripts/Show-ColdStartReport.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
 
 <!-- workflow-generated:end -->
@@ -59,13 +59,13 @@ The shared initializer deterministically prepares the ignored runtime key withou
 or starting a daemon. Explicit Docker worker arguments remain overrides; no trigger or blocking
 dependency is added. See [environment resolution](../environment.md).
 
-The Linux preparation path optionally reuses resource archives through the shared cache action. Missing cache entries follow normal verified restoration; this adds no trigger, publication or qualification dependency.
+Both preparation paths can reuse resource archives through the shared cache action. Initialization extracts and verifies the pinned files even when the archive cache hits.
 
-Windows runs the baseline and separate net10.0 R2R candidate directly. Linux rows use native Ubuntu CPU runners, explicit Docker image preparation and Invoke-ContainerColdStartWorker directly; no desktop launcher or Watch-Tests is started. Candidate roots are fresh RUNNER_TEMP paths. Reports upload with always(); job failures also export bounded redacted diagnostics for 14 days.
+Windows runs the comparison directly. Linux rows use native Ubuntu CPU runners and the prepared Docker image. The Linux worker stages the IL baseline at its grouped checkout-relative location. Each candidate is built in a fresh RUNNER_TEMP directory and offers ReadyToRun for .NET 10 and .NET 11 on the selected RID. Report uploads run after the comparison is attempted, so partial reports can be retained. A strict PR run still requires a complete A/B report. Job failures also export bounded redacted diagnostics for 14 days.
 
 ## Validation and limits
 
-Timing comparisons use the A/A noise-floor gate before A/B. Inconclusive/slower or noisy outcomes are informational on shared runners. The workflow publishes neither Gallery packages nor PR/GHCR images, and its results never block develop delivery. Actual multi-platform benchmark execution is separate evidence.
+Both build variants must complete the requested measurements for strict PR evidence. Inconclusive, faster and slower A/B verdicts are accepted. Failed executions and missing comparisons fail the strict PR check. Optional manual A/A calibration applies the existing control rule before the comparison.
 
 <!-- credits:begin -->
 ## Credits

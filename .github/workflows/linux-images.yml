@@ -37,13 +37,31 @@ jobs:
         shell: pwsh
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
       - uses: ./.github/actions/setup-powershell
+      - name: Fingerprint the selected image chains
+        id: image_key
+        if: ${{ !inputs.images_only }}
+        shell: pwsh
+        env:
+          IMAGE_SUITES: ${{ inputs.suites_json }}
+          IMAGE_RID: ${{ matrix.rid }}
+        run: |
+          $key=./scripts/Export-CiImageBundle.ps1 -Suite ([string[]](ConvertFrom-Json $env:IMAGE_SUITES)) -RuntimeIdentifier $env:IMAGE_RID -CacheKey
+          [IO.File]::AppendAllText($env:GITHUB_OUTPUT,"fingerprint=$key`n",[Text.UTF8Encoding]::new($false))
+      - name: Restore the exact final image archive
+        id: image_cache
+        if: ${{ !inputs.images_only }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: artifacts/prepared-ci-images
+          key: quietcli-ci-archive-v1-${{ matrix.rid }}-${{ steps.image_key.outputs.fingerprint }}
       - uses: ./.github/actions/cache-ci-layers
+        if: ${{ inputs.images_only || steps.image_cache.outputs.cache-hit != 'true' }}
         with:
           mode: restore
           rid: ${{ matrix.rid }}
           fingerprint: ${{ hashFiles('build/ci-images.lock.json', 'build/companions.yaml', 'global.json', '.github/containers/**', 'src/**/ci/**', 'scripts/lib/CiImages.psm1') }}
       - name: Prepare and archive the selected image chains
-        if: ${{ !inputs.images_only }}
+        if: ${{ !inputs.images_only && steps.image_cache.outputs.cache-hit != 'true' }}
         shell: pwsh
         env:
           IMAGE_SUITES: ${{ inputs.suites_json }}
@@ -51,6 +69,13 @@ jobs:
           PUBLISH_CACHE: ${{ inputs.publish_cache }}
           QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
         run: ./scripts/Export-CiImageBundle.ps1 -Suite ([string[]](ConvertFrom-Json $env:IMAGE_SUITES)) -RuntimeIdentifier $env:IMAGE_RID -OutputDirectory ./artifacts/prepared-ci-images -Revision $env:GITHUB_SHA -RunId $env:GITHUB_RUN_ID -PublishCache:($env:PUBLISH_CACHE -ceq 'true')
+      - name: Verify the cached archive for this run
+        if: ${{ !inputs.images_only && steps.image_cache.outputs.cache-hit == 'true' }}
+        shell: pwsh
+        env:
+          IMAGE_SUITES: ${{ inputs.suites_json }}
+          IMAGE_RID: ${{ matrix.rid }}
+        run: ./scripts/Export-CiImageBundle.ps1 -Suite ([string[]](ConvertFrom-Json $env:IMAGE_SUITES)) -RuntimeIdentifier $env:IMAGE_RID -OutputDirectory ./artifacts/prepared-ci-images -Revision $env:GITHUB_SHA -RunId $env:GITHUB_RUN_ID -ReuseArchive
       - name: Warm only the trusted cache
         if: ${{ inputs.images_only }}
         shell: pwsh
@@ -68,8 +93,14 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 1
+      - name: Save the exact final image archive
+        if: ${{ !inputs.images_only && steps.image_cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: artifacts/prepared-ci-images
+          key: ${{ steps.image_cache.outputs.cache-primary-key }}
       - uses: ./.github/actions/cache-ci-layers
-        if: ${{ always() && !cancelled() }}
+        if: ${{ always() && !cancelled() && (inputs.images_only || steps.image_cache.outputs.cache-hit != 'true') }}
         with:
           mode: save
           rid: ${{ matrix.rid }}

@@ -3,13 +3,22 @@ name: QuietCli2 ReadyToRun profiling
 # Measures the same-revision IL/ReadyToRun comparison on Windows and four native Linux targets.
 on:
   workflow_dispatch:
+    inputs:
+      aa_control:
+        description: Run the A/A control before the paired comparison
+        type: boolean
+        default: false
   workflow_call:
     inputs:
+      aa_control:
+        description: Run the A/A control before the paired comparison
+        type: boolean
+        default: false
       images_prepared:
         type: boolean
         default: false
       require_complete:
-        description: Require successful noise controls and complete comparisons on every target
+        description: Require a complete comparison on every target
         type: boolean
         default: false
 
@@ -35,6 +44,9 @@ jobs:
           global-json-file: global.json
           cache: true
           cache-dependency-path: '**/*.csproj'
+      - name: Verify monorepo structure and external resources
+        shell: pwsh
+        run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Build the baseline module
         shell: pwsh
         run: ./scripts/Build-Workspace.ps1 -Configuration Release
@@ -43,15 +55,17 @@ jobs:
         run: |
           $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -CandidateRoot (Join-Path $env:RUNNER_TEMP ('quietcli-r2r-'+[guid]::NewGuid().ToString('N')))
           "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV -Encoding utf8
-      - name: Run the A/A-gated A/B cold-start comparison
+      - name: Run the paired cold-start comparison
+        id: comparison
         shell: pwsh
         env:
           CANDIDATE_MODULE: ${{ env.CANDIDATE_MODULE }}
           REQUIRE_COMPLETE: ${{ inputs.require_complete }}
+          AA_CONTROL: ${{ inputs.aa_control }}
         run: |
           $ErrorActionPreference = 'Stop'
           try {
-            ./scripts/Invoke-ColdStartGate.ps1 -CandidateModule $env:CANDIDATE_MODULE -CandidateLabel readytorun -Arguments @{ MeasurePackageSize = $true }
+            ./scripts/Invoke-ColdStartGate.ps1 -CandidateModule $env:CANDIDATE_MODULE -CandidateLabel readytorun -MeasurePackageSize -SkipAaControl:($env:AA_CONTROL -cne 'true')
             if (!(Get-ChildItem -LiteralPath ./artifacts/coldstart -Filter 'ab-*.json' -File)) { throw 'ReadyToRunComparisonMissing' }
           } catch {
             if ($env:REQUIRE_COMPLETE -ceq 'true') { throw }
@@ -76,11 +90,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
+        if: ${{ !cancelled() && (steps.comparison.outcome == 'success' || steps.comparison.outcome == 'failure') }}
         with:
           name: quietcli2-readytorun-${{ github.sha }}
           path: artifacts/coldstart
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
 
   linux-images:
@@ -148,19 +162,21 @@ jobs:
         with:
           name: quietcli-prepared-images-${{ inputs.images_prepared && 'workspace' || 'readytorun' }}-${{ matrix.rid }}
           path: artifacts/prepared-ci-images
-      - name: Run the A/A-gated A/B cold-start comparison inside the prepared platform image
+      - name: Run the paired cold-start comparison inside the prepared platform image
+        id: comparison
         shell: pwsh
         env:
           PLATFORM: ${{ matrix.platform }}
           EXPECTED_RID: ${{ matrix.rid }}
           REQUIRE_COMPLETE: ${{ inputs.require_complete }}
+          AA_CONTROL: ${{ inputs.aa_control }}
         run: |
           $ErrorActionPreference = 'Stop'
           try {
             $image = ./scripts/Import-CiImageBundle.ps1 -Suite Core -RuntimeIdentifier $env:EXPECTED_RID -Directory ./artifacts/prepared-ci-images -Revision $env:GITHUB_SHA -RunId $env:GITHUB_RUN_ID
             $run = Join-Path $PWD.Path ('artifacts/coldstart-containers/'+$env:EXPECTED_RID)
             [void][IO.Directory]::CreateDirectory($run)
-            ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot $PWD.Path -RunDirectory $run -Image $image -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -ContainerRuntime docker
+            ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot $PWD.Path -RunDirectory $run -Image $image -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -ContainerRuntime docker -SkipAaControl:($env:AA_CONTROL -cne 'true')
             $summary=Get-Content (Join-Path $run summary.json) -Raw -Encoding utf8|ConvertFrom-Json
             if ($summary.State.State -cne 'Success') { throw ('Cold-start outcome: '+$summary.State.State+'; '+$summary.State.Error) }
             if (!(Get-ChildItem -LiteralPath $run -Filter 'ab-*.json' -File -Recurse)) { throw 'ReadyToRunComparisonMissing' }
@@ -188,9 +204,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
+        if: ${{ !cancelled() && (steps.comparison.outcome == 'success' || steps.comparison.outcome == 'failure') }}
         with:
           name: quietcli2-readytorun-${{ matrix.rid }}-${{ github.sha }}
           path: artifacts/coldstart-containers
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30

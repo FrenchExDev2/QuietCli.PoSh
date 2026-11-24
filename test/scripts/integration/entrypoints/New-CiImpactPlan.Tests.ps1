@@ -107,7 +107,7 @@ Describe 'New-CiImpactPlan.ps1' {
         $revision=& $commit 'test/scripts/unit/lib/ImpactFixture.Tests.ps1'
         $root=Get-QuietTestWorkspaceRoot
         $description=[IO.File]::ReadAllText([IO.Path]::Combine($root,'.github/pull_request_template.md'),[Text.Encoding]::UTF8)
-        $description=$description -creplace '(?m)^- \[ \](.*ci:readytorun -->)$','- [x]$1'
+        $description=$description -creplace '(?m)^- \[ \](?=[^\r\n]*<!-- ci:readytorun -->\r?$)','- [x]'
         $output=[IO.Path]::Combine($TestDrive,'checklist-plan.txt')
         $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @(
             '-WorkspaceRoot',$workspace,'-Base',$baseRevision,'-Revision',$revision,'-PullRequestBody',$description,'-OutputPath',$output

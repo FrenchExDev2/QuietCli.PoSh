@@ -68,4 +68,21 @@ Export-ModuleMember Invoke-QuietPullRequestTool
         $existing.Output | Should -Match '/pull/8'
         Test-Path -LiteralPath $captured | Should -BeFalse
     }
+
+    It 'composes the same native checklist in PreviewBody with WhatIf' {
+        $arguments=@('-BodyFile',$body,'-CiOption','performance-git','-PreviewBody')
+        $plain=Invoke-QuietTestScript -ScriptPath $scriptPath -ArgumentList $arguments -TimeoutSeconds 30
+        $preview=Invoke-QuietTestScript -ScriptPath $scriptPath -ArgumentList ($arguments+@('-WhatIf')) -TimeoutSeconds 30
+        $plain.ExitCode|Should -Be 0 -Because ($plain.Output+$plain.Error)
+        $preview.ExitCode|Should -Be 0 -Because ($preview.Output+$preview.Error)
+        $preview.Output|Should -BeExactly $plain.Output
+        $preview.Output|Should -Match '(?m)^- \[x\] \*\*Git\*\* .* <!-- ci:performance-git -->\r?$'
+    }
+
+    It 'previews creation without reading missing inputs' {
+        $missing=[IO.Path]::Combine($TestDrive,'missing.md')
+        $result=Invoke-QuietTestScript -ScriptPath $scriptPath -ArgumentList @('-Title','Example','-BodyFile',$missing,'-WhatIf') -TimeoutSeconds 30
+        $result.ExitCode|Should -Be 0 -Because ($result.Output+$result.Error)
+        [IO.File]::Exists($missing)|Should -BeFalse
+    }
 }

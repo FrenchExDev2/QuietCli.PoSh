@@ -204,6 +204,36 @@ Describe 'CI image bundle handoff' {
         }
     }
 
+    It 'rebinds a verified cached archive to a new revision and run without using Docker' {
+        Export-QuietCiImageBundle -WorkspaceRoot $TestDrive -RuntimeIdentifier $plan.Rid -Directory $directory -Revision $revision -RunId 314 -Receipts $receipts
+        $archive=[IO.Path]::Combine($directory,'images.tar')
+        $hash=(Get-FileHash -LiteralPath $archive).Hash
+        $nextRevision='e'*40
+        Export-QuietCiImageBundle -RuntimeIdentifier $plan.Rid -Directory $directory -Revision $nextRevision -RunId 315 -CachedFingerprints $plan.Fingerprint
+        $receipt=Get-Content -LiteralPath ([IO.Path]::Combine($directory,'bundle.json')) -Raw -Encoding utf8 | ConvertFrom-Json
+        $receipt.Revision | Should -BeExactly $nextRevision
+        $receipt.RunId | Should -BeExactly '315'
+        $receipt.ArchiveSha256 | Should -BeExactly $hash
+        (Get-FileHash -LiteralPath $archive).Hash | Should -BeExactly $hash
+        Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 2 -Exactly
+        Import-QuietCiImageBundle -Directory $directory -Plan $plan -Revision $nextRevision -RunId 315 | Should -BeExactly $consumerId
+    }
+
+    It 'rejects a cached archive with <Failure> and leaves the original receipt in place' -ForEach @(
+        @{Failure='an unrelated image';Fingerprints=@('e'*64);Rid='linux-musl-arm64';Tamper=$false;ErrorText='CacheIdentityMismatch'}
+        @{Failure='an additional image';Fingerprints=@(('b'*64),('e'*64));Rid='linux-musl-arm64';Tamper=$false;ErrorText='CacheIdentityMismatch'}
+        @{Failure='a different RID';Fingerprints=@('b'*64);Rid='linux-arm64';Tamper=$false;ErrorText='CacheIdentityMismatch'}
+        @{Failure='modified archive bytes';Fingerprints=@('b'*64);Rid='linux-musl-arm64';Tamper=$true;ErrorText='ArchiveMismatch'}
+    ) {
+        Export-QuietCiImageBundle -WorkspaceRoot $TestDrive -RuntimeIdentifier $plan.Rid -Directory $directory -Revision $revision -RunId 314 -Receipts $receipts
+        $path=[IO.Path]::Combine($directory,'bundle.json')
+        $original=Get-Content -LiteralPath $path -Raw -Encoding utf8
+        if($Tamper){[IO.File]::WriteAllText([IO.Path]::Combine($directory,'images.tar'),'modified',[Text.UTF8Encoding]::new($false))}
+        {Export-QuietCiImageBundle -RuntimeIdentifier $Rid -Directory $directory -Revision ('e'*40) -RunId 315 -CachedFingerprints $Fingerprints} | Should -Throw "*CiImageBundle$ErrorText*"
+        (Get-Content -LiteralPath $path -Raw -Encoding utf8) | Should -BeExactly $original
+        Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 2 -Exactly
+    }
+
     It 'rejects a <Field> mismatch before loading' -ForEach @(
         @{Field='SchemaVersion';Value=1;ErrorText='RunIdentityMismatch'}
         @{Field='Revision';Value=('f'*40);ErrorText='RunIdentityMismatch'}

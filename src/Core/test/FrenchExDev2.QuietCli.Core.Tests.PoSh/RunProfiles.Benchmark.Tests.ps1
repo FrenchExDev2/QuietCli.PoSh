@@ -139,48 +139,44 @@ function Invoke-BenchmarkFixture {
     foreach($root in @($baselineRoot,$candidateRoot)){[void][IO.Directory]::CreateDirectory((Join-Path $root $active))}
     [IO.File]::WriteAllBytes((Join-Path $baselineRoot ($active+'/engine.dll')), [byte[]]::new(1000))
     [IO.File]::WriteAllBytes((Join-Path $candidateRoot ($active+'/engine.dll')), [byte[]]::new(2500))
-    $state = @{ Calls = [Collections.Generic.List[string]]::new(); FailCalls = $FailCalls; Duplicate = [bool]$Duplicate }
+    $fixtureState = @{ Calls = [Collections.Generic.List[string]]::new(); FailCalls = $FailCalls; Duplicate = [bool]$Duplicate }
     function Invoke-FixtureNative {
         <# .SYNOPSIS
-        Supplies controlled stream records to the benchmark's real Output and Complete callbacks.
+        Supplies controlled stream records to the benchmark's CI process observer.
         #>
-        param([switch]$AsObject, [string]$RecordDelimiter, [double]$TimeoutSeconds, $Data, [scriptblock]$Output, [scriptblock]$Complete, [Parameter(ValueFromRemainingArguments)][object[]]$NativeArguments)
-        $worker = [string]$NativeArguments[-1]
+        param([string]$FilePath, [string[]]$ArgumentList, [int]$TimeoutSeconds, $State, [scriptblock]$OnOutput)
+        $hostPath = [IO.Path]::Combine($PSHOME, $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' }))
+        if ($FilePath -cne $hostPath -or ($ArgumentList[0..2] -join ' ') -cne '-NoProfile -NonInteractive -Command' -or $TimeoutSeconds -ne 120) {
+            throw 'FixtureWorkerHostOrArgumentsInvalid'
+        }
+        $worker = $ArgumentList[3]
         $tokens = $null; $parseErrors = $null
         [void][Management.Automation.Language.Parser]::ParseInput($worker, [ref]$tokens, [ref]$parseErrors)
         if ($parseErrors.Count) { throw 'FixtureWorkerSyntaxInvalid' }
         $variant = if ($worker.Contains('candidate.psd1')) { 'candidate' } else { 'baseline' }
-        $state.Calls.Add($variant)
-        $outcome = if ($state.Calls.Count -in $state.FailCalls) { 'Failed' } else { 'Success' }
-        $runtime = [pscustomobject]@{ Data = $Data }
-        & $Output ([pscustomobject]@{ Stream = 'stderr'; Text = 'RESULT 999 999 999' }) $runtime
-        & $Output ([pscustomobject]@{ Stream = 'stdout'; Text = 'unrelated diagnostic' }) $runtime
+        $fixtureState.Calls.Add($variant)
+        $failed = $fixtureState.Calls.Count -in $fixtureState.FailCalls
+        & $OnOutput ([pscustomobject]@{ Stream = 'stderr'; Text = 'RESULT 999 999 999' }) $State
+        & $OnOutput ([pscustomobject]@{ Stream = 'stdout'; Text = 'unrelated diagnostic' }) $State
+        if ($failed) { & $OnOutput ([pscustomobject]@{ Stream = 'stderr'; Text = 'COLDSTART-FAILURE first-call code=CommandNotFoundException' }) $State }
         $line = if ($variant -eq 'baseline') { 'RESULT 10.25 20.5 30.75' } else { 'RESULT 11.25 22.5 33.75' }
-        if ($Data.Marker -ceq 'PROFILE') { $line = "PROFILE /fixture with spaces/$variant.profile.json" }
-        & $Output ([pscustomobject]@{ Stream = 'stdout'; Text = $line }) $runtime
-        if ($state.Duplicate) { & $Output ([pscustomobject]@{ Stream = 'stdout'; Text = $line }) $runtime }
-        & $Complete $runtime
-        return [pscustomobject]@{ Outcome = $outcome; Data = $Data }
+        if ($State.Marker -ceq 'PROFILE') { $line = "PROFILE /fixture with spaces/$variant.profile.json" }
+        & $OnOutput ([pscustomobject]@{ Stream = 'stdout'; Text = $line }) $State
+        if ($fixtureState.Duplicate) { & $OnOutput ([pscustomobject]@{ Stream = 'stdout'; Text = $line }) $State }
+        [pscustomobject]@{ Outcome = $(if ($failed) { 'Failed' } else { 'Success' }); ExitCode = [int]$failed }
     }
     $module=Import-Module ([IO.Path]::Combine($scripts,'lib/Measure-ColdStart.psm1')) -PassThru -DisableNameChecking -ErrorAction Stop
     $adapter=(Get-Command Invoke-FixtureNative).ScriptBlock.GetNewClosure()
-    $savedAlias=& $module {Get-Alias quiet -Scope Script -ErrorAction SilentlyContinue}
-    $savedAdapter=& $module {Get-Item Function:script:Invoke-FixtureNative -ErrorAction SilentlyContinue}
+    $savedAdapter=& $module {Get-Item Function:script:Invoke-CiProcess}
     $path = Join-Path $fixture 'result.json'
     try {
         # The executable boundary belongs to the extracted library's session state.
-        & $module {param($body) Set-Item Function:script:Invoke-FixtureNative $body;Set-Alias quiet Invoke-FixtureNative -Scope Script} $adapter
+        & $module {param($body) Set-Item Function:script:Invoke-CiProcess $body} $adapter
         $null = & (Join-Path $scripts 'Measure-ColdStart.ps1') -BaselineModule $baseline -CandidateModule $candidate -Runs 3 -Warmup $Warmup -Seed 61207 -BootstrapResamples 100 -OutputPath $path -MaxFailedPairs $MaxFailedPairs -LogLevel Off -ProfileImport:$ProfileImport
     }finally{
-        & $module {
-            param($alias,$adapter)
-            Remove-Item Alias:script:quiet -ErrorAction SilentlyContinue
-            Remove-Item Function:script:Invoke-FixtureNative -ErrorAction SilentlyContinue
-            if($alias){Set-Alias quiet $alias.Definition -Scope Script}
-            if($adapter){Set-Item Function:script:Invoke-FixtureNative $adapter.ScriptBlock}
-        } $savedAlias $savedAdapter
+        & $module {param($body) Set-Item Function:script:Invoke-CiProcess $body} $savedAdapter.ScriptBlock
     }
-    [pscustomobject]@{ Report = (Read-RunTextFile $path | ConvertFrom-Json); Calls = $state.Calls.ToArray(); Path = $path }
+    [pscustomobject]@{ Report = (Read-RunTextFile $path | ConvertFrom-Json); Calls = $fixtureState.Calls.ToArray(); Path = $path }
 }
 
 Test-Case 'benchmark: the real script preserves paired identity, excludes warm-up and produces reproducible order' {
@@ -202,7 +198,7 @@ Test-Case 'benchmark: the real script preserves paired identity, excludes warm-u
 Test-Case 'benchmark: failed pairs are discarded without retry, exact failure budgets are enforced' {
     $run = Invoke-BenchmarkFixture -Warmup 2 -FailCalls @(1) -MaxFailedPairs 1
     Assert-That ($run.Report.Pairs.Count -eq 3 -and $run.Calls.Count -eq 9 -and $run.Report.Counters.'pair.discarded' -eq 1) 'retry or partial pair retained'
-    Assert-Throws { Invoke-BenchmarkFixture -FailCalls @(1) -MaxFailedPairs 0 } 'ChildRunFailed'
+    Assert-Throws { Invoke-BenchmarkFixture -FailCalls @(1) -MaxFailedPairs 0 } 'ChildRunFailed: outcome=Failed exit=1 marker=RESULT count=1 stage=first-call code=CommandNotFoundException'
     Assert-Throws { Invoke-BenchmarkFixture -Warmup 0 -FailCalls @(1) -MaxFailedPairs 1 } 'TooFewMeasuredPairs'
     Assert-Throws { Invoke-BenchmarkFixture -Duplicate -MaxFailedPairs 0 } 'ChildRunFailed'
 }
@@ -219,5 +215,7 @@ Test-Case 'coldstart-live: the benchmark measures fresh real processes and write
     $null = & (Join-Path $scripts 'Measure-ColdStart.ps1') -CandidateModule $manifest -Runs 3 -Warmup 0 -BootstrapResamples 100 -OutputPath $path -LogLevel Off
     $report = Read-RunTextFile $path | ConvertFrom-Json
     Assert-That ($report.Pairs.Count -eq 3 -and $report.Counters.'run.succeeded' -eq 6) 'live measurements missing'
+    $expectedCommand = if ($IsWindows) { @([IO.Path]::Combine([Environment]::SystemDirectory, 'cmd.exe'), '/d', '/c', 'exit', '0') } else { @('true') }
+    Assert-That (($report.Parameters.ChildCommand -join '|') -ceq ($expectedCommand -join '|')) 'default native workload changed'
     foreach ($pair in $report.Pairs) { Assert-That ($pair.Baseline.Import -gt 0 -and $pair.Candidate.First -gt 0 -and $pair.Candidate.Second -gt 0) 'invalid live durations' }
 }

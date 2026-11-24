@@ -68,12 +68,69 @@ Describe 'Shared Linux image production' {
     }
 
     It 'publishes the bundle after archive generation' {
-        $prepare=& $stepIndex $imageJob {param($step)([string]$step['run']).Contains('Export-CiImageBundle.ps1')}
+        $prepare=& $stepIndex $imageJob {param($step)$step['name'] -ceq 'Prepare and archive the selected image chains'}
         $upload=& $stepIndex $imageJob {param($step)$step['with'] -and ([string]$step['with']['name']).StartsWith('quietcli-prepared-images-')}
         $prepare|Should -BeGreaterOrEqual 0
         $upload|Should -BeGreaterThan $prepare
         [string]$imageJob['steps'][$upload]['with']['overwrite']|Should -BeExactly 'true'
         [string]$imageJob['steps'][$upload]['with']['if-no-files-found']|Should -BeExactly 'error'
+    }
+
+    It 'starts Docker and saves a new archive only when an exact cached archive is unavailable' {
+        $key=& $stepIndex $imageJob {param($step)$step['id'] -ceq 'image_key'}
+        $cache=& $stepIndex $imageJob {param($step)$step['id'] -ceq 'image_cache'}
+        $docker=& $stepIndex $imageJob {param($step)$step['uses'] -ceq './.github/actions/cache-ci-layers' -and $step['with']['mode'] -ceq 'restore'}
+        $prepare=& $stepIndex $imageJob {param($step)$step['name'] -ceq 'Prepare and archive the selected image chains'}
+        $reuse=& $stepIndex $imageJob {param($step)([string]$step['run']).Contains('-ReuseArchive')}
+        $save=& $stepIndex $imageJob {param($step)$step['name'] -ceq 'Save the exact final image archive'}
+        $key | Should -BeGreaterOrEqual 0
+        $cache | Should -BeGreaterThan $key
+        $docker | Should -BeGreaterThan $cache
+        $prepare | Should -BeGreaterThan $docker
+        $reuse | Should -BeGreaterThan $prepare
+        $save | Should -BeGreaterThan $reuse
+        $steps=$imageJob['steps']
+        $steps[$key]['run'] | Should -Match '-CacheKey'
+        $steps[$cache]['with']['key'] | Should -BeExactly 'quietcli-ci-archive-v1-${{ matrix.rid }}-${{ steps.image_key.outputs.fingerprint }}'
+        $steps[$cache]['with'].ContainsKey('restore-keys') | Should -BeFalse
+        $steps[$docker]['if'] | Should -BeExactly '${{ inputs.images_only || steps.image_cache.outputs.cache-hit != ''true'' }}'
+        foreach($index in $prepare,$save){
+            $steps[$index]['if'] | Should -BeExactly '${{ !inputs.images_only && steps.image_cache.outputs.cache-hit != ''true'' }}'
+        }
+        $steps[$reuse]['if'] | Should -BeExactly '${{ !inputs.images_only && steps.image_cache.outputs.cache-hit == ''true'' }}'
+        $steps[$save]['with']['path'] | Should -BeExactly $steps[$cache]['with']['path']
+        $steps[$save]['with']['key'] | Should -BeExactly '${{ steps.image_cache.outputs.cache-primary-key }}'
+    }
+
+    It 'keys the archive by its unique native image plans, independently of suite order and aliases' {
+        $export=[IO.Path]::Combine($root,'scripts','Export-CiImageBundle.ps1')
+        $probe=New-QuietTestFile ([IO.Path]::Combine($TestDrive,'image-key.ps1')) @'
+$ErrorActionPreference='Stop'
+@{
+    Core=(& $env:IMAGE_EXPORT_SCRIPT -Suite Core -RuntimeIdentifier linux-x64 -CacheKey)
+    WithAlias=(& $env:IMAGE_EXPORT_SCRIPT -Suite Core,Vagrant -RuntimeIdentifier linux-x64 -CacheKey)
+    Alpine=(& $env:IMAGE_EXPORT_SCRIPT -Suite Core -RuntimeIdentifier linux-musl-x64 -CacheKey)
+    CoreAndGit=(& $env:IMAGE_EXPORT_SCRIPT -Suite Core,Git -RuntimeIdentifier linux-x64 -CacheKey)
+    Reordered=(& $env:IMAGE_EXPORT_SCRIPT -Suite Git,Core,Core -RuntimeIdentifier linux-x64 -CacheKey)
+} | ConvertTo-Json -Compress
+'@
+        $result=Invoke-QuietTestScript -ScriptPath $probe -Environment @{IMAGE_EXPORT_SCRIPT=$export}
+        $result.ExitCode | Should -Be 0 -Because $result.Error
+        $keys=$result.Output | ConvertFrom-Json
+        $keys.Core | Should -Match '\A[0-9a-f]{64}\z'
+        $keys.WithAlias | Should -BeExactly $keys.Core
+        $keys.Alpine | Should -Not -BeExactly $keys.Core
+        $keys.CoreAndGit | Should -Not -BeExactly $keys.Core
+        $keys.Reordered | Should -BeExactly $keys.CoreAndGit
+    }
+
+    It 'previews archive reuse without opening a receipt or creating the archive directory' {
+        $export=[IO.Path]::Combine($root,'scripts','Export-CiImageBundle.ps1')
+        $directory=[IO.Path]::Combine($TestDrive,'cache-preview')
+        $arguments=@('-Suite','Core','-RuntimeIdentifier','linux-x64','-OutputDirectory',$directory,'-Revision',('e'*40),'-RunId','315','-ReuseArchive','-WhatIf')
+        $result=Invoke-QuietTestScript -ScriptPath $export -ArgumentList $arguments
+        $result.ExitCode | Should -Be 0 -Because $result.Error
+        Test-Path -LiteralPath $directory | Should -BeFalse
     }
 
     It 'routes all three producer calls through the same implementation' {
@@ -159,6 +216,48 @@ param([string]$Base,[string]$Revision,[string]$Event,[string[]]$Suite,[string]$O
         $companions['jobs']['readytorun']['with']['require_complete'] | Should -Be 'true'
         $companions['jobs']['ci-status']['needs'] | Should -Contain 'readytorun'
         $companions['jobs']['products']['with']['run_preview'] | Should -BeExactly '${{ matrix.run_preview }}'
+    }
+
+    It 'retains ReadyToRun reports after either comparison outcome and leaves build failures to diagnostics' {
+        foreach ($job in $ready['jobs']['readytorun'],$ready['jobs']['readytorun-linux']) {
+            $steps = @($job['steps'])
+            $comparison = @($steps | Where-Object { $_['id'] -ceq 'comparison' })
+            $comparison.Count | Should -Be 1
+            $comparison[0]['run'] | Should -Match 'REQUIRE_COMPLETE'
+            $comparison[0]['run'] | Should -Match 'ReadyToRunComparisonMissing'
+            $reports = @($steps | Where-Object { $_['with'] -and $_['with']['path'] -like 'artifacts/coldstart*' })
+            $reports.Count | Should -Be 1
+            $reports[0]['if'] | Should -BeExactly "`${{ !cancelled() && (steps.comparison.outcome == 'success' || steps.comparison.outcome == 'failure') }}"
+            $reports[0]['with']['if-no-files-found'] | Should -BeExactly 'warn'
+        }
+    }
+
+    It 'restores the pinned Core resources before building either benchmark variant' {
+        foreach ($job in 'readytorun','readytorun-linux') {
+            $steps = @($ready['jobs'][$job]['steps'])
+            $restore = @($steps | Where-Object { [string]$_['run'] -match '^\./scripts/Initialize-Workspace\.ps1 -Restore\s*$' })
+            $restore.Count | Should -Be 1
+            $restore[0]['if'] | Should -BeNullOrEmpty
+            $builds = @($steps | Where-Object { [string]$_['run'] -match '\./scripts/(Build-Workspace|New-ReadyToRunCandidate)\.ps1' })
+            $builds.Count | Should -Be 2
+            foreach ($build in $builds) {
+                [Array]::IndexOf($steps, $restore[0]) | Should -BeLessThan ([Array]::IndexOf($steps, $build))
+            }
+        }
+    }
+
+    It 'uses direct A/B for PR qualification and offers A/A explicitly on manual dispatch' {
+        $manual = $ready['on']['workflow_dispatch']['inputs']['aa_control']
+        [string]$manual['type'] | Should -BeExactly 'boolean'
+        [string]$manual['default'] | Should -BeExactly 'false'
+        [string]$ready['on']['workflow_call']['inputs']['aa_control']['default'] | Should -BeExactly 'false'
+        $companions['jobs']['readytorun']['with'].ContainsKey('aa_control') | Should -BeFalse
+        foreach ($job in $ready['jobs']['readytorun'], $ready['jobs']['readytorun-linux']) {
+            $comparison = $job['steps'] | Where-Object { $_['id'] -ceq 'comparison' }
+            [string]$comparison['env']['AA_CONTROL'] | Should -BeExactly '${{ inputs.aa_control }}'
+            $comparison['run'] | Should -Match ([regex]::Escape('-SkipAaControl:($env:AA_CONTROL -cne ''true'')'))
+            $comparison['run'] | Should -Match 'if \(\$env:REQUIRE_COMPLETE -ceq ''true''\) \{ throw \}'
+        }
     }
 }
 

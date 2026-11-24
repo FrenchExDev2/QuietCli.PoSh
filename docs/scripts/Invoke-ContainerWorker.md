@@ -16,6 +16,8 @@ the hosted qualification entry point unfiltered.
 
 Copying the retained guest report uses TimeoutSeconds rather than a fixed 60-second limit;
 the host launcher still bounds the entire run, including transfer and cleanup.
+The monitor keeps the last readable progress when a live status copy contains incomplete JSON.
+Qualification still requires the completed guest report and its confirmed exit status.
 
 Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
 

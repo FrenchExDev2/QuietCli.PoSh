@@ -16,7 +16,7 @@ After a successful commit, the entry point writes a CI forecast to `artifacts/pl
 ./scripts/Commit-Workspace.ps1 -Message 'Update automation' -CiPlanPath .artifacts/review.md
 ```
 
-Use `-Watch` to push the new commit to the open PR for the current work branch and start its CI monitor. `-MergePullRequest` implies `-Watch` and merges after the selected run and required CI succeed. It rebases and deletes the source branch by default. Pass `-NoRebase` for a merge commit or `-NoBranchDelete` to preserve the branch. Both options use the existing PR targeting `develop`.
+Use `-Watch` to push the new commit to the open PR for the current work branch and start its CI monitor. `-MergePullRequest` implies `-Watch` and squash-merges after the selected run and required CI succeed on a head with linear history based on the current remote `develop`. The source branch is deleted by default. Pass `-NoBranchDelete` to preserve it.
 
 ```powershell
 ./scripts/Commit-Workspace.ps1 -Message 'Update automation' -Watch

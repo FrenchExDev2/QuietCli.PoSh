@@ -25,7 +25,7 @@ Parameters (all optional except `-CandidateModule`):
 - `-BaselineLabel [string]` (default `'baseline'`), `-CandidateLabel [string]` (default `'candidate'`) — display names, `ValidateNotNullOrEmpty`.
 - `-Runs [int]` (default `30`, range 3-100000) — measured pairs.
 - `-Warmup [int]` (default `2`, range 0-1000) — discarded pairs executed first.
-- `-ChildCommand [string[]]` — native command timed inside each child; default `cmd /c exit 0` on Windows, `true` elsewhere.
+- `-ChildCommand [string[]]` selects the native workload for each sample. Windows defaults to the system `cmd.exe` by absolute path with `/d /c exit 0`. Linux defaults to `true`.
 - `-Seed [int]` (default `20261107`) — pair-order and bootstrap seed.
 - `-RunTimeoutSeconds [int]` (default `120`, range 10-3600).
 - `-MaxFailedPairs [int]` (default `5`) — campaign aborts past this many discarded pairs.
@@ -47,15 +47,14 @@ Direct invocation:
 
 ## Dependencies
 
-- `using module ./lib/RunLog.psm1` (line 88) plus `Import-Module` of `RunFormat`, `RunStatistics`, `RunProfiler`, `RunEncoding`, `RunColdStart` (line 112, all under `lib/`).
-- Shells out to `pwsh -NoProfile -Command $Worker` for every sample (via `quiet`, line 186), i.e. depends on the `quiet` alias/cmdlet from `FrenchExDev2.QuietCli.Core.PoSh` being loadable (auto-imported at line 208 if `Get-Command quiet` fails).
-- The generated child script itself (`Get-WorkerScript`, lines 116-143) calls `quiet -AsObject ... @child` where `$child` is the user-supplied `-ChildCommand`; this is a genuine external-process dependency (default `cmd`/`true`).
+- Uses `RunLog`, `RunFormat`, `RunStatistics`, `RunProfiler`, `RunEncoding`, and `RunColdStart` from `lib/`.
+- Starts each child from the current `$PSHOME` by absolute path. Each child imports the measured module and runs the selected workload through its `quiet` alias. Failure diagnostics retain the phase and a bounded error identifier. [Ci.Process.psm1](Ci.Process.md)
 - `Get-ProfiledWorkerScript` depends on `Profiler` (pinned 4.3.0) transitively through `RunProfiler.psm1`.
-- Filesystem assumption: both `-BaselineModule` and `-CandidateModule` manifests must exist (checked at line 207) or the whole run throws `ModuleManifestNotFound` before anything executes.
+- Both `-BaselineModule` and `-CandidateModule` must exist before measurement starts.
 
 ## Side effects
 
-- Spawns `$Warmup + $Runs` pairs x 2 fresh `pwsh -NoProfile` child processes (potentially thousands for large `-Runs`), each with its own `RunTimeoutSeconds` deadline.
+- Starts two fresh `pwsh -NoProfile -NonInteractive` processes per pair. Each has its own `RunTimeoutSeconds` deadline. Failed runs report the launch error or the child outcome, exit code, marker count and known measurement phase.
 - Optionally (with `-ProfileImport`) spawns one more child per variant and writes a `<Label>.profile.json` under `-ProfileDirectory` (via `RunProfiler.psm1`, creating the directory if missing).
 - Optionally (with `-MeasurePackageSize`) runs `Compress-PSResource`, which creates `.nupkg` files — the exact destination isn't shown in this file (delegated to `RunColdStart.psm1`'s `Get-RunModulePackageBytes`, not reviewed here).
 - Writes `-OutputPath` (if given) as UTF-8 JSON via `Write-RunTextFile`.
@@ -70,15 +69,10 @@ Direct invocation:
 - CONVENTION: this script does not open a dedicated Start-Process monitoring window as AGENTS.md's "Test runs" section requires for test/mutation campaigns ("Every test run started by an agent also gets a visible PowerShell Core (`pwsh`) monitoring window..."). This script is a performance *measurement* campaign, not a test run in the Pester sense, so it's arguably out of scope for that rule, but it does spawn potentially thousands of child processes over a long wall-clock duration with only textual `$logger.Info` progress lines (line 249) as visibility — an agent running this unattended for a large `-Runs` value has no bordered Unicode-box live table as the repo's UI conventions elsewhere mandate for long-running monitored work.
 - CONVENTION: table rendering (`Format-RunTable`, called at lines 301, 303, 306) is delegated to `RunFormat.psm1` (not reviewed in this pass) rather than built inline here — this is good separation of concerns, assuming that module itself honors the Unicode-box/`|`-separator/`Duration` column conventions; this file's own column headers (`'Duration (median)'`, `'Duration (CI low)'`, etc., lines 303/306) use parenthetical suffixes rather than the literal single-word `Duration` column-name convention from the user's memory note ("printed durations go in a column named Time... wait, this repo's own convention names it `Duration`" per AGENTS.md) — worth checking whether `Format-RunTable`'s renderer or the header text itself should be the exact literal word `Duration`.
 - No obvious unhandled error path: `$ErrorActionPreference = 'Stop'` (line 111) plus explicit `try/catch` around the per-pair execution (lines 232-246) and top-level manifest existence checks (line 207) cover the main failure surfaces; the `finally`-less `$client`-style pattern isn't used here since there's no unmanaged resource held across the whole script.
-- Testability: no dedicated Pester test file for `Measure-ColdStart.ps1` itself was found (its dependencies `RunStatistics.psm1`, `RunProfiler.psm1`, `RunToolCache.psm1` are well-covered, but this orchestrating script's own worker-script generation, pairing loop, and off-by-one in the abort threshold are not directly asserted by any test found in this review). Given its complexity (child-process orchestration, two generated inline script templates, randomized ordering), a Pester test exercising at least the abort-threshold boundary and the warm-up/measured split with fake `Invoke-ColdRun` results would close a real gap.
-
-## Verdict
-
-Functionally solid and methodologically careful (randomized pairing, whole-pair discard, seeded bootstrap verdicts), but needs two small fixes: correct the off-by-one in the `-MaxFailedPairs` abort comparison (line 245, use `-ge` instead of `-gt`, or document the intended off-by-one), and add a script-level Pester test for the pairing/abort logic since none currently exists.
 
 ## Dependency and regression contract
 
-Shared run-format, statistics, encoding and profiler libraries load without forced reloads. Repeated measurements preserve commands already imported by the caller; the run-profile benchmark suite asserts this in a shared session.
+Shared run-format, statistics, encoding and profiler libraries load without forced reloads. The RunProfiles suite covers the executable path, argument vector, pairing, failure budget, diagnostic marker, and real fresh-process measurement.
 
 <!-- credits:begin -->
 ## Credits

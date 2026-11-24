@@ -34,9 +34,7 @@ Markdown plan destination. Relative paths are anchored in WorkspaceRoot, with ar
 .PARAMETER Watch
 Push the new commit to its existing pull request and follow its GitHub run.
 .PARAMETER MergePullRequest
-Implies Watch and merges the verified pull request after the watcher and required CI both succeed.
-.PARAMETER NoRebase
-Use a merge commit with MergePullRequest.
+Implies Watch and squash-merges the verified pull request after verifying its rebase and required CI.
 .PARAMETER NoBranchDelete
 Preserve the source branch with MergePullRequest.
 .PARAMETER Repository
@@ -103,7 +101,6 @@ param(
     [ValidateNotNullOrWhiteSpace()][string]$CiPlanPath = 'artifacts/plan.md',
     [switch]$Watch,
     [switch]$MergePullRequest,
-    [switch]$NoRebase,
     [switch]$NoBranchDelete,
     [ValidateSet('Workspace')][string]$Repository = 'Workspace',
     [string[]]$CoAuthoredBy = $null,
@@ -410,7 +407,7 @@ if ($PSCmdlet.ShouldProcess($WorkspaceRoot, "git commit -m <message>")) {
         $action=if($MergePullRequest){'Push, watch and merge the existing pull request after required CI'}else{'Push and watch the existing pull request'}
         if($PSCmdlet.ShouldProcess($revision,$action)){
             Import-Module ([IO.Path]::Combine($PSScriptRoot,'Merge-PullRequest.psm1')) -DisableNameChecking -ErrorAction Stop
-            Invoke-QuietCommitPullRequest -WorkspaceRoot $WorkspaceRoot -Revision $revision -MergePullRequest:$MergePullRequest -NoRebase:$NoRebase -NoBranchDelete:$NoBranchDelete -Confirm:$false
+            Invoke-QuietCommitPullRequest -WorkspaceRoot $WorkspaceRoot -Revision $revision -MergePullRequest:$MergePullRequest -NoBranchDelete:$NoBranchDelete -Confirm:$false
         }
     }
 }

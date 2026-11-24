@@ -1,13 +1,13 @@
 # Cold-start A/B testing
 
 How to compare two QuietCli Core module builds (for example a plain IL build against a ReadyToRun build) with a
-statistically defensible verdict, and why an A/A control is a mandatory precondition rather than an optional
-sanity check. The tooling lives in `scripts/Measure-ColdStart.ps1`, `scripts/Invoke-RunProfile.ps1` and
+statistically defensible verdict. Use an A/A control to check the measurement protocol when calibrating a runner
+or changing the benchmark. The tooling lives in `scripts/Measure-ColdStart.ps1`, `scripts/Invoke-RunProfile.ps1` and
 `scripts/Invoke-ColdStartGate.ps1`.
 
 ## What is actually measured
 
-Every sample starts a fresh `pwsh -NoProfile` child process through `quiet`. The child imports the module under
+Every sample starts a fresh `pwsh -NoProfile` child process. The child imports the module under
 test, then times two `quiet` calls of a trivial native command (`cmd /c exit 0` on Windows, `true` on Linux). Three
 phases are recorded per child, each isolating a different cost:
 
@@ -29,27 +29,15 @@ The verdict for each phase comes from a seeded percentile bootstrap of the media
 minus baseline): `faster` or `slower` only when the 95% confidence interval excludes zero, otherwise
 `inconclusive`.
 
-## What an A/A control measures, and why it is not a wasted run
+## What an A/A control measures
 
 An A/A control points `BaselineModule` and `CandidateModule` at the **same** module manifest. Both sides are
 therefore the same binary, the same code — there is no real difference to detect, by construction.
 
-This means an A/A control is not measuring the engine's performance at all. It measures **the noise floor of the
-measurement methodology on this specific machine**: process-spawn jitter, OS disk-cache state, antivirus scanning,
-CPU frequency scaling, scheduler contention, or anything else that makes two runs of the identical artifact look
-different.
-
-Because the true difference between the two sides is mathematically zero, the **correct** result for a clean A/A
-control is `inconclusive` on every phase — the bootstrap confidence interval straddling zero is exactly what should
-happen when there is nothing to detect. This is a validation of the statistical protocol, not a "nothing to report"
-shrug:
-
-- `inconclusive` on every phase → the protocol does not manufacture a phantom difference where none exists → the
-  noise floor is low enough, for this profile's pair count and seed, to trust a later A/B verdict measured the same
-  way on this machine.
-- `faster` or `slower` on any phase → a **false positive**: the machine is too noisy for this profile's settings
-  (not enough pairs, too much background interference, thermal/frequency variance). Any A/B result measured under
-  those same noisy conditions cannot be trusted either, and must not be reported as a real effect.
+The A/A control can reveal differences caused by the protocol or environment, including process-spawn jitter,
+disk-cache state, antivirus scanning, frequency scaling and scheduler contention. The gated calibration mode
+expects `inconclusive` on every phase. A 95% interval can exclude zero by chance even with identical binaries.
+Repeated A/A measurements can help distinguish a recurring measurement bias from an isolated false positive.
 
 ### Example: a clean A/A control
 
@@ -75,11 +63,10 @@ Paired difference (candidate minus baseline), 95% bootstrap interval of the medi
 └─────────────┴───────┴───────────────────┴───────────────────┴────────────────────┴──────────────┘
 ```
 
-All three phases inconclusive, CIs tight around zero: this machine's noise floor is clean for this profile. A
-subsequent A/B run (different modules on each side) that reports `faster`/`slower` on top of this baseline can be
-trusted as a real effect, not an artifact of machine noise.
+All three intervals contain zero, so this A/A control passes. Interpret the subsequent A/B using the size and
+uncertainty of its own measured differences.
 
-### Example: an A/B result validated by the A/A control above
+### Example A/B result
 
 ```
 ┌─────────────┬───────┬───────────────────┬───────────────────┬────────────────────┬──────────────┐
@@ -96,8 +83,8 @@ excludes zero), and is a wash everywhere else (`Import`, already-warm `Second ca
 
 ## Running the gate: `scripts/Invoke-ColdStartGate.ps1`
 
-Calling `Measure-ColdStart.ps1` or `Invoke-RunProfile.ps1` directly makes the A/A control a step a caller can
-forget. `scripts/Invoke-ColdStartGate.ps1` makes it mandatory:
+Use `-SkipAaControl` for direct paired A/B, as in the ReadyToRun PR workflow. The default local gate runs the
+A/A control first:
 
 1. Keeps one cached A/A control per machine and run profile, under `artifacts/coldstart/aa-<profile>-<machine>.json`
    (git-ignored — covered by this project's existing `/artifacts/` rule in `.gitignore`; never commit this
@@ -106,8 +93,7 @@ forget. `scripts/Invoke-ColdStartGate.ps1` makes it mandatory:
    phase.
 3. Otherwise remeasures the A/A control first, into the same cache file.
 4. If the A/A control — cached or freshly measured — is **not** all-inconclusive, it throws
-   `ColdStartNoiseFloorUnstable` and refuses to run the A/B. A noisy machine cannot produce a trustworthy
-   `faster`/`slower` verdict either.
+   `ColdStartNoiseFloorUnstable` and stops the gated comparison.
 5. Only once the noise floor is confirmed clean does it run the real A/B through `Invoke-RunProfile.ps1`, writing
    the result to a timestamped `artifacts/coldstart/ab-<profile>-<label>-<UTC-stamp>.json`.
 
@@ -126,7 +112,8 @@ Run from `PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh`:
 ```
 
 `-Arguments` forwards overrides (for example `@{ Runs = 1000 }`) to both the A/A and the A/B run; never set
-`CandidateModule`, `CandidateLabel` or `OutputPath` there — the gate controls those.
+`CandidateModule`, `CandidateLabel` or `OutputPath` there — the gate controls those. With `-SkipAaControl`,
+the same profile writes the A/B report without reading or measuring A/A.
 
 A visible `pwsh` monitoring window is still required for the run, per the workspace test rules (see the root
 `AGENTS.md`, "Test runs").

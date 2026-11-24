@@ -7,9 +7,8 @@ Invoke-ColdStartGate.ps1 as the guest entrypoint, then retrieves artifacts/colds
 .DESCRIPTION
 Unlike Invoke-ContainerWorker.ps1, this never dispatches a Suite: there is exactly one guest entrypoint
 (Invoke-ColdStartGate.ps1) and no test assertions to stage or verify, so this script stays independent of that
-hardened, Suite-coupled worker rather than bolting cold-start support onto it. An unstable A/A noise floor or an
-inconclusive/slower A/B verdict is never a crash here — same informational policy as the Windows ReadyToRun
-workflow (see docs/README-readytorun_profiling.md); only a guest crash, a missing report or an architecture mismatch is.
+hardened, Suite-coupled worker. Completed A/B reports can carry inconclusive or slower verdicts.
+An unsuccessful direct A/B guest exit, a missing report after a clean exit or an architecture mismatch fails the worker.
 
 .PARAMETER WorkspaceRoot
 QuietCli2 root; source of 'scripts' and the already-built baseline module.
@@ -31,6 +30,8 @@ Display name of the candidate build forwarded to the gate.
 
 .PARAMETER ExpectedRuntimeIdentifier
 Required architecture and libc family in the guest.
+.PARAMETER SkipAaControl
+Runs the guest's paired A/B directly.
 .PARAMETER ContainerRuntime
 Explicit selection overrides the checkout dotenv key; absent configuration uses Podman-first application discovery on Windows and Linux.
 #>
@@ -42,15 +43,20 @@ Explicit selection overrides the checkout dotenv key; absent configuration uses 
     [Parameter(Mandatory)][string]$CandidateModule,
     [ValidateNotNullOrEmpty()][string]$CandidateLabel = 'readytorun',
     [ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,
+    [switch]$SkipAaControl,
     [AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime
 )
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ContainerColdStartWorker')){return}
 $ErrorActionPreference = 'Stop'; Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
+$WorkspaceRoot = [IO.Path]::GetFullPath($WorkspaceRoot, $PWD.Path)
 $ContainerRuntime=Resolve-QuietVirtEngine -ContainerRuntime $ContainerRuntime -WorkspaceRoot $WorkspaceRoot
 $owner = [guid]::NewGuid().ToString('N'); $name = 'quietcli2-coldstart-' + $owner.Substring(0, 12)
-$state = @{ Project = 'FrenchExDev2.QuietCli.Core.PoSh'; Task = 'ReadyToRun cold-start report'; Workspace = $WorkspaceRoot; ProjectDirectory = ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')); Platform = $Platform; State = 'Preparing'; StartedUtc = [DateTimeOffset]::UtcNow.ToString('o'); ProcessId = $PID; ContainerId = $name; Passed = $null; Failed = $null; Case = 'Staging baseline and candidate modules'; FinishedUtc = $null; Error = $null; Image = $Image; Owner = $owner }
+$moduleName = 'FrenchExDev2.QuietCli.Core.PoSh'
+$baselineRoot = Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $moduleName
+$baselineRelative = [IO.Path]::GetRelativePath($WorkspaceRoot, $baselineRoot).Replace('\', '/')
+$state = @{ Project = $moduleName; Task = 'ReadyToRun cold-start report'; Workspace = $WorkspaceRoot; ProjectDirectory = $baselineRoot; Platform = $Platform; State = 'Preparing'; StartedUtc = [DateTimeOffset]::UtcNow.ToString('o'); ProcessId = $PID; ContainerId = $name; Passed = $null; Failed = $null; Case = 'Staging baseline and candidate modules'; FinishedUtc = $null; Error = $null; Image = $Image; Owner = $owner }
 $status = [IO.Path]::Combine($RunDirectory,'status.json')
 Write-WorkspaceJson $status $state
 $created = $false
@@ -62,16 +68,17 @@ try {
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
         Copy-Item -LiteralPath $file.FullName -Destination $destination
     }
-    foreach ($file in Get-ChildItem -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')) -Recurse -File -Force) {
-        $relative = [IO.Path]::GetRelativePath(((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath 'FrenchExDev2.QuietCli.Core.PoSh')), $file.FullName)
+    foreach ($file in Get-ChildItem -LiteralPath $baselineRoot -Recurse -File -Force) {
+        $relative = [IO.Path]::GetRelativePath($baselineRoot, $file.FullName)
         if ($relative -match '(^|[\\/])(\.git|bin|obj)[\\/]') { continue }
-        $destination = [IO.Path]::Combine(([IO.Path]::Combine($stage,'FrenchExDev2.QuietCli.Core.PoSh')),$relative)
+        $destination = [IO.Path]::Combine($stage,$baselineRelative,$relative)
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
         Copy-Item -LiteralPath $file.FullName -Destination $destination
     }
     $candidateRoot = Split-Path -Parent ([IO.Path]::GetFullPath($CandidateModule))
     foreach ($file in Get-ChildItem -LiteralPath $candidateRoot -Recurse -File -Force) {
         $relative = [IO.Path]::GetRelativePath($candidateRoot, $file.FullName)
+        if ($relative -match '(^|[\\/])(\.git|bin|obj)[\\/]') { continue }
         $destination = [IO.Path]::Combine(([IO.Path]::Combine($stage,'candidate')),$relative)
         [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
         Copy-Item -LiteralPath $file.FullName -Destination $destination
@@ -87,10 +94,11 @@ try {
         '-File', '/workspace/scripts/Invoke-ColdStartGate.ps1',
         '-CandidateModule', "/workspace/candidate/$candidateRelative",
         '-CandidateLabel', $CandidateLabel,
-        '-BaselineModule', '/workspace/src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1',
+        '-BaselineModule', "/workspace/$baselineRelative/$moduleName.psd1",
         '-ArtifactsDirectory', '/workspace/artifacts/coldstart',
         '-MeasurePackageSize'
     )
+    if ($SkipAaControl) { $guestArguments += '-SkipAaControl' }
     $null = Invoke-WorkspaceNative $ContainerRuntime (@('create', '--pull=never', '--name', $name, '--label', ('org.frenchexdev.quietcli2.owner=' + $owner), '--network', 'none', '--entrypoint', 'pwsh', $imageState.Id) + $guestArguments) $WorkspaceRoot -TimeoutSeconds 30
     $created = $true
     $null = Invoke-WorkspaceNative $ContainerRuntime @('cp', ($stage.Replace('\', '/') + '/.'), ($name + ':/workspace')) $WorkspaceRoot -TimeoutSeconds 90
@@ -111,6 +119,9 @@ try {
     if ($exitInspection.Outcome -ne 'Success' -or $exit.Value -notmatch '^-?\d+$') { throw 'GuestExitCodeUnconfirmed' }
     $state.GuestExitCode = [int]$exit.Value
     $guestFiles = @(Get-ChildItem -LiteralPath ([IO.Path]::Combine($RunDirectory,'guest')) -Filter 'ab-*.json' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTimeUtc -Descending)
+    if ($state.GuestExitCode -ne 0 -and ($SkipAaControl -or $guestFiles.Count -gt 0)) {
+        throw "GuestColdStartFailed: exit=$($state.GuestExitCode)"
+    }
     if ($guestFiles.Count -eq 0) {
         # An unstable A/A noise floor aborts the gate before writing an A/B result; this is a report, not a crash.
         if ($state.GuestExitCode -eq 0) { throw 'GuestColdStartReportMissingAfterCleanExit' }

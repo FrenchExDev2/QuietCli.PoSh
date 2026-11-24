@@ -6,11 +6,13 @@ Source file: [`Measure-ColdStart.ps1`](../../scripts/Measure-ColdStart.ps1)
 
 ## Purpose and usage
 
-This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Measure-ColdStart.psm1](lib/Measure-ColdStart.md). See that library for the full operation, dependencies, examples, effects and validation limits.
+This entry point forwards explicitly bound parameters, including standard preview options. The library selects the default native workload for the current platform. [Measure-ColdStart.psm1](lib/Measure-ColdStart.md)
 
 ## Dependencies and effects
 
 Imports its local library using `-DisableNameChecking -ErrorAction Stop` and invokes `Invoke-QuietScriptMeasureColdStart`. The library retains the original operation guards and output contract. Import alone does not run the operation.
+
+Samples use the executable from the current PowerShell installation, including the pinned runner host in GitHub Actions. Each sample imports its selected QuietCli module in a fresh process.
 
 <!-- script-contract:begin -->
 ## Execution contract

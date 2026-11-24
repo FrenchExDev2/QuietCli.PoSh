@@ -26,7 +26,7 @@ PR scopes declaring Core evidence request collect_performance=true. Core profili
 To obtain profiling plus A/B evidence for a PR:
 
 1. Push the intended commits to the PR branch. Matching changes automatically start the qualification/profiling workflow; the pushed revision must include this configuration.
-2. Manually dispatch `quietcli2-readytorun.yml` on that same pushed branch. It compares IL and ReadyToRun builds of the selected revision after an A/A noise check; it does **not** compare the PR head with `develop`.
+2. Manually dispatch `quietcli2-readytorun.yml` on that same pushed branch. It runs paired A/B on IL and ReadyToRun builds from the selected revision. Enable `aa_control` for an A/A calibration before the comparison.
 3. Check the source revision of both runs, then link the manual run in the PR. A PR-triggered run can use GitHub's merge ref, whereas manual dispatch tests the selected branch/tag; these are distinct checkout identities. The manual A/B run is informational and is not an automatic PR qualification dependency.
 
 From the workspace root, the second step is:
@@ -143,7 +143,7 @@ The shared workflow uploads per-target Core evidence and combined performance re
 
 ## Manual workflows outside the required gate
 
-[ReadyToRun profiling](../.github/workflows/quietcli2-readytorun.yml) compares one Windows x64 target and four Debian/Alpine Linux targets. It can retain noisy comparisons as warnings. Inspect the A/A control and the measured intervals in the uploaded reports. The run excludes Windows ARM64 comparisons.
+[ReadyToRun profiling](../.github/workflows/quietcli2-readytorun.yml) compares one Windows x64 target and four Debian/Alpine Linux targets. Inspect the measured intervals and any requested A/A control in the uploaded reports.
 
 The [full Git qualification workflow](../.github/workflows/qualification.yml) expects a self-hosted Linux x64 Podman/KVM runner and `QUIETCLI_QUALIFICATION_CONFIG`. Its [runner](../scripts/Invoke-GitQualification.ps1) reports inventory gaps and currently ends with `QualificationRunnerNotImplemented` after valid prerequisites. Passing Git companion cases cover their reported scenarios.
 

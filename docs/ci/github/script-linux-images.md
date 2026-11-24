@@ -1,10 +1,10 @@
 # linux-images.yml
 
-<!-- workflow-source-sha256: 41DE372CB9AF3C7DC5E8942C955441AEA2CF213DBEE11D78F5CAD2622D7BEFF2 -->
+<!-- workflow-source-sha256: 2D2B8B0C34BBCF239485AE0FBED888DBC4E929423F5D4CCE8EC02B7789827BDD -->
 
 ## Purpose
 
-Prepares the selected Linux image chains once per RID on native Ubuntu runners. The same producer supplies product qualification, standalone CI (including Gallery qualification), and ReadyToRun. Different suite chains reuse verified parents already present on the producer.
+Provides the selected Linux image chains once per RID on native Ubuntu runners. The same producer supplies product qualification, standalone CI (including Gallery qualification), and ReadyToRun. Different suite chains reuse verified parents already present on the producer.
 
 ## Triggers
 
@@ -12,7 +12,7 @@ Reusable `workflow_call` from companion CI, standalone qualification or ReadyToR
 
 ## Scripts and effects
 
-The producer owns registry lookup, native build and BuildKit caching. The original upstream develop policy controls GHCR publication. For test runs it saves one image archive and identity receipt per RID using [Export-CiImageBundle](../../scripts/Export-CiImageBundle.md). The same-run artifact can be reused when GitHub reruns only failed consumers. Cache-only preparation warms GHCR and uploads receipts without exporting the test archive.
+For test runs, the producer fingerprints the exact image recipes selected per RID and restores the final archive with an exact GitHub Actions cache key. On a hit it verifies the receipt and archive SHA-256, then binds the receipt to the current run. On a miss it starts Docker, resolves or builds the required images with the existing GHCR and BuildKit policies, and saves the archive for reuse. Both paths upload a current-run bundle using [Export-CiImageBundle](../../scripts/Export-CiImageBundle.md). Failed consumers can reuse the same-run artifact on rerun. Cache-only preparation warms GHCR and uploads receipts without exporting the test archive.
 
 ## Validation and limits
 

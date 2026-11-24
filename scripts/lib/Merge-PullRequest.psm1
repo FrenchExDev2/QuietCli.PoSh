@@ -58,6 +58,21 @@ function Get-QuietPullRequestLocalRef {
     $lines -split '\r?\n' | Where-Object {$_.StartsWith($name+' ',[StringComparison]::Ordinal)}
 }
 
+function Get-QuietPullRequestBaseOid {
+    <#
+    .SYNOPSIS
+    Reads the current develop revision from the pull request repository.
+    .PARAMETER WorkspaceRoot
+    Checkout from which to run gh.
+    .PARAMETER Repository
+    Selected GitHub repository.
+    #>
+    param([string]$WorkspaceRoot,[string]$Repository)
+    $base=Invoke-QuietPullRequestTool $WorkspaceRoot gh @('api',"repos/$Repository/git/ref/heads/develop",'--jq','.object.sha')
+    if($base -cnotmatch '\A[a-f0-9]{40}\z'){throw 'PullRequestBaseUnavailable: could not verify the current develop revision.'}
+    $base
+}
+
 function Invoke-QuietMergePullRequest {
     <#
     .SYNOPSIS
@@ -70,8 +85,6 @@ function Invoke-QuietMergePullRequest {
     Configured GitHub remote.
     .PARAMETER ExpectedHead
     Exact head SHA, or the observed head if omitted.
-    .PARAMETER NoRebase
-    Use a merge commit.
     .PARAMETER NoBranchDelete
     Preserve the source branch.
     #>
@@ -81,12 +94,11 @@ function Invoke-QuietMergePullRequest {
         [string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'..','..'))),
         [ValidatePattern('\A[A-Za-z0-9][A-Za-z0-9._-]*\z')][string]$Remote='origin',
         [ValidatePattern('\A[a-f0-9]{40}\z')][string]$ExpectedHead,
-        [switch]$NoRebase,
         [switch]$NoBranchDelete
     )
     $ErrorActionPreference=[Management.Automation.ActionPreference]::Stop
-    $method=if($NoRebase){'--merge'}else{'--rebase'}
-    $action=if($NoBranchDelete){"Merge with $method and preserve the branch"}else{"Merge with $method and delete the source branch"}
+    $branchAction=if($NoBranchDelete){'preserve the source branch'}else{'delete the source branch'}
+    $action="Squash and merge after verifying the rebase, then $branchAction"
     if(!$PSCmdlet.ShouldProcess("workspace pull request #$PullRequest via $Remote",$action)){return}
     $repository=Get-QuietPullRequestRepository -WorkspaceRoot $WorkspaceRoot -Remote $Remote
     $view=Read-QuietWorkspacePullRequest -WorkspaceRoot $WorkspaceRoot -Repository $repository -Number $PullRequest
@@ -97,7 +109,7 @@ function Invoke-QuietMergePullRequest {
     }
     $head=$view.headRefOid
     $branch=$view.headRefName
-    $arguments=@('pr','merge',[string]$PullRequest,'--repo',$repository,$method,'--match-head-commit',$head)
+    $arguments=@('pr','merge',[string]$PullRequest,'--repo',$repository,'--squash','--match-head-commit',$head)
     if($NoBranchDelete){
         $policy=Invoke-QuietPullRequestTool $WorkspaceRoot gh @('api',"repos/$repository",'--jq','{delete_branch_on_merge}') | ConvertFrom-Json
         if($policy.delete_branch_on_merge -ne $false){throw 'PullRequestBranchPreservationUnavailable: GitHub automatic branch deletion must be disabled.'}
@@ -112,6 +124,16 @@ function Invoke-QuietMergePullRequest {
     }
     $mergeError=$null
     Assert-QuietPullRequestCiEvidence -WorkspaceRoot $WorkspaceRoot -Repository $repository -Number $PullRequest -ExpectedHead $head -CheckRollup @($view.statusCheckRollup)
+    $base=Get-QuietPullRequestBaseOid $WorkspaceRoot $repository
+    $null=Invoke-QuietPullRequestTool $WorkspaceRoot git @('fetch','--no-tags','--no-write-fetch-head','--no-recurse-submodules','--',$Remote,$base,$head)
+    $missing=Invoke-QuietPullRequestTool $WorkspaceRoot git @('rev-list','--count',"$head..$base")
+    $merges=Invoke-QuietPullRequestTool $WorkspaceRoot git @('rev-list','--count','--merges',"$base..$head")
+    if($missing -cne '0' -or $merges -cne '0'){
+        throw "PullRequestRebaseRequired: rebase $branch onto $Remote/develop, push the rebased head and qualify it before merging."
+    }
+    if((Get-QuietPullRequestBaseOid $WorkspaceRoot $repository) -cne $base){
+        throw 'PullRequestBaseChanged: develop advanced during merge verification.'
+    }
     try{$null=Invoke-QuietPullRequestTool $WorkspaceRoot gh $arguments}catch{$mergeError=$_}
     $merged=Read-QuietWorkspacePullRequest -WorkspaceRoot $WorkspaceRoot -Repository $repository -Number $PullRequest
     if($merged.state -cne 'MERGED' -or $merged.headRefOid -cne $head){
@@ -125,7 +147,7 @@ function Invoke-QuietMergePullRequest {
         $branchDeleted=!$remoteRef -and !(Get-QuietPullRequestLocalRef $WorkspaceRoot $branch)
         if(!$branchDeleted){Write-Warning "Pull request #$PullRequest merged, but the source branch still exists."}
     }
-    [pscustomobject]@{State='Merged';PullRequest=$PullRequest;Url=$merged.url;Head=$head;MergeCommit=$merged.mergeCommit.oid;Method=$method.Substring(2);BranchDeleted=$branchDeleted}
+    [pscustomobject]@{State='Merged';PullRequest=$PullRequest;Url=$merged.url;Head=$head;MergeCommit=$merged.mergeCommit.oid;Method='squash';BranchDeleted=$branchDeleted}
 }
 
 function Invoke-QuietPullRequestScript {
@@ -192,8 +214,6 @@ function Invoke-QuietCommitPullRequest {
     Exact new Git commit to publish and watch.
     .PARAMETER MergePullRequest
     Merge after the watcher and required check succeed for this revision.
-    .PARAMETER NoRebase
-    Use a merge commit if merging.
     .PARAMETER NoBranchDelete
     Preserve the source branch if merging.
     .PARAMETER DiscoverySeconds
@@ -203,7 +223,7 @@ function Invoke-QuietCommitPullRequest {
     param(
         [Parameter(Mandatory)][string]$WorkspaceRoot,
         [Parameter(Mandatory)][ValidatePattern('\A[a-f0-9]{40}\z')][string]$Revision,
-        [switch]$MergePullRequest,[switch]$NoRebase,[switch]$NoBranchDelete,
+        [switch]$MergePullRequest,[switch]$NoBranchDelete,
         [ValidateRange(0,600)][int]$DiscoverySeconds=120
     )
     $ErrorActionPreference=[Management.Automation.ActionPreference]::Stop
@@ -228,7 +248,7 @@ function Invoke-QuietCommitPullRequest {
     }
     if($completed.Count -ne 1){throw 'PullRequestWatchDidNotSucceed'}
     if($MergePullRequest){
-        Invoke-QuietMergePullRequest -WorkspaceRoot $WorkspaceRoot -Remote origin -PullRequest $number -ExpectedHead $Revision -NoRebase:$NoRebase -NoBranchDelete:$NoBranchDelete -Confirm:$false
+        Invoke-QuietMergePullRequest -WorkspaceRoot $WorkspaceRoot -Remote origin -PullRequest $number -ExpectedHead $Revision -NoBranchDelete:$NoBranchDelete -Confirm:$false
     }
 }
 

@@ -11,12 +11,15 @@ Four native targets use Ubuntu runners matching their CPU. Debian and Alpine are
 
 ## Image production and handoff
 
-`linux-images.yml` prepares one bundle per RID for every selected chain. The producer reuses verified GHCR images or builds missing layers in its Docker daemon, sharing verified parents between chains. Read-only timeouts and unavailable final images use the verified local build path. Intermediate BuildKit caches remain scoped by native RID and recipe inputs. Only trusted upstream develop runs can publish to GHCR.
+`linux-images.yml` supplies one bundle per RID for the selected chains. It first looks for a final archive keyed by the native RID and the exact set of recipe fingerprints. An exact hit skips Docker setup, BuildKit and archive creation. The producer verifies the archive SHA-256 and issues a receipt for the current run and revision. A changed recipe, a different image set, or a missing cache entry takes the preparation path. The producer then reuses verified GHCR images or builds missing layers, sharing verified parents between chains. Read-only timeouts and unavailable final images use the verified local build path. Only trusted upstream develop runs can publish to GHCR.
 
 ```mermaid
 flowchart TD
-    PLAN[Select suites and native targets] --> PREPARE[Prepare image chains for each RID]
-    PREPARE --> BUNDLE[Upload image archive and identity receipt]
+    PLAN[Select suites and native targets] --> CACHE{Exact final archive cached?}
+    CACHE -->|Yes| REUSE[Verify archive and issue current receipt]
+    CACHE -->|No| PREPARE[Prepare the selected image chains]
+    REUSE --> BUNDLE[Upload image archive and identity receipt]
+    PREPARE --> BUNDLE
     BUNDLE --> VERIFY[Verify and load the suite image on each test runner]
     VERIFY --> TEST[Execute qualification or ReadyToRun]
 ```

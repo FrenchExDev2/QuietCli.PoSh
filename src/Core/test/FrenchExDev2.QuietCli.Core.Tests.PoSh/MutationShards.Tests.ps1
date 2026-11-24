@@ -137,12 +137,13 @@ if(!$Preview){[IO.File]::WriteAllText((Join-Path $Run 'entry-result.json'),($res
     $positive=0;$rejected=0
     foreach($index in 0..1){
         $report=[pscustomobject]@{Partial=$true;ShardIndex=$index;ShardCount=2;TotalCatalogue=$catalogue.Count;SourceSHA256=$hash;Revision=('b'*40);BaselinePassed=$true;Seed=61207;Iterations=120;Results=@(Get-QuietMutationShard $catalogue $index 2|ForEach-Object {[pscustomobject]@{Name=$_.Name;Outcome='Killed'}})}
-        $response=[pscustomobject]@{Report=$report;Summary=[pscustomobject]@{State=[pscustomobject]@{State='Success';Passed=46;Failed=0};Suites=@([pscustomobject]@{Project='RunProfiles';Mutation=$true;Partial=$true;Incomplete=$false;Passed=46;Failed=0;Skipped=0})}}
+        $killed=$report.Results.Count
+        $response=[pscustomobject]@{Report=$report;Summary=[pscustomobject]@{State=[pscustomobject]@{State='Success';Passed=$killed;Failed=0};Suites=@([pscustomobject]@{Project='RunProfiles';Mutation=$true;Partial=$true;Incomplete=$false;Passed=$killed;Failed=0;Skipped=0})}}
         $accepted=& $runEntry $response ('valid-'+$index) 'RunProfilesMutation' ([string]$index)
         Assert-QuietEqual $accepted.Success $true $accepted.Diagnostics
         $result=Get-Content -LiteralPath (Join-Path $accepted.Run 'entry-result.json') -Raw -Encoding utf8|ConvertFrom-Json
         Assert-QuietEqual $result.Partial $true 'A shard must not become complete qualification'
-        Assert-QuietEqual $result.Passed 46
+        Assert-QuietEqual $result.Passed $killed
         $positive++
         if($index -eq 0){$valid=ConvertTo-Json -InputObject $response -Depth 10}
     }
@@ -153,21 +154,21 @@ if(!$Preview){[IO.File]::WriteAllText((Join-Path $Run 'entry-result.json'),($res
         {param($r)$r.Report.ShardCount='2'},
         {param($r)$r.Report.SourceSHA256='a'*64},
         {param($r)$r.Report.Revision='c'*40},
-        {param($r)$r.Report.TotalCatalogue=91},
+        {param($r)$r.Report.TotalCatalogue--},
         {param($r)$r.Report.Seed=1},
         {param($r)$r.Report.Iterations=1},
         {param($r)$r.Report.Partial=$false},
-        {param($r)$r.Report.Results=$r.Report.Results[1..45]},
+        {param($r)$r.Report.Results=@($r.Report.Results|Select-Object -Skip 1)},
         {param($r)$r.Report.Results[0].Name=$r.Report.Results[1].Name},
         {param($r)$r.Report.Results[0].Outcome='Survived'},
         {param($r)$r.Summary.Suites[0].Incomplete=$true},
         {param($r)$r.Summary.Suites[0].Partial=$false},
         {param($r)$r.Summary.Suites[0].Mutation=$false},
         {param($r)$r.Summary.Suites[0].Project='Core'},
-        {param($r)$r.Summary.Suites[0].Passed=45},
+        {param($r)$r.Summary.Suites[0].Passed--},
         {param($r)$r.Summary.Suites[0].Skipped=1},
         {param($r)$r.Summary.State.State='Failed'},
-        {param($r)$r.Summary.State.Passed=45},
+        {param($r)$r.Summary.State.Passed--},
         {param($r)$r.Summary.Suites+=$r.Summary.Suites[0]}
     )
     foreach($damage in $damages){

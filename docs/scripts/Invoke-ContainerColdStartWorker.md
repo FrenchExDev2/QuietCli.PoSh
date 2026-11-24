@@ -4,13 +4,14 @@
 Source file: [`Invoke-ContainerColdStartWorker.ps1`](../../scripts/Invoke-ContainerColdStartWorker.ps1)
 <!-- script-source:end -->
 
-The staged baseline manifest resolves beneath `/workspace/src/Core/src/`, matching the grouped checkout.
+The worker preserves the baseline module's checkout-relative path when staging it. It passes the same path under `/workspace` to the guest, including `src/Core/src/` in the grouped checkout.
 
 Runtime selection follows the [shared environment contract](../ci/environment.md): explicit argument, checkout dotenv key, then Podman-first application discovery on Windows and Linux. Initialize-CiEnvironment.ps1 generates deterministic Local/GitHub presets.
 
 ## Purpose and usage
 
-Stages a built baseline/candidate and runs Invoke-ColdStartGate.ps1 in an owned networkless container.
+Stages built baseline and candidate modules and runs Invoke-ColdStartGate.ps1 in an owned networkless container.
+Pass `-SkipAaControl` to measure paired A/B directly, as ReadyToRun CI does by default.
 
 ```powershell
 ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot <root> -RunDirectory <owned-directory> -Image <local-id> -Platform alpine -CandidateModule <manifest> -ExpectedRuntimeIdentifier linux-musl-arm64 -ContainerRuntime docker
@@ -25,7 +26,8 @@ Requires Common.ps1, the selected existing engine, a prepared platform image and
 ## Critical review
 
 - `scripts/Invoke-ContainerColdStartWorker.ps1:44` selects the engine consistently for inspect/create/copy/start/logs/cleanup. Podman is not a GitHub prerequisite.
-- Architecture is checked from retained guest reports. Missing reports, failed infrastructure and unstable timing controls must not be presented as successful qualification.
+- Architecture is checked from retained guest reports. A nonzero guest exit in direct mode fails the worker,
+  even if a report exists. A clean exit requires a report.
 - The worker is specific to the informational A/B benchmark, not an alternative functional CI. Its manual workflow has no dependency edge into develop qualification/publication.
 - Actual manual multi-platform benchmark execution remains distinct from tested command adapters and the real Docker functional import smoke.
 

@@ -635,12 +635,16 @@ Declared matrix · <code>{"include"&#58;&#91;{"rid"&#58;"linux-x64","runner"&#58
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
 | 2 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
 | 3 |  | [./.github/actions/setup-powershell](#action-setup-powershell-3) |  |
-| 4 |  | [./.github/actions/cache-ci-layers](#action-cache-ci-layers-0) |  |
-| 5 | Prepare and archive the selected image chains | [scripts/Export-CiImageBundle.ps1](scripts/Export-CiImageBundle.md) | <code>&#36;{{ !inputs.images&#95;only }}</code> |
-| 6 | Warm only the trusted cache | [scripts/New-CiSuiteImage.ps1](scripts/New-CiSuiteImage.md) | <code>&#36;{{ inputs.images&#95;only }}</code> |
-| 7 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>&#36;{{ !inputs.images&#95;only }}</code> |
-| 8 |  | [./.github/actions/cache-ci-layers](#action-cache-ci-layers-0) | <code>&#36;{{ always() &#38;&#38; !cancelled() }}</code> |
-| 9 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+| 4 | Fingerprint the selected image chains | [scripts/Export-CiImageBundle.ps1](scripts/Export-CiImageBundle.md) | <code>&#36;{{ !inputs.images&#95;only }}</code> |
+| 5 | Restore the exact final image archive | actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>&#36;{{ !inputs.images&#95;only }}</code> |
+| 6 |  | [./.github/actions/cache-ci-layers](#action-cache-ci-layers-0) | <code>&#36;{{ inputs.images&#95;only &#124;&#124; steps.image&#95;cache.outputs.cache-hit != 'true' }}</code> |
+| 7 | Prepare and archive the selected image chains | [scripts/Export-CiImageBundle.ps1](scripts/Export-CiImageBundle.md) | <code>&#36;{{ !inputs.images&#95;only &#38;&#38; steps.image&#95;cache.outputs.cache-hit != 'true' }}</code> |
+| 8 | Verify the cached archive for this run | [scripts/Export-CiImageBundle.ps1](scripts/Export-CiImageBundle.md) | <code>&#36;{{ !inputs.images&#95;only &#38;&#38; steps.image&#95;cache.outputs.cache-hit == 'true' }}</code> |
+| 9 | Warm only the trusted cache | [scripts/New-CiSuiteImage.ps1](scripts/New-CiSuiteImage.md) | <code>&#36;{{ inputs.images&#95;only }}</code> |
+| 10 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>&#36;{{ !inputs.images&#95;only }}</code> |
+| 11 | Save the exact final image archive | actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>&#36;{{ !inputs.images&#95;only &#38;&#38; steps.image&#95;cache.outputs.cache-hit != 'true' }}</code> |
+| 12 |  | [./.github/actions/cache-ci-layers](#action-cache-ci-layers-0) | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; (inputs.images&#95;only &#124;&#124; steps.image&#95;cache.outputs.cache-hit != 'true') }}</code> |
+| 13 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
 
 <a name="workflow-packages-update-yml-8"></a>
 
@@ -931,13 +935,14 @@ Jobs · [readytorun](#workflow-quietcli2-readytorun-yml-12-job-j0) · [linux-ima
 | 3 |  | [./.github/actions/setup-powershell](#action-setup-powershell-3) |  |
 | 4 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
 | 5 |  | actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 |  |
-| 6 | Build the baseline module | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) |  |
-| 7 | Build the ReadyToRun candidate | [scripts/New-ReadyToRunCandidate.ps1](scripts/New-ReadyToRunCandidate.md) |  |
-| 8 | Run the A/A-gated A/B cold-start comparison | [scripts/Invoke-ColdStartGate.ps1](scripts/Invoke-ColdStartGate.md) |  |
-| 9 | Render the latest report | [scripts/Show-ColdStartReport.ps1](scripts/Show-ColdStartReport.md) | <code>always()</code> |
-| 10 | Export redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
-| 11 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
-| 12 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+| 6 | Verify monorepo structure and external resources | [scripts/Initialize-Workspace.ps1](scripts/Initialize-Workspace.md) |  |
+| 7 | Build the baseline module | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) |  |
+| 8 | Build the ReadyToRun candidate | [scripts/New-ReadyToRunCandidate.ps1](scripts/New-ReadyToRunCandidate.md) |  |
+| 9 | Run the paired cold-start comparison | [scripts/Invoke-ColdStartGate.ps1](scripts/Invoke-ColdStartGate.md) |  |
+| 10 | Render the latest report | [scripts/Show-ColdStartReport.ps1](scripts/Show-ColdStartReport.md) | <code>always()</code> |
+| 11 | Export redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
+| 12 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
+| 13 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>&#36;{{ !cancelled() &#38;&#38; (steps.comparison.outcome == 'success' &#124;&#124; steps.comparison.outcome == 'failure') }}</code> |
 
 <a name="workflow-quietcli2-readytorun-yml-12-job-j1"></a>
 
@@ -966,11 +971,11 @@ Declared matrix · <code>{"include"&#58;&#91;{"platform"&#58;"debian","rid"&#58;
 | 7 | Build the baseline module for every distribution | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) |  |
 | 8 | Build the ReadyToRun candidate for this platform's RID | [scripts/New-ReadyToRunCandidate.ps1](scripts/New-ReadyToRunCandidate.md) |  |
 | 9 |  | actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 |  |
-| 10 | Run the A/A-gated A/B cold-start comparison inside the prepared platform image | [scripts/Import-CiImageBundle.ps1](scripts/Import-CiImageBundle.md), [scripts/Invoke-ContainerColdStartWorker.ps1](scripts/Invoke-ContainerColdStartWorker.md) |  |
+| 10 | Run the paired cold-start comparison inside the prepared platform image | [scripts/Import-CiImageBundle.ps1](scripts/Import-CiImageBundle.md), [scripts/Invoke-ContainerColdStartWorker.ps1](scripts/Invoke-ContainerColdStartWorker.md) |  |
 | 11 | Render the latest report | [scripts/Show-ColdStartReport.ps1](scripts/Show-ColdStartReport.md) | <code>always()</code> |
 | 12 | Export redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
 | 13 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
-| 14 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+| 14 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>&#36;{{ !cancelled() &#38;&#38; (steps.comparison.outcome == 'success' &#124;&#124; steps.comparison.outcome == 'failure') }}</code> |
 
 <a name="workflow-release-tags-yml-13"></a>
 

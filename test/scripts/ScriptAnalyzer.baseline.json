@@ -172,13 +172,6 @@
     },
     {
       "Rule": "PSAvoidAssignmentToAutomaticVariable",
-      "Path": "scripts/lib/Measure-ColdStart.psm1",
-      "Function": "Invoke-QuietChild",
-      "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
-      "Count": 1
-    },
-    {
-      "Rule": "PSAvoidAssignmentToAutomaticVariable",
       "Path": "scripts/lib/New-QuietPreviewTag.psm1",
       "Function": "Invoke-QuietPreviewGit",
       "ExtentSHA256": "940FFB8FC9EEDD9C606A71DF9CF9F467E5D3C1E94D1874613E496AE5B6D8C752",
@@ -763,13 +756,6 @@
       "Path": "scripts/lib/Invoke-ContainerRuntimeDiagnosis.psm1",
       "Function": "Invoke-QuietScriptInvokeContainerRuntimeDiagnosis",
       "ExtentSHA256": "DAC09B91D430F8B371F8A64AF18B936048B65DE06D463C4F29C12455DB66C2DF",
-      "Count": 1
-    },
-    {
-      "Rule": "QuietImportErrorAction",
-      "Path": "scripts/lib/Measure-ColdStart.psm1",
-      "Function": "Invoke-QuietScriptMeasureColdStart",
-      "ExtentSHA256": "0C9894840A23362A8CD77CD7C69733B4B6CADBD1412F8B9D78D132B029374862",
       "Count": 1
     },
     {

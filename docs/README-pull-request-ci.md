@@ -30,7 +30,8 @@ Run companion checks and shards one at a time, with one worker per shard. Use th
 
 ## ReadyToRun performance
 
-Run an A/A noise control and an IL/ReadyToRun cold-start comparison for the same revision on each existing target.
+Run a paired IL/ReadyToRun cold-start comparison for the same revision on each existing target. Manual ReadyToRun
+dispatches can enable an A/A control for calibration.
 
 ## PowerShell Preview
 
