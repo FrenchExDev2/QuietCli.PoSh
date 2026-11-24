@@ -935,13 +935,14 @@ Jobs · [readytorun](#workflow-quietcli2-readytorun-yml-12-job-j0) · [linux-ima
 | 3 |  | [./.github/actions/setup-powershell](#action-setup-powershell-3) |  |
 | 4 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
 | 5 |  | actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 |  |
-| 6 | Build the baseline module | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) |  |
-| 7 | Build the ReadyToRun candidate | [scripts/New-ReadyToRunCandidate.ps1](scripts/New-ReadyToRunCandidate.md) |  |
-| 8 | Run the paired cold-start comparison | [scripts/Invoke-ColdStartGate.ps1](scripts/Invoke-ColdStartGate.md) |  |
-| 9 | Render the latest report | [scripts/Show-ColdStartReport.ps1](scripts/Show-ColdStartReport.md) | <code>always()</code> |
-| 10 | Export redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
-| 11 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
-| 12 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>&#36;{{ !cancelled() &#38;&#38; (steps.comparison.outcome == 'success' &#124;&#124; steps.comparison.outcome == 'failure') }}</code> |
+| 6 | Verify monorepo structure and external resources | [scripts/Initialize-Workspace.ps1](scripts/Initialize-Workspace.md) |  |
+| 7 | Build the baseline module | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) |  |
+| 8 | Build the ReadyToRun candidate | [scripts/New-ReadyToRunCandidate.ps1](scripts/New-ReadyToRunCandidate.md) |  |
+| 9 | Run the paired cold-start comparison | [scripts/Invoke-ColdStartGate.ps1](scripts/Invoke-ColdStartGate.md) |  |
+| 10 | Render the latest report | [scripts/Show-ColdStartReport.ps1](scripts/Show-ColdStartReport.md) | <code>always()</code> |
+| 11 | Export redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
+| 12 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
+| 13 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>&#36;{{ !cancelled() &#38;&#38; (steps.comparison.outcome == 'success' &#124;&#124; steps.comparison.outcome == 'failure') }}</code> |
 
 <a name="workflow-quietcli2-readytorun-yml-12-job-j1"></a>
 

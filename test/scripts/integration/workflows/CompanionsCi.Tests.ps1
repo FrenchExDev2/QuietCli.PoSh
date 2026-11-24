@@ -232,6 +232,20 @@ param([string]$Base,[string]$Revision,[string]$Event,[string[]]$Suite,[string]$O
         }
     }
 
+    It 'restores the pinned Core resources before building either benchmark variant' {
+        foreach ($job in 'readytorun','readytorun-linux') {
+            $steps = @($ready['jobs'][$job]['steps'])
+            $restore = @($steps | Where-Object { [string]$_['run'] -match '^\./scripts/Initialize-Workspace\.ps1 -Restore\s*$' })
+            $restore.Count | Should -Be 1
+            $restore[0]['if'] | Should -BeNullOrEmpty
+            $builds = @($steps | Where-Object { [string]$_['run'] -match '\./scripts/(Build-Workspace|New-ReadyToRunCandidate)\.ps1' })
+            $builds.Count | Should -Be 2
+            foreach ($build in $builds) {
+                [Array]::IndexOf($steps, $restore[0]) | Should -BeLessThan ([Array]::IndexOf($steps, $build))
+            }
+        }
+    }
+
     It 'uses direct A/B for PR qualification and offers A/A explicitly on manual dispatch' {
         $manual = $ready['on']['workflow_dispatch']['inputs']['aa_control']
         [string]$manual['type'] | Should -BeExactly 'boolean'

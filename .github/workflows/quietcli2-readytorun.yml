@@ -44,6 +44,9 @@ jobs:
           global-json-file: global.json
           cache: true
           cache-dependency-path: '**/*.csproj'
+      - name: Verify monorepo structure and external resources
+        shell: pwsh
+        run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Build the baseline module
         shell: pwsh
         run: ./scripts/Build-Workspace.ps1 -Configuration Release
