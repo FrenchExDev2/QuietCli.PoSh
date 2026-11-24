@@ -111,7 +111,6 @@
     "lib/GitHubCi.psm1::Get-GitHubCiExecutionMatrix",
     "lib/GitHubCi.psm1::Get-GitHubCiWindowsMatrix",
     "lib/GitHubRelease.psm1::Publish-QuietGitHubRelease",
-    "lib/Invoke-ColdStartGate.psm1::Invoke-QuietScriptInvokeColdStartGate",
     "lib/Invoke-ContainerRuntimeDiagnosis.psm1::Invoke-QuietScriptInvokeContainerRuntimeDiagnosis",
     "lib/Invoke-GitHubRunWorker.psm1::Invoke-QuietScriptInvokeGitHubRunWorker",
     "lib/Invoke-QuietRelease.psm1::Invoke-QuietScriptInvokeQuietRelease",

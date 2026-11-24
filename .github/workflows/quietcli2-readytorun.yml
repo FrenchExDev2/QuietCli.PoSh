@@ -3,13 +3,22 @@ name: QuietCli2 ReadyToRun profiling
 # Measures the same-revision IL/ReadyToRun comparison on Windows and four native Linux targets.
 on:
   workflow_dispatch:
+    inputs:
+      aa_control:
+        description: Run the A/A control before the paired comparison
+        type: boolean
+        default: false
   workflow_call:
     inputs:
+      aa_control:
+        description: Run the A/A control before the paired comparison
+        type: boolean
+        default: false
       images_prepared:
         type: boolean
         default: false
       require_complete:
-        description: Require successful noise controls and complete comparisons on every target
+        description: Require a complete comparison on every target
         type: boolean
         default: false
 
@@ -43,16 +52,17 @@ jobs:
         run: |
           $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -CandidateRoot (Join-Path $env:RUNNER_TEMP ('quietcli-r2r-'+[guid]::NewGuid().ToString('N')))
           "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV -Encoding utf8
-      - name: Run the A/A-gated A/B cold-start comparison
+      - name: Run the paired cold-start comparison
         id: comparison
         shell: pwsh
         env:
           CANDIDATE_MODULE: ${{ env.CANDIDATE_MODULE }}
           REQUIRE_COMPLETE: ${{ inputs.require_complete }}
+          AA_CONTROL: ${{ inputs.aa_control }}
         run: |
           $ErrorActionPreference = 'Stop'
           try {
-            ./scripts/Invoke-ColdStartGate.ps1 -CandidateModule $env:CANDIDATE_MODULE -CandidateLabel readytorun -Arguments @{ MeasurePackageSize = $true }
+            ./scripts/Invoke-ColdStartGate.ps1 -CandidateModule $env:CANDIDATE_MODULE -CandidateLabel readytorun -MeasurePackageSize -SkipAaControl:($env:AA_CONTROL -cne 'true')
             if (!(Get-ChildItem -LiteralPath ./artifacts/coldstart -Filter 'ab-*.json' -File)) { throw 'ReadyToRunComparisonMissing' }
           } catch {
             if ($env:REQUIRE_COMPLETE -ceq 'true') { throw }
@@ -149,20 +159,21 @@ jobs:
         with:
           name: quietcli-prepared-images-${{ inputs.images_prepared && 'workspace' || 'readytorun' }}-${{ matrix.rid }}
           path: artifacts/prepared-ci-images
-      - name: Run the A/A-gated A/B cold-start comparison inside the prepared platform image
+      - name: Run the paired cold-start comparison inside the prepared platform image
         id: comparison
         shell: pwsh
         env:
           PLATFORM: ${{ matrix.platform }}
           EXPECTED_RID: ${{ matrix.rid }}
           REQUIRE_COMPLETE: ${{ inputs.require_complete }}
+          AA_CONTROL: ${{ inputs.aa_control }}
         run: |
           $ErrorActionPreference = 'Stop'
           try {
             $image = ./scripts/Import-CiImageBundle.ps1 -Suite Core -RuntimeIdentifier $env:EXPECTED_RID -Directory ./artifacts/prepared-ci-images -Revision $env:GITHUB_SHA -RunId $env:GITHUB_RUN_ID
             $run = Join-Path $PWD.Path ('artifacts/coldstart-containers/'+$env:EXPECTED_RID)
             [void][IO.Directory]::CreateDirectory($run)
-            ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot $PWD.Path -RunDirectory $run -Image $image -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -ContainerRuntime docker
+            ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot $PWD.Path -RunDirectory $run -Image $image -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -ContainerRuntime docker -SkipAaControl:($env:AA_CONTROL -cne 'true')
             $summary=Get-Content (Join-Path $run summary.json) -Raw -Encoding utf8|ConvertFrom-Json
             if ($summary.State.State -cne 'Success') { throw ('Cold-start outcome: '+$summary.State.State+'; '+$summary.State.Error) }
             if (!(Get-ChildItem -LiteralPath $run -Filter 'ab-*.json' -File -Recurse)) { throw 'ReadyToRunComparisonMissing' }

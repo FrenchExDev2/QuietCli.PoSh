@@ -26,6 +26,13 @@
             Break = 100
         }
         @{
+            Name = 'ColdStartGate'
+            Module = 'lib/Invoke-ColdStartGate.psm1'
+            Functions = @('Assert-ColdStartNoiseFloor')
+            UnitTestFiles = @('unit/lib/Invoke-ColdStartGate.Tests.ps1')
+            Break = 100
+        }
+        @{
             Name = 'ContainerGroupScripts'
             Module = 'lib/ContainerInputs.psm1'
             Functions = @('Get-QuietContainerGroupScripts')

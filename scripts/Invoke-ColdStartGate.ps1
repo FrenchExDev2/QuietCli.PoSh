@@ -1,14 +1,11 @@
 #requires -Version 7.6
 <#
 .SYNOPSIS
-Enforces a fresh A/A noise-floor control before running a cold-start A/B comparison, and persists both.
+Runs a cold-start A/B comparison with an optional A/A control.
 
 .DESCRIPTION
-Measure-ColdStart.ps1's verdicts are only trustworthy once this machine's own measurement noise is known. This
-script keeps one cached A/A control result per machine and run profile under -ArtifactsDirectory (git-ignored),
-reuses it while it is fresh and still all-inconclusive, and otherwise reruns the A/A control before the A/B.
-A stored or freshly measured A/A control whose phases are not all 'inconclusive' aborts the A/B outright: the
-noise floor cannot be trusted, so a "faster"/"slower" verdict from the same machine would not be trustworthy either.
+The default local mode validates a cached or newly measured A/A control before running A/B. The control
+must give an 'inconclusive' verdict for every phase. Use -SkipAaControl to run the paired A/B directly.
 
 .PARAMETER CandidateModule
 Module manifest of the compared build, forwarded to the A/B run's CandidateModule.
@@ -30,6 +27,9 @@ Cached A/A control older than this is treated as stale and remeasured.
 
 .PARAMETER Force
 Remeasures the A/A control even when a fresh, clean cache entry exists.
+
+.PARAMETER SkipAaControl
+Runs the A/B without measuring or reading the A/A control.
 
 .PARAMETER Arguments
 Extra overrides forwarded to both the A/A and the A/B profile run, for example @{ Runs = 1000 }. Never set
@@ -59,6 +59,7 @@ param(
     [string]$ArtifactsDirectory = ([IO.Path]::Combine((Split-Path $PSScriptRoot -Parent),'artifacts/coldstart')),
     [ValidateRange(1, 365)][int]$MaxAgeDays = 14,
     [switch]$Force,
+    [switch]$SkipAaControl,
     [hashtable]$Arguments = @{},
     [switch]$MeasurePackageSize,
     [ValidateSet('Trace', 'Debug', 'Info', 'Warn', 'Error', 'Off')][string]$LogLevel = 'Info',

@@ -7,9 +7,8 @@ Invoke-ColdStartGate.ps1 as the guest entrypoint, then retrieves artifacts/colds
 .DESCRIPTION
 Unlike Invoke-ContainerWorker.ps1, this never dispatches a Suite: there is exactly one guest entrypoint
 (Invoke-ColdStartGate.ps1) and no test assertions to stage or verify, so this script stays independent of that
-hardened, Suite-coupled worker rather than bolting cold-start support onto it. An unstable A/A noise floor or an
-inconclusive/slower A/B verdict is never a crash here — same informational policy as the Windows ReadyToRun
-workflow (see docs/README-readytorun_profiling.md); only a guest crash, a missing report or an architecture mismatch is.
+hardened, Suite-coupled worker. Completed A/B reports can carry inconclusive or slower verdicts.
+An unsuccessful direct A/B guest exit, a missing report after a clean exit or an architecture mismatch fails the worker.
 
 .PARAMETER WorkspaceRoot
 QuietCli2 root; source of 'scripts' and the already-built baseline module.
@@ -31,6 +30,8 @@ Display name of the candidate build forwarded to the gate.
 
 .PARAMETER ExpectedRuntimeIdentifier
 Required architecture and libc family in the guest.
+.PARAMETER SkipAaControl
+Runs the guest's paired A/B directly.
 .PARAMETER ContainerRuntime
 Explicit selection overrides the checkout dotenv key; absent configuration uses Podman-first application discovery on Windows and Linux.
 #>
@@ -42,6 +43,7 @@ Explicit selection overrides the checkout dotenv key; absent configuration uses 
     [Parameter(Mandatory)][string]$CandidateModule,
     [ValidateNotNullOrEmpty()][string]$CandidateLabel = 'readytorun',
     [ValidatePattern('^linux-(musl-)?(x64|arm64)$')][string]$ExpectedRuntimeIdentifier,
+    [switch]$SkipAaControl,
     [AllowEmptyString()][ValidateSet('','podman','docker')][string]$ContainerRuntime
 )
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
@@ -96,6 +98,7 @@ try {
         '-ArtifactsDirectory', '/workspace/artifacts/coldstart',
         '-MeasurePackageSize'
     )
+    if ($SkipAaControl) { $guestArguments += '-SkipAaControl' }
     $null = Invoke-WorkspaceNative $ContainerRuntime (@('create', '--pull=never', '--name', $name, '--label', ('org.frenchexdev.quietcli2.owner=' + $owner), '--network', 'none', '--entrypoint', 'pwsh', $imageState.Id) + $guestArguments) $WorkspaceRoot -TimeoutSeconds 30
     $created = $true
     $null = Invoke-WorkspaceNative $ContainerRuntime @('cp', ($stage.Replace('\', '/') + '/.'), ($name + ':/workspace')) $WorkspaceRoot -TimeoutSeconds 90
@@ -116,6 +119,9 @@ try {
     if ($exitInspection.Outcome -ne 'Success' -or $exit.Value -notmatch '^-?\d+$') { throw 'GuestExitCodeUnconfirmed' }
     $state.GuestExitCode = [int]$exit.Value
     $guestFiles = @(Get-ChildItem -LiteralPath ([IO.Path]::Combine($RunDirectory,'guest')) -Filter 'ab-*.json' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTimeUtc -Descending)
+    if ($state.GuestExitCode -ne 0 -and ($SkipAaControl -or $guestFiles.Count -gt 0)) {
+        throw "GuestColdStartFailed: exit=$($state.GuestExitCode)"
+    }
     if ($guestFiles.Count -eq 0) {
         # An unstable A/A noise floor aborts the gate before writing an A/B result; this is a report, not a crash.
         if ($state.GuestExitCode -eq 0) { throw 'GuestColdStartReportMissingAfterCleanExit' }

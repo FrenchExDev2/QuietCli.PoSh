@@ -1,6 +1,6 @@
 # quietcli2-readytorun.yml
 
-<!-- workflow-source-sha256: 2602568811FB7477D9DF73C18C1A63451368815F656F3818FAA01FF9C54C8A6A -->
+<!-- workflow-source-sha256: D704F4B5AAAA5BF4EAE1FDF879021B8C6582BCCE4606216B0A31E87634F2FCDB -->
 
 ## Purpose
 
@@ -10,7 +10,7 @@ Native orchestration and test/smoke steps select checksum-pinned GA PowerShell t
 
 ## Triggers
 
-Manual workflow_dispatch is informational. A workflow_call from a PR with require_complete enabled requires usable A/A and A/B reports on each target. The automatic develop and publication flows do not call this benchmark.
+Manual workflow dispatch is informational and offers the optional `aa_control` switch. A PR workflow call with `require_complete` requires a usable A/B report on each target. The benchmark is outside the automatic develop and publication flows.
 
 
 ## .NET SDK source pin
@@ -19,7 +19,7 @@ The reviewed setup-dotnet steps read the checked-out global.json through global-
 
 ## Measurement and artifacts
 
-Builds the IL baseline and ReadyToRun candidate from the same selected revision, rather than comparing PR head with develop. A/A noise control precedes paired A/B; instrumentation is separate from timed samples. Windows and native Linux paths save source-bound cold-start reports. A green informational run does not prove a speedup. See [the report/dispatch guide](../../README-readytorun_profiling.md).
+Builds the IL baseline and ReadyToRun candidate from the same selected revision. Windows and native Linux run paired A/B directly by default and save source-bound reports. Instrumentation runs outside timed samples. See [the report and dispatch guide](../../README-readytorun_profiling.md).
 
 Linux comparisons wait for the Core image bundle. A PR reuses its workspace producer. A standalone dispatch calls the same producer for Core. The Linux runner verifies and loads the archive before executing the comparison. [Linux CI images](../linux-images.md)
 
@@ -65,7 +65,7 @@ Windows runs the comparison directly. Linux rows use native Ubuntu CPU runners a
 
 ## Validation and limits
 
-Timing comparisons use the A/A noise-floor gate before A/B. Inconclusive/slower or noisy outcomes are informational on shared runners. The workflow publishes neither Gallery packages nor PR/GHCR images, and its results never block develop delivery. Actual multi-platform benchmark execution is separate evidence.
+Both build variants must complete the requested measurements for strict PR evidence. Inconclusive, faster and slower A/B verdicts are accepted. Failed executions and missing comparisons fail the strict PR check. Optional manual A/A calibration applies the existing control rule before the comparison.
 
 <!-- credits:begin -->
 ## Credits

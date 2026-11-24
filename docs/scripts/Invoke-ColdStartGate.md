@@ -6,7 +6,9 @@ Source file: [`Invoke-ColdStartGate.ps1`](../../scripts/Invoke-ColdStartGate.ps1
 
 ## Purpose and usage
 
-This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Invoke-ColdStartGate.psm1](lib/Invoke-ColdStartGate.md). See that library for the full operation, dependencies, examples, effects and validation limits.
+Runs a paired cold-start comparison. Pass `-SkipAaControl` for direct A/B. The default validates a cached or
+new A/A control first. The entry point forwards the parameters and preview options to
+[Invoke-ColdStartGate.psm1](lib/Invoke-ColdStartGate.md).
 
 ## Dependencies and effects
 
@@ -15,7 +17,7 @@ Imports its local library using `-DisableNameChecking -ErrorAction Stop` and inv
 <!-- script-contract:begin -->
 ## Execution contract
 
-Purpose: Enforces a fresh A/A noise-floor control before running a cold-start A/B comparison, and persists both.
+Purpose: Runs a cold-start A/B comparison with an optional A/A control.
 
 Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 

@@ -231,6 +231,20 @@ param([string]$Base,[string]$Revision,[string]$Event,[string[]]$Suite,[string]$O
             $reports[0]['with']['if-no-files-found'] | Should -BeExactly 'warn'
         }
     }
+
+    It 'uses direct A/B for PR qualification and offers A/A explicitly on manual dispatch' {
+        $manual = $ready['on']['workflow_dispatch']['inputs']['aa_control']
+        [string]$manual['type'] | Should -BeExactly 'boolean'
+        [string]$manual['default'] | Should -BeExactly 'false'
+        [string]$ready['on']['workflow_call']['inputs']['aa_control']['default'] | Should -BeExactly 'false'
+        $companions['jobs']['readytorun']['with'].ContainsKey('aa_control') | Should -BeFalse
+        foreach ($job in $ready['jobs']['readytorun'], $ready['jobs']['readytorun-linux']) {
+            $comparison = $job['steps'] | Where-Object { $_['id'] -ceq 'comparison' }
+            [string]$comparison['env']['AA_CONTROL'] | Should -BeExactly '${{ inputs.aa_control }}'
+            $comparison['run'] | Should -Match ([regex]::Escape('-SkipAaControl:($env:AA_CONTROL -cne ''true'')'))
+            $comparison['run'] | Should -Match 'if \(\$env:REQUIRE_COMPLETE -ceq ''true''\) \{ throw \}'
+        }
+    }
 }
 
 Describe 'companions-ci.yml qualification ordering' {

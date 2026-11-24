@@ -61,17 +61,45 @@ Describe 'New-ReadyToRunCandidate.ps1' {
 }
 
 Describe 'Invoke-ContainerColdStartWorker.ps1' {
-    It 'passes guest paths that match both staged module manifests' {
+    It 'passes staged module paths and the expected A/A setting when direct A/B is <Direct>' -ForEach @(
+        @{ Direct = $false }
+        @{ Direct = $true }
+    ) {
         $candidateManifest = [IO.Path]::Combine($TestDrive,'prebuilt',$moduleName+'.psd1')
         $null = New-QuietTestFile $candidateManifest '@{}'
-        $runDirectory = [IO.Path]::Combine($workspace,'run')
+        $runDirectory = [IO.Path]::Combine($workspace,"run-$Direct")
         [void][IO.Directory]::CreateDirectory($runDirectory)
-        $run = Invoke-QuietTestScript -ScriptPath $workerScript -ArgumentList @(
+        $arguments = @(
             '-WorkspaceRoot',$workspace,'-RunDirectory',$runDirectory,'-Image','fixture','-Platform','alpine',
-            '-CandidateModule',$candidateManifest,'-ExpectedRuntimeIdentifier','linux-musl-arm64','-ContainerRuntime','docker')
+            '-CandidateModule',$candidateManifest,'-ExpectedRuntimeIdentifier','linux-musl-arm64','-ContainerRuntime','docker'
+        )
+        if ($Direct) { $arguments += '-SkipAaControl' }
+        $run = Invoke-QuietTestScript -ScriptPath $workerScript -ArgumentList $arguments -Environment @{
+            FIXTURE_COLDSTART_RUN = [IO.Path]::GetFileName($runDirectory); FIXTURE_COLDSTART_DIRECT = [string]$Direct
+        }
         $summary = Get-Content -LiteralPath ([IO.Path]::Combine($runDirectory,'summary.json')) -Raw -Encoding utf8 | ConvertFrom-Json
         $run.ExitCode | Should -Be 0 -Because ($summary.State.Error+$run.Error)
         $summary.State.State | Should -BeExactly 'Success'
         $summary.State.ReportFile | Should -BeExactly 'ab-fixture.json'
+    }
+
+    It 'fails a nonzero direct A/B guest exit with report present <HasReport>' -ForEach @(
+        @{ HasReport = $false }
+        @{ HasReport = $true }
+    ) {
+        $candidateManifest = New-QuietTestFile ([IO.Path]::Combine($TestDrive,'failure-candidate',$moduleName+'.psd1')) '@{}'
+        $runDirectory = [IO.Path]::Combine($workspace,"failed-$HasReport")
+        [void][IO.Directory]::CreateDirectory($runDirectory)
+        $run = Invoke-QuietTestScript -ScriptPath $workerScript -ArgumentList @(
+            '-WorkspaceRoot',$workspace,'-RunDirectory',$runDirectory,'-Image','fixture','-Platform','alpine',
+            '-CandidateModule',$candidateManifest,'-ExpectedRuntimeIdentifier','linux-musl-arm64','-ContainerRuntime','docker','-SkipAaControl'
+        ) -Environment @{
+            FIXTURE_COLDSTART_RUN = [IO.Path]::GetFileName($runDirectory); FIXTURE_COLDSTART_DIRECT = 'True'
+            FIXTURE_COLDSTART_EXIT = '1'; FIXTURE_COLDSTART_REPORT = [string]$HasReport
+        }
+        $summary = Get-Content -LiteralPath ([IO.Path]::Combine($runDirectory,'summary.json')) -Raw -Encoding utf8 | ConvertFrom-Json
+        $run.ExitCode | Should -Be 1
+        $summary.State.State | Should -BeExactly 'Crash'
+        $summary.State.Error | Should -Match 'GuestColdStartFailed: exit=1'
     }
 }

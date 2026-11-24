@@ -39,7 +39,10 @@ function Invoke-WorkspaceNative {
             Write-WorkspaceJson ([IO.Path]::Combine($output,'publish.json')) @{ Arguments=$Arguments }
         }
         'create' {
-            $stage = [IO.Path]::Combine($WorkingDirectory,'run','workspace')
+            $stage = [IO.Path]::Combine($WorkingDirectory,$env:FIXTURE_COLDSTART_RUN,'workspace')
+            if (('-SkipAaControl' -cin $Arguments) -ne ($env:FIXTURE_COLDSTART_DIRECT -ceq 'True')) {
+                throw 'FixtureAaControlSettingMismatch'
+            }
             foreach ($option in '-BaselineModule','-CandidateModule') {
                 $path = $Arguments[1+[array]::IndexOf($Arguments,$option)]
                 if (!$path.StartsWith('/workspace/') -or ![IO.File]::Exists([IO.Path]::Combine($stage,$path.Substring('/workspace/'.Length)))) {
@@ -50,7 +53,9 @@ function Invoke-WorkspaceNative {
         'cp' {
             if ($Arguments[1] -like '*:/workspace/artifacts/coldstart') {
                 [void][IO.Directory]::CreateDirectory($Arguments[2])
-                Write-WorkspaceJson ([IO.Path]::Combine($Arguments[2],'ab-fixture.json')) @{ Environment=@{ RuntimeIdentifier='linux-musl-arm64' } }
+                if ($env:FIXTURE_COLDSTART_REPORT -cne 'False') {
+                    Write-WorkspaceJson ([IO.Path]::Combine($Arguments[2],'ab-fixture.json')) @{ Environment=@{ RuntimeIdentifier='linux-musl-arm64' } }
+                }
             }
         }
     }
@@ -61,7 +66,7 @@ function Invoke-CiProcess {
     $value = switch ($ArgumentList[2]) {
         '--format' { 'sha256:' + ('a' * 64) }
         '{{.State.Status}}' { 'exited' }
-        '{{.State.ExitCode}}' { '0' }
+        '{{.State.ExitCode}}' { if ($env:FIXTURE_COLDSTART_EXIT) { $env:FIXTURE_COLDSTART_EXIT } else { '0' } }
     }
     & $OnOutput @{ Stream='stdout'; Text=$value } $State
     [pscustomobject]@{ Outcome='Success'; ExitCode=0 }

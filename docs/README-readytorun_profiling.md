@@ -1,9 +1,8 @@
 # ReadyToRun cold-start profiling
 
 How to measure whether a ReadyToRun (R2R) build of `FrenchExDev2.QuietCli.Core.PoSh` actually reduces cold-start
-cost, and how to read the resulting `artifacts/coldstart/*.json` file. For the statistical protocol itself (why an
-A/A control is mandatory, what each verdict means), see `docs/README-ab_testing.md` — this page is the ReadyToRun-specific
-walkthrough on top of it.
+cost, and how to read the resulting `artifacts/coldstart/*.json` file. The [benchmark protocol](README-ab_testing.md)
+explains paired comparisons, verdicts and the optional A/A control.
 
 ## Why ReadyToRun is being profiled here
 
@@ -28,7 +27,7 @@ A PR can request strictly complete reports by checking ReadyToRun in its [CI che
 
 Replace the ref with the branch/tag being evaluated. The workflow must already exist on the default branch for dispatch to be available; `-Ref` selects which revision runs. Local unpushed commits are not tested. See [GitHub's manual-run documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow).
 
-This experiment compares an IL baseline and an R2R candidate built from the same checkout, **not the PR head against `develop`**. It runs on Windows and four Linux distribution/architecture targets. Download `quietcli2-readytorun-<sha>` and `quietcli2-readytorun-<rid>-<sha>` from the run's **Artifacts** section for the cold-start JSON reports. A noisy A/A control can prevent an A/B result; a green informational job alone does not prove a performance improvement.
+This experiment compares an IL baseline and an R2R candidate built from the same checkout on Windows and four Linux distribution and architecture targets. GitHub runs paired A/B directly by default. For a calibration run, select **Run the A/A control before the paired comparison** when dispatching the workflow. A selected PR check requires a complete A/B report for each target. An inconclusive performance verdict is valid. Download `quietcli2-readytorun-<sha>` and `quietcli2-readytorun-<rid>-<sha>` from the run's **Artifacts** section.
 
 A matching PR push separately runs Core's eight-target PowerShell/CLR profiling (ten with next-version Preview enabled) and combined HTML report. `RunProfiles` is the test suite for profiling tooling; it is not the switch for that Core pass. Keep instrumentation separate from A/A and A/B measured samples. For profiling plus this A/B experiment, let automatic PR qualification run, dispatch this workflow on the pushed PR branch, then link its run in the PR after checking both checkout identities. A manual run targets the selected ref, while PR qualification can target GitHub's merge ref. See [the complete PR procedure](../readmes/README-qualification-github.md#profiling-reports-and-manual-pr-runs).
 
@@ -65,9 +64,8 @@ first run against a new candidate, so it is included here rather than as an afte
 
 This:
 
-1. Measures (or reuses a fresh cached) **A/A control** — baseline against itself — to confirm this machine's
-   measurement noise floor is clean. If it is not, the run aborts with `ColdStartNoiseFloorUnstable` and no A/B
-   result is produced.
+1. Measures or reuses an **A/A control** of the baseline against itself. A detected difference stops this gated
+   run with `ColdStartNoiseFloorUnstable`. Pass `-SkipAaControl` to run direct A/B, as GitHub does by default.
 2. Runs the real **A/B comparison** (baseline vs. the R2R candidate) and writes it to
    `artifacts/coldstart/ab-<profile>-<label>-<UTC-stamp>.json` — this is the file analyzed below.
 
@@ -157,7 +155,7 @@ rerunning anything.
 
 ## See also
 
-- `docs/README-ab_testing.md` — full statistical protocol, why the A/A control is mandatory, and the example tables this
+- `docs/README-ab_testing.md` — paired measurement protocol, optional A/A control, and the example tables this
   page's worked example follows.
 - `docs/README-run-profiles.md` — run profile mechanics (what `coldstart-100` configures) and CI scope.
 - `scripts/New-ReadyToRunCandidate.ps1` — builds the candidate used above (full parameter reference in its own
