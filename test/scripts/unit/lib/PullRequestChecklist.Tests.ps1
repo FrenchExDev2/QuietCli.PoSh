@@ -39,6 +39,16 @@ Describe 'Expandable companion checklist rows' {
         {Read-QuietPullRequestChecklist $mixed}|Should -Throw '*PullRequestCiChecklistIncomplete*'
     }
 
+    It 'accepts both old descriptions and the optional cache checkbox in canonical order' {
+        (Read-QuietPullRequestChecklist $template).Selected.Count|Should -Be 0
+        $extended=$template.Replace('<!-- quietcli-ci:end -->',"- [ ] Refresh <!-- ci:script-mutation-no-input-cache -->`n<!-- quietcli-ci:end -->")
+        $selected=New-QuietPullRequestBody -Body $template -Template $extended -CiOption @('script-mutation-no-input-cache','script-mutation','preview')
+        $parsed=Read-QuietPullRequestChecklist $selected
+        $parsed.Available|Should -BeExactly @('script-mutation','script-mutation-no-input-cache','mutation-serial','readytorun','preview')
+        $parsed.Selected|Should -BeExactly @('script-mutation','script-mutation-no-input-cache','preview')
+        (Read-QuietPullRequestChecklist (New-QuietPullRequestBody -Body $selected -Template $extended)).Selected|Should -BeExactly $parsed.Selected
+    }
+
     It 'migrates a legacy selection to script and Core mutation, retaining the other selected options' {
         $catalogue=@{Companions=[ordered]@{Core=@{Name='Core';Mutation=$true}}}
         $expanded=Expand-QuietPullRequestTemplate -Template $template -Configuration $catalogue

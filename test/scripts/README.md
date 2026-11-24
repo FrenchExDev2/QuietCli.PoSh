@@ -47,6 +47,7 @@ Invoke-QuietProperty -Name 'order invariance' -Seed $seed -Count 200 `
 ```powershell
 ./scripts/Invoke-ScriptsMutation.ps1                       # every target of mutation.targets.psd1, visible monitor
 ./scripts/Invoke-ScriptsMutation.ps1 -Target ScriptsTests  # one target
+./scripts/Invoke-ScriptsMutation.ps1 -NoInputCache           # replay every mutant and save fresh outcomes
 ./scripts/Invoke-ScriptsMutation.ps1 -NoCache                # cold campaign: every mutant runs
 ```
 
@@ -70,7 +71,7 @@ Over-inclusion only costs reuse, so a broad glob is safer than a missing one. Ke
 
 The jobs are:
 - `script-tests` runs on Windows and on Linux, with the pinned tools restored by the `cache-test-tools` action. It runs `Invoke-ScriptsTests.ps1 -Headless -Coverage` for every test, or `-Headless -Path <selected files>` for a selection, without coverage.
-- `script-mutation` runs one job per selected target of `mutation.targets.psd1`, with `-PruneCache`. Each job restores the newest cache of its own target and saves it afterwards, even after a failure.
+- `script-mutation` runs one job per selected target of `mutation.targets.psd1`, with `-PruneCache`. Each job restores the newest cache of its own target by default and saves it afterwards, even after a failure. The PR cache refresh checkbox skips the restore, runs the baseline and mutants afresh with `-NoInputCache`, and still saves fresh outcomes.
 - `script-mutation-complete` then requires every selected target exactly once, at or above its break, through [Assert-ScriptMutationShards](../../docs/scripts/Assert-ScriptMutationShards.md) `-Target`.
 
 The selection follows the same literal references as the mutation cache, plus two headers, each on a line of its own near the top of a test file:

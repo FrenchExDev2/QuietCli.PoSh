@@ -18,12 +18,14 @@ BeforeAll {
 Describe 'tooling-ci.yml selection' {
     It 'defaults every input to the full campaign, so callers without inputs keep it' {
         $inputs=$workflow['on']['workflow_call']['inputs']
-        (@($inputs.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'mutation_parallel,scope,script_mutation_targets,script_tests'
+        (@($inputs.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'mutation_parallel,scope,script_mutation_no_input_cache,script_mutation_targets,script_tests'
         [string]$inputs['mutation_parallel']['type']|Should -BeExactly 'boolean'
         [string]$inputs['mutation_parallel']['default']|Should -BeExactly 'true'
         [string]$inputs['scope']['default']|Should -BeExactly 'full'
         [string]$inputs['script_tests']['default']|Should -BeExactly 'all'
         [string]$inputs['script_mutation_targets']['default']|Should -BeExactly 'all'
+        [string]$inputs['script_mutation_no_input_cache']['type']|Should -BeExactly 'boolean'
+        [string]$inputs['script_mutation_no_input_cache']['default']|Should -BeExactly 'false'
     }
 
     It 'validates the selection once and exposes only booleans and JSON lists' {
@@ -99,6 +101,10 @@ Describe 'tooling-ci.yml script mutation' {
         $save=@(& $uses $job 'actions/cache/save@')
         $restore.Count|Should -Be 1
         $save.Count|Should -Be 1
+        $restore[0]['if']|Should -BeExactly '${{ !inputs.script_mutation_no_input_cache }}'
+        $campaign['env']['SCRIPT_MUTATION_NO_INPUT_CACHE']|Should -BeExactly '${{ inputs.script_mutation_no_input_cache }}'
+        $campaign['run']|Should -Match ([regex]::Escape('-NoInputCache:($env:SCRIPT_MUTATION_NO_INPUT_CACHE -ceq ''true'')'))
+        $save[0]['if']|Should -Not -Match 'script_mutation_no_input_cache'
         @(& $uses $job 'actions/cache@').Count|Should -Be 0 -Because 'the implicit post-job save of actions/cache skips failed jobs'
         $key='${{ runner.os }}-quietcli-script-mutation-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}'
         foreach($step in $restore[0],$save[0]){

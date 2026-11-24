@@ -4,7 +4,7 @@
 Source file: [`lib/PullRequestChecklist.psm1`](../../../scripts/lib/PullRequestChecklist.psm1)
 <!-- script-source:end -->
 
-`Read-QuietPullRequestChecklist` parses the versioned Markdown block used by GitHub's PR template. Options are returned in canonical order. The parser ignores fenced examples and rejects malformed, duplicate or unknown choices.
+`Read-QuietPullRequestChecklist` parses the versioned Markdown block used by GitHub's PR template. Options are returned in canonical order. The parser ignores fenced examples and rejects malformed, duplicate or unknown choices. The `script-mutation-no-input-cache` row is optional when reading older descriptions.
 
 `New-QuietPullRequestBody` composes a description, the standard checklist and an optional footer without changing input files. An explicit option array overrides the checks in the supplied description.
 

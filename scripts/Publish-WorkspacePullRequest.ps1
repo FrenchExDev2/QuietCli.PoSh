@@ -12,6 +12,8 @@ Optional title for a new pull request.
 Optional Markdown appended below the description and checklist.
 .PARAMETER ScriptMutation
 Check mutation testing for the repository script catalogue.
+.PARAMETER ScriptMutationNoInputCache
+Check the option to rerun selected repository script mutants without reading the cache.
 .PARAMETER RunProfile
 Select one or more companions declared in build/companions.yaml for -Mutation and -Profiling.
 .PARAMETER Mutation
@@ -38,6 +40,7 @@ param(
     [ValidateNotNullOrWhiteSpace()][string]$Title,
     [string]$Footer,
     [switch]$ScriptMutation,
+    [switch]$ScriptMutationNoInputCache,
     [AllowEmptyCollection()][string[]]$RunProfile,
     [switch]$Mutation,
     [AllowEmptyCollection()][string[]]$RunProfileMutation,
@@ -52,7 +55,7 @@ if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Commit, push, publish the pull reque
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Merge-PullRequest.psm1')) -DisableNameChecking -ErrorAction Stop
 $options=@{}
-$checkboxes=@{ScriptMutation='script-mutation';ReadyToRun='readytorun';Preview='preview'}
+$checkboxes=@{ScriptMutation='script-mutation';ScriptMutationNoInputCache='script-mutation-no-input-cache';ReadyToRun='readytorun';Preview='preview'}
 foreach($name in $checkboxes.Keys){
     if($PSBoundParameters.ContainsKey($name)){$options[$checkboxes[$name]]=[bool]$PSBoundParameters[$name]}
 }

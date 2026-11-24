@@ -9,18 +9,18 @@ Implements [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). It export
 ## Purpose and usage
 
 The launcher performs these steps in order:
-1. Rejects `-NoCache` with `-PruneCache` (`ScriptMutationCacheOptionsConflict`), then validates the roots, the targets and the `-Target` selection.
+1. Rejects `-NoCache` with `-NoInputCache` or `-PruneCache` (`ScriptMutationCacheOptionsConflict`), then validates the roots, the targets and the `-Target` selection.
 2. Generates the mutants once to fail early on a missing function.
 3. Checks the monitor platform.
 4. Prepares the pinned Pester.
-5. Creates the run directory and writes `request.json`, with the cache directory (`<WorkspaceRoot>/.cache/script-mutation` by default, empty with `-NoCache`) and the prune flag.
+5. Creates the run directory and writes `request.json`, with the cache directory (`<WorkspaceRoot>/.cache/script-mutation` by default, empty with `-NoCache`) and the input cache and pruning flags.
 6. Hands the worker to [ScriptsWorker.psm1](ScriptsWorker.md).
 7. Returns `{State, Passed, Incomplete, Seed, RunDirectory, Report, Markdown, Targets, ExitCode}`. `ExitCode` is 0 only for a `Success` state with every target at or above its break. `Incomplete` is true without a report or with an incomplete one, whose stop (`Mutation stopped: target=… not-run=…; <error>`) is printed after the scores of the finished targets.
 
 The worker performs these steps:
 1. Copies the scripts root into `ThrottleLimit` slots (`Copy-QuietScriptsMutationTree`, which skips links), and starts one persistent [slot worker](ScriptMutationSlot.md) per copy.
 2. For each target, generates the mutants and records the unparsable ones as `CompileError`.
-3. With the cache enabled, computes every mutant's key ([ScriptMutationCache.psm1](ScriptMutationCache.md)) and reuses each cached `Killed` or `Survived` outcome. A target whose mutants are all cached runs nothing, not even its baseline.
+3. With the cache enabled, computes every mutant's key ([ScriptMutationCache.psm1](ScriptMutationCache.md)) and reuses each cached `Killed` or `Survived` outcome when cache reads are enabled. A fully cached target skips the baseline and mutant executions. `-NoInputCache` bypasses both kinds of cached evidence, so fresh baselines and outcomes can be saved.
 4. Runs the unmutated baseline twice in slot 0. The first run must pass with at least one test (`ScriptMutationBaselineFailed`). The second must pass the same number of tests in the same worker (`ScriptMutationSlotStateLeak`), which proves the reset between runs works for this target. The per-mutant deadline comes from the slower of the two. Then, for each function with its own test blocks ([`Get-QuietScriptMutationFocus`](ScriptMutation.md)), it runs the unmutated tests split into Focus then Rest on every slot at once. A split is kept only when it passes with exactly the baseline test count, otherwise `Progress: Focus dropped <target> | <function> …` is printed and that function's mutants run unsplit. The kept functions are cached with the baseline, so a reused baseline also reuses its splits (`focused=<n>`).
 5. Writes each remaining mutant into an idle slot's copy and submits it with bail-on-first-failure, split into its function's Focus then Rest phases when that split was kept. When the outcome arrives, the original bytes are restored.
 6. Restarts a slot that crashed or timed out, and recycles every slot after `RecycleAfter` jobs. A `Corrupted` outcome replays the mutant once on a fresh slot, then fails with `ScriptMutationSlotCorrupted`.
