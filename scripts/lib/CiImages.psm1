@@ -603,8 +603,31 @@ function Export-QuietCiImageBundle {
     GitHub Actions run identity.
     .PARAMETER Receipts
     Receipts returned by verified image preparation.
+    .PARAMETER CachedFingerprints
+    Exact recipe fingerprints expected in a previously saved archive. Rebinds its verified receipt without Docker.
     #>
-    param([string]$WorkspaceRoot,[string]$RuntimeIdentifier,[string]$Directory,[string]$Revision,[string]$RunId,[object[]]$Receipts)
+    [CmdletBinding(DefaultParameterSetName='Save')]
+    param(
+        [string]$WorkspaceRoot,[string]$RuntimeIdentifier,[string]$Directory,[string]$Revision,[string]$RunId,
+        [Parameter(ParameterSetName='Save')][object[]]$Receipts,
+        [Parameter(Mandatory,ParameterSetName='Reuse')][ValidateNotNullOrEmpty()][string[]]$CachedFingerprints
+    )
+    $archive=[IO.Path]::Combine($Directory,'images.tar')
+    $receiptPath=[IO.Path]::Combine($Directory,'bundle.json')
+    if($PSCmdlet.ParameterSetName -eq 'Reuse'){
+        $cached=Get-Content -LiteralPath $receiptPath -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
+        $actual=[string[]]@($cached.Fingerprints | Sort-Object -CaseSensitive)
+        $expected=[string[]]@($CachedFingerprints | Sort-Object -CaseSensitive)
+        if($cached.SchemaVersion -ne 2 -or $cached.RuntimeIdentifier -cne $RuntimeIdentifier -or
+            ![Linq.Enumerable]::SequenceEqual[string]($actual,$expected,[StringComparer]::Ordinal)){throw 'CiImageBundleCacheIdentityMismatch'}
+        $archiveHash=(Get-FileHash -LiteralPath $archive -Algorithm SHA256 -ErrorAction Stop).Hash
+        if($archiveHash -cne $cached.ArchiveSha256){throw 'CiImageBundleArchiveMismatch'}
+        Write-WorkspaceJson $receiptPath @{
+            SchemaVersion=2;Revision=$Revision;RunId=$RunId;RuntimeIdentifier=$RuntimeIdentifier
+            ArchiveSha256=$archiveHash;Fingerprints=$CachedFingerprints
+        }
+        return
+    }
     $images=[ordered]@{}
     foreach($receipt in $Receipts){
         if($receipt.RuntimeIdentifier -cne $RuntimeIdentifier -or $receipt.Fingerprint -cnotmatch '\A[0-9a-f]{64}\z' -or $receipt.Image -cnotmatch '\Asha256:[0-9a-f]{64}\z' -or $images.Contains($receipt.Fingerprint)){throw 'CiImageBundleProducerReceiptInvalid'}
@@ -612,14 +635,13 @@ function Export-QuietCiImageBundle {
     }
     if(!$images.Count){throw 'CiImageBundleEmpty'}
     [void][IO.Directory]::CreateDirectory($Directory)
-    $archive=[IO.Path]::Combine($Directory,'images.tar')
     $references=@(foreach($fingerprint in $images.Keys){
         $reference='quietcli-ci-transfer:'+$fingerprint
         $null=Invoke-WorkspaceNative docker @('image','tag',$images[$fingerprint],$reference) $WorkspaceRoot -TimeoutSeconds 30
         $reference
     })
     $null=Invoke-WorkspaceNative docker (@('image','save','--output',$archive)+$references) $WorkspaceRoot -TimeoutSeconds 600
-    Write-WorkspaceJson ([IO.Path]::Combine($Directory,'bundle.json')) @{
+    Write-WorkspaceJson $receiptPath @{
         SchemaVersion=2;Revision=$Revision;RunId=$RunId;RuntimeIdentifier=$RuntimeIdentifier
         ArchiveSha256=(Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash;Fingerprints=@($images.Keys)
     }
