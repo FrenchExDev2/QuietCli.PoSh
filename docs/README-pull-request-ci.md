@@ -2,6 +2,8 @@
 
 Use [Publish-WorkspacePullRequest.ps1](scripts/Publish-WorkspacePullRequest.md) to commit, push, publish the PR and monitor its CI from `develop`. Use [New-PullRequest.ps1](scripts/New-PullRequest.md) when the branch is already pushed. Both compose the standard checklist and optional Markdown footer. The GitHub PR form supplies the same checklist. The planner accepts the raw description as `-PullRequestBody`, including for [local working-tree previews](scripts/New-CiImpactPlanFile.md).
 
+The table puts each companion and `Scripts` in its own column. Edit the PR description and use `[x]` or `[ ]` in a cell to enable or disable its effect. A dash marks an unavailable combination. The sequential option below the table applies to every mutation target. Existing PRs with the earlier task list still work.
+
 ## Repository script mutation
 
 Run every target declared by `test/scripts/mutation.targets.psd1`. Each target changes a script temporarily and checks whether its tests detect the change.
@@ -12,7 +14,11 @@ Rerun the baselines and mutants for the selected script targets and save fresh v
 
 ## Companion mutation
 
-Run the selected companion's mutation campaign as declared in `build/companions.yaml`. The campaign checks whether the tests detect changes to the companion's behavior.
+Run the selected companion's mutation campaign as declared in `build/companions.yaml`. The campaign checks whether the tests detect changes to the companion's behavior. The same row under `Scripts` selects all repository script mutation targets.
+
+## Companion performance
+
+Measure one unprofiled test run for the companion in the selected column. The elapsed time starts after the build and includes the test harness and process startup. Each job publishes the duration, runtime identifier and worker count with the campaign reports. Use the ReadyToRun row for the separate Core cold-start comparison.
 
 ## Companion profiling
 

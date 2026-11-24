@@ -14,7 +14,7 @@ Reusable workflow_call.
 
 The optional campaign input runs the requested companion mutation, PowerShell profiling, or mutation with profiling in the same pass. Artifacts include the campaign name to distinguish reports from the same companion.
 
-Selected campaigns publish measurement tables in `report.md` and standalone `report.html` alongside the JSON evidence. When both mutation and profiling run, the report includes both measurements. The renderer keeps the campaign outcome visible in the job summary, including on failure. [Export-CampaignReport](../../scripts/Export-CampaignReport.md)
+A `performance` campaign times the companion test pass after the build and emits `component-performance.json`. Selected campaigns publish measurement tables in `report.md` and standalone `report.html` alongside the JSON evidence. When both mutation and profiling run, the report includes both measurements. The renderer keeps the campaign outcome visible in the job summary, including on failure. [Export-CampaignReport](../../scripts/Export-CampaignReport.md)
 
 Before build-cache restoration and execution, Initialize-CiEnvironment selects the checkout's GitHub Docker preset and Initialize-Workspace restores checksum-pinned runtime resources. A cold cache therefore has the same dependency prerequisites as a product job.
 

@@ -1,15 +1,17 @@
 ## Additional CI validation
 
+Edit the description and use `[x]` for yes or `[ ]` for no. A dash means the effect has no option for that target.
+
 <!-- quietcli-ci:begin -->
-- [ ] Run repository script mutation testing [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#repository-script-mutation) <!-- ci:script-mutation -->
-- [ ] Run Core mutation testing [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#companion-mutation) <!-- ci:run-profile-mutation-core -->
-- [ ] Profile the Core PowerShell tests [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#companion-profiling) <!-- ci:profiling-core -->
-- [ ] Run Git mutation testing [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#companion-mutation) <!-- ci:run-profile-mutation-git -->
-- [ ] Profile the Git PowerShell tests [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#companion-profiling) <!-- ci:profiling-git -->
-- [ ] Run Vagrant mutation testing [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#companion-mutation) <!-- ci:run-profile-mutation-vagrant -->
-- [ ] Profile the Vagrant PowerShell tests [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#companion-profiling) <!-- ci:profiling-vagrant -->
-- [ ] Rerun selected script mutants and refresh the cache [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#refresh-the-script-mutation-cache) <!-- ci:script-mutation-no-input-cache -->
-- [ ] Run mutation workers sequentially [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#sequential-mutation-workers) <!-- ci:mutation-serial -->
-- [ ] Compare IL and ReadyToRun cold-start performance [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#readytorun-performance) <!-- ci:readytorun -->
-- [ ] Add PowerShell Preview hosts to the Core matrix [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#powershell-preview) <!-- ci:preview -->
+
+| Effect | Core | Git | Vagrant | Scripts |
+| --- | --- | --- | --- | --- |
+| [Mutation testing](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#companion-mutation) | `[ ]` <!-- ci:run-profile-mutation-core --> | `[ ]` <!-- ci:run-profile-mutation-git --> | `[ ]` <!-- ci:run-profile-mutation-vagrant --> | `[ ]` <!-- ci:script-mutation --> |
+| [Performance](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#companion-performance) | `[ ]` <!-- ci:performance-core --> | `[ ]` <!-- ci:performance-git --> | `[ ]` <!-- ci:performance-vagrant --> | — |
+| [Profiling](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#companion-profiling) | `[ ]` <!-- ci:profiling-core --> | `[ ]` <!-- ci:profiling-git --> | `[ ]` <!-- ci:profiling-vagrant --> | — |
+| [Refresh mutation cache](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#refresh-the-script-mutation-cache) | — | — | — | `[ ]` <!-- ci:script-mutation-no-input-cache --> |
+| [ReadyToRun comparison](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#readytorun-performance) | `[ ]` <!-- ci:readytorun --> | — | — | — |
+| [PowerShell Preview](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#powershell-preview) | `[ ]` <!-- ci:preview --> | — | — | — |
+
+- [ ] Run mutation workers sequentially for all targets [Details](https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md#sequential-mutation-workers) <!-- ci:mutation-serial -->
 <!-- quietcli-ci:end -->

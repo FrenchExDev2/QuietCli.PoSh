@@ -4,11 +4,11 @@
 Source file: [`lib/PullRequestChecklist.psm1`](../../../scripts/lib/PullRequestChecklist.psm1)
 <!-- script-source:end -->
 
-`Read-QuietPullRequestChecklist` parses the versioned Markdown block used by GitHub's PR template. Options are returned in canonical order. The parser ignores fenced examples and rejects malformed, duplicate or unknown choices. The `script-mutation-no-input-cache` row is optional when reading older descriptions.
+`Read-QuietPullRequestChecklist` parses the versioned Markdown block used by GitHub's PR template. Options are returned in canonical order for both the CI table and earlier task lists. The parser ignores fenced examples and rejects malformed, duplicate or unknown choices. The `script-mutation-no-input-cache` row is optional when reading older descriptions.
 
 `New-QuietPullRequestBody` composes a description, the standard checklist and an optional footer without changing input files. An explicit option array overrides the checks in the supplied description.
 
-`Expand-QuietPullRequestTemplate` generates unchecked profiling rows for every declared companion and mutation rows for companions that declare a campaign. The generator keeps the Markdown outside those generated rows and uses the catalogue names to form stable checkbox identifiers. Generated rows link to the matching English mutation or profiling section of the [PR CI guide](../../README-pull-request-ci.md).
+`Expand-QuietPullRequestTemplate` generates a column for each declared companion plus `Scripts`. Rows describe effects, and the marked cells carry stable option identifiers. A dash indicates an unavailable combination. The parser checks each cell against its row and column so moving an option to a different target is rejected. The generator preserves Markdown outside the managed block and links each effect to the [PR CI guide](../../README-pull-request-ci.md).
 
 <!-- script-contract:begin -->
 ## Execution contract
