@@ -208,6 +208,9 @@ Describe 'New-QuietCompanion.ps1' {
     BeforeAll {
         $source = Get-QuietTestWorkspaceRoot
         $scripts = Get-QuietTestScriptsRoot
+        $null = Import-QuietTestLibrary -Name CiCompanions
+        $null = Import-QuietTestLibrary -Name PullRequestChecklist
+        $null = Read-QuietCiCompanions -WorkspaceRoot $source
         $generator = [IO.Path]::Combine($scripts, 'New-QuietCompanion.ps1')
         $newCompanionFixture = {
             param([string]$Label)
@@ -216,8 +219,7 @@ Describe 'New-QuietCompanion.ps1' {
             $coreTests = 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh'
             foreach ($relative in @(
                 'LICENSE',
-                '.github/workflows/core-ci.yml',
-                'docs/ci/github/script-core-ci.md',
+                '.github/pull_request_template.md',
                 "$core/resources/yaml/YamlDotNet.dll",
                 "$core/resources/dependencies.lock.json",
                 'scripts/Invoke-Quiet.ps1',
@@ -256,8 +258,7 @@ Describe 'New-QuietCompanion.ps1' {
 '@
             & $write $fixture.Work 'Quietly.slnx' '<Solution />'
             & $write $fixture.Work 'CREDITS.md' '# Credits fixture'
-            & $write $fixture.Work 'docs/ci/github/README.md' '# Workflow fixture'
-            & $write $fixture.Work 'build/companions.yml' @'
+            & $write $fixture.Work 'build/companions.yaml' @'
 schema: 1
 companions:
   Core:
@@ -270,7 +271,7 @@ suites:
     requires: [Core]
     core_evidence: true
 '@
-            $null = & $git $fixture.Work @('add','-f','--','src','scripts','build','.github','docs','Quietly.slnx','LICENSE','CREDITS.md')
+            $null = & $git $fixture.Work @('add','-f','--','src','scripts','build','.github','Quietly.slnx','LICENSE','CREDITS.md')
             $null = & $git $fixture.Work @('commit','-q','-m','Add companion generation fixture')
             $null = & $git $fixture.Work @('push','-q','origin','develop')
             $fixture.Credits = New-QuietTestFile ([IO.Path]::Combine([IO.Path]::GetDirectoryName($fixture.Work), 'credits.md')) "## Packer fixture`n`n- License: https://example.test/license`n"
@@ -320,10 +321,13 @@ suites:
         & $read $fixture.Work 'Quietly.slnx' | Should -Match 'src/Packer/'
         & $read $fixture.Work 'src/Packer/Packer.slnx' | Should -Match 'Invoke|Tests.PoSh'
         & $read $fixture.Work 'CREDITS.md' | Should -Match 'Packer fixture'
-        $workflow = [IO.Path]::Combine($fixture.Work, '.github/workflows/packer-ci.yml')
-        $hash = (Get-FileHash -LiteralPath $workflow).Hash
-        & $read $fixture.Work 'docs/ci/github/script-packer-ci.md' | Should -Match $hash
-        & $read $fixture.Work 'docs/ci/github/README.md' | Should -Match 'packer-ci.yml'
+        $catalogue = Read-QuietCiCompanions -WorkspaceRoot $fixture.Work
+        @(Get-QuietCompanions -Configuration $catalogue) | Should -BeExactly @('Core','Packer')
+        $catalogue.Companions['Packer'].SourcePath | Should -BeExactly $product
+        $catalogue.Companions['Packer'].TestPath | Should -BeExactly $tests
+        $checklist = Read-QuietPullRequestChecklist (& $read $fixture.Work '.github/pull_request_template.md')
+        $checklist.Available | Should -Contain 'profiling-packer'
+        $checklist.Selected.Count | Should -Be 0
 
         $check = New-QuietTestFile ([IO.Path]::Combine([IO.Path]::GetDirectoryName($fixture.Work), 'check.ps1')) @'
 param([string]$Root, [string]$SmokeModule)

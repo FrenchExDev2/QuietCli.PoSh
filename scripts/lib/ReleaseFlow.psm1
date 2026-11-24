@@ -1,6 +1,8 @@
 #requires -Version 7.6
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'ReleaseTags.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'GalleryRelease.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'PullRequestChecklist.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'PullRequestCi.psm1')) -DisableNameChecking -ErrorAction Stop
 
 function Get-QuietReleaseCheckState {
     <#
@@ -215,6 +217,9 @@ function Invoke-QuietReleaseFlow {
         $state.Receipt=[IO.Path]::Combine($directory,'release-flow.json')
         Write-QuietReleaseFlowState $state
     }
+    $template=if($state.Phases.PullRequest -cnotin @('Confirmed','Skipped')){
+        [IO.File]::ReadAllText([IO.Path]::Combine($PSScriptRoot,'../../.github/pull_request_template.md'),[Text.Encoding]::UTF8)
+    }
     $request=$state.Request
     $releaseOptions=@{WorkspaceRoot=$WorkspaceRoot;Module=@($request.Module);Version=[string]$request.Version;Preview=$request.Preview;PreviewSpecified=[bool]$request.PreviewSpecified;NextPreview=[bool]$request.NextPreview;Remote=$state.Remote;DeliveryBranch=$state.DeliveryBranch;GitCommand=$GitCommand}
     $repositoryArguments=@('--repo',[string]$state.Repository)
@@ -336,7 +341,8 @@ function Invoke-QuietReleaseFlow {
                             ('- Merge requested from the facade: '+$(if($request.Merge){'yes, with a merge commit once `'+$state.RequiredCheck+'` succeeds.'}else{'no; merge manually, the facade then tags the merge commit.'})),
                             '- Tags are created on the merge commit only, then pushed atomically; no branch other than this one is pushed.')
                         $bodyPath=[IO.Path]::Combine([IO.Path]::GetDirectoryName($state.Receipt),'pull-request.md')
-                        [IO.File]::WriteAllText($bodyPath,($body -join "`n")+"`n",[Text.UTF8Encoding]::new($false))
+                        $description=New-QuietPullRequestBody -Body ($body -join "`n") -Template $template
+                        [IO.File]::WriteAllText($bodyPath,$description,[Text.UTF8Encoding]::new($false))
                         $state.Phases.PullRequest='Pending';Write-QuietReleaseFlowState $state
                         $created=[string](& $GitHubCommand (@('pr','create')+$repositoryArguments+@('--base',$state.DeliveryBranch,'--head',$state.Branch,'--title',$title,'--body-file',$bodyPath)))
                         $match=[regex]::Match($created,'/pull/([1-9][0-9]*)\s*\z')
@@ -356,6 +362,7 @@ function Invoke-QuietReleaseFlow {
                         if($decision.Action -ceq 'Fail'){throw ($decision.Reason+': '+$state.PullRequest.Url)}
                         if($decision.Action -ceq 'Tag'){$state.MergeCommit=$decision.MergeCommit;$state.Phases.Merge='Confirmed';Write-QuietReleaseFlowState $state;break}
                         if($decision.Action -ceq 'Merge' -and $state.Phases.Merge -cne 'Pending'){
+                            Assert-QuietPullRequestCiEvidence -WorkspaceRoot $WorkspaceRoot -Repository $state.Repository -Number $state.PullRequest.Number -ExpectedHead $state.CommitRevision -CheckRollup @($view.statusCheckRollup) -GitHubCommand $GitHubCommand
                             $state.Phases.Merge='Pending';$state.MergeRequested=$true;Write-QuietReleaseFlowState $state
                             $null=& $GitHubCommand (@('pr','merge',[string]$state.PullRequest.Number)+$repositoryArguments+@('--merge','--match-head-commit',$state.CommitRevision))
                             continue

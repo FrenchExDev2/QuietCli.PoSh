@@ -6,6 +6,8 @@ Source file: [`lib/GitHubActionReferences.psm1`](../../../scripts/lib/GitHubActi
 
 ## Purpose and usage
 
+Discovered paths replace the host directory separator with `/`. On Linux, a literal backslash within a file name is preserved.
+
 The reading and writing of `uses:` references for [Update-GitHubActions.ps1](../Update-GitHubActions.md). It has no knowledge of releases or policy. Import is inert. Only `Get-QuietGitHubActionFiles` touches the file system, and it only lists files.
 
 | Export | Contract |

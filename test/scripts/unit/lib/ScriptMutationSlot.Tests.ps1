@@ -203,7 +203,9 @@ Describe 'Wait-QuietScriptsMutationJob' {
         $process|Add-Member -MemberType ScriptProperty -Name HasExited -Value {$this.Reads++;$this.Reads -ge 2}
         $slot=& $newSlot $process
         & $submit $slot
-        (Wait-QuietScriptsMutationJob -Slot $slot -PollMilliseconds 1).Error|Should -BeExactly 'ScriptMutationSlotExited: 4'
+        $elapsed=[Diagnostics.Stopwatch]::StartNew()
+        (Wait-QuietScriptsMutationJob -Slot $slot -PollMilliseconds 100).Error|Should -BeExactly 'ScriptMutationSlotExited: 4'
+        $elapsed.ElapsedMilliseconds|Should -BeGreaterOrEqual 90
         $process.Reads|Should -Be 2
     }
 

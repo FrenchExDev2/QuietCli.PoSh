@@ -13,7 +13,6 @@ function ConvertTo-QuietChartText {
     [CmdletBinding()]
     [OutputType([string])]
     param([AllowNull()]$Value,[ValidateRange(4,512)][int]$MaxLength=64)
-    if($null -eq $Value){return '-'}
     $text=[regex]::Replace([string]$Value,'[^A-Za-z0-9 ._=,:/+()\-·–×]','_').Trim()
     if(!$text){return '-'}
     if($text.Length -gt $MaxLength){$text=$text.Substring(0,$MaxLength-1)+'…'}
@@ -102,7 +101,7 @@ function ConvertTo-QuietPerformanceMermaidChart {
     param([Parameter(Mandatory)]$Chart)
     $labels=@($Chart.Bars|ForEach-Object {'"'+(ConvertTo-QuietChartText $_.Label 48)+'"'})
     $values=@($Chart.Bars|ForEach-Object {Format-QuietChartNumber $_.Statistics.Median '0.##'})
-    $top=[Math]::Max(1,[Math]::Ceiling((($Chart.Bars|ForEach-Object {[double]$_.Statistics.Median}|Measure-Object -Maximum).Maximum)*1.1))
+    $top=[Math]::Max(1.0,[Math]::Ceiling((($Chart.Bars|ForEach-Object {[double]$_.Statistics.Median}|Measure-Object -Maximum).Maximum)*1.1))
     $text=[Text.StringBuilder]::new()
     [void]$text.AppendLine('```mermaid')
     [void]$text.AppendLine('%%{init: {"xyChart": {"showDataLabel": true}}}%%')

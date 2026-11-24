@@ -16,6 +16,8 @@ Compare the current checkout to Base, including non-ignored untracked files and 
 pull_request or push recompute their own selective impact plan from the diff; workflow_dispatch qualifies -Suite instead.
 .PARAMETER Suite
 workflow_dispatch only: companion names, as items or comma-separated, or all.
+.PARAMETER PullRequestBody
+Raw Markdown from a pull request, also accepted for a working-tree preview.
 .PARAMETER OutputPath
 GitHub job output file and standard report bundle.
 .PARAMETER MarkdownPath
@@ -34,6 +36,7 @@ param(
     [Parameter(Mandatory,ParameterSetName='WorkingTree')][switch]$WorkingTree,
     [Parameter(ParameterSetName='Revision')][ValidateSet('pull_request','push','workflow_dispatch')][string]$Event='pull_request',
     [Parameter(ParameterSetName='Revision')][string[]]$Suite,
+    [AllowNull()][AllowEmptyString()][string]$PullRequestBody,
     [AllowNull()][AllowEmptyString()][string]$OutputPath,
     [ValidateNotNullOrWhiteSpace()][string]$MarkdownPath,
     [switch]$AsObject,
@@ -49,6 +52,7 @@ $dispatch=$Event -ceq 'workflow_dispatch'
 if($dispatch -and $Base){throw 'CiImpactDispatchTakesNoBase'}
 if(!$dispatch -and !$Base){throw 'CiImpactBaseRequired'}
 if(!$dispatch -and $PSBoundParameters.ContainsKey('Suite')){throw 'CiImpactSuiteRequiresDispatch'}
+if($Event -cne 'pull_request' -and $PSBoundParameters.ContainsKey('PullRequestBody')){throw 'CiImpactBodyRequiresPullRequest'}
 $candidate=if($localPreview){'working-tree'}else{$Revision}
 $action=if($writeFiles -or $MarkdownPath){'Resolve changed suites and save the CI execution plan'}else{'Resolve changed suites'}
 if(!$PSCmdlet.ShouldProcess($candidate,$action)){return}
@@ -59,6 +63,7 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiImpact.psm1')) -ErrorActi
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CompanionWorkflows.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiPlanReport.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/ScriptsImpact.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/PullRequestChecklist.psm1')) -DisableNameChecking -ErrorAction Stop
 if($dispatch){
     # A manual run qualifies the requested companions in full; it never reads a diff.
     $plan=Get-QuietCiDispatchImpact -WorkspaceRoot $sourceTree -Suite $Suite
@@ -87,11 +92,13 @@ if($dispatch){
     }
     $plan=Get-QuietCiImpact -WorkspaceRoot $sourceTree -ChangedPaths $paths -PreviousFiles $previous
 }
+$selection=Read-QuietPullRequestChecklist $PullRequestBody
+Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $sourceTree -Options $selection.Selected
 # Script changes alone run only the script tests and mutation targets they reach; the full tooling runs them all.
 $scriptsImpact=if(!$plan.RunTooling -and @($plan.ScriptPaths).Count){
     Get-QuietScriptsImpact -WorkspaceRoot $sourceTree -ChangedPaths @($plan.ScriptPaths) -PreviousMutationCatalogue $previous['test/scripts/mutation.targets.psd1']
 }
-$scope=if($plan.RunTooling){'full'}elseif($scriptsImpact -and ($scriptsImpact.TestFiles.Count -or $scriptsImpact.MutationTargets.Count)){'scripts'}else{'none'}
+$scope=if($plan.RunTooling){'full'}elseif($plan.RunAllScriptMutations -or ($scriptsImpact -and ($scriptsImpact.TestFiles.Count -or $scriptsImpact.MutationTargets.Count))){'scripts'}else{'none'}
 $plan|Add-Member -NotePropertyName ToolingScope -NotePropertyValue $scope
 if($scriptsImpact){
     $plan.Reasons=@($plan.Reasons)+@(foreach($reason in $scriptsImpact.Reasons){
@@ -106,21 +113,30 @@ $rows=@(foreach($name in $plan.FullSuites){
     $modules=@(Get-QuietWorkspaceBuildSelection $sourceTree -Suite $name)
     $roots=@(Get-QuietWorkspaceProjects $sourceTree|Where-Object Name -CIn $modules|ForEach-Object {$_.Path+'/'})
     $projects=@($plan.BuildProjects|Where-Object {$path=$_;@($roots|Where-Object {$path.StartsWith($_,[StringComparison]::Ordinal)}).Count})
-    [ordered]@{suite=$name;solution_path=$profile[0].SolutionPath;source_path=$profile[0].SourcePath;test_path=$profile[0].TestPath;collect_performance=$profile[0].CollectPerformance;build_projects_json=(ConvertTo-Json -InputObject @($projects) -Compress)}
+    # A Preview request requires an unrestricted Core build, including on a dependency-only change.
+    $preview=$name -ceq 'Core' -and $plan.RunPreview
+    if($preview){$projects=@()}
+    [ordered]@{suite=$name;solution_path=$profile[0].SolutionPath;source_path=$profile[0].SourcePath;test_path=$profile[0].TestPath;collect_performance=$profile[0].CollectPerformance;run_preview=$preview;build_projects_json=(ConvertTo-Json -InputObject @($projects) -Compress)}
 })
 $values="suite=$($plan.Suite)`nrun_products=$($plan.RunProducts.ToString().ToLowerInvariant())`nrun_tooling=$(($scope -cne 'none').ToString().ToLowerInvariant())`n"
 $outputs=@{
-    # Every fully qualified suite runs on a Linux image chain that the companions workflow warms once per RID.
-    image_suites=(ConvertTo-Json -InputObject @($plan.FullSuites) -Compress)
+    # ReadyToRun also consumes the Core image, including on a PR that only requests the benchmark.
+    image_suites=(ConvertTo-Json -InputObject @(@($plan.FullSuites)+$(if($plan.RunReadyToRun){'Core'}) | Where-Object {$_} | Sort-Object -Unique) -Compress)
     matrix=(@{include=$rows}|ConvertTo-Json -Depth 6 -Compress)
     smoke_suites=(ConvertTo-Json -InputObject @($plan.SmokeSuites) -Compress)
     run_smokes=($plan.SmokeSuites.Count -gt 0).ToString().ToLowerInvariant()
     run_distribution=$plan.RunDistribution.ToString().ToLowerInvariant()
+    run_readytorun=$plan.RunReadyToRun.ToString().ToLowerInvariant()
+    companion_checks=(@{include=$plan.CompanionChecks}|ConvertTo-Json -Depth 4 -Compress)
+    run_companion_checks=($plan.CompanionChecks.Count -gt 0).ToString().ToLowerInvariant()
+    mutation_parallel=$plan.MutationParallel.ToString().ToLowerInvariant()
+    pr_ci_options=ConvertTo-Json -InputObject $selection.Selected -Compress
+    script_mutation_no_input_cache=$plan.ScriptMutationNoInputCache.ToString().ToLowerInvariant()
     # The generated-layout campaign is skipped only when script tests are the whole selected work.
-    run_layout=!($scope -ceq 'scripts' -and !$plan.RunProducts -and !$plan.SmokeSuites.Count -and !$plan.RunDistribution)
+    run_layout=!($scope -ceq 'scripts' -and !$plan.RunProducts -and !$plan.SmokeSuites.Count -and !$plan.RunDistribution -and !$plan.RunReadyToRun -and !$plan.CompanionChecks.Count)
     tooling_scope=$scope
     script_tests=$(if($scope -ceq 'full' -or ($scriptsImpact -and $scriptsImpact.AllTests)){'all'}elseif($scriptsImpact){ConvertTo-Json -InputObject @($scriptsImpact.TestFiles) -Compress}else{'[]'})
-    script_mutation_targets=$(if($scope -ceq 'full' -or ($scriptsImpact -and $scriptsImpact.AllTargets)){'all'}elseif($scriptsImpact){ConvertTo-Json -InputObject @($scriptsImpact.MutationTargets) -Compress}else{'[]'})
+    script_mutation_targets=$(if($scope -ceq 'full' -or $plan.RunAllScriptMutations -or ($scriptsImpact -and $scriptsImpact.AllTargets)){'all'}elseif($scriptsImpact){ConvertTo-Json -InputObject @($scriptsImpact.MutationTargets) -Compress}else{'[]'})
 }
 $outputs.run_layout=$outputs.run_layout.ToString().ToLowerInvariant()
 if($localPreview -or $MarkdownPath){
@@ -128,7 +144,7 @@ if($localPreview -or $MarkdownPath){
         Resolve-QuietScriptsCiSelection -WorkspaceRoot $sourceTree -Scope $scope -Tests $outputs.script_tests -Targets $outputs.script_mutation_targets
     }
     $plan|Add-Member -NotePropertyMembers ([ordered]@{
-        RunScriptTooling=$scope -cne 'none'
+        RunScriptTooling=[bool]($scriptSelection.TestFiles.Count -or $scriptSelection.MutationTargets.Count)
         ScriptTests=[string[]]@($scriptSelection.TestFiles | Where-Object {$_})
         ScriptMutationTargets=[string[]]@($scriptSelection.MutationTargets | Where-Object {$_})
         ScriptTestsRequireBuild=[bool]$scriptSelection.RequiresBuild

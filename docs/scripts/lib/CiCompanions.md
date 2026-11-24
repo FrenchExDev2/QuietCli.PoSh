@@ -10,7 +10,9 @@ Registry preparation first resolves the final suite image and attempts a CacheOn
 
 Producer-only ResolveOnly verifies the final registry configuration without pulling any layer. A miss still builds/publishes through the same reviewed layer path. Owned fixtures reject any attempt to prepare parents on either a final-image pull hit or a metadata-only producer hit.
 
-`scripts/lib/CiCompanions.psm1` reads `build/companions.yml`. Import declares functions only;
+When preparing multiple suites for an archive, the producer shares locally verified base and overlay layers between chains on the same Docker daemon. Receipt-only registry resolutions never stand in for a loaded layer. [Export-CiImageBundle](../Export-CiImageBundle.md)
+
+`scripts/lib/CiCompanions.psm1` reads `build/companions.yaml`. Import declares functions only;
 reading configuration uses the checksum-pinned YamlDotNet resource through `Resources.ps1`,
 without importing the QuietCli engine. Missing parser resources are prepared by that consumer.
 
@@ -20,8 +22,14 @@ An integration suite can require Core and Vagrant while keeping Core's product d
 Its dedicated test module must exist and export the declared command. Running two functional suites
 does not establish an integration test between them.
 
-`Read-QuietCiCompanions` rejects duplicate YAML keys, unknown fields/names, malformed policies,
-missing test manifests/exports, dependency cycles and missing or multiple base declarations.
+`Get-QuietCompanions` reads companion names from `companions`. Use `-Name` to validate a selection case-insensitively and return the catalogue spelling. `-Capability Mutation` and `-Capability Workstation` require the corresponding declaration. Omitting `-Name` lists every eligible companion. Launchers pass a previously read `-Configuration` when they also need suite or campaign details.
+
+```powershell
+Import-Module ./scripts/lib/CiCompanions.psm1 -DisableNameChecking
+Get-QuietCompanions -WorkspaceRoot $PWD.ProviderPath -Name git,vagrant -Capability Mutation
+```
+
+`Read-QuietCiCompanions` rejects duplicate YAML keys, malformed paths or policies, unknown fields or names, missing test manifests or exports, dependency cycles and missing or multiple base declarations. The reader can resolve test suites in a source subset such as the Core-independence checkout. `Sync-CompanionWorkflows.ps1` verifies the declared directories in a full checkout.
 `Resolve-QuietCiCompanions` selects one suite or every declared suite for All, expands only product
 dependencies and deduplicates image layers. Tool-only dependencies do not enable Core performance
 qualification or another companion's mutations. Declared mutation controls apply only to selected
@@ -70,6 +78,8 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 
 <!-- grouped-layout-review:begin -->
 ## Grouped workspace contract
+
+Container file paths in the image validation results use `/` as the directory separator on every host.
 
 Reviewed source: scripts/lib/CiCompanions.psm1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
 

@@ -17,7 +17,7 @@ function Invoke-QuietGitHubActionApi {
     param([Parameter(Mandatory)][string]$Path)
     if($Path -cnotmatch '\A/repos/[A-Za-z0-9._/%-]+\z' -or $Path.Contains('..')){throw ('GitHubActionApiPathInvalid: '+$Path)}
     $headers=@{Accept='application/vnd.github+json';'X-GitHub-Api-Version'='2022-11-28';'User-Agent'='QuietCli-GitHub-Action-Updates'}
-    $token=if(![string]::IsNullOrWhiteSpace($env:GH_TOKEN)){$env:GH_TOKEN}elseif(![string]::IsNullOrWhiteSpace($env:GITHUB_TOKEN)){$env:GITHUB_TOKEN}else{$null}
+    $token=if(![string]::IsNullOrWhiteSpace($env:GH_TOKEN)){$env:GH_TOKEN}elseif(![string]::IsNullOrWhiteSpace($env:GITHUB_TOKEN)){$env:GITHUB_TOKEN}
     if($token){$headers.Authorization='Bearer '+$token}
     try{
         $response=Invoke-WebRequest -Uri ('https://api.github.com'+$Path) -Method Get -Headers $headers -SkipHttpErrorCheck -TimeoutSec 30 -MaximumRetryCount 2 -RetryIntervalSec 2 -ErrorAction Stop
@@ -92,7 +92,8 @@ function Read-QuietGitHubActionReleaseCatalog {
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Path)
-    try{$text=[IO.File]::ReadAllText($Path,[Text.UTF8Encoding]::new($false,$true))}
+    $utf8=[Text.Encoding]::GetEncoding(65001,[Text.EncoderFallback]::ExceptionFallback,[Text.DecoderFallback]::ExceptionFallback)
+    try{$text=[IO.File]::ReadAllText($Path,$utf8)}
     catch [Text.DecoderFallbackException]{throw ('GitHubActionCatalogInvalid: '+$Path+' is not UTF-8')}
     try{$catalog=ConvertFrom-Json -InputObject $text -AsHashtable -Depth 4 -ErrorAction Stop}catch{throw ('GitHubActionCatalogInvalid: '+$Path+' is not JSON')}
     if($catalog -isnot [Collections.IDictionary]){throw ('GitHubActionCatalogInvalid: '+$Path+' must be an object')}

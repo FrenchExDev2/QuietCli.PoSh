@@ -85,6 +85,7 @@ Describe 'Get-QuietScriptsTestPlan' {
             {Get-QuietScriptsTestPlan -TestsRoot $kindRoot -Kind Unit}|Should -Throw -ExpectedMessage 'ScriptsTestSelectionEmpty'
             {Resolve-QuietScriptsTestPath -Path 'unit' -TestsRoot $kindRoot}|Should -Throw -ExpectedMessage 'ScriptsTestPathInvalid: link'
             Resolve-QuietScriptsTestPath -Path 'unit' -TestsRoot $linkedRoot|Should -BeExactly ([IO.Path]::Combine($linkedRoot,'unit')) -Because 'the root itself is trusted; only the path below it is walked'
+            Resolve-QuietScriptsTestPath -Path '.' -TestsRoot $linkedRoot|Should -BeExactly $linkedRoot
         }finally{[IO.Directory]::Delete($linkedRoot);[IO.Directory]::Delete($linkedKind)}
     }
 
@@ -153,6 +154,8 @@ Describe 'Resolve-QuietScriptsTestPath' {
         @{Case='an empty string';Selector='';Reason='empty'}
         @{Case='whitespace';Selector="`t ";Reason='empty'}
         @{Case='a tab inside';Selector="unit/a`t.Tests.ps1";Reason='control-character'}
+        @{Case='a leading NUL';Selector=([string][char]0)+'unit/a.Tests.ps1';Reason='control-character'}
+        @{Case='an embedded NUL';Selector='unit/a'+[char]0+'.Tests.ps1';Reason='control-character'}
         @{Case='a parent segment';Selector='unit\..\unit';Reason='parent-segment'}
         @{Case='a leading parent';Selector='../tests/unit';Reason='parent-segment'}
         @{Case='a missing directory';Selector='nowhere';Reason='missing'}

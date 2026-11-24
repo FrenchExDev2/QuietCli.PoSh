@@ -3,6 +3,9 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'PullRequestUpdates.psm1')) -Dis
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'MergedBranches.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkBranch.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'ReleaseFlow.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'PullRequestCi.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'PullRequestChecklist.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'CiCompanions.psm1')) -DisableNameChecking -ErrorAction Stop
 
 function Get-QuietPullRequestRepository {
     <#
@@ -32,7 +35,7 @@ function Read-QuietWorkspacePullRequest {
     Pull request number.
     #>
     param([string]$WorkspaceRoot,[string]$Repository,[int]$Number)
-    $view=Invoke-QuietPullRequestTool $WorkspaceRoot gh @('pr','view',[string]$Number,'--repo',$Repository,'--json','number,url,headRefOid,headRefName,baseRefName,isCrossRepository,isDraft,state,mergeCommit,statusCheckRollup') | ConvertFrom-Json
+    $view=Invoke-QuietPullRequestTool $WorkspaceRoot gh @('pr','view',[string]$Number,'--repo',$Repository,'--json','number,url,headRefOid,headRefName,baseRefName,isCrossRepository,isDraft,state,mergeCommit,statusCheckRollup,body') | ConvertFrom-Json
     if($view.number -ne $Number -or $view.isCrossRepository -ne $false -or $view.baseRefName -cne 'develop' -or $view.headRefOid -cnotmatch '\A[a-f0-9]{40}\z'){
         throw 'PullRequestTargetInvalid: expected a same-repository pull request targeting develop.'
     }
@@ -81,7 +84,7 @@ function Invoke-QuietMergePullRequest {
         [switch]$NoRebase,
         [switch]$NoBranchDelete
     )
-    $ErrorActionPreference='Stop'
+    $ErrorActionPreference=[Management.Automation.ActionPreference]::Stop
     $method=if($NoRebase){'--merge'}else{'--rebase'}
     $action=if($NoBranchDelete){"Merge with $method and preserve the branch"}else{"Merge with $method and delete the source branch"}
     if(!$PSCmdlet.ShouldProcess("workspace pull request #$PullRequest via $Remote",$action)){return}
@@ -108,6 +111,7 @@ function Invoke-QuietMergePullRequest {
         $arguments+='--delete-branch'
     }
     $mergeError=$null
+    Assert-QuietPullRequestCiEvidence -WorkspaceRoot $WorkspaceRoot -Repository $repository -Number $PullRequest -ExpectedHead $head -CheckRollup @($view.statusCheckRollup)
     try{$null=Invoke-QuietPullRequestTool $WorkspaceRoot gh $arguments}catch{$mergeError=$_}
     $merged=Read-QuietWorkspacePullRequest -WorkspaceRoot $WorkspaceRoot -Repository $repository -Number $PullRequest
     if($merged.state -cne 'MERGED' -or $merged.headRefOid -cne $head){
@@ -127,13 +131,13 @@ function Invoke-QuietMergePullRequest {
 function Invoke-QuietPullRequestScript {
     <#
     .SYNOPSIS
-    Runs the repository's push or watcher entry point.
+    Runs an approved repository entry point for pull request delivery.
     .PARAMETER Name
     Approved entry point filename.
     .PARAMETER Arguments
     Explicit parameters for the entry point.
     #>
-    param([ValidateSet('Push-Workspace.ps1','Watch-GitHubRun.ps1')][string]$Name,[hashtable]$Arguments)
+    param([ValidateSet('Commit-Workspace.ps1','Push-Workspace.ps1','New-PullRequest.ps1','Watch-GitHubRun.ps1')][string]$Name,[hashtable]$Arguments)
     & ([IO.Path]::Combine([IO.Path]::GetDirectoryName($PSScriptRoot),$Name)) @Arguments
 }
 
@@ -155,8 +159,8 @@ function Find-QuietPullRequestRun {
     Bound on waiting for GitHub to register the workflow run.
     #>
     param([string]$WorkspaceRoot,[string]$Repository,[int]$PullRequest,[string]$Branch,[string]$Revision,[int]$DiscoverySeconds)
-    $deadline=[DateTimeOffset]::UtcNow.AddSeconds($DiscoverySeconds)
-    do{
+    $deadline=(Get-Date -AsUTC).AddSeconds($DiscoverySeconds)
+    for($remaining=[int][Math]::Ceiling($DiscoverySeconds/5.0)+1;$remaining;$remaining--){
         $result=Invoke-QuietPullRequestTool $WorkspaceRoot gh @('api','--method','GET',"repos/$Repository/actions/workflows/companions-ci.yml/runs",'-f','event=pull_request','-f',"head_sha=$Revision",'-f','per_page=20','--jq','.workflow_runs | map({id,head_sha,head_branch,event,pull_requests: [.pull_requests[].number]})')
         $runs=@($result | ConvertFrom-Json | Where-Object {$_.event -ceq 'pull_request' -and $_.head_sha -ceq $Revision -and $_.head_branch -ceq $Branch -and $_.id -gt 0} | Sort-Object id -Descending)
         if($runs.Count){
@@ -172,9 +176,10 @@ function Find-QuietPullRequestRun {
                 }
             }
         }
-        if([DateTimeOffset]::UtcNow -ge $deadline){throw "PullRequestRunUnavailable: no Companions run found for PR #$PullRequest at $Revision."}
+        if($remaining -eq 1 -or (Get-Date -AsUTC) -ge $deadline){break}
         Wait-QuietReleaseInterval -Seconds 5
-    }while($true)
+    }
+    throw "PullRequestRunUnavailable: no Companions run found for PR #$PullRequest at $Revision."
 }
 
 function Invoke-QuietCommitPullRequest {
@@ -201,7 +206,7 @@ function Invoke-QuietCommitPullRequest {
         [switch]$MergePullRequest,[switch]$NoRebase,[switch]$NoBranchDelete,
         [ValidateRange(0,600)][int]$DiscoverySeconds=120
     )
-    $ErrorActionPreference='Stop'
+    $ErrorActionPreference=[Management.Automation.ActionPreference]::Stop
     if(!$PSCmdlet.ShouldProcess($Revision,'Push and watch the existing pull request')){return}
     $branch=Invoke-QuietPullRequestTool $WorkspaceRoot git @('branch','--show-current')
     $null=Resolve-QuietWorkBranchName -Branch $branch
@@ -227,4 +232,148 @@ function Invoke-QuietCommitPullRequest {
     }
 }
 
-Export-ModuleMember -Function Invoke-QuietMergePullRequest,Invoke-QuietCommitPullRequest
+function Invoke-QuietPublishPullRequest {
+    <#
+    .SYNOPSIS
+    Publishes one work branch, follows CI for its exact revision and updates develop on success.
+    .PARAMETER WorkspaceRoot
+    Worktree containing the work branch and local develop.
+    .PARAMETER Message
+    Commit message, whose first line is also the default title.
+    .PARAMETER Body
+    Markdown description supplied by the author.
+    .PARAMETER Title
+    Title for a newly created pull request.
+    .PARAMETER Footer
+    Markdown appended to the description.
+    .PARAMETER Options
+    Explicit checkbox overrides; omitted keys keep the supplied body's selection.
+    .PARAMETER DiscoverySeconds
+    Maximum seconds to wait for GitHub to register the run.
+    #>
+    [CmdletBinding(SupportsShouldProcess,ConfirmImpact='High')]
+    param(
+        [Parameter(Mandatory)][string]$WorkspaceRoot,
+        [Parameter(Mandatory)][string]$Message,
+        [Parameter(Mandatory)][string]$Body,
+        [string]$Title,[string]$Footer,
+        [hashtable]$Options=@{},
+        [int]$DiscoverySeconds=120
+    )
+    $ErrorActionPreference=[Management.Automation.ActionPreference]::Stop
+    if(!$PSCmdlet.ShouldProcess($WorkspaceRoot,'Publish and monitor the work branch')){return}
+    $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.ProviderPath)
+    $branch=$revision=$url=$runUrl=$temporary=$null
+    $step='preflight'
+    try {
+        $encoding=[Text.UTF8Encoding]::new($false,$true)
+        $template=[IO.File]::ReadAllText([IO.Path]::Combine($WorkspaceRoot,'.github/pull_request_template.md'),$encoding)
+        if(Get-QuietCiCompanionCataloguePath $WorkspaceRoot){
+            $template=Expand-QuietPullRequestTemplate -Template $template -Configuration (Read-QuietCiCompanions $WorkspaceRoot)
+        }
+        $selected=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $selected.UnionWith((Read-QuietPullRequestChecklist $Body).Selected)
+        $available=(Read-QuietPullRequestChecklist $template).Available
+        if('script-mutation' -cin $available -and $selected.Remove('mutation')){
+            $selected.UnionWith([string[]]@('script-mutation','run-profile-mutation-core'))
+        }
+        foreach($option in $Options.Keys){
+            if($option -cnotin $available){throw 'PullRequestCiChecklistUnknownOption'}
+            if($Options[$option]){[void]$selected.Add($option)}else{[void]$selected.Remove($option)}
+        }
+        $description=(New-QuietPullRequestBody -Body $Body -Template $template -Footer $Footer -CiOption ([string[]]@($selected))).Replace("`r`n","`n").Replace("`r","`n")
+        if($description.Length -gt 60000){throw 'PullRequestDescriptionInvalid'}
+        if(!$Title){$Title=($Message.Trim() -split '\r\n|\r|\n',2)[0]}
+
+        $branch=Invoke-QuietPullRequestTool $WorkspaceRoot git @('branch','--show-current')
+        $null=Resolve-QuietWorkBranchName -Branch $branch
+        $null=Invoke-QuietPullRequestTool $WorkspaceRoot git @('rev-parse','--verify','refs/heads/develop')
+        $before=Invoke-QuietPullRequestTool $WorkspaceRoot git @('rev-parse','--verify','HEAD')
+        $repository=Get-QuietPullRequestRepository -WorkspaceRoot $WorkspaceRoot -Remote origin
+        $items=@(Invoke-QuietPullRequestTool $WorkspaceRoot gh @('pr','list','--repo',$repository,'--head',$branch,'--base','develop','--state','open','--limit','2','--json','number') | ConvertFrom-Json)
+        if($items.Count -gt 1){throw 'WorkspacePullRequestAmbiguous'}
+        $number=0
+        if($items.Count){
+            $number=[int]$items[0].number
+            $existing=Read-QuietWorkspacePullRequest $WorkspaceRoot $repository $number
+            if($existing.state -cne 'OPEN' -or $existing.isDraft -ne $false -or $existing.headRefName -cne $branch){
+                throw 'WorkspacePullRequestNotReady'
+            }
+            $url=$existing.url
+        }
+        $temporary=[IO.Path]::GetTempFileName()
+        [IO.File]::WriteAllText($temporary,$description,$encoding)
+
+        $step='commit'
+        Invoke-QuietPullRequestScript -Name 'Commit-Workspace.ps1' -Arguments @{WorkspaceRoot=$WorkspaceRoot;Message=$Message;Confirm=$false}
+        $revision=Invoke-QuietPullRequestTool $WorkspaceRoot git @('rev-parse','--verify','HEAD')
+        if($revision -cnotmatch '\A[a-f0-9]{40}\z' -or $revision -ceq $before -or
+            (Invoke-QuietPullRequestTool $WorkspaceRoot git @('branch','--show-current')) -cne $branch -or
+            (Invoke-QuietPullRequestTool $WorkspaceRoot git @('status','--porcelain=v1','--untracked-files=normal'))){
+            throw 'WorkspacePullRequestCommitNotVerified'
+        }
+        $plan=[IO.Path]::Combine($WorkspaceRoot,'artifacts','plan.md')
+        if(![IO.File]::Exists($plan) -or [IO.File]::ReadAllText($plan,$encoding) -cnotmatch "(?m)^Base: [a-f0-9]{40}; candidate: $revision\.\r?$"){
+            throw 'WorkspacePullRequestPlanUnavailable'
+        }
+
+        # The synchronize event must see the revised checklist for the new SHA.
+        if($number -and ([string]$existing.body).TrimEnd() -cne $description.TrimEnd()){
+            $step='update pull request'
+            $null=Invoke-QuietPullRequestTool $WorkspaceRoot gh @('pr','edit',[string]$number,'--repo',$repository,'--body-file',$temporary)
+        }
+        $step='push'
+        Invoke-QuietPullRequestScript -Name 'Push-Workspace.ps1' -Arguments @{WorkspaceRoot=$WorkspaceRoot;Remote='origin';Branch=$branch;ExpectedHead=$revision;Confirm=$false}
+        if(!$number){
+            $step='create pull request'
+            $url=Invoke-QuietPullRequestScript -Name 'New-PullRequest.ps1' -Arguments @{WorkspaceRoot=$WorkspaceRoot;Title=$Title;BodyFile=$temporary;Head=$branch;Confirm=$false}
+            if($url -cnotmatch ('\A'+[regex]::Escape("https://github.com/$repository/pull/")+'(?<number>[1-9][0-9]*)\z')){
+                throw 'WorkspacePullRequestCreationNotVerified'
+            }
+            $number=[int]$Matches.number
+        }
+        $step='verify pull request'
+        $published=Read-QuietWorkspacePullRequest $WorkspaceRoot $repository $number
+        if($published.state -cne 'OPEN' -or $published.isDraft -ne $false -or $published.headRefName -cne $branch -or
+            $published.headRefOid -cne $revision -or ([string]$published.body).TrimEnd() -cne $description.TrimEnd()){
+            throw 'WorkspacePullRequestPublicationChanged'
+        }
+        $url=$published.url
+        Write-Host "Pull request $url at $revision"
+        $step='switch to develop'
+        if((Invoke-QuietPullRequestTool $WorkspaceRoot git @('branch','--show-current')) -cne $branch -or
+            (Invoke-QuietPullRequestTool $WorkspaceRoot git @('status','--porcelain=v1','--untracked-files=normal'))){
+            throw 'WorkspacePullRequestCheckoutChanged'
+        }
+        $null=Invoke-QuietPullRequestTool $WorkspaceRoot git @('switch','--no-guess','--no-overwrite-ignore','develop')
+        $step='watch CI'
+        $runId=Find-QuietPullRequestRun $WorkspaceRoot $repository $number $branch $revision $DiscoverySeconds
+        if($runId -le 0){throw 'PullRequestRunIdentityInvalid'}
+        $runUrl="https://github.com/$repository/actions/runs/$runId"
+        Write-Host "Watching $runUrl"
+        $outcome=@(Invoke-QuietPullRequestScript -Name 'Watch-GitHubRun.ps1' -Arguments @{WorkspaceRoot=$WorkspaceRoot;Repository=$repository;RunId=$runId;Confirm=$false} | Where-Object {$_ -isnot [string] -and $_.RunId -eq $runId -and $_.State -ceq 'Success'})
+        if($outcome.Count -ne 1){throw 'PullRequestWatchDidNotSucceed'}
+
+        $step='verify CI'
+        $verified=Read-QuietWorkspacePullRequest $WorkspaceRoot $repository $number
+        if(([string]$verified.body).TrimEnd() -cne $description.TrimEnd() -or
+            (Get-QuietReleaseCheckState -Rollup @($verified.statusCheckRollup) -RequiredCheck 'QuietCli required CI') -cne 'Success'){
+            throw 'WorkspacePullRequestRequiredCiNotVerified'
+        }
+        Assert-QuietPullRequestCiEvidence -WorkspaceRoot $WorkspaceRoot -Repository $repository -Number $number -ExpectedHead $revision -CheckRollup @($verified.statusCheckRollup)
+        $step='pull develop'
+        if((Invoke-QuietPullRequestTool $WorkspaceRoot git @('branch','--show-current')) -cne 'develop' -or
+            (Invoke-QuietPullRequestTool $WorkspaceRoot git @('status','--porcelain=v1','--untracked-files=normal'))){
+            throw 'WorkspacePullRequestCheckoutChanged'
+        }
+        $null=Invoke-QuietPullRequestTool $WorkspaceRoot git @('pull','--ff-only','--no-rebase','--no-tags','origin','develop')
+        [pscustomobject]@{State='Success';PullRequest=$number;Url=$url;Revision=$revision;RunId=$runId;RunUrl=$runUrl;Develop=(Invoke-QuietPullRequestTool $WorkspaceRoot git @('rev-parse','--verify','HEAD'));Plan=$plan}
+    } catch {
+        $context=@(@($branch,$revision,$url,$runUrl) | Where-Object {$_}) -join ' '
+        throw [InvalidOperationException]::new("WorkspacePullRequestHumanActionRequired during $step ($context). $($_.Exception.Message)",$_.Exception)
+    } finally {
+        if($temporary){[IO.File]::Delete($temporary)}
+    }
+}
+
+Export-ModuleMember -Function Invoke-QuietMergePullRequest,Invoke-QuietCommitPullRequest,Invoke-QuietPublishPullRequest

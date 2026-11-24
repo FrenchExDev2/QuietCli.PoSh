@@ -261,18 +261,49 @@ Describe 'Measure-QuietScriptMutationScore' {
             $score=Measure-QuietScriptMutationScore -Results $case.Results -Break $case.Break
             $killed=@($case.Results|Where-Object Status -CEQ 'Killed').Count;$survived=@($case.Results|Where-Object Status -CEQ 'Survived').Count
             $timeout=@($case.Results|Where-Object Status -CEQ 'Timeout').Count;$compile=@($case.Results|Where-Object Status -CEQ 'CompileError').Count
-            $expected=if($killed+$survived+$timeout -eq 0){100.0}else{[Math]::Round(100.0*($killed+$timeout)/($killed+$survived+$timeout),2)}
+            $strict=$case.Break -eq 100
+            $valid=if($strict){$killed+$survived+$timeout+$compile}else{$killed+$survived+$timeout}
+            $detected=if($strict){$killed}else{$killed+$timeout}
+            $expected=if($valid){[Math]::Round(100.0*$detected/$valid,2)}elseif($strict){0.0}else{100.0}
+            $passed=if($strict){$valid -gt 0 -and $killed -eq $valid}else{$expected -ge $case.Break}
             $score.Killed -eq $killed -and $score.Survived -eq $survived -and $score.Timeout -eq $timeout -and $score.CompileError -eq $compile -and
-                $score.Valid -eq ($killed+$survived+$timeout) -and $score.Score -eq $expected -and $score.Score -ge 0 -and $score.Score -le 100 -and
-                $score.Passed -eq ($expected -ge $case.Break) -and $score.Break -eq $case.Break
+                $score.Valid -eq $valid -and $score.Score -eq $expected -and $score.Score -ge 0 -and $score.Score -le 100 -and
+                $score.Passed -eq $passed -and $score.Break -eq $case.Break
         }
     }
 
-    It 'scores 100 without valid mutants and 0 when everything survives' {
-        (Measure-QuietScriptMutationScore -Results @() -Break 100).Passed|Should -BeTrue
+    It 'preserves legacy thresholds and requires evidence at 100' {
+        (Measure-QuietScriptMutationScore -Results @() -Break 99).Passed|Should -BeTrue
+        $strict=Measure-QuietScriptMutationScore -Results @() -Break 100
+        $strict.Passed|Should -BeFalse
+        $strict.Score|Should -Be 0
         $all=Measure-QuietScriptMutationScore -Results @([pscustomobject]@{Status='Survived'},[pscustomobject]@{Status='CompileError'}) -Break 1
         $all.Score|Should -Be 0
         $all.Passed|Should -BeFalse
+    }
+
+    It 'requires a killed mutant and excludes reviewed equivalences' {
+        $results=@([pscustomobject]@{Status='Killed'},[pscustomobject]@{Status='Equivalent'})
+        $score=Measure-QuietScriptMutationScore -Results $results -Break 100
+        $score.Passed|Should -BeTrue
+        $score.Valid|Should -Be 1
+        (Measure-QuietScriptMutationScore -Results @($results[1]) -Break 100).Passed|Should -BeFalse
+    }
+
+    It 'rejects a single <Status> at Break 100' -ForEach @(
+        @{Status='Timeout'},@{Status='CompileError'},@{Status='Survived'}
+    ) {
+        $results=@([pscustomobject]@{Status='Killed'},[pscustomobject]@{Status=$Status})
+        $score=Measure-QuietScriptMutationScore -Results $results -Break 100
+        $score.Passed|Should -BeFalse
+        $score.Score|Should -Be 50
+    }
+
+    It 'rejects a survivor even when the displayed score rounds to 100' {
+        $results=@([pscustomobject]@{Status='Killed'})*20000+@([pscustomobject]@{Status='Survived'})
+        $score=Measure-QuietScriptMutationScore -Results $results -Break 100
+        $score.Score|Should -Be 100
+        $score.Passed|Should -BeFalse
     }
 
     It 'rounds to two decimals' {

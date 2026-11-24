@@ -1,14 +1,38 @@
 schema: 1
 companions:
   Core:
+    src: src/Core/src/FrenchExDev2.QuietCli.Core.PoSh
+    test: src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh
     requires: []
     image: base
+    mutation:
+      suite: RunProfilesMutation
   Git:
+    src: src/Git/src/FrenchExDev2.QuietCli.Git.PoSh
+    test: src/Git/test/FrenchExDev2.QuietCli.Git.Tests.PoSh
     requires: [Core]
     image: overlay
+    workstation: true
+    mutation:
+      environment:
+        QUIETCLI_GIT_PUSH_MUTATION: '1'
+        QUIETCLI_GIT_COMMAND_MUTATION: '1'
+        QUIETCLI_GIT_QUERY_MUTATION: '1'
+        QUIETCLI_GIT_ATTRIBUTION_MUTATION: '1'
+        QUIETCLI_GIT_PATH_QUERY_MUTATION: '1'
+        QUIETCLI_GIT_SCHEMA_MUTATION: '1'
+        QUIETCLI_GIT_INVOCATION_MUTATION: '1'
+        QUIETCLI_GIT_REVISION_MUTATION: '1'
+        QUIETCLI_GIT_STATUS_MUTATION: '1'
   Vagrant:
+    src: src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh
+    test: src/Vagrant/test/FrenchExDev2.QuietCli.Vagrant.Tests.PoSh
     requires: [Core]
     image: none
+    workstation: true
+    mutation:
+      environment:
+        QUIETCLI_VAGRANT_PARSER_MUTATION: '1'
 suites:
   Core:
     test_project: FrenchExDev2.QuietCli.Core.Tests.PoSh

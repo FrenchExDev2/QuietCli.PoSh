@@ -109,10 +109,11 @@ function Resolve-QuietScriptsTestPath {
     if(!(Test-QuietScriptsPathWithin -Path $full -Root $TestsRoot)){throw 'ScriptsTestPathInvalid: outside-root'}
     $isFile=[IO.File]::Exists($full);$isDirectory=[IO.Directory]::Exists($full)
     if(!$isFile -and !$isDirectory){throw 'ScriptsTestPathInvalid: missing'}
-    $cursor=[IO.Path]::TrimEndingDirectorySeparator($full);$root=[IO.Path]::TrimEndingDirectorySeparator($TestsRoot)
-    while($cursor.Length -gt $root.Length){
+    $cursor=$TestsRoot
+    $relative=[IO.Path]::GetRelativePath($TestsRoot,$full)
+    foreach($segment in ($relative.Split([IO.Path]::DirectorySeparatorChar) | Where-Object {$_ -cne '.'})){
+        $cursor=[IO.Path]::Combine($cursor,$segment)
         if([IO.File]::GetAttributes($cursor).HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'ScriptsTestPathInvalid: link'}
-        $cursor=[IO.Path]::GetDirectoryName($cursor)
     }
     if($isFile -and !$full.EndsWith('.Tests.ps1',[StringComparison]::OrdinalIgnoreCase)){throw 'ScriptsTestPathInvalid: not-a-test-file'}
     return $full

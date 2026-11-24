@@ -2,10 +2,10 @@
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkBranch.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceSolutions.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'CompanionWorkflows.psm1')) -DisableNameChecking -ErrorAction Stop
-Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkflowDocumentation.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'SourceIdentity.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceProjects.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'Resources.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'CiCompanions.psm1')) -DisableNameChecking -ErrorAction Stop
 
 function Resolve-NewCompanionBranch {
     <#
@@ -42,10 +42,10 @@ function Resolve-NewCompanionPath {
 function Assert-NewCompanionAvailable {
     <#
     .SYNOPSIS
-    Rejects group, package, generated workflow and documentation path collisions.
+    Rejects group and package path collisions.
     #>
-    param([string]$Root, [string]$Name, [string]$WorkflowPath, [string]$WorkflowDoc)
-    foreach ($relative in @("src/$Name", $WorkflowPath, $WorkflowDoc)) {
+    param([string]$Root, [string]$Name)
+    foreach ($relative in @("src/$Name")) {
         $path = Resolve-NewCompanionPath $Root $relative
         $parent = [IO.Path]::GetDirectoryName($path)
         if (Get-ChildItem -LiteralPath $parent -Force -ErrorAction Stop | Where-Object Name -IEQ ([IO.Path]::GetFileName($path))) {
@@ -261,7 +261,7 @@ function Add-QuietCompanionRegistration {
     $text = $Text.Replace("`r`n", "`n")
     $sections = [regex]::Matches($text, '(?m)^suites:[ \t]*(?:#[^\n]*)?$')
     if ($sections.Count -ne 1) { throw 'CompanionCatalogueSuitesSectionInvalid' }
-    $companion = "  $($Name):`n    requires: [Core]`n    image: none`n"
+    $companion = "  $($Name):`n    src: src/$Name/src/FrenchExDev2.QuietCli.$Name.PoSh`n    test: src/$Name/test/FrenchExDev2.QuietCli.$Name.Tests.PoSh`n    requires: [Core]`n    image: none`n"
     $suite = "  $($Name):`n    test_project: FrenchExDev2.QuietCli.$Name.Tests.PoSh`n    command: Invoke-Quiet$($Name)Tests`n    requires: [$Name]`n    core_evidence: false`n"
     $text.Insert($sections[0].Index, $companion).TrimEnd("`n") + "`n" + $suite
 }
@@ -271,9 +271,8 @@ function New-QuietCompanionStage {
     .SYNOPSIS
     Builds and validates the companion and its generated repository files in isolation.
     #>
-    param([string]$Root, [string]$Stage, [string]$ScriptRoot, [string]$Name, [string]$Executable, [string]$LicenseText,
-        [string]$WorkflowPath, [string]$WorkflowDoc, [switch]$WithCSharp)
-    $cataloguePath = 'build/companions.yml'
+    param([string]$Root, [string]$Stage, [string]$ScriptRoot, [string]$Name, [string]$Executable, [string]$LicenseText, [switch]$WithCSharp)
+    $cataloguePath = [IO.Path]::GetRelativePath($Root,(Get-QuietCiCompanionCataloguePath $Root)).Replace('\','/')
     $resource = 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'
     foreach ($file in Get-QuietSourceFiles ([IO.Path]::Combine($Root, 'src'))) {
         # The solution generator observes these sources, and the catalogue reads the Core resource lock.
@@ -284,14 +283,15 @@ function New-QuietCompanionStage {
     Copy-NewCompanionInput $Root $Stage $resource
     $stagedYaml = Ensure-QuietResource -WorkspaceRoot $Stage -RelativePath 'resources/yaml/YamlDotNet.dll' -WhatIf
     if ($stagedYaml.State -cne 'Ready') { throw 'CompanionYamlResourceChanged' }
-    foreach ($directory in @('.github/workflows', 'docs/ci/github')) {
-        foreach ($file in Get-ChildItem -LiteralPath (Resolve-NewCompanionPath $Root $directory) -File) {
-            Copy-NewCompanionInput $Root $Stage "$directory/$($file.Name)"
-        }
-    }
     New-QuietCompanionFiles $Root $Stage $Name  $Executable $LicenseText -WithCSharp:$WithCSharp
     $catalogue = [IO.File]::ReadAllText((Resolve-NewCompanionPath $Root $cataloguePath), [Text.UTF8Encoding]::new($false, $true))
     Write-NewCompanionText ([IO.Path]::Combine($Stage, $cataloguePath)) (Add-QuietCompanionRegistration $catalogue $Name)
+    if($cataloguePath -ceq 'build/companions.yaml'){
+        Import-Module ([IO.Path]::Combine($PSScriptRoot,'PullRequestChecklist.psm1')) -DisableNameChecking -ErrorAction Stop
+        $templatePath='.github/pull_request_template.md'
+        $template=[IO.File]::ReadAllText((Resolve-NewCompanionPath $Root $templatePath),[Text.Encoding]::UTF8)
+        Write-NewCompanionText ([IO.Path]::Combine($Stage,$templatePath)) (Expand-QuietPullRequestTemplate -Template $template -Configuration (Read-QuietCiCompanions $Stage))
+    }
 
     $null = Get-QuietWorkspaceSuiteSelection -WorkspaceRoot $Stage -Suite $Name
     $null = Get-QuietWorkspaceBuildProjects -WorkspaceRoot $Stage
@@ -299,39 +299,8 @@ function New-QuietCompanionStage {
     foreach ($definition in Get-QuietWorkspaceSolutions $Stage | Where-Object Path -CIn @('Quietly.slnx', "src/$Name/$Name.slnx")) {
         Write-NewCompanionText ([IO.Path]::Combine($Stage, $definition.Path)) $definition.Content
     }
-    $workflow = Get-QuietCompanionWorkflowDefinitions $Stage | Where-Object Path -CEQ $WorkflowPath
-    if (!$workflow) { throw "CompanionWorkflowMissing: $WorkflowPath" }
-    Write-NewCompanionText ([IO.Path]::Combine($Stage, $WorkflowPath)) $workflow.Content
-    $workflowContract = Get-QuietWorkflowDocumentation -WorkspaceRoot $Stage | Where-Object RelativePath -CEQ $WorkflowPath
-    $workflowName = [IO.Path]::GetFileName($WorkflowPath)
-    Write-NewCompanionText ([IO.Path]::Combine($Stage, $WorkflowDoc)) @"
-# $workflowName
-
-<!-- workflow-source-sha256: $($workflowContract.SourceSHA256) -->
-
-## Purpose
-
-Generated entry point for the $Name companion. It passes the companion solution and source and test paths to the shared CI engine.
-
-## Triggers
-
-Reusable workflow_call and explicit workflow_dispatch.
-
-## Scripts and effects
-
-Sync-CompanionWorkflows.ps1 renders this entry point from the companion catalogue. The shared workflow prepares the selected build and runs the requested mode.
-
-## Validation and limits
-
-The initial companion suite verifies local module loading. It requires no installation of the native executable. Review the delivered revision's hosted results for its actual coverage.
-
-$($workflowContract.Generated)
-
-See [companion layout and selective CI](../../README-companion-layout-and-ci.md).
-"@
-    $null = & ([IO.Path]::Combine($ScriptRoot, 'Sync-GitHubWorkflowsReadme.ps1')) -WorkspaceRoot $Stage -Apply -Confirm:$false
+    Assert-QuietCompanionProfile -WorkspaceRoot $Stage -Suite $Name -SolutionPath "src/$Name/$Name.slnx" -SourcePath "src/$Name/src" -TestPath "src/$Name/test"
     $null = & ([IO.Path]::Combine($ScriptRoot, 'Sync-Credits.ps1')) -WorkspaceRoot $Stage -CreditsPath ([IO.Path]::Combine($Stage, 'CREDITS.md')) -Apply -Confirm:$false
-    $null = & ([IO.Path]::Combine($ScriptRoot, 'Sync-DocsCredits.ps1')) -RootPath $Stage -DocsPath ([IO.Path]::Combine($Stage, 'docs')) -CreditsPath ([IO.Path]::Combine($Stage, 'CREDITS.md')) -Apply -Confirm:$false
 }
 
 function Install-NewCompanionFile {
@@ -431,11 +400,8 @@ function Get-QuietCompanionScaffoldPlan {
     if ($licenseText -notmatch '(?m)^##[ \t]+\S[^\r\n]*' -or $licenseText -notmatch 'https?://\S+' -or $licenseText -match '<!--\s*module-credits:') {
         throw 'CompanionLicenseCreditsInvalid'
     }
-    $slug = $Name.ToLowerInvariant()
-    $workflow = ".github/workflows/$slug-ci.yml"
-    $workflowDoc = "docs/ci/github/script-$slug-ci.md"
     $groupPath = "src/$Name"
-    Assert-NewCompanionAvailable $root $Name $workflow $workflowDoc
+    Assert-NewCompanionAvailable $root $Name
 
     $product = "FrenchExDev2.QuietCli.$Name.PoSh"
     $tests = "FrenchExDev2.QuietCli.$Name.Tests.PoSh"
@@ -452,15 +418,16 @@ function Get-QuietCompanionScaffoldPlan {
         "$testsPath/README.md"
         "$testsPath/LICENSE"
         "$groupPath/$Name.slnx"
-        $workflow
-        $workflowDoc
     )
     if ($WithCSharp) { $paths += @("$productPath/engine/QuietCli.$Name.Parser.csproj", "$productPath/engine/Parser.cs") }
-    $sharedPaths = @('build/companions.yml', 'Quietly.slnx', 'CREDITS.md', 'docs/ci/github/README.md')
+    $catalogue = Get-QuietCiCompanionCataloguePath $root
+    $cataloguePath = if($catalogue){[IO.Path]::GetRelativePath($root,$catalogue).Replace('\','/')}else{'build/companions.yaml'}
+    $sharedPaths = @($cataloguePath, 'Quietly.slnx', 'CREDITS.md')
+    if($cataloguePath -ceq 'build/companions.yaml'){$sharedPaths+='.github/pull_request_template.md'}
     $action = if ($branch) { "Create $branch from origin/develop and generate the companion" } else { 'Generate the companion on the active companion branch' }
     [pscustomobject]@{
         Root=$root; Branch=$branch; Executable=$Executable; LicenseText=$licenseText
-        GroupPath=$groupPath; WorkflowPath=$workflow; WorkflowDoc=$workflowDoc
+        GroupPath=$groupPath
         Action=$action; Paths=$paths + $sharedPaths; SharedPaths=$sharedPaths
     }
 }
@@ -514,13 +481,13 @@ function Invoke-QuietScriptNewQuietCompanion {
                 $status.Data.Branch
             }
         }
-        Assert-NewCompanionAvailable $root $Name $plan.WorkflowPath $plan.WorkflowDoc
+        Assert-NewCompanionAvailable $root $Name
         $original = @{}
         foreach ($relative in $plan.SharedPaths) {
             $original[$relative] = [IO.File]::ReadAllBytes((Resolve-NewCompanionPath $root $relative))
         }
         $stage = [IO.Directory]::CreateTempSubdirectory('quiet-companion-').FullName
-        New-QuietCompanionStage $root $stage $scriptRoot $Name $plan.Executable $plan.LicenseText $plan.WorkflowPath $plan.WorkflowDoc -WithCSharp:$WithCSharp
+        New-QuietCompanionStage $root $stage $scriptRoot $Name $plan.Executable $plan.LicenseText -WithCSharp:$WithCSharp
         Publish-NewQuietCompanion $root $stage $plan.GroupPath $plan.Paths $original
         [pscustomobject]@{Name=$Name; Branch=$branch; Executable=$plan.Executable; WithCSharp=[bool]$WithCSharp; Paths=$plan.Paths}
     } finally {

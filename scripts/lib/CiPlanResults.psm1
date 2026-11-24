@@ -13,7 +13,7 @@ function Assert-QuietCiPlanResults {
         if(!$Needs.Contains($name) -or $Needs[$name].result -cne 'success'){$issues.Add('CiPlanPrerequisiteRequired: '+$name)}
     }
     # The generated-layout campaign follows run_layout: a scripts-only change skips it, every other plan requires it.
-    $requirements=[ordered]@{'layout-tests'='run_layout';products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';distribution='run_distribution'}
+    $requirements=[ordered]@{'layout-tests'='run_layout';products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';'companion-checks'='run_companion_checks';distribution='run_distribution';readytorun='run_readytorun'}
     foreach($name in $requirements.Keys){
         $flag=if($Needs.Contains('plan') -and $Needs.plan.outputs){$Needs.plan.outputs[$requirements[$name]]}
         if($flag -cnotin @('true','false')){$issues.Add('CiPlanOutputMissing: '+$requirements[$name])}

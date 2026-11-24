@@ -1,4 +1,31 @@
 #requires -Version 7.6
+
+Describe 'Get-QuietCompanions' {
+    BeforeAll {
+        Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -DisableNameChecking -ErrorAction Stop
+        $null=Import-QuietTestLibrary -Name CiCompanions
+        $catalogue=@{Companions=[ordered]@{
+            Box2=[pscustomobject]@{Name='Box2';Mutation=@{environment=@{QUIETCLI_BOX_MUTATION='1'}};Workstation=$false}
+            Demo=[pscustomobject]@{Name='Demo';Mutation=$null;Workstation=$true}
+        }}
+    }
+    It 'validates against new declarations in catalogue order and canonicalises names' {
+        @(Get-QuietCompanions -Configuration $catalogue -Name demo,box2,Box2)|Should -BeExactly @('Box2','Demo')
+        @(Get-QuietCompanions -Configuration $catalogue -Name box2 -Capability Mutation)|Should -BeExactly @('Box2')
+        @(Get-QuietCompanions -Configuration $catalogue -Name demo -Capability Workstation)|Should -BeExactly @('Demo')
+    }
+    It 'refuses unknown names and missing capabilities' {
+        {Get-QuietCompanions -Configuration $catalogue -Name Ghost}|Should -Throw '*CiCompanionNotAvailable*'
+        {Get-QuietCompanions -Configuration $catalogue -Name Demo -Capability Mutation}|Should -Throw '*CiCompanionNotAvailable*'
+    }
+
+    It 'resolves the unqualified default from the checkout owning the library' {
+        Mock Read-QuietCiCompanions -ModuleName CiCompanions { @{Companions=[ordered]@{Core=@{Name='Core'}}} }
+        $expected=[IO.Path]::GetFullPath('..',(Get-QuietTestScriptsRoot))
+        Get-QuietCompanions|Should -BeExactly 'Core'
+        Should -Invoke Read-QuietCiCompanions -ModuleName CiCompanions -Exactly -Times 1 -ParameterFilter {$WorkspaceRoot -ceq $expected}
+    }
+}
 BeforeAll {
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -Force -DisableNameChecking -ErrorAction Stop
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','Generators.psm1')) -Force -DisableNameChecking -ErrorAction Stop
@@ -56,12 +83,74 @@ suites:
 }
 
 Describe 'Read-QuietCiCompanions' {
+    It 'fails with its own diagnostic when there is no catalogue' {
+        {Read-QuietCiCompanions -WorkspaceRoot ([IO.Path]::Combine($TestDrive,'absent'))}|Should -Throw '*CiCompanionCatalogueMissing*'
+    }
+
+    It 'round-trips both valid mutation declarations and workstation policy' {
+        $text=$valid.Replace('    image: base',"    image: base`n    mutation: {suite: RunProfilesMutation}").Replace('    image: overlay',"    image: overlay`n    mutation: {environment: {QUIETCLI_GIT_MUTATION: '1'}}`n    workstation: true`n    test: 'src\Git\test\Git.Tests'")
+        $result=& $read $text
+        $result.Companions['Core'].Mutation['suite']|Should -BeExactly 'RunProfilesMutation'
+        $result.Companions['Git'].Mutation['environment']['QUIETCLI_GIT_MUTATION']|Should -BeExactly '1'
+        $result.Companions.Git.Workstation|Should -BeTrue
+        $result.Companions.Core.Workstation|Should -BeFalse
+        $result.Companions.Git.TestPath|Should -BeExactly 'src/Git/test/Git.Tests'
+    }
+
+    It 'rejects malformed companion policy <Declaration>' -ForEach @(
+        @{Declaration='mutation: bad';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration='mutation: null';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration='mutation: {suite: RunProfilesMutation, environment: {}}';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration='mutation: {suite: WrongSuite}';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration='mutation: {environment: {}}';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration='mutation: {environment: wrong}';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration='mutation: {unknown: RunProfilesMutation}';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration="mutation: {environment: {INVALID: '1'}}";Message='CiCompanionEnvironmentInvalid'}
+        @{Declaration="mutation: {environment: {QUIETCLI_GIT_MUTATION: '0'}}";Message='CiCompanionEnvironmentInvalid'}
+        @{Declaration='workstation: yes-please';Message='CiCompanionWorkstationInvalid: Git'}
+        @{Declaration="test: 'src\Git\other\wrong'";Message='CiCompanionPathInvalid: Git/test'}
+    ) {
+        {& $read $valid.Replace('    image: overlay',"    image: overlay`n    $Declaration")}|Should -Throw "*$Message*"
+    }
+
+    It 'reads the build catalogue and resolves old checkout fixtures when it is absent' {
+        $root=[IO.Path]::Combine($TestDrive,'catalogue-path')
+        $null=New-Item -Path ([IO.Path]::Combine($root,'build')) -ItemType Directory -Force
+        [IO.File]::WriteAllText([IO.Path]::Combine($root,'.companions.yaml'),'obsolete root file',[Text.UTF8Encoding]::new($false))
+        Get-QuietCiCompanionCataloguePath -WorkspaceRoot $root | Should -BeNullOrEmpty
+        $legacy=[IO.Path]::Combine($root,'build','companions.yml')
+        [IO.File]::WriteAllText($legacy,'legacy',[Text.UTF8Encoding]::new($false))
+        Get-QuietCiCompanionCataloguePath -WorkspaceRoot $root | Should -BeExactly $legacy
+        $current=[IO.Path]::Combine($root,'build','companions.yaml')
+        [IO.File]::WriteAllText($current,'current',[Text.UTF8Encoding]::new($false))
+        Get-QuietCiCompanionCataloguePath -WorkspaceRoot $root | Should -BeExactly $current
+    }
+
     It 'reads the repository catalogue with Core as the unique base' {
         $configuration=Read-QuietCiCompanions -WorkspaceRoot $workspace
+        $configuration.Path | Should -BeExactly ([IO.Path]::Combine($workspace,'build','companions.yaml'))
+        @(Get-QuietCompanions -WorkspaceRoot $workspace) | Should -BeExactly @('Core','Git','Vagrant')
         $configuration.Base|Should -BeExactly 'Core'
         $configuration.SHA256|Should -Match '\A[A-F0-9]{64}\z'
         foreach($name in $configuration.Companions.Keys){$configuration.Companions[$name].Image|Should -BeIn @('base','overlay','none')}
         foreach($name in $configuration.Suites.Keys){[IO.File]::Exists($configuration.Suites[$name].TestsManifest)|Should -BeTrue}
+    }
+
+    It 'resolves Core when another companion source is absent from the checkout' {
+        $missing='src/Git/src/Absent.Git.PoSh'
+        [IO.Directory]::Exists([IO.Path]::Combine($workspace,$missing))|Should -BeFalse
+        $configuration=& $read ($valid.Replace('    image: overlay',"    image: overlay`n    src: $missing"))
+        $configuration.Companions['Git'].SourcePath|Should -BeExactly $missing
+        (Resolve-QuietCiCompanions $configuration -Suite Core).Dependencies|Should -BeExactly @('Core')
+    }
+
+    It 'rejects malformed paths even when the checkout can omit a companion' -ForEach @(
+        @{Path='src/Git/src/..'},
+        @{Path='src/Git/test/FrenchExDev2.QuietCli.Git.PoSh'},
+        @{Path='../Git/src/FrenchExDev2.QuietCli.Git.PoSh'}
+    ) {
+        {& $read ($valid.Replace('    image: overlay',"    image: overlay`n    src: $Path"))}|
+            Should -Throw -ExpectedMessage 'CiCompanionPathInvalid: Git/src'
     }
 
     It 'round-trips random acyclic catalogues and resolves them in dependency order' {
@@ -405,7 +494,7 @@ Describe 'Invoke-QuietCiSuiteImages' {
         }
         Mock -ModuleName CiCompanions Invoke-QuietCiSuiteImage {
             $chain=@($Selection.Images) -join '>'
-            $script:calls.Add([pscustomobject]@{Chain=$chain;Confirmed=!($PesterBoundParameters.ContainsKey('Confirm') -and !$PesterBoundParameters['Confirm']);Rid=$RuntimeIdentifier;Runtime=$ContainerRuntime;RegistryCache=[bool]$RegistryCache;PublishCache=[bool]$PublishCache;ResolveOnly=[bool]$ResolveOnly;ProbeOnly=[bool]$ProbeOnly})
+            $script:calls.Add([pscustomobject]@{Chain=$chain;Confirmed=!($PesterBoundParameters.ContainsKey('Confirm') -and !$PesterBoundParameters['Confirm']);Rid=$RuntimeIdentifier;Runtime=$ContainerRuntime;RegistryCache=[bool]$RegistryCache;PublishCache=[bool]$PublishCache;ResolveOnly=[bool]$ResolveOnly;ProbeOnly=[bool]$ProbeOnly;PreparedLayers=$PreparedLayers})
             [pscustomobject]@{CacheHit=[bool]$script:hits[$chain]}
         }
     }
@@ -468,6 +557,8 @@ Describe 'Invoke-QuietCiSuiteImages' {
             $call.Rid|Should -BeExactly 'linux-arm64'
             $call.Runtime|Should -BeExactly 'docker'
             $call.Confirmed|Should -BeFalse -Because 'the aggregate already passed ShouldProcess'
+            $call.PreparedLayers|Should -BeOfType ([hashtable])
+            [object]::ReferenceEquals($call.PreparedLayers,$script:calls[0].PreparedLayers)|Should -BeTrue
             foreach($name in 'RegistryCache','PublishCache','ResolveOnly','ProbeOnly'){$call.$name|Should -Be ([bool]$Switches[$name]) -Because $name}
         }
     }

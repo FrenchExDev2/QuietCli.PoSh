@@ -6,6 +6,8 @@ Source file: [`lib/ScriptMutationCache.psm1`](../../../scripts/lib/ScriptMutatio
 
 ## Purpose and usage
 
+Cache fingerprints and input globs normalize the host directory separator to `/`, preserving literal backslashes within Linux file names.
+
 Content-addressed outcome cache of [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). A mutant's outcome is reused only when nothing its target's tests can observe has changed. Import is inert. Only the `Write-` and `Remove-` exports write, and only under the cache directory.
 
 | Export | Contract |

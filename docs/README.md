@@ -61,6 +61,7 @@ The [agent documentation index](agents/README.md) identifies distributed instruc
 ## Development, CI and distribution
 
 - [GitHub workflows](../readmes/README-github-workflows.md) and the [generated Mermaid diagrams](README-github-workflows-diagrams.md).
+- [Pull requests and CI options](README-pull-request-ci.md) · create a PR with the standard checklist and optional footer.
 - [CI map and source-change landmarks](ci/README.md): workflow routing, dates/commits, script responsibilities and evidence boundaries.
 - [Companion layout and selective CI](README-companion-layout-and-ci.md): grouped sources, local solutions, generated workflow profiles and dependency smokes.
 - [Test classification and concurrency](README-test-classification-and-concurrency.md): explicit case metadata, fail-closed checks and process isolation.

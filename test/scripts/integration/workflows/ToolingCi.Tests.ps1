@@ -18,10 +18,14 @@ BeforeAll {
 Describe 'tooling-ci.yml selection' {
     It 'defaults every input to the full campaign, so callers without inputs keep it' {
         $inputs=$workflow['on']['workflow_call']['inputs']
-        (@($inputs.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'scope,script_mutation_targets,script_tests'
+        (@($inputs.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'mutation_parallel,scope,script_mutation_no_input_cache,script_mutation_targets,script_tests'
+        [string]$inputs['mutation_parallel']['type']|Should -BeExactly 'boolean'
+        [string]$inputs['mutation_parallel']['default']|Should -BeExactly 'true'
         [string]$inputs['scope']['default']|Should -BeExactly 'full'
         [string]$inputs['script_tests']['default']|Should -BeExactly 'all'
         [string]$inputs['script_mutation_targets']['default']|Should -BeExactly 'all'
+        [string]$inputs['script_mutation_no_input_cache']['type']|Should -BeExactly 'boolean'
+        [string]$inputs['script_mutation_no_input_cache']['default']|Should -BeExactly 'false'
     }
 
     It 'validates the selection once and exposes only booleans and JSON lists' {
@@ -97,6 +101,10 @@ Describe 'tooling-ci.yml script mutation' {
         $save=@(& $uses $job 'actions/cache/save@')
         $restore.Count|Should -Be 1
         $save.Count|Should -Be 1
+        $restore[0]['if']|Should -BeExactly '${{ !inputs.script_mutation_no_input_cache }}'
+        $campaign['env']['SCRIPT_MUTATION_NO_INPUT_CACHE']|Should -BeExactly '${{ inputs.script_mutation_no_input_cache }}'
+        $campaign['run']|Should -Match ([regex]::Escape('-NoInputCache:($env:SCRIPT_MUTATION_NO_INPUT_CACHE -ceq ''true'')'))
+        $save[0]['if']|Should -Not -Match 'script_mutation_no_input_cache'
         @(& $uses $job 'actions/cache@').Count|Should -Be 0 -Because 'the implicit post-job save of actions/cache skips failed jobs'
         $key='${{ runner.os }}-quietcli-script-mutation-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}'
         foreach($step in $restore[0],$save[0]){
@@ -131,5 +139,30 @@ Describe 'tooling-ci.yml results' {
         foreach($name in 'script-tests','script-mutation','script-mutation-complete'){$needs|Should -Contain $name}
         [string]$jobs['results']['if']|Should -BeExactly '${{ always() }}'
         (& $runs $jobs['results'])|Should -Match ([regex]::Escape('./scripts/Write-ToolingResults.ps1 -NeedsJson $env:TOOLING_NEEDS'))
+    }
+}
+
+Describe 'Campaign report artifacts' {
+    It 'renders the <Kind> report after the campaign and before upload, even on failure' -ForEach @(
+        @{JobName='script-mutation'; StepId='script_mutation'; Kind='ScriptMutation'; ArtifactPath='artifacts/script-mutation/*/report.html'}
+        @{JobName='run-profiles-mutation'; StepId='run_profiles_mutation'; Kind='RunProfilesMutation'; ArtifactPath='artifacts/run-profiles'}
+        @{JobName='component'; StepId='campaign'; Kind='Component'; ArtifactPath='artifacts/component'}
+    ) {
+        $job=if($Kind -ceq 'Component'){
+            $path=[IO.Path]::Combine($root,'.github','workflows','workspace-component-ci.yml')
+            $component=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build().Deserialize([IO.File]::ReadAllText($path,[Text.Encoding]::UTF8))
+            $component['jobs'][$JobName]
+        }else{$jobs[$JobName]}
+        $campaign=@($job['steps']|Where-Object {$_['id'] -ceq $StepId})[0]
+        $render=@($job['steps']|Where-Object {([string]$_['run']).Contains('./scripts/Export-CampaignReport.ps1')})[0]
+        $upload=@(& $uses $job 'actions/upload-artifact@')[0]
+        (& $indexOf $job $campaign)|Should -BeLessThan (& $indexOf $job $render)
+        (& $indexOf $job $render)|Should -BeLessThan (& $indexOf $job $upload)
+        [string]$render['if']|Should -Match '^always\(\)'
+        [string]$upload['if']|Should -Match '^always\(\)'
+        [string]$render['env']['CAMPAIGN_OUTCOME']|Should -BeExactly ('${{ steps.'+$StepId+'.outcome }}')
+        [string]$render['run']|Should -Match ([regex]::Escape('-Kind '+$Kind))
+        [string]$render['run']|Should -Match ([regex]::Escape('-SummaryPath $env:GITHUB_STEP_SUMMARY'))
+        ([string]$upload['with']['path']).Split("`n")|Should -Contain $ArtifactPath
     }
 }

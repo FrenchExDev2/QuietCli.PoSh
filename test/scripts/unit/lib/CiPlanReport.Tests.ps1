@@ -5,8 +5,9 @@ BeforeAll {
     $newPlan={
         [pscustomobject]@{
             FullSuites=@('Core','Git')
-            SmokeSuites=@('Vagrant')
+            SmokeSuites=@('Vagrant','Tooling')
             ToolingScope='scripts'
+            PullRequestOptions=@('mutation','performance')
             RunLayout=$false
             RunDistribution=$true
             ScriptTests=@('one','two')
@@ -39,8 +40,9 @@ Describe 'Write-QuietCiPlanReport' {
 Base: base; candidate: head.
 
 Full suites: Core, Git.
-Smoke suites: Vagrant.
+Smoke suites: Vagrant, Tooling.
 Tooling: scripts.
+Requested PR options: mutation, performance.
 Layout tests: False.
 Distribution: True.
 Script test files: 2.
@@ -54,6 +56,7 @@ Script mutation targets: TargetA, TargetB.
 Unselected scopes were not tested. Build/cache preparation is separate from qualification.
 '@
         (Get-Content -LiteralPath $target -Raw -Encoding utf8) | Should -BeExactly ($expected.Replace("`r`n","`n")+"`n")
+        [Convert]::ToHexString([IO.File]::ReadAllBytes($target)).StartsWith('2320') | Should -BeTrue
         @(Get-ChildItem -LiteralPath $directory -Force).Name | Should -BeExactly @('prévision.md')
         [IO.File]::Exists([IO.Path]::Combine($TestDrive,'plan.json')) | Should -BeFalse
     }
@@ -69,16 +72,33 @@ Unselected scopes were not tested. Build/cache preparation is separate from qual
         $json.Revision | Should -BeExactly 'head'
         $json.Plan.FullSuites.Count | Should -Be 0
         $markdown=Get-Content -LiteralPath ([IO.Path]::Combine($directory,'impact.md')) -Raw -Encoding utf8
-        $markdown | Should -Not -Match 'Tooling:|Script test files:'
+        $markdown | Should -Not -Match 'Tooling:|Script test files:|Requested PR options:'
         (Get-Content -LiteralPath $summary -Raw -Encoding utf8) | Should -BeExactly ("previous`n"+$markdown)
+    }
+
+    It 'lists no requested options and creates the summary without a byte order mark' {
+        $directory=[IO.Path]::Combine($TestDrive,'empty-options')
+        $summary=[IO.Path]::Combine($TestDrive,'new-summary.md')
+        $plan=[pscustomobject]@{FullSuites=@();SmokeSuites=@();Reasons=@();PullRequestOptions=@()}
+
+        Write-QuietCiPlanReport -Plan $plan -Directory $directory -SummaryPath $summary -Confirm:$false
+
+        $lines=[IO.File]::ReadAllLines($summary,[Text.Encoding]::UTF8)
+        @($lines | Where-Object {$_ -like 'Requested PR options:*'}) | Should -BeExactly @('Requested PR options: none.')
+        [Convert]::ToHexString([IO.File]::ReadAllBytes($summary)).StartsWith('2320') | Should -BeTrue
     }
 
     It 'preserves an existing report and does not create a destination directory in preview' {
         $target=New-QuietTestFile ([IO.Path]::Combine($TestDrive,'previous.md')) 'older plan'
         $missing=[IO.Path]::Combine($TestDrive,'missing','plan.md')
-        Write-QuietCiPlanReport -Plan (& $newPlan) -MarkdownPath $target -WhatIf
-        Write-QuietCiPlanReport -Plan (& $newPlan) -MarkdownPath $missing -WhatIf
+        $transcript=[IO.Path]::Combine($TestDrive,'plan-preview.txt')
+        $null=Start-Transcript -LiteralPath $transcript
+        try {
+            Write-QuietCiPlanReport -Plan (& $newPlan) -MarkdownPath $target -WhatIf
+            Write-QuietCiPlanReport -Plan (& $newPlan) -MarkdownPath $missing -WhatIf
+        } finally {$null=Stop-Transcript}
 
+        [IO.File]::ReadAllText($transcript,[Text.Encoding]::UTF8) | Should -Match 'Save CI impact explanation'
         (Get-Content -LiteralPath $target -Raw -Encoding utf8) | Should -BeExactly 'older plan'
         [IO.Directory]::Exists([IO.Path]::GetDirectoryName($missing)) | Should -BeFalse
     }

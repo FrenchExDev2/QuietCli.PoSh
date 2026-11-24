@@ -8,6 +8,8 @@ Full SHA of the comparison base. Defaults to git merge-base origin/develop HEAD 
 Destination file. Relative paths are resolved from the current location. Defaults to a new temporary file.
 .PARAMETER GetContent
 Returns the UTF-8 lines of the generated file.
+.PARAMETER PullRequestBody
+Raw Markdown from a pull request to include in the local plan.
 .PARAMETER Open
 Opens the generated file in VS Code Insiders, falling back to VS Code.
 .EXAMPLE
@@ -17,6 +19,7 @@ Opens the generated file in VS Code Insiders, falling back to VS Code.
 param(
     [Parameter(Position = 0)][ValidatePattern('\A[a-f0-9]{40}\z')][string]$Base,
     [Parameter(Position = 1)][Alias('Output')][ValidateNotNullOrWhiteSpace()][string]$OutputPath,
+    [AllowNull()][AllowEmptyString()][string]$PullRequestBody,
     [switch]$GetContent,
     [switch]$Open
 )
@@ -43,7 +46,9 @@ $staged = $null
 $keepScratch = $false
 try {
     $planner = [IO.Path]::Combine($PSScriptRoot, 'New-CiImpactPlan.ps1')
-    $null = & $planner -Base $Base -WorkingTree -OutputPath $scratch -Confirm:$false
+    $pullRequest = @{}
+    if ($PSBoundParameters.ContainsKey('PullRequestBody')) { $pullRequest.PullRequestBody = $PullRequestBody }
+    $null = & $planner -Base $Base -WorkingTree @pullRequest -OutputPath $scratch -Confirm:$false
     if ($destination) {
         $parent = [IO.Path]::GetDirectoryName($destination)
         [void][IO.Directory]::CreateDirectory($parent)

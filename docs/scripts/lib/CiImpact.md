@@ -4,13 +4,17 @@
 Source file: [`lib/CiImpact.psm1`](../../../scripts/lib/CiImpact.psm1)
 <!-- script-source:end -->
 
-Exports Get-QuietCiImpact, Get-QuietCiDispatchImpact and Test-QuietDevelopReceipt. Import is inert; no product module or native process starts.
+Exports `Get-QuietCiImpact`, `Get-QuietCiDispatchImpact`, `Test-QuietDevelopReceipt` and `Add-QuietCiPullRequestSelection`.
+
+`Add-QuietCiPullRequestSelection` adds checked options to the diff-based plan. Each selected performance option adds its own unprofiled companion test campaign, independently of the mutation and profiling choices. It resolves companion names through `Get-QuietCompanions` and uses one profiled mutation pass when both options select the same companion. Each `pull_request.body` reason uses the same resolved companion as the execution plan. The cache refresh checkbox sets `ScriptMutationNoInputCache` for selected script mutation targets.
 
 Get-QuietCiImpact reads the validated YAML suite catalogue. Companion changes select all suites whose transitive requirements include that product. Core changes select Core and smoke its dependents; shared or unknown changes select All plus tooling. Multiple affected suites share one matrix. Tooling.Tests belongs to its own campaign. Existing FrenchExDev application modules consume Core and separate executable companions; application membership does not qualify a CLI handler.
 
 Test-QuietDevelopReceipt requires explicit booleans, exact tree/run/attempt identities and successful required Windows, Linux, performance, tooling and mutation outcomes. Missing fields fail closed.
 
 The root and nested `.gitignore` files appear in `ChangedPaths` and have no effect on CI selection.
+
+C# changes match the owning project directory and its descendants using the graph's slash-separated repository paths on Windows and Linux. Directories that only share the same name prefix are excluded.
 
 ## Repository scripts select only their script tests
 

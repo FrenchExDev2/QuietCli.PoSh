@@ -1,4 +1,137 @@
 #requires -Version 7.6
+
+Describe 'Add-QuietCiPullRequestSelection companion campaigns' {
+    BeforeAll {
+        Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -DisableNameChecking -ErrorAction Stop
+        $null=Import-QuietTestLibrary -Name CiImpact
+    }
+    It 'uses the catalogue for a new companion and selects mutation and profiling independently' {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact {
+            @{Companions=[ordered]@{
+                Box2=[pscustomobject]@{Name='Box2';Mutation=@{environment=@{QUIETCLI_BOX_MUTATION='1'}}}
+                Demo=[pscustomobject]@{Name='Demo';Mutation=$null}
+            }}
+        }
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options @('run-profile-mutation-box2','profiling-demo','mutation-serial','script-mutation')
+        $plan.MutationParallel|Should -BeFalse
+        $plan.RunAllScriptMutations|Should -BeTrue
+        $plan.ScriptMutationNoInputCache|Should -BeFalse
+        $plan.CompanionChecks.suite|Should -BeExactly @('Box2','Demo')
+        $plan.CompanionChecks.campaign|Should -BeExactly @('mutation','profiling')
+        $plan.FullSuites.Count|Should -Be 0
+        $plan.RunTooling|Should -BeFalse
+        $plan.RunPreview|Should -BeFalse
+        $plan.RunReadyToRun|Should -BeFalse
+        $plan.PullRequestOptions|Should -BeExactly @('run-profile-mutation-box2','profiling-demo','mutation-serial','script-mutation')
+        $plan.Reasons.Companion|Should -BeExactly @('Box2','Demo','Mutations','Scripts')
+    }
+
+    It 'bypasses cache input without adding any mutation targets' {
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options @('script-mutation-no-input-cache')
+        $plan.ScriptMutationNoInputCache|Should -BeTrue
+        $plan.RunAllScriptMutations|Should -BeFalse
+        $plan.RunTooling|Should -BeFalse
+        $plan.MutationParallel|Should -BeTrue
+        $plan.Reasons.Companion|Should -BeExactly 'Scripts'
+        $plan.Reasons.Action|Should -BeExactly 'script-mutation-no-input-cache'
+    }
+
+    It 'schedules performance independently of profiling and mutation on the selected companion' {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact {
+            @{Companions=[ordered]@{Git=[pscustomobject]@{Name='Git';Mutation=@{environment=@{QUIETCLI_GIT_MUTATION='1'}}};Demo=[pscustomobject]@{Name='Demo'}}}
+        }
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options @('performance-git','profiling-git','run-profile-mutation-git','performance-demo')
+        $plan.CompanionChecks.suite|Should -BeExactly @('Git','Git','Demo')
+        $plan.CompanionChecks.campaign|Should -BeExactly @('performance','profiled-mutation','performance')
+        $plan.Reasons.Companion|Should -BeExactly @('Git','Git','Git','Demo')
+        $plan.FullSuites.Count|Should -Be 0
+    }
+
+    It 'rejects a mutation option on a companion without a mutation campaign' {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact {
+            @{Companions=[ordered]@{Demo=[pscustomobject]@{Name='Demo';Mutation=$null}}}
+        }
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@()}
+        {Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options @('run-profile-mutation-demo')} |
+            Should -Throw '*CiCompanionNotAvailable: demo (Mutation)*'
+    }
+
+    It 'profiles the actual mutation pass when both options select the same companion' {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact {
+            @{Companions=[ordered]@{Box2=[pscustomobject]@{Name='Box2';Mutation=@{environment=@{QUIETCLI_BOX_MUTATION='1'}}}}}
+        }
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options @('profiling-box2','run-profile-mutation-box2')
+        $plan.CompanionChecks.Count|Should -Be 1
+        $plan.CompanionChecks[0].suite|Should -BeExactly 'Box2'
+        $plan.CompanionChecks[0].campaign|Should -BeExactly 'profiled-mutation'
+        $plan.MutationParallel|Should -BeTrue
+    }
+
+    It 'covers Core mutation once when Tooling already runs it, but keeps profiled mutation and other companions' {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact {
+            @{Companions=[ordered]@{
+                Core=[pscustomobject]@{Name='Core';Mutation=@{suite='RunProfilesMutation'}}
+                Git=[pscustomobject]@{Name='Git';Mutation=@{environment=@{QUIETCLI_GIT_MUTATION='1'}}}
+            }}
+        }
+        $options=@('mutation','run-profile-mutation-core','run-profile-mutation-git','readytorun')
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@([pscustomobject]@{Input='original'})}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options $options
+        $plan.RunTooling|Should -BeTrue
+        $plan.RunReadyToRun|Should -BeTrue
+        $plan.CompanionChecks.suite|Should -BeExactly 'Git'
+        $plan.CompanionChecks.campaign|Should -BeExactly 'mutation'
+        $plan.Reasons[0].Input|Should -BeExactly 'original'
+        $optionsReasons=@($plan.Reasons|Select-Object -Skip 1)
+        $optionsReasons.Companion|Should -BeExactly @('Tooling','Core','Git','ReadyToRun')
+        $optionsReasons.Action|Should -BeExactly $options
+        foreach($reason in $optionsReasons){
+            $reason.Input|Should -BeExactly 'pull_request.body'
+            $reason.Reason|Should -BeExactly 'RequestedByPullRequestChecklist'
+        }
+        $profiled=[pscustomobject]@{RunTooling=$true;FullSuites=@();Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $profiled -WorkspaceRoot $TestDrive -Options @('run-profile-mutation-core','profiling-core')
+        $profiled.CompanionChecks.campaign|Should -BeExactly 'profiled-mutation'
+    }
+
+    It 'requires Preview qualification exactly once and recomputes the dependent smokes <Case>' -ForEach @(
+        @{Case='on its own';Existing=@();Options=@('preview');Full=@('Core');Smokes=@('Git','Demo');Suite='Core';Reads=1}
+        @{Case='alongside an existing suite';Existing=@('Git');Options=@('profiling-git','preview');Full=@('Core','Git');Smokes=@('Demo');Suite='Selected';Reads=1}
+        @{Case='with Core already qualified';Existing=@('Core');Options=@('preview');Full=@('Core');Smokes=@('Demo','Git');Suite='Core';Reads=0}
+    ) {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact {
+            @{Base='Core';Companions=[ordered]@{
+                Core=[pscustomobject]@{Name='Core';Image='base';requires=@();Mutation=@{suite='RunProfilesMutation'}}
+                Git=[pscustomobject]@{Name='Git';Image='overlay';requires=@('Core');Mutation=$null}
+                Demo=[pscustomobject]@{Name='Demo';Image='none';requires=@('Git');Mutation=$null}
+            };Suites=[ordered]@{
+                Core=@{Group='Core';Requires=@('Core')}
+                Git=@{Group='Git';Requires=@('Git')}
+                Demo=@{Group='Demo';Requires=@('Demo')}
+            }}
+        }
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=$Existing;SelectedSuites=$Existing;RunProducts=($Reads -eq 0);Suite=$(if($Reads -eq 0){'Core'}else{'None'});SmokeSuites=$(if($Reads -eq 0){$Smokes}else{@()});Reasons=@()}
+        Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options $Options
+        $plan.RunPreview|Should -BeTrue
+        $plan.RunProducts|Should -BeTrue
+        $plan.FullSuites|Should -BeExactly $Full
+        $plan.SelectedSuites|Should -BeExactly $Full
+        @($plan.SmokeSuites)|Should -BeExactly @($Smokes|Sort-Object)
+        $plan.Suite|Should -BeExactly $Suite
+        $plan.Reasons[-1].Companion|Should -BeExactly 'Core'
+        Should -Invoke Read-QuietCiCompanions -ModuleName CiImpact -Exactly -Times $Reads
+    }
+
+    It 'fails explicitly when Preview cannot select Core' {
+        Mock Read-QuietCiCompanions -ModuleName CiImpact { @{Companions=[ordered]@{Demo=@{Name='Demo'}}} }
+        $plan=[pscustomobject]@{RunTooling=$false;FullSuites=@();Reasons=@()}
+        {Add-QuietCiPullRequestSelection -Plan $plan -WorkspaceRoot $TestDrive -Options preview}|Should -Throw '*CiPreviewCoreUnavailable*'
+    }
+}
 BeforeAll {
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -Force -DisableNameChecking -ErrorAction Stop
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','Generators.psm1')) -Force -DisableNameChecking -ErrorAction Stop
@@ -51,6 +184,15 @@ Describe 'Get-QuietCiImpact' {
             $expectedSuite=if($order.Count -eq 1){$order[0]}elseif($order.Count){'Selected'}else{'None'}
             $result.Suite -ceq $expectedSuite
         }
+    }
+
+    It 'does not select a compiled project from a sibling directory sharing its prefix' {
+        $catalogue=New-QuietCiCatalogue ([Random]::new(3))
+        $owner=@($catalogue.Modules|Where-Object {$_.SolutionGroup -ceq 'Core' -and !$_.IsTest})[0]
+        $script:project=[pscustomobject]@{Module=$owner.Name;Path=($owner.Path+'/Native/Core.csproj');Group='Core';References=@();Packages=@();Imports=@();EvaluationFailure=$null}
+        Mock -ModuleName CiImpact Get-QuietCiProjectGraph { $script:project }
+        $plan=& $impact $catalogue @($owner.Path+'/NativeExtra/file.cs')
+        @($plan.BuildProjects).Count|Should -Be 0
     }
 
     It 'selects nothing for documentation-only changes' {
@@ -326,7 +468,7 @@ Describe 'Get-QuietCiImpact over the .NET project graph' {
             Native="$core/Net/Core.Native/Core.Native.csproj";Base="$core/Net/Core.Base/Core.Base.csproj";Nat="$core/Net/Core.Nat/Core.Nat.csproj"
             Over="$core/Net/Core.Over/Core.Over.csproj";Shadow="$core/Net/Core.Native/Shadow.csproj";Git="$git/Net/Git.Native/Git.Native.csproj";Tool="$tool/Net/Tool/Tool.csproj"
         }
-        # Order matters: Tool precedes Git.Native and Git.Native precedes Core.Native, so both closures need several passes.
+        # Consumers precede their dependencies so a single directional scan cannot find the full closure.
         $graph=@(
             (& $node $p.Tool 'FrenchExDev2.QuietCli.Tooling.Tests.PoSh' 'Tooling' @('Directory.Build.props') @() @($p.Git))
             (& $node $p.Git 'FrenchExDev2.QuietCli.Git.PoSh' 'Git' @('Directory.Packages.props') @((& $package 'Other.Pkg')) @($p.Native))
@@ -389,7 +531,7 @@ Describe 'Get-QuietCiImpact over the .NET project graph' {
     }
 
     It 'builds the owning project of <Leaf>, its reverse and forward closures, without selecting dependents' -ForEach @(
-        @{Leaf='Interop.cs'},@{Leaf='Core.Native.csproj'}
+        @{Leaf='Interop.cs'},@{Leaf='Nested/Interop.cs'},@{Leaf='Core.Native.csproj'}
     ) {
         $path="$core/Net/Core.Native/$Leaf"
         $result=& $run @($path)
@@ -404,6 +546,21 @@ Describe 'Get-QuietCiImpact over the .NET project graph' {
         @($result.BuildProjects)|Should -Be @(@($p.Native,$p.Base,$p.Git,$p.Tool)|Sort-Object)
         (@($result.FullSuites) -join ',')|Should -BeExactly 'Git'
         @($result.SmokeSuites).Count|Should -Be 0
+    }
+
+    It 'visits cyclic prerequisites once without selecting their unrelated consumers' {
+        $script:graph=@(
+            (& $node $p.Shadow 'FrenchExDev2.QuietCli.Git.PoSh' 'Git' -References @($p.Base))
+            (& $node $p.Git 'FrenchExDev2.QuietCli.Git.PoSh' 'Git' -References @($p.Native))
+            (& $node $p.Native 'FrenchExDev2.QuietCli.Core.PoSh' 'Core' -References @($p.Base))
+            (& $node $p.Base 'FrenchExDev2.QuietCli.Core.PoSh' 'Core' -References @($p.Nat))
+            (& $node $p.Nat 'FrenchExDev2.QuietCli.Core.PoSh' 'Core' -References @($p.Base))
+        )
+
+        $result=& $run @("$core/Net/Core.Native/Interop.cs")
+        @($result.BuildProjects)|Should -Be @(@($p.Native,$p.Base,$p.Nat,$p.Git)|Sort-Object)
+        @($result.FullSuites)|Should -Be @('Core')
+        @($result.SmokeSuites)|Should -Be @('Git')
     }
 
     It 'owns <Path> by module name only up to a separator' -ForEach @(

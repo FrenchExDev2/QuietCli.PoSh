@@ -6,6 +6,8 @@ Source file: [`lib/CompanionWorkflows.psm1`](../../../scripts/lib/CompanionWorkf
 
 ## Purpose and usage
 
+The companion checklist check compares LF-normalized text. Applying a stale checklist writes UTF-8 without a byte-order mark.
+
 Derives explicit companion profiles, renders workflow wrappers and validates caller paths.
 
 ```powershell
@@ -14,9 +16,9 @@ Get-QuietCompanionProfiles -WorkspaceRoot $checkout
 
 ## Dependencies and side effects
 
-Grouped workspaces require build/companions.yml. Isolated legacy flat manifest fixtures without that catalogue declare no workflow profiles.
+Grouped workspaces require build/companions.yaml. Isolated legacy flat manifest fixtures without that catalogue declare no workflow profiles.
 
-When the catalogue exists, the companion images are checked first with `Assert-QuietCiCompanionImages` (see [CiCompanions.psm1](CiCompanions.md)). A companion either has no CI image (`image: none`, without `ci/Get-CiImageArguments.ps1`) or is an `overlay` of its parent image, with that contract. The generated workflows warm only overlay images, so any other combination fails before a profile is rendered.
+Before generating workflows, the full-checkout gate verifies that declared source and test directories exist. It then checks companion images with `Assert-QuietCiCompanionImages`. A companion either has no CI image (`image: none`, without `ci/Get-CiImageArguments.ps1`) or is an `overlay` of its parent image, with that contract. The generated workflows warm only overlay images, so any other combination fails before a profile is rendered. [CiCompanions.psm1](CiCompanions.md)
 
 Product qualification remains in ci.yml; workspace-only components use workspace-component-ci.yml. Tooling keeps its existing full qualification workflow. Profile parameters are identical for individual callers and the automatic matrix. New product groups require catalogue registration.
 

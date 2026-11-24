@@ -1,6 +1,6 @@
 # workspace-component-ci.yml
 
-<!-- workflow-source-sha256: BD19E3AA73E4D943BE77511A61D6B195E37A431FFB420D3C7C8BA0A736A9D655 -->
+<!-- workflow-source-sha256: 21B2C4D972842B30D9E867FBE4E3210E0BF01501A5A9E8A9B140C26EC39A224C -->
 
 ## Purpose
 
@@ -11,6 +11,10 @@ Shared profile-validated workspace build/smoke engine. Supports individual compo
 Reusable workflow_call.
 
 ## Scripts and effects
+
+The optional campaign input runs the requested companion mutation, PowerShell profiling, or mutation with profiling in the same pass. Artifacts include the campaign name to distinguish reports from the same companion.
+
+A `performance` campaign times the companion test pass after the build and emits `component-performance.json`. Selected campaigns publish measurement tables in `report.md` and standalone `report.html` alongside the JSON evidence. When both mutation and profiling run, the report includes both measurements. The renderer keeps the campaign outcome visible in the job summary, including on failure. [Export-CampaignReport](../../scripts/Export-CampaignReport.md)
 
 Before build-cache restoration and execution, Initialize-CiEnvironment selects the checkout's GitHub Docker preset and Initialize-Workspace restores checksum-pinned runtime resources. A cold cache therefore has the same dependency prerequisites as a product job.
 
@@ -43,7 +47,7 @@ flowchart TD
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| component | <code>runner &#36;{{ inputs.runner }}</code> | validate | <code>inputs.suite != 'Tooling' &#124;&#124; inputs.qualification&#95;mode != 'full'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Get-CompanionBuildKey.ps1`](../../scripts/Get-CompanionBuildKey.md), [`./scripts/Invoke-ComponentCheck.ps1`](../../scripts/Invoke-ComponentCheck.md) |
+| component | <code>runner &#36;{{ inputs.runner }}</code> | validate | <code>inputs.suite != 'Tooling' &#124;&#124; inputs.qualification&#95;mode != 'full'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Get-CompanionBuildKey.ps1`](../../scripts/Get-CompanionBuildKey.md), [`./scripts/Invoke-ComponentCheck.ps1`](../../scripts/Invoke-ComponentCheck.md), [`./scripts/Export-CampaignReport.ps1`](../../scripts/Export-CampaignReport.md) |
 | tooling | reuses ./.github/workflows/tooling-ci.yml | validate | <code>inputs.suite == 'Tooling' &#38;&#38; inputs.qualification&#95;mode == 'full'</code> |  |
 | validate | runner ubuntu-latest |  | default success condition | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Invoke-ComponentCheck.ps1`](../../scripts/Invoke-ComponentCheck.md) |
 

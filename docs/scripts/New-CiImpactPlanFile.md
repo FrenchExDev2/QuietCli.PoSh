@@ -38,3 +38,5 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+Use `-PullRequestBody (Get-Content -LiteralPath ./description.md -Raw -Encoding utf8)` to include the PR checklist in the local plan.

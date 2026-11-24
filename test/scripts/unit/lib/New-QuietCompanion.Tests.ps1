@@ -38,6 +38,8 @@ Describe 'Add-QuietCompanionRegistration' {
                 '    requires: []'
                 '    image: base'
                 '  Packer:'
+                '    src: src/Packer/src/FrenchExDev2.QuietCli.Packer.PoSh'
+                '    test: src/Packer/test/FrenchExDev2.QuietCli.Packer.Tests.PoSh'
                 '    requires: [Core]'
                 '    image: none'
                 'suites: # keep'
@@ -97,6 +99,7 @@ Describe 'Get-QuietCompanionScaffoldPlan and Invoke-QuietScriptNewQuietCompanion
         $plan = Get-QuietCompanionScaffoldPlan -Name Packer -WorkspaceRoot $root -LicenseCreditsPath $credits -WithCSharp
         $plan.Branch | Should -BeExactly 'companion/packer'
         $plan.Paths | Should -Contain 'src/Packer/src/FrenchExDev2.QuietCli.Packer.PoSh/engine/QuietCli.Packer.Parser.csproj'
+        $plan.Paths | Should -Not -Contain '.github/workflows/packer-ci.yml'
         $null = Invoke-QuietScriptNewQuietCompanion -Name Packer -WorkspaceRoot $root -LicenseCreditsPath $credits -WhatIf
         @(Get-ChildItem -LiteralPath ([IO.Path]::Combine($root, 'src')) -Force).Count | Should -Be 0
     }

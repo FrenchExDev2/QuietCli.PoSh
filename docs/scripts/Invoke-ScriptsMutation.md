@@ -27,7 +27,8 @@ Stryker-style mutation testing of the `scripts/lib` libraries listed in `test/sc
 | `WorkspaceRoot`, `ScriptsRoot`, `TestsRoot`, `TargetsPath` | Roots and targets file. `ScriptsRoot` is copied, never modified. The pinned tools and the report root come from `WorkspaceRoot`. |
 | `Offline` | Requires the pinned tools to be cached already. |
 | `CacheDirectory` | Incremental cache root. Default: `<WorkspaceRoot>/.cache/script-mutation` (ignored by Git). |
-| `NoCache` | Neither reads nor writes the cache: every mutant runs. |
+| `NoCache` | Runs every mutant with all cache reads and writes disabled. |
+| `NoInputCache` | Runs every mutant and baseline afresh and saves fresh cache entries. Supports `-PruneCache`. Combining it with `-NoCache` is rejected. |
 | `PruneCache` | After a complete campaign, deletes every cache document this run did not key. Documents of targets left out by `Target` are deleted too, so prune a cache dedicated to the selected targets (one per CI shard). Rejected with `NoCache` (`ScriptMutationCacheOptionsConflict`). |
 
 Targets file:
@@ -35,7 +36,7 @@ Targets file:
 ```powershell
 @{ Targets = @(
     @{ Name = 'ScriptsTests'; Module = 'lib/ScriptsTests.psm1'; Functions = @('Get-QuietScriptsTestPlan', '...')
-       UnitTestFiles = @('unit/lib/ScriptsTests.Tests.ps1'); Break = 80 }
+       UnitTestFiles = @('unit/lib/ScriptsTests.Tests.ps1'); Break = 100 }
 ) }
 ```
 
@@ -79,10 +80,10 @@ flowchart LR
 Classification:
 - **Killed.** A failing test, a crash or a worker error.
 - **Survived.** A complete passing run, even one where every test was skipped.
-- **Timeout.** The per-mutant deadline, `max(60, 3 × baseline + 30)` seconds, was reached. A timeout counts as detected.
-- **CompileError.** The mutated source does not parse. The mutant is not run and does not count.
+- **Timeout.** The per-mutant deadline, `max(60, 3 × baseline + 30)` seconds, was reached. This outcome blocks `Break = 100`.
+- **CompileError.** The mutated source fails to parse. This outcome blocks `Break = 100`.
 
-The score is (killed + timeout) / (killed + timeout + survived). A target without valid mutants scores 100.
+At `Break = 100`, the score is killed divided by all non-equivalent mutants. The exact counts determine the verdict, with at least one executed mutant and every non-equivalent mutant killed. Below `Break = 100`, the legacy formula counts timeouts as detected, excludes compile errors and assigns 100 to a target without valid mutants.
 
 ## Dependencies and side effects
 
@@ -93,7 +94,7 @@ Side effects:
 - creates the run directory under the `scripts-mutation` report root, with `request.json`, `status.json`, `summary.json`, `report.json`, `report.md`, `mutants.json` and the worker logs (`logs/` keeps the stderr of a slot that crashed or was killed);
 - copies `scripts/` once per slot under `<run>/slots`, and deletes the copies at the end;
 - starts the hidden worker, the visible monitor unless `-Headless` is set, and `ThrottleLimit` hidden slot workers, restarted after a crash or timeout and recycled after `RecycleAfter` jobs;
-- unless `-NoCache` is set, reads and writes `<CacheDirectory>/<xx>/<key>.json`, and with `-PruneCache` deletes the documents this campaign did not key.
+- reads and writes `<CacheDirectory>/<xx>/<key>.json` by default. `-NoInputCache` bypasses reads and keeps writes. `-NoCache` disables both. `-PruneCache` deletes documents this campaign did not key.
 
 `-WhatIf` returns before any validation output, tool preparation, directory or process. Nothing is staged, committed or published.
 

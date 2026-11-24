@@ -372,6 +372,28 @@ function Get-QuietCiBuildCommand {
     return @('build')
 }
 
+function Resolve-QuietCiImageCacheDigest {
+    <#
+    .SYNOPSIS
+    Resolves a cache digest and treats HTTP timeouts as misses for read-only image preparation.
+    .PARAMETER Plan
+    Validated image plan.
+    .PARAMETER Token
+    Optional ephemeral registry credential.
+    .PARAMETER Actor
+    Workflow actor used for authentication.
+    .PARAMETER PublishCache
+    Requires lookup failures to stop a publishable cache build.
+    #>
+    param($Plan,[string]$Token,[string]$Actor,[switch]$PublishCache)
+    try{
+        Get-QuietCiRegistryDigest $Plan $Token $Actor
+    }catch [OperationCanceledException]{
+        if($PublishCache){throw}
+        Write-Warning "CI registry cache lookup timed out for $($Plan.Rid) ($($Plan.RegistryPath))."
+    }
+}
+
 function Receive-QuietCiRegistryImage {
     <#
     .SYNOPSIS
@@ -459,7 +481,7 @@ function Invoke-QuietCiImageBuild {
     $previousDockerConfig=$env:DOCKER_CONFIG
     $registry='ghcr.io/'+$Plan.RegistryPath;$tag=$registry+':'+$Plan.Fingerprint
     try{
-        if($RegistryCache){$digest=Get-QuietCiRegistryDigest $Plan $token $env:GITHUB_ACTOR}
+        if($RegistryCache){$digest=Resolve-QuietCiImageCacheDigest -Plan $Plan -Token $token -Actor $env:GITHUB_ACTOR -PublishCache:$PublishCache}
         if($CacheOnly -and !$digest){return}
         if($token -and ($digest -or $PublishCache)){
             $authDirectory=[IO.Path]::Combine(([IO.Path]::GetTempPath()),('quietcli2-registry-'+[guid]::NewGuid().ToString('N')))
@@ -565,4 +587,65 @@ function Invoke-QuietCiImageBuild {
     }
 }
 
-Export-ModuleMember -Function 'Get-QuietCiFingerprint','Get-QuietCiImagePlan','Get-QuietModuleContainerfile','Get-QuietCiModuleImagePlan','Get-QuietCiVerifiedImage','Get-QuietCiLocalImageArchitecture','Get-QuietCiRegistryDigest','Read-QuietCiRegistryDocument','ConvertTo-QuietCiRegistryDiagnostic','Get-QuietCiBuildCacheOptions','Get-QuietCiBuildCommand','Invoke-QuietCiImageBuild'
+function Export-QuietCiImageBundle {
+    <#
+    .SYNOPSIS
+    Saves images from one native producer together with their run, revision and archive hash.
+    .PARAMETER WorkspaceRoot
+    Checkout that produced the images.
+    .PARAMETER RuntimeIdentifier
+    Native target owning the archive.
+    .PARAMETER Directory
+    New output directory.
+    .PARAMETER Revision
+    Tested revision.
+    .PARAMETER RunId
+    GitHub Actions run identity.
+    .PARAMETER Receipts
+    Receipts returned by verified image preparation.
+    #>
+    param([string]$WorkspaceRoot,[string]$RuntimeIdentifier,[string]$Directory,[string]$Revision,[string]$RunId,[object[]]$Receipts)
+    $images=[ordered]@{}
+    foreach($receipt in $Receipts){
+        if($receipt.RuntimeIdentifier -cne $RuntimeIdentifier -or $receipt.Fingerprint -cnotmatch '\A[0-9a-f]{64}\z' -or $receipt.Image -cnotmatch '\Asha256:[0-9a-f]{64}\z' -or $images.Contains($receipt.Fingerprint)){throw 'CiImageBundleProducerReceiptInvalid'}
+        $images.Add($receipt.Fingerprint,$receipt.Image)
+    }
+    if(!$images.Count){throw 'CiImageBundleEmpty'}
+    [void][IO.Directory]::CreateDirectory($Directory)
+    $archive=[IO.Path]::Combine($Directory,'images.tar')
+    $references=@(foreach($fingerprint in $images.Keys){
+        $reference='quietcli-ci-transfer:'+$fingerprint
+        $null=Invoke-WorkspaceNative docker @('image','tag',$images[$fingerprint],$reference) $WorkspaceRoot -TimeoutSeconds 30
+        $reference
+    })
+    $null=Invoke-WorkspaceNative docker (@('image','save','--output',$archive)+$references) $WorkspaceRoot -TimeoutSeconds 600
+    Write-WorkspaceJson ([IO.Path]::Combine($Directory,'bundle.json')) @{
+        SchemaVersion=2;Revision=$Revision;RunId=$RunId;RuntimeIdentifier=$RuntimeIdentifier
+        ArchiveSha256=(Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash;Fingerprints=@($images.Keys)
+    }
+}
+
+function Import-QuietCiImageBundle {
+    <#
+    .SYNOPSIS
+    Requires the producer's exact archive and revalidates the selected image on this daemon.
+    .PARAMETER Directory
+    Downloaded bundle directory for this run and native target.
+    .PARAMETER Plan
+    Independently calculated image plan for the consuming suite.
+    .PARAMETER Revision
+    Tested revision.
+    .PARAMETER RunId
+    GitHub Actions run identity.
+    #>
+    param([string]$Directory,$Plan,[string]$Revision,[string]$RunId)
+    $receipt=Get-Content -LiteralPath ([IO.Path]::Combine($Directory,'bundle.json')) -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
+    if($receipt.SchemaVersion -ne 2 -or $receipt.Revision -cne $Revision -or $receipt.RunId -cne $RunId -or $receipt.RuntimeIdentifier -cne $Plan.Rid){throw 'CiImageBundleRunIdentityMismatch'}
+    if($Plan.Fingerprint -cnotin $receipt.Fingerprints){throw 'CiImageBundleExpectedImageMissing'}
+    $archive=[IO.Path]::Combine($Directory,'images.tar')
+    if((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -cne $receipt.ArchiveSha256){throw 'CiImageBundleArchiveMismatch'}
+    $null=Invoke-WorkspaceNative docker @('image','load','--input',$archive) $Directory -TimeoutSeconds 600
+    (Get-QuietCiVerifiedImage -Plan $Plan -Reference ('quietcli-ci-transfer:'+$Plan.Fingerprint) -ContainerRuntime docker).Id
+}
+
+Export-ModuleMember -Function 'Get-QuietCiFingerprint','Get-QuietCiImagePlan','Get-QuietModuleContainerfile','Get-QuietCiModuleImagePlan','Get-QuietCiVerifiedImage','Get-QuietCiLocalImageArchitecture','Get-QuietCiRegistryDigest','Read-QuietCiRegistryDocument','ConvertTo-QuietCiRegistryDiagnostic','Get-QuietCiBuildCacheOptions','Get-QuietCiBuildCommand','Invoke-QuietCiImageBuild','Export-QuietCiImageBundle','Import-QuietCiImageBundle'

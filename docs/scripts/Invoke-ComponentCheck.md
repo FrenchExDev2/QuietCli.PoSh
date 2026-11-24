@@ -1,5 +1,9 @@
 # Invoke-ComponentCheck.ps1
 
+The optional `-Campaign mutation`, `profiling` and `profiled-mutation` modes run one declared companion. Mutation reads the focused suite or mutation environment from `build/companions.yaml`. Profiling runs the PowerShell test suite with PSProfiler and saves its report under `profiling/`. `profiled-mutation` enables both in the same test pass. `-Parallel:$false` selects one test worker.
+
+With an explicit `-RunDirectory`, Git and Vagrant also save their mutation catalogue summaries under `mutation-evidence/`. GitHub Actions adds Markdown and HTML measurement tables to the campaign artifact after the test step. [Export-CampaignReport](Export-CampaignReport.md)
+
 <!-- script-source:begin -->
 Source file: [`Invoke-ComponentCheck.ps1`](../../scripts/Invoke-ComponentCheck.ps1)
 <!-- script-source:end -->
@@ -31,6 +35,8 @@ Explicit source-bound automation with a checked scope. Read the selected run's s
 
 This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
+
+The `-Campaign performance` option times one unprofiled test run for a declared companion after the build. It writes `component-performance.json` to the run directory on success. The measurement includes test harness overhead and process startup. It does not apply a performance threshold.
 
 <!-- script-contract:begin -->
 ## Execution contract

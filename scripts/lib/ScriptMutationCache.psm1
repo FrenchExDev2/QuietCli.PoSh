@@ -24,7 +24,7 @@ function Get-QuietScriptMutationFilesDigest {
     #>
     param([Parameter(Mandatory)][string]$Root,[Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Paths)
     $lines=[Collections.Generic.SortedSet[string]]::new([StringComparer]::Ordinal)
-    foreach($path in $Paths){[void]$lines.Add([IO.Path]::GetRelativePath($Root,$path).Replace('\','/')+[char]0x1F+(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash)}
+    foreach($path in $Paths){[void]$lines.Add([IO.Path]::GetRelativePath($Root,$path).Replace([IO.Path]::DirectorySeparatorChar,[char]'/')+[char]0x1F+(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash)}
     Get-QuietScriptMutationSha256 (@($lines) -join "`n")
 }
 
@@ -38,8 +38,9 @@ function Get-QuietScriptMutationTreeFiles {
     param([Parameter(Mandatory)][string]$Directory)
     if(![IO.Directory]::Exists($Directory)){return}
     $pending=[Collections.Generic.Stack[string]]::new();$pending.Push($Directory)
-    while($pending.Count){
-        foreach($entry in [IO.DirectoryInfo]::new($pending.Pop()).EnumerateFileSystemInfos()){
+    [string]$current=$null
+    while($pending.TryPop([ref]$current)){
+        foreach($entry in [IO.DirectoryInfo]::new($current).EnumerateFileSystemInfos()){
             if($entry.Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){continue}
             if($entry -is [IO.DirectoryInfo]){$pending.Push($entry.FullName)}else{$entry.FullName}
         }
@@ -70,7 +71,7 @@ function Get-QuietScriptMutationTestFingerprint {
         $files.Add($path)
     }
     foreach($path in Get-QuietScriptMutationTreeFiles $TestsRoot){
-        $relative=[IO.Path]::GetRelativePath($TestsRoot,$path).Replace('\','/')
+        $relative=[IO.Path]::GetRelativePath($TestsRoot,$path).Replace([IO.Path]::DirectorySeparatorChar,[char]'/')
         if($relative -cmatch '^(unit|integration)/' -or $relative -cin $bookkeeping){continue}
         $files.Add($path)
     }
@@ -137,8 +138,11 @@ function Get-QuietScriptMutationSourceFiles {
         if(![IO.File]::Exists($path)){throw "ScriptMutationCacheTestMissing: $relative"}
         $path
     })+@(Get-QuietScriptMutationTreeFiles ([IO.Path]::Combine($TestsRoot,'support')))
-    foreach($root in $roots){foreach($path in & $referenced $root){if($included.Add($path)){$pending.Enqueue($path)}}}
-    while($pending.Count){foreach($path in & $referenced $pending.Dequeue()){if($included.Add($path)){$pending.Enqueue($path)}}}
+    foreach($root in $roots){foreach($path in (& $referenced $root | Where-Object {$included.Add($_)})){$pending.Enqueue($path)}}
+    [string]$current=$null
+    while($pending.TryDequeue([ref]$current)){
+        foreach($path in (& $referenced $current | Where-Object {$included.Add($_)})){$pending.Enqueue($path)}
+    }
     $files=[string[]]@($included);[Array]::Sort($files,[StringComparer]::Ordinal)
     $files
 }
@@ -191,7 +195,7 @@ function Get-QuietScriptMutationInputFiles {
         [void]$builder.Append('$')
         $regex=[regex]::new($builder.ToString())
         $candidates=if($fixed.Count -eq $segments.Count){if([IO.File]::Exists($base)){$base}}else{Get-QuietScriptMutationTreeFiles $base}
-        foreach($path in $candidates){if($regex.IsMatch([IO.Path]::GetRelativePath($WorkspaceRoot,$path).Replace('\','/'))){$files.Add($path)}}
+        foreach($path in $candidates){if($regex.IsMatch([IO.Path]::GetRelativePath($WorkspaceRoot,$path).Replace([IO.Path]::DirectorySeparatorChar,[char]'/'))){$files.Add($path)}}
     }
     $files.ToArray()
 }

@@ -63,9 +63,9 @@ BeforeAll {
         $null=& $git @('commit','-q','-m',('touch '+$Path))
         & $git @('rev-parse','HEAD')
     }
-    $plan={param([string]$Revision,[string[]]$Extra=@())
+    $plan={param([string]$Revision,[string[]]$Extra=@(),[string]$Trigger='push')
         $outputPath=[IO.Path]::Combine($TestDrive,'output-'+[guid]::NewGuid().ToString('N')+'.txt')
-        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList (@('-WorkspaceRoot',$workspace,'-Base',$baseRevision,'-Revision',$Revision,'-Event','push','-OutputPath',$outputPath)+$Extra) -Environment @{GITHUB_STEP_SUMMARY=''} -TimeoutSeconds 300
+        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList (@('-WorkspaceRoot',$workspace,'-Base',$baseRevision,'-Revision',$Revision,'-Event',$Trigger,'-OutputPath',$outputPath)+$Extra) -Environment @{GITHUB_STEP_SUMMARY=''} -TimeoutSeconds 300
         $values=[ordered]@{}
         if([IO.File]::Exists($outputPath)){
             foreach($line in [IO.File]::ReadAllLines($outputPath)){$index=$line.IndexOf('=');$values[$line.Substring(0,$index)]=$line.Substring($index+1)}
@@ -103,6 +103,24 @@ AfterAll {
 }
 
 Describe 'New-CiImpactPlan.ps1' {
+    It 'keeps layout enabled when ReadyToRun is checked on a scripts-only pull request' {
+        $revision=& $commit 'test/scripts/unit/lib/ImpactFixture.Tests.ps1'
+        $root=Get-QuietTestWorkspaceRoot
+        $description=[IO.File]::ReadAllText([IO.Path]::Combine($root,'.github/pull_request_template.md'),[Text.Encoding]::UTF8)
+        $description=$description -creplace '(?m)^- \[ \](.*ci:readytorun -->)$','- [x]$1'
+        $output=[IO.Path]::Combine($TestDrive,'checklist-plan.txt')
+        $run=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @(
+            '-WorkspaceRoot',$workspace,'-Base',$baseRevision,'-Revision',$revision,'-PullRequestBody',$description,'-OutputPath',$output
+        ) -Environment @{GITHUB_STEP_SUMMARY=''}
+        $run.ExitCode | Should -Be 0 -Because ($run.Output+$run.Error)
+        $values=[IO.File]::ReadAllLines($output,[Text.Encoding]::UTF8)
+        $values | Should -Contain 'tooling_scope=scripts'
+        $values | Should -Contain 'run_products=false'
+        $values | Should -Contain 'run_layout=true'
+        $values | Should -Contain 'run_readytorun=true'
+        $values | Should -Contain 'pr_ci_options=["readytorun"]'
+    }
+
     It 'writes a standalone Markdown plan to a path relative to the checkout and honors preview' {
         $revision=& $commit 'docs/README-standalone-plan-fixture.md'
         $relative='.artifacts/standalone-plan.md'
@@ -364,8 +382,8 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
         $null=& $git @('checkout','-q','--detach',$baseRevision)
         $absolute=[IO.Path]::Combine($workspace,$path)
         $catalogueText=[IO.File]::ReadAllText($absolute,[Text.Encoding]::UTF8)
-        $pattern=[regex]::new("(?s)(Name = 'SqliteDocumentation'.*?Break = )80")
-        $edited=$pattern.Replace($catalogueText,'${1}81',1)
+        $pattern=[regex]::new("(?s)(Name = 'SqliteDocumentation'.*?Break = )100")
+        $edited=$pattern.Replace($catalogueText,'${1}99',1)
         $edited | Should -Not -BeExactly $catalogueText
         [IO.File]::WriteAllText($absolute,$edited,[Text.UTF8Encoding]::new($false))
         $null=& $git @('add','--',$path)
@@ -406,9 +424,39 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
         @(& $smokes $observed.Values).Count|Should -Be 0 -Because 'a fully selected suite is never smoked'
     }
 
+    It 'passes the cache checkbox without expanding the selected script mutation targets' {
+        $body=@'
+<!-- quietcli-ci:begin -->
+- [ ] Script mutation <!-- ci:script-mutation -->
+- [x] Refresh mutation cache <!-- ci:script-mutation-no-input-cache -->
+- [ ] Sequential <!-- ci:mutation-serial -->
+- [ ] ReadyToRun <!-- ci:readytorun -->
+- [ ] Preview <!-- ci:preview -->
+<!-- quietcli-ci:end -->
+'@
+        $observed=& $plan (& $commit 'scripts/lib/SqliteDocumentation.psm1') @('-PullRequestBody',$body) 'pull_request'
+        $observed.Run.ExitCode|Should -Be 0 -Because ($observed.Run.Output+$observed.Run.Error)
+        $observed.Values['script_mutation_no_input_cache']|Should -BeExactly 'true'
+        $observed.Values['script_mutation_targets']|Should -BeExactly '["SqliteDocumentation"]'
+    }
+
+    It 'plans only the selected companion effects from the Git and Vagrant table cells' {
+        $template=Get-Content -LiteralPath ([IO.Path]::Combine($repository,'.github','pull_request_template.md')) -Raw -Encoding utf8
+        $body=$template.Replace('`[ ]` <!-- ci:performance-git -->','`[x]` <!-- ci:performance-git -->').Replace('`[ ]` <!-- ci:profiling-vagrant -->','`[x]` <!-- ci:profiling-vagrant -->')
+        $observed=& $plan (& $commit 'docs/README-ci-table.md') @('-PullRequestBody',$body) 'pull_request'
+        $observed.Run.ExitCode|Should -Be 0 -Because ($observed.Run.Output+$observed.Run.Error)
+        $checks=($observed.Values['companion_checks']|ConvertFrom-Json).include
+        $checks.suite|Should -BeExactly @('Git','Vagrant')
+        $checks.campaign|Should -BeExactly @('performance','profiling')
+        $observed.Values['run_companion_checks']|Should -BeExactly 'true'
+        $observed.Values['run_products']|Should -BeExactly 'false'
+        $observed.Values['script_mutation_targets']|Should -BeExactly '[]'
+    }
+
     It 'writes every output key once, in a stable order' {
         $observed=& $plan (& $commit 'docs/README-impact-keys.md')
-        @($observed.Values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,run_distribution,run_layout,run_smokes,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
+        $observed.Values['script_mutation_no_input_cache']|Should -BeExactly 'false'
+        @($observed.Values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,companion_checks,image_suites,matrix,mutation_parallel,pr_ci_options,run_companion_checks,run_distribution,run_layout,run_readytorun,run_smokes,script_mutation_no_input_cache,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
     }
 
     It 'qualifies <Expected> in full on a manual dispatch of <Suite>, without reading a diff' -ForEach @(
@@ -432,7 +480,7 @@ ConvertTo-Json -InputObject $plan -Depth 10 -Compress
         $values['script_mutation_targets']|Should -BeExactly $(if($Tooling -ceq 'full'){'all'}else{'[]'})
         $values['run_layout']|Should -BeExactly 'true'
         $values['run_distribution']|Should -BeExactly 'false'
-        @($values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,image_suites,matrix,run_distribution,run_layout,run_smokes,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
+        @($values.Keys) -join ','|Should -BeExactly 'suite,run_products,run_tooling,companion_checks,image_suites,matrix,mutation_parallel,pr_ci_options,run_companion_checks,run_distribution,run_layout,run_readytorun,run_smokes,script_mutation_no_input_cache,script_mutation_targets,script_tests,smoke_suites,tooling_scope'
         $report=[IO.File]::ReadAllText([IO.Path]::Combine($workspace,'artifacts','ci-plan','impact.md'))
         $report|Should -Match 'Base: manual-dispatch;'
         $report|Should -Match '\| workflow_dispatch \|.*\| full \| ManualDispatch \|'

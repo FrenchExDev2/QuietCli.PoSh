@@ -13,6 +13,8 @@ BeforeAll {
     $engine=& $load 'ci.yml'
     $warm=$companions['jobs']['images']
     $producer=$engine['jobs']['linux-images']
+    $ready=& $load 'quietcli2-readytorun.yml'
+    $imageJob=(& $load 'linux-images.yml')['jobs']['prepare']
     $runs={param($Job)[string[]]@($Job['steps']|ForEach-Object {[string]$_['run']})}
     $stepIndex={param($Job,[scriptblock]$Match)
         $steps=@($Job['steps'])
@@ -44,77 +46,82 @@ Describe 'Core performance evidence on PR and develop' {
     }
 }
 
-Describe 'companions-ci.yml image warm-up' {
-    It 'runs once per RID after planning, only for develop pushes or dispatches that qualify products' {
-        $warm|Should -Not -BeNullOrEmpty
-        (@($warm['needs'])|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'plan,source-checks' -Because 'the warm-up must not wait for the layout tests, nor depend on qualification'
-        $guard=[string]$warm['if']
-        foreach($clause in @("needs.plan.outputs.run_products == 'true'","github.repository == 'FrenchExDev2/QuietCli.PoSh'","github.ref == 'refs/heads/develop'","github.event_name == 'push'","github.event_name == 'workflow_dispatch'")){
-            $guard.Contains($clause)|Should -BeTrue -Because $clause
-        }
-        $guard|Should -Not -Match 'pull_request' -Because 'pull requests never publish images'
-        [string]$warm['permissions']['packages']|Should -BeExactly 'write'
-    }
-
-    It 'serializes every run of the repository per RID without cancelling a publication' {
-        [string]$warm['concurrency']['group']|Should -BeExactly 'quietcli2-ci-images-${{ matrix.rid }}'
-        [string]$warm['concurrency']['cancel-in-progress']|Should -BeExactly 'false'
-        [string]$warm['concurrency']['group']|Should -Not -Match 'inputs\.suite|matrix\.suite' -Because 'one group per RID, shared by every suite of the run'
-    }
-
-    It 'probes, restores, prepares the planned image suites base first, then saves the layers' {
-        $probe=& $stepIndex $warm {param($step)([string]$step['run']).Contains('-ProbeOnly')}
-        $restore=& $stepIndex $warm {param($step)[string]$step['uses'] -ceq './.github/actions/cache-ci-layers' -and [string]$step['with']['mode'] -ceq 'restore'}
-        $prepare=& $stepIndex $warm {param($step)([string]$step['run']).Contains('-ResolveOnly')}
-        $save=& $stepIndex $warm {param($step)[string]$step['uses'] -ceq './.github/actions/cache-ci-layers' -and [string]$step['with']['mode'] -ceq 'save'}
-        foreach($index in $probe,$restore,$prepare,$save){$index|Should -BeGreaterOrEqual 0}
-        ($probe -lt $restore -and $restore -lt $prepare -and $prepare -lt $save)|Should -BeTrue
-        $steps=@($warm['steps'])
-        foreach($index in $probe,$prepare){
-            [string]$steps[$index]['env']['IMAGE_SUITES']|Should -BeExactly '${{ needs.plan.outputs.image_suites }}'
-            ([string]$steps[$index]['run']).Contains('New-CiSuiteImage.ps1 -Suite ([string[]](ConvertFrom-Json $env:IMAGE_SUITES))')|Should -BeTrue
-            [string]$steps[$index]['env']['QUIETCLI_REGISTRY_TOKEN']|Should -BeExactly '${{ github.token }}'
-        }
-        foreach($switch in '-RegistryCache','-PublishCache','-ResolveOnly','-ContainerRuntime docker'){([string]$steps[$prepare]['run']).Contains($switch)|Should -BeTrue -Because $switch}
-        ([string]$steps[$probe]['run']).Contains('-PublishCache')|Should -BeFalse -Because 'a probe never publishes'
-        foreach($index in $restore,$save){
-            [string]$steps[$index]['if']|Should -BeExactly "steps.image_probe.outputs.cache_hit != 'true'"
-            [string]$steps[$index]['with']['fingerprint']|Should -BeExactly '${{ steps.image_probe.outputs.fingerprint }}'
+Describe 'Shared Linux image production' {
+    It 'selects the same native targets for production and qualification' {
+        $rows=@($imageJob['strategy']['matrix']['include']|ForEach-Object {$_['rid']+'@'+$_['runner']}|Sort-Object)
+        $rows -join ','|Should -BeExactly 'linux-arm64@ubuntu-24.04-arm,linux-musl-arm64@ubuntu-24.04-arm,linux-musl-x64@ubuntu-latest,linux-x64@ubuntu-latest'
+        $definition=(& $runs $engine['jobs']['linux-matrix']) -join "`n"
+        foreach($row in $rows){
+            ($rid,$runner)=$row.Split('@')
+            $definition|Should -Match ([regex]::Escape("rid='$rid';runner='$runner'"))
         }
     }
 
-    It 'reuses the same actions, in the same order, as the per-suite producer of ci.yml' {
-        $uses={param($Job)(@($Job['steps']|ForEach-Object {[string]$_['uses']}|Where-Object {$_}|ForEach-Object {($_ -split '@')[0]})) -join '|'}
-        & $uses $warm|Should -BeExactly (& $uses $producer)
-    }
-
-    It 'exposes the planned image suites from the plan step' {
+    It 'runs shared preparation for selected PR tests as well as develop' {
+        @($warm['needs']) -join ','|Should -BeExactly 'plan,source-checks'
+        [string]$warm['if']|Should -BeExactly "needs.plan.outputs.run_products == 'true' || needs.plan.outputs.run_readytorun == 'true'"
+        [string]$warm['with']['suites_json']|Should -BeExactly '${{ needs.plan.outputs.image_suites }}'
+        [string]$warm['with']['publish_cache']|Should -Match 'refs/heads/develop'
+        [string]$warm['with']['publish_cache']|Should -Not -Match 'pull_request'
+        [string]$warm['with']['artifact_scope']|Should -BeExactly 'workspace'
         [string]$companions['jobs']['plan']['outputs']['image_suites']|Should -BeExactly '${{ steps.plan.outputs.image_suites }}'
     }
 
-    It 'warms the same RID and runner rows that ci.yml qualifies' {
-        $warmRows=[string[]]@($warm['strategy']['matrix']['include']|ForEach-Object {[string]$_['rid']+'@'+[string]$_['runner']}|Sort-Object -CaseSensitive)
-        $definition=(& $runs $engine['jobs']['linux-matrix']) -join "`n"
-        $engineRows=[string[]]@([regex]::Matches($definition,"rid='(?<rid>[^']+)';runner='(?<runner>[^']+)'")|ForEach-Object {$_.Groups['rid'].Value+'@'+$_.Groups['runner'].Value}|Sort-Object -CaseSensitive)
-        $engineRows.Count|Should -Be 4
-        $warmRows -join ','|Should -BeExactly ($engineRows -join ',')
+    It 'publishes the bundle after archive generation' {
+        $prepare=& $stepIndex $imageJob {param($step)([string]$step['run']).Contains('Export-CiImageBundle.ps1')}
+        $upload=& $stepIndex $imageJob {param($step)$step['with'] -and ([string]$step['with']['name']).StartsWith('quietcli-prepared-images-')}
+        $prepare|Should -BeGreaterOrEqual 0
+        $upload|Should -BeGreaterThan $prepare
+        [string]$imageJob['steps'][$upload]['with']['overwrite']|Should -BeExactly 'true'
+        [string]$imageJob['steps'][$upload]['with']['if-no-files-found']|Should -BeExactly 'error'
+    }
+
+    It 'routes all three producer calls through the same implementation' {
+        foreach($job in $warm,$producer,$ready['jobs']['linux-images']){
+            [string]$job['uses']|Should -BeExactly './.github/workflows/linux-images.yml'
+        }
+    }
+
+    It 'requires a published archive before each Linux consumer starts' {
+        foreach($job in $engine['jobs']['linux-result'],$ready['jobs']['readytorun-linux']){
+            @($job['needs'])|Should -Contain 'linux-images'
+            [string]$job['if']|Should -Match "needs.linux-images.result == 'success'"
+            [string]$job['if']|Should -Match "inputs.images_prepared && needs.linux-images.result == 'skipped'"
+            $commands=(& $runs $job) -join "`n"
+            $commands|Should -Match './scripts/Import-CiImageBundle.ps1'
+            $commands|Should -Not -Match 'New-Ci(?:Suite)?Image\.ps1|QUIETCLI_REGISTRY_TOKEN'
+            $download=& $stepIndex $job {param($step)$step['with'] -and ([string]$step['with']['name']).StartsWith('quietcli-prepared-images-')}
+            $loadImage=& $stepIndex $job {param($step)([string]$step['run']).Contains('Import-CiImageBundle.ps1')}
+            $download|Should -BeGreaterOrEqual 0
+            $loadImage|Should -BeGreaterThan $download
+        }
+        @($companions['jobs']['readytorun']['needs'])|Should -Contain 'images'
+        [string]$companions['jobs']['readytorun']['with']['images_prepared']|Should -BeExactly 'true'
     }
 }
 
 Describe 'companions-ci.yml manual qualification' {
     BeforeAll {
         $planStep=@($companions['jobs']['plan']['steps']|Where-Object {[string]$_['id'] -ceq 'plan'})[0]
-        # Runs the plan step's own script against a stub planner that records how it was called.
+        # Runs the production entry point against a stub that records the actual planner arguments.
         $invokePlanStep={param([string]$EventName)
             $directory=[IO.Path]::Combine($TestDrive,'plan-step-'+[guid]::NewGuid().ToString('N'))
             $null=New-QuietTestFile ([IO.Path]::Combine($directory,'scripts','New-CiImpactPlan.ps1')) @'
-param([string]$Base,[string]$Revision,[string]$Event,[string[]]$Suite,[string]$OutputPath)
-[IO.File]::WriteAllText($OutputPath,(ConvertTo-Json -Compress -InputObject ([ordered]@{Bound=@($PSBoundParameters.Keys|Sort-Object);Base=$Base;Revision=$Revision;Event=$Event;Suite=@($Suite)})))
+[CmdletBinding(SupportsShouldProcess)]
+param([string]$Base,[string]$Revision,[string]$Event,[string[]]$Suite,[string]$OutputPath,[string]$PullRequestBody)
+[IO.File]::WriteAllText($env:RECORDED_CALL,(ConvertTo-Json -Compress -InputObject ([ordered]@{Bound=@($PSBoundParameters.Keys|Where-Object {$_ -cne 'Confirm'}|Sort-Object);Base=$Base;Revision=$Revision;Event=$Event;Suite=@($Suite);Body=$PullRequestBody})))
 '@
+            Copy-Item -LiteralPath ([IO.Path]::Combine($root,'scripts','Invoke-GitHubCiPlan.ps1')) -Destination ([IO.Path]::Combine($directory,'scripts'))
             $step=[IO.Path]::Combine($directory,'step.ps1')
             $null=New-QuietTestFile $step ("Set-Location -LiteralPath `$PSScriptRoot`n"+[string]$planStep['run'])
             $output=[IO.Path]::Combine($directory,'called.json')
-            $run=Invoke-QuietTestScript -ScriptPath $step -Environment @{GITHUB_EVENT_NAME=$EventName;GITHUB_SHA=('b'*40);GITHUB_OUTPUT=$output;BASE_SHA=('a'*40);DISPATCH_SUITES='Core,Git'} -TimeoutSeconds 120
+            $payloadPath=[IO.Path]::Combine($directory,'event.json')
+            $data=@{before='a'*40;pull_request=@{number=42;body="Résumé`n~~~`n- [x] raw`n~~~";head=@{sha='c'*40};base=@{sha='a'*40}}}
+            [IO.File]::WriteAllText($payloadPath,(ConvertTo-Json $data -Depth 5 -Compress))
+            $run=Invoke-QuietTestScript -ScriptPath $step -Environment @{
+                GITHUB_EVENT_NAME=$EventName;GITHUB_SHA=('b'*40);GITHUB_OUTPUT=[IO.Path]::Combine($directory,'outputs.txt')
+                GITHUB_EVENT_PATH=$payloadPath;GITHUB_REF='refs/pull/42/merge';RECORDED_CALL=$output;DISPATCH_SUITES='Core,Git'
+            } -TimeoutSeconds 120
             $run.ExitCode|Should -Be 0 -Because ($run.Output+$run.Error)
             [IO.File]::ReadAllText($output)|ConvertFrom-Json
         }
@@ -140,18 +147,27 @@ param([string]$Base,[string]$Revision,[string]$Event,[string[]]$Suite,[string]$O
 
     It 'plans <EventName> from the diff base, without a suite' -ForEach @(@{EventName='pull_request'},@{EventName='push'}) {
         $called=& $invokePlanStep $EventName
-        ($called.Bound -join ',')|Should -BeExactly 'Base,Event,OutputPath,Revision'
+        ($called.Bound -join ',')|Should -BeExactly $(if($EventName -ceq 'pull_request'){'Base,Event,OutputPath,PullRequestBody,Revision'}else{'Base,Event,OutputPath,Revision'})
+        if($EventName -ceq 'pull_request'){$called.Body|Should -BeExactly "Résumé`n~~~`n- [x] raw`n~~~"}
         $called.Base|Should -BeExactly ('a'*40)
         $called.Event|Should -BeExactly $EventName
+    }
+
+    It 'replans edits and gates the strict ReadyToRun call' {
+        $companions['on']['pull_request']['types'] | Should -Contain 'edited'
+        $companions['jobs']['readytorun']['if'] | Should -BeExactly "needs.plan.outputs.run_readytorun == 'true'"
+        $companions['jobs']['readytorun']['with']['require_complete'] | Should -Be 'true'
+        $companions['jobs']['ci-status']['needs'] | Should -Contain 'readytorun'
+        $companions['jobs']['products']['with']['run_preview'] | Should -BeExactly '${{ matrix.run_preview }}'
     }
 }
 
 Describe 'companions-ci.yml qualification ordering' {
-    It 'starts product qualification only after a successful or skipped warm-up' {
+    It 'starts product qualification only after successful image preparation' {
         $products=$companions['jobs']['products']
         @($products['needs'])|Should -Contain 'images'
         $guard=[string]$products['if']
-        foreach($clause in @('always()','!cancelled()',"needs.images.result == 'success' || needs.images.result == 'skipped'","needs.plan.result == 'success'","needs.source-checks.result == 'success'","needs.layout-tests.result == 'success'","needs.plan.outputs.run_products == 'true'")){
+        foreach($clause in @('always()','!cancelled()',"needs.images.result == 'success'","needs.plan.result == 'success'","needs.source-checks.result == 'success'","needs.layout-tests.result == 'success'","needs.plan.outputs.run_products == 'true'")){
             $guard.Contains($clause)|Should -BeTrue -Because $clause
         }
     }
@@ -167,7 +183,7 @@ Describe 'companions-ci.yml qualification ordering' {
 
 Describe 'companions-ci.yml script-only plans' {
     It 'exposes the plan output <Name> from the plan step' -ForEach @(
-        @{Name='run_layout'},@{Name='tooling_scope'},@{Name='script_tests'},@{Name='script_mutation_targets'},@{Name='run_tooling'}
+        @{Name='run_layout'},@{Name='tooling_scope'},@{Name='script_tests'},@{Name='script_mutation_targets'},@{Name='script_mutation_no_input_cache'},@{Name='run_tooling'}
     ) {
         [string]$companions['jobs']['plan']['outputs'][$Name]|Should -BeExactly ('${{ steps.plan.outputs.'+$Name+' }}')
     }
@@ -192,12 +208,35 @@ Describe 'companions-ci.yml script-only plans' {
         @{Name='scope';Source='tooling_scope'},@{Name='script_tests';Source='script_tests'},@{Name='script_mutation_targets';Source='script_mutation_targets'}
     ) {
         $with=$companions['jobs']['tooling-only']['with']
-        (@($with.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'scope,script_mutation_targets,script_tests'
+        (@($with.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'mutation_parallel,scope,script_mutation_no_input_cache,script_mutation_targets,script_tests'
         [string]$with[$Name]|Should -BeExactly ('${{ needs.plan.outputs.'+$Source+' }}')
+    }
+
+    It 'passes the cache choice as a boolean to tooling' {
+        $companions['jobs']['tooling-only']['with']['script_mutation_no_input_cache']|Should -BeExactly '${{ needs.plan.outputs.script_mutation_no_input_cache == ''true'' }}'
+    }
+
+    It 'consumes the companion checks matrix and makes its results required' {
+        $job=$companions['jobs']['companion-checks']
+        $job['strategy']['matrix']|Should -BeExactly '${{ fromJson(needs.plan.outputs.companion_checks) }}'
+        $job['strategy']['max-parallel']|Should -BeExactly '${{ needs.plan.outputs.mutation_parallel == ''true'' && 6 || 1 }}'
+        $job['with']['campaign']|Should -BeExactly '${{ matrix.campaign }}'
+        $companions['jobs']['ci-status']['needs']|Should -Contain 'companion-checks'
     }
 
     It 'keeps every product, smoke and distribution job behind the layout tests' -ForEach @(@{Job='products'},@{Job='smokes'},@{Job='distribution'}) {
         @($companions['jobs'][$Job]['needs'])|Should -Contain 'layout-tests'
+    }
+}
+
+Describe 'ci.yml Linux matrix resources' {
+    It 'restores the pinned resource archives before resolving the companion catalogue' {
+        $job=$engine['jobs']['linux-matrix']
+        $cacheIndex=& $stepIndex $job {param($step)$step['uses'] -ceq './.github/actions/cache-resources'}
+        $matrixIndex=& $stepIndex $job {param($step)$step['id'] -ceq 'matrix'}
+        $cacheIndex|Should -BeGreaterOrEqual 0
+        $cacheIndex|Should -BeLessThan $matrixIndex
+        $job['steps'][$matrixIndex]['run']|Should -Match 'Initialize-CiCompanions.ps1'
     }
 }
 
@@ -211,16 +250,7 @@ Describe 'ci.yml per-suite producer' {
 
     It 'skips its producer when the caller prepared the images' {
         ([string]$producer['if']).Contains('!inputs.images_prepared')|Should -BeTrue
-        ([string]$producer['if']).Contains("github.ref == 'refs/heads/develop'")|Should -BeTrue
+        ([string]$producer['with']['publish_cache']).Contains("github.ref == 'refs/heads/develop'")|Should -BeTrue
     }
 
-    It 'keeps a per-suite concurrency group for standalone calls' {
-        [string]$producer['concurrency']['group']|Should -Match 'inputs\.suite'
-        [string]$producer['concurrency']['group']|Should -Match 'matrix\.rid'
-        [string]$producer['concurrency']['cancel-in-progress']|Should -BeExactly 'false'
-    }
-
-    It 'accepts a skipped producer before selecting Linux images' {
-        ([string]$engine['jobs']['linux-selection']['if']).Contains("needs.linux-images.result == 'skipped'")|Should -BeTrue
-    }
 }

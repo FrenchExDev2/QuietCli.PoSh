@@ -1,6 +1,6 @@
 # tooling-ci.yml
 
-<!-- workflow-source-sha256: E245A39F3385F7B647671B22590FE61FEF9CE6101A633277CC242477C95B41EB -->
+<!-- workflow-source-sha256: E27D1469C06BEF5CFA8748A7184971908FF28C64D40ED5FFE47CDF3897542755 -->
 
 ## Purpose
 
@@ -19,13 +19,14 @@ Run-profile mutation uses two independent matrix shards, each with two isolated 
 
 ## Scope and selection
 
-Three optional `workflow_call` inputs choose what runs. Their defaults run every campaign, so callers that pass no input, such as `ci.yml`, keep the full campaign.
+Optional `workflow_call` inputs choose what runs and how the mutation jobs execute. Callers that pass no inputs, such as `ci.yml`, keep the full incremental campaign.
 
 | Input | Default | Values |
 | --- | --- | --- |
 | `scope` | `full` | `full` runs every job. `scripts` runs only the script tests and the script mutation targets. |
 | `script_tests` | `all` | `all`, or a JSON array of test files relative to `test/scripts`. |
 | `script_mutation_targets` | `all` | `all`, or a JSON array of target names from `test/scripts/mutation.targets.psd1`. |
+| `script_mutation_no_input_cache` | `false` | `true` skips cache restoration and runs each selected script mutant and baseline afresh. The shard still saves fresh cache entries. |
 
 `companions-ci.yml` passes `scope: scripts` when only `scripts/` or `test/scripts/` changed. It then passes the files and targets those changes reach, as computed by [ScriptsImpact](../../scripts/lib/ScriptsImpact.md). In that case `core-independence`, `tooling`, `run-profiles-mutation` and `mutation-complete` are skipped. A manual `Tooling` dispatch of `companions-ci.yml` runs them again.
 
@@ -51,6 +52,8 @@ Some test files drive git through `quiet` and declare `#ScriptsImpact: RequiresB
 The job uploads the report, JUnit, coverage and log.
 
 The `script-mutation` matrix has one job per selected target (`fromJson` of the `script-selection` targets), with `fail-fast: false`. It runs when `run_mutation` is true. Each job runs [Invoke-ScriptsMutation](../../scripts/Invoke-ScriptsMutation.md) `-Offline -PruneCache -Target <name>` and uploads an artifact named for the SHA, target and attempt.
+
+Each script mutation target and each run-profile mutation shard publishes measurement tables in `report.md` and `report.html` alongside the JSON evidence. The renderer runs after the campaign, including after a failed step, and adds the outcome and tables to the job summary. Run-profile tables cover the individual shard. [Export-CampaignReport](../../scripts/Export-CampaignReport.md)
 
 Each shard also keeps its own incremental mutation cache in `.cache/script-mutation`:
 
@@ -93,6 +96,8 @@ Native orchestration and test/smoke steps select checksum-pinned GA PowerShell t
 Reusable workflow_call from CI or the tooling-only entry point; no independent publication trigger.
 
 ## Scripts and effects
+
+The mutation_parallel input limits shard scheduling and worker counts. Full tooling still requires the complete Core profile catalogue and script mutation evidence.
 
 Uses the shared scripts/ entry points, discovered manifests, selected source-bound builds and private artifacts described above. Git identifies committed internal sources; generated execution receipts retain actual source hashes and dirty state. Pinned external resources retain their dedicated locks. Network access is limited to pinned dependency preparation, verified image caches and explicit GitHub evidence reads. No module publication occurs here.
 
@@ -160,8 +165,8 @@ flowchart TD
 | core-independence | runner windows-latest |  | <code>inputs.scope == 'full'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Test-CoreIndependence.ps1`](../../scripts/Test-CoreIndependence.md) |
 | mutation-complete | runner ubuntu-latest | run-profiles-mutation | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; inputs.scope == 'full' }}</code> | [`./scripts/Assert-RunProfileMutationShards.ps1`](../../scripts/Assert-RunProfileMutationShards.md) |
 | results | runner ubuntu-latest | core-independence, tooling, script-tests, run-profiles-mutation, script-mutation, mutation-complete, script-mutation-complete | <code>&#36;{{ always() }}</code> | [`./scripts/Write-ToolingResults.ps1`](../../scripts/Write-ToolingResults.md) |
-| run-profiles-mutation | runner windows-latest |  | <code>inputs.scope == 'full'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.md) |
-| script-mutation | runner ubuntu-latest | script-selection | <code>needs.script-selection.outputs.run&#95;mutation == 'true'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-TestTools.ps1`](../../scripts/Initialize-TestTools.md), [`./scripts/Invoke-ScriptsMutation.ps1`](../../scripts/Invoke-ScriptsMutation.md) |
+| run-profiles-mutation | runner windows-latest |  | <code>inputs.scope == 'full'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Invoke-GitHubCi.ps1`](../../scripts/Invoke-GitHubCi.md), [`./scripts/Export-CampaignReport.ps1`](../../scripts/Export-CampaignReport.md) |
+| script-mutation | runner ubuntu-latest | script-selection | <code>needs.script-selection.outputs.run&#95;mutation == 'true'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-TestTools.ps1`](../../scripts/Initialize-TestTools.md), [`./scripts/Invoke-ScriptsMutation.ps1`](../../scripts/Invoke-ScriptsMutation.md), [`./scripts/Export-CampaignReport.ps1`](../../scripts/Export-CampaignReport.md) |
 | script-mutation-complete | runner ubuntu-latest | script-selection, script-mutation | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.script-selection.outputs.run&#95;mutation != 'false' }}</code> | [`./scripts/Assert-ScriptMutationShards.ps1`](../../scripts/Assert-ScriptMutationShards.md) |
 | script-selection | runner ubuntu-latest |  | default success condition | [`./scripts/lib/ScriptsImpact.psm1`](../../scripts/lib/ScriptsImpact.md) |
 | script-tests | <code>runner &#36;{{ matrix.os }}</code> | script-selection | <code>needs.script-selection.outputs.run&#95;tests == 'true'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-TestTools.ps1`](../../scripts/Initialize-TestTools.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/Invoke-ScriptsTests.ps1`](../../scripts/Invoke-ScriptsTests.md) |

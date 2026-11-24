@@ -35,6 +35,10 @@ function Invoke-QuietVagrantTests {
             [void][IO.Directory]::CreateDirectory($mutationRoot)
             $summary = Invoke-QuietVagrantParserMutation -WorkspaceRoot $WorkspaceRoot -RunDirectory $mutationRoot
             Write-WorkspaceJson (Join-Path $mutationRoot 'summary.json') $summary
+            if($env:QUIETCLI_CAMPAIGN_REPORT_ROOT){
+                [void][IO.Directory]::CreateDirectory($env:QUIETCLI_CAMPAIGN_REPORT_ROOT)
+                [IO.File]::Copy([IO.Path]::Combine($mutationRoot,'summary.json'),[IO.Path]::Combine($env:QUIETCLI_CAMPAIGN_REPORT_ROOT,'vagrant-parser.json'))
+            }
             if ($summary.Failed -gt 0) {
                 $offenders = ($summary.Cases | Where-Object { $_.Outcome -ne 'Killed' } | ForEach-Object { $_.Name + '=' + $_.Outcome }) -join ', '
                 throw "Vagrant parser mutation campaign had survivors/infrastructure failures: $offenders"

@@ -12,6 +12,8 @@ Implements [Sync-ScriptsReadme.ps1](../Sync-ScriptsReadme.md). Exports only "Inv
 
 Check that every PowerShell script and run profile under `scripts/` has a mirrored Markdown document with a link to its source. Generate the navigable index. [Scripts documentation index](../README.md)
 
+Source links split the relative file path using the host directory separator, escape each segment, and join the segments with `/` for Markdown.
+
 ## Usage
 
 ```powershell

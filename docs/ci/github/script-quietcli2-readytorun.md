@@ -1,6 +1,6 @@
 # quietcli2-readytorun.yml
 
-<!-- workflow-source-sha256: 2BE33980CACCC651F770F475E487C69F4FA3EEF30BDD30AC8837C332B877C295 -->
+<!-- workflow-source-sha256: 94553F32F83CC312B331BA8D644653DA9B69DFCECF016EC61804A0E5B60BBD72 -->
 
 ## Purpose
 
@@ -10,7 +10,7 @@ Native orchestration and test/smoke steps select checksum-pinned GA PowerShell t
 
 ## Triggers
 
-Manual workflow_dispatch only. No push, schedule or reusable caller; no qualification/publication job depends on this workflow.
+Manual workflow_dispatch is informational. A workflow_call from a PR with require_complete enabled requires usable A/A and A/B reports on each target. The automatic develop and publication flows do not call this benchmark.
 
 
 ## .NET SDK source pin
@@ -20,6 +20,8 @@ The reviewed setup-dotnet steps read the checked-out global.json through global-
 ## Measurement and artifacts
 
 Builds the IL baseline and ReadyToRun candidate from the same selected revision, rather than comparing PR head with develop. A/A noise control precedes paired A/B; instrumentation is separate from timed samples. Windows and native Linux paths save source-bound cold-start reports. A green informational run does not prove a speedup. See [the report/dispatch guide](../../README-readytorun_profiling.md).
+
+Linux comparisons wait for the Core image bundle. A PR reuses its workspace producer. A standalone dispatch calls the same producer for Core. The Linux runner verifies and loads the archive before executing the comparison. [Linux CI images](../linux-images.md)
 
 <!-- workflow-generated:begin -->
 
@@ -31,17 +33,20 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 
 ~~~mermaid
 flowchart TD
-    event["Triggers: workflow_dispatch"]
+    event["Triggers: workflow_call, workflow_dispatch"]
+    job_linux_images["linux-images"]
     job_readytorun["readytorun"]
     job_readytorun_linux["readytorun-linux"]
+    event --> job_linux_images
     event --> job_readytorun
-    event --> job_readytorun_linux
+    job_linux_images --> job_readytorun_linux
 ~~~
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
+| linux-images | reuses ./.github/workflows/linux-images.yml |  | <code>&#36;{{ !inputs.images&#95;prepared }}</code> |  |
 | readytorun | runner windows-latest |  | default success condition | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/New-ReadyToRunCandidate.ps1`](../../scripts/New-ReadyToRunCandidate.md), [`./scripts/Invoke-ColdStartGate.ps1`](../../scripts/Invoke-ColdStartGate.md), [`./scripts/Show-ColdStartReport.ps1`](../../scripts/Show-ColdStartReport.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
-| readytorun-linux | <code>runner &#36;{{ matrix.runner }}</code> |  | default success condition | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/New-ReadyToRunCandidate.ps1`](../../scripts/New-ReadyToRunCandidate.md), [`./scripts/New-CiImage.ps1`](../../scripts/New-CiImage.md), [`./scripts/Invoke-ContainerColdStartWorker.ps1`](../../scripts/Invoke-ContainerColdStartWorker.md), [`./scripts/Show-ColdStartReport.ps1`](../../scripts/Show-ColdStartReport.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
+| readytorun-linux | <code>runner &#36;{{ matrix.runner }}</code> | linux-images | <code>&#36;{{ !cancelled() &#38;&#38; (needs.linux-images.result == 'success' &#124;&#124; (inputs.images&#95;prepared &#38;&#38; needs.linux-images.result == 'skipped')) }}</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/New-ReadyToRunCandidate.ps1`](../../scripts/New-ReadyToRunCandidate.md), [`./scripts/Import-CiImageBundle.ps1`](../../scripts/Import-CiImageBundle.md), [`./scripts/Invoke-ContainerColdStartWorker.ps1`](../../scripts/Invoke-ContainerColdStartWorker.md), [`./scripts/Show-ColdStartReport.ps1`](../../scripts/Show-ColdStartReport.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
 
 <!-- workflow-generated:end -->
 

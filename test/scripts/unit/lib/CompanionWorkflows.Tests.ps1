@@ -23,6 +23,13 @@ Describe 'CompanionWorkflows' {
     }
 
     Context 'Get-QuietCompanionProfiles' {
+        It 'takes both parent directories from the catalogue declaration' {
+            & $use (New-QuietCiCatalogue ([Random]::new(3)))
+            $script:catalogue.Configuration.Companions['Core']|Add-Member -Force -NotePropertyMembers @{SourcePath='src/Alternate/src/Product';TestPath='src/Alternate/test/Product.Tests'}
+            $definition=Get-QuietCompanionProfiles -WorkspaceRoot $root|Where-Object Suite -CEQ Core
+            $definition.SourcePath|Should -BeExactly 'src/Alternate/src'
+            $definition.TestPath|Should -BeExactly 'src/Alternate/test'
+        }
         It 'derives one profile per solution group with its engine, paths and performance policy' {
             $null=Invoke-QuietProperty -Name 'workflow-profiles' -Seed $seed -Count 40 -Generator {param($random)
                 $catalogue=New-QuietCiCatalogue $random
@@ -37,7 +44,7 @@ Describe 'CompanionWorkflows' {
                 if((@($profiles.Suite) -join ',') -cne ($groups -join ',')){throw "groups $(@($profiles.Suite) -join ',')"}
                 foreach($companionProfile in $profiles){
                     $product=$case.Catalogue.Configuration.Companions.Contains($companionProfile.Suite)
-                    $file=if($companionProfile.Suite -ceq 'Tooling'){'tooling-component-ci.yml'}else{$companionProfile.Suite.ToLowerInvariant()+'-ci.yml'}
+                    $file=if($product){'ci.yml'}elseif($companionProfile.Suite -ceq 'Tooling'){'tooling-component-ci.yml'}else{'distribution-ci.yml'}
                     if($companionProfile.Workflow -cne ".github/workflows/$file"){throw "workflow $($companionProfile.Suite)"}
                     if($companionProfile.Engine -cne $(if($product){'ci.yml'}else{'workspace-component-ci.yml'})){throw "engine $($companionProfile.Suite)"}
                     if($companionProfile.SolutionPath -cne "src/$($companionProfile.Suite)/$($companionProfile.Suite).slnx" -or $companionProfile.TestPath -cne "src/$($companionProfile.Suite)/test" -or $companionProfile.Root -cne "src/$($companionProfile.Suite)"){throw "paths $($companionProfile.Suite)"}
@@ -71,7 +78,9 @@ Describe 'CompanionWorkflows' {
         It 'renders parseable workflows that call the profile engine with the profile paths' {
             $null=Invoke-QuietProperty -Name 'workflow-render' -Seed $seed -Count 25 -Generator {param($random)New-QuietCiCatalogue $random} -Property {param($catalogue)
                 & $use $catalogue
-                foreach($entry in @(Get-QuietCompanionWorkflowDefinitions -WorkspaceRoot $root)){
+                $entries=@(Get-QuietCompanionWorkflowDefinitions -WorkspaceRoot $root)
+                if(($entries.Profile.Suite -join ',') -cne 'Distribution,Tooling'){throw 'component entries'}
+                foreach($entry in $entries){
                     $companionProfile=$entry.Profile
                     if($entry.Path -cne $companionProfile.Workflow){throw 'path'}
                     if($entry.Content.Contains('%') -or !$entry.Content.EndsWith("`n") -or $entry.Content.EndsWith("`n`n") -or $entry.Content.Contains("`r")){throw "layout $($companionProfile.Suite)"}
@@ -105,6 +114,18 @@ Describe 'CompanionWorkflows' {
             {Sync-QuietCompanionWorkflows -WorkspaceRoot $root -Apply -Confirm:$false}|Should -Throw -ExpectedMessage 'CiCompanionImageMustBeOverlay: Fixture'
             @(Get-ChildItem -LiteralPath ([IO.Path]::Combine($root,'.github','workflows')) -File).Count|Should -Be 0
             Should -Invoke -ModuleName CompanionWorkflows Assert-QuietCiCompanionImages -Times 1 -Exactly -ParameterFilter {$WorkspaceRoot -ceq $root -and [object]::ReferenceEquals($Configuration,$script:catalogue.Configuration)}
+        }
+
+        It 'requires declared <Property> to exist before generating a workflow' -ForEach @(
+            @{Property='SourcePath';Relative='src/Core/src/FrenchExDev2.QuietCli.Core.PoSh'},
+            @{Property='TestPath';Relative='src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh'}
+        ) {
+            $script:catalogue.Configuration.Companions['Core']|Add-Member -NotePropertyName $Property -NotePropertyValue $Relative -Force
+            {Sync-QuietCompanionWorkflows -WorkspaceRoot $root -Apply -Confirm:$false}|
+                Should -Throw -ExpectedMessage ('CiCompanionPathMissing: '+$Relative)
+            Should -Invoke -ModuleName CompanionWorkflows Assert-QuietCiCompanionImages -Times 0 -Exactly
+            $null=New-Item -Path ([IO.Path]::Combine($root,$Relative)) -ItemType Directory
+            {Sync-QuietCompanionWorkflows -WorkspaceRoot $root -Apply -Confirm:$false}|Should -Not -Throw
         }
 
         It 'skips the image rule without a catalogue, then still requires one for grouped projects' {
@@ -174,5 +195,28 @@ Describe 'CompanionWorkflows' {
         It 'rejects an unknown or differently cased suite' -ForEach @(@{Suite='Nope'},@{Suite='core'}) {
             {Assert-QuietCompanionProfile -WorkspaceRoot $root -Suite $Suite}|Should -Throw -ExpectedMessage ('CompanionProfileUnknown: '+$Suite)
         }
+    }
+
+    It 'checks, previews and refreshes the current YAML catalogue checklist using its exact path' {
+        $currentRoot=[IO.Path]::Combine($TestDrive,'current-checklist')
+        $cataloguePath=New-QuietTestFile ([IO.Path]::Combine($currentRoot,'build','companions.yaml')) 'fixture'
+        $companions=[ordered]@{Core=@{Name='Core';Mutation=$true};Box2=@{Name='Box2';Mutation=$true}}
+        & $use @{Modules=@();Configuration=@{Path=$cataloguePath;Companions=$companions}}
+        Mock -ModuleName CompanionWorkflows Assert-QuietCiCompanionImages {}
+        $path=[IO.Path]::Combine($currentRoot,'.github','pull_request_template.md')
+        $null=Import-QuietTestLibrary -Name PullRequestChecklist
+        $template="<!-- quietcli-ci:begin -->`n- [ ] Scripts <!-- ci:script-mutation -->`n- [ ] Serial <!-- ci:mutation-serial -->`n- [ ] R2R <!-- ci:readytorun -->`n- [ ] Preview <!-- ci:preview -->`n<!-- quietcli-ci:end -->`n"
+        $expected=Expand-QuietPullRequestTemplate -Template $template -Configuration @{Companions=$companions}
+        [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))
+        [IO.File]::WriteAllText($path,($expected.Replace("`n","`r`n")),[Text.UTF8Encoding]::new($false))
+        {Sync-QuietCompanionWorkflows -WorkspaceRoot $currentRoot}|Should -Not -Throw
+        $stale=$expected.Replace('Box2','Old').Replace('box2','old')
+        [IO.File]::WriteAllText($path,$stale,[Text.Encoding]::UTF8)
+        {Sync-QuietCompanionWorkflows -WorkspaceRoot $currentRoot}|Should -Throw '*CompanionPullRequestTemplateDrift*'
+        Sync-QuietCompanionWorkflows -WorkspaceRoot $currentRoot -Apply -WhatIf
+        [IO.File]::ReadAllText($path,[Text.Encoding]::UTF8)|Should -BeExactly $stale
+        Sync-QuietCompanionWorkflows -WorkspaceRoot $currentRoot -Apply -Confirm:$false
+        [IO.File]::ReadAllText($path,[Text.Encoding]::UTF8)|Should -BeExactly $expected
+        [IO.File]::ReadAllBytes($path)[0]|Should -Be ([byte][char]'<')
     }
 }

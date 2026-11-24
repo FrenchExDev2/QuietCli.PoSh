@@ -19,6 +19,16 @@ on:
         type: string
         required: false
         default: all
+      script_mutation_no_input_cache:
+        description: Rerun selected script mutants and save fresh cache entries
+        type: boolean
+        required: false
+        default: false
+      mutation_parallel:
+        description: Run mutation shards and their workers in parallel
+        type: boolean
+        required: false
+        default: true
     outputs:
       functional_result:
         description: Aggregate Core independence and functional tooling job result
@@ -199,6 +209,7 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
+      max-parallel: ${{ inputs.mutation_parallel && 2 || 1 }}
       matrix:
         shard: [0, 1]
     steps:
@@ -218,7 +229,14 @@ jobs:
         env:
           QUIETCLI_MUTATION_SHARD_INDEX: ${{ matrix.shard }}
           QUIETCLI_MUTATION_SHARD_COUNT: 2
-        run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfilesMutation -SkipBuild -MaxConcurrency 2 -RunDirectory ./artifacts/run-profiles/mutation
+          MUTATION_WORKERS: ${{ inputs.mutation_parallel && 2 || 1 }}
+        run: ./scripts/Invoke-GitHubCi.ps1 -Suite RunProfilesMutation -SkipBuild -MaxConcurrency ([int]$env:MUTATION_WORKERS) -RunDirectory ./artifacts/run-profiles/mutation
+      - name: Render run-profile mutation results
+        if: always() && steps.run_profiles_mutation.outcome != '' && steps.run_profiles_mutation.outcome != 'skipped'
+        shell: pwsh
+        env:
+          CAMPAIGN_OUTCOME: ${{ steps.run_profiles_mutation.outcome }}
+        run: ./scripts/Export-CampaignReport.ps1 -Kind RunProfilesMutation -Title 'Run-profile mutation' -Outcome $env:CAMPAIGN_OUTCOME -Directory ./artifacts/run-profiles/mutation -SummaryPath $env:GITHUB_STEP_SUMMARY
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.run_profiles_mutation.outcome != '' && steps.run_profiles_mutation.outcome != 'skipped'
         with:
@@ -320,6 +338,7 @@ jobs:
     timeout-minutes: 150
     strategy:
       fail-fast: false
+      max-parallel: ${{ inputs.mutation_parallel && 8 || 1 }}
       matrix:
         target: ${{ fromJson(needs.script-selection.outputs.targets) }}
     steps:
@@ -340,6 +359,7 @@ jobs:
       # Outcomes are keyed by everything the target's tests can observe, so the newest cache of the target is
       # always safe to reuse; a pull request restores develop's cache but can only save into its own scope.
       - name: Restore the target's incremental mutation cache
+        if: ${{ !inputs.script_mutation_no_input_cache }}
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .cache/script-mutation
@@ -351,7 +371,16 @@ jobs:
         shell: pwsh
         env:
           MUTATION_TARGET: ${{ matrix.target }}
-        run: ./scripts/Invoke-ScriptsMutation.ps1 -Headless -Offline -PruneCache -Target $env:MUTATION_TARGET -ThrottleLimit 4 -TimeoutSeconds 8400 -RunDirectory ./artifacts/script-mutation/$env:MUTATION_TARGET
+          SCRIPT_MUTATION_NO_INPUT_CACHE: ${{ inputs.script_mutation_no_input_cache }}
+          MUTATION_WORKERS: ${{ inputs.mutation_parallel && 4 || 1 }}
+        run: ./scripts/Invoke-ScriptsMutation.ps1 -Headless -Offline -PruneCache -Target $env:MUTATION_TARGET -ThrottleLimit ([int]$env:MUTATION_WORKERS) -TimeoutSeconds 8400 -RunDirectory ./artifacts/script-mutation/$env:MUTATION_TARGET -NoInputCache:($env:SCRIPT_MUTATION_NO_INPUT_CACHE -ceq 'true')
+      - name: Render script mutation results
+        if: always() && steps.script_mutation.outcome != '' && steps.script_mutation.outcome != 'skipped'
+        shell: pwsh
+        env:
+          MUTATION_TARGET: ${{ matrix.target }}
+          CAMPAIGN_OUTCOME: ${{ steps.script_mutation.outcome }}
+        run: ./scripts/Export-CampaignReport.ps1 -Kind ScriptMutation -Title "Script mutation $env:MUTATION_TARGET" -Outcome $env:CAMPAIGN_OUTCOME -Directory ./artifacts/script-mutation/$env:MUTATION_TARGET -SummaryPath $env:GITHUB_STEP_SUMMARY
       # Saved even after a failed or timed-out campaign: every outcome already written stays valid for its key.
       - name: Save the target's incremental mutation cache
         if: always() && steps.script_mutation.outcome != '' && steps.script_mutation.outcome != 'skipped'
@@ -366,6 +395,7 @@ jobs:
           path: |
             artifacts/script-mutation/*/report.json
             artifacts/script-mutation/*/report.md
+            artifacts/script-mutation/*/report.html
             artifacts/script-mutation/*/mutants.json
           if-no-files-found: error
           retention-days: 14

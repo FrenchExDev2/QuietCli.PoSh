@@ -22,6 +22,8 @@ Pure functions behind [Invoke-ScriptsTests.ps1](../Invoke-ScriptsTests.md). Impo
 | `Get-QuietScriptsTestExitCode` | Returns 0 for `Success` only and 1 for every other state. |
 | `Test-QuietScriptsTestsApplicable` | Returns `True` when `<WorkspaceRoot>/test/scripts` is a directory and `False` when it is not and `src/` is absent (a flat commit fixture). With `src/` and no test tree it throws `ScriptsTestsRootMissing: test/scripts`. The ScriptAnalyzer and ScriptsInventory checks call it first. |
 
+Path validation rejects control characters before testing platform-specific invalid characters. On Linux, .NET identifies NUL as the sole invalid path character and the earlier check already rejects it. The mutation catalogue records those equivalents for Linux. Windows tests cover the additional invalid characters, including at the start of a path. [.NET Unix implementation](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Private.CoreLib/src/System/IO/Path.Unix.cs#L11-L13)
+
 Rules applied by `ConvertTo-QuietScriptsTestReport`:
 - `Failed` counts failed tests, failed blocks and failed containers.
 - `Passed + Failed + Skipped = Total` always holds.
@@ -45,7 +47,7 @@ Tests: `test/scripts/unit/lib/ScriptsTests.Tests.ps1`. It covers:
 - status transitions;
 - the exhaustive applicability product (test tree as directory, file or absent, crossed with `src/`).
 
-The library is a mutation target in `test/scripts/mutation.targets.psd1` (break 80 %), run by [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). The platform comparison of `Test-QuietScriptsPathWithin` is a single ternary, so coverage sees the same command on Windows and Linux. Forcing its `$IsWindows` condition to the platform's own value is the one platform-scoped equivalent mutant.
+The library is a mutation target in `test/scripts/mutation.targets.psd1` (`Break = 100`), run by [Invoke-ScriptsMutation.ps1](../Invoke-ScriptsMutation.md). The platform comparison of `Test-QuietScriptsPathWithin` is a single ternary, so coverage sees the same command on Windows and Linux. Forcing its `$IsWindows` condition to the platform's own value is the one platform-scoped equivalent mutant.
 
 <!-- script-contract:begin -->
 ## Execution contract

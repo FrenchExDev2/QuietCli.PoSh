@@ -10,6 +10,8 @@ Use `-MarkdownPath` to write a standalone Markdown forecast, independently of th
 
 For both `pull_request` and `push`, the planner selects affected suites from the diff and declared dependencies. Shared or unknown paths select every companion. Mixed paths combine their requirements.
 
+With `-Event pull_request`, pass the Markdown description as `-PullRequestBody`. The plan merges the checked options with the mandatory diff scope and exposes the companion campaign matrix. Selecting mutation and profiling for the same companion profiles a single mutation run.
+
 The root and nested `.gitignore` files remain visible in the plan's changed paths and have no effect on job selection. For a working-tree preview, Git still applies its ignore rules when deciding which untracked paths enter the diff.
 
 ### Preview the local branch
@@ -53,10 +55,11 @@ Outputs are written once each, in a stable order:
 | --- | --- |
 | `suite`, `run_products`, `matrix` | The product qualification. |
 | `run_tooling` | Whether `tooling-ci.yml` runs at all. |
-| `image_suites` | The compact JSON array of the fully qualified suites. The `images` warm-up job of `companions-ci.yml` passes it to `New-CiSuiteImage.ps1`, so every chain of the run is prepared once per RID before qualification. |
+| `image_suites` | JSON array of suites needed by the shared Linux producer. Fully qualified suites contribute their image chains. Selecting ReadyToRun also includes Core. |
 | `run_distribution` | The distribution campaign. |
 | `run_layout` | Whether `layout-tests` runs. It is false only when script tests are the whole plan. |
 | `run_smokes`, `smoke_suites` | The dependent smokes. |
+| `script_mutation_no_input_cache` | `true` when the PR asks to rerun selected script mutants and refresh the cache. |
 | `script_mutation_targets`, `script_tests` | `all`, or the compact JSON array of the selected names. |
 | `tooling_scope` | `full`, `scripts` or `none`. |
 
@@ -138,3 +141,7 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+## Pull request body
+
+Pass the raw description with `-PullRequestBody` to include its checked options. This parameter also works in `-WorkingTree` mode. See [the checklist contract](../README-pull-request-ci.md).

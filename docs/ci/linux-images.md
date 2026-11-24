@@ -1,39 +1,31 @@
 # Linux CI images
 
-Four native targets use the Ubuntu runner matching their CPU. No local ARM machine or QEMU is required for GitHub execution.
+Four native targets use Ubuntu runners matching their CPU. Debian and Alpine are the operating systems of the test containers. [GitHub-hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)
 
-| Guest / RID | Native runner | Test path |
-| --- | --- | --- |
-| Debian / `linux-x64` | `ubuntu-latest` | Verified job container or Docker fallback |
-| Alpine / `linux-musl-x64` | `ubuntu-latest` | Verified job container or Docker fallback |
-| Debian / `linux-arm64` | `ubuntu-24.04-arm` | Verified job container or Docker fallback |
-| Alpine / `linux-musl-arm64` | `ubuntu-24.04-arm` | Docker fallback; JavaScript actions stay on Ubuntu |
+| Container / RID | GitHub-hosted runner |
+| --- | --- |
+| Debian / `linux-x64` | `ubuntu-latest` |
+| Alpine / `linux-musl-x64` | `ubuntu-latest` |
+| Debian / `linux-arm64` | `ubuntu-24.04-arm` |
+| Alpine / `linux-musl-arm64` | `ubuntu-24.04-arm` |
 
-Job containers build/test the checkout directly. Fallback builds on the native runner, stages source/binaries/restored packages, then tests with `--network none` and `--pull=never`. Both paths verify actual guest/engine identity. Image preparation alone does not qualify any target.
+## Image production and handoff
 
-## Final images and intermediate caches
-
-[New-CiSuiteImage](../scripts/New-CiSuiteImage.md) resolves YAML-declared base/overlay requirements. Core needs the base toolchain and its distro Git executable, independently of the Git companion. One producer matrix prepares the selected final image per RID, including missing parents in the same job.
+`linux-images.yml` prepares one bundle per RID for every selected chain. The producer reuses verified GHCR images or builds missing layers in its Docker daemon, sharing verified parents between chains. Read-only timeouts and unavailable final images use the verified local build path. Intermediate BuildKit caches remain scoped by native RID and recipe inputs. Only trusted upstream develop runs can publish to GHCR.
 
 ```mermaid
 flowchart TD
-    PLAN[Recipes, locks, scripts and parent fingerprints] --> FP[Final suite fingerprint]
-    FP --> PROBE{Verified final GHCR configuration exists?}
-    PROBE -- Yes --> HIT[Skip BuildKit cache restore and parent builds]
-    HIT --> REF[Return immutable reference or pull final image for execution]
-    PROBE -- No --> RESTORE[Restore image and RID-scoped BuildKit cache]
-    RESTORE --> BUILD[Build required base and overlays natively]
-    BUILD --> SAVE[Export mode=max and save cache before tests]
-    SAVE --> PUB{Trusted upstream develop push or dispatch?}
-    PUB -- Yes --> GHCR[Publish missing fingerprinted entries]
-    PUB -- No --> LOCAL[Keep locally built image for PR tests]
+    PLAN[Select suites and native targets] --> PREPARE[Prepare image chains for each RID]
+    PREPARE --> BUNDLE[Upload image archive and identity receipt]
+    BUNDLE --> VERIFY[Verify and load the suite image on each test runner]
+    VERIFY --> TEST[Execute qualification or ReadyToRun]
 ```
 
-Final-image identity includes rendered recipes, declared inputs, lock/script changes and parent provenance. Registry configuration and local inspection verify digests, Linux architecture, source and fingerprint labels. Execution uses an immutable digest or local image ID. In the Docker fallback job, a registry miss or a failed download of a resolved digest leads to a verified local build. That build can reuse cached parents and the restored BuildKit layers. A publication job stops if it cannot download a resolved digest. Registry identity and local image verification failures still stop preparation.
+GitHub starts the Linux consumers after successful preparation. Each consumer downloads the current run's archive, verifies the revision, RID and SHA-256, selects the image by its independently calculated recipe fingerprint and verifies its native architecture and source labels after loading. It runs with `--network none` and `--pull=never`. Reruns can reuse a successful producer from the same run and revision. Image preparation alone does not qualify a target.
 
-The registry reader accepts OCI indexes and Docker manifest lists, including the image-plus-attestation indexes produced by BuildKit for a single target. Publication receipts retain the root digest. Configuration verification follows one matching Linux platform manifest and verifies its content and configuration digests before accepting architecture/source/fingerprint labels; attestation descriptors are not executable images. Ambiguous or missing platform matches and malformed or altered documents fail explicitly.
+The archive retains a local transfer tag for each fingerprint. Docker image stores can assign different IDs to the same imported image. Consumers resolve the transfer tag, validate the loaded image and use their own daemon's immutable ID for execution.
 
-The Docker-only intermediate path uses the active context's containerd image store, keeping freshly built parent images visible. The shared cache action sets `set-host: true` on Docker setup, exporting the owned daemon socket through `DOCKER_HOST`. Builds, authenticated pulls and pushes therefore keep the same daemon when registry authentication temporarily selects a private `DOCKER_CONFIG`; the temporary configuration does not contain the original current-context selection. Cache scopes separate image and RID and use fingerprint keys with an older-recipe fallback. Exports rotate owned caches to avoid obsolete blobs. A verified final hit needs neither intermediate transfer nor parent preparation. Sources, `.env` and credentials never enter toolchain images. Local Podman behavior is unchanged.
+The registry reader verifies OCI images or the single matching Linux descriptor in an OCI index. The producer records immutable cache identity and checks image labels and native architecture. Sources, environment files and credentials stay outside the image archive. [CiImages](../scripts/lib/CiImages.md)
 
 ## Trusted cache-only preparation
 

@@ -1,14 +1,17 @@
 name: QuietCli2 ReadyToRun profiling
 
-# Manual and informational only: measures whether a ReadyToRun build of the Core module's engine reduces
-# cold-start time on this runner, per docs/README-readytorun_profiling.md. Runs once on Windows directly, and once per
-# Linux distribution/architecture (debian/alpine x x64/arm64, mirroring ci.yml's linux matrix) inside that
-# platform's prepared Docker image, each producing its own full report (nupkg cost, first-call timing, footprint,
-# hosted-path cost). A shared GitHub runner is not a controlled machine, so this never gates qualification or
-# publication (see ci.yml's qualification-gate) and its A/A control can legitimately fail the noise-floor check on
-# a noisy runner; that is a report, not a build failure to chase.
+# Measures the same-revision IL/ReadyToRun comparison on Windows and four native Linux targets.
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      images_prepared:
+        type: boolean
+        default: false
+      require_complete:
+        description: Require successful noise controls and complete comparisons on every target
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -44,12 +47,14 @@ jobs:
         shell: pwsh
         env:
           CANDIDATE_MODULE: ${{ env.CANDIDATE_MODULE }}
+          REQUIRE_COMPLETE: ${{ inputs.require_complete }}
         run: |
-          # Objective: Report the comparison without failing the job on an unstable noise floor or an
-          # inconclusive/slower verdict — this workflow is informational evidence, not a gate.
+          $ErrorActionPreference = 'Stop'
           try {
             ./scripts/Invoke-ColdStartGate.ps1 -CandidateModule $env:CANDIDATE_MODULE -CandidateLabel readytorun -Arguments @{ MeasurePackageSize = $true }
+            if (!(Get-ChildItem -LiteralPath ./artifacts/coldstart -Filter 'ab-*.json' -File)) { throw 'ReadyToRunComparisonMissing' }
           } catch {
+            if ($env:REQUIRE_COMPLETE -ceq 'true') { throw }
             Write-Warning "ReadyToRun cold-start report did not complete cleanly: $_"
           }
       - name: Render the latest report
@@ -78,7 +83,18 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  linux-images:
+    name: Prepare ReadyToRun Linux images
+    if: ${{ !inputs.images_prepared }}
+    permissions: {contents: read, packages: read}
+    uses: ./.github/workflows/linux-images.yml
+    with:
+      suites_json: '["Core"]'
+      artifact_scope: readytorun
+
   readytorun-linux:
+    needs: linux-images
+    if: ${{ !cancelled() && (needs.linux-images.result == 'success' || (inputs.images_prepared && needs.linux-images.result == 'skipped')) }}
     name: ReadyToRun cold-start report (${{ matrix.platform }}, ${{ matrix.rid }})
     permissions:
       contents: read
@@ -128,24 +144,28 @@ jobs:
         run: |
           $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -RuntimeIdentifier $env:EXPECTED_RID -CandidateRoot (Join-Path $env:RUNNER_TEMP ('quietcli-r2r-'+[guid]::NewGuid().ToString('N')))
           "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV -Encoding utf8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: quietcli-prepared-images-${{ inputs.images_prepared && 'workspace' || 'readytorun' }}-${{ matrix.rid }}
+          path: artifacts/prepared-ci-images
       - name: Run the A/A-gated A/B cold-start comparison inside the prepared platform image
         shell: pwsh
         env:
           PLATFORM: ${{ matrix.platform }}
           EXPECTED_RID: ${{ matrix.rid }}
-          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
+          REQUIRE_COMPLETE: ${{ inputs.require_complete }}
         run: |
-          # Objective: Report the per-platform comparison (nupkg cost, first-call timing, footprint, hosted-path
-          # cost) without failing the job on an unstable noise floor or an inconclusive/slower verdict — informational
-          # evidence, not a gate, same policy as the Windows job above.
+          $ErrorActionPreference = 'Stop'
           try {
-            $image = ./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -ContainerRuntime docker
+            $image = ./scripts/Import-CiImageBundle.ps1 -Suite Core -RuntimeIdentifier $env:EXPECTED_RID -Directory ./artifacts/prepared-ci-images -Revision $env:GITHUB_SHA -RunId $env:GITHUB_RUN_ID
             $run = Join-Path $PWD.Path ('artifacts/coldstart-containers/'+$env:EXPECTED_RID)
             [void][IO.Directory]::CreateDirectory($run)
-            ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot $PWD.Path -RunDirectory $run -Image $image.Image -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -ContainerRuntime docker
+            ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot $PWD.Path -RunDirectory $run -Image $image -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -ContainerRuntime docker
             $summary=Get-Content (Join-Path $run summary.json) -Raw -Encoding utf8|ConvertFrom-Json
-            if($summary.State.State -ne 'Success'){Write-Warning ('Cold-start outcome: '+$summary.State.State+'; '+$summary.State.Error)}
+            if ($summary.State.State -cne 'Success') { throw ('Cold-start outcome: '+$summary.State.State+'; '+$summary.State.Error) }
+            if (!(Get-ChildItem -LiteralPath $run -Filter 'ab-*.json' -File -Recurse)) { throw 'ReadyToRunComparisonMissing' }
           } catch {
+            if ($env:REQUIRE_COMPLETE -ceq 'true') { throw }
             Write-Warning "ReadyToRun cold-start report did not complete cleanly: $_"
           }
       - name: Render the latest report

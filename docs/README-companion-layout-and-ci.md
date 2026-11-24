@@ -33,7 +33,7 @@ src/
 Module names, GUIDs and Gallery identities do not depend on directory locations.
 PrivateData.QuietCli.SolutionGroup associates each inert manifest with its group.
 A group can contain several source modules and several test modules. Register every
-test runner in build/companions.yml; runners declaring the same group are selected
+test runner in build/companions.yaml; runners declaring the same group are selected
 together when that product group is qualified. Module RequiredModules still controls
 technical dependency order, and BuildProjects declares compiled distributions.
 
@@ -47,22 +47,21 @@ No artificial CSharp wrapper is required for a PowerShell-only module.
 ./scripts/Sync-WorkspaceSolutions.ps1 -Apply
 ~~~
 
-## Individual workflows and automatic selection
+## Shared product CI and automatic selection
 
 GitHub workflow files remain under the root .github/workflows directory:
 
-| Group | Individual entry point | Solution |
+| Group | CI engine | Solution |
 |---|---|---|
-| Core | core-ci.yml | src/Core/Core.slnx |
-| Git | git-ci.yml | src/Git/Git.slnx |
-| Vagrant | vagrant-ci.yml | src/Vagrant/Vagrant.slnx |
+| Core | ci.yml | src/Core/Core.slnx |
+| Git | ci.yml | src/Git/Git.slnx |
+| Vagrant | ci.yml | src/Vagrant/Vagrant.slnx |
 | Tooling | tooling-component-ci.yml | src/Tooling/Tooling.slnx |
 | Distribution | distribution-ci.yml | src/Distribution/Distribution.slnx |
 
-Each entry point explicitly passes suite, solution_path, source_path, test_path and
-qualification_mode through uses/with. Modes are full, smoke and build. Individual
-entry points support workflow_call and workflow_dispatch; automatic PR/develop work
-uses a matrix of the shared engine from those same generated profiles.
+The planner supplies product profiles to the shared CI matrix from the companion catalogue.
+For a manual product smoke or build, use `ci.yml` with `suite`, `qualification_mode` and
+`run_tooling=false`. Tooling and Distribution keep their dedicated component workflows.
 
 A change limited to repository scripts (`scripts/**`, `test/scripts/**`) runs only the script tests and
 script mutation targets it reaches, through
@@ -76,6 +75,8 @@ This keeps product requirements readable while avoiding a caller tree containing
 one unique reusable workflow for every future companion. GitHub limits such a tree
 to 50 unique reusable workflows. The automatic matrix calls the same engine for
 each selected profile instead.
+
+See [PR options and scripted merge](README-pull-request-ci.md) for the optional controls.
 
 ~~~powershell
 ./scripts/Sync-CompanionWorkflows.ps1
@@ -115,19 +116,9 @@ target side effects are not inferred from XML alone.
 Transitive central pinning without a proven resolved consumer graph conservatively
 selects importers; such a package is never silently classified as unused.
 
-## Linux image warm-up
+## Shared Linux image production
 
-The plan also emits `image_suites`: the selected suites whose Linux execution needs a CI image.
-On develop pushes and manual runs of this repository, companions-ci's `images` job warms them
-before any qualification starts:
-- one job per RID, in the `quietcli2-ci-images-<rid>` group, with `cancel-in-progress: false`;
-- each job probes the registry, then prepares and publishes missing layers sequentially, base first
-  and then each overlay after its parent.
-
-The product matrix waits for it and passes `images_prepared`, so the per-suite `linux-images`
-producer of ci.yml is skipped. A warm-up failure or cancellation blocks the required check. PRs
-and direct calls keep the per-suite producer, which never publishes from a PR. Its concurrency
-group includes the suite, so parallel suites never evict one another.
+The plan emits `image_suites` for product qualification and ReadyToRun. The `images` job of `companions-ci.yml` prepares these chains once per native RID and publishes a run-scoped bundle. The product and ReadyToRun jobs wait for that producer and load their image from the bundle. Standalone workflows call the same producer. Trusted upstream develop runs can also publish missing GHCR cache entries. [Linux CI images](ci/linux-images.md)
 
 Image participation per companion is `none` or `overlay` (see
 [Add a companion](../readmes/README-add-companion.md)). Test files under `test/scripts/` select the

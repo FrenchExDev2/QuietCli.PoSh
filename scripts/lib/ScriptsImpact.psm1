@@ -14,7 +14,7 @@ function Get-QuietScriptsTestFiles {
     $TestsRoot=[IO.Path]::GetFullPath($TestsRoot)
     $files=[string[]]@(foreach($kind in 'unit','integration'){
         foreach($path in @(Get-QuietScriptMutationTreeFiles ([IO.Path]::Combine($TestsRoot,$kind)))){
-            if($path.EndsWith('.Tests.ps1',[StringComparison]::Ordinal)){[IO.Path]::GetRelativePath($TestsRoot,$path).Replace('\','/')}
+            if($path.EndsWith('.Tests.ps1',[StringComparison]::Ordinal)){[IO.Path]::GetRelativePath($TestsRoot,$path).Replace([IO.Path]::DirectorySeparatorChar,[char]'/')}
         }
     })
     [Array]::Sort($files,[StringComparer]::Ordinal)

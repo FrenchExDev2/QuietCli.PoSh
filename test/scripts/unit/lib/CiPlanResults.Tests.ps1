@@ -6,7 +6,7 @@ BeforeAll {
     $null=Import-QuietTestLibrary -Name CiPlanResults
     $seed=Get-QuietTestSeed
     $prerequisites=@('plan','source-checks')
-    $scoped=[ordered]@{'layout-tests'='run_layout';products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';distribution='run_distribution'}
+    $scoped=[ordered]@{'layout-tests'='run_layout';products='run_products';smokes='run_smokes';'tooling-only'='run_tooling';'companion-checks'='run_companion_checks';distribution='run_distribution';readytorun='run_readytorun'}
     $results=@('success','skipped','failure','cancelled','Success',$null)
     $flags=@('true','false','True','',$null,'<absent>')
     # Builds a needs object; '<absent>' removes the job or the flag.
@@ -56,7 +56,7 @@ Describe 'Assert-QuietCiPlanResults' {
     }
 
     It 'reports exactly the issues of <Job> with flag <FlagValue> and result <ResultValue>' -ForEach @(
-        foreach($job in 'layout-tests','products','smokes','tooling-only','distribution'){foreach($f in 'true','false','True','',$null,'<absent>'){foreach($r in 'success','skipped','failure','cancelled','<absent>'){@{Job=$job;FlagValue=$f;ResultValue=$r}}}}
+        foreach($job in 'layout-tests','products','smokes','tooling-only','companion-checks','distribution','readytorun'){foreach($f in 'true','false','True','',$null,'<absent>'){foreach($r in 'success','skipped','failure','cancelled','<absent>'){@{Job=$job;FlagValue=$f;ResultValue=$r}}}}
     ) {
         $prerequisite=@{plan='success';'source-checks'='success'}
         $flag=@{};$result=@{};foreach($name in $scoped.Keys){$flag[$name]='false';$result[$name]='skipped'}

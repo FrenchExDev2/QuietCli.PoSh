@@ -28,7 +28,7 @@ function Test-QuietCiScalability {
     $null=[Reflection.Assembly]::LoadFrom((Join-Path $WorkspaceRoot 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll'))
     $cacheWorkflow=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build().Deserialize([IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/ci.yml'),[Text.Encoding]::UTF8))
     if($cacheWorkflow['on']['workflow_dispatch']['inputs']['images_only']['default'] -cne 'false'){throw 'CacheOnlyMustBeOptIn'}
-    foreach($job in @('qualification-gate','windows','tooling','linux-selection','linux-result','performance-results')){
+    foreach($job in @('qualification-gate','windows','tooling','linux-result','performance-results')){
         if([string]$cacheWorkflow['jobs'][$job]['if'] -notmatch '!inputs\.images_only'){throw ('CacheOnlyStartsQualification: '+$job)}
     }
     $vectors=@(
@@ -117,16 +117,16 @@ function Test-QuietCiScalability {
         $destination=Join-Path $coverage $project.Name;[void][IO.Directory]::CreateDirectory($destination)
         Copy-Item -LiteralPath $project.ManifestPath -Destination (Join-Path $destination ($project.Name+'.psd1'))
     }
-    foreach($path in @('build/companions.yml','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll')){
+    foreach($path in @('build/companions.yaml','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/dependencies.lock.json','src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/resources/yaml/YamlDotNet.dll')){
         $destination=Join-Path $coverage ($path.Replace('src/Core/src/',''));[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
         Copy-Item -LiteralPath (Join-Path $WorkspaceRoot $path) -Destination $destination
     }
     $product='FrenchExDev2.QuietCli.Nimbus.PoSh';$tests='FrenchExDev2.QuietCli.Nimbus.Tests.PoSh'
     New-QuietWorkspaceFixtureProject $coverage $product @('FrenchExDev2.QuietCli.Core.PoSh') -Metadata ("@{TestsModule='"+$tests+"'}")
     New-QuietWorkspaceFixtureProject $coverage $tests @($product,'FrenchExDev2.QuietCli.Core.Tests.PoSh') -Command Invoke-QuietNimbusCustomTests -Metadata "@{TestCatalogue=@{Runner='Invoke-QuietNimbusCustomTests';Sources=@()}}"
-    $rejected=$false;try{$null=Get-QuietWorkspaceSuiteSelection $coverage All}catch{$rejected=$_.Exception.Message -ceq 'WorkspaceCompanionQualificationUndeclared: Nimbus'}
-    Assert-QuietEqual $rejected $true 'A newly generated product cannot be silently omitted from All'
-    $catalogue=Join-Path $coverage 'build/companions.yml'
+    $cause=try{$null=Get-QuietWorkspaceSuiteSelection $coverage All;''}catch{$_.Exception.Message}
+    Assert-QuietEqual $cause 'WorkspaceCompanionQualificationUndeclared: Nimbus' 'A newly generated product cannot be silently omitted from All'
+    $catalogue=Join-Path $coverage 'build/companions.yaml'
     $yaml=[IO.File]::ReadAllText($catalogue,[Text.Encoding]::UTF8)
     $yaml=$yaml.Replace('companions:',"companions:`n  Nimbus:`n    requires: [Core]`n    image: none")
     $yaml=$yaml.Replace('suites:',"suites:`n  Nimbus:`n    test_project: $tests`n    command: Invoke-QuietNimbusCustomTests`n    requires: [Nimbus]`n    core_evidence: false")

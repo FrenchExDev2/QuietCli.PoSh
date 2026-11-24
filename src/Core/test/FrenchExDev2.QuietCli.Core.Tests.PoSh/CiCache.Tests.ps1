@@ -6,7 +6,7 @@ function Assert-QuietNuGetCacheLifecycle {
     Parsed product workflow; only restricted boolean expressions are evaluated.
     #>
     param($Workflow)
-    $steps=@($Workflow['jobs']['linux']['steps'])
+    $steps=@($Workflow['jobs']['linux-result']['steps'])
     $restore=@(0..($steps.Count-1)|Where-Object {$steps[$_]['uses'] -clike 'actions/cache/restore@*' -and $steps[$_]['with']['path'] -ceq '~/.nuget/packages'})
     $save=@(0..($steps.Count-1)|Where-Object {$steps[$_]['uses'] -clike 'actions/cache/save@*' -and $steps[$_]['with']['path'] -ceq '~/.nuget/packages'})
     if($restore.Count -ne 1 -or $save.Count -ne 1){throw 'NuGetCacheRestoreSaveRequired'}
@@ -54,7 +54,7 @@ function Test-QuietNuGetCacheLifecycle {
     $baseline=Assert-QuietNuGetCacheLifecycle $workflow
     $serialized=$workflow|ConvertTo-Json -Depth 60 -Compress
     $restoreIndex=$baseline.RestoreIndex;$saveIndex=$baseline.SaveIndex
-    $id=[string]$workflow['jobs']['linux']['steps'][$restoreIndex]['id']
+    $id=[string]$workflow['jobs']['linux-result']['steps'][$restoreIndex]['id']
     $conditions=@(
         "success() && steps.$id.outputs.cache-hit != 'true'",
         "steps.$id.outputs.cache-hit != 'true' && success()",
@@ -63,15 +63,15 @@ function Test-QuietNuGetCacheLifecycle {
     $properties=$baseline.Properties
     foreach($condition in $conditions){
         $candidate=$serialized|ConvertFrom-Json -AsHashtable
-        $candidate.jobs.linux.steps[$saveIndex]['if']=$condition
+        $candidate.jobs['linux-result'].steps[$saveIndex]['if']=$condition
         $properties+=(Assert-QuietNuGetCacheLifecycle $candidate).Properties
     }
     $damages=@('combined cache','late hash','matched key','wrong path','save before tests','save after failure','save exact hits','missing project input','floating action','unsafe condition','empty condition')
     foreach($damage in $damages){
         $candidate=$serialized|ConvertFrom-Json -AsHashtable
-        $steps=$candidate.jobs.linux.steps
+        $steps=$candidate.jobs['linux-result'].steps
         switch($damage){
-            'combined cache' {$steps[$restoreIndex].uses=([string]$steps[$restoreIndex].uses).Replace('/restore@','@');$candidate.jobs.linux.steps=@($steps[0..($saveIndex-1)])}
+            'combined cache' {$steps[$restoreIndex].uses=([string]$steps[$restoreIndex].uses).Replace('/restore@','@');$candidate.jobs['linux-result'].steps=@($steps[0..($saveIndex-1)])}
             'late hash' {$steps[$saveIndex]['with']['key']=$steps[$restoreIndex]['with']['key']}
             'matched key' {$steps[$saveIndex]['with']['key']='${{ steps.'+$id+'.outputs.cache-matched-key }}'}
             'wrong path' {$steps[$saveIndex]['with']['path']='~/.nuget/unrelated'}

@@ -8,7 +8,7 @@ function Test-QuietCiCompanions {
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory)
     $library=Join-Path $WorkspaceRoot 'scripts/lib/CiCompanions.psm1'
-    Import-Module $library
+    $module=Import-Module $library -PassThru -DisableNameChecking -ErrorAction Stop
     $configuration=Read-QuietCiCompanions $WorkspaceRoot
     $core=Resolve-QuietCiCompanions $configuration -Suite Core -RuntimeIdentifier win-x64 -RuntimeMajor 11
     if(($core.Images -join ',') -cne 'Core' -or ($core.Dependencies -join ',') -cne 'Core' -or @($core.Environment.Values|Where-Object {$_ -cne '0'}).Count){throw 'CoreTestToolDependencyChanged'}
@@ -89,7 +89,6 @@ function Test-QuietCiCompanions {
         if(!$rejected){throw 'MalformedCompanionDeclarationAccepted'}
     }
     [IO.File]::WriteAllText($path,$yaml,$utf8)
-    $module=Get-Module CiCompanions
     $resolverSource=& $module {(Get-Command Resolve-QuietCiCompanions).ScriptBlock.ToString()}
     $anchor='$suites[$name].Requires'
     if(([regex]::Matches($resolverSource,[regex]::Escape($anchor))).Count -ne 1){throw 'CompanionDependencyMutationAnchorChanged'}
@@ -99,7 +98,7 @@ function Test-QuietCiCompanions {
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/CiImages.psm1') -DisableNameChecking -ErrorAction Stop
     $base=Get-QuietCiImagePlan $WorkspaceRoot linux-x64
     $fragment=[pscustomobject]@{Platform='debian';Objective='Synthetic independent layer';Stages=@([pscustomobject]@{Name='ci';Run=@('true')})}
-    $inputPaths=@('build/companions.yml')
+    $inputPaths=@('build/companions.yaml')
     $first=Get-QuietCiModuleImagePlan $WorkspaceRoot linux-x64 First $fragment @{} $inputPaths -ParentPlan $base
     $second=Get-QuietCiModuleImagePlan $WorkspaceRoot linux-x64 Second $fragment @{} $inputPaths -ParentPlan $first
     $changed=$first.PSObject.Copy();$changed.Fingerprint='f'*64
@@ -183,9 +182,12 @@ function Test-QuietCiCompanions {
     if(Test-Path -LiteralPath $missing){throw 'CompanionLibraryPreviewCreatedFiles'}
     $entry=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/companions-ci.yml'),[Text.Encoding]::UTF8)
     $workflow=[YamlDotNet.Serialization.DeserializerBuilder]::new().Build().Deserialize($entry)
-    if(!$workflow['on'].ContainsKey('pull_request') -or $null -ne $workflow['on']['pull_request'] -or !$workflow['jobs'].ContainsKey('plan') -or
+    if('edited' -cnotin $workflow['on']['pull_request']['types'] -or !$workflow['jobs'].ContainsKey('plan') -or
         $workflow['jobs']['products']['with']['suite'] -cne '${{ matrix.suite }}' -or
+        $workflow['jobs']['products']['uses'] -cne './.github/workflows/ci.yml' -or
         $workflow['jobs']['ci-status']['name'] -cne 'QuietCli required CI' -or
-        !(Test-Path (Join-Path $WorkspaceRoot '.github/workflows/git-ci.yml')) -or !(Test-Path (Join-Path $WorkspaceRoot '.github/workflows/core-ci.yml'))){throw 'PerCompanionEntryWorkflowRequired'}
+        @(Get-ChildItem -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,'.github/workflows')) -File | Where-Object Name -CIn @('core-ci.yml','git-ci.yml','vagrant-ci.yml')).Count){
+        throw 'SharedProductWorkflowRequired'
+    }
     Write-WorkspaceJson (Join-Path $RunDirectory 'ci-companions.json') @{Seed=20261111;GeneratedCompanions=100;DependencyProperties=$properties;MalformedYamlInputs=$invalid.Count;ParentIdentityRejections=$imageChecks;MutantsKilled=3;DedicatedIntegrationRunner=$true;ReverseCoreDependency=$false;NativeExecutions=0;SourceSHA256=(Get-FileHash $library).Hash}
 }

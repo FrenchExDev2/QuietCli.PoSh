@@ -26,7 +26,7 @@ function Compare-QuietScriptAnalysisBaseline {
         $items=$actual[$key]
         $allowed=if($expected.ContainsKey($key)){[int]$expected[$key].Count}else{0}
         $baselined+=[Math]::Min($allowed,$items.Count)
-        for($index=$allowed;$index -lt $items.Count;$index++){$new.Add($items[$index])}
+        foreach($item in ($items | Select-Object -Skip $allowed)){$new.Add($item)}
     }
     foreach($entry in @($Baseline.Entries)){
         $key=Get-QuietScriptAnalysisFindingKey $entry
@@ -208,7 +208,7 @@ function Get-QuietScriptAnalysisFiles {
         if(![IO.Directory]::Exists($directory)){continue}
         foreach($file in [IO.Directory]::EnumerateFiles($directory,'*',$options)){
             if([IO.Path]::GetExtension($file) -cnotin @('.ps1','.psm1')){continue}
-            $files.Add([IO.Path]::GetRelativePath($root,$file).Replace('\','/'))
+            $files.Add([IO.Path]::GetRelativePath($root,$file).Replace([IO.Path]::DirectorySeparatorChar,[char]'/'))
         }
     }
     $sorted=$files.ToArray();[Array]::Sort($sorted,[StringComparer]::Ordinal)
