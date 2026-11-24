@@ -58,6 +58,61 @@ Describe 'Unavailable GHCR cache during image preparation' {
         Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 0 -Exactly -ParameterFilter { $Arguments[0] -cne 'pull' }
         Should -Invoke -ModuleName CiImages Get-QuietCiVerifiedImage -Times 0 -Exactly
     }
+
+    It 'recovers from a registry HTTP timeout <Mode>' -ForEach @(
+        @{Mode='during a regular build';CacheOnly=$false;Builds=1}
+        @{Mode='while checking the final image before its parents';CacheOnly=$true;Builds=0}
+    ) {
+        Mock -ModuleName CiImages Get-QuietCiRegistryDigest {
+            $timeout=[OperationCanceledException]::new('Registry fixture: HTTP client timeout',[TimeoutException]::new())
+            [Threading.Tasks.Task]::FromException($timeout).GetAwaiter().GetResult()
+        }
+        $plan=[pscustomobject]@{
+            Architecture='arm64'; Rid='linux-musl-arm64'; RegistryPath='fixture/alpine-arm64'
+            Fingerprint=('a'*64); Source='https://example.invalid/source'; Arguments=@{}
+            Base=$null; ContainerfileText='FROM scratch'
+        }
+        $receipt=Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory $TestDrive -WorkspaceRoot $TestDrive -ArtifactPrefix timeout -RegistryCache -CacheOnly:$CacheOnly -ContainerRuntime docker -ErrorAction Stop
+
+        if($CacheOnly){$receipt|Should -BeNullOrEmpty}else{
+            $receipt.Image|Should -BeExactly 'local-image-id'
+            $receipt.CacheHit|Should -BeFalse
+            $receipt.Published|Should -BeFalse
+        }
+        Should -Invoke -ModuleName CiImages Get-QuietCiRegistryDigest -Times 1 -Exactly
+        Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times $Builds -Exactly -ParameterFilter { $Arguments[0] -ceq 'build' }
+        Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 0 -Exactly -ParameterFilter { $Arguments[0] -cne 'build' }
+        Should -Invoke -ModuleName CiImages Write-Warning -Times 1 -Exactly -ParameterFilter {
+            $Message -ceq 'CI registry cache lookup timed out for linux-musl-arm64 (fixture/alpine-arm64).'
+        }
+    }
+
+    It 'preserves a registry lookup error <Mode>' -ForEach @(
+        @{Mode='for trusted publication';Publish=$true;ErrorText='Registry fixture: HTTP client timeout'}
+        @{Mode='when registry metadata is invalid';Publish=$false;ErrorText='CiRegistryDigestInvalid'}
+    ) {
+        Mock -ModuleName CiImages Get-QuietCiRegistryDigest { throw 'CiRegistryDigestInvalid' }
+        if($Publish){
+            Mock -ModuleName CiImages Get-QuietCiRegistryDigest {
+                $timeout=[OperationCanceledException]::new('Registry fixture: HTTP client timeout',[TimeoutException]::new())
+                [Threading.Tasks.Task]::FromException($timeout).GetAwaiter().GetResult()
+            }
+        }
+        $variables=@{GITHUB_REPOSITORY='FrenchExDev2/QuietCli.PoSh';GITHUB_REF='refs/heads/develop';GITHUB_EVENT_NAME='push'}
+        $previous=@{}
+        try{
+            foreach($name in $variables.Keys){
+                $previous[$name]=[Environment]::GetEnvironmentVariable($name)
+                [Environment]::SetEnvironmentVariable($name,$variables[$name])
+            }
+            $plan=[pscustomobject]@{Architecture='arm64';Rid='linux-musl-arm64';RegistryPath='fixture/alpine-arm64';Fingerprint=('a'*64)}
+            {Invoke-QuietCiImageBuild -Plan $plan -ContextDirectory $TestDrive -WorkspaceRoot $TestDrive -ArtifactPrefix failed -RegistryCache -PublishCache:$Publish -ContainerRuntime docker -ErrorAction Stop}|Should -Throw "*$ErrorText*"
+        }finally{
+            foreach($name in $previous.Keys){[Environment]::SetEnvironmentVariable($name,$previous[$name])}
+        }
+        Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 0 -Exactly
+        Should -Invoke -ModuleName CiImages Write-Warning -Times 0 -Exactly
+    }
 }
 
 Describe 'GHCR image download' {
