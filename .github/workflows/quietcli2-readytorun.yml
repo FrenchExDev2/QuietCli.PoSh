@@ -5,6 +5,9 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
+      images_prepared:
+        type: boolean
+        default: false
       require_complete:
         description: Require successful noise controls and complete comparisons on every target
         type: boolean
@@ -80,7 +83,18 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  linux-images:
+    name: Prepare ReadyToRun Linux images
+    if: ${{ !inputs.images_prepared }}
+    permissions: {contents: read, packages: read}
+    uses: ./.github/workflows/linux-images.yml
+    with:
+      suites_json: '["Core"]'
+      artifact_scope: readytorun
+
   readytorun-linux:
+    needs: linux-images
+    if: ${{ !cancelled() && (needs.linux-images.result == 'success' || (inputs.images_prepared && needs.linux-images.result == 'skipped')) }}
     name: ReadyToRun cold-start report (${{ matrix.platform }}, ${{ matrix.rid }})
     permissions:
       contents: read
@@ -130,20 +144,23 @@ jobs:
         run: |
           $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -RuntimeIdentifier $env:EXPECTED_RID -CandidateRoot (Join-Path $env:RUNNER_TEMP ('quietcli-r2r-'+[guid]::NewGuid().ToString('N')))
           "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV -Encoding utf8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: quietcli-prepared-images-${{ inputs.images_prepared && 'workspace' || 'readytorun' }}-${{ matrix.rid }}
+          path: artifacts/prepared-ci-images
       - name: Run the A/A-gated A/B cold-start comparison inside the prepared platform image
         shell: pwsh
         env:
           PLATFORM: ${{ matrix.platform }}
           EXPECTED_RID: ${{ matrix.rid }}
-          QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
           REQUIRE_COMPLETE: ${{ inputs.require_complete }}
         run: |
           $ErrorActionPreference = 'Stop'
           try {
-            $image = ./scripts/New-CiImage.ps1 -RuntimeIdentifier $env:EXPECTED_RID -RegistryCache -ContainerRuntime docker
+            $image = ./scripts/Import-CiImageBundle.ps1 -Suite Core -RuntimeIdentifier $env:EXPECTED_RID -Directory ./artifacts/prepared-ci-images -Revision $env:GITHUB_SHA -RunId $env:GITHUB_RUN_ID
             $run = Join-Path $PWD.Path ('artifacts/coldstart-containers/'+$env:EXPECTED_RID)
             [void][IO.Directory]::CreateDirectory($run)
-            ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot $PWD.Path -RunDirectory $run -Image $image.Image -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -ContainerRuntime docker
+            ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot $PWD.Path -RunDirectory $run -Image $image -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -ContainerRuntime docker
             $summary=Get-Content (Join-Path $run summary.json) -Raw -Encoding utf8|ConvertFrom-Json
             if ($summary.State.State -cne 'Success') { throw ('Cold-start outcome: '+$summary.State.State+'; '+$summary.State.Error) }
             if (!(Get-ChildItem -LiteralPath $run -Filter 'ab-*.json' -File -Recurse)) { throw 'ReadyToRunComparisonMissing' }

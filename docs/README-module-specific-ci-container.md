@@ -121,12 +121,11 @@ caught before any function lookup would have silently failed.
 
 ## Workflow wiring
 
-Image selection delegates to `New-CiSuiteImage.ps1` and `scripts/lib/CiCompanions.psm1`; the same final
-plan is used for registry lookup and Docker fallback. Suite registration, generic entry triggers
+Image selection delegates to `New-CiSuiteImage.ps1` and `scripts/lib/CiCompanions.psm1`. The same final plan identifies the producer image and the archive member the consumer loads. Suite registration, generic entry triggers
 and cross-product integration belong to [the onboarding guide's CI section](../readmes/README-add-companion.md#5-ci).
 This reference does not define a second registration procedure or a per-module workflow.
 
-One native producer matrix prepares the base and required overlays in the same job. Core alone uses the base; All reuses its final image for Core then bounded companion workers. Final registry hits avoid unused parents and intermediate-cache transfer. The Docker-only BuildKit cache and trusted develop/cache-only publication are described in [Linux images](ci/linux-images.md). See [the dated CI map](ci/README.md) for the corresponding source changes.
+One native producer matrix prepares the base and required overlays in the same job. Core alone uses the base. All reuses its final image for Core and then for bounded companion workers. Each consumer loads the image prepared for its suite from the current run's verified archive. See [Linux images](ci/linux-images.md) and [the CI map](ci/README.md).
 
 <!-- credits:begin -->
 ## Credits

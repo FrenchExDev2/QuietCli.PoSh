@@ -120,8 +120,8 @@ $rows=@(foreach($name in $plan.FullSuites){
 })
 $values="suite=$($plan.Suite)`nrun_products=$($plan.RunProducts.ToString().ToLowerInvariant())`nrun_tooling=$(($scope -cne 'none').ToString().ToLowerInvariant())`n"
 $outputs=@{
-    # Every fully qualified suite runs on a Linux image chain that the companions workflow warms once per RID.
-    image_suites=(ConvertTo-Json -InputObject @($plan.FullSuites) -Compress)
+    # ReadyToRun also consumes the Core image, including on a PR that only requests the benchmark.
+    image_suites=(ConvertTo-Json -InputObject @(@($plan.FullSuites)+$(if($plan.RunReadyToRun){'Core'}) | Where-Object {$_} | Sort-Object -Unique) -Compress)
     matrix=(@{include=$rows}|ConvertTo-Json -Depth 6 -Compress)
     smoke_suites=(ConvertTo-Json -InputObject @($plan.SmokeSuites) -Compress)
     run_smokes=($plan.SmokeSuites.Count -gt 0).ToString().ToLowerInvariant()
