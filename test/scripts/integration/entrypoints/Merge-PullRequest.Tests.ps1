@@ -6,9 +6,10 @@ BeforeAll {
 
 Describe 'Merge-PullRequest.ps1' {
     It 'previews in a directory without Git or GitHub access' {
-        $result=Invoke-QuietTestScript ([IO.Path]::Combine($script:scripts,'Merge-PullRequest.ps1')) @('-PullRequest','7','-WorkspaceRoot',$TestDrive,'-NoRebase','-NoBranchDelete','-WhatIf')
+        $result=Invoke-QuietTestScript ([IO.Path]::Combine($script:scripts,'Merge-PullRequest.ps1')) @('-PullRequest','7','-WorkspaceRoot',$TestDrive,'-NoBranchDelete','-WhatIf')
         $result.ExitCode | Should -Be 0 -Because $result.Error
         $result.Output | Should -Match 'workspace pull request #7'
+        $result.Output | Should -Match 'Squash and merge after verifying the rebase'
         @(Get-ChildItem -LiteralPath $TestDrive -Force).Count | Should -Be 0
     }
 }

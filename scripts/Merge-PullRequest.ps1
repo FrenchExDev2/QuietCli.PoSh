@@ -10,8 +10,6 @@ Checkout whose GitHub remote owns the pull request.
 Configured GitHub remote, origin by default.
 .PARAMETER ExpectedHead
 Exact pull request head SHA to merge. If omitted, the observed head is pinned.
-.PARAMETER NoRebase
-Use a merge commit.
 .PARAMETER NoBranchDelete
 Keep the source branch.
 #>
@@ -21,12 +19,10 @@ param(
     [string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),
     [ValidatePattern('\A[A-Za-z0-9][A-Za-z0-9._-]*\z')][string]$Remote='origin',
     [ValidatePattern('\A[a-f0-9]{40}\z')][string]$ExpectedHead,
-    [switch]$NoRebase,
     [switch]$NoBranchDelete
 )
-$method=if($NoRebase){'merge commit'}else{'rebase'}
 $branchAction=if($NoBranchDelete){'preserve the source branch'}else{'delete the source branch'}
-if(!$PSCmdlet.ShouldProcess("workspace pull request #$PullRequest via $Remote","Merge with $method and $branchAction")){return}
+if(!$PSCmdlet.ShouldProcess("workspace pull request #$PullRequest via $Remote","Squash and merge after verifying the rebase, then $branchAction")){return}
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Merge-PullRequest.psm1')) -DisableNameChecking -ErrorAction Stop
 $PSBoundParameters.Confirm=$false
 Invoke-QuietMergePullRequest @PSBoundParameters

@@ -4,15 +4,17 @@
 Source file: [`Merge-PullRequest.ps1`](../../scripts/Merge-PullRequest.ps1)
 <!-- script-source:end -->
 
-Merge an existing workspace PR by number once `QuietCli required CI` has succeeded and the latest receipt matches its current revision and options. See [PR checklist and merge evidence](../README-pull-request-ci.md).
+Squash and merge an existing workspace PR by number once `QuietCli required CI` has succeeded and the latest receipt matches its current revision and options. [PR checklist and merge evidence](../README-pull-request-ci.md)
 
 ```powershell
 ./scripts/Merge-PullRequest.ps1 -PullRequest 123 -WhatIf
 ./scripts/Merge-PullRequest.ps1 -PullRequest 123
-./scripts/Merge-PullRequest.ps1 -PullRequest 123 -NoRebase -NoBranchDelete
+./scripts/Merge-PullRequest.ps1 -PullRequest 123 -NoBranchDelete
 ```
 
-The default is rebase and merge, followed by deletion of the source branch on GitHub and locally. `-NoRebase` selects a merge commit. `-NoBranchDelete` preserves the branch. GitHub's repository-level automatic deletion must be disabled to preserve a branch. Use `-ExpectedHead` to pin the merge to a previously reviewed 40-character SHA. The default remote is `origin`.
+Before merging, the script verifies that the exact PR head has linear history starting at the current remote `develop`. If the history needs a rebase, rebase and push the branch, then wait for CI to qualify its new head. GitHub merges the approved head into `develop` as one commit.
+
+The script deletes the source branch on GitHub and locally by default. `-NoBranchDelete` preserves it when GitHub's repository-level automatic deletion is disabled. Use `-ExpectedHead` to pin the merge to a reviewed 40-character SHA. The default remote is `origin`.
 
 The script uses standard `-WhatIf` and `-Confirm`. Preview makes no Git or GitHub calls. The [library contract](lib/Merge-PullRequest.md) explains the checks, confirmation and results.
 

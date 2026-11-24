@@ -10,6 +10,11 @@ Describe 'Workspace pull request delivery' {
     BeforeEach {
         $script:head='a'*40
         $script:oldHead='b'*40
+        $script:base='d'*40
+        $script:baseReads=0
+        $script:baseMoves=$false
+        $script:missingCommits='0'
+        $script:mergeCommits='0'
         $script:branch='feature/work'
         $script:repository='example/QuietCli'
         $script:localRef="refs/heads/$script:branch $script:head"
@@ -49,7 +54,17 @@ Describe 'Workspace pull request delivery' {
                 'git status' { return $script:dirty }
                 'git for-each-ref' { return $script:localRef }
                 'git ls-remote' { return $script:remoteRef }
+                'git fetch' { return }
+                'git rev-list' {
+                    if($Arguments -contains '--merges'){return $script:mergeCommits}
+                    return $script:missingCommits
+                }
                 'gh api' {
+                    if($Arguments[1] -ceq "repos/$script:repository/git/ref/heads/develop"){
+                        $script:baseReads++
+                        if($script:baseMoves -and $script:baseReads -gt 1){return $script:oldHead}
+                        return $script:base
+                    }
                     if($Arguments -contains '--method'){return ConvertTo-Json -InputObject $script:runs -Depth 5 -Compress}
                     return ConvertTo-Json @{delete_branch_on_merge=$script:autoDelete} -Compress
                 }
@@ -95,29 +110,41 @@ Describe 'Workspace pull request delivery' {
         $null=Start-Transcript -LiteralPath $transcript
         try {
             Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -WhatIf
-            Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -NoRebase -NoBranchDelete -WhatIf
+            Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -NoBranchDelete -WhatIf
             Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -MergePullRequest -WhatIf
         } finally {$null=Stop-Transcript}
         $preview=[IO.File]::ReadAllText($transcript,[Text.Encoding]::UTF8)
-        $preview | Should -Match 'Merge with --rebase and delete the source branch.*workspace pull request #7 via origin'
-        $preview | Should -Match 'Merge with --merge and preserve the branch.*workspace pull request #7 via origin'
+        $preview | Should -Match 'Squash and merge after verifying the rebase, then delete the source branch.*workspace pull request #7 via origin'
+        $preview | Should -Match 'Squash and merge after verifying the rebase, then preserve the source branch.*workspace pull request #7 via origin'
         $preview | Should -Match 'Push and watch the existing pull request'
         Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 0 -Exactly
         Should -Invoke Invoke-QuietPullRequestScript -ModuleName 'Merge-PullRequest' -Times 0 -Exactly
     }
 
-    It 'rebases the pinned head and verifiably removes both source refs by default' {
+    It 'squash-merges the rebased pinned head and verifiably removes both source refs by default' {
         $result=Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -Confirm:$false -WarningVariable warnings -WarningAction SilentlyContinue -ErrorVariable mergeErrors
         @($warnings).Count | Should -Be 0
         @($mergeErrors).Count | Should -Be 0
-        ($script:mergeArguments -join ' ') | Should -BeExactly "pr merge 7 --repo $script:repository --rebase --match-head-commit $script:head --delete-branch"
+        ($script:mergeArguments -join ' ') | Should -BeExactly "pr merge 7 --repo $script:repository --squash --match-head-commit $script:head --delete-branch"
         $result.State | Should -BeExactly Merged
         $result.PullRequest | Should -Be 7
         $result.Url | Should -BeExactly $script:view.url
         $result.MergeCommit | Should -BeExactly ('c'*40)
         $result.BranchDeleted | Should -BeTrue
         $result.Head | Should -BeExactly $script:head
-        $result.Method | Should -BeExactly rebase
+        $result.Method | Should -BeExactly squash
+        Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 2 -Exactly -ParameterFilter {
+            $FilePath -ceq 'gh' -and ($ArgumentList -join ' ') -ceq 'api repos/example/QuietCli/git/ref/heads/develop --jq .object.sha'
+        }
+        Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 1 -Exactly -ParameterFilter {
+            $FilePath -ceq 'git' -and ($ArgumentList -join ' ') -ceq ('fetch --no-tags --no-write-fetch-head --no-recurse-submodules -- origin '+('d'*40)+' '+('a'*40))
+        }
+        Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 1 -Exactly -ParameterFilter {
+            $FilePath -ceq 'git' -and ($ArgumentList -join ' ') -ceq ('rev-list --count '+('a'*40)+'..'+('d'*40))
+        }
+        Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 1 -Exactly -ParameterFilter {
+            $FilePath -ceq 'git' -and ($ArgumentList -join ' ') -ceq ('rev-list --count --merges '+('d'*40)+'..'+('a'*40))
+        }
         Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 1 -Exactly -ParameterFilter {
             $FilePath -ceq 'git' -and ($ArgumentList -join ' ') -ceq 'ls-remote --heads origin refs/heads/feature/work'
         }
@@ -133,14 +160,38 @@ Describe 'Workspace pull request delivery' {
         }
     }
 
-    It 'uses a merge commit and preserves the source branch when requested' {
-        $result=Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -NoRebase -NoBranchDelete -Confirm:$false
-        ($script:mergeArguments -join ' ') | Should -BeExactly "pr merge 7 --repo $script:repository --merge --match-head-commit $script:head"
-        $result.Method | Should -BeExactly merge
+    It 'squash-merges and preserves the source branch when requested' {
+        $result=Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -NoBranchDelete -Confirm:$false
+        ($script:mergeArguments -join ' ') | Should -BeExactly "pr merge 7 --repo $script:repository --squash --match-head-commit $script:head"
+        $result.Method | Should -BeExactly squash
         $result.BranchDeleted | Should -BeNullOrEmpty
         Should -Invoke Invoke-QuietPullRequestTool -ModuleName 'Merge-PullRequest' -Times 1 -Exactly -ParameterFilter {
             $FilePath -ceq 'gh' -and ($ArgumentList -join ' ') -ceq 'api repos/example/QuietCli --jq {delete_branch_on_merge}'
         }
+    }
+
+    It 'refuses to merge if develop has advanced beyond the PR head' {
+        $script:missingCommits='1'
+        {Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -Confirm:$false} | Should -Throw '*PullRequestRebaseRequired*'
+        $script:trace.Count | Should -Be 0
+    }
+
+    It 'refuses to merge a topic history containing merge commits' {
+        $script:mergeCommits='1'
+        {Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -Confirm:$false} | Should -Throw '*PullRequestRebaseRequired*'
+        $script:trace.Count | Should -Be 0
+    }
+
+    It 'refuses to merge if develop moves between the graph check and the merge' {
+        $script:baseMoves=$true
+        {Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -Confirm:$false} | Should -Throw '*PullRequestBaseChanged*'
+        $script:trace.Count | Should -Be 0
+    }
+
+    It 'refuses to merge if the remote develop SHA is unavailable' {
+        $script:base='not-a-sha'
+        {Invoke-QuietMergePullRequest -WorkspaceRoot $TestDrive -PullRequest 7 -Confirm:$false} | Should -Throw '*PullRequestBaseUnavailable*'
+        $script:trace.Count | Should -Be 0
     }
 
     It 'rejects a PR whose <Field> is invalid' -ForEach @(
@@ -265,9 +316,9 @@ Describe 'Workspace pull request delivery' {
     It 'merges after the explicitly associated run succeeds with both overrides forwarded' {
         $script:runs[0].pull_requests=@(7)
         $script:view.statusCheckRollup[0].detailsUrl=$null
-        $result=@(Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -MergePullRequest -NoRebase -NoBranchDelete -DiscoverySeconds 0 -Confirm:$false)
+        $result=@(Invoke-QuietCommitPullRequest -WorkspaceRoot $TestDrive -Revision $script:head -MergePullRequest -NoBranchDelete -DiscoverySeconds 0 -Confirm:$false)
         $result[-1].State | Should -BeExactly Merged
-        $result[-1].Method | Should -BeExactly merge
+        $result[-1].Method | Should -BeExactly squash
         $script:mergeArguments | Should -Not -Contain '--delete-branch'
         ($script:trace -join '|') | Should -BeExactly "push:$script:branch`:$script:head|watch:$script:repository`:102|merge"
     }
