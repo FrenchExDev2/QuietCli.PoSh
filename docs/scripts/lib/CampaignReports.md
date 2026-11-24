@@ -4,7 +4,7 @@
 Source file: [`lib/CampaignReports.psm1`](../../../scripts/lib/CampaignReports.psm1)
 <!-- script-source:end -->
 
-`Write-QuietCampaignReport` writes a Mermaid Markdown report, an offline HTML view and an optional job summary. Download the artifact and open `report.html` in a browser, or open `report.md` in a Markdown viewer with Mermaid support.
+`Write-QuietCampaignReport` writes measurement tables in Markdown and offline HTML and appends them to the optional job summary. Download the artifact to open `report.html` in a browser or view `report.md` directly.
 
 - `ScriptMutation` reads `report.json` and retains the detailed score, survivor and equivalent tables in Markdown.
 - `RunProfilesMutation` reads `run-profiles-mutation.json`. Each sharded report identifies its shard.

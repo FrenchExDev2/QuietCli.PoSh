@@ -15,13 +15,18 @@ Describe 'Write-QuietCampaignReport' {
         $markdown=[IO.Path]::Combine($directory,'report.md')
         $text=[IO.File]::ReadAllText($markdown,[Text.Encoding]::UTF8)
         $text|Should -Match '## Example'
-        $text|Should -Match '```mermaid'
+        $text|Should -Not -Match '```mermaid|xychart'
         $text|Should -Match '\| Item \| Mutants \|'
-        $text|Should -Match 'bar \[3, 1, 0, 0, 2\]'
+        $text|Should -Match '\| Killed \| 3 \|'
+        $text|Should -Match '\| Timeout \| 0 \|'
         $text|Should -Match '75 %'
         [IO.File]::ReadAllText($evidence,[Text.Encoding]::UTF8)|Should -BeExactly $json
-        [IO.File]::ReadAllText($summary,[Text.Encoding]::UTF8)|Should -Match 'Campaign outcome \*\*failure\*\*'
-        [IO.File]::ReadAllText([IO.Path]::Combine($directory,'report.html'),[Text.Encoding]::UTF8)|Should -Match '<meter min="0" max="3" value="3">'
+        $summaryText=[IO.File]::ReadAllText($summary,[Text.Encoding]::UTF8)
+        $summaryText|Should -Match 'Campaign outcome \*\*failure\*\*'
+        $summaryText|Should -Not -Match '```mermaid|xychart'
+        $html=[IO.File]::ReadAllText([IO.Path]::Combine($directory,'report.html'),[Text.Encoding]::UTF8)
+        $html|Should -Match '<th scope="row">Killed</th><td>3</td>'
+        $html|Should -Not -Match '<meter|<svg'
         Write-QuietCampaignReport @arguments
         [IO.File]::ReadAllText($markdown,[Text.Encoding]::UTF8)|Should -BeExactly $text
     }
@@ -65,7 +70,7 @@ Describe 'Write-QuietCampaignReport' {
         $md|Should -Match '## Top lines'
         $md|Should -Match 'Self time \(ms\)'
         $md|Should -Match 'sample\.ps1:10'
-        $md|Should -Match 'bar \[0\.25\]'
+        $md|Should -Match '\| sample\.ps1:10 \| 0\.25 \|'
         $html=[IO.File]::ReadAllText([IO.Path]::Combine($directory,'report.html'),[Text.Encoding]::UTF8)
         $html|Should -Match '&lt;script&gt;'
         $html|Should -Not -Match '<script>'
