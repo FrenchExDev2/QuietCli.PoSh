@@ -4,7 +4,7 @@
 Compares the cold-start cost of two QuietCli Core module builds with interleaved, fresh-process, paired runs.
 
 .DESCRIPTION
-Every sample starts a new `pwsh -NoProfile` child through `quiet`, using the -Output and -Complete callbacks to receive
+Every sample starts a new `pwsh -NoProfile` child from the current PowerShell installation and reads
 the child's measurement line. The child imports the module under test, then times a first and a second `quiet` call
 of a light native command. Baseline and candidate runs alternate (the order inside each pair is randomized with a
 fixed seed) so machine drift hits both variants. A pair with a failed run is discarded whole (never retried).

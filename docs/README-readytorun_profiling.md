@@ -40,7 +40,8 @@ overwriting the baseline module you want to compare against — the gate needs b
 `global.json`, `Directory.Build.props`, `Directory.Packages.props` and the grouped Core module into a new owned directory.
 It publishes the chosen RID with `-p:PublishReadyToRun=true` to `lib/inprocess/<rid>` for .NET 10 and
 `lib/engine/<rid>` for .NET 11. Each host selects the engine for its actual CLR. Both publications record
-source hashes, the target architecture and the verified ReadyToRun format. From
+source hashes, the target architecture and the verified ReadyToRun format. Measurement children use the executable
+from the current PowerShell installation, which keeps the CLR and RID consistent with the benchmark driver. From
 `PoSh/FrenchExDev/QuietCliEcosystem/FrenchExDev2.QuietCli.PoSh`, with the baseline already built normally
 (`./scripts/Build-Workspace.ps1`, left in place and untouched):
 

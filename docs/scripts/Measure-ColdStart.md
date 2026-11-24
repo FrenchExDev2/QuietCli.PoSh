@@ -12,6 +12,8 @@ This entry point preserves its parameters and defaults and forwards explicitly b
 
 Imports its local library using `-DisableNameChecking -ErrorAction Stop` and invokes `Invoke-QuietScriptMeasureColdStart`. The library retains the original operation guards and output contract. Import alone does not run the operation.
 
+Samples use the executable from the current PowerShell installation, including the pinned runner host in GitHub Actions. Each sample imports its selected QuietCli module in a fresh process.
+
 <!-- script-contract:begin -->
 ## Execution contract
 

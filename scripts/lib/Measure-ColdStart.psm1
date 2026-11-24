@@ -1,4 +1,6 @@
 using module ./RunLog.psm1
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'Ci.Process.psm1')) -DisableNameChecking -ErrorAction Stop
+
 function Invoke-QuietScriptMeasureColdStart {
 #requires -Version 7.6
 <#
@@ -6,7 +8,7 @@ function Invoke-QuietScriptMeasureColdStart {
 Compares the cold-start cost of two QuietCli Core module builds with interleaved, fresh-process, paired runs.
 
 .DESCRIPTION
-Every sample starts a new `pwsh -NoProfile` child through `quiet`, using the -Output and -Complete callbacks to receive
+Every sample starts a new `pwsh -NoProfile` child from the current PowerShell installation and reads
 the child's measurement line. The child imports the module under test, then times a first and a second `quiet` call
 of a light native command. Baseline and candidate runs alternate (the order inside each pair is randomized with a
 fixed seed) so machine drift hits both variants. A pair with a failed run is discarded whole (never retried).
@@ -114,6 +116,7 @@ $ErrorActionPreference = 'Stop'
 foreach ($module in 'RunFormat', 'RunStatistics', 'RunProfiler', 'RunEncoding', 'RunColdStart') { Import-Module ([IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),"lib/$module.psm1")) -DisableNameChecking -ErrorAction Stop }
 $logger = New-RunLogger -Level $LogLevel -Component 'coldstart' -LogPath $LogPath
 $clock = [Diagnostics.Stopwatch]::StartNew()
+$powerShell = [IO.Path]::Combine($PSHOME, $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' }))
 
 function Get-WorkerScript {
     <#
@@ -128,19 +131,30 @@ function Get-WorkerScript {
     $commandJson = ConvertTo-RunSingleQuoted (ConvertTo-Json -InputObject @($Command) -Compress)
     return @"
 `$ErrorActionPreference = 'Stop'
+`$env:QUIETCLI_TRACKING = '0'
+`$env:QUIETCLI_RECALL = '0'
 `$culture = [Globalization.CultureInfo]::InvariantCulture
-`$watch = [Diagnostics.Stopwatch]::StartNew()
-Import-Module $(ConvertTo-RunSingleQuoted $Module) -Force
-`$import = `$watch.Elapsed.TotalMilliseconds
-`$child = @(ConvertFrom-Json $commandJson)
-`$watch.Restart()
-`$first = quiet -AsObject -Output { param(`$event, `$runtime) } -Complete { param(`$runtime) } @child
-`$firstMs = `$watch.Elapsed.TotalMilliseconds
-`$watch.Restart()
-`$second = quiet -AsObject -Output { param(`$event, `$runtime) } -Complete { param(`$runtime) } @child
-`$secondMs = `$watch.Elapsed.TotalMilliseconds
-if (`$first.Outcome -ne 'Success' -or `$second.Outcome -ne 'Success') { throw 'ChildCommandFailed' }
-[string]::Format(`$culture, 'RESULT {0:F3} {1:F3} {2:F3}', `$import, `$firstMs, `$secondMs)
+`$stage = 'import'
+try {
+    `$watch = [Diagnostics.Stopwatch]::StartNew()
+    Import-Module $(ConvertTo-RunSingleQuoted $Module) -Force
+    `$import = `$watch.Elapsed.TotalMilliseconds
+    `$child = @(ConvertFrom-Json $commandJson)
+    `$stage = 'first-call'
+    `$watch.Restart()
+    `$first = quiet -AsObject -Output { param(`$event, `$runtime) } -Complete { param(`$runtime) } @child
+    `$firstMs = `$watch.Elapsed.TotalMilliseconds
+    if (`$first.Outcome -ne 'Success') { throw 'ChildCommandFailed' }
+    `$stage = 'second-call'
+    `$watch.Restart()
+    `$second = quiet -AsObject -Output { param(`$event, `$runtime) } -Complete { param(`$runtime) } @child
+    `$secondMs = `$watch.Elapsed.TotalMilliseconds
+    if (`$second.Outcome -ne 'Success') { throw 'ChildCommandFailed' }
+    [string]::Format(`$culture, 'RESULT {0:F3} {1:F3} {2:F3}', `$import, `$firstMs, `$secondMs)
+} catch {
+    [Console]::Error.WriteLine('COLDSTART-FAILURE ' + `$stage)
+    exit 1
+}
 "@
 }
 
@@ -158,16 +172,18 @@ function Get-ProfiledWorkerScript {
     $importCode = ConvertTo-RunSingleQuoted "Import-Module $(ConvertTo-RunSingleQuoted $Module) -Force"
     return @"
 `$ErrorActionPreference = 'Stop'
+`$env:QUIETCLI_TRACKING = '0'
+`$env:QUIETCLI_RECALL = '0'
 Import-Module $(ConvertTo-RunSingleQuoted $library)
 `$path = Invoke-RunProfiled -ScriptBlock ([scriptblock]::Create($importCode)) -OutputDirectory $(ConvertTo-RunSingleQuoted $ProfileDirectory) -Label $(ConvertTo-RunSingleQuoted $Label) -ProfilerModulePath $(ConvertTo-RunSingleQuoted $ProfilerModulePath)
 "PROFILE `$path"
 "@
 }
 
-function Invoke-QuietChild {
+function Invoke-BenchmarkChild {
     <#
     .SYNOPSIS
-    Runs one fresh pwsh child through quiet and returns the whitespace-separated fields following its marker.
+    Runs the current PowerShell executable in a fresh process and returns the fields following its marker.
     .PARAMETER Worker
     Child script.
     .PARAMETER Marker
@@ -175,23 +191,30 @@ function Invoke-QuietChild {
     #>
     param([string]$Worker, [string]$Marker)
     $logger.Increment('run.started')
-    $result = quiet -AsObject -RecordDelimiter "`n" -TimeoutSeconds $RunTimeoutSeconds `
-        -Data @{ Marker = $Marker; Line = $null; Fields = $null; Matches = 0 } `
-        -Output {
-            param($event, $runtime)
-            if ($event.Stream -eq 'stdout' -and $event.Text.StartsWith($runtime.Data.Marker + ' ', [StringComparison]::Ordinal)) { $runtime.Data.Line = $event.Text.Trim(); $runtime.Data.Matches++ }
-        } `
-        -Complete {
-            param($runtime)
-            if ($null -ne $runtime.Data.Line) { $runtime.Data.Fields = @($runtime.Data.Line.Split(' ') | Select-Object -Skip 1) }
-        } `
-        pwsh -NoProfile -Command $Worker
-    if ($result.Outcome -ne 'Success' -or $null -eq $result.Data.Fields -or $result.Data.Matches -ne 1) {
+    $state = @{ Marker = $Marker; Line = $null; Matches = 0; FailureStage = $null }
+    try {
+        $result = Invoke-CiProcess -FilePath $powerShell -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', $Worker) `
+            -TimeoutSeconds $RunTimeoutSeconds -State $state -OnOutput {
+                param($record, $state)
+                if ($record.Stream -ceq 'stdout' -and $record.Text.StartsWith($state.Marker + ' ', [StringComparison]::Ordinal)) {
+                    $state.Line = $record.Text.Trim()
+                    $state.Matches++
+                }
+                elseif ($record.Stream -ceq 'stderr' -and $record.Text -cmatch '^COLDSTART-FAILURE (import|first-call|second-call)$') {
+                    $state.FailureStage = $Matches[1]
+                }
+            }
+    }
+    catch {
         $logger.Increment('run.failed')
-        throw "ChildRunFailed: outcome=$($result.Outcome)"
+        throw "ChildRunFailed: launch=$($_.Exception.Message)"
+    }
+    if ($result.Outcome -ne 'Success' -or $state.Matches -ne 1) {
+        $logger.Increment('run.failed')
+        throw "ChildRunFailed: outcome=$($result.Outcome) exit=$($result.ExitCode) marker=$Marker count=$($state.Matches) stage=$($state.FailureStage)"
     }
     $logger.Increment('run.succeeded')
-    return $result.Data.Fields
+    return @($state.Line.Split(' ') | Select-Object -Skip 1)
 }
 
 function Invoke-ColdRun {
@@ -202,12 +225,11 @@ function Invoke-ColdRun {
     Child script produced by Get-WorkerScript.
     #>
     param([string]$Worker)
-    $fields = Invoke-QuietChild -Worker $Worker -Marker 'RESULT'
+    $fields = Invoke-BenchmarkChild -Worker $Worker -Marker 'RESULT'
     return ConvertFrom-RunColdSample $fields
 }
 
 foreach ($module in @($BaselineModule, $CandidateModule)) { if (-not (Test-Path -LiteralPath $module -PathType Leaf)) { throw "ModuleManifestNotFound: $module" } }
-if (-not (Get-Command quiet -ErrorAction SilentlyContinue)) { Import-Module ([IO.Path]::Combine((Split-Path ([IO.Path]::GetDirectoryName($PSScriptRoot)) -Parent),'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')) -DisableNameChecking }
 
 $variants = @(
     @{ Label = $BaselineLabel; Module = [IO.Path]::GetFullPath($BaselineModule) }
@@ -280,7 +302,7 @@ $profileReports = @()
 if ($ProfileImport) {
     foreach ($variant in $variants) {
         $logger.Info("profiling import of '$($variant.Label)'")
-        $fields = Invoke-QuietChild -Worker (Get-ProfiledWorkerScript $variant.Module "import-$($variant.Label)") -Marker 'PROFILE'
+        $fields = Invoke-BenchmarkChild -Worker (Get-ProfiledWorkerScript $variant.Module "import-$($variant.Label)") -Marker 'PROFILE'
         $profileReports += ($fields -join ' ')
         $logger.Increment('profile.exported')
     }
