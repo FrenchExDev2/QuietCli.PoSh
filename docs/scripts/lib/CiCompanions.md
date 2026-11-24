@@ -79,6 +79,8 @@ This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), whi
 <!-- grouped-layout-review:begin -->
 ## Grouped workspace contract
 
+Container file paths in the image validation results use `/` as the directory separator on every host.
+
 Reviewed source: scripts/lib/CiCompanions.psm1:1. Module identities are resolved through the catalogue while physical source/test paths live below src/<group>/. Dependencies remain explicit and imports do not execute business operations.
 
 Build-Workspace supports verified reuse and explicit affected Project paths. New-CiImpactPlan emits separate build/full/smoke selections and reason chains. Cache presence never replaces source, payload, configuration and target verification. The global release check name and publication requirements remain unchanged.

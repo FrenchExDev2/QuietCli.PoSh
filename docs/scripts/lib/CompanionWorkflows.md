@@ -6,6 +6,8 @@ Source file: [`lib/CompanionWorkflows.psm1`](../../../scripts/lib/CompanionWorkf
 
 ## Purpose and usage
 
+The companion checklist check compares LF-normalized text. Applying a stale checklist writes UTF-8 without a byte-order mark.
+
 Derives explicit companion profiles, renders workflow wrappers and validates caller paths.
 
 ```powershell
