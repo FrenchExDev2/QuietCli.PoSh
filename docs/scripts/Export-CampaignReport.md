@@ -4,7 +4,7 @@
 Source file: [`Export-CampaignReport.ps1`](../../scripts/Export-CampaignReport.ps1)
 <!-- script-source:end -->
 
-Renders `report.md` with Mermaid charts and `report.html` with standalone bar charts for a mutation or profiling campaign. `-Outcome` records the original campaign step outcome. `-SummaryPath` appends the compact Markdown to the GitHub Actions job summary. `-WhatIf` previews the write.
+Renders measurement tables in `report.md` and standalone `report.html` for a mutation or profiling campaign. `-Outcome` records the original campaign step outcome. `-SummaryPath` appends the compact Markdown to the GitHub Actions job summary. `-WhatIf` previews the write.
 
 ```powershell
 ./scripts/Export-CampaignReport.ps1 -Kind ScriptMutation -Directory ./artifacts/script-mutation/Example -Title 'Script mutation Example' -Outcome success

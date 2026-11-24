@@ -328,6 +328,7 @@ jobs:
         env:
           INCLUDE_PREVIEW: ${{ inputs.run_preview }}
         run: ./scripts/Select-PowerShellCiMatrix.ps1 -IncludePreview:($env:INCLUDE_PREVIEW -ceq 'true') -OutputPath $env:GITHUB_OUTPUT
+      - uses: ./.github/actions/cache-resources
       - name: Define the native Linux platform/RID/runner matrix once for every consumer job
         id: matrix
         shell: pwsh

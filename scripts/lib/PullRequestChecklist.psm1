@@ -123,14 +123,15 @@ function Expand-QuietPullRequestTemplate {
     $lines=$Template -split '\r\n|\n|\r'
     $body=Read-QuietPullRequestChecklist $Template
     if('script-mutation' -cnotin $body.Available){throw 'PullRequestCiChecklistTemplateInvalid'}
+    $helpUrl='https://github.com/FrenchExDev2/QuietCli.PoSh/blob/develop/docs/README-pull-request-ci.md'
     $expanded=foreach($line in $lines){
         if($line -cmatch '<!-- ci:(?:run-profile-mutation|profiling)-[a-z][a-z0-9]* -->\s*$'){continue}
         $line
         if($line -cmatch '<!-- ci:script-mutation -->\s*$'){
             foreach($companion in $Configuration.Companions.Values){
                 $id=$companion.Name.ToLowerInvariant()
-                if($companion.Mutation){"- [ ] Run $($companion.Name) mutation testing <!-- ci:run-profile-mutation-$id -->"}
-                "- [ ] Profile the $($companion.Name) PowerShell tests <!-- ci:profiling-$id -->"
+                if($companion.Mutation){"- [ ] Run $($companion.Name) mutation testing [Details]($helpUrl#companion-mutation) <!-- ci:run-profile-mutation-$id -->"}
+                "- [ ] Profile the $($companion.Name) PowerShell tests [Details]($helpUrl#companion-profiling) <!-- ci:profiling-$id -->"
             }
         }
     }

@@ -229,6 +229,17 @@ Describe 'companions-ci.yml script-only plans' {
     }
 }
 
+Describe 'ci.yml Linux matrix resources' {
+    It 'restores the pinned resource archives before resolving the companion catalogue' {
+        $job=$engine['jobs']['linux-matrix']
+        $cacheIndex=& $stepIndex $job {param($step)$step['uses'] -ceq './.github/actions/cache-resources'}
+        $matrixIndex=& $stepIndex $job {param($step)$step['id'] -ceq 'matrix'}
+        $cacheIndex|Should -BeGreaterOrEqual 0
+        $cacheIndex|Should -BeLessThan $matrixIndex
+        $job['steps'][$matrixIndex]['run']|Should -Match 'Initialize-CiCompanions.ps1'
+    }
+}
+
 Describe 'ci.yml per-suite producer' {
     It 'declares images_prepared as an optional boolean defaulting to false' {
         $declared=$engine['on']['workflow_call']['inputs']['images_prepared']
