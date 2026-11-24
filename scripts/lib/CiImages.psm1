@@ -613,11 +613,15 @@ function Export-QuietCiImageBundle {
     if(!$images.Count){throw 'CiImageBundleEmpty'}
     [void][IO.Directory]::CreateDirectory($Directory)
     $archive=[IO.Path]::Combine($Directory,'images.tar')
-    $ids=@($images.Values|Sort-Object -Unique)
-    $null=Invoke-WorkspaceNative docker (@('image','save','--output',$archive)+$ids) $WorkspaceRoot -TimeoutSeconds 600
+    $references=@(foreach($fingerprint in $images.Keys){
+        $reference='quietcli-ci-transfer:'+$fingerprint
+        $null=Invoke-WorkspaceNative docker @('image','tag',$images[$fingerprint],$reference) $WorkspaceRoot -TimeoutSeconds 30
+        $reference
+    })
+    $null=Invoke-WorkspaceNative docker (@('image','save','--output',$archive)+$references) $WorkspaceRoot -TimeoutSeconds 600
     Write-WorkspaceJson ([IO.Path]::Combine($Directory,'bundle.json')) @{
-        SchemaVersion=1;Revision=$Revision;RunId=$RunId;RuntimeIdentifier=$RuntimeIdentifier
-        ArchiveSha256=(Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash;Images=$images
+        SchemaVersion=2;Revision=$Revision;RunId=$RunId;RuntimeIdentifier=$RuntimeIdentifier
+        ArchiveSha256=(Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash;Fingerprints=@($images.Keys)
     }
 }
 
@@ -636,13 +640,12 @@ function Import-QuietCiImageBundle {
     #>
     param([string]$Directory,$Plan,[string]$Revision,[string]$RunId)
     $receipt=Get-Content -LiteralPath ([IO.Path]::Combine($Directory,'bundle.json')) -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
-    if($receipt.SchemaVersion -ne 1 -or $receipt.Revision -cne $Revision -or $receipt.RunId -cne $RunId -or $receipt.RuntimeIdentifier -cne $Plan.Rid){throw 'CiImageBundleRunIdentityMismatch'}
-    $id=$receipt.Images[$Plan.Fingerprint]
-    if($id -cnotmatch '\Asha256:[0-9a-f]{64}\z'){throw 'CiImageBundleExpectedImageMissing'}
+    if($receipt.SchemaVersion -ne 2 -or $receipt.Revision -cne $Revision -or $receipt.RunId -cne $RunId -or $receipt.RuntimeIdentifier -cne $Plan.Rid){throw 'CiImageBundleRunIdentityMismatch'}
+    if($Plan.Fingerprint -cnotin $receipt.Fingerprints){throw 'CiImageBundleExpectedImageMissing'}
     $archive=[IO.Path]::Combine($Directory,'images.tar')
     if((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -cne $receipt.ArchiveSha256){throw 'CiImageBundleArchiveMismatch'}
     $null=Invoke-WorkspaceNative docker @('image','load','--input',$archive) $Directory -TimeoutSeconds 600
-    (Get-QuietCiVerifiedImage -Plan $Plan -Reference $id -ContainerRuntime docker).Id
+    (Get-QuietCiVerifiedImage -Plan $Plan -Reference ('quietcli-ci-transfer:'+$Plan.Fingerprint) -ContainerRuntime docker).Id
 }
 
 Export-ModuleMember -Function 'Get-QuietCiFingerprint','Get-QuietCiImagePlan','Get-QuietModuleContainerfile','Get-QuietCiModuleImagePlan','Get-QuietCiVerifiedImage','Get-QuietCiLocalImageArchitecture','Get-QuietCiRegistryDigest','Read-QuietCiRegistryDocument','ConvertTo-QuietCiRegistryDiagnostic','Get-QuietCiBuildCacheOptions','Get-QuietCiBuildCommand','Invoke-QuietCiImageBuild','Export-QuietCiImageBundle','Import-QuietCiImageBundle'

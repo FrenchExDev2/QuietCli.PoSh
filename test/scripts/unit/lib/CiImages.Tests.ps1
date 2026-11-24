@@ -177,34 +177,40 @@ Describe 'CI image bundle handoff' {
         $revision='a'*40
         $plan=@{Rid='linux-musl-arm64';Fingerprint=('b'*64)}
         $imageId='sha256:'+('c'*64)
+        $consumerId='sha256:'+('d'*64)
+        $transferRef='quietcli-ci-transfer:'+('b'*64)
         $receipts=@([pscustomobject]@{RuntimeIdentifier=$plan.Rid;Fingerprint=$plan.Fingerprint;Image=$imageId})
         Mock -ModuleName CiImages Invoke-WorkspaceNative {
             if($Arguments[1] -ceq 'save'){[IO.File]::WriteAllText($Arguments[3],'archive',[Text.Encoding]::UTF8)}
         }
-        Mock -ModuleName CiImages Get-QuietCiVerifiedImage { [pscustomobject]@{Id=$Reference} }
+        Mock -ModuleName CiImages Get-QuietCiVerifiedImage { [pscustomobject]@{Id=('sha256:'+('d'*64))} }
     }
 
     It 'saves and loads the exact verified image without a registry operation' {
         Export-QuietCiImageBundle -WorkspaceRoot $TestDrive -RuntimeIdentifier $plan.Rid -Directory $directory -Revision $revision -RunId 314 -Receipts $receipts
-        Import-QuietCiImageBundle -Directory $directory -Plan $plan -Revision $revision -RunId 314 | Should -BeExactly $imageId
-        Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 2 -Exactly
+        Import-QuietCiImageBundle -Directory $directory -Plan $plan -Revision $revision -RunId 314 | Should -BeExactly $consumerId
+        Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 3 -Exactly
         Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 1 -Exactly -ParameterFilter {
-            $FilePath -ceq 'docker' -and ($Arguments -join '|') -ceq ('image|save|--output|'+[IO.Path]::Combine($directory,'images.tar')+'|'+$imageId)
+            $FilePath -ceq 'docker' -and ($Arguments -join '|') -ceq ('image|tag|'+$imageId+'|'+$transferRef)
+        }
+        Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 1 -Exactly -ParameterFilter {
+            $FilePath -ceq 'docker' -and ($Arguments -join '|') -ceq ('image|save|--output|'+[IO.Path]::Combine($directory,'images.tar')+'|'+$transferRef)
         }
         Should -Invoke -ModuleName CiImages Invoke-WorkspaceNative -Times 1 -Exactly -ParameterFilter {
             $FilePath -ceq 'docker' -and ($Arguments -join '|') -ceq ('image|load|--input|'+[IO.Path]::Combine($directory,'images.tar'))
         }
         Should -Invoke -ModuleName CiImages Get-QuietCiVerifiedImage -Times 1 -Exactly -ParameterFilter {
-            $Reference -ceq $imageId -and $Plan.Fingerprint -ceq ('b'*64) -and $ContainerRuntime -ceq 'docker'
+            $Reference -ceq $transferRef -and $Plan.Fingerprint -ceq ('b'*64) -and $ContainerRuntime -ceq 'docker'
         }
     }
 
     It 'rejects a <Field> mismatch before loading' -ForEach @(
-        @{Field='SchemaVersion';Value=2;ErrorText='RunIdentityMismatch'}
+        @{Field='SchemaVersion';Value=1;ErrorText='RunIdentityMismatch'}
         @{Field='Revision';Value=('f'*40);ErrorText='RunIdentityMismatch'}
         @{Field='RunId';Value='315';ErrorText='RunIdentityMismatch'}
         @{Field='RuntimeIdentifier';Value='linux-arm64';ErrorText='RunIdentityMismatch'}
-        @{Field='Images';Value=@{('f'*64)=('sha256:'+('c'*64))};ErrorText='ExpectedImageMissing'}
+        @{Field='Fingerprints';Value=@(('f'*64));ErrorText='ExpectedImageMissing'}
+        @{Field='Fingerprints';Value=@(('B'*64));ErrorText='ExpectedImageMissing'}
         @{Field='ArchiveSha256';Value=('F'*64);ErrorText='ArchiveMismatch'}
     ) {
         Export-QuietCiImageBundle -WorkspaceRoot $TestDrive -RuntimeIdentifier $plan.Rid -Directory $directory -Revision $revision -RunId 314 -Receipts $receipts

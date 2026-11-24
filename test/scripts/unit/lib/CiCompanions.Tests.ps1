@@ -18,6 +18,13 @@ Describe 'Get-QuietCompanions' {
         {Get-QuietCompanions -Configuration $catalogue -Name Ghost}|Should -Throw '*CiCompanionNotAvailable*'
         {Get-QuietCompanions -Configuration $catalogue -Name Demo -Capability Mutation}|Should -Throw '*CiCompanionNotAvailable*'
     }
+
+    It 'resolves the unqualified default from the checkout owning the library' {
+        Mock Read-QuietCiCompanions -ModuleName CiCompanions { @{Companions=[ordered]@{Core=@{Name='Core'}}} }
+        $expected=[IO.Path]::GetFullPath('..',(Get-QuietTestScriptsRoot))
+        Get-QuietCompanions|Should -BeExactly 'Core'
+        Should -Invoke Read-QuietCiCompanions -ModuleName CiCompanions -Exactly -Times 1 -ParameterFilter {$WorkspaceRoot -ceq $expected}
+    }
 }
 BeforeAll {
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'..','..','support','TestWorkspace.psm1')) -Force -DisableNameChecking -ErrorAction Stop
@@ -76,6 +83,36 @@ suites:
 }
 
 Describe 'Read-QuietCiCompanions' {
+    It 'fails with its own diagnostic when there is no catalogue' {
+        {Read-QuietCiCompanions -WorkspaceRoot ([IO.Path]::Combine($TestDrive,'absent'))}|Should -Throw '*CiCompanionCatalogueMissing*'
+    }
+
+    It 'round-trips both valid mutation declarations and workstation policy' {
+        $text=$valid.Replace('    image: base',"    image: base`n    mutation: {suite: RunProfilesMutation}").Replace('    image: overlay',"    image: overlay`n    mutation: {environment: {QUIETCLI_GIT_MUTATION: '1'}}`n    workstation: true`n    test: 'src\Git\test\Git.Tests'")
+        $result=& $read $text
+        $result.Companions['Core'].Mutation['suite']|Should -BeExactly 'RunProfilesMutation'
+        $result.Companions['Git'].Mutation['environment']['QUIETCLI_GIT_MUTATION']|Should -BeExactly '1'
+        $result.Companions.Git.Workstation|Should -BeTrue
+        $result.Companions.Core.Workstation|Should -BeFalse
+        $result.Companions.Git.TestPath|Should -BeExactly 'src/Git/test/Git.Tests'
+    }
+
+    It 'rejects malformed companion policy <Declaration>' -ForEach @(
+        @{Declaration='mutation: bad';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration='mutation: null';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration='mutation: {suite: RunProfilesMutation, environment: {}}';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration='mutation: {suite: WrongSuite}';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration='mutation: {environment: {}}';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration='mutation: {environment: wrong}';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration='mutation: {unknown: RunProfilesMutation}';Message='CiCompanionMutationInvalid: Git'}
+        @{Declaration="mutation: {environment: {INVALID: '1'}}";Message='CiCompanionEnvironmentInvalid'}
+        @{Declaration="mutation: {environment: {QUIETCLI_GIT_MUTATION: '0'}}";Message='CiCompanionEnvironmentInvalid'}
+        @{Declaration='workstation: yes-please';Message='CiCompanionWorkstationInvalid: Git'}
+        @{Declaration="test: 'src\Git\other\wrong'";Message='CiCompanionPathInvalid: Git/test'}
+    ) {
+        {& $read $valid.Replace('    image: overlay',"    image: overlay`n    $Declaration")}|Should -Throw "*$Message*"
+    }
+
     It 'reads the build catalogue and resolves old checkout fixtures when it is absent' {
         $root=[IO.Path]::Combine($TestDrive,'catalogue-path')
         $null=New-Item -Path ([IO.Path]::Combine($root,'build')) -ItemType Directory -Force

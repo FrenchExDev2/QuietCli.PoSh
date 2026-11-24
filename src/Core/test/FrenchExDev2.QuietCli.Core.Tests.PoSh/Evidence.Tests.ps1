@@ -11,8 +11,13 @@ function Test-QuietEvidenceBundle {
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     $builder=Join-Path $WorkspaceRoot 'scripts/New-CoreEvidenceBundle.ps1'
     $workflow=[IO.File]::ReadAllText((Join-Path $WorkspaceRoot '.github/workflows/ci.yml'),[Text.Encoding]::UTF8)
-    $uploads=@([regex]::Matches($workflow,'(?ms)^          name: quietcli-core-evidence-.*?(?=^      -|^  [a-z]|\z)'))
-    if($uploads.Count -ne 3 -or @($uploads|Where-Object {$_.Value -notmatch '(?m)^          include-hidden-files: true\r?$'}).Count){throw 'OwnedHiddenEvidenceNotUploaded'}
+    foreach($jobName in 'windows','linux-result'){
+        $job=[regex]::Match($workflow,"(?ms)^  ${jobName}:\r?\n.*?(?=^  [a-z][a-z-]*:|\z)").Value
+        $uploads=@([regex]::Matches($job,'(?ms)^          name: quietcli-core-evidence-.*?(?=^      -|\z)'))
+        if($uploads.Count -ne 1 -or $uploads[0].Value -notmatch '(?m)^          include-hidden-files: true\r?$'){
+            throw ('OwnedHiddenEvidenceNotUploaded: '+$jobName)
+        }
+    }
     $root=Join-Path $RunDirectory 'evidence-unit'
     [void][IO.Directory]::CreateDirectory($root)
     $random=[Random]::new(73597)

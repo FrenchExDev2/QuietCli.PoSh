@@ -23,6 +23,8 @@ flowchart TD
 
 GitHub starts the Linux consumers after successful preparation. Each consumer downloads the current run's archive, verifies the revision, RID and SHA-256, selects the image by its independently calculated recipe fingerprint and verifies its native architecture and source labels after loading. It runs with `--network none` and `--pull=never`. Reruns can reuse a successful producer from the same run and revision. Image preparation alone does not qualify a target.
 
+The archive retains a local transfer tag for each fingerprint. Docker image stores can assign different IDs to the same imported image. Consumers resolve the transfer tag, validate the loaded image and use their own daemon's immutable ID for execution.
+
 The registry reader verifies OCI images or the single matching Linux descriptor in an OCI index. The producer records immutable cache identity and checks image labels and native architecture. Sources, environment files and credentials stay outside the image archive. [CiImages](../scripts/lib/CiImages.md)
 
 ## Trusted cache-only preparation

@@ -189,6 +189,7 @@
             Functions = @('Get-QuietCompanionProfiles','Get-QuietCompanionWorkflowDefinitions','Sync-QuietCompanionWorkflows','Assert-QuietCompanionProfile')
             UnitTestFiles = @('unit/lib/CompanionWorkflows.Tests.ps1')
             Equivalent = @(
+                @{Function='Sync-QuietCompanionWorkflows';Mutator='StringLiteral';Original="'Synchronize the companion checkboxes'";Replacement="''";Reason='The ShouldProcess action text changes only the prompt label. Preview still writes nothing and an accepted operation writes the same bytes.'}
                 @{Function = 'Sync-QuietCompanionWorkflows'; Mutator = 'StringLiteral'; Original = "'Synchronize companion workflow'"; Replacement = "''"; Reason = 'ShouldProcess action text is only shown by the host under -WhatIf or -Confirm; no result depends on it.'}
             )
             # YamlDotNet is resolved through Core's dependency lock.
@@ -370,6 +371,10 @@
             Functions = @('ConvertTo-QuietChartText','ConvertTo-QuietChartXml','Format-QuietChartNumber','Get-QuietPerformanceChartSeries','Get-QuietPerformanceChartTitle','ConvertTo-QuietPerformanceMermaidChart','Get-QuietPerformanceChartCaption','ConvertTo-QuietPerformanceSvgChart','Get-QuietPerformanceWorkloadCoverage','Get-QuietCoverageText','ConvertTo-QuietPerformanceMermaidOverview','ConvertTo-QuietPerformanceSvgOverview')
             UnitTestFiles = @('unit/lib/PerformanceCharts.Tests.ps1')
             Break = 100
+            Equivalent = @(
+                @{Function='ConvertTo-QuietPerformanceMermaidChart';Mutator='StringLiteral';Original='"`n"';Replacement="''";Platform='Linux';Reason='AppendLine emits LF on Linux and sanitized chart values contain no CRLF, so this replacement is never used.'}
+                @{Function='ConvertTo-QuietPerformanceMermaidOverview';Mutator='StringLiteral';Original='"`n"';Replacement="''";Platform='Linux';Reason='AppendLine emits LF on Linux and sanitized chart values contain no CRLF, so this replacement is never used.'}
+            )
         }
         @{
             Name = 'CampaignReports'
