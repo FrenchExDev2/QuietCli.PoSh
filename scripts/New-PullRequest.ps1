@@ -33,6 +33,7 @@ param(
     [Parameter(ParameterSetName='Create')][string]$Head,
     [Parameter(ParameterSetName='Create')][string]$Base='develop'
 )
+if(!$PreviewBody -and !$PSCmdlet.ShouldProcess("$Remote -> $Base",'Create the GitHub pull request')){return}
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/PullRequestChecklist.psm1')) -DisableNameChecking -ErrorAction Stop
 $encoding=[Text.UTF8Encoding]::new($false,$true)
@@ -49,7 +50,6 @@ if($FooterFile){$parts.Footer=[IO.File]::ReadAllText([IO.Path]::GetFullPath($Foo
 if($PSBoundParameters.ContainsKey('CiOption')){$parts.CiOption=$CiOption}
 $description=New-QuietPullRequestBody @parts
 if($PreviewBody){$description;return}
-if(!$PSCmdlet.ShouldProcess("$Remote -> $Base",'Create the GitHub pull request')){return}
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/PullRequestUpdates.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/MergedBranches.psm1')) -DisableNameChecking -ErrorAction Stop
 $WorkspaceRoot=[IO.Path]::GetFullPath($WorkspaceRoot,$PWD.ProviderPath)

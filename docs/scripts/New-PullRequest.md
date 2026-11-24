@@ -13,7 +13,7 @@ On GitHub, the checklist links to the guide at the pushed revision. `-PreviewBod
 ./scripts/New-PullRequest.ps1 -Title 'Explain the change' -BodyFile ./description.md -FooterFile ./notes.md -CiOption run-profile-mutation-git,profiling-git
 ```
 
-The defaults are the checked-out branch, `origin` and `develop`. Override them with `-Head`, `-Remote` and `-Base`. An existing open PR for the same source and target is returned as-is. The source Markdown files remain unchanged. `-WhatIf` makes no remote call and creates no temporary file. `-PreviewBody` returns the exact composed text. Passing an empty `-CiOption @()` clears a selection already present in the description.
+The defaults are the checked-out branch, `origin` and `develop`. Override them with `-Head`, `-Remote` and `-Base`. An existing open PR for the same source and target is returned as-is. Preview creation with `-WhatIf` to see the operation before the script prepares the body or contacts GitHub. Use `-PreviewBody` to return the composed description, including the companion table. Passing an empty `-CiOption @()` clears a selection already present in the description.
 
 <!-- script-contract:begin -->
 ## Execution contract
