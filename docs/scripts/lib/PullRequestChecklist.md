@@ -6,7 +6,7 @@ Source file: [`lib/PullRequestChecklist.psm1`](../../../scripts/lib/PullRequestC
 
 `Read-QuietPullRequestChecklist` parses the versioned Markdown block used by GitHub's PR template. Options are returned in canonical order for both the CI table and earlier task lists. The parser ignores fenced examples and rejects malformed, duplicate or unknown choices. The `script-mutation-no-input-cache` row is optional when reading older descriptions.
 
-`New-QuietPullRequestBody` composes a description, the standard checklist and an optional footer without changing input files. An explicit option array overrides the checks in the supplied description.
+`New-QuietPullRequestBody` composes a description, the standard checklist and an optional footer without changing input files. An explicit option array overrides the checks in the supplied description. Pass `-GuideUrl` to pin links inside the checklist to a published revision.
 
 `Expand-QuietPullRequestTemplate` generates a column for each declared companion plus `Scripts`. Rows describe effects, and the marked cells carry stable option identifiers. A dash indicates an unavailable combination. The parser validates row width, effect links and cell identities. It accepts trailing whitespace on table rows. The generator preserves Markdown outside the managed block and links each effect to the [PR CI guide](../../README-pull-request-ci.md).
 

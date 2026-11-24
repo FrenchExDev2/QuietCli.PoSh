@@ -6,6 +6,8 @@ Source file: [`New-PullRequest.ps1`](../../scripts/New-PullRequest.ps1)
 
 Creates a GitHub pull request from a branch already pushed to the selected remote. It expands the repository's English CI checklist from `build/companions.yaml` and accepts an optional Markdown footer.
 
+On GitHub, the checklist links to the guide at the pushed revision. `-PreviewBody` uses the versioned template's links and works offline.
+
 ```powershell
 ./scripts/New-PullRequest.ps1 -BodyFile ./description.md -FooterFile ./notes.md -CiOption run-profile-mutation-git,profiling-git -PreviewBody
 ./scripts/New-PullRequest.ps1 -Title 'Explain the change' -BodyFile ./description.md -FooterFile ./notes.md -CiOption run-profile-mutation-git,profiling-git

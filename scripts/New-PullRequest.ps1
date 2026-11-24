@@ -66,6 +66,8 @@ $existing=@(Invoke-QuietPullRequestTool $WorkspaceRoot gh @('pr','list','--repo'
     ConvertFrom-Json | Where-Object {$_.headRefName -ceq $Head -and $_.baseRefName -ceq $Base -and $_.isCrossRepository -eq $false})
 if($existing.Count -gt 1){throw 'PullRequestCreateAmbiguous'}
 if($existing.Count -eq 1){$existing[0].url;return}
+$revision=$remoteRef.Substring(0,40)
+$description=New-QuietPullRequestBody @parts -GuideUrl "https://github.com/$repository/blob/$revision/docs/README-pull-request-ci.md"
 $temporary=[IO.Path]::GetTempFileName()
 try{
     [IO.File]::WriteAllText($temporary,$description,$encoding)
