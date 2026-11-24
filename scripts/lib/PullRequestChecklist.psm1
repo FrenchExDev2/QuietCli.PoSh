@@ -219,7 +219,7 @@ function Read-QuietPullRequestTable {
     $rows = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($line in $Lines[2..($Lines.Count - 1)]) {
         $cells = @($line.Trim().Trim('|').Split('|').Trim())
-        if ($cells.Count -ne $headers.Count -or $cells[0] -cnotmatch '^\[([^\]]+)\]\(https://[^)]+\)$') { throw 'PullRequestCiChecklistInvalidRow' }
+        if ($cells.Count -ne $headers.Count -or $cells[0] -cnotmatch '^\[([^\]]+)\]\(https://[^)]+\)$') { throw 'PullRequestCiChecklistMalformedEffectRow' }
         $effect = $Matches[1]
         if ($effect -cnotin $effects.Keys -or !$rows.Add($effect)) { throw 'PullRequestCiChecklistInvalidRow' }
         for ($i = 0; $i -lt $targets.Count; $i++) {

@@ -86,6 +86,16 @@ Describe 'Expandable companion checklist table' {
         (Expand-QuietPullRequestTemplate -Template $expanded -Configuration $catalogue)|Should -BeExactly $expanded
     }
 
+    It 'preserves both sides of the table and accepts trailing whitespace on a row' {
+        $catalogue=@{Companions=[ordered]@{Box2=@{Name='Box2';Mutation=$true}}}
+        $wrapped="## Additional CI validation`n`n$template`n`nExisting notes"
+        $expanded=Expand-QuietPullRequestTemplate -Template $wrapped -Configuration $catalogue
+        $expanded|Should -Match '(?s)^## Additional CI validation\r?\n\r?\n<!-- quietcli-ci:begin -->.*<!-- quietcli-ci:end -->\r?\n\r?\nExisting notes$'
+        $expanded|Should -Match '(?m)^\| \[Performance\][^\r\n]+ \|$'
+        $spaced=$expanded -creplace '(?m)^(\| \[Performance\][^\r\n]*)$', '$1  '
+        (Read-QuietPullRequestChecklist $spaced).Available|Should -Contain 'performance-box2'
+    }
+
     It 'rejects malformed tables and mismatched options' {
         $catalogue=@{Companions=[ordered]@{Core=@{Name='Core';Mutation=$true};Git=@{Name='Git';Mutation=$true}}}
         $expanded=Expand-QuietPullRequestTemplate -Template $template -Configuration $catalogue
@@ -96,6 +106,7 @@ Describe 'Expandable companion checklist table' {
             $expanded.Replace('| Effect | Core | Git | Scripts |','| Target | Core | Git | Scripts |'),
             $expanded.Replace('| --- | --- | --- | --- |','| --- | --- | --- |'),
             $expanded.Replace('| --- | --- | --- | --- |','| --- | --- | BAD | --- |'),
+            $expanded.Replace('| --- | --- | --- | --- |','| --- | --- |  | --- |'),
             ($expanded -creplace '(?m)^- .*ci:mutation-serial -->\r?\n','')
         )){
             {Read-QuietPullRequestChecklist $invalid}|Should -Throw '*PullRequestCiChecklistInvalidTable*'
@@ -110,7 +121,9 @@ Describe 'Expandable companion checklist table' {
         }
         {Read-QuietPullRequestChecklist ($expanded.Replace('[Profiling]','[Performance]'))}|Should -Throw '*PullRequestCiChecklistInvalidRow*'
         {Read-QuietPullRequestChecklist ($expanded.Replace('[Profiling]','[Other]'))}|Should -Throw '*PullRequestCiChecklistInvalidRow*'
-        {Read-QuietPullRequestChecklist ($expanded.Replace('[Profiling]','Profiling'))}|Should -Throw '*PullRequestCiChecklistInvalidRow*'
+        {Read-QuietPullRequestChecklist ($expanded.Replace('[Profiling]','Profiling'))}|Should -Throw '*PullRequestCiChecklistMalformedEffectRow*'
+        $extraCell=$expanded -creplace '(?m)^(\| \[Performance\][^\r\n]+\|)$', '$1 — |'
+        {Read-QuietPullRequestChecklist $extraCell}|Should -Throw '*PullRequestCiChecklistMalformedEffectRow*'
         {Read-QuietPullRequestChecklist ($expanded -creplace '(?m)^\| \[Performance\][^\r\n]+\r?\n','')}|Should -Throw '*PullRequestCiChecklistIncomplete*'
     }
 }
