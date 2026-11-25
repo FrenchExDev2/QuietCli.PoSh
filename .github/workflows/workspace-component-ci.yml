@@ -76,7 +76,7 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
-          cache: true
+          cache: ${{ inputs.build_artifact == '' || inputs.campaign == 'mutation' || inputs.campaign == 'profiled-mutation' }}
           cache-dependency-path: |
             **/*.csproj
             **/Directory.Packages.props

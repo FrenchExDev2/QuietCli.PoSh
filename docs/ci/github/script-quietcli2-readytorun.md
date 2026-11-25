@@ -1,6 +1,6 @@
 # quietcli2-readytorun.yml
 
-<!-- workflow-source-sha256: 91321E732F2E78E22145DB8FE61F9A60E03017E4026E04F4BA0795CE1BDB9222 -->
+<!-- workflow-source-sha256: B714BA25DCDD39CE079D6536306D3549C47CA9A41E48B7A63330FB1BA0407E16 -->
 
 ## Purpose
 
@@ -16,6 +16,8 @@ Manual workflow dispatch is informational and offers the optional `aa_control` s
 ## .NET SDK source pin
 
 The reviewed setup-dotnet steps read the checked-out global.json through global-json-file, so the CI, publication preparation and manual ReadyToRun jobs follow the selected SDK instead of embedding an old RC string. This source review does not establish hosted execution or full matrix qualification.
+
+The setup-dotnet NuGet cache runs only when the benchmark builds its variants locally. Artifact consumers use the SDK to run the comparison and may finish with no NuGet packages directory.
 
 ## Measurement and artifacts
 

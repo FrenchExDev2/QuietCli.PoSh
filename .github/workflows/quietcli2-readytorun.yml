@@ -46,7 +46,7 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
-          cache: true
+          cache: ${{ inputs.build_artifact == '' }}
           cache-dependency-path: '**/*.csproj'
       - name: Verify monorepo structure and external resources
         shell: pwsh
@@ -152,7 +152,7 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
-          cache: true
+          cache: ${{ inputs.build_artifact == '' }}
           cache-dependency-path: '**/*.csproj'
       - uses: ./.github/actions/cache-resources
       - uses: ./.github/actions/setup-powershell

@@ -458,6 +458,21 @@ Describe 'ci.yml per-suite producer' {
 }
 
 Describe 'Shared PR build artifact' {
+    It 'uses the benchmark NuGet cache only when the job builds its own variants' {
+        foreach($name in 'readytorun','readytorun-linux'){
+            $step=@($ready['jobs'][$name]['steps'] | Where-Object {$_['uses'] -clike 'actions/setup-dotnet@*'})
+            $step.Count|Should -Be 1
+            $step[0]['with']['cache']|Should -BeExactly "`${{ inputs.build_artifact == '' }}"
+        }
+    }
+
+    It 'keeps component NuGet caching for standalone builds and isolated mutations' {
+        $workflow=& $load 'workspace-component-ci.yml'
+        $step=@($workflow['jobs']['component']['steps'] | Where-Object {$_['uses'] -clike 'actions/setup-dotnet@*'})
+        $step.Count|Should -Be 1
+        $step[0]['with']['cache']|Should -BeExactly "`${{ inputs.build_artifact == '' || inputs.campaign == 'mutation' || inputs.campaign == 'profiled-mutation' }}"
+    }
+
     It 'compiles once on a cache miss and uploads an immutable artifact on either path' {
         $job=$companions['jobs']['build']
         $steps=@($job['steps'])

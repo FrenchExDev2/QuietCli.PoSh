@@ -1,6 +1,6 @@
 # workspace-component-ci.yml
 
-<!-- workflow-source-sha256: 114D5BF806FABA435B84A79F92E12B717362EBA73F1BC345724A7C9D180E29A8 -->
+<!-- workflow-source-sha256: D0486F5B66C746012BFC31BFF8A35E833DDCE7A163DD955E8AAAA77B354B7E33 -->
 
 ## Purpose
 
@@ -13,6 +13,8 @@ Reusable workflow_call.
 ## Scripts and effects
 
 PR smokes, Distribution and non-mutation companion campaigns consume the shared build artifact. The standalone path retains its scoped build cache. Mutation campaigns produce their own evidence from isolated source variants.
+
+The setup-dotnet NuGet cache runs for standalone builds and isolated mutation campaigns. Other artifact consumers do not need to populate the NuGet packages directory.
 
 The optional campaign input runs the requested companion mutation, PowerShell profiling, or mutation with profiling in the same pass. Artifacts include the campaign name to distinguish reports from the same companion.
 

@@ -15,7 +15,11 @@ function Assert-QuietNuGetCacheLifecycle {
     if($id -cnotmatch '\A[A-Za-z_][A-Za-z0-9_-]*\z' -or $restoreStep['uses'] -cnotmatch '\Aactions/cache/restore@[a-f0-9]{40}\z' -or $saveStep['uses'] -cne ([string]$restoreStep['uses']).Replace('/restore@','/save@')){throw 'NuGetCacheIdentityChanged'}
     $build=@(0..($steps.Count-1)|Where-Object {[string]$steps[$_]['run'] -match 'Build-Workspace\.ps1'})
     $tests=@(0..($steps.Count-1)|Where-Object {[string]$steps[$_]['run'] -match 'Invoke-GitHubCi\.ps1'})
-    if($build.Count -ne 1 -or $tests.Count -ne 1 -or $restoreIndex -ge $build[0] -or $build[0] -ge $tests[0] -or $tests[0] -ge $saveIndex -or $saveIndex -ne $steps.Count-1){throw 'NuGetCacheLifecycleOrderChanged'}
+    if($build.Count -ne 2 -or $tests.Count -ne 1 -or $restoreIndex -ge $build[0] -or $build[-1] -ge $tests[0] -or $tests[0] -ge $saveIndex -or $saveIndex -ne $steps.Count-1){throw 'NuGetCacheLifecycleOrderChanged'}
+    $standalone=@($build | Where-Object {[string]$steps[$_]['run'] -match '(?:^|\s)-ReuseVerifiedBuild(?:\s|$)'})
+    $shared=@($build | Where-Object {[string]$steps[$_]['run'] -match '(?:^|\s)-RequireVerifiedBuild(?:\s|$)'})
+    if($standalone.Count -ne 1 -or $shared.Count -ne 1 -or $standalone[0] -eq $shared[0] -or
+        $steps[$standalone[0]]['if'] -cne "inputs.build_artifact == ''" -or $steps[$shared[0]]['if'] -cne "inputs.build_artifact != ''"){throw 'NuGetCachePreparationPathsChanged'}
     $key=[string]$restoreStep['with']['key']
     foreach($input in @('runner.os','runner.arch','**/*.csproj','Directory.Packages.props','Directory.Build.props','global.json')){
         if(!$key.Contains($input)){throw 'NuGetCacheDependencyScopeChanged'}
@@ -35,7 +39,7 @@ function Assert-QuietNuGetCacheLifecycle {
         if([bool](& $evaluate) -ne ($successful -and $hit -cne 'true')){throw 'NuGetCacheSaveDecisionChanged'}
         $properties++
     }}
-    [pscustomobject]@{Properties=$properties;RestoreIndex=$restoreIndex;SaveIndex=$saveIndex}
+    [pscustomobject]@{Properties=$properties;RestoreIndex=$restoreIndex;SaveIndex=$saveIndex;SharedIndex=$shared[0]}
 }
 
 function Test-QuietNuGetCacheLifecycle {
@@ -66,7 +70,7 @@ function Test-QuietNuGetCacheLifecycle {
         $candidate.jobs['linux-result'].steps[$saveIndex]['if']=$condition
         $properties+=(Assert-QuietNuGetCacheLifecycle $candidate).Properties
     }
-    $damages=@('combined cache','late hash','matched key','wrong path','save before tests','save after failure','save exact hits','missing project input','floating action','unsafe condition','empty condition')
+    $damages=@('combined cache','late hash','matched key','wrong path','save before tests','save after failure','save exact hits','missing project input','floating action','unsafe condition','empty condition','missing shared restore','shared restore on standalone path','shared restore before cache')
     foreach($damage in $damages){
         $candidate=$serialized|ConvertFrom-Json -AsHashtable
         $steps=$candidate.jobs['linux-result'].steps
@@ -82,6 +86,9 @@ function Test-QuietNuGetCacheLifecycle {
             'floating action' {$steps[$restoreIndex].uses='actions/cache/restore@v4';$steps[$saveIndex].uses='actions/cache/save@v4'}
             'unsafe condition' {$steps[$saveIndex]['if']="success() && hashFiles('**/*') != ''"}
             'empty condition' {$steps[$saveIndex]['if']=''}
+            'missing shared restore' {$steps[$baseline.SharedIndex]['run']='Write-Host skipped'}
+            'shared restore on standalone path' {$steps[$baseline.SharedIndex]['if']="inputs.build_artifact == ''"}
+            'shared restore before cache' {$steps[$restoreIndex],$steps[$baseline.SharedIndex]=$steps[$baseline.SharedIndex],$steps[$restoreIndex]}
         }
         $rejected=$false;try{$null=Assert-QuietNuGetCacheLifecycle $candidate}catch{$rejected=$true}
         if(!$rejected){throw ('NuGetCacheWorkflowMutantSurvived: '+$damage)}
