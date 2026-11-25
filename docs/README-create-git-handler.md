@@ -56,18 +56,25 @@ Register-QuietHandler -Id $id -Definition @{
 
 try {
     $result = quiet -AsObject -HandlerId $id -FilePath git -ArgumentList @('version')
-    [void]$result.OnFailure({ throw 'The registered handler failed' })
-
-    $control = quiet -AsObject -FilePath git -ArgumentList @('--version') `
-        -RecordDelimiter "`n" -MaxRecordBytes 1024 -Data @{ Line = $null } -StdOut {
-            param($event, $runtime)
-            $runtime.Data.Line = $event.Text.Trim()
+    $checked = $result.AsSuccessWhen({
+        param($r)
+        $r.Outcome -eq 'Success' -and $r.Completeness.Source -and
+            $r.Completeness.Analysis -and $r.Error.Count -eq 0
+    }).OnSuccess({
+        param($r)
+        $control = quiet -AsObject -FilePath git -ArgumentList @('--version') `
+            -RecordDelimiter "`n" -MaxRecordBytes 1024 -Data @{ Line = $null } -StdOut {
+                param($event, $runtime)
+                $runtime.Data.Line = $event.Text.Trim()
+            }
+        [void]$control.OnFailure({ throw 'The Git control invocation failed' })
+        if ($r.Data.Command -cne 'version' -or ('git version ' + $r.Data.Version) -cne $control.Data.Line) {
+            throw 'The handler result disagrees with Git'
         }
-    [void]$control.OnFailure({ throw 'The Git control invocation failed' })
-    if ($result.Data.Command -cne 'version' -or ('git version ' + $result.Data.Version) -cne $control.Data.Line) {
-        throw 'The handler result disagrees with Git'
-    }
-    $result.Data
+    }).OnFailure({
+        throw 'The registered handler failed'
+    })
+    $checked.Data
 } finally {
     Unregister-QuietHandler -Id $id
 }
@@ -75,7 +82,7 @@ try {
 
 `Probe` returns one version value and the registry caches it for this handler and executable context. `TestVersion` and `Match` each return one Boolean. `Execute` makes one business call and returns one object. The explicit stdout callback tells the nested call how to read the output, so the nested call uses direct analysis. `-HandlerId` selects the example explicitly when the Git companion is already loaded.
 
-The assertion reads `git --version` with a separate callback and compares its literal record to the projected version. The command metadata and example result are independent of the registered handler's parser. See the [runtime registry](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/engine/Cmdlets/HandlerCommands.cs) and [Git version projection](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Queries.ps1).
+`AsSuccessWhen` returns the same result for chaining and registers a Boolean predicate. The predicate here spells out the default rules. When it returns true, `OnSuccess` reads `git --version` with a separate callback and compares its literal record to the projected version. When it returns false, `OnFailure` throws before the independent check runs. See [fluent result handling](../readmes/README-streaming.md#handle-success-and-failure), the [runtime registry](../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/engine/Cmdlets/HandlerCommands.cs) and the [Git version projection](../src/Git/src/FrenchExDev2.QuietCli.Git.PoSh/src/Queries.ps1).
 
 ## Load the handler from a standalone module
 
