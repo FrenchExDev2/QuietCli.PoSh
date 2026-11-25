@@ -279,8 +279,8 @@ Declared matrix · <code>&#36;{{ fromJson(needs.linux-matrix.outputs.windows&#95
 | Order | Step | Action or script | Condition |
 | ---: | --- | --- | --- |
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
-| 2 |  | [./.github/actions/cache-test-tools](#action-cache-test-tools-2) |  |
-| 3 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
+| 2 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
+| 3 |  | [./.github/actions/cache-test-tools](#action-cache-test-tools-2) |  |
 | 4 |  | actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 |  |
 | 5 |  | [./.github/actions/cache-resources](#action-cache-resources-1) |  |
 | 6 | Verify monorepo structure and external resources | [scripts/Initialize-Workspace.ps1](scripts/Initialize-Workspace.md) |  |
@@ -331,8 +331,8 @@ Declared matrix · <code>&#36;{{ fromJson(needs.linux-matrix.outputs.matrix) }}<
 | Order | Step | Action or script | Condition |
 | ---: | --- | --- | --- |
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
-| 2 |  | [./.github/actions/cache-test-tools](#action-cache-test-tools-2) |  |
-| 3 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
+| 2 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
+| 3 |  | [./.github/actions/cache-test-tools](#action-cache-test-tools-2) |  |
 | 4 |  | [./.github/actions/setup-powershell](#action-setup-powershell-5) |  |
 | 5 |  | actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 |  |
 | 6 |  | [./.github/actions/cache-resources](#action-cache-resources-1) |  |

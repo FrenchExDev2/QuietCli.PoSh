@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: 9F9853DC5CEEF2FFAD81F9FEDB3D8649466DD4CB81DE0BC593762AD009DDD4C9 -->
+<!-- workflow-source-sha256: 1F0584261BFD646B7524224A0930C3D96F8D83B7790687328907CAA2EACCE6E1 -->
 
 ## Purpose
 
@@ -14,7 +14,7 @@ Reusable workflow_call and explicit workflow_dispatch.
 
 When invoked by a PR with `build_artifact`, the Windows and Linux rows download the producer's immutable artifact and restore the selected NuGet closure. The rows verify the required ReadyToRun RID using `-RequireVerifiedBuild` and execute the existing host matrix with `-SkipBuild`. Standalone invocations retain target-specific build-cache reuse.
 
-The Windows and Linux test rows restore the pinned test-tool archive cache. The Windows worker prepares the verified Pester manifest before spawning test processes. The Linux driver verifies the archive on the runner and stages it for extraction by the network-isolated guest.
+The Windows and Linux test rows restore the pinned test-tool archive cache after initializing the checkout's deterministic environment. The Windows worker prepares the verified Pester manifest before spawning test processes. The Linux driver verifies the archive on the runner and stages it for extraction by the network-isolated guest.
 
 Profile validation initializes the checkout's deterministic GitHub environment immediately after checkout, like execution jobs. It performs no product build. The Linux matrix job restores the pinned resource archive cache before `Initialize-CiCompanions.ps1` reads the YAML catalogue. The consumer extracts and verifies YamlDotNet in the current checkout.
 
