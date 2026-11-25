@@ -46,15 +46,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $scripts = [IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../../scripts'))
 foreach ($module in 'RunEncoding', 'RunFormat', 'RunStatistics', 'RunProfileStore', 'RunProfiler') { Import-Module (Join-Path $scripts "lib/$module.psm1") -Force }
-# The console encoding is a boundary setting: tables use box-drawing characters and the consumer decodes strict UTF-8.
-[void](Set-RunConsoleEncoding -Name $ConsoleEncoding)
-# Boundary self-check with an independent oracle (65001 and the culture's OEM page, not the module's own resolution).
-# It fails in pure ASCII, because a consumer that decodes strict UTF-8 cannot read anything else once the console is wrong.
-$expectedCodePage = if ($ConsoleEncoding -eq 'utf-8') { 65001 } else { [Globalization.CultureInfo]::CurrentCulture.TextInfo.OEMCodePage }
-if ([Console]::OutputEncoding.CodePage -ne $expectedCodePage -or $global:OutputEncoding.CodePage -ne $expectedCodePage) {
-    [Console]::Error.WriteLine("console encoding self-check failed: expected code page $expectedCodePage, console $([Console]::OutputEncoding.CodePage), pipe $($global:OutputEncoding.CodePage)")
-    exit 1
-}
+# Keep the test report transport independent from the encoding functions being tested.
+$reportEncoding = if ($ConsoleEncoding -eq 'utf-8') { [Text.UTF8Encoding]::new($false) } else { [Text.Encoding]::GetEncoding([Globalization.CultureInfo]::CurrentCulture.TextInfo.OEMCodePage) }
+[Console]::OutputEncoding = $reportEncoding
+$global:OutputEncoding = $reportEncoding
 # Skip entries may be comma-separated, because `pwsh -File` passes an array argument as one string.
 $Skip = @($Skip | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 if ($Mutation -and $CasePattern) { throw 'RunProfileMutationCaseFilterUnsupported' }
@@ -485,8 +480,12 @@ if ($Fail) { throw 'FixtureFailed' }
         $previous = [Console]::OutputEncoding
         $previousPipe = $global:OutputEncoding
         try {
+            [Console]::OutputEncoding = [Text.Encoding]::Unicode
+            $global:OutputEncoding = [Text.Encoding]::Unicode
             [void](Set-RunConsoleEncoding -Name 'oem')
             Assert-That ([Console]::OutputEncoding.CodePage -eq $oem.CodePage -and $global:OutputEncoding.CodePage -eq $oem.CodePage) 'oem was not applied to the console and the pipe'
+            [Console]::OutputEncoding = [Text.Encoding]::Unicode
+            $global:OutputEncoding = [Text.Encoding]::Unicode
             [void](Set-RunConsoleEncoding -Name 'utf-8')
             Assert-That ([Console]::OutputEncoding.CodePage -eq 65001 -and $global:OutputEncoding.CodePage -eq 65001) 'utf-8 was not applied to the console and the pipe'
         }

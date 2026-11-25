@@ -327,7 +327,10 @@ function Test-QuietResourceCommitChecks {
         $fixture=New-QuietCommitWorkspaceFixture -Root $root -RealScriptsPath $scripts
         $path=Join-Path $fixture $(if($kind -eq 'Resources'){'docs/resources/README.md'}else{'scripts/Get-Tracked.ps1'})
         $good=Get-Content $path -Raw -Encoding utf8
-        $bad=if($kind -eq 'Resources'){$good+"`nStale owned fixture.`n"}else{"#Objective: Unwanted script header.`n"+$good}
+        $bad=if($kind -eq 'Resources'){
+            $creditsStart=$good.IndexOf('<!-- credits:begin -->',[StringComparison]::Ordinal)
+            $good.Insert($creditsStart,"Stale owned fixture.`n`n")
+        }else{"#Objective: Unwanted script header.`n"+$good}
         [void][IO.File]::WriteAllTextAsync($path,$bad,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         $null=Invoke-WorkspaceNative git @('-C',$fixture,'add','--all','--') $fixture
         [void][IO.File]::WriteAllTextAsync($path,$good,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()

@@ -73,6 +73,7 @@ $pesterProgress={
 Write-WorkspaceJson $statusPath $state
 $summaries=[Collections.Generic.List[object]]::new()
 $sourceIdentity=$null;$engineIdentity=$null;$profiling=$null
+$previousPesterManifest=$env:QUIETCLI_PREPARED_PESTER_MANIFEST
 try{
     if($env:QUIETCLI_PROFILE_COMPANION){
         Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/RunProfiler.psm1')) -DisableNameChecking -ErrorAction Stop
@@ -80,6 +81,11 @@ try{
     if($env:QUIETCLI_EXPECT_RUNTIME_MAJOR -and [Environment]::Version.Major -ne [int]$env:QUIETCLI_EXPECT_RUNTIME_MAJOR){throw 'PowerShellRuntimeMajorMismatch'}
     if($env:QUIETCLI_EXPECT_HOST_VERSION -and $PSVersionTable.PSVersion.ToString() -cne $env:QUIETCLI_EXPECT_HOST_VERSION){throw 'PowerShellVersionMismatch'}
     if($ExpectedRuntimeIdentifier -and $state.Platform -cne $ExpectedRuntimeIdentifier){throw "HostRuntimeMismatch: expected $ExpectedRuntimeIdentifier, observed $($state.Platform)"}
+    if(!$previousPesterManifest -and $Suite -cne 'RecallMutation'){
+        $state.Case='Verify pinned Pester tools';Write-WorkspaceJson $statusPath $state
+        $testTools=& ([IO.Path]::Combine($PSScriptRoot,'Initialize-TestTools.ps1')) -WorkspaceRoot $WorkspaceRoot -Tool pester -Offline:($env:QUIETCLI_TEST_TOOLS_OFFLINE -ceq '1') -Confirm:$false
+        $env:QUIETCLI_PREPARED_PESTER_MANIFEST=$testTools.PesterModulePath
+    }
     $sourceIdentity=Get-QuietWorkspaceIdentity $WorkspaceRoot -Suite $Suite -IncludeBinaries:($Suite -notin @('AgentInstructions','DotNet','RunProfilesMutation','WorkspaceLayout','CompanionSmoke'))
     Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'source-identity.json')) $sourceIdentity
     if($Suite -notin @('DotNet','RunProfilesMutation','WorkspaceLayout','CompanionSmoke')){
@@ -285,7 +291,7 @@ finally{
     $state.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o')
     Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'summary.json')) @{State=$state;Suites=$summaries.ToArray();Profiling=$profiling;EngineIdentity=$engineIdentity;HostRuntime=[Runtime.InteropServices.RuntimeInformation]::FrameworkDescription;PowerShellVersion=$PSVersionTable.PSVersion.ToString();OSArchitecture=[Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString();ProcessArchitecture=[Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString();OSDescription=[Runtime.InteropServices.RuntimeInformation]::OSDescription;MachineName=[Environment]::MachineName;ExpectedRuntimeIdentifier=$ExpectedRuntimeIdentifier;RunnerImage=$env:ImageOS;RunnerImageVersion=$env:ImageVersion}
     Write-WorkspaceJson $statusPath $state
-    $env:PATH=$previousTestPath;$env:DOTNET_ROOT=$previousTestDotNetRoot
+    $env:PATH=$previousTestPath;$env:DOTNET_ROOT=$previousTestDotNetRoot;$env:QUIETCLI_PREPARED_PESTER_MANIFEST=$previousPesterManifest
 }
 if($state.State -ne 'Success'){exit 1}
 

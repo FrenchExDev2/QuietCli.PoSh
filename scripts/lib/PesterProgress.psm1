@@ -17,7 +17,12 @@ function Import-QuietTestPester {
         [Parameter(Mandatory,ParameterSetName='Workspace')][string]$WorkspaceRoot,
         [Parameter(Mandatory,ParameterSetName='Manifest')][string]$ModulePath
     )
-    if(!$ModulePath){$ModulePath=(Initialize-QuietTestTools -WorkspaceRoot $WorkspaceRoot -Tool pester).PesterModulePath}
+    if(!$ModulePath -and $env:QUIETCLI_PREPARED_PESTER_MANIFEST){
+        $package=Get-RunTestToolPackages -Tool pester
+        $prepared=[IO.Path]::Combine((Get-QuietTestToolDirectory -WorkspaceRoot $WorkspaceRoot),$package.Name,$package.Entrypoint)
+        if($env:QUIETCLI_PREPARED_PESTER_MANIFEST -ceq $prepared){$ModulePath=$prepared}
+    }
+    if(!$ModulePath){$ModulePath=(Initialize-QuietTestTools -WorkspaceRoot $WorkspaceRoot -Tool pester -Offline:($env:QUIETCLI_TEST_TOOLS_OFFLINE -ceq '1')).PesterModulePath}
     $expected=[IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($ModulePath))
     $loaded=@(Get-Module Pester -All)
     if(!$loaded.Count){

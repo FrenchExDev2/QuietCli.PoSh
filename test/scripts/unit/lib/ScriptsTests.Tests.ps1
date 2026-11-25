@@ -545,6 +545,20 @@ Describe 'Scripts test status transitions' {
         $status.State|Should -BeExactly 'Running'
         {Update-QuietScriptsTestStatus -Status $terminal -Report $report}|Should -Throw -ExpectedMessage 'ScriptsTestStatusTransitionInvalid'
     }
+    It 'publishes Pester counts separately from aggregate failures and supports reports without Pester counters' {
+        $status=New-QuietScriptsTestStatus -WorkspaceRoot $TestDrive -Plan $plan -ProcessId 1
+        $report=[ordered]@{State='Failed';Passed=9;Failed=8;TestPassed=7;TestFailed=3;Skipped=1;Partial=$false;Incomplete=$false}
+        $terminal=Update-QuietScriptsTestStatus -Status $status -Report $report
+        $terminal.TestPassed|Should -Be 7
+        $terminal.TestFailed|Should -Be 3
+        $terminal.Passed|Should -Be 9
+        $terminal.Failed|Should -Be 8
+        $report.Remove('TestPassed')
+        $report.Remove('TestFailed')
+        $terminal=Update-QuietScriptsTestStatus -Status $status -Report $report
+        $terminal.TestPassed|Should -Be 9
+        $terminal.TestFailed|Should -Be 8
+    }
     It 'records a crash with an extra failure' {
         $crash=Update-QuietScriptsTestStatus -Status (New-QuietScriptsTestStatus -WorkspaceRoot $TestDrive -Plan $plan -ProcessId 1) -ErrorMessage 'boom'
         $crash.State|Should -BeExactly 'Crash'

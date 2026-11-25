@@ -196,6 +196,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, reviewed upstream reference
         with:
           persist-credentials: false
+      - uses: ./.github/actions/cache-test-tools
       - name: Initialize deterministic GitHub environment
         shell: pwsh
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
@@ -394,6 +395,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: ./.github/actions/cache-test-tools
       - name: Initialize deterministic GitHub environment
         shell: pwsh
         run: ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false

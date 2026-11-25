@@ -14,10 +14,14 @@ Describe 'RunProfiles PowerShell qualification' {
         $result.Output | Should -Match '(?m)^SUMMARY Passed=6 Failed=0 Skipped=[1-9]\d*\s*$'
     }
 
-    It 'uses Pester failures in a copied mutation fixture to reject a behavioral mutant' {
+    It 'reports a Pester failure for the <MutantName> mutant' -ForEach @(
+        @{MutantName='name-anchor-loose'}
+        @{MutantName='console-utf8-is-oem'}
+        @{MutantName='console-output-not-applied'}
+    ) {
         $entry=[IO.Path]::Combine($testProject,'RunProfiles.Mutation.ps1')
         $receipt=[IO.Path]::Combine($TestDrive,'run-profile-mutant.json')
-        $result=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @('-MutantName','name-anchor-loose','-Iterations','10','-OutputPath',$receipt) -TimeoutSeconds 180
+        $result=Invoke-QuietTestScript -ScriptPath $entry -ArgumentList @('-MutantName',$MutantName,'-Iterations','10','-OutputPath',$receipt) -TimeoutSeconds 180
         $result.ExitCode | Should -Be 0 -Because ($result.Output+$result.Error)
         $report=Get-Content -LiteralPath $receipt -Raw -Encoding utf8 | ConvertFrom-Json
         $report.BaselinePassed | Should -BeTrue

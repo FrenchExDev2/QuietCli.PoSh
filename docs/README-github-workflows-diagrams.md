@@ -199,6 +199,9 @@ flowchart TD
     j3 -. calls .-> cj3["./.github/workflows/tooling-ci.yml"]
     click cj3 href "#workflow-tooling-ci-yml-20" "Open section" _self
     j4 -. depends on .-> j5
+    n2["cache-test-tools"]
+    click n2 href "#action-cache-test-tools-2" "Open section" _self
+    j4 -. uses .-> n2
     j4 -. uses .-> n1
     n3["load-ci-build"]
     click n3 href "#action-load-ci-build-3" "Open section" _self
@@ -210,6 +213,7 @@ flowchart TD
     click cj6 href "#workflow-linux-images-yml-9" "Open section" _self
     j7 -. depends on .-> j5
     j7 -. depends on .-> j6
+    j7 -. uses .-> n2
     j7 -. uses .-> n5
     j7 -. uses .-> n1
     j7 -. uses .-> n3
@@ -275,23 +279,24 @@ Declared matrix · <code>&#36;{{ fromJson(needs.linux-matrix.outputs.windows&#95
 | Order | Step | Action or script | Condition |
 | ---: | --- | --- | --- |
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
-| 2 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
-| 3 |  | actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 |  |
-| 4 |  | [./.github/actions/cache-resources](#action-cache-resources-1) |  |
-| 5 | Verify monorepo structure and external resources | [scripts/Initialize-Workspace.ps1](scripts/Initialize-Workspace.md) |  |
-| 6 | Prepare the pinned PowerShell host without installing or changing profiles | [scripts/Initialize-PowerShellHost.ps1](scripts/Initialize-PowerShellHost.md) |  |
-| 7 | Fingerprint the selected build closure | [scripts/Get-CompanionBuildKey.ps1](scripts/Get-CompanionBuildKey.md) | <code>inputs.build&#95;artifact == ''</code> |
-| 8 |  | actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>inputs.build&#95;artifact == ''</code> |
-| 9 | Build all required distributions in Release | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) | <code>inputs.build&#95;artifact == ''</code> |
-| 10 |  | [./.github/actions/load-ci-build](#action-load-ci-build-3) | <code>inputs.build&#95;artifact != ''</code> |
-| 11 | Require the shared RID build and restore the selected package graph | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) | <code>inputs.build&#95;artifact != ''</code> |
-| 12 | Resolve declared companion qualification controls | [scripts/Initialize-CiCompanions.ps1](scripts/Initialize-CiCompanions.md) |  |
-| 13 | Prepare checksum-pinned PowerShell and CLR profilers | [scripts/Initialize-Profilers.ps1](scripts/Initialize-Profilers.md) | <code>needs.linux-matrix.outputs.has&#95;core == 'true' &#38;&#38; inputs.collect&#95;performance</code> |
-| 14 | Run selected suites with mandatory Core integration evidence | [scripts/Invoke-GitHubCi.ps1](scripts/Invoke-GitHubCi.md) |  |
-| 15 | Assemble revision-bound report and trace evidence | [scripts/New-CoreEvidenceBundle.ps1](scripts/New-CoreEvidenceBundle.md), [scripts/New-CorePerformanceReport.ps1](scripts/New-CorePerformanceReport.md) | <code>always()</code> |
-| 16 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
-| 17 | Prepare bounded redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
-| 18 | Save redacted Windows failure diagnostics | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
+| 2 |  | [./.github/actions/cache-test-tools](#action-cache-test-tools-2) |  |
+| 3 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
+| 4 |  | actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 |  |
+| 5 |  | [./.github/actions/cache-resources](#action-cache-resources-1) |  |
+| 6 | Verify monorepo structure and external resources | [scripts/Initialize-Workspace.ps1](scripts/Initialize-Workspace.md) |  |
+| 7 | Prepare the pinned PowerShell host without installing or changing profiles | [scripts/Initialize-PowerShellHost.ps1](scripts/Initialize-PowerShellHost.md) |  |
+| 8 | Fingerprint the selected build closure | [scripts/Get-CompanionBuildKey.ps1](scripts/Get-CompanionBuildKey.md) | <code>inputs.build&#95;artifact == ''</code> |
+| 9 |  | actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>inputs.build&#95;artifact == ''</code> |
+| 10 | Build all required distributions in Release | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) | <code>inputs.build&#95;artifact == ''</code> |
+| 11 |  | [./.github/actions/load-ci-build](#action-load-ci-build-3) | <code>inputs.build&#95;artifact != ''</code> |
+| 12 | Require the shared RID build and restore the selected package graph | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) | <code>inputs.build&#95;artifact != ''</code> |
+| 13 | Resolve declared companion qualification controls | [scripts/Initialize-CiCompanions.ps1](scripts/Initialize-CiCompanions.md) |  |
+| 14 | Prepare checksum-pinned PowerShell and CLR profilers | [scripts/Initialize-Profilers.ps1](scripts/Initialize-Profilers.md) | <code>needs.linux-matrix.outputs.has&#95;core == 'true' &#38;&#38; inputs.collect&#95;performance</code> |
+| 15 | Run selected suites with mandatory Core integration evidence | [scripts/Invoke-GitHubCi.ps1](scripts/Invoke-GitHubCi.md) |  |
+| 16 | Assemble revision-bound report and trace evidence | [scripts/New-CoreEvidenceBundle.ps1](scripts/New-CoreEvidenceBundle.md), [scripts/New-CorePerformanceReport.ps1](scripts/New-CorePerformanceReport.md) | <code>always()</code> |
+| 17 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+| 18 | Prepare bounded redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
+| 19 | Save redacted Windows failure diagnostics | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
 
 <a name="workflow-ci-yml-6-job-j5"></a>
 
@@ -326,25 +331,26 @@ Declared matrix · <code>&#36;{{ fromJson(needs.linux-matrix.outputs.matrix) }}<
 | Order | Step | Action or script | Condition |
 | ---: | --- | --- | --- |
 | 1 |  | actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 |  |
-| 2 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
-| 3 |  | [./.github/actions/setup-powershell](#action-setup-powershell-5) |  |
-| 4 |  | actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 |  |
-| 5 |  | [./.github/actions/cache-resources](#action-cache-resources-1) |  |
-| 6 | Restore NuGet packages before build and tests | actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 |  |
-| 7 | Verify monorepo structure and external resources | [scripts/Initialize-Workspace.ps1](scripts/Initialize-Workspace.md) |  |
-| 8 | Fingerprint the selected build closure | [scripts/Get-CompanionBuildKey.ps1](scripts/Get-CompanionBuildKey.md) | <code>inputs.build&#95;artifact == ''</code> |
-| 9 |  | actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>inputs.build&#95;artifact == ''</code> |
-| 10 | Build engines for the six distributions | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) | <code>inputs.build&#95;artifact == ''</code> |
-| 11 |  | [./.github/actions/load-ci-build](#action-load-ci-build-3) | <code>inputs.build&#95;artifact != ''</code> |
-| 12 | Require the shared RID build and restore NuGet for offline staging | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) | <code>inputs.build&#95;artifact != ''</code> |
-| 13 | image | [./.github/actions/load-ci-image-bundle](#action-load-ci-image-bundle-4) |  |
-| 14 | Load the verified image produced for this run | `run` |  |
-| 15 | Run selected suites and Core integration in the native image | [scripts/Initialize-Profilers.ps1](scripts/Initialize-Profilers.md), [scripts/Invoke-GitHubCi.ps1](scripts/Invoke-GitHubCi.md) |  |
-| 16 | Assemble revision-bound guest reports and profiling traces | [scripts/New-CoreEvidenceBundle.ps1](scripts/New-CoreEvidenceBundle.md), [scripts/New-CorePerformanceReport.ps1](scripts/New-CorePerformanceReport.md) | <code>always()</code> |
-| 17 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
-| 18 | Prepare bounded redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
-| 19 | Save redacted Linux failure diagnostics and image identity | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
-| 20 | Save NuGet packages using the resolved restore key | actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>&#36;{{ success() &#38;&#38; steps.nuget-cache.outputs.cache-hit != 'true' }}</code> |
+| 2 |  | [./.github/actions/cache-test-tools](#action-cache-test-tools-2) |  |
+| 3 | Initialize deterministic GitHub environment | [scripts/Initialize-CiEnvironment.ps1](scripts/Initialize-CiEnvironment.md) |  |
+| 4 |  | [./.github/actions/setup-powershell](#action-setup-powershell-5) |  |
+| 5 |  | actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 |  |
+| 6 |  | [./.github/actions/cache-resources](#action-cache-resources-1) |  |
+| 7 | Restore NuGet packages before build and tests | actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 |  |
+| 8 | Verify monorepo structure and external resources | [scripts/Initialize-Workspace.ps1](scripts/Initialize-Workspace.md) |  |
+| 9 | Fingerprint the selected build closure | [scripts/Get-CompanionBuildKey.ps1](scripts/Get-CompanionBuildKey.md) | <code>inputs.build&#95;artifact == ''</code> |
+| 10 |  | actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>inputs.build&#95;artifact == ''</code> |
+| 11 | Build engines for the six distributions | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) | <code>inputs.build&#95;artifact == ''</code> |
+| 12 |  | [./.github/actions/load-ci-build](#action-load-ci-build-3) | <code>inputs.build&#95;artifact != ''</code> |
+| 13 | Require the shared RID build and restore NuGet for offline staging | [scripts/Build-Workspace.ps1](scripts/Build-Workspace.md) | <code>inputs.build&#95;artifact != ''</code> |
+| 14 | image | [./.github/actions/load-ci-image-bundle](#action-load-ci-image-bundle-4) |  |
+| 15 | Load the verified image produced for this run | `run` |  |
+| 16 | Run selected suites and Core integration in the native image | [scripts/Initialize-Profilers.ps1](scripts/Initialize-Profilers.md), [scripts/Invoke-GitHubCi.ps1](scripts/Invoke-GitHubCi.md) |  |
+| 17 | Assemble revision-bound guest reports and profiling traces | [scripts/New-CoreEvidenceBundle.ps1](scripts/New-CoreEvidenceBundle.md), [scripts/New-CorePerformanceReport.ps1](scripts/New-CorePerformanceReport.md) | <code>always()</code> |
+| 18 |  | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>always()</code> |
+| 19 | Prepare bounded redacted failure diagnostics | [scripts/Export-CiFailureDiagnostics.ps1](scripts/Export-CiFailureDiagnostics.md) | <code>failure()</code> |
+| 20 | Save redacted Linux failure diagnostics and image identity | actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 | <code>failure()</code> |
+| 21 | Save NuGet packages using the resolved restore key | actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 | <code>&#36;{{ success() &#38;&#38; steps.nuget-cache.outputs.cache-hit != 'true' }}</code> |
 
 <a name="workflow-ci-yml-6-job-j8"></a>
 
