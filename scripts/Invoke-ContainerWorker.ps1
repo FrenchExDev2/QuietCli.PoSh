@@ -69,7 +69,7 @@ try{
         Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'bootstrap.json')) @{Mode='Direct CI processes';ProductBuildFiles=0;NativeSourceSHA256=(Get-FileHash ([IO.Path]::Combine($stage,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/native/quietcli-pty.c')) -Algorithm SHA256).Hash}
     }else{
         Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/RunToolCache.psm1')) -DisableNameChecking -ErrorAction Stop
-        $tools=& ([IO.Path]::Combine($PSScriptRoot,'Initialize-TestTools.ps1')) -WorkspaceRoot $WorkspaceRoot -Tool pester -Confirm:$false
+        $tools=& ([IO.Path]::Combine($PSScriptRoot,'Initialize-TestTools.ps1')) -WorkspaceRoot $WorkspaceRoot -Tool pester -Offline:($env:QUIETCLI_TEST_TOOLS_OFFLINE -ceq '1') -Confirm:$false
         $package=Get-RunTestToolPackages -Tool pester
         $archiveName=$package.Name+'.'+$package.Version+'.nupkg'
         $guestToolDirectory=[IO.Path]::Combine((Get-QuietTestToolDirectory -WorkspaceRoot $stage),$package.Name)
