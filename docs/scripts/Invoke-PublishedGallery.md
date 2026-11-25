@@ -51,12 +51,6 @@ Example:
 
 Fit for purpose as an orchestration wrapper around a real worker/monitor pair, following the repository's visible-monitor convention correctly; the main gap is the complete absence of any direct or indirect test coverage for this exact script and the unenforced UTF-8 policy on its log redirection. Highest-priority fix: add explicit UTF-8 encoding to the redirected log files, matching the rest of the codebase's I/O discipline.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -88,3 +82,9 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

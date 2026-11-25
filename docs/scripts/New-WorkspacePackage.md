@@ -30,12 +30,6 @@ Uses Common, AgentDocuments and runtime/build manifests. Captures current source
 
 GitHub release preparation uses RequireReadyToRun; a local ordinary package does not imply full release qualification.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -67,3 +61,9 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

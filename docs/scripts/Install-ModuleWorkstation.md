@@ -16,12 +16,6 @@ Select one or more names with `-Modules`. `-CheckOnly` probes readiness. `-Downl
 ./scripts/Install-ModuleWorkstation.ps1 -Modules Git,Vagrant -CheckOnly
 ```
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -51,3 +45,9 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

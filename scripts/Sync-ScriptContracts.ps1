@@ -52,6 +52,7 @@ foreach($entry in $entries){
     }
 }
 $reviewed=@(Get-QuietScriptReview $WorkspaceRoot)
+$creditsStartPattern = [regex]::new('^<!-- credits:begin -->', 'Multiline, RightToLeft')
 foreach($entry in $reviewed){
     $document=[IO.Path]::Combine($WorkspaceRoot,('docs/'+($entry.Path -replace '\.ps(?:m)?1$','.md')))
     if(!(Test-Path -LiteralPath $document)){throw ('ScriptContractDocMissing: '+$entry.Path)}
@@ -60,7 +61,18 @@ foreach($entry in $reviewed){
     $relative=[IO.Path]::GetRelativePath((Split-Path $document -Parent),([IO.Path]::Combine($WorkspaceRoot,'docs/scripts/preview-support.md'))).Replace('\','/')
     $block=$block.Replace('~/preview-support.md',$relative)
     $pattern='(?s)<!-- script-contract:begin -->.*?<!-- script-contract:end -->'
-    $expected=if($text -match $pattern){[regex]::Replace($text,$pattern,[Text.RegularExpressions.MatchEvaluator]{param($match)$block})}else{$text.TrimEnd()+"`n`n"+$block+"`n"}
+    if ($text -match $pattern) {
+        $expected = [regex]::Replace($text, $pattern, [Text.RegularExpressions.MatchEvaluator]{ param($match) $block })
+    } else {
+        $footerStart = $creditsStartPattern.Match($text)
+        if ($footerStart.Success -and $text.TrimEnd().EndsWith('<!-- credits:end -->', [StringComparison]::Ordinal)) {
+            $body = $text.Substring(0, $footerStart.Index).TrimEnd("`n")
+            if ($body.Length) { $body += "`n`n" }
+            $expected = $body + $block + "`n`n" + $text.Substring($footerStart.Index)
+        } else {
+            $expected = $text.TrimEnd() + "`n`n" + $block + "`n"
+        }
+    }
     if($expected -cne $text){
         if(!$Apply){throw ('ScriptContractDocStale: '+$entry.Path)}
         if($PSCmdlet.ShouldProcess($document,'Update generated script execution contract')){[void][IO.File]::WriteAllTextAsync($document,$expected,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()}

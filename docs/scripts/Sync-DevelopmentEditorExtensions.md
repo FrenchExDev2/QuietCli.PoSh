@@ -116,12 +116,6 @@ sync does not actually pin to the `InstalledVersion` recorded in the manifest â€
 "force latest" from the marketplace, so the manifest is not a true version-reproducibility mechanism
 today.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -141,3 +135,9 @@ Boundary: **Executable**. Preview API: **DelegatedShouldProcess**. Guarded funct
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

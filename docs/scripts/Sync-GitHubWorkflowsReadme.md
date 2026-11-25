@@ -34,12 +34,6 @@ Uses the WorkflowDocumentation library and its checksum-pinned YamlDotNet resour
 
 Regenerable structural documentation with separate authored review receipts, used by local/commit/GitHub checks.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -71,3 +65,9 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

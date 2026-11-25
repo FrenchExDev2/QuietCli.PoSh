@@ -28,12 +28,6 @@ run-profile jobs and 125 over the script jobs. It also covers malformed input, n
 preview, four targeted mutants and independent gate rejection/receipts.
 Local fixtures do not qualify GitHub's hosted output propagation after cancellation.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -43,3 +37,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

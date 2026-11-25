@@ -48,12 +48,6 @@ Invoke-RunProfiled -ScriptBlock { Import-Module ./FrenchExDev2.QuietCli.Core.PoS
 
 Fit for purpose for its narrow job (pinned-version PSProfiler wrapper); the highest-priority fix is making the overwrite-vs-guard behavior of `<Label>.profile.json` consistent with `RunProfileStore.psm1`'s existing pattern (add a `-Force` switch, or document the overwrite as intentional).
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -65,3 +59,9 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- script-contract:end -->
 
 Read-only property projections use script blocks so metadata remains available during WhatIf; mutating operations retain their existing operation guards.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

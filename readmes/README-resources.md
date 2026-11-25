@@ -56,10 +56,10 @@ flowchart TD
 
 The generated reference list is source inspection, not exhaustive static data-flow analysis. Dynamic whole-module copy paths and source-built/instruction payloads have separate documented owners. Resource readiness remains the responsibility of the verifier/build/consumer, not of the documentation gate.
 
+Intermediate Docker layers use a separate checkout-owned `.cache/ci-buildkit` cache. These toolchain layers are outside the pinned resource inventory. The image producer verifies its recipe fingerprint, archive hash or registry digest before handing off an image. [Linux CI images](../docs/ci/linux-images.md)
+
 <!-- credits:begin -->
 ## Credits
 
 This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
-
-Intermediate Docker layers use a separate checkout-owned `.cache/ci-buildkit` cache. These toolchain layers are outside the pinned resource inventory. The image producer verifies its recipe fingerprint, archive hash or registry digest before handing off an image. [Linux CI images](../docs/ci/linux-images.md)

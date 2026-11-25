@@ -55,12 +55,6 @@ Supports `-WhatIf`/`-Confirm` (`SupportsShouldProcess`, `ConfirmImpact='High'`);
 
 Fit for purpose; this is one of the more carefully engineered scripts in the batch, with deliberate TOCTOU mitigation and conservative, multi-layered protection checks (boundary, lease, Podman identity) before any deletion. The one improvement worth prioritizing is documentation: cross-reference the `run.lease` producer/consumer protocol in a comment here so the safety argument doesn't require reading `WorkstationResources.psm1` in full to verify.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -80,3 +74,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

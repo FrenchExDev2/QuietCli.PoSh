@@ -44,12 +44,6 @@ The name rules are deliberately narrower than Git's: they reject names Git accep
 - [`integration/entrypoints/Start-QuietWorkBranch.Tests.ps1`](../../../test/scripts/integration/entrypoints/Start-QuietWorkBranch.Tests.ps1) runs the entry point on fixture repositories.
 - Mutation target `WorkBranch`, `Break` 80.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -59,3 +53,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

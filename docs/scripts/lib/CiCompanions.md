@@ -70,12 +70,6 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 2.
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- grouped-layout-review:begin -->
 ## Grouped workspace contract
 
@@ -89,3 +83,9 @@ See the [layout and selective-CI contract](
 ../../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

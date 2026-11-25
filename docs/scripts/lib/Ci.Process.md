@@ -49,12 +49,12 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
 
+## Explicit library dependencies
+
+UTF-8 fallback initialization is private and runs only immediately before process I/O when profiles are absent or disabled. Importing this library preserves the current terminal encoding.
+
 <!-- credits:begin -->
 ## Credits
 
 This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
-
-## Explicit library dependencies
-
-UTF-8 fallback initialization is private and runs only immediately before process I/O when profiles are absent or disabled. Importing this library preserves the current terminal encoding.

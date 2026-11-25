@@ -26,12 +26,6 @@ scanning coverage. A failed readback can follow a successful write.
 [Unit tests](../../../test/scripts/unit/lib/Fix-WindowsDefender.Tests.ps1) verify the
 defaults, path selection, returned lists, write failure and preview using PowerShell doubles.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -41,3 +35,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

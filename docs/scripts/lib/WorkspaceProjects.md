@@ -142,12 +142,6 @@ AGENTS.md mandates. The only improvement worth making is low-priority: centraliz
 `FrenchExDev2.QuietCli.` / `.PoSh` naming-convention literals (currently duplicated at lines 15 and 27)
 into one constant so the convention only needs updating in one place if it ever changes.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 ## .NET tooling review
 
 Get-QuietWorkspaceSuiteNames exposes DotNet as a host-only focused automation suite. It is not a new business module or Gallery package and is not silently added to Core/All release qualification. Source suite-name validation continues to reject a companion manifest colliding with a reserved focused suite name.
@@ -175,3 +169,9 @@ See the [layout and selective-CI contract](
 ../../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

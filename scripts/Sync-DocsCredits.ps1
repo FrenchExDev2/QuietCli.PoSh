@@ -8,7 +8,8 @@ end with a regex-identifiable block, surrounded by <!-- credits:begin --> / <!--
 markers, linking the mandatory CREDITS.md file. Default (no -Apply) mode only reports each file's
 compliance state and writes nothing. -Apply writes the missing or stale block into every
 non-compliant file, honoring -WhatIf/-Confirm through SupportsShouldProcess. -Apply -WhatIf
-previews exactly what -Apply would write.
+previews exactly what -Apply would write. Existing generated blocks are replaced by one footer
+at the end of the file, preserving the Markdown around them.
 The distributed docs/agents/AGENTS.md and SKILL.md use the public absolute credits URL because
 they must remain self-contained when copied into consumer projects; other docs use relative links.
 .PARAMETER DocsPath

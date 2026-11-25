@@ -53,12 +53,6 @@ Get-QuietMonitorDuration -StartedUtc $status.StartedUtc -Now ([DateTimeOffset]::
 
 Correct and appropriately tested for its primary culture-independence goal, but needs two small fixes: translate the French file-header comment to English per the repo's language rule, and add the (missing) `#requires -Version 7.6` directive for consistency with every sibling file.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -68,3 +62,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

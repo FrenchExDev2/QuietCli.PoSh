@@ -30,12 +30,6 @@ Uses host .NET filesystem APIs and the existing RunEncoding helpers; package mea
 
 Shared measurement primitives retain separate whole-package and loaded-path costs for portable and R2R builds.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -57,3 +51,9 @@ See the [layout and selective-CI contract](
 ../../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

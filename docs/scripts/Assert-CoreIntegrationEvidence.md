@@ -46,12 +46,6 @@ The gate additionally requires one FreshProcessStartup record with seven iterati
 
 The common Core/All worker enforces this for selected PR and develop qualification; focused filtered development runs remain partial. Integration.Gate.Tests.ps1 covers absent arms, missing SQLite timers, negative queue duration and fictitious disabled-storage measurements. No machine-dependent timing threshold is used.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -61,3 +55,9 @@ Boundary: **ReadOnly**. Preview API: **Unclassified**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

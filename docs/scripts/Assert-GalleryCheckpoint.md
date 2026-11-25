@@ -20,12 +20,6 @@ Success returns `CheckpointValidated`, the version/revision and `BranchHeadQueri
 The adjacent `Publish-QuietGallery.ps1 -ValidateOnly` step independently verifies the prepared
 `.nupkg` set and SHA-256 checksums before publication uses those same files.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -43,3 +37,9 @@ Boundary: **ReadOnly**. Preview API: **Unclassified**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

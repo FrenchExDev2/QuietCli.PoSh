@@ -44,12 +44,6 @@ Get-RunVerdict $interval   # -> 'slower' | 'faster' | 'inconclusive' | 'too-few-
 
 Fit for purpose as-is — correct, pure, and unusually well-covered by targeted mutation tests; the only polish item is considering whether `$MinPairs`'s default belongs in the caller instead of this library, which is not urgent.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -59,3 +53,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

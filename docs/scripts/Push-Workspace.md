@@ -64,12 +64,6 @@ No companion tests or qualification campaign is started by this script. A featur
 
 The push now has a standard whole-operation preview/confirmation guard. The separate finding about the compatibility `-Repository` parameter retains its documented scope.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -79,3 +73,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

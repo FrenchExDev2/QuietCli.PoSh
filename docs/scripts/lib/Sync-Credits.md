@@ -103,12 +103,6 @@ priority fix is adding an explicit CRLF/UTF-8 rejection on the `LICENSE_CREDITS.
 `Sync-SkillDocument.ps1`'s guard) so a module with inconsistent line endings cannot silently corrupt the
 generated root document.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -118,3 +112,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

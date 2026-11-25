@@ -61,19 +61,18 @@ Examples (from the doc comment):
 
 ## Dependencies
 
-- No dot-sourced scripts and no `Common.ps1` dependency — entirely self-contained, using only built-in
-  PowerShell cmdlets (`Get-ChildItem`, `Get-Content`, regex) and asynchronous UTF-8 file writes.
+- Uses PowerShell filesystem cmdlets, its bundled Markdig parser, and asynchronous UTF-8 file I/O.
 - No external process is shelled out to; public absolute links are generated without network access.
 - Filesystem assumptions: `DocsPath`, `RootPath`, and `CreditsPath` must already exist (explicit
   `throw` guards at lines 54-56) — it does not create `docs/` or `CREDITS.md` itself.
 
 ## Side effects
 
-- Report mode (default): read-only; only reads each candidate `*.md` file's content to classify it as
-  `Missing`/`Stale`/`UpToDate`.
-- `-Apply` (with `ShouldProcess` approval per file): rewrites each non-compliant file in place — either
-  replacing an existing stale block in place (line 97) or appending a new block after two trailing
-  newlines — using UTF-8 without BOM and `WriteAllTextAsync(...).GetAwaiter().GetResult()`.
+- Report mode (default) classifies each file as `Missing`, `Stale` or `UpToDate`. An
+  `UpToDate` file has one current block followed only by optional whitespace.
+- `-Apply` uses `ShouldProcess` per file, removes complete generated blocks and writes one at
+  the end. It preserves the order and text of the document body, including fenced code examples.
+  The new block uses the document's line ending and the file is written as UTF-8 without a BOM.
 - Throws `DocsCreditsNonCompliant: ...` (lines 110-112) listing every file still non-compliant after
   the run, which fails the calling CI job in check mode.
 
@@ -85,9 +84,8 @@ Examples (from the doc comment):
   absolute public link for exactly those two portable documents. Existing independent tests still
   reject relative links and hand-edited generated SKILL bodies; that contract was not weakened.
 
-- No bugs found in the core regex-based block detection/replacement (lines 48-52, 90-100) — the
-  `Singleline` regex scoped between literal begin/end markers correctly handles multi-line content
-  and the substring splice preserves content before/after the block.
+- `Get-QuietDocsCreditsBlocks` pairs the generated markers among top-level HTML blocks.
+  It preserves Markdown examples and leaves unmatched markers in the document body.
 - DESIGN: The relative-path computation for the credits link (`$relativeDir`, line 85) is computed as
   `GetRelativePath(file.DirectoryName, credits-directory)`; for a file directly inside `docs/agents/`,
   this correctly produces `../../CREDITS.md`-style paths, but there is no test or assertion in the
@@ -96,32 +94,17 @@ Examples (from the doc comment):
   `GetRelativePath` handles by returning the absolute path unchanged) would silently embed an absolute
   local filesystem path into a committed Markdown file instead of throwing. Low likelihood given the
   current fixed directory layout, but worth a guard given this script's whole job is link correctness.
-- CONVENTION: all reads use synchronous `Get-Content -Raw -Encoding UTF8` (lines 79, 89) rather than
-  the `.GetAwaiter().GetResult()` async pattern used elsewhere in this folder (e.g.
-  `AgentDocuments.ps1`, `Sync-SkillDocument.ps1`) — same inconsistency noted in `Sync-Credits.ps1`.
-- CONVENTION: unlike `Sync-SkillDocument.ps1`'s explicit `$agents.Contains("`r")` CRLF rejection, this
-  script does not verify that the *existing* content of a target `.md` file is LF-only before splicing
-  in the new block (lines 89-100) — a file with CRLF line endings would get a clean LF block spliced
-  into a CRLF document, producing mixed line endings on disk, in violation of the repository's
-  "UTF-8 and LF line endings on disk" rule.
 - Coverage: `CommitWorkspace.Tests.ps1` exercises this script's real fixture generation and gate
   wiring, including staged documentation. `AgentInstructions.Tests.ps1` independently checks the
-  self-contained distributed result and rejects relative-link document mutants. Full generator
-  coverage for cross-drive relative paths, `-NoRecurse` and every replacement branch remains a gap.
+  self-contained distributed result and rejects relative-link document mutants.
+  `Sync-DocsCredits.Tests.ps1` covers footer placement, preservation of Markdown and preview behavior.
 - No security concern: operates only on repository-local Markdown files with no secrets or network
   involvement.
 
 ## Verdict
 
-Solid, narrowly-scoped compliance tool that does what its documentation claims; the highest-priority
-fix is adding the same CRLF-rejection guard `Sync-SkillDocument.ps1` already has, so a stray CRLF file
-cannot silently produce a mixed-line-ending document when `-Apply` patches it.
-
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
+The check enforces the footer position. Applying it repairs misplaced blocks while preserving the
+surrounding document.
 
 <!-- script-contract:begin -->
 ## Execution contract
@@ -132,3 +115,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

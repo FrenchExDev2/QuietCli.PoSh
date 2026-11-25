@@ -62,12 +62,6 @@ Effects are those of the flow: one `release/*` branch locally and on the remote,
 
 The facade wiring is covered by the workspace contracts (thin entry point, ShouldProcess, documentation). Its behavior is tested through ReleaseFlow with injected callbacks against an owned repository and a scripted GitHub double. The real `gh` integration is checked by operator use, not by the offline suite.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -89,3 +83,9 @@ See the [layout and selective-CI contract](
 ../../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

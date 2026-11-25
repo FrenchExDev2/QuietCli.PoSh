@@ -47,12 +47,6 @@ Because the script always throws (see Findings), every invocation currently term
 
 As a guardrail that intentionally never reports success until qualification work is complete, the script does its narrow job, but it is effectively dead/unreachable from any automated pipeline today and has zero test coverage for its own branching logic. Highest-priority fix: add a Pester test asserting each of the three throw paths (missing configuration, incomplete inventory, runner-not-implemented) fires under the right synthetic inputs, since a silent regression here would defeat the entire point of the gate.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -84,3 +78,9 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

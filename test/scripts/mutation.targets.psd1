@@ -42,7 +42,7 @@
         @{
             Name = 'DocsCreditsBlock'
             Module = 'lib/Sync-DocsCredits.psm1'
-            Functions = @('Format-QuietDocsCreditsBlock')
+            Functions = @('Format-QuietDocsCreditsBlock', 'Get-QuietDocsCreditsBlocks')
             UnitTestFiles = @('unit/lib/Sync-DocsCredits.Tests.ps1')
             Break = 100
         }

@@ -19,12 +19,6 @@ A local branch is deleted only when the latest pull request merged from it into 
 
 Imports its local library using `-DisableNameChecking -ErrorAction Stop` and invokes `Invoke-QuietScriptRemoveQuietMergedBranches`. The library retains the original operation guards and output contract. Import alone does not run the operation.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -34,3 +28,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

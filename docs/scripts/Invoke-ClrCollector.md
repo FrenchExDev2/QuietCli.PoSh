@@ -56,12 +56,6 @@ Example:
 
 Functionally sound and consistent with its one caller's expectations, but fragile due to missing mandatory-parameter enforcement and hardcoded 30s/90s timing constants. Highest-priority fix: mark all four parameters `[Parameter(Mandatory)]` so misconfiguration fails fast and close to the cause.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -81,3 +75,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

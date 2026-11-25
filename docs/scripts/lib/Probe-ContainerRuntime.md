@@ -54,12 +54,6 @@ pwsh -File /diagnostic/Probe-ContainerRuntime.ps1 `
 
 Fit for purpose for its narrow diagnostic role; the phase-sequenced crash-forensics writes and the explicit hash-gated native load are solid design choices. The highest-priority improvement is testability: extract the RID-validation/hash-comparison/compatibility-check logic in `Invoke-RuntimeNativeProbe` (lines 24-49) into a pure, injectable function so it can be exercised by a Pester unit test without a real container, closing the current test-coverage gap.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -69,3 +63,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

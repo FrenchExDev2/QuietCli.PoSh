@@ -50,12 +50,6 @@ None beyond throwing on failure.
 
 Small and functionally adequate, but the single, generic throw message covering five ANDed magic-number conditions (lines 10-15) is the highest-priority fix — splitting it into a few named checks would let a failing caller see immediately whether the baseline, fuzz, or mutation requirement was the one not met.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -65,3 +59,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->
