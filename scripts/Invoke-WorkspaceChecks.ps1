@@ -8,9 +8,12 @@ Working tree or exported staged snapshot whose contracts are checked.
 Optional selection of registry names; omitted runs every registered check.
 .PARAMETER SkipCheck
 Explicit registry names omitted for this invocation; skips are reported and never called successful checks.
+.PARAMETER SyncGitHubWorkflowDocs
+Regenerate the workflow graphs, index and tracked map when running GitHubWorkflowDocs.
+Authored workflow documentation and source receipts must already be current.
 #>
-[CmdletBinding()]
-param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string[]]$Check=@(),[string[]]$SkipCheck=@())
+[CmdletBinding(SupportsShouldProcess)]
+param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[string[]]$Check=@(),[string[]]$SkipCheck=@(),[switch]$SyncGitHubWorkflowDocs)
 $ErrorActionPreference='Stop'
 # This registry is the single extension point for a new repository check.
 $registry=@(
@@ -36,9 +39,23 @@ foreach($entry in $registry){
     $arguments=$entry.Arguments
     Write-Host ('Progress: Validate workspace contract '+$entry.Name+'.')
     try{
-        $null=& ([IO.Path]::Combine($PSScriptRoot,$entry.Script)) @arguments
-        Write-Host ('Summary: '+$entry.Name+' = Success')
-        [pscustomobject]@{Check=$entry.Name;State='Success'}
+        $state = 'Success'
+        $apply = $false
+        if ($entry.Name -ceq 'GitHubWorkflowDocs' -and $SyncGitHubWorkflowDocs) {
+            $apply = $PSCmdlet.ShouldProcess($WorkspaceRoot,'Regenerate GitHub workflow documentation') -or $WhatIfPreference
+        }
+        if ($apply) {
+            $report = & ([IO.Path]::Combine($PSScriptRoot,'Sync-GitHubWorkflowsReadme.ps1')) @arguments -Apply -WhatIf:$WhatIfPreference -Confirm:$false
+            if ($report.Workflows -gt 0) {
+                $outputPath = [IO.Path]::Combine($WorkspaceRoot,'docs/README-github-workflows-diagrams.md')
+                $null = & ([IO.Path]::Combine($PSScriptRoot,'Export-GitHubWorkflowMap.ps1')) @arguments -OutputPath $outputPath -WhatIf:$WhatIfPreference -Confirm:$false
+            }
+            if ($WhatIfPreference) { $state = 'Preview' }
+        } else {
+            $null = & ([IO.Path]::Combine($PSScriptRoot,$entry.Script)) @arguments
+        }
+        Write-Host ('Summary: '+$entry.Name+' = '+$state)
+        [pscustomobject]@{Check=$entry.Name;State=$state}
     }catch{
         Write-Host ('Workspace check failed: '+$entry.Name+'; '+$_.Exception.Message)
         throw

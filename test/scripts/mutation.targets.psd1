@@ -54,6 +54,13 @@
             Break = 100
         }
         @{
+            Name = 'CommitWorkflowDocumentation'
+            Module = 'lib/Commit-Workspace.psm1'
+            Functions = @('Test-QuietCommitWorkflowChanges')
+            UnitTestFiles = @('unit/lib/Commit-Workspace.Tests.ps1')
+            Break = 100
+        }
+        @{
             Name = 'WorkflowDocumentation'
             Module = 'lib/WorkflowDocumentation.psm1'
             Functions = @('Get-QuietWorkflowScriptPaths','Format-QuietWorkflowLiteral')

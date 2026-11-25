@@ -10,6 +10,8 @@ This entry point preserves its parameters and defaults and forwards explicitly b
 
 ## Dependencies and effects
 
+Changes under `scripts/` or `.github/workflows/` trigger regeneration of the GitHub workflow Mermaid graphs, their index and the tracked workflow map before the default commit stages files. Review the matching workflow documentation and update its source SHA-256 receipt after a YAML change.
+
 After a successful commit, the entry point writes a CI forecast to `artifacts/plan.md` in the selected checkout and prints its path. Use `-CiPlanPath` to choose another Markdown file. The default location is ignored by Git.
 
 ```powershell
