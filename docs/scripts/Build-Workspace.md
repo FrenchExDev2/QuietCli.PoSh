@@ -16,6 +16,8 @@ while restore still runs with vulnerability auditing enabled. It never restores 
 The layout regression covers an empty intermediate tree, complete reuse, documentation-only
 compilation beside cached products, restore failure and an omitted-restore mutant.
 
+`RequireVerifiedBuild` verifies the downloaded build and restores the selected NuGet graph without compiling or publishing. A missing or incompatible distribution fails the step. `ReadyToRunBaselineDirectory` additionally publishes IL versions of the selected ReadyToRun apphost slots for paired benchmarking. This keeps the portable solution build to one invocation.
+
 ## Purpose and usage
 
 Compiles `Quietly.slnx` once in Release by default, then prepares the portable distributions declared by the discovered packages, without tests or registry publication. Both local launchers and GitHub workflows use this same entry point.

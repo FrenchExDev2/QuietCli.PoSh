@@ -6,6 +6,10 @@ on:
         description: Exact revision accepted by all required qualification jobs
         value: ${{ jobs.qualification-gate.outputs.qualified_sha }}
     inputs:
+      build_artifact:
+        description: ID of the shared build artifact produced by the PR workflow
+        type: string
+        default: ''
       build_projects_json:
         type: string
         required: false
@@ -134,6 +138,7 @@ jobs:
       solution_path: ${{ inputs.solution_path }}
       source_path: ${{ inputs.source_path }}
       test_path: ${{ inputs.test_path }}
+      build_artifact: ${{ inputs.build_artifact }}
   qualification-gate:
     name: QuietCli2 qualification gate
     needs: [linux-matrix, windows, linux-result, performance-results, tooling]
@@ -174,6 +179,8 @@ jobs:
   tooling:
     if: inputs.run_tooling && !inputs.images_only && (inputs.qualification_mode == '' || inputs.qualification_mode == 'full')
     uses: ./.github/workflows/tooling-ci.yml
+    with:
+      build_artifact: ${{ inputs.build_artifact }}
   windows:
     name: Windows (${{ matrix.rid }}, ${{ matrix.channel }}, ${{ matrix.mode }})
     needs: linux-matrix
@@ -217,19 +224,30 @@ jobs:
           $hostInfo=./scripts/Initialize-PowerShellHost.ps1 -Channel $env:HOST_CHANNEL -RuntimeIdentifier $env:HOST_RID -OutputDirectory (Join-Path $env:RUNNER_TEMP 'quietcli-powershell-host')
           [void][IO.File]::AppendAllTextAsync($env:GITHUB_PATH,($hostInfo.Directory+"`n"),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
       - name: Fingerprint the selected build closure
+        if: inputs.build_artifact == ''
         id: build_key
         shell: pwsh
         env:
           EXPECTED_RID: ${{ matrix.rid }}
         run: ./scripts/Get-CompanionBuildKey.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -ReadyToRun -OutputPath $env:GITHUB_OUTPUT
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: inputs.build_artifact == ''
         with:
           path: src/**/lib/
           key: ${{ steps.build_key.outputs.cache_key }}
           restore-keys: ${{ steps.build_key.outputs.cache_prefix }}
       - name: Build all required distributions in Release
+        if: inputs.build_artifact == ''
         shell: pwsh
         run: ./scripts/Build-Workspace.ps1 -Project @(ConvertFrom-Json $env:QUIETCLI_BUILD_PROJECTS) -ReuseVerifiedBuild -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
+      - uses: ./.github/actions/load-ci-build
+        if: inputs.build_artifact != ''
+        with:
+          artifact: ${{ inputs.build_artifact }}
+      - name: Require the shared RID build and restore the selected package graph
+        if: inputs.build_artifact != ''
+        shell: pwsh
+        run: ./scripts/Build-Workspace.ps1 -RequireVerifiedBuild -Suite $env:QUIETCLI_SUITE -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
       - name: Resolve declared companion qualification controls
         shell: pwsh
         env:
@@ -394,19 +412,30 @@ jobs:
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Fingerprint the selected build closure
+        if: inputs.build_artifact == ''
         id: build_key
         shell: pwsh
         env:
           EXPECTED_RID: ${{ matrix.rid }}
         run: ./scripts/Get-CompanionBuildKey.ps1 -Suite $env:QUIETCLI_SUITE -RuntimeIdentifier $env:EXPECTED_RID -ReadyToRun -OutputPath $env:GITHUB_OUTPUT
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: inputs.build_artifact == ''
         with:
           path: src/**/lib/
           key: ${{ steps.build_key.outputs.cache_key }}
           restore-keys: ${{ steps.build_key.outputs.cache_prefix }}
       - name: Build engines for the six distributions
+        if: inputs.build_artifact == ''
         shell: pwsh
         run: ./scripts/Build-Workspace.ps1 -Project @(ConvertFrom-Json $env:QUIETCLI_BUILD_PROJECTS) -ReuseVerifiedBuild -Suite $env:QUIETCLI_SUITE -Configuration Release -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
+      - uses: ./.github/actions/load-ci-build
+        if: inputs.build_artifact != ''
+        with:
+          artifact: ${{ inputs.build_artifact }}
+      - name: Require the shared RID build and restore NuGet for offline staging
+        if: inputs.build_artifact != ''
+        shell: pwsh
+        run: ./scripts/Build-Workspace.ps1 -RequireVerifiedBuild -Suite $env:QUIETCLI_SUITE -ReadyToRun -RuntimeIdentifier '${{ matrix.rid }}' -ReadyToRunRuntimeIdentifier '${{ matrix.rid }}'
       - uses: ./.github/actions/load-ci-image-bundle
         id: image
         with:

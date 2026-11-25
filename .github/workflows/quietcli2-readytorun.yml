@@ -10,6 +10,10 @@ on:
         default: false
   workflow_call:
     inputs:
+      build_artifact:
+        description: ID of the optional shared PR build with both benchmark variants
+        type: string
+        default: ''
       aa_control:
         description: Run the A/A control before the paired comparison
         type: boolean
@@ -42,18 +46,25 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
-          cache: true
+          cache: ${{ inputs.build_artifact == '' }}
           cache-dependency-path: '**/*.csproj'
       - name: Verify monorepo structure and external resources
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Build the baseline module
+        if: inputs.build_artifact == ''
         shell: pwsh
         run: ./scripts/Build-Workspace.ps1 -Configuration Release
+      - uses: ./.github/actions/load-ci-build
+        if: inputs.build_artifact != ''
+        with:
+          artifact: ${{ inputs.build_artifact }}
       - name: Build the ReadyToRun candidate
         shell: pwsh
+        env:
+          BUILD_ARTIFACT: ${{ inputs.build_artifact }}
         run: |
-          $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -CandidateRoot (Join-Path $env:RUNNER_TEMP ('quietcli-r2r-'+[guid]::NewGuid().ToString('N')))
+          $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -SharedBuild:([bool]$env:BUILD_ARTIFACT) -CandidateRoot ([IO.Path]::Combine($env:RUNNER_TEMP,('quietcli-r2r-'+[guid]::NewGuid().ToString('N'))))
           "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV -Encoding utf8
       - name: Run the paired cold-start comparison
         id: comparison
@@ -141,7 +152,7 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
-          cache: true
+          cache: ${{ inputs.build_artifact == '' }}
           cache-dependency-path: '**/*.csproj'
       - uses: ./.github/actions/cache-resources
       - uses: ./.github/actions/setup-powershell
@@ -149,14 +160,20 @@ jobs:
         shell: pwsh
         run: ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Build the baseline module for every distribution
+        if: inputs.build_artifact == ''
         shell: pwsh
         run: ./scripts/Build-Workspace.ps1 -Configuration Release
+      - uses: ./.github/actions/load-ci-build
+        if: inputs.build_artifact != ''
+        with:
+          artifact: ${{ inputs.build_artifact }}
       - name: Build the ReadyToRun candidate for this platform's RID
         shell: pwsh
         env:
           EXPECTED_RID: ${{ matrix.rid }}
+          BUILD_ARTIFACT: ${{ inputs.build_artifact }}
         run: |
-          $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -RuntimeIdentifier $env:EXPECTED_RID -CandidateRoot (Join-Path $env:RUNNER_TEMP ('quietcli-r2r-'+[guid]::NewGuid().ToString('N')))
+          $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -SharedBuild:([bool]$env:BUILD_ARTIFACT) -RuntimeIdentifier $env:EXPECTED_RID -CandidateRoot ([IO.Path]::Combine($env:RUNNER_TEMP,('quietcli-r2r-'+[guid]::NewGuid().ToString('N'))))
           "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV -Encoding utf8
       - uses: ./.github/actions/load-ci-image-bundle
         id: image

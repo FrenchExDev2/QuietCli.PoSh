@@ -2,7 +2,7 @@
 
 [Tests and qualification](README-qualification.md) · [Local tests and reports](README-qualification-local.md) · [CI map](../docs/ci/README.md)
 
-Use this guide to follow a pull request, a develop push, a manual run or a release tag from the impact plan through the final qualification receipt. GitHub builds the selected projects and runs their declared test companions. Windows uses native runners and Linux uses verified job containers or Docker fallback.
+Use this guide to follow a pull request, a develop push, a manual run or a release tag from the impact plan through the final qualification receipt. GitHub prepares the build outputs and runs the selected test companions. Windows uses native runners and Linux uses verified Docker images.
 
 ## Triggers and suite selection
 
@@ -13,7 +13,7 @@ The [Companions workflow](../.github/workflows/companions-ci.yml) plans product 
 - Manual dispatch of `companions-ci.yml` accepts `suites` (one or more suite names, `Tooling` or the default `all`). The reusable or manually dispatched `ci.yml` accepts a single `suite`, defaulting to `All`.
 - The [release tag workflow](../.github/workflows/release-tags.yml) selects release packages. [Gallery packaging](../.github/workflows/publish-psgallery.yml) requires current-run, current-attempt `All` evidence for the exact revision before rebuilding and checking the distributions. [The release guide](../docs/README-preview-releases.md) covers publication and artifact-only previews.
 
-`All` expands to Core, Git and Vagrant through the [CI catalogue](../docs/scripts/lib/CiCompanions.md). After a shared build per target, Core runs before bounded independent companion workers. Core.Tests uses scripted Git-status fixtures and can run without the Git product module. A suite can declare tool or product prerequisites while executing only its own runner.
+`All` expands to Core, Git and Vagrant through the [CI catalogue](../docs/scripts/lib/CiCompanions.md). Core runs before bounded independent companion workers. Core.Tests uses scripted Git-status fixtures and can run without the Git product module. A suite can declare tool or product prerequisites while executing only its own runner.
 
 [Tooling](../.github/workflows/tooling-ci.yml) has its own scope. Path-filtered [script documentation](../.github/workflows/scripts-docs-check.yml) and [credits](../.github/workflows/sync-credits-check.yml) checks cover repository contracts. Check the impact plan to see which product suites actually ran.
 
@@ -43,26 +43,27 @@ In GitHub, open **Actions**, choose **QuietCli2 ReadyToRun profiling**, click **
 
 ```mermaid
 flowchart TD
-    P[PR or develop push requiring product replay] --> S[companions-ci complete-diff plan selects suites]
-    S --> C[Shared ci.yml]
+    P[PR requiring product qualification] --> S[Plan selects suites]
+    S --> B[Build or restore the PR distributions]
+    B --> A[Upload revision-bound build artifact]
+    S --> I[Prepare Linux images]
+    A --> C[Shared ci.yml consumes build artifact]
+    I --> C
     C --> W[Four GA Windows combinations; two Preview rows only on opt-in]
     C --> L[Select four native Linux targets]
-    W --> WB[Build solution and prepare distributions on runner]
-    WB --> WT[Run selected tests on Windows runner]
-    L --> J{Verified supported job-container image?}
-    J -- Yes --> JB[Build and test inside job container]
-    J -- No --> FB[Build distributions on Ubuntu runner]
-    FB --> FT[Stage inputs and run tests inside Docker]
+    W --> WT[Run selected tests on Windows runner]
+    L --> FT[Restore NuGet and stage tests inside Docker]
     WT --> G[Require Windows, Linux and declared evidence]
-    JB --> G
     FT --> G
     G --> Q[Revision-bound qualification receipt]
 ```
 
+When a PR needs compiled outputs, a Windows x64 producer runs the common build entry point or restores an archive for the same checkout SHA and build variants. Every consumer downloads the same run's immutable artifact. Develop, standalone and release runs use their own build paths. [Companions workflow contract](../docs/ci/github/script-companions-ci.md)
+
 The common build entry point is [Build-Workspace.ps1](../scripts/Build-Workspace.ps1):
 
 1. Verify build prerequisites and declared portable outputs.
-2. Compile the selected dependency closure once, using an owned scoped solution; All builds `Quietly.slnx`. Undeclared cross-project references fail before compilation. `Directory.Build.props` treats compiler warnings as errors.
+2. Compile the selected dependency closure once. The PR producer and All build `Quietly.slnx`; scoped standalone builds use an owned scoped solution. Undeclared cross-project references fail before compilation. `Directory.Build.props` treats compiler warnings as errors.
 3. Prepare the declared portable distributions with `dotnet publish --no-build`. [Get-QuietWorkspaceBuildProjects](../docs/README-workspace-projects.md#compiled-distributions) supplies the project/framework/output values from inert manifest declarations.
 4. Build the engine's architecture-specific distributions and requested ReadyToRun slots separately, preserving their integrity receipts.
 
@@ -80,7 +81,7 @@ Each selected suite has four required native Windows combinations. `run_preview=
 - GA PowerShell 7.7.0 / CLR 11 with `InProcess`: the engine uses its .NET 11 build in PowerShell.
 - Optional next-version Preview with `InProcess`: only a published release newer than GA is accepted. The current announced 7.8.0-preview.1 has no published archives, so opt-in fails explicitly until the lock is refreshed.
 
-These jobs do not run in Windows containers. Each job selects its checksum-pinned PowerShell host, builds the required distributions and executes the selected suite. The source of exact host versions and archive checksums is [build/powershell-hosts.lock.json](../build/powershell-hosts.lock.json), with the expected versions/modes declared in [the Windows matrix](../.github/workflows/ci.yml).
+Each native Windows job selects its checksum-pinned PowerShell host, verifies the required distributions and executes the selected suite. The source of exact host versions and archive checksums is [build/powershell-hosts.lock.json](../build/powershell-hosts.lock.json), with the expected versions/modes declared in [the Windows matrix](../.github/workflows/ci.yml).
 
 The host CLR, engine hosting mode and compiled test executable framework are separate facts. In particular, the C# companion executables target .NET 11 while Alpine retains its explicitly accepted 7.6.9 / CLR 10 exception. The SDK comes from [global.json](../global.json).
 
@@ -95,12 +96,7 @@ Each selected suite has four native Linux targets:
 
 The runner is the Ubuntu machine providing the CPU and Docker host. Debian/Alpine is the **guest environment where the tests execute**. ARM64 rows use ARM64 runners; an x64 execution is not accepted as ARM64 qualification. Debian uses GA 7.7.0 / CLR 11; Alpine temporarily retains native 7.6.9-r0 / CLR 10 because its GA package and Microsoft musl ARM64 archive are unavailable; Linux does not repeat the Windows Stable/Preview/Process matrix. Image and host pins are in [build/ci-images.lock.json](../build/ci-images.lock.json).
 
-[Select-GitHubCiMatrix.ps1](../scripts/Select-GitHubCiMatrix.ps1) and [GitHubCi.ps1](../scripts/lib/GitHubCi.psm1) partition these four targets between two paths. Each target belongs to exactly one path:
-
-- **GitHub job container:** when a compatible image is available at a verified immutable digest, both the source build and selected tests run inside that job container.
-- **Docker fallback:** when that image is unavailable, build preparation runs on the Ubuntu runner. The selected image is prepared or reused, then sources, distributions, build policy and restored package inputs are copied into an owned container. The selected tests run inside it with `--network none`. The worker checks the guest's terminal report, real exit code and RID before accepting success.
-
-Alpine ARM64 always uses Docker fallback because this execution policy excludes it from GitHub's JavaScript-action job-container path. Other targets use fallback when a verified image is unavailable. Therefore a skipped `Linux job container` job can be normal if the corresponding targets execute under `Linux Docker fallback`.
+The Ubuntu runner loads the verified image for its target. On a PR, it downloads the compiled distributions and restores the selected NuGet package graph locally for offline staging. The worker copies sources, distributions, build policy and restored package inputs into an owned container and runs the tests with `--network none`. It verifies the guest's terminal report, real exit code and RID.
 
 PR runs do not publish toolchain/consumer images. The image-publication jobs are restricted to the upstream `develop` push/manual conditions. Skipping those publication jobs does not skip the selected Linux tests: selection and execution have explicit dependency conditions. See [the execution model](../docs/ci/execution-model.md) and [Linux images](../docs/ci/linux-images.md).
 
@@ -116,7 +112,7 @@ The compiled programs are custom executable assertion runners, not a `dotnet tes
 
 Core is a mixed suite: pure logic, temporary files/repositories, child processes, properties, malformed-input corpora and targeted mutations. It is not a unit-only suite. The focused `Integration` mode selects the import/performance workload, not every case with integration effects. See [test boundaries](../docs/testing/commit-workspace.md) and [suite scopes](README-qualification-local.md#local-suites).
 
-`tooling-ci.yml` runs repository automation, functional RunProfiles, Distribution once using verified full IL outputs, a separate Core build/suite without the Git module, and the two mutation shards plus completion. Product rows do not repeat these packaging/tooling campaigns. Nine enabled Git mutation catalogues run in isolated process batches capped at two; each restores dependencies once and resets/recompiles pristine sources for every mutant. See [scheduling and mutations](../docs/ci/scalable-companions.md).
+`tooling-ci.yml` runs repository automation, functional RunProfiles, Distribution using the prepared outputs, a separate Core build/suite without the Git module, and the two mutation shards plus completion. Product rows do not repeat these packaging/tooling campaigns. Nine enabled Git mutation catalogues run in isolated process batches capped at two; each restores dependencies once and resets/recompiles pristine sources for every mutant. See [scheduling and mutations](../docs/ci/scalable-companions.md).
 
 ## Qualification scope and exclusions
 

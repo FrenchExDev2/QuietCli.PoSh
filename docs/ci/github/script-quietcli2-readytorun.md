@@ -1,6 +1,6 @@
 # quietcli2-readytorun.yml
 
-<!-- workflow-source-sha256: 4D26349E5B5758F4AB10870A550B2502C13A04363961E1BD76254146C6A7D481 -->
+<!-- workflow-source-sha256: B714BA25DCDD39CE079D6536306D3549C47CA9A41E48B7A63330FB1BA0407E16 -->
 
 ## Purpose
 
@@ -17,9 +17,11 @@ Manual workflow dispatch is informational and offers the optional `aa_control` s
 
 The reviewed setup-dotnet steps read the checked-out global.json through global-json-file, so the CI, publication preparation and manual ReadyToRun jobs follow the selected SDK instead of embedding an old RC string. This source review does not establish hosted execution or full matrix qualification.
 
+The setup-dotnet NuGet cache runs only when the benchmark builds its variants locally. Artifact consumers use the SDK to run the comparison and may finish with no NuGet packages directory.
+
 ## Measurement and artifacts
 
-Windows and Linux restore pinned Core resources before building the IL baseline and copying it into the ReadyToRun candidate. Both variants carry the native runtime files that Core verifies on engine startup. Windows and native Linux run paired A/B directly by default and save source-bound reports. Instrumentation runs outside timed samples. [Report and dispatch guide](../../README-readytorun_profiling.md)
+Windows and Linux restore pinned Core resources. Manual runs build the IL baseline and its ReadyToRun candidate locally. PR runs download both sets of binaries from the shared producer and assemble the IL baseline and single-RID candidate without compiling in the profiling jobs. Windows and native Linux run paired A/B directly by default and save source-bound reports. Instrumentation runs outside timed samples. [Report and dispatch guide](../../README-readytorun_profiling.md)
 
 Linux comparisons wait for the Core image handoff. A PR reuses its workspace producer. A standalone dispatch calls the same producer for Core. The Linux runner verifies the archive or registry image before executing the comparison. [Linux CI images](../linux-images.md)
 

@@ -145,10 +145,14 @@ $outputs=@{
     script_mutation_targets=$(if($scope -ceq 'full' -or $plan.RunAllScriptMutations -or ($scriptsImpact -and $scriptsImpact.AllTargets)){'all'}elseif($scriptsImpact){ConvertTo-Json -InputObject @($scriptsImpact.MutationTargets) -Compress}else{'[]'})
 }
 $outputs.run_layout=$outputs.run_layout.ToString().ToLowerInvariant()
+$scriptSelection=if($scope -ceq 'scripts' -or (($localPreview -or $MarkdownPath) -and $scope -ceq 'full')){
+    Resolve-QuietScriptsCiSelection -WorkspaceRoot $sourceTree -Scope $scope -Tests $outputs.script_tests -Targets $outputs.script_mutation_targets
+}
+$outputs.tooling_requires_build=($scope -ceq 'full' -or $scriptSelection.RequiresBuild).ToString().ToLowerInvariant()
+$componentRequiresBuild=@($plan.CompanionChecks | Where-Object {$_ -and $_.campaign -cnotin @('mutation','profiled-mutation')}).Count -gt 0
+$outputs.run_shared_build=($plan.RunProducts -or $plan.SmokeSuites.Count -or $plan.RunDistribution -or $plan.RunReadyToRun -or $componentRequiresBuild -or
+    $outputs.tooling_requires_build -ceq 'true').ToString().ToLowerInvariant()
 if($localPreview -or $MarkdownPath){
-    $scriptSelection=if($scope -cne 'none'){
-        Resolve-QuietScriptsCiSelection -WorkspaceRoot $sourceTree -Scope $scope -Tests $outputs.script_tests -Targets $outputs.script_mutation_targets
-    }
     $plan|Add-Member -NotePropertyMembers ([ordered]@{
         RunScriptTooling=[bool]($scriptSelection.TestFiles.Count -or $scriptSelection.MutationTargets.Count)
         ScriptTests=[string[]]@($scriptSelection.TestFiles | Where-Object {$_})

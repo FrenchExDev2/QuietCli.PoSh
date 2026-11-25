@@ -4,6 +4,10 @@ on:
     # Callers without inputs run every campaign. The companions plan passes scope scripts when only scripts/ or
     # test/scripts/ changed: then only the script test files and mutation targets those changes reach run.
     inputs:
+      build_artifact:
+        description: ID of the optional shared PR build artifact
+        type: string
+        default: ''
       scope:
         description: full runs every tooling campaign; scripts runs only the selected script tests and mutation targets
         type: string
@@ -144,7 +148,7 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
-          cache: true
+          cache: ${{ inputs.build_artifact == '' }}
           cache-dependency-path: |
             **/*.csproj
             Directory.Packages.props
@@ -157,7 +161,14 @@ jobs:
         run: |
           ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
           ./scripts/Initialize-Workspace.ps1 -Restore
-          ./scripts/Build-Workspace.ps1
+      - uses: ./.github/actions/load-ci-build
+        if: inputs.build_artifact != ''
+        with:
+          artifact: ${{ inputs.build_artifact }}
+      - name: Build the tooling distributions for standalone qualification
+        if: inputs.build_artifact == ''
+        shell: pwsh
+        run: ./scripts/Build-Workspace.ps1
       - name: Qualify repository automation once
         id: tooling_tests
         shell: pwsh
@@ -289,7 +300,7 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
-          cache: true
+          cache: ${{ needs.script-selection.outputs.requires_build == 'true' && inputs.build_artifact == '' }}
           cache-dependency-path: |
             **/*.csproj
             Directory.Packages.props
@@ -307,9 +318,15 @@ jobs:
         # Start-QuietWorkBranch.ps1 drives git through quiet, which needs the built engine; its tests declare it.
         if: needs.script-selection.outputs.requires_build == 'true'
         shell: pwsh
-        run: |
-          ./scripts/Initialize-Workspace.ps1 -Restore
-          ./scripts/Build-Workspace.ps1 -Suite Git
+        run: ./scripts/Initialize-Workspace.ps1 -Restore
+      - uses: ./.github/actions/load-ci-build
+        if: needs.script-selection.outputs.requires_build == 'true' && inputs.build_artifact != ''
+        with:
+          artifact: ${{ inputs.build_artifact }}
+      - name: Build Core and Git for standalone script tests
+        if: needs.script-selection.outputs.requires_build == 'true' && inputs.build_artifact == ''
+        shell: pwsh
+        run: ./scripts/Build-Workspace.ps1 -Suite Git
       # Every test runs once with the global coverage threshold; a selection is a partial run, so it skips coverage.
       - name: Run the selected script tests
         id: script_tests

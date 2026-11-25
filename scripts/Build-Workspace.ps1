@@ -22,12 +22,24 @@ Builds only the selected test suite and its transitive module dependencies. All 
 Explicit affected project paths from the CI graph; each must belong to the selected module closure.
 .PARAMETER ReuseVerifiedBuild
 Reuses verified distributions while restoring the selected solution's package graph for downstream offline tests.
+.PARAMETER RequireVerifiedBuild
+Restores the selected solution's package graph for offline tests and fails if the supplied distributions cannot be reused.
+.PARAMETER ReadyToRunBaselineDirectory
+Workspace-relative directory for the IL apphosts and engine assemblies used in paired profiling.
 #>
-[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Release','Debug')][string]$Configuration='Release',[Alias('WindowsRuntimeIdentifier')][ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$RuntimeIdentifier=@('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64'),[switch]$ReadyToRun,[string]$LocalRuntimeIdentifier=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier,[ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$ReadyToRunRuntimeIdentifier=@(),[switch]$SolutionOnly,[string]$Suite='All',[switch]$ReuseVerifiedBuild,[string[]]$Project=@())
+[CmdletBinding(SupportsShouldProcess)]param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[ValidateSet('Release','Debug')][string]$Configuration='Release',[Alias('WindowsRuntimeIdentifier')][ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$RuntimeIdentifier=@('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64'),[switch]$ReadyToRun,[string]$LocalRuntimeIdentifier=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier,[ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','linux-musl-x64','linux-musl-arm64')][string[]]$ReadyToRunRuntimeIdentifier=@(),[switch]$SolutionOnly,[string]$Suite='All',[switch]$ReuseVerifiedBuild,[string[]]$Project=@(),[switch]$RequireVerifiedBuild,[string]$ReadyToRunBaselineDirectory)
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
 
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Build-Workspace')){return}
 $ErrorActionPreference='Stop'
+if($RequireVerifiedBuild){
+    if($SolutionOnly -or $Project.Count -or $ReadyToRunBaselineDirectory){throw 'RequireVerifiedBuildIncompatibleOptions'}
+    $ReuseVerifiedBuild=$true
+}
+if($ReadyToRunBaselineDirectory){
+    if(!$ReadyToRun -or $SolutionOnly -or $ReuseVerifiedBuild -or $ReadyToRunBaselineDirectory -cnotmatch '\Aartifacts/[a-zA-Z0-9_-]+\z'){throw 'ReadyToRunBaselineDirectoryInvalid'}
+    if(Test-Path -LiteralPath ([IO.Path]::Combine($WorkspaceRoot,$ReadyToRunBaselineDirectory))){throw 'ReadyToRunBaselineDirectoryExists'}
+}
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Common.psm1')) -DisableNameChecking -ErrorAction Stop
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/WorkspacePublication.psm1')) -DisableNameChecking -ErrorAction Stop
 $selectedModules=@(Get-QuietWorkspaceBuildSelection $WorkspaceRoot -Suite $Suite)
@@ -39,6 +51,7 @@ if($ReuseVerifiedBuild -and !$SolutionOnly -and !$unpublishedRequests.Count){
     Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CompanionBuildCache.psm1')) -DisableNameChecking -ErrorAction Stop
     $reuseComplete=Test-QuietReusableBuild -WorkspaceRoot $WorkspaceRoot -Modules $selectedModules -Configuration $Configuration -RuntimeIdentifier $RuntimeIdentifier -ReadyToRunRuntimeIdentifier $ReadyToRunRuntimeIdentifier
 }
+if($RequireVerifiedBuild -and !$reuseComplete){throw "RequiredVerifiedBuildMissing: $Suite"}
 $solutionPath=[IO.Path]::Combine($WorkspaceRoot,'Quietly.slnx')
 if($Suite -cne 'All'){
     [xml]$selectedSolution=Get-Content -LiteralPath $solutionPath -Raw -Encoding utf8
@@ -137,4 +150,13 @@ foreach($rid in $RuntimeIdentifier){
     Invoke-WorkspacePublication $publishArguments $WorkspaceRoot
     Assert-QuietRuntimePublication ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $output)) $target
     Write-QuietBuildManifest $WorkspaceRoot $buildProject $output -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $rid -PlatformTarget $architecture -ReadyToRun:$precompiled
+    if($ReadyToRunBaselineDirectory -and $precompiled){
+        $baselineOutput="$ReadyToRunBaselineDirectory/$rid"
+        $baselinePath=Resolve-QuietWorkspacePath $WorkspaceRoot $baselineOutput
+        $publishArguments[-1]='-p:PublishReadyToRun=false'
+        $publishArguments[[Array]::IndexOf($publishArguments,'-o')+1]=$baselinePath
+        Invoke-WorkspacePublication $publishArguments $WorkspaceRoot
+        Assert-QuietRuntimePublication $baselinePath $target
+        Write-QuietBuildManifest $WorkspaceRoot $buildProject $baselineOutput -Inputs $inputs -Configuration $Configuration -RuntimeIdentifier $rid -PlatformTarget $architecture
+    }
 }

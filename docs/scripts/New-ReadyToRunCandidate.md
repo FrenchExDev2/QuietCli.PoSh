@@ -16,6 +16,8 @@ WorkspaceRoot defaults to the repository root. CandidateRoot defaults to the tem
 
 ## Dependencies and side effects
 
+In a disposable PR runner checkout, `-SharedBuild` verifies the installed artifact's IL and ReadyToRun slots, stages the six IL publications as the workspace baseline, and puts the selected ReadyToRun RID into the separate candidate module. Both sides preserve the same layout used by the standalone A/B comparison.
+
 Requires the pinned SDK/runtime packs and an already-built baseline. Copies Core at its relative workspace path together with `global.json`, `Directory.Build.props` and `Directory.Packages.props`. Publishes and verifies ReadyToRun in `lib/inprocess/<rid>` and `lib/engine/<rid>`, and marks the selected RID in both candidate manifests. The Core copy preserves the compiler policy and is built independently of the workspace solution.
 
 ## Critical review

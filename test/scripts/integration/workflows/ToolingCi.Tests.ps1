@@ -18,7 +18,9 @@ BeforeAll {
 Describe 'tooling-ci.yml selection' {
     It 'defaults every input to the full campaign, so callers without inputs keep it' {
         $inputs=$workflow['on']['workflow_call']['inputs']
-        (@($inputs.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'mutation_parallel,scope,script_mutation_no_input_cache,script_mutation_targets,script_tests'
+        (@($inputs.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'build_artifact,mutation_parallel,scope,script_mutation_no_input_cache,script_mutation_targets,script_tests'
+        [string]$inputs['build_artifact']['type']|Should -BeExactly 'string'
+        [string]$inputs['build_artifact']['default']|Should -BeExactly ''
         [string]$inputs['mutation_parallel']['type']|Should -BeExactly 'boolean'
         [string]$inputs['mutation_parallel']['default']|Should -BeExactly 'true'
         [string]$inputs['scope']['default']|Should -BeExactly 'full'
@@ -51,6 +53,15 @@ Describe 'tooling-ci.yml selection' {
 }
 
 Describe 'tooling-ci.yml script tests' {
+    It 'skips the setup-dotnet NuGet cache in jobs that only use a shared build' {
+        $tooling=@(& $uses $jobs['tooling'] 'actions/setup-dotnet@')
+        $scripts=@(& $uses $jobs['script-tests'] 'actions/setup-dotnet@')
+        $independence=@(& $uses $jobs['core-independence'] 'actions/setup-dotnet@')
+        $tooling[0]['with']['cache']|Should -BeExactly "`${{ inputs.build_artifact == '' }}"
+        $scripts[0]['with']['cache']|Should -BeExactly "`${{ needs.script-selection.outputs.requires_build == 'true' && inputs.build_artifact == '' }}"
+        $independence[0]['with']['cache']|Should -BeExactly 'true'
+    }
+
     It 'runs every script test with coverage, or only the selected files, on Windows and Linux' {
         $job=$jobs['script-tests']
         (@($job['strategy']['matrix']['os'])|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'ubuntu-latest,windows-latest'
@@ -70,7 +81,10 @@ Describe 'tooling-ci.yml script tests' {
     It 'builds the engine only when a selected test declares it' {
         $build=@($jobs['script-tests']['steps']|Where-Object {([string]$_['run']).Contains('./scripts/Build-Workspace.ps1')})
         $build.Count|Should -Be 1
-        [string]$build[0]['if']|Should -BeExactly 'needs.script-selection.outputs.requires_build == ''true'''
+        [string]$build[0]['if']|Should -BeExactly "needs.script-selection.outputs.requires_build == 'true' && inputs.build_artifact == ''"
+        $load=@(& $uses $jobs['script-tests'] './.github/actions/load-ci-build')
+        $load.Count|Should -Be 1
+        [string]$load[0]['if']|Should -BeExactly "needs.script-selection.outputs.requires_build == 'true' && inputs.build_artifact != ''"
     }
 
     It 'restores the pinned test tool archives before initializing them' -ForEach @(@{Job='script-tests'},@{Job='script-mutation'}) {

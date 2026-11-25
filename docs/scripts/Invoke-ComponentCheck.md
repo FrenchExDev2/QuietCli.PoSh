@@ -18,6 +18,8 @@ Validates explicit component paths and executes build, smoke or full workspace-c
 
 ## Dependencies and side effects
 
+`-SkipBuild` runs the selected check using distributions installed by the PR build artifact. Mutation campaigns retain their own isolated build logic.
+
 ValidateOnly checks catalogue paths and the mode without starting a build or test. SmokeBatch requires a nonempty SuitesJson array. Local tests use the shared visible monitor; GitHub runs use headless reports. Smoke success never qualifies publication.
 
 ## Critical review
