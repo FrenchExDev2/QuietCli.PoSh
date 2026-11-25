@@ -114,6 +114,46 @@ Describe 'ConvertFrom-QuietGitHubActionUses' {
         $references[0].Ref|Should -BeExactly 'v1'
     }
 
+    It 'ignores the content of a <Header> scalar and resumes at a sibling uses key' -ForEach @(
+        @{Header='run: |'}
+        @{Header='run: >- # folded'}
+        @{Header='run: |2+'}
+        @{Header="'run': >+2"}
+    ) {
+        $text=@(
+            "      - $Header"
+            '          uses: malformed'
+            ''
+            '          - uses: example/ignored@v1'
+            '        uses: example/sibling@v2'
+            '      - uses: example/next@v3'
+        ) -join "`r`n"
+        $references=@(ConvertFrom-QuietGitHubActionUses -Text $text -Path 'ci.yml')
+        $references.Value|Should -BeExactly @('example/sibling@v2','example/next@v3')
+        $references.LineNumber|Should -Be @(5,6)
+    }
+
+    It 'skips a scalar at the start of a sequence item and recognizes the next item' {
+        $text="items:`n  - |`n    uses: example/ignored@v1`n  - uses: example/next@v2`n"
+        $references=@(ConvertFrom-QuietGitHubActionUses -Text $text -Path 'ci.yml')
+        $references.Count|Should -Be 1
+        $references[0].Value|Should -BeExactly 'example/next@v2'
+    }
+
+    It 'keeps the scalar state through empty lines at the top level' {
+        $text="description: |`n  first line`n`n  uses: malformed`nuses: example/next@v2"
+        $references=@(ConvertFrom-QuietGitHubActionUses -Text $text -Path 'ci.yml')
+        $references.Count|Should -Be 1
+        $references[0].LineNumber|Should -Be 5
+    }
+
+    It 'ignores a multiline uses value and reads the following single-line reference' {
+        $text="steps:`n  - uses: >-`n      example/multiline@v1`n  - uses: example/next@v2"
+        $references=@(ConvertFrom-QuietGitHubActionUses -Text $text -Path 'ci.yml')
+        $references.Count|Should -Be 1
+        $references[0].Value|Should -BeExactly 'example/next@v2'
+    }
+
     It 'parses every generated line to its parts, and renders it back unchanged (property)' {
         Invoke-QuietProperty -Name 'uses round trip' -Seed $seed -Count 300 -Generator $newLine -Property {param($case)
             $reference=(& $parse $case.Line)[0]

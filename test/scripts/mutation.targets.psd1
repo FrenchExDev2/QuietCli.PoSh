@@ -359,6 +359,13 @@
             Break = 100
         }
         @{
+            Name = 'UpdateGitHubActions'
+            Module = 'lib/Update-GitHubActions.psm1'
+            Functions = @('Assert-QuietGitHubActionSourceCurrent')
+            UnitTestFiles = @('unit/lib/Update-GitHubActions.Tests.ps1')
+            Break = 100
+        }
+        @{
             Name = 'PerformanceStatistics'
             Module = 'lib/PerformanceStatistics.psm1'
             Functions = @('Get-QuietPerformanceRank','Get-QuietPerformanceStatistics')

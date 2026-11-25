@@ -32,20 +32,21 @@ flowchart LR
 
 None beyond directory listing and file attribute reads in `Get-QuietGitHubActionFiles`.
 
-## Critical review and verdict
+## Supported YAML layout
 
-This is a line-oriented regex parser, not YAML. That covers the block-style `uses:` keys the repository's workflows use. It ignores flow mappings and would read a `uses:` line inside a block scalar as a reference. The strict remote grammar makes such a line fail loudly instead of being rewritten silently. Rendering is checked by a round-trip property, so a parsed line always renders back byte for byte. Verdict: adequate for this repository's workflows. Replace it with a YAML reader only if flow-style steps appear.
+The scanner recognizes single-line, block-style `uses:` keys. It skips the indented contents of literal and folded block scalars, including headers with indent and chomping indicators such as `run: |2-`. Inline flow mappings such as `{uses: …}`, YAML aliases and multiline reference values are outside its scope.
 
 ## Tests
 
 - [`unit/lib/GitHubActionReferences.Tests.ps1`](../../../test/scripts/unit/lib/GitHubActionReferences.Tests.ps1) covers:
   - tabulated ref kinds, quotes, ignored lines and malformed references;
+  - block scalar contents, blank lines and resumption at the next reference;
   - LF/CRLF numbering, render refusals and rewrite refusals;
   - file listing and ordering;
   - a generated round-trip property (parse then render returns the line);
   - a fuzz test that only allows the typed error;
   - a rewrite-locality property: exactly the selected lines change, endings kept.
-- Mutation target `GitHubActionReferences`, `Break` 80.
+- Mutation target `GitHubActionReferences`, `Break` 100.
 
 <!-- script-contract:begin -->
 ## Execution contract

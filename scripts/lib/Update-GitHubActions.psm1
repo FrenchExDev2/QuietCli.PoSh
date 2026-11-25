@@ -33,6 +33,18 @@ function ConvertTo-QuietGitHubActionBytes {
     [byte[]]($encoding.GetPreamble()+$encoding.GetBytes($Text))
 }
 
+function Assert-QuietGitHubActionSourceCurrent {
+    <#
+    .SYNOPSIS
+    Rejects changes to a planned source since its original read.
+    .PARAMETER Source
+    Object returned by Read-QuietGitHubActionSource.
+    #>
+    param([Parameter(Mandatory)][object]$Source)
+    $current=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($Source.FullPath)))
+    if($current -cne $Source.Sha256){throw ('GitHubActionSourceChanged: '+$Source.FullPath+' changed since it was read')}
+}
+
 function Write-QuietGitHubActionSource {
     <#
     .SYNOPSIS
@@ -46,8 +58,7 @@ function Write-QuietGitHubActionSource {
     New content.
     #>
     param([Parameter(Mandatory)][object]$Source,[Parameter(Mandatory)][byte[]]$Bytes)
-    $current=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($Source.FullPath)))
-    if($current -cne $Source.Sha256){throw ('GitHubActionSourceChanged: '+$Source.FullPath+' changed since it was read')}
+    Assert-QuietGitHubActionSourceCurrent -Source $Source
     $temporary=$Source.FullPath+'.'+[Guid]::NewGuid().ToString('N')+'.tmp'
     try{[IO.File]::WriteAllBytes($temporary,$Bytes);[IO.File]::Move($temporary,$Source.FullPath,$true)}
     finally{if([IO.File]::Exists($temporary)){[IO.File]::Delete($temporary)}}
@@ -98,8 +109,9 @@ function Invoke-QuietScriptUpdateGitHubActions {
     are ignored.
     Every release is resolved and every change validated before the first write: an unknown release, an invalid
     reference or a stale receipt stops the run with nothing written. Without -Apply nothing is written. With
-    -Apply each changed file is confirmed through ShouldProcess (so -WhatIf previews and -Confirm asks per file)
-    and replaced atomically, after checking it did not change since it was read.
+    -Apply each changed workflow or action and its optional receipt share one ShouldProcess decision, so
+    -WhatIf shows all planned paths and -Confirm asks once per update. Each file is replaced atomically
+    after checking it did not change since it was read.
     With -RefreshWorkflowReceipts, the documentation receipt of each written workflow
     (docs/ci/github/script-<name>.md, RAC-WF-001) moves to the new file hash, only if it matched the old one:
     a pin-only edit does not change documented behavior, so the existing review still applies.
@@ -185,10 +197,13 @@ function Invoke-QuietScriptUpdateGitHubActions {
     $receipts=[Collections.Generic.List[string]]::new()
     if($Apply){
         foreach($plan in $plans){
-            if(!$PSCmdlet.ShouldProcess($plan.Source.RelativePath,('Update '+$plan.Changes.Count+' GitHub action reference(s) to their latest release'))){continue}
+            $target=$plan.Source.RelativePath
+            if($plan.Receipt){$target+=' and '+$plan.Receipt.RelativePath}
+            if(!$PSCmdlet.ShouldProcess($target,('Update '+$plan.Changes.Count+' GitHub action reference(s) to their latest release'))){continue}
+            if($plan.Receipt){Assert-QuietGitHubActionSourceCurrent -Source $plan.Receipt.Source}
             Write-QuietGitHubActionSource -Source $plan.Source -Bytes $plan.Bytes
             $written.Add($plan.Source.RelativePath)
-            if($plan.Receipt -and $PSCmdlet.ShouldProcess($plan.Receipt.RelativePath,'Move the workflow source receipt to the pin-only edit')){
+            if($plan.Receipt){
                 Write-QuietGitHubActionSource -Source $plan.Receipt.Source -Bytes $plan.Receipt.Bytes
                 $receipts.Add($plan.Receipt.RelativePath)
             }

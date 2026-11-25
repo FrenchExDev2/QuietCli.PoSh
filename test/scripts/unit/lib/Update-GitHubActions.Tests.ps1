@@ -155,4 +155,17 @@ Describe 'Invoke-QuietScriptUpdateGitHubActions' {
         [IO.File]::ReadAllText($fixture.Workflow)|Should -BeExactly $concurrent
         @(Get-ChildItem -LiteralPath $fixture.Root -Recurse -Filter '*.tmp').Count|Should -Be 0
     }
+
+    It 'checks a concurrently edited receipt before writing its workflow' {
+        $fixture=& $newCheckout
+        $before=& $hashOf $fixture.Workflow
+        $module=Get-Module Update-GitHubActions
+        Mock Get-QuietGitHubActionReceiptText -ModuleName $module.Name {
+            [IO.File]::AppendAllText($fixture.Document,"edited`n",[Text.UTF8Encoding]::new($false))
+            $Text.Replace($PreviousSha256,$NewSha256)
+        }
+        {& $invoke $fixture @{Apply=$true;RefreshWorkflowReceipts=$true;Confirm=$false}}|Should -Throw -ExpectedMessage 'GitHubActionSourceChanged: *script-ci.md changed since it was read'
+        & $hashOf $fixture.Workflow|Should -BeExactly $before
+        [IO.File]::ReadAllText($fixture.Document,[Text.Encoding]::UTF8)|Should -BeLike '*edited*'
+    }
 }
