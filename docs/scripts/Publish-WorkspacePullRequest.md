@@ -23,6 +23,7 @@ Explain the change and its local validation.
 - `-ScriptMutationNoInputCache` checks the box to rerun selected script mutants and refresh the cache.
 - `-Parallel:$false` runs the requested companion checks one at a time and selects one worker per mutation shard. Each mutation matrix also runs one shard at a time in this mode.
 - `-ReadyToRun` checks the IL and ReadyToRun cold-start comparison.
+- `-RenewImageCaches` checks **Renew images caches** for the selected Linux image chains.
 - `-Preview` checks the extra PowerShell Preview hosts for Core.
 
 Omitted switches preserve any boxes already present in `-Body`. Use `-Preview:$false` or the corresponding false switch to clear a box. `-Footer` appends Markdown. The first line of `-Message` supplies the default title for a new PR. Override it with `-Title`. The checklist links to the guide at the published commit.

@@ -1,6 +1,6 @@
 # quietcli2-readytorun.yml
 
-<!-- workflow-source-sha256: ECE79F5F5BBEBAFE3E3564A9D2234DA76DA07C4A36F1D40A6C8D2D6717F53440 -->
+<!-- workflow-source-sha256: 4D26349E5B5758F4AB10870A550B2502C13A04363961E1BD76254146C6A7D481 -->
 
 ## Purpose
 
@@ -21,7 +21,7 @@ The reviewed setup-dotnet steps read the checked-out global.json through global-
 
 Windows and Linux restore pinned Core resources before building the IL baseline and copying it into the ReadyToRun candidate. Both variants carry the native runtime files that Core verifies on engine startup. Windows and native Linux run paired A/B directly by default and save source-bound reports. Instrumentation runs outside timed samples. [Report and dispatch guide](../../README-readytorun_profiling.md)
 
-Linux comparisons wait for the Core image bundle. A PR reuses its workspace producer. A standalone dispatch calls the same producer for Core. The Linux runner verifies and loads the archive before executing the comparison. [Linux CI images](../linux-images.md)
+Linux comparisons wait for the Core image handoff. A PR reuses its workspace producer. A standalone dispatch calls the same producer for Core. The Linux runner verifies the archive or registry image before executing the comparison. [Linux CI images](../linux-images.md)
 
 <!-- workflow-generated:begin -->
 
@@ -46,7 +46,7 @@ flowchart TD
 | --- | --- | --- | --- | --- |
 | linux-images | reuses ./.github/workflows/linux-images.yml |  | <code>&#36;{{ !inputs.images&#95;prepared }}</code> |  |
 | readytorun | runner windows-latest |  | default success condition | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/New-ReadyToRunCandidate.ps1`](../../scripts/New-ReadyToRunCandidate.md), [`./scripts/Invoke-ColdStartGate.ps1`](../../scripts/Invoke-ColdStartGate.md), [`./scripts/Show-ColdStartReport.ps1`](../../scripts/Show-ColdStartReport.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
-| readytorun-linux | <code>runner &#36;{{ matrix.runner }}</code> | linux-images | <code>&#36;{{ !cancelled() &#38;&#38; (needs.linux-images.result == 'success' &#124;&#124; (inputs.images&#95;prepared &#38;&#38; needs.linux-images.result == 'skipped')) }}</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/New-ReadyToRunCandidate.ps1`](../../scripts/New-ReadyToRunCandidate.md), [`./scripts/Import-CiImageBundle.ps1`](../../scripts/Import-CiImageBundle.md), [`./scripts/Invoke-ContainerColdStartWorker.ps1`](../../scripts/Invoke-ContainerColdStartWorker.md), [`./scripts/Show-ColdStartReport.ps1`](../../scripts/Show-ColdStartReport.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
+| readytorun-linux | <code>runner &#36;{{ matrix.runner }}</code> | linux-images | <code>&#36;{{ !cancelled() &#38;&#38; (needs.linux-images.result == 'success' &#124;&#124; (inputs.images&#95;prepared &#38;&#38; needs.linux-images.result == 'skipped')) }}</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/New-ReadyToRunCandidate.ps1`](../../scripts/New-ReadyToRunCandidate.md), [`./scripts/Invoke-ContainerColdStartWorker.ps1`](../../scripts/Invoke-ContainerColdStartWorker.md), [`./scripts/Show-ColdStartReport.ps1`](../../scripts/Show-ColdStartReport.md), [`./scripts/Export-CiFailureDiagnostics.ps1`](../../scripts/Export-CiFailureDiagnostics.md) |
 
 <!-- workflow-generated:end -->
 

@@ -119,9 +119,15 @@ $rows=@(foreach($name in $plan.FullSuites){
     [ordered]@{suite=$name;solution_path=$profile[0].SolutionPath;source_path=$profile[0].SourcePath;test_path=$profile[0].TestPath;collect_performance=$profile[0].CollectPerformance;run_preview=$preview;build_projects_json=(ConvertTo-Json -InputObject @($projects) -Compress)}
 })
 $values="suite=$($plan.Suite)`nrun_products=$($plan.RunProducts.ToString().ToLowerInvariant())`nrun_tooling=$(($scope -cne 'none').ToString().ToLowerInvariant())`n"
+# ReadyToRun also consumes Core. A renewal-only PR prepares every declared image chain.
+$imageSuites=@(@($plan.FullSuites)+$(if($plan.RunReadyToRun){'Core'}) | Where-Object {$_} | Sort-Object -Unique)
+if($plan.RenewImageCaches -and !$imageSuites.Count){
+    Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CiCompanions.psm1')) -DisableNameChecking -ErrorAction Stop
+    $imageSuites=@((Read-QuietCiCompanions $sourceTree).Companions.Keys | Sort-Object -Unique)
+}
 $outputs=@{
-    # ReadyToRun also consumes the Core image, including on a PR that only requests the benchmark.
-    image_suites=(ConvertTo-Json -InputObject @(@($plan.FullSuites)+$(if($plan.RunReadyToRun){'Core'}) | Where-Object {$_} | Sort-Object -Unique) -Compress)
+    image_suites=(ConvertTo-Json -InputObject $imageSuites -Compress)
+    renew_image_caches=$plan.RenewImageCaches.ToString().ToLowerInvariant()
     matrix=(@{include=$rows}|ConvertTo-Json -Depth 6 -Compress)
     smoke_suites=(ConvertTo-Json -InputObject @($plan.SmokeSuites) -Compress)
     run_smokes=($plan.SmokeSuites.Count -gt 0).ToString().ToLowerInvariant()

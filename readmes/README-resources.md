@@ -62,4 +62,4 @@ The generated reference list is source inspection, not exhaustive static data-fl
 This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
 
-Intermediate Docker layers use a separate checkout-owned .cache/ci-buildkit cache. These toolchain-only layers are outside source identity and pinned archive inventories; final image provenance and pinned payload verification remain required. A final registry hit is probed before restoring any intermediate layer cache.
+Intermediate Docker layers use a separate checkout-owned `.cache/ci-buildkit` cache. These toolchain layers are outside the pinned resource inventory. The image producer verifies its recipe fingerprint, archive hash or registry digest before handing off an image. [Linux CI images](../docs/ci/linux-images.md)

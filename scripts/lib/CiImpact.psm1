@@ -247,6 +247,7 @@ function Add-QuietCiPullRequestSelection {
     $Plan | Add-Member -NotePropertyMembers ([ordered]@{
         PullRequestOptions=[string[]]@($Options)
         RunReadyToRun='readytorun' -cin $Options
+        RenewImageCaches='renew-images-caches' -cin $Options
         RunPreview='preview' -cin $Options
         RunAllScriptMutations='script-mutation' -cin $Options
         ScriptMutationNoInputCache='script-mutation-no-input-cache' -cin $Options
@@ -271,6 +272,7 @@ function Add-QuietCiPullRequestSelection {
             'script-mutation-no-input-cache' {'Scripts'}
             'mutation-serial' {'Mutations'}
             'readytorun' {'ReadyToRun'}
+            'renew-images-caches' {'Linux images'}
             'preview' {'Core'}
             default {$companionByOption[$option]}
         }

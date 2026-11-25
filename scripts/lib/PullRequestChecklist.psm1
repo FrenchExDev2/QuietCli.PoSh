@@ -16,8 +16,9 @@ function Read-QuietPullRequestChecklist {
     $options = [ordered]@{mutation=$false; 'script-mutation'=$false; 'mutation-serial'=$false; readytorun=$false; preview=$false}
     $legacy = [string[]]@('mutation','readytorun','preview')
     $standard = [string[]]@($options.Keys | Where-Object {$_ -cne 'mutation'})
-    # Existing PR descriptions predate this optional row.
+    # Older PR descriptions can omit these optional rows.
     $options['script-mutation-no-input-cache']=$false
+    $options['renew-images-caches']=$false
     $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $start = $end = -1
     $fence = ''
@@ -50,9 +51,9 @@ function Read-QuietPullRequestChecklist {
         }
     }
     if ($start -ne -1 -and $end -eq -1) {throw 'PullRequestCiChecklistIncomplete'}
-    $companionOptions=[string[]]@($options.Keys|Where-Object {$_ -cnotin @('mutation','script-mutation','script-mutation-no-input-cache','mutation-serial','readytorun','preview')})
+    $companionOptions=[string[]]@($options.Keys|Where-Object {$_ -cnotin @('mutation','script-mutation','script-mutation-no-input-cache','mutation-serial','readytorun','preview','renew-images-caches')})
     [Array]::Sort($companionOptions,[StringComparer]::Ordinal)
-    $canonical=@('mutation','script-mutation')+$companionOptions+@('script-mutation-no-input-cache','mutation-serial','readytorun','preview')
+    $canonical=@('mutation','script-mutation')+$companionOptions+@('script-mutation-no-input-cache','mutation-serial','readytorun','preview','renew-images-caches')
     [pscustomobject]@{
         StartLine = $start
         EndLine = $end
@@ -151,6 +152,7 @@ function Expand-QuietPullRequestTemplate {
                 }
             }
         }
+        "- [ ] [Renew images caches]($helpUrl#renew-images-caches) <!-- ci:renew-images-caches -->"
         "- [ ] Run mutation workers sequentially for all targets [Details]($helpUrl#sequential-mutation-workers) <!-- ci:mutation-serial -->"
         '<!-- quietcli-ci:end -->'
         if ($body.EndLine + 1 -lt $lines.Count) { $lines[($body.EndLine + 1)..($lines.Count - 1)] }

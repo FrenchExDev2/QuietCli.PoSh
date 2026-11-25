@@ -158,25 +158,29 @@ jobs:
         run: |
           $candidate = ./scripts/New-ReadyToRunCandidate.ps1 -RuntimeIdentifier $env:EXPECTED_RID -CandidateRoot (Join-Path $env:RUNNER_TEMP ('quietcli-r2r-'+[guid]::NewGuid().ToString('N')))
           "CANDIDATE_MODULE=$candidate" | Add-Content $env:GITHUB_ENV -Encoding utf8
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - uses: ./.github/actions/load-ci-image-bundle
+        id: image
+        continue-on-error: ${{ !inputs.require_complete }}
         with:
-          name: quietcli-prepared-images-${{ inputs.images_prepared && 'workspace' || 'readytorun' }}-${{ matrix.rid }}
-          path: artifacts/prepared-ci-images
+          suite: Core
+          rid: ${{ matrix.rid }}
+          artifact_scope: ${{ inputs.images_prepared && 'workspace' || 'readytorun' }}
       - name: Run the paired cold-start comparison inside the prepared platform image
         id: comparison
         shell: pwsh
         env:
           PLATFORM: ${{ matrix.platform }}
           EXPECTED_RID: ${{ matrix.rid }}
+          NATIVE_IMAGE: ${{ steps.image.outputs.image }}
           REQUIRE_COMPLETE: ${{ inputs.require_complete }}
           AA_CONTROL: ${{ inputs.aa_control }}
         run: |
           $ErrorActionPreference = 'Stop'
           try {
-            $image = ./scripts/Import-CiImageBundle.ps1 -Suite Core -RuntimeIdentifier $env:EXPECTED_RID -Directory ./artifacts/prepared-ci-images -Revision $env:GITHUB_SHA -RunId $env:GITHUB_RUN_ID
+            if (!$env:NATIVE_IMAGE) { throw 'ReadyToRunImageUnavailable' }
             $run = Join-Path $PWD.Path ('artifacts/coldstart-containers/'+$env:EXPECTED_RID)
             [void][IO.Directory]::CreateDirectory($run)
-            ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot $PWD.Path -RunDirectory $run -Image $image -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -ContainerRuntime docker -SkipAaControl:($env:AA_CONTROL -cne 'true')
+            ./scripts/Invoke-ContainerColdStartWorker.ps1 -WorkspaceRoot $PWD.Path -RunDirectory $run -Image $env:NATIVE_IMAGE -Platform $env:PLATFORM -CandidateModule $env:CANDIDATE_MODULE -ExpectedRuntimeIdentifier $env:EXPECTED_RID -ContainerRuntime docker -SkipAaControl:($env:AA_CONTROL -cne 'true')
             $summary=Get-Content (Join-Path $run summary.json) -Raw -Encoding utf8|ConvertFrom-Json
             if ($summary.State.State -cne 'Success') { throw ('Cold-start outcome: '+$summary.State.State+'; '+$summary.State.Error) }
             if (!(Get-ChildItem -LiteralPath $run -Filter 'ab-*.json' -File -Recurse)) { throw 'ReadyToRunComparisonMissing' }

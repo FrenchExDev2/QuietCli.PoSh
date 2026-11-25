@@ -59,11 +59,12 @@ Describe 'Shared Linux image production' {
 
     It 'runs shared preparation for selected PR tests as well as develop' {
         @($warm['needs']) -join ','|Should -BeExactly 'plan,source-checks'
-        [string]$warm['if']|Should -BeExactly "needs.plan.outputs.run_products == 'true' || needs.plan.outputs.run_readytorun == 'true'"
+        [string]$warm['if']|Should -BeExactly "needs.plan.outputs.run_products == 'true' || needs.plan.outputs.run_readytorun == 'true' || needs.plan.outputs.renew_image_caches == 'true'"
         [string]$warm['with']['suites_json']|Should -BeExactly '${{ needs.plan.outputs.image_suites }}'
         [string]$warm['with']['publish_cache']|Should -Match 'refs/heads/develop'
         [string]$warm['with']['publish_cache']|Should -Not -Match 'pull_request'
         [string]$warm['with']['artifact_scope']|Should -BeExactly 'workspace'
+        [string]$warm['with']['renew_cache']|Should -BeExactly '${{ needs.plan.outputs.renew_image_caches == ''true'' }}'
         [string]$companions['jobs']['plan']['outputs']['image_suites']|Should -BeExactly '${{ steps.plan.outputs.image_suites }}'
     }
 
@@ -74,9 +75,10 @@ Describe 'Shared Linux image production' {
         $upload|Should -BeGreaterThan $prepare
         [string]$imageJob['steps'][$upload]['with']['overwrite']|Should -BeExactly 'true'
         [string]$imageJob['steps'][$upload]['with']['if-no-files-found']|Should -BeExactly 'error'
+        [string]$imageJob['steps'][$upload]['with']['path']|Should -Match 'cache-matched-key.*registry-hit.*images.tar'
     }
 
-    It 'starts Docker and saves a new archive only when an exact cached archive is unavailable' {
+    It 'starts Docker on an archive miss and saves a new archive only after a local build' {
         $key=& $stepIndex $imageJob {param($step)$step['id'] -ceq 'image_key'}
         $cache=& $stepIndex $imageJob {param($step)$step['id'] -ceq 'image_cache'}
         $docker=& $stepIndex $imageJob {param($step)$step['uses'] -ceq './.github/actions/cache-ci-layers' -and $step['with']['mode'] -ceq 'restore'}
@@ -91,15 +93,37 @@ Describe 'Shared Linux image production' {
         $save | Should -BeGreaterThan $reuse
         $steps=$imageJob['steps']
         $steps[$key]['run'] | Should -Match '-CacheKey'
-        $steps[$cache]['with']['key'] | Should -BeExactly 'quietcli-ci-archive-v1-${{ matrix.rid }}-${{ steps.image_key.outputs.fingerprint }}'
-        $steps[$cache]['with'].ContainsKey('restore-keys') | Should -BeFalse
-        $steps[$docker]['if'] | Should -BeExactly '${{ inputs.images_only || steps.image_cache.outputs.cache-hit != ''true'' }}'
-        foreach($index in $prepare,$save){
-            $steps[$index]['if'] | Should -BeExactly '${{ !inputs.images_only && steps.image_cache.outputs.cache-hit != ''true'' }}'
-        }
-        $steps[$reuse]['if'] | Should -BeExactly '${{ !inputs.images_only && steps.image_cache.outputs.cache-hit == ''true'' }}'
+        $steps[$cache]['with']['key'] | Should -BeExactly '${{ steps.image_key.outputs.key }}-lookup'
+        $steps[$cache]['with']['restore-keys'].Trim() -split '\r?\n' | Should -BeExactly @('${{ steps.image_key.outputs.key }}-renew-','${{ steps.image_key.outputs.key }}')
+        $steps[$cache]['if'] | Should -BeExactly '${{ !inputs.images_only && !inputs.renew_cache }}'
+        $steps[$docker]['if'] | Should -BeExactly '${{ !inputs.renew_cache && (inputs.images_only || !steps.image_cache.outputs.cache-matched-key) }}'
+        $steps[$prepare]['id'] | Should -BeExactly 'prepare_bundle'
+        $steps[$prepare]['if'] | Should -BeExactly '${{ !inputs.images_only && !steps.image_cache.outputs.cache-matched-key }}'
+        $steps[$prepare]['run'] | Should -Match '-RenewCache:.*-TransferRegistryReferences -PassThru'
+        $steps[$reuse]['if'] | Should -BeExactly '${{ !inputs.images_only && steps.image_cache.outputs.cache-matched-key }}'
+        $steps[$reuse]['env']['ARCHIVE_CACHE_KEY'] | Should -BeExactly '${{ steps.image_cache.outputs.cache-matched-key }}'
+        $steps[$save]['if'] | Should -BeExactly '${{ steps.prepare_bundle.outputs.registry-hit == ''false'' }}'
         $steps[$save]['with']['path'] | Should -BeExactly $steps[$cache]['with']['path']
-        $steps[$save]['with']['key'] | Should -BeExactly '${{ steps.image_cache.outputs.cache-primary-key }}'
+        $steps[$save]['with']['key'] | Should -BeExactly '${{ inputs.renew_cache && format(''{0}-renew-{1}-{2}'', steps.image_key.outputs.key, github.run_id, github.run_attempt) || steps.image_key.outputs.key }}'
+    }
+
+    It 'saves BuildKit layers only for a missed primary key with changed nonempty indexes' {
+        $steps=$imageJob['steps']
+        $restore=& $stepIndex $imageJob {param($step)$step['id'] -ceq 'layer_cache'}
+        $save=& $stepIndex $imageJob {param($step)$step['uses'] -ceq './.github/actions/cache-ci-layers' -and $step['with']['mode'] -ceq 'save'}
+        $restore|Should -BeGreaterOrEqual 0
+        $save|Should -BeGreaterThan $restore
+        $steps[$restore]['with']['mode']|Should -BeExactly 'restore'
+        $steps[$save]['with']['key']|Should -BeExactly '${{ steps.layer_cache.outputs.cache-primary-key }}'
+        $condition=$steps[$save]['if']
+        $condition|Should -Match ([regex]::Escape("steps.layer_cache.outcome == 'success' && steps.layer_cache.outputs.cache-hit != 'true'"))
+        $condition|Should -Match ([regex]::Escape("hashFiles('.cache/ci-buildkit/*/index.json') != ''"))
+        $condition|Should -Match ([regex]::Escape("hashFiles('.cache/ci-buildkit/*/index.json') != steps.layer_cache.outputs.restored-indexes"))
+        $action=$parser.Deserialize([IO.File]::ReadAllText([IO.Path]::Combine($root,'.github','actions','cache-ci-layers','action.yml'),[Text.Encoding]::UTF8))
+        $action['outputs']['cache-primary-key']['value']|Should -BeExactly '${{ steps.restore.outputs.cache-primary-key }}'
+        $action['outputs']['cache-hit']['value']|Should -BeExactly '${{ steps.restore.outputs.cache-hit }}'
+        $action['outputs']['restored-indexes']['value']|Should -BeExactly '${{ steps.enable.outputs.restored-indexes }}'
+        $action['runs']['steps'][2]['env']['RESTORED_INDEXES']|Should -BeExactly '${{ hashFiles(''.cache/ci-buildkit/*/index.json'') }}'
     }
 
     It 'keys the archive by its unique native image plans, independently of suite order and aliases' {
@@ -133,25 +157,103 @@ $ErrorActionPreference='Stop'
         Test-Path -LiteralPath $directory | Should -BeFalse
     }
 
+    It 'hands off a verified renewed cache key without moving the archive or accepting another run' {
+        $export=[IO.Path]::Combine($root,'scripts','Export-CiImageBundle.ps1')
+        $import=[IO.Path]::Combine($root,'scripts','Import-CiImageBundle.ps1')
+        $planner=[IO.Path]::Combine($root,'scripts','New-CiSuiteImage.ps1')
+        $probe=New-QuietTestFile ([IO.Path]::Combine($TestDrive,'archive-receipt-identity.ps1')) @'
+$ErrorActionPreference='Stop'
+$plan=& $env:PLAN_SCRIPT -Suite Core -RuntimeIdentifier linux-x64 -PlanOnly
+@{Fingerprint=$plan.Fingerprint;ArchiveKey=(& $env:EXPORT_SCRIPT -Suite Core -RuntimeIdentifier linux-x64 -CacheKey)} | ConvertTo-Json
+'@
+        $identity=Invoke-QuietTestScript -ScriptPath $probe -Environment @{PLAN_SCRIPT=$planner;EXPORT_SCRIPT=$export}
+        $identity.ExitCode|Should -Be 0 -Because $identity.Error
+        $ids=$identity.Output | ConvertFrom-Json
+        $key="quietcli-ci-archive-v1-linux-x64-$($ids.ArchiveKey)-renew-315-2"
+        $directory=[IO.Path]::Combine($TestDrive,'restored-archive')
+        $archive=New-QuietTestFile ([IO.Path]::Combine($directory,'images.tar')) 'Fixture image archive'
+        $receipt=@{SchemaVersion=2;Revision=('a'*40);RunId='314';RuntimeIdentifier='linux-x64';ArchiveSha256=(Get-FileHash -LiteralPath $archive).Hash;Fingerprints=@($ids.Fingerprint)}
+        $null=New-QuietTestFile ([IO.Path]::Combine($directory,'bundle.json')) (ConvertTo-Json $receipt)
+        $arguments=@('-Suite','Core','-RuntimeIdentifier','linux-x64','-OutputDirectory',$directory,'-Revision',('e'*40),'-RunId','315','-ReuseArchive','-RestoredCacheKey',$key)
+        $result=Invoke-QuietTestScript -ScriptPath $export -ArgumentList $arguments
+        $result.ExitCode|Should -Be 0 -Because $result.Error
+        $handoff=[IO.Path]::Combine($TestDrive,'receipt-only')
+        foreach($name in 'bundle.json','handoff.json'){
+            $null=New-QuietTestFile ([IO.Path]::Combine($handoff,$name)) (Get-Content -LiteralPath ([IO.Path]::Combine($directory,$name)) -Raw -Encoding utf8)
+        }
+        $read=@('-Suite','Core','-RuntimeIdentifier','linux-x64','-Directory',$handoff,'-Revision',('e'*40),'-GetCacheKey','-RunId')
+        $current=Invoke-QuietTestScript -ScriptPath $import -ArgumentList ($read+@('315'))
+        $current.ExitCode|Should -Be 0 -Because $current.Error
+        $current.Output.Trim()|Should -BeExactly $key
+        $stale=Invoke-QuietTestScript -ScriptPath $import -ArgumentList ($read+@('316'))
+        $stale.ExitCode|Should -Not -Be 0
+        $stale.Error|Should -Match 'CiImageHandoffIdentityMismatch'
+    }
+
+    It 'hands off registry digests without a Docker build and bypasses the registry for a renewal' {
+        $fixture=[IO.Path]::Combine($TestDrive,'image-preparation')
+        $scripts=[IO.Path]::Combine($fixture,'scripts')
+        $lib=[IO.Path]::Combine($scripts,'lib')
+        [void][IO.Directory]::CreateDirectory($lib)
+        Copy-Item -LiteralPath ([IO.Path]::Combine($root,'scripts','Export-CiImageBundle.ps1')) -Destination $scripts
+        Copy-Item -LiteralPath ([IO.Path]::Combine($root,'scripts','lib','WorkspaceJson.psm1')) -Destination ([IO.Path]::Combine($lib,'Common.psm1'))
+        $null=New-QuietTestFile ([IO.Path]::Combine($lib,'CiCompanions.psm1')) @'
+function Read-QuietCiCompanions { param($WorkspaceRoot) @{} }
+function Invoke-QuietCiSuiteImages {
+    [CmdletBinding(SupportsShouldProcess)]
+    param($WorkspaceRoot,$Configuration,$Suite,$RuntimeIdentifier,$ContainerRuntime,[switch]$RegistryCache,[switch]$PublishCache,[switch]$ProbeOnly)
+    if($env:EXPECT_RENEW -ceq 'true'){
+        if($RegistryCache -or $ProbeOnly -or $PublishCache){throw 'Renewal used the registry'}
+        return [pscustomobject]@{CacheHit=$false;Chains=@()}
+    }
+    if(!$RegistryCache -or !$ProbeOnly){throw 'A verified registry image should require only a metadata probe'}
+    [pscustomobject]@{CacheHit=$true;Chains=@([pscustomobject]@{Receipt=[pscustomobject]@{Fingerprint=('f'*64);RegistryDigest=('sha256:'+('a'*64))}})}
+}
+'@
+        $null=New-QuietTestFile ([IO.Path]::Combine($lib,'CiImages.psm1')) @'
+function Export-QuietCiImageBundle {
+    param($WorkspaceRoot,$RuntimeIdentifier,$Directory,$Revision,$RunId,$Receipts)
+    [void][IO.Directory]::CreateDirectory($Directory)
+    [IO.File]::WriteAllText([IO.Path]::Combine($Directory,'images.tar'),'Built archive',[Text.Encoding]::UTF8)
+}
+'@
+        $export=[IO.Path]::Combine($scripts,'Export-CiImageBundle.ps1')
+        $arguments=@('-Suite','Core','-RuntimeIdentifier','linux-x64','-Revision',('e'*40),'-RunId','315','-TransferRegistryReferences')
+        $registry=[IO.Path]::Combine($fixture,'registry')
+        $reused=Invoke-QuietTestScript -ScriptPath $export -ArgumentList ($arguments+@('-OutputDirectory',$registry)) -Environment @{EXPECT_RENEW='false'}
+        $reused.ExitCode|Should -Be 0 -Because $reused.Error
+        @(Get-ChildItem -LiteralPath $registry -Name)|Should -BeExactly @('handoff.json')
+        $handoff=Get-Content -LiteralPath ([IO.Path]::Combine($registry,'handoff.json')) -Raw -Encoding utf8|ConvertFrom-Json -AsHashtable
+        $handoff.RegistryDigests[('f'*64)]|Should -BeExactly ('sha256:'+('a'*64))
+        $fresh=[IO.Path]::Combine($fixture,'renewed')
+        $renewed=Invoke-QuietTestScript -ScriptPath $export -ArgumentList ($arguments+@('-OutputDirectory',$fresh,'-RenewCache')) -Environment @{EXPECT_RENEW='true'}
+        $renewed.ExitCode|Should -Be 0 -Because $renewed.Error
+        @(Get-ChildItem -LiteralPath $fresh -Name)|Should -BeExactly @('images.tar')
+    }
+
     It 'routes all three producer calls through the same implementation' {
         foreach($job in $warm,$producer,$ready['jobs']['linux-images']){
             [string]$job['uses']|Should -BeExactly './.github/workflows/linux-images.yml'
         }
     }
 
-    It 'requires a published archive before each Linux consumer starts' {
+    It 'requires a verified producer handoff before each Linux consumer starts' {
         foreach($job in $engine['jobs']['linux-result'],$ready['jobs']['readytorun-linux']){
             @($job['needs'])|Should -Contain 'linux-images'
             [string]$job['if']|Should -Match "needs.linux-images.result == 'success'"
             [string]$job['if']|Should -Match "inputs.images_prepared && needs.linux-images.result == 'skipped'"
             $commands=(& $runs $job) -join "`n"
-            $commands|Should -Match './scripts/Import-CiImageBundle.ps1'
             $commands|Should -Not -Match 'New-Ci(?:Suite)?Image\.ps1|QUIETCLI_REGISTRY_TOKEN'
-            $download=& $stepIndex $job {param($step)$step['with'] -and ([string]$step['with']['name']).StartsWith('quietcli-prepared-images-')}
-            $loadImage=& $stepIndex $job {param($step)([string]$step['run']).Contains('Import-CiImageBundle.ps1')}
-            $download|Should -BeGreaterOrEqual 0
-            $loadImage|Should -BeGreaterThan $download
+            $load=& $stepIndex $job {param($step)$step['uses'] -ceq './.github/actions/load-ci-image-bundle'}
+            $load|Should -BeGreaterOrEqual 0
+            $job['steps'][$load]['with']['rid']|Should -BeExactly '${{ matrix.rid }}'
         }
+        $action=$parser.Deserialize([IO.File]::ReadAllText([IO.Path]::Combine($root,'.github','actions','load-ci-image-bundle','action.yml'),[Text.Encoding]::UTF8))
+        $restore=@($action['runs']['steps']|Where-Object {$_['uses'] -like 'actions/cache/restore@*'})
+        $restore.Count|Should -Be 1
+        $restore[0]['with']['key']|Should -BeExactly '${{ steps.key.outputs.cache-key }}'
+        $restore[0]['with']['fail-on-cache-miss']|Should -BeExactly 'true'
+        $restore[0]['with'].ContainsKey('restore-keys')|Should -BeFalse
         @($companions['jobs']['readytorun']['needs'])|Should -Contain 'images'
         [string]$companions['jobs']['readytorun']['with']['images_prepared']|Should -BeExactly 'true'
     }

@@ -22,6 +22,9 @@ function Assert-QuietCiPlanResults {
         $expected=if($flag -ceq 'true'){'success'}else{'skipped'}
         if($Needs[$name].result -cne $expected){$issues.Add('CiPlanScopeResultMismatch: '+$name+' expected '+$expected+'; observed '+$Needs[$name].result)}
     }
+    if($Needs.plan.outputs.renew_image_caches -ceq 'true' -and (!$Needs.Contains('images') -or $Needs.images.result -cne 'success')){
+        $issues.Add('CiPlanImageCacheRenewalRequired')
+    }
     foreach($name in @($Needs.Keys|Sort-Object)){
         if($name -cnotin @('plan','source-checks') -and !$requirements.Contains($name) -and $Needs[$name].result -cnotin @('success','skipped')){$issues.Add('CiPlanJobFailed: '+$name)}
     }

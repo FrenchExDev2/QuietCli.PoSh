@@ -44,6 +44,16 @@ BeforeAll {
 }
 
 Describe 'Assert-QuietCiPlanResults' {
+    It 'requires successful image preparation for a requested cache renewal' {
+        $flag=@{};$result=@{}
+        foreach($name in $scoped.Keys){$flag[$name]='false';$result[$name]='skipped'}
+        $needs=& $newNeeds @{plan='success';'source-checks'='success'} $flag $result @{images='skipped'}
+        $needs.plan.outputs['renew_image_caches']='true'
+        {Assert-QuietCiPlanResults -Needs $needs}|Should -Throw '*CiPlanImageCacheRenewalRequired*'
+        $needs.images.result='success'
+        (Assert-QuietCiPlanResults -Needs $needs).Ready|Should -BeTrue
+    }
+
     It 'accepts every consistent selective plan' -ForEach @(
         foreach($mask in 0..31){@{Mask=$mask}}
     ) {

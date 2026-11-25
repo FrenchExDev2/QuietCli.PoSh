@@ -1,0 +1,49 @@
+name: Load the verified Linux CI image
+description: Resolve the producer handoff, restore an exact cache when referenced and load the verified image.
+inputs:
+  suite:
+    description: Suite whose image is needed
+    required: true
+  rid:
+    description: Native target runtime identifier
+    required: true
+  artifact_scope:
+    description: Producer artifact scope
+    required: true
+outputs:
+  image:
+    description: Verified local image ID
+    value: ${{ steps.load.outputs.image }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: quietcli-prepared-images-${{ inputs.artifact_scope }}-${{ inputs.rid }}
+        path: artifacts/ci-image-handoff
+    - name: Read the archive cache reference
+      id: key
+      shell: pwsh
+      env:
+        IMAGE_SUITE: ${{ inputs.suite }}
+        IMAGE_RID: ${{ inputs.rid }}
+      run: |
+        $cacheKey=./scripts/Import-CiImageBundle.ps1 -Suite $env:IMAGE_SUITE -RuntimeIdentifier $env:IMAGE_RID -Directory ./artifacts/ci-image-handoff -Revision $env:GITHUB_SHA -RunId $env:GITHUB_RUN_ID -GetCacheKey
+        [IO.File]::AppendAllText($env:GITHUB_OUTPUT,"cache-key=$cacheKey`n",[Text.UTF8Encoding]::new($false))
+    - name: Restore the producer-verified archive
+      if: steps.key.outputs.cache-key != ''
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: artifacts/prepared-ci-images
+        key: ${{ steps.key.outputs.cache-key }}
+        fail-on-cache-miss: true
+    - name: Load the verified image produced for this run
+      id: load
+      shell: pwsh
+      env:
+        IMAGE_SUITE: ${{ inputs.suite }}
+        IMAGE_RID: ${{ inputs.rid }}
+        QUIETCLI_REGISTRY_TOKEN: ${{ github.token }}
+      run: |
+        $image=./scripts/Import-CiImageBundle.ps1 -Suite $env:IMAGE_SUITE -RuntimeIdentifier $env:IMAGE_RID -Directory ./artifacts/ci-image-handoff -ArchiveDirectory ./artifacts/prepared-ci-images -Revision $env:GITHUB_SHA -RunId $env:GITHUB_RUN_ID
+        [IO.File]::AppendAllText($env:GITHUB_OUTPUT,"image=$image`n",[Text.UTF8Encoding]::new($false))

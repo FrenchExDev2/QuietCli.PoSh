@@ -55,7 +55,8 @@ Outputs are written once each, in a stable order:
 | --- | --- |
 | `suite`, `run_products`, `matrix` | The product qualification. |
 | `run_tooling` | Whether `tooling-ci.yml` runs at all. |
-| `image_suites` | JSON array of suites needed by the shared Linux producer. Fully qualified suites contribute their image chains. Selecting ReadyToRun also includes Core. |
+| `image_suites` | JSON array of suites needed by the shared Linux producer. Fully qualified suites contribute their image chains. Selecting ReadyToRun also includes Core. A renewal-only PR selects all declared product image chains. |
+| `renew_image_caches` | `true` when the PR requests a fresh Linux image cache. |
 | `run_distribution` | The distribution campaign. |
 | `run_layout` | Whether `layout-tests` runs. It is false only when script tests are the whole plan. |
 | `run_smokes`, `smoke_suites` | The dependent smokes. |
