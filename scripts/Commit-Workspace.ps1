@@ -7,6 +7,8 @@ Before staging, runs Invoke-WorkspaceChecks.ps1: script layout/naming, script do
 new-script WhatIf/Confirm support, documentation credits and aggregate credits. The same registry
 validates exported staged snapshots with NoAll. Explicit skip switches or SkipCheck report omissions;
 NoSyncChecks skips documentation checks but retains independent script layout and safety checks.
+When scripts/ or .github/workflows/ changes are pending, the default mode regenerates the GitHub
+workflow graphs, index and map before staging. Review and update workflow source receipts first.
 After a successful commit, writes the selective CI plan for that commit to CiPlanPath.
 Separately, warns (does not block) when a script file about to be committed (working tree, staged
 or untracked, relative to $WorkspaceRoot) has no matching change to its mirrored doc under
@@ -59,7 +61,7 @@ Skips generated resource inventory and dependency documentation validation.
 .PARAMETER NoScriptContractsCheck
 Skips obsolete objective-boilerplate detection and full script preview review validation.
 .PARAMETER NoGitHubWorkflowDocsCheck
-Skips workflow documentation receipts, generated job graphs and index validation.
+Skips workflow document validation and automatic graph, index and map regeneration.
 .PARAMETER NoScriptShouldProcessCheck
 Skips the new-script WhatIf/Confirm policy check.
 .PARAMETER SkipCheck

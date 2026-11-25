@@ -6,7 +6,7 @@ Source file: [`Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks
 
 ## Purpose and usage
 
-Read-only ordered registry used by standalone checks, Commit-Workspace and scripts-docs-check.yml.
+Read-only by default. The ordered registry is used by standalone checks, Commit-Workspace and scripts-docs-check.yml.
 
 ```powershell
 ./scripts/Invoke-WorkspaceChecks.ps1
@@ -16,9 +16,11 @@ Read-only ordered registry used by standalone checks, Commit-Workspace and scrip
 
 WorkspaceRoot selects the exact working tree or exported index snapshot. Check limits the registry selection; omitted runs all. SkipCheck reports an explicit Skipped result and never a successful check. Unknown names fail. Add future checks in the single registry, without duplicating their sequence in Commit-Workspace or YAML.
 
+Use `-SyncGitHubWorkflowDocs` to regenerate the Mermaid graphs, workflow index and tracked map during the GitHubWorkflowDocs check. The check still requires the authored workflow documents and their source receipts to be current. `-WhatIf` reports `Preview` for this operation and leaves the generated files untouched.
+
 ## Dependencies and side effects
 
-Registry order: WorkspaceSolutions, CompanionWorkflows, ScriptLayout, PowerShellSources, TestCaseMetadata, ScriptsReadme, GitHubWorkflowDocs, ScriptShouldProcess, ScriptAnalyzer, ScriptsInventory, Resources, ScriptContracts, DocsCredits, Credits. [ScriptAnalyzer](Test-ScriptAnalysis.md) runs the pinned PSScriptAnalyzer against a shrink-only baseline; it may download the pinned analyzer and writes its per-file cache under `.cache/` of the trusted repository, never in the analyzed snapshot. [ScriptsInventory](Test-ScriptsInventory.md) fails when a `scripts/lib` export is named by no script test and is missing from the shrink-only legacy list; it only reads files. PowerShellSources shares the Tooling syntax/function-help assertion without executing inspected code. It runs during commit preview and against the exported prepared index with NoAll. ScriptLayout retains its separate scripts/library structural checks. TestCaseMetadata statically validates the complete discovered companion catalogues and their optional guards/policies without running cases or loading a product engine. Every entry checks its contract without applying documentation. Guarded parser preparation may write prerequisite resource/cache files. No lock refresh, build, stage, commit, push or publication occurs; the hash-bound policy exception documents the delegated preparation boundary. NoSyncChecks retains the source, classification and safety checks; generic SkipCheck explicitly reports any omission.
+Registry order: WorkspaceSolutions, CompanionWorkflows, ScriptLayout, PowerShellSources, TestCaseMetadata, ScriptsReadme, GitHubWorkflowDocs, ScriptShouldProcess, ScriptAnalyzer, ScriptsInventory, Resources, ScriptContracts, DocsCredits, Credits. [ScriptAnalyzer](Test-ScriptAnalysis.md) runs the pinned PSScriptAnalyzer against a shrink-only baseline; it may download the pinned analyzer and writes its per-file cache under `.cache/` of the trusted repository, never in the analyzed snapshot. [ScriptsInventory](Test-ScriptsInventory.md) fails when a `scripts/lib` export is named by no script test and is missing from the shrink-only legacy list; it only reads files. PowerShellSources shares the Tooling syntax/function-help assertion without executing inspected code. It runs during commit preview and against the exported prepared index with NoAll. ScriptLayout retains its separate scripts/library structural checks. TestCaseMetadata statically validates the complete discovered companion catalogues and their optional guards/policies without running cases or loading a product engine. Documentation checks validate by default. Guarded parser preparation may write prerequisite resource/cache files. NoSyncChecks retains the source, classification and safety checks; generic SkipCheck explicitly reports any omission.
 
 ## Critical review
 
@@ -28,7 +30,7 @@ Registry order: WorkspaceSolutions, CompanionWorkflows, ScriptLayout, PowerShell
 
 ## Verdict
 
-Shared check composition with explicit scope; repository mutation remains the responsibility of the guarded commit entry point.
+The shared registry validates the selected contracts and applies workflow documentation generation only when explicitly selected.
 
 <!-- credits:begin -->
 ## Credits
@@ -49,7 +51,7 @@ See [the library index](README.md) and [RAC-PS-003 / RAC-PS-004](../README-autom
 
 Purpose: Runs the shared ordered check registry used by standalone validation, GitHub and commit preparation.
 
-Boundary: **ReadOnly**. Preview API: **Unclassified**. Guarded functions: 0.
+Boundary: **ReadOnly**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->

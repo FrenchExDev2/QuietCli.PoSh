@@ -76,20 +76,23 @@ BeforeAll {
     $images={param($Values)[string[]]@(($Values['image_suites']|ConvertFrom-Json)|Sort-Object -CaseSensitive)}
     $smokes={param($Values)[string[]]@(($Values['smoke_suites']|ConvertFrom-Json)|Sort-Object -CaseSensitive)}
     $commitPlanDriver=New-QuietTestFile ([IO.Path]::Combine($TestDrive,'commit-plan-driver.ps1')) @'
-param($Entry,$Workspace,[switch]$Preview,[string]$PlanPath,[switch]$Watch,[switch]$MergePullRequest)
+param($Entry,$Workspace,[switch]$Preview,[string]$PlanPath,[switch]$Watch,[switch]$MergePullRequest,
+    [switch]$AllChanges,[switch]$WorkflowDocs)
 $arguments = @{
     WorkspaceRoot = $Workspace
     Message = 'Exercise the commit plan contract'
-    NoAll = $true
+    NoAll = !$AllChanges
     WhatIf = $Preview
     Confirm = $false
     Watch = $Watch
     MergePullRequest = $MergePullRequest
     NoCommitFileSnifferWarning = $true
+    NoScriptDocDriftWarning = $true
     SkipCheck = @('WorkspaceSolutions','CompanionWorkflows','ScriptLayout','PowerShellSources','TestCaseMetadata',
         'ScriptsReadme','GitHubWorkflowDocs','ScriptShouldProcess','ScriptAnalyzer','ScriptsInventory',
         'Resources','ScriptContracts','DocsCredits','Credits')
 }
+if ($WorkflowDocs) { $arguments.SkipCheck = @($arguments.SkipCheck | Where-Object { $_ -cne 'GitHubWorkflowDocs' }) }
 if ($PlanPath) { $arguments.CiPlanPath = $PlanPath }
 & $Entry @arguments
 '@
@@ -103,6 +106,54 @@ AfterAll {
 }
 
 Describe 'New-CiImpactPlan.ps1' {
+    It 'regenerates workflow Mermaid documentation before staging <Change>' -ForEach @(
+        @{Change='an untracked script'; IsWorkflow=$false},
+        @{Change='a staged workflow'; IsWorkflow=$true}
+    ) {
+        $parent = & $commit 'docs/README-before-workflow-sync-fixture.md'
+        $contract = 'docs/ci/github/script-preview-psgallery.md'
+        $index = 'docs/ci/github/README.md'
+        $map = 'docs/README-github-workflows-diagrams.md'
+        $contractPath = [IO.Path]::Combine($workspace,$contract)
+        $original = Get-Content -LiteralPath $contractPath -Raw -Encoding utf8
+        $stale = $original -creplace '(?s)(<!-- workflow-generated:begin -->).*?(<!-- workflow-generated:end -->)', '$1 stale workflow graph $2'
+        $utf8 = [Text.UTF8Encoding]::new($false)
+        if ($IsWorkflow) {
+            $source = '.github/workflows/preview-psgallery.yml'
+            $sourcePath = [IO.Path]::Combine($workspace,$source)
+            [IO.File]::AppendAllText($sourcePath,"`n  mermaid-regression-job:`n    runs-on: ubuntu-latest`n    steps:`n      - run: echo fixture`n",$utf8)
+            $receipt = (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash
+            $stale = $stale -creplace '(?m)(<!-- workflow-source-sha256: )[0-9A-F]{64}',('${1}'+$receipt)
+            $null = & $git @('add','--',$source)
+        } else {
+            $null = New-QuietTestFile ([IO.Path]::Combine($workspace,'scripts/Get-MermaidRegression.ps1')) '# Script change'
+        }
+        [IO.File]::WriteAllText($contractPath,$stale,$utf8)
+        $null = New-QuietTestFile ([IO.Path]::Combine($workspace,$index)) 'stale workflow index'
+        $null = New-QuietTestFile ([IO.Path]::Combine($workspace,$map)) 'stale workflow map'
+
+        $paths = @($contract,$index,$map,'.git/index') | ForEach-Object { [IO.Path]::Combine($workspace,$_) }
+        $hashes = (Get-FileHash -LiteralPath $paths).Hash
+        $arguments = @($commitEntry,$workspace,'-AllChanges','-WorkflowDocs')
+        $preview = Invoke-QuietTestScript -ScriptPath $commitPlanDriver -ArgumentList ($arguments+@('-Preview')) -TimeoutSeconds 300
+        $preview.ExitCode | Should -Be 0 -Because ($preview.Output+$preview.Error)
+        $preview.Output | Should -Match 'Summary: GitHubWorkflowDocs = Preview'
+        (& $git @('rev-parse','HEAD')) | Should -BeExactly $parent
+        (Get-FileHash -LiteralPath $paths).Hash | Should -Be $hashes
+
+        $run = Invoke-QuietTestScript -ScriptPath $commitPlanDriver -ArgumentList $arguments -TimeoutSeconds 300
+        $run.ExitCode | Should -Be 0 -Because ($run.Output+$run.Error)
+        (& $git @('rev-parse','HEAD^')) | Should -BeExactly $parent
+        (& $git @('show',"HEAD:$contract")) | Should -Match 'flowchart TD'
+        (& $git @('show',"HEAD:$index")) | Should -Match '\[preview-psgallery\.yml\]'
+        (& $git @('show',"HEAD:$map")) | Should -Match 'Triggers and calls between workflows'
+        if ($IsWorkflow) {
+            (& $git @('show',"HEAD:$contract")) | Should -Match 'mermaid-regression-job'
+            (& $git @('show',"HEAD:$map")) | Should -Match 'mermaid-regression-job'
+        }
+        (& $git @('status','--porcelain')) | Should -BeNullOrEmpty
+    }
+
     It 'keeps layout enabled when ReadyToRun is checked on a scripts-only pull request' {
         $revision=& $commit 'test/scripts/unit/lib/ImpactFixture.Tests.ps1'
         $root=Get-QuietTestWorkspaceRoot

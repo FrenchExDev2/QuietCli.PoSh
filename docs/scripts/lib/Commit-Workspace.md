@@ -46,7 +46,11 @@ points, misplaced modules, Join-Path and imports lacking DisableNameChecking. Le
 waivers do not waive this policy. Check failures stop the commit.
 
 The default mode checks the working tree's manifests and policy, stages all changes and
-creates one commit. `NoAll` preserves the working tree and index, exports an isolated prepared
+creates one commit. Pending staged, unstaged or untracked changes under `scripts/` or
+`.github/workflows/` make the GitHubWorkflowDocs check regenerate the per-workflow Mermaid
+blocks, the workflow index and the tracked workflow map before staging. The generator requires
+current authored workflow documents and source SHA-256 receipts.
+`NoAll` preserves the working tree and index, exports an isolated prepared
 index snapshot and checks that snapshot's manifests and policy. Unstaged fixes cannot
 qualify a bad prepared index. Temporary snapshots are removed from their checked owned root.
 
@@ -55,6 +59,7 @@ qualify a bad prepared index. Temporary snapshots are removed from their checked
 `NoScriptShouldProcessCheck`, `NoResourcesCheck` and `NoScriptContractsCheck`.
 `NoSyncChecks` skips documentation checks while retaining ScriptLayout and ScriptShouldProcess.
 An omitted check is reported as skipped, never as successful.
+Omitting GitHubWorkflowDocs also skips automatic workflow documentation regeneration.
 
 ## Warnings and parameters
 
@@ -69,7 +74,8 @@ not automatically captured; orchestration retains bounded failure diagnostics.
 ## Preview and effects
 
 Standard WhatIf/Confirm guards staging and commit. WhatIf still runs the
-check registry and warnings, but does not stage or commit. NoAll preview
+check registry and warnings and reports pending workflow documentation regeneration without
+writing the generated files. NoAll preview
 also validates an exported index. Read-only checks may prepare a missing checksum-pinned
 YAML parser only through its own guarded resource contract; preview options cross library
 boundaries explicitly. Detailed process/Git failures remain failures and are not retried.

@@ -1,5 +1,7 @@
 
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'WorkspaceLayout.psm1')) -DisableNameChecking -ErrorAction Stop
+Import-Module ([IO.Path]::Combine($PSScriptRoot,'Common.psm1')) -DisableNameChecking -ErrorAction Stop
+
 function Invoke-QuietScriptCommitWorkspace {
 #requires -Version 7.6
 <#
@@ -10,6 +12,8 @@ Before staging, runs Invoke-WorkspaceChecks.ps1: script layout/naming, script do
 new-script WhatIf/Confirm support, documentation credits and aggregate credits. The same registry
 validates exported staged snapshots with NoAll. Explicit skip switches or SkipCheck report omissions;
 NoSyncChecks skips documentation checks but retains independent script layout and safety checks.
+When scripts/ or .github/workflows/ changes are pending, the default mode regenerates the GitHub
+workflow graphs, index and map before staging. Review and update workflow source receipts first.
 After a successful commit, writes the selective CI plan for that commit to CiPlanPath.
 Separately, warns (does not block) when a script file about to be committed (working tree, staged
 or untracked, relative to $WorkspaceRoot) has no matching change to its mirrored doc under
@@ -62,7 +66,7 @@ Skips generated resource inventory and dependency documentation validation.
 .PARAMETER NoScriptContractsCheck
 Skips obsolete objective-boilerplate detection and full script preview review validation.
 .PARAMETER NoGitHubWorkflowDocsCheck
-Skips workflow documentation receipts, generated job graphs and index validation.
+Skips workflow document validation and automatic graph, index and map regeneration.
 .PARAMETER NoScriptShouldProcessCheck
 Skips the new-script WhatIf/Confirm policy check.
 .PARAMETER SkipCheck
@@ -119,7 +123,6 @@ param(
     [switch]$NoCommitFileSnifferWarning
 )
 $ErrorActionPreference = 'Stop'
-Import-Module ([IO.Path]::Combine($PSScriptRoot,'Common.psm1')) -DisableNameChecking -ErrorAction Stop
 $WorkspaceRoot = [IO.Path]::GetFullPath($WorkspaceRoot, $PWD.ProviderPath)
 $planPath = [IO.Path]::GetFullPath($CiPlanPath, $WorkspaceRoot)
 $maxChangedFileBytes = ConvertTo-QuietByteCount $MaxChangedFileSize
@@ -155,7 +158,11 @@ function Invoke-WorkspaceChecksForCommit {
     param([string]$Root,[string[]]$Skipped)
     $registry=[IO.Path]::Combine(([IO.Path]::GetDirectoryName($PSScriptRoot)),'Invoke-WorkspaceChecks.ps1')
     $skips=@($Skipped|Sort-Object -Unique)
-    if($Root -ceq $WorkspaceRoot){& $registry -WorkspaceRoot $Root -SkipCheck $skips;return}
+    if ($Root -ceq $WorkspaceRoot) {
+        $sync = 'GitHubWorkflowDocs' -cnotin $skips -and (Test-QuietCommitWorkflowChanges -WorkspaceRoot $Root)
+        & $registry -WorkspaceRoot $Root -SkipCheck $skips -SyncGitHubWorkflowDocs:$sync -WhatIf:$WhatIfPreference
+        return
+    }
     # A parser loaded from a prepared snapshot locks its DLL on Windows until process exit.
     # Run the trusted registry in a child process before deleting that owned snapshot.
     $skipLiteral=(@($skips|ForEach-Object {"'"+$_.Replace("'","''")+"'"}) -join ',')
@@ -413,4 +420,25 @@ if ($PSCmdlet.ShouldProcess($WorkspaceRoot, "git commit -m <message>")) {
 }
 
 }
+
+function Test-QuietCommitWorkflowChanges {
+    <#
+    .SYNOPSIS
+    Checks for staged, unstaged or untracked changes under the workflow documentation inputs.
+    .PARAMETER WorkspaceRoot
+    Git working tree whose pending changes are inspected.
+    #>
+    param([string]$WorkspaceRoot)
+    $state = @{ Changed = $false }
+    $result = Invoke-CiProcess -FilePath git -ArgumentList @(
+        '--no-optional-locks','status','--porcelain=v1','--untracked-files=all','--no-renames','--',
+        'scripts/','.github/workflows/'
+    ) -WorkingDirectory $WorkspaceRoot -State $state -OnOutput {
+        param($record,$state)
+        if ($record.Stream -ceq 'stdout' -and $record.Text) { $state.Changed = $true }
+    }
+    if ($result.Outcome -cne 'Success') { throw 'CommitWorkspaceWorkflowChangesUnavailable' }
+    $state.Changed
+}
+
 Export-ModuleMember -Function 'Invoke-QuietScriptCommitWorkspace'
