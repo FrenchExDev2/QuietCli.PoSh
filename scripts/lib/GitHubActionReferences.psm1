@@ -50,8 +50,7 @@ function ConvertFrom-QuietGitHubActionUses {
     owner/repository[/path]@ref; Action is owner/repository, the unit whose releases are resolved. RefKind is
     Sha (40 lowercase hexadecimal digits), Version (v1, v1.2 or v1.2.3) or Other (a branch or any other ref).
     A Remote value that is not owner/repository[/path]@ref throws GitHubActionReferenceInvalid with its location.
-    Lines inside block scalars (run: |) can match too; GitHub does not interpret them, so neither should a
-    caller rewrite them: such a line rarely starts with uses:, and the caller reviews the diff.
+    Indented block scalar contents (for example run: |) are skipped.
     .PARAMETER Text
     Whole file content, LF or CRLF.
     .PARAMETER Path
@@ -60,8 +59,20 @@ function ConvertFrom-QuietGitHubActionUses {
     [CmdletBinding()]
     param([Parameter(Mandatory)][AllowEmptyString()][string]$Text,[Parameter(Mandatory)][string]$Path)
     $lines=$Text.Split("`n")
+    $scalarParentIndent=-1
     for($index=0;$index -lt $lines.Count;$index++){
         $line=$lines[$index].TrimEnd([char]13)
+        $indent=$line.Length-$line.TrimStart([char]' ').Length
+        if($scalarParentIndent -ge 0){
+            if([string]::IsNullOrWhiteSpace($line) -or $indent -gt $scalarParentIndent){continue}
+            $scalarParentIndent=-1
+        }
+        $header=[regex]::Match($line,'\A *(?<sequence>- +)?(?<key>[^#:\r\n]+: +)?[|>](?:[1-9][+-]?|[+-][1-9]?)?(?: +#.*)? *\z')
+        if($header.Success){
+            $scalarParentIndent=$indent
+            if($header.Groups['key'].Success){$scalarParentIndent+=$header.Groups['sequence'].Length}
+            continue
+        }
         $match=[regex]::Match($line,'\A(?<prefix>[ \t]*(?:-[ \t]+)?uses:[ \t]*)(?<quote>[''"]?)(?<value>[^\s''"#]+)\k<quote>(?:[ \t]+#[ \t]?(?<comment>.*?))?[ \t]*\z')
         if(!$match.Success){continue}
         $value=$match.Groups['value'].Value

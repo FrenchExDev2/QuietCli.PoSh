@@ -10,13 +10,15 @@ This entry point preserves its parameters and defaults and forwards explicitly b
 
 ```powershell
 ./scripts/Update-GitHubActions.ps1                                   # report only
-./scripts/Update-GitHubActions.ps1 -Apply -WhatIf                    # preview each file
-./scripts/Update-GitHubActions.ps1 -Apply -Confirm                   # ask per file
+./scripts/Update-GitHubActions.ps1 -Apply -WhatIf                    # preview each update
+./scripts/Update-GitHubActions.ps1 -Apply -Confirm                   # ask once per update
 ./scripts/Update-GitHubActions.ps1 -Apply -RefreshWorkflowReceipts -Confirm:$false
 ./scripts/Update-GitHubActions.ps1 -Include 'actions/*' -Exclude 'actions/cache'
 ```
 
-Every remote `uses:` reference of `.github/workflows/*.yml` or `.yaml` and `.github/actions/**/action.yml` or `.yaml` moves to the latest release of its action. A commit pin stays a commit pin and its `# vX.Y.Z` comment follows the tag. Set `GH_TOKEN` (for example `$env:GH_TOKEN=(gh auth token)`) to avoid the anonymous API rate limit.
+The script checks block-style `uses:` references in GitHub workflows and composite actions against each action repository’s latest GitHub release. A commit pin stays a commit pin and its version comment follows the release tag. Text inside YAML block scalars such as `run: |` is left intact.
+
+`-Apply` (alias `-Appy`) writes the proposed updates. Combine it with `-WhatIf` to preview the paths, including the documentation receipt when `-RefreshWorkflowReceipts` is selected. Set `GH_TOKEN` or `GITHUB_TOKEN` to authenticate the read-only GitHub requests. Use `-ReleaseCatalogPath` for an offline run.
 
 ## Dependencies and effects
 

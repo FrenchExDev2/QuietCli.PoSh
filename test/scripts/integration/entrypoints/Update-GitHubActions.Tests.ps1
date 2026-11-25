@@ -21,7 +21,10 @@ BeforeAll {
         "      - uses: actions/cache/restore@$oldCache # v4.3.0"
         '      - uses: actions/upload-artifact@v4'
         '      - uses: octo/tool@main'
-        '      - run: echo done'
+        '      - run: |'
+        '          uses: octo/unrelated@v1'
+        ''
+        '          - uses: actions/upload-artifact@v4 # sample text'
         ''
     ) -join "`n"
     $action=@(
@@ -72,14 +75,14 @@ Describe 'Update-GitHubActions.ps1' {
         $result.Text|Should -BeLike '*Nothing written: run with -Apply*'
     }
 
-    It 'writes nothing under -Apply -WhatIf and previews each file' {
+    It 'writes nothing under -Apply -WhatIf and previews each file and its receipt' {
         $fixture=& $newFixture 'whatif'
         $before=& $state $fixture
         $result=& $run $fixture @('-Apply','-RefreshWorkflowReceipts','-WhatIf')
         $result.ExitCode|Should -Be 0 -Because $result.Text
         & $state $fixture|Should -BeExactly $before
         # The host may be localized ('What If :' on a French host): match the preview prefix loosely.
-        $result.Text|Should -Match '(?i)what if ?:[^:]*?\.github/workflows/ci\.yml'
+        $result.Text|Should -Match '(?i)what if ?:[^:]*?\.github/workflows/ci\.yml and docs/ci/github/script-ci\.md'
         $result.Text|Should -Match '(?i)what if ?:[^:]*?\.github/actions/setup/action\.yml'
         $result.Text|Should -BeLike '*Applied : False*'
         @(Get-ChildItem -LiteralPath $fixture.Root -Recurse -Filter '*.tmp').Count|Should -Be 0
@@ -88,9 +91,9 @@ Describe 'Update-GitHubActions.ps1' {
     It 'applies every update, keeps everything else byte for byte, and converges' {
         $fixture=& $newFixture 'apply'
         $receipt=[IO.File]::ReadAllText($fixture.Files.Document)
-        $result=& $run $fixture @('-Apply','-Confirm:$false')
+        $result=& $run $fixture @('-Appy','-Confirm:$false')
         $result.ExitCode|Should -Be 0 -Because $result.Text
-        $expected=$workflow.Replace("actions/checkout@$oldCheckout # v4, reviewed upstream reference","actions/checkout@$newCheckout # v7.0.1, reviewed upstream reference").Replace("actions/cache/restore@$oldCache # v4.3.0","actions/cache/restore@$newCache # v6.1.0").Replace('actions/upload-artifact@v4','actions/upload-artifact@v7.0.2')
+        $expected=$workflow.Replace("actions/checkout@$oldCheckout # v4, reviewed upstream reference","actions/checkout@$newCheckout # v7.0.1, reviewed upstream reference").Replace("actions/cache/restore@$oldCache # v4.3.0","actions/cache/restore@$newCache # v6.1.0").Replace("      - uses: actions/upload-artifact@v4`n","      - uses: actions/upload-artifact@v7.0.2`n")
         [IO.File]::ReadAllText($fixture.Files.Workflow)|Should -BeExactly $expected
         [IO.File]::ReadAllText($fixture.Files.Action)|Should -BeExactly $action.Replace("actions/cache@$oldCache","actions/cache@$newCache # v6.1.0")
         [IO.File]::ReadAllText($fixture.Files.Document)|Should -BeExactly $receipt -Because 'receipts move only with -RefreshWorkflowReceipts'

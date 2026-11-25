@@ -44,10 +44,10 @@ flowchart TD
     L --> T[Report table and summary]
     T --> A{-Apply?}
     A -- no --> N[Nothing written]
-    A -- yes --> Q{ShouldProcess per file}
+    A -- yes --> Q{ShouldProcess for the source and its receipt}
     Q -- no --> K[Skip file]
     Q -- yes --> W[Check hash unchanged, write temp file, replace]
-    W --> C{Receipt planned and ShouldProcess?}
+    W --> C{Receipt planned?}
     C -- yes --> X[Rewrite the receipt the same way]
 ```
 
@@ -55,18 +55,15 @@ flowchart TD
 
 - **Reads** the listed files, the catalog and, with `-RefreshWorkflowReceipts`, the workflow documents.
 - **Network:** without a catalog, read-only HTTPS GETs to `api.github.com` go out on every run, `-WhatIf` and report-only runs included, because the preview has to show what would change. Each distinct action needs one call for its latest release, one for its tag ref and one per annotated tag object. `GH_TOKEN`, else `GITHUB_TOKEN`, is sent as a bearer token and never printed.
-- **Writes** only with `-Apply` and a confirmed `ShouldProcess`. Each changed file and receipt is replaced atomically: a temporary sibling `.<guid>.tmp` is written, then moved over the target. A file whose bytes changed since it was read throws `GitHubActionSourceChanged` and stays untouched. Encoding (UTF-8, BOM kept only if present) and every line ending are preserved. Only the changed `uses:` lines differ.
+- **Writes** require `-Apply` and a confirmed `ShouldProcess` decision. Each changed workflow or action and its optional receipt share that decision. The script checks the receipt against its planned hash before writing the workflow. It replaces each file by moving a temporary sibling over the target after checking the current hash. UTF-8 BOMs and line endings are preserved. An I/O failure can interrupt the batch between file replacements.
 - **All-or-nothing planning:** every release is resolved and every new text and receipt is computed before the first write. An unknown release (`GitHubActionReleaseUnknown`), an invalid reference (`GitHubActionReferenceInvalid`), a file that is not UTF-8 (`GitHubActionFileNotUtf8`), a linked file (`GitHubActionFileLinked`) or a stale receipt (`GitHubActionReceiptNotCurrent`) stops the run with nothing written.
 
-## Critical review and verdict
+## Update scope
 
-- **Latest is not compatible.** The latest release is often a new major version. For example, `download-artifact` v8 fails on a digest mismatch by default, and the node24 actions need runner 2.327.1 or later. The script does not read release notes. A reviewer reads them before merging the diff.
-- **Version refs become exact.** A `@v4` ref moves to the exact release tag (`@v7.0.2`), not to a floating major tag, because only release tags are resolved. The repository pins commits, so this only affects references that were not pinned yet.
-- **Not a YAML parser.** Lines are matched by one anchored regular expression. Flow mappings (`{uses: …}`) are ignored. A `uses:` line inside a block scalar would be parsed as a reference. It must then parse strictly or the run fails, which keeps the failure loud rather than silent.
-- **Receipt policy.** Moving a receipt asserts that a pin-only edit keeps the reviewed behavior. That is true for the workflow text but not for the action's own behavior, so the option is opt-in and refuses any receipt that was not current. It mirrors the `docs/ci/github/script-<name>.md` convention of `WorkflowDocumentation.psm1` instead of importing it, which is an accepted duplication. `Test-GitHubWorkflowDocs.ps1` stays the check.
-- **Receipts in previews.** Under `-WhatIf` the receipt step is not previewed, because it only follows a written file.
-
-Verdict: fit for routine pin refreshes. Its output is a reviewable diff, not an approval.
+- The latest GitHub release can cross a major version. Review the upstream changes and the matching workflow documentation before refreshing its receipt. Run [Test-GitHubWorkflowDocs.ps1](../Test-GitHubWorkflowDocs.md) to check the hashes and generated workflow descriptions.
+- A version reference such as `@v4` moves to the exact release tag, for example `@v7.0.2`. Commit references keep a full SHA.
+- The [reference scanner](GitHubActionReferences.md) handles single-line `uses:` keys and skips YAML block scalar contents.
+- `-Apply -RefreshWorkflowReceipts -WhatIf` lists the workflow and its current receipt together without writing either file.
 
 ## Tests
 
@@ -74,8 +71,9 @@ Verdict: fit for routine pin refreshes. Its output is a reviewable diff, not an 
   - report-only and `-WhatIf` runs with no write;
   - apply with and without receipts, and a workflow without a document;
   - BOM and CRLF preservation, filters, convergence and the empty checkout;
-  - the refusals: not UTF-8, a stale receipt, and a file edited between read and write, which leaves no temporary file.
-- [`integration/entrypoints/Update-GitHubActions.Tests.ps1`](../../../test/scripts/integration/entrypoints/Update-GitHubActions.Tests.ps1) runs the real entry point in a child `pwsh`. It checks report, `-WhatIf`, apply byte for byte, convergence, receipts, a stale receipt, an unknown release and the filters.
+  - refusals for invalid UTF-8, stale receipts and concurrent edits to the workflow or receipt.
+- [`integration/entrypoints/Update-GitHubActions.Tests.ps1`](../../../test/scripts/integration/entrypoints/Update-GitHubActions.Tests.ps1) covers report-only runs, receipt previews, byte-for-byte apply using `-Appy`, block scalar preservation, repeat runs with no pending updates, stale receipts, an unknown release and filters.
+- Mutation target `UpdateGitHubActions` checks the source hash guard with `Break` 100.
 
 <!-- script-contract:begin -->
 ## Execution contract
