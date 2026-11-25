@@ -37,12 +37,17 @@ function Invoke-RunProfileQualification {
         $capture.Lines++
         if ($capture.Diagnostics.Count -ge 8) { $null = $capture.Diagnostics.Dequeue() }
         $capture.Diagnostics.Enqueue($record.Text)
-        if ($record.Text -match '^SUMMARY Passed=(\d+) Failed=(\d+) Skipped=(\d+)$') {
+        if ($record.Stream -ceq 'stdout' -and $record.Text -match '^SUMMARY Passed=(\d+) Failed=(\d+) Skipped=(\d+)$') {
             $capture.Passed = [int]$Matches[1]; $capture.Failed = [int]$Matches[2]; $capture.Skipped = [int]$Matches[3]; $capture.Summary = $true
         }
-        elseif ($record.Text -match '^.+\s+(passed|FAILED:.*)$') { if ($Matches[1] -ceq 'passed') { $capture.Passed++ } else { $capture.Failed++ } }
-        elseif ($record.Text -match '\[\d+/\d+\]\s+\S+\s+(Killed|Survived|Crashed|Timeout|Invalid)\s') { if ($Matches[1] -ceq 'Killed') { $capture.Passed++ } else { $capture.Failed++ } }
-        if ($OnProgress) { $null = & $OnProgress $record.Text $capture.Passed $capture.Failed }
+        elseif (!$Mutation -and $record.Stream -ceq 'stdout' -and $record.Text -match '^PESTER_CASE (\d+) (\d+) (Running|Passed|Failed) (.+)$') {
+            $capture.Passed=[int]$Matches[1];$capture.Failed=[int]$Matches[2]
+            if($OnProgress){$null=& $OnProgress ('['+$Matches[3]+'] '+$Matches[4]) $capture.Passed $capture.Failed}
+        }
+        elseif ($Mutation -and $record.Text -match '\[\d+/\d+\]\s+\S+\s+(Killed|Survived|Crashed|Timeout|Invalid)\s') {
+            if ($Matches[1] -ceq 'Killed') { $capture.Passed++ } else { $capture.Failed++ }
+            if($OnProgress){$null=& $OnProgress $record.Text $capture.Passed $capture.Failed}
+        }
         [Console]::Out.WriteLine($record.Text)
     }
     $data=$null

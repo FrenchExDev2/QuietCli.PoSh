@@ -82,13 +82,14 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'Ci.Process.psm1')) -DisableName
                 $process=Start-CiProcess -FilePath $runner -ArgumentList $arguments -WorkingDirectory $WorkspaceRoot -Confirm:$false
                 $active.Add([pscustomobject]@{Name=$selection.Name;Directory=$directory;Process=$process;Started=[DateTimeOffset]::UtcNow;Receipts=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal);CaseStates=[Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)})
             }
+            $failure=$null
             foreach($worker in @($active.ToArray())){
-                if(([DateTimeOffset]::UtcNow-$worker.Started).TotalSeconds -gt $TimeoutSeconds){throw ('CompanionWorkerTimeout: '+$worker.Name)}
+                if(([DateTimeOffset]::UtcNow-$worker.Started).TotalSeconds -gt $TimeoutSeconds){$failure='CompanionWorkerTimeout: '+$worker.Name;break}
                 if(!$worker.Process.HasExited){continue}
                 $path=[IO.Path]::Combine($worker.Directory,'summary.json')
-                if(!(Test-Path -LiteralPath $path)){throw ('CompanionWorkerSummaryMissing: '+$worker.Name)}
+                if(!(Test-Path -LiteralPath $path)){$failure='CompanionWorkerSummaryMissing: '+$worker.Name;break}
                 $summary=Get-Content -LiteralPath $path -Encoding utf8 -Raw|ConvertFrom-Json
-                if($worker.Process.ExitCode -ne 0 -or $summary.State.State -cne 'Success' -or $summary.State.Failed -ne 0 -or @($summary.Suites).Count -ne 1){throw ('CompanionWorkerFailed: '+$worker.Name)}
+                if($worker.Process.ExitCode -ne 0 -or $summary.State.State -cne 'Success' -or $summary.State.Failed -ne 0 -or @($summary.Suites).Count -ne 1){$failure='CompanionWorkerFailed: '+$worker.Name;break}
                 $completed.Add([pscustomobject]@{Name=$worker.Name;Summary=$summary})
                 $worker.Process.Dispose();[void]$active.Remove($worker)
             }
@@ -101,6 +102,7 @@ Import-Module ([IO.Path]::Combine($PSScriptRoot,'Ci.Process.psm1')) -DisableName
                 }
                 $null=& $OnProgress $passed $failed
             }
+            if($failure){throw $failure}
             if($active.Count){[void][Threading.Tasks.Task]::Delay(100).GetAwaiter().GetResult()}
         }
         # Preserve declarative suite order independently of completion order.

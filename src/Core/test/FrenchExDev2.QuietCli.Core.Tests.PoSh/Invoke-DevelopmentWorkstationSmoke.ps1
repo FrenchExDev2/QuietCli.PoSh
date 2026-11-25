@@ -64,48 +64,52 @@ function Invoke-SmokeProcess {
     }
     if($result.Outcome -ne 'Success'){throw "SmokeProcessFailed: $FilePath exit $($result.ExitCode) $($result.Outcome)"}
 }
+$smokeEvidence=@{ownership=$ownership}
+$smokeState.TestPassed=0;$smokeState.TestFailed=0
 try{
-    if(@($Targets|Where-Object {$_ -cne 'Windows'}).Count){$ownership=Register-WorkstationRun $RunDirectory $WorkspaceRoot -PodmanIdentity (Get-WorkstationPodmanIdentity)}
-    if('Windows' -in $Targets){
-        $row=@{Platform='Windows x64';State='Running';Identity="PID $PID";StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null};$smokeState.Runs+=,$row;Write-WorkspaceJson $statusPath $smokeState
-        $missing=Join-Path $RunDirectory 'windows-control-must-not-exist'
-        $installer=Join-Path $WorkspaceRoot 'scripts/Install-DevelopmentWorkstation.ps1'
-        $before=$env:PATH;$environmentRoot=$env:DOTNET_ROOT
-        foreach($options in @(@{CheckOnly=$true},@{WhatIf=$true;Insiders=$true})){
-            $report=& $installer -InstallRoot $missing -SkipEditor -SkipContainers -SkipNativeTools -SkipProfilers @options
-            if(Test-Path -LiteralPath $missing){throw 'ControlModeWroteInstallRoot'}
-            if($env:PATH -cne $before -or $env:DOTNET_ROOT -cne $environmentRoot){throw 'ControlModeChangedEnvironment'}
-            if($report.State -notin @('Ready','NeedsInstallation')){throw 'ControlModeInvalidReport'}
-            [void]$receipts.Add(@{Platform='Windows';Mode=$options.Keys -join ',';State=$report.State;Components=$report.Components})
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $scenarios=[ordered]@{'Verify workstation installation for the selected platforms'={
+        if(@($Targets|Where-Object {$_ -cne 'Windows'}).Count){$smokeEvidence.ownership=Register-WorkstationRun $RunDirectory $WorkspaceRoot -PodmanIdentity (Get-WorkstationPodmanIdentity)}
+        if('Windows' -in $Targets){
+            $row=@{Platform='Windows x64';State='Running';Identity="PID $PID";StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null};$smokeState.Runs+=,$row;Write-WorkspaceJson $statusPath $smokeState
+            $missing=Join-Path $RunDirectory 'windows-control-must-not-exist'
+            $installer=Join-Path $WorkspaceRoot 'scripts/Install-DevelopmentWorkstation.ps1'
+            $before=$env:PATH;$environmentRoot=$env:DOTNET_ROOT
+            foreach($options in @(@{CheckOnly=$true},@{WhatIf=$true;Insiders=$true})){
+                $report=& $installer -InstallRoot $missing -SkipEditor -SkipContainers -SkipNativeTools -SkipProfilers @options
+                if(Test-Path -LiteralPath $missing){throw 'ControlModeWroteInstallRoot'}
+                if($env:PATH -cne $before -or $env:DOTNET_ROOT -cne $environmentRoot){throw 'ControlModeChangedEnvironment'}
+                if($report.State -notin @('Ready','NeedsInstallation')){throw 'ControlModeInvalidReport'}
+                [void]$receipts.Add(@{Platform='Windows';Mode=$options.Keys -join ',';State=$report.State;Components=$report.Components})
+            }
+            $smokeState.Case='Verified wrkflw archive, local listing and valid/invalid workflow definitions';Write-WorkspaceJson $statusPath $smokeState
+            $toolRoot=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'toolchains') 'wrkflw-0.8.0'
+            $target=Get-DevelopmentHost
+            $spec=Get-DevelopmentSpecification $WorkspaceRoot $target
+            $workflowPlan=New-DevelopmentPlan $target $WorkspaceRoot $toolRoot $spec -Skipped @('Editor','Containers','Native','Profilers')
+            # Only this isolated user tool is installed; other workstation components remain untouched.
+            & (Get-Module DevelopmentWorkstation) {param($plan) Install-DevelopmentWrkflw $plan} $workflowPlan
+            $workflowInventory=Get-DevelopmentInventory $workflowPlan
+            if($workflowInventory.Workflows.State -cne 'Ready'){throw 'WrkflwInstalledVersionNotVerified'}
+            $fixtureRoot=Join-Path $RunDirectory 'wrkflw-fixture'
+            $workflowDirectory=Join-Path $fixtureRoot '.github/workflows'
+            [void][IO.Directory]::CreateDirectory($workflowDirectory)
+            $validPath=Join-Path $workflowDirectory 'ci.yml'
+            $invalidPath=Join-Path $fixtureRoot 'invalid.yml'
+            $valid="name: Local Unicode-é fixture`non: push`njobs:`n  check:`n    runs-on: ubuntu-latest`n    steps:`n      - run: echo fixture`n"
+            [void][IO.File]::WriteAllTextAsync($validPath,$valid,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+            [void][IO.File]::WriteAllTextAsync($invalidPath,"jobs: [`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+            $tool=$workflowInventory.Workflows.Path
+            $listing=Invoke-DevelopmentCommand $tool @('list','--jobs') $fixtureRoot -Capture -AllowFailure -TimeoutSeconds 30
+            $validResult=Invoke-DevelopmentCommand $tool @('validate',$validPath) $fixtureRoot -Capture -AllowFailure -TimeoutSeconds 30
+            $invalidResult=Invoke-DevelopmentCommand $tool @('validate',$invalidPath) $fixtureRoot -Capture -AllowFailure -TimeoutSeconds 30
+            if($listing.Outcome -cne 'Success' -or !@($listing.Lines|Where-Object {$_ -match 'check'}).Count){throw 'WrkflwLocalJobListingFailed'}
+            if($validResult.Outcome -cne 'Success' -or $validResult.ExitCode -ne 0){throw 'WrkflwValidDefinitionRejected'}
+            if($invalidResult.Outcome -ceq 'Success' -or $invalidResult.ExitCode -ne 1){throw 'WrkflwMalformedDefinitionAccepted'}
+            [void]$receipts.Add(@{Platform='Windows';Mode='WrkflwArchiveAndDefinitions';Version=$workflowInventory.Workflows.Version;ArtifactSHA256=$spec.Wrkflw.Artifact.SHA256;ToolPath=$tool;ListingExitCode=$listing.ExitCode;ValidDefinitionExitCode=$validResult.ExitCode;InvalidDefinitionExitCode=$invalidResult.ExitCode;Scope='Real native archive/version/list/validate only; no workflow steps, containers or remote execution'})
+            $row.State='Success';$row.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o');$smokeState.Passed++;Write-WorkspaceJson $statusPath $smokeState
         }
-        $smokeState.Case='Verified wrkflw archive, local listing and valid/invalid workflow definitions';Write-WorkspaceJson $statusPath $smokeState
-        $toolRoot=Join-Path (Get-QuietReportRoot $WorkspaceRoot 'toolchains') 'wrkflw-0.8.0'
-        $target=Get-DevelopmentHost
-        $spec=Get-DevelopmentSpecification $WorkspaceRoot $target
-        $workflowPlan=New-DevelopmentPlan $target $WorkspaceRoot $toolRoot $spec -Skipped @('Editor','Containers','Native','Profilers')
-        # Only this isolated user tool is installed; other workstation components remain untouched.
-        & (Get-Module DevelopmentWorkstation) {param($plan) Install-DevelopmentWrkflw $plan} $workflowPlan
-        $workflowInventory=Get-DevelopmentInventory $workflowPlan
-        if($workflowInventory.Workflows.State -cne 'Ready'){throw 'WrkflwInstalledVersionNotVerified'}
-        $fixtureRoot=Join-Path $RunDirectory 'wrkflw-fixture'
-        $workflowDirectory=Join-Path $fixtureRoot '.github/workflows'
-        [void][IO.Directory]::CreateDirectory($workflowDirectory)
-        $validPath=Join-Path $workflowDirectory 'ci.yml'
-        $invalidPath=Join-Path $fixtureRoot 'invalid.yml'
-        $valid="name: Local Unicode-é fixture`non: push`njobs:`n  check:`n    runs-on: ubuntu-latest`n    steps:`n      - run: echo fixture`n"
-        [void][IO.File]::WriteAllTextAsync($validPath,$valid,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-        [void][IO.File]::WriteAllTextAsync($invalidPath,"jobs: [`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-        $tool=$workflowInventory.Workflows.Path
-        $listing=Invoke-DevelopmentCommand $tool @('list','--jobs') $fixtureRoot -Capture -AllowFailure -TimeoutSeconds 30
-        $validResult=Invoke-DevelopmentCommand $tool @('validate',$validPath) $fixtureRoot -Capture -AllowFailure -TimeoutSeconds 30
-        $invalidResult=Invoke-DevelopmentCommand $tool @('validate',$invalidPath) $fixtureRoot -Capture -AllowFailure -TimeoutSeconds 30
-        if($listing.Outcome -cne 'Success' -or !@($listing.Lines|Where-Object {$_ -match 'check'}).Count){throw 'WrkflwLocalJobListingFailed'}
-        if($validResult.Outcome -cne 'Success' -or $validResult.ExitCode -ne 0){throw 'WrkflwValidDefinitionRejected'}
-        if($invalidResult.Outcome -ceq 'Success' -or $invalidResult.ExitCode -ne 1){throw 'WrkflwMalformedDefinitionAccepted'}
-        [void]$receipts.Add(@{Platform='Windows';Mode='WrkflwArchiveAndDefinitions';Version=$workflowInventory.Workflows.Version;ArtifactSHA256=$spec.Wrkflw.Artifact.SHA256;ToolPath=$tool;ListingExitCode=$listing.ExitCode;ValidDefinitionExitCode=$validResult.ExitCode;InvalidDefinitionExitCode=$invalidResult.ExitCode;Scope='Real native archive/version/list/validate only; no workflow steps, containers or remote execution'})
-        $row.State='Success';$row.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o');$smokeState.Passed++;Write-WorkspaceJson $statusPath $smokeState
-    }
-    $guest=@'
+        $guest=@'
 $ErrorActionPreference='Stop'
 Set-Location /workspace
 $name=$env:WORKSTATION_TARGET
@@ -132,44 +136,52 @@ if((Invoke-CiProcess $binary @('-runs=32','-rss_limit_mb=0')).Outcome -ne 'Succe
 $result=@{Platform=$name;RuntimeIdentifier=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;Architecture=[Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant();PowerShell=$PSVersionTable.PSVersion.ToString();First=$first;Check=$check;Second=$second;SanitizerSmokeRuns=32;Scope='Real system packages, SDK archive, Zig, profiling cache, Git fallback when necessary; editor/Podman excluded inside disposable guest'}
 [IO.File]::WriteAllTextAsync(('/evidence/'+$name+'.json'),($result|ConvertTo-Json -Depth 15)+[char]10,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
 '@
-    [void][IO.File]::WriteAllTextAsync((Join-Path $RunDirectory 'guest.ps1'),$guest.Replace("`r`n","`n")+"`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-    # Repository CI images supply the matching PowerShell binaries, not workstation source files.
-    $glibc='ghcr.io/frenchexdev2/quietcli2-ci-debian-x64:125b77f979a16f61399cbf12c7fee43c66f5ebc034e690ffc602c37d199771b4'
-    $musl='ghcr.io/frenchexdev2/quietcli2-ci-alpine-x64:589f46af81426b1c91b57ac2e833fdfe417599cf3ab704bbc02e39a2ca151636'
-    $bases=@{Debian='docker.io/library/debian:12-slim';Ubuntu='docker.io/library/ubuntu:24.04';Fedora='registry.fedoraproject.org/fedora:43'}
-    foreach($target in $Targets|Where-Object {$_ -cne 'Windows'}){
-        $name='quietcli-workstation-'+$target.ToLowerInvariant()+'-'+[guid]::NewGuid().ToString('N').Substring(0,8)
-        $row=@{Platform="$target x64";State='Running';Identity=$name;StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null};$smokeState.Runs+=,$row;$smokeState.Case="Prepare $target";Write-WorkspaceJson $statusPath $smokeState
-        try{
-            $image=$musl
-            Add-WorkstationResource $RunDirectory Container $name
-            if($target -cne 'Alpine'){
-                $install=if($target -ceq 'Fedora'){'dnf install -y ca-certificates libicu openssl-libs krb5-libs libgcc libstdc++ zlib-ng-compat tar gzip'}else{'apt-get update && apt-get install -y ca-certificates libicu'+$(if($target -ceq 'Debian'){'72 libssl3'}else{'74 libssl3t64'})+' libgssapi-krb5-2 libstdc++6 zlib1g tar gzip'}
-                $containerfile=@("FROM $glibc AS host","FROM $($bases[$target])","RUN $install",'COPY --from=host /opt/powershell /opt/powershell','ENV PATH=/opt/powershell:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin','ENTRYPOINT ["pwsh"]') -join "`n"
-                $recipe=Join-Path $RunDirectory ($target+'.Containerfile');[void][IO.File]::WriteAllTextAsync($recipe,$containerfile+"`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-                $image='localhost/'+$name
-                Add-WorkstationResource $RunDirectory Image $image
-                Invoke-SmokeProcess podman @('build','--pull=missing','--label',('io.frenchexdev.quietcli.workstation.run='+$ownership.RunId),'--tag',$image,'--file',$recipe,$RunDirectory)
-            }
-            $smokeState.Case="Install and check $target";Write-WorkspaceJson $statusPath $smokeState
-            $bootstrapRuntime=if($target -ceq 'Alpine'){@('--env','DOTNET_ROOT=/usr/lib/dotnet')}else{@()}
-            Invoke-SmokeProcess podman (@('run','--name',$name,'--rm','--label',('io.frenchexdev.quietcli.workstation.run='+$ownership.RunId),'--env',"WORKSTATION_TARGET=$target",'--env','PATH=/opt/powershell:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin')+$bootstrapRuntime+@('--volume',((Join-Path $RunDirectory 'source')+':/workspace:ro'),'--volume',($RunDirectory+':/evidence:rw'),$image,'-File','/evidence/guest.ps1'))
-            $receipt=Get-Content -LiteralPath (Join-Path $RunDirectory ($target+'.json')) -Raw -Encoding utf8|ConvertFrom-Json
-            $expectedRid=if($target -ceq 'Alpine'){'linux-musl-x64'}else{'linux-x64'}
-            if($receipt.Architecture -cne 'x64' -or $receipt.First.Target.Rid -cne $expectedRid){throw 'GuestArchitectureMismatch'}
-            [void]$receipts.Add($receipt);$row.State='Success';$smokeState.Passed++
-        }catch{$row.State='Failed';$row.Error=$_.Exception.Message;$smokeState.Failed++;[Console]::Error.WriteLine($_.Exception.Message)}
-        $row.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o');Write-WorkspaceJson $statusPath $smokeState
-    }
-    $smokeState.State=if($smokeState.Failed){'Failed'}else{'Success'}
-}catch{$smokeState.State='Crash';$smokeState.Error=$_.Exception.Message;$smokeState.Failed++}
+        [void][IO.File]::WriteAllTextAsync((Join-Path $RunDirectory 'guest.ps1'),$guest.Replace("`r`n","`n")+"`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+        # Repository CI images supply the matching PowerShell binaries, not workstation source files.
+        $glibc='ghcr.io/frenchexdev2/quietcli2-ci-debian-x64:125b77f979a16f61399cbf12c7fee43c66f5ebc034e690ffc602c37d199771b4'
+        $musl='ghcr.io/frenchexdev2/quietcli2-ci-alpine-x64:589f46af81426b1c91b57ac2e833fdfe417599cf3ab704bbc02e39a2ca151636'
+        $bases=@{Debian='docker.io/library/debian:12-slim';Ubuntu='docker.io/library/ubuntu:24.04';Fedora='registry.fedoraproject.org/fedora:43'}
+        foreach($target in $Targets|Where-Object {$_ -cne 'Windows'}){
+            $name='quietcli-workstation-'+$target.ToLowerInvariant()+'-'+[guid]::NewGuid().ToString('N').Substring(0,8)
+            $row=@{Platform="$target x64";State='Running';Identity=$name;StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null};$smokeState.Runs+=,$row;$smokeState.Case="Prepare $target";Write-WorkspaceJson $statusPath $smokeState
+            try{
+                $image=$musl
+                Add-WorkstationResource $RunDirectory Container $name
+                if($target -cne 'Alpine'){
+                    $install=if($target -ceq 'Fedora'){'dnf install -y ca-certificates libicu openssl-libs krb5-libs libgcc libstdc++ zlib-ng-compat tar gzip'}else{'apt-get update && apt-get install -y ca-certificates libicu'+$(if($target -ceq 'Debian'){'72 libssl3'}else{'74 libssl3t64'})+' libgssapi-krb5-2 libstdc++6 zlib1g tar gzip'}
+                    $containerfile=@("FROM $glibc AS host","FROM $($bases[$target])","RUN $install",'COPY --from=host /opt/powershell /opt/powershell','ENV PATH=/opt/powershell:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin','ENTRYPOINT ["pwsh"]') -join "`n"
+                    $recipe=Join-Path $RunDirectory ($target+'.Containerfile');[void][IO.File]::WriteAllTextAsync($recipe,$containerfile+"`n",[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+                    $image='localhost/'+$name
+                    Add-WorkstationResource $RunDirectory Image $image
+                    Invoke-SmokeProcess podman @('build','--pull=missing','--label',('io.frenchexdev.quietcli.workstation.run='+$smokeEvidence.ownership.RunId),'--tag',$image,'--file',$recipe,$RunDirectory)
+                }
+                $smokeState.Case="Install and check $target";Write-WorkspaceJson $statusPath $smokeState
+                $bootstrapRuntime=if($target -ceq 'Alpine'){@('--env','DOTNET_ROOT=/usr/lib/dotnet')}else{@()}
+                Invoke-SmokeProcess podman (@('run','--name',$name,'--rm','--label',('io.frenchexdev.quietcli.workstation.run='+$smokeEvidence.ownership.RunId),'--env',"WORKSTATION_TARGET=$target",'--env','PATH=/opt/powershell:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin')+$bootstrapRuntime+@('--volume',((Join-Path $RunDirectory 'source')+':/workspace:ro'),'--volume',($RunDirectory+':/evidence:rw'),$image,'-File','/evidence/guest.ps1'))
+                $receipt=Get-Content -LiteralPath (Join-Path $RunDirectory ($target+'.json')) -Raw -Encoding utf8|ConvertFrom-Json
+                $expectedRid=if($target -ceq 'Alpine'){'linux-musl-x64'}else{'linux-x64'}
+                if($receipt.Architecture -cne 'x64' -or $receipt.First.Target.Rid -cne $expectedRid){throw 'GuestArchitectureMismatch'}
+                [void]$receipts.Add($receipt);$row.State='Success';$smokeState.Passed++
+            }catch{$row.State='Failed';$row.Error=$_.Exception.Message;$smokeState.Failed++;[Console]::Error.WriteLine($_.Exception.Message)}
+            $row.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o');Write-WorkspaceJson $statusPath $smokeState
+        }
+        if($smokeState.Failed){throw 'One or more workstation platform checks failed'}
+    }}
+    $tested=Invoke-QuietPesterCaseTable -WorkspaceRoot $WorkspaceRoot -Suite DevelopmentWorkstationSmoke -Cases $scenarios -OnProgress {
+        param($name,$caseState,$passed,$failed)
+        $smokeState.Case="[$caseState] $name";$smokeState.TestPassed=$passed;$smokeState.TestFailed=$failed
+        Write-WorkspaceJson $statusPath $smokeState
+    } -InvokePester {param($configuration) Pester\Invoke-Pester -Configuration $configuration}
+    if($tested.Failed){$smokeState.State='Failed';$smokeState.Error=$tested.Cases[0].Error;if(!$smokeState.Failed){$smokeState.Failed++}}
+    else{$smokeState.State='Success'}
+}catch{$smokeState.State='Crash';$smokeState.Error=$_.Exception.Message;if(!$smokeState.Failed){$smokeState.Failed++}}
 finally{
     foreach($run in $smokeState.Runs){if($run.State -eq 'Running'){$run.State=$smokeState.State;$run.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o')}}
     $smokeState.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o')
-    try{$ownership=Complete-WorkstationRun $RunDirectory $smokeState.State}catch{$smokeState.Error='Resource receipt failure: '+$_.Exception.Message;$smokeState.State='Failed'}
-    if(@($ownership.Resources|Where-Object State -NotIn @('Removed','Absent')).Count){$smokeState.State='Failed';$smokeState.Error='Owned resources remain protected; see ownership.json';$smokeState.Failed++}
+    try{$smokeEvidence.ownership=Complete-WorkstationRun $RunDirectory $smokeState.State}catch{$smokeState.Error='Resource receipt failure: '+$_.Exception.Message;$smokeState.State='Failed'}
+    if(@($smokeEvidence.ownership.Resources|Where-Object State -NotIn @('Removed','Absent')).Count){$smokeState.State='Failed';$smokeState.Error='Owned resources remain protected; see ownership.json';$smokeState.Failed++}
     $runLease.Dispose()
-    Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$smokeState;Receipts=@($receipts);Ownership=$ownership}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$smokeState;Receipts=@($receipts);Ownership=$smokeEvidence.ownership}
     Write-WorkspaceJson $statusPath $smokeState
 }
 if($smokeState.State -ne 'Success'){throw "Workstation smoke failed: $RunDirectory"}

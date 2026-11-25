@@ -62,6 +62,7 @@ foreach ($module in 'RunEncoding', 'RunFormat') { Import-Module (Join-Path $scri
 $logger = New-RunLogger -Level $LogLevel -Component 'mutation'
 $clock = [Diagnostics.Stopwatch]::StartNew()
 $utf8 = [Text.UTF8Encoding]::new($false)
+$pesterModulePath=(& ([IO.Path]::Combine($scripts,'Initialize-TestTools.ps1')) -WorkspaceRoot $workspace -Tool pester -Confirm:$false).PesterModulePath
 
 # Each mutant substitutes exactly one occurrence of From by To inside File (relative to scripts/).
 $catalogue = @((Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot 'RunProfiles.Mutation.Catalogue.psd1')).Mutants)
@@ -102,7 +103,7 @@ function Invoke-SandboxSuite {
     param([string]$Root)
     $logger.Increment('suite.started')
     $capture=@{Summary=$null;Diagnostics=[Collections.Generic.Queue[string]]::new()}
-    $result=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -ArgumentList @('-File',(Join-Path $Root 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1'),'-Seed',"$Seed",'-Iterations',"$Iterations",'-ConsoleEncoding',$ConsoleEncoding,'-Skip','profiler:,console:,coldstart-live:,tool-cache-live:') -WorkingDirectory $Root -TimeoutSeconds $MutantTimeoutSeconds -State $capture -OnOutput {
+    $result=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -ArgumentList @('-File',(Join-Path $Root 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1'),'-PesterModulePath',$pesterModulePath,'-Seed',"$Seed",'-Iterations',"$Iterations",'-ConsoleEncoding',$ConsoleEncoding,'-Skip','profiler:,console:,coldstart-live:,tool-cache-live:') -WorkingDirectory $Root -TimeoutSeconds $MutantTimeoutSeconds -State $capture -OnOutput {
         param($record,$state)
         if($record.Stream -eq 'stdout' -and $record.Text -match '^SUMMARY Passed=(\d+) Failed=(\d+) Skipped=(\d+)$'){
             $state.Summary=[pscustomobject]@{Passed=[int]$Matches[1];Failed=[int]$Matches[2];Skipped=[int]$Matches[3]}
@@ -162,7 +163,7 @@ try {
                 continue
             }
             Write-RunTextFile -Path $path -Text $text.Replace($mutant.From,$mutant.To)
-            $process=Start-CiProcess -FilePath $runner -WorkingDirectory $workspace -ArgumentList @('-File',$workerPath,'-WorkspaceRoot',$workspace,'-Sandbox',$root,'-Seed',"$Seed",'-Iterations',"$Iterations",'-TimeoutSeconds',"$MutantTimeoutSeconds",'-ConsoleEncoding',$ConsoleEncoding)
+            $process=Start-CiProcess -FilePath $runner -WorkingDirectory $workspace -ArgumentList @('-File',$workerPath,'-WorkspaceRoot',$workspace,'-Sandbox',$root,'-PesterModulePath',$pesterModulePath,'-Seed',"$Seed",'-Iterations',"$Iterations",'-TimeoutSeconds',"$MutantTimeoutSeconds",'-ConsoleEncoding',$ConsoleEncoding)
             $active.Add([pscustomobject]@{Process=$process;Root=$root;Mutant=$mutant;Ordinal=$ordinal;Clock=$watch})
             $peak=[Math]::Max($peak,$active.Count)
         }

@@ -203,6 +203,7 @@ file by hand, run:
 - [`lib/PerformanceCharts.psm1`](../../scripts/lib/PerformanceCharts.psm1) -> [documentation](lib/PerformanceCharts.md)
 - [`lib/PerformanceStatistics.psm1`](../../scripts/lib/PerformanceStatistics.psm1) -> [documentation](lib/PerformanceStatistics.md)
 - [`lib/PerformanceWorkloads.psm1`](../../scripts/lib/PerformanceWorkloads.psm1) -> [documentation](lib/PerformanceWorkloads.md)
+- [`lib/PesterProgress.psm1`](../../scripts/lib/PesterProgress.psm1) -> [documentation](lib/PesterProgress.md)
 - [`lib/PowerShellReleases.psm1`](../../scripts/lib/PowerShellReleases.psm1) -> [documentation](lib/PowerShellReleases.md)
 - [`lib/PowerShellSources.psm1`](../../scripts/lib/PowerShellSources.psm1) -> [documentation](lib/PowerShellSources.md)
 - [`lib/PreviewTag.psm1`](../../scripts/lib/PreviewTag.psm1) -> [documentation](lib/PreviewTag.md)

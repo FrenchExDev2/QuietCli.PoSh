@@ -244,7 +244,7 @@ function ConvertTo-QuietScriptsTestReport {
     $success=!$incomplete -and $failed -eq 0 -and ($null -eq $coverage -or $coverage.Met)
     [ordered]@{
         Project='Scripts.Tests';Kind=[string](Get-QuietScriptsTestValue $Plan 'Kind');State=$(if($success){'Success'}else{'Failed'})
-        Passed=$passed;Failed=$failed;Skipped=$skipped;NotRun=$counts.NotRunCount;Total=$passed+$failed+$skipped
+        Passed=$passed;Failed=$failed;TestPassed=$passed;TestFailed=$counts.FailedCount;Skipped=$skipped;NotRun=$counts.NotRunCount;Total=$passed+$failed+$skipped
         Partial=[bool](Get-QuietScriptsTestValue $Plan 'Partial');Incomplete=[bool]$incomplete;Seed=$Seed
         Files=[string[]]@(Get-QuietScriptsTestValue $Plan 'Files');Coverage=$coverage;Cases=$cases.ToArray()
     }
@@ -315,7 +315,7 @@ function New-QuietScriptsTestStatus {
         Project='FrenchExDev2.QuietCli.Scripts.Tests';Task=('Tests scripts ('+[string](Get-QuietScriptsTestValue $Plan 'Kind')+')')
         Workspace=$WorkspaceRoot;ProjectDirectory=[string](Get-QuietScriptsTestValue $Plan 'TestsRoot')
         Platform=[Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier;StartedUtc=$StartedUtc.ToString('o');ProcessId=$ProcessId
-        Passed=0;Failed=0;State='Running';Case=('Running '+$files.Count+' test file(s)');Error=$null;FinishedUtc=$null
+        Passed=0;Failed=0;TestPassed=0;TestFailed=0;State='Running';Case=('Running '+$files.Count+' test file(s)');Error=$null;FinishedUtc=$null
     }
 }
 
@@ -343,6 +343,7 @@ function Update-QuietScriptsTestStatus {
     }
     $state=[string]$Report['State'];if($state -cnotin @('Success','Failed','Crash','Timeout','Cancelled')){throw 'ScriptsTestStatusTransitionInvalid'}
     $next.State=$state;$next.Passed=[int]$Report['Passed'];$next.Failed=[int]$Report['Failed']
+    $next.TestPassed=[int]($Report['TestPassed'] ?? $Report['Passed']);$next.TestFailed=[int]($Report['TestFailed'] ?? $Report['Failed'])
     $next.Case=('{0} passed, {1} failed, {2} skipped{3}{4}' -f $Report['Passed'],$Report['Failed'],$Report['Skipped'],$(if($Report['Partial']){' (partial)'}),$(if($Report['Incomplete']){' (incomplete)'}))
     $next.Error=$null
     return $next

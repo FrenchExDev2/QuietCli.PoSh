@@ -70,71 +70,80 @@ function Assert-ProviderCase {
     Write-WorkspaceJson $statusPath $state
     if(!$Condition){throw "ProviderInvariantFailed: $Name"}
 }
+$smokeEvidence=@{attempted=$attempted}
+$state.TestPassed=0;$state.TestFailed=0
 try{
-    Import-Module (Join-Path $WorkspaceRoot 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1') -ErrorAction Stop
-    Import-Module (Join-Path $WorkspaceRoot 'src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/FrenchExDev2.QuietCli.Vagrant.PoSh.psd1') -ErrorAction Stop
-    Write-WorkspaceJson (Join-Path $RunDirectory 'inputs.json') @{Environment=$environment;Engine=(Get-QuietEngine);Sources=@(Get-ChildItem -LiteralPath $fixture -File | ForEach-Object {@{Name=$_.Name;SHA256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})}
-    $version=Invoke-ProviderProbe 'vagrant' @('--version')
-    Assert-ProviderCase 'Vagrant version probe completed' ($version.Outcome -eq 'Success' -and $version.Data.Trim() -eq 'Vagrant 2.4.9')
-    $docker=Invoke-ProviderProbe 'docker' @('info','--format','{{json .ServerVersion}}')
-    Assert-ProviderCase 'Docker-compatible engine is reachable' ($docker.Outcome -eq 'Success')
-    $validate=Invoke-ProviderProbe 'vagrant' @('validate')
-    Assert-ProviderCase 'Committed two-machine fixture validates' ($validate.Outcome -eq 'Success')
-    $vagrantfile=Join-Path $fixture 'Vagrantfile'
-    $source=[IO.File]::ReadAllTextAsync($vagrantfile,[Text.UTF8Encoding]::new($false,$true)).GetAwaiter().GetResult()
-    $random=[Random]::new(20261109)
-    try{
-        $state.Case='Fixture prefix properties and malformed values';Write-WorkspaceJson $statusPath $state
-        $valid=@('a',('a'*56),('a-'+$random.Next()),('z'+$random.Next()+'-end'))
-        foreach($value in $valid){
-            $environment.QUIETCLI_VAGRANT_PREFIX=$value
-            $check=Invoke-ProviderProbe 'vagrant' @('validate')
-            Assert-ProviderCase ('Valid fixture prefix: '+$value) ($check.Outcome -eq 'Success')
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $scenarios=[ordered]@{'Exercise the real two-machine Docker provider'={
+        Import-Module (Join-Path $WorkspaceRoot 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1') -ErrorAction Stop
+        Import-Module (Join-Path $WorkspaceRoot 'src/Vagrant/src/FrenchExDev2.QuietCli.Vagrant.PoSh/FrenchExDev2.QuietCli.Vagrant.PoSh.psd1') -ErrorAction Stop
+        Write-WorkspaceJson (Join-Path $RunDirectory 'inputs.json') @{Environment=$environment;Engine=(Get-QuietEngine);Sources=@(Get-ChildItem -LiteralPath $fixture -File | ForEach-Object {@{Name=$_.Name;SHA256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})}
+        $version=Invoke-ProviderProbe 'vagrant' @('--version')
+        Assert-ProviderCase 'Vagrant version probe completed' ($version.Outcome -eq 'Success' -and $version.Data.Trim() -eq 'Vagrant 2.4.9')
+        $docker=Invoke-ProviderProbe 'docker' @('info','--format','{{json .ServerVersion}}')
+        Assert-ProviderCase 'Docker-compatible engine is reachable' ($docker.Outcome -eq 'Success')
+        $validate=Invoke-ProviderProbe 'vagrant' @('validate')
+        Assert-ProviderCase 'Committed two-machine fixture validates' ($validate.Outcome -eq 'Success')
+        $vagrantfile=Join-Path $fixture 'Vagrantfile'
+        $source=[IO.File]::ReadAllTextAsync($vagrantfile,[Text.UTF8Encoding]::new($false,$true)).GetAwaiter().GetResult()
+        $random=[Random]::new(20261109)
+        try{
+            $state.Case='Fixture prefix properties and malformed values';Write-WorkspaceJson $statusPath $state
+            $valid=@('a',('a'*56),('a-'+$random.Next()),('z'+$random.Next()+'-end'))
+            foreach($value in $valid){
+                $environment.QUIETCLI_VAGRANT_PREFIX=$value
+                $check=Invoke-ProviderProbe 'vagrant' @('validate')
+                Assert-ProviderCase ('Valid fixture prefix: '+$value) ($check.Outcome -eq 'Success')
+            }
+            foreach($value in @('Upper','../escape',('a'*57),'a/b',"a`n",'été')){
+                $environment.QUIETCLI_VAGRANT_PREFIX=$value
+                $check=Invoke-ProviderProbe 'vagrant' @('validate')
+                Assert-ProviderCase ('Malformed fixture prefix rejected: '+$value.Replace("`n",'\\n')) ($check.Outcome -ne 'Success' -and $check.Data -match 'Invalid fixture prefix')
+            }
+            $anchor='raise "Invalid fixture prefix" unless prefix.match?(/\A[a-z][a-z0-9-]{0,55}\z/)'
+            if(([regex]::Matches($source,[regex]::Escape($anchor))).Count -ne 1){throw 'FixtureMutationAnchorInvalid'}
+            [IO.File]::WriteAllTextAsync($vagrantfile,$source.Replace($anchor,'# Prefix guard removed by isolated test mutation.'),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
+            $environment.QUIETCLI_VAGRANT_PREFIX='Upper'
+            $mutant=Invoke-ProviderProbe 'vagrant' @('validate')
+            Assert-ProviderCase 'Fixture prefix guard mutant is detected by the malformed-value invariant' ($mutant.Outcome -eq 'Success')
+        }finally{
+            $environment.QUIETCLI_VAGRANT_PREFIX=$prefix
+            [IO.File]::WriteAllTextAsync($vagrantfile,$source,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
         }
-        foreach($value in @('Upper','../escape',('a'*57),'a/b',"a`n",'été')){
-            $environment.QUIETCLI_VAGRANT_PREFIX=$value
-            $check=Invoke-ProviderProbe 'vagrant' @('validate')
-            Assert-ProviderCase ('Malformed fixture prefix rejected: '+$value.Replace("`n",'\\n')) ($check.Outcome -ne 'Success' -and $check.Data -match 'Invalid fixture prefix')
-        }
-        $anchor='raise "Invalid fixture prefix" unless prefix.match?(/\A[a-z][a-z0-9-]{0,55}\z/)'
-        if(([regex]::Matches($source,[regex]::Escape($anchor))).Count -ne 1){throw 'FixtureMutationAnchorInvalid'}
-        [IO.File]::WriteAllTextAsync($vagrantfile,$source.Replace($anchor,'# Prefix guard removed by isolated test mutation.'),[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-        $environment.QUIETCLI_VAGRANT_PREFIX='Upper'
-        $mutant=Invoke-ProviderProbe 'vagrant' @('validate')
-        Assert-ProviderCase 'Fixture prefix guard mutant is detected by the malformed-value invariant' ($mutant.Outcome -eq 'Success')
-    }finally{
-        $environment.QUIETCLI_VAGRANT_PREFIX=$prefix
-        [IO.File]::WriteAllTextAsync($vagrantfile,$source,[Text.UTF8Encoding]::new($false)).GetAwaiter().GetResult()
-    }
-    foreach($step in @(@{Name='up-no-provision';Args=@('up','--provider=docker','--no-provision','--no-parallel','--no-install-provider')},@{Name='provision';Args=@('provision')})){
-        $state.Case=$step.Name;Write-WorkspaceJson $statusPath $state
-        $seen=[Collections.Generic.List[object]]::new()
-        $listener={param($event,$runtime) if($seen.Count -ge 5000){throw 'SmokeEventLimit'};[void]$seen.Add($event);$description=if($event.Data.PSObject.Properties['Fields']){$event.Data.Fields -join ' '}else{$event.Type};$state.Case=$step.Name+': '+$seen.Count+' events | '+$description.Substring(0,[Math]::Min(120,$description.Length));Write-WorkspaceJson $statusPath $state}
-        $attempted=$true
-        $result=quiet -AsObject -CollectEvents -Ui -FilePath 'vagrant' -ArgumentList $step.Args -WorkingDirectory $fixture -Environment $environment -TimeoutSeconds 600 -Listeners $listener
-        Write-WorkspaceJson (Join-Path $RunDirectory ($step.Name+'.json')) @{Outcome=$result.Outcome;Execution=$result.Execution;Completeness=$result.Completeness;Error=$result.Error;Data=$result.Data;Events=$seen.ToArray()}
-        Assert-ProviderCase ($step.Name+' completed without source/analysis loss') ($result.Outcome -eq 'Success' -and $result.Completeness.Source -and $result.Completeness.Analysis -and !$result.Error.Count)
-        $ordered=$seen.Count -eq $result.Events.Count -and $seen.Count -gt 0
-        for($index=0;$ordered -and $index -lt $seen.Count;$index++){$ordered=[object]::ReferenceEquals($seen[$index],$result.Events[$index])}
-        Assert-ProviderCase ($step.Name+' preserves listener/collected event order') $ordered
-        $machines=@($seen.Data | ForEach-Object {if($_.PSObject.Properties['Machine'] -and $_.Machine){$_.Machine}} | Select-Object -Unique)
-        Assert-ProviderCase ($step.Name+' observes both machines') ('web' -in $machines -and 'db' -in $machines)
-        $starts=@($seen | Where-Object Type -EQ 'ProvisionerStarted')
-        if($step.Name -eq 'up-no-provision'){
-            Assert-ProviderCase 'No-provision emits no provisioner-start event' ($starts.Count -eq 0)
-        }else{
-            foreach($machine in 'web','db'){
-                Assert-ProviderCase ($machine+' shell provisioner is observed') (@($starts.Data | Where-Object Machine -eq $machine).Count -ge 1)
-                Assert-ProviderCase ($machine+' shell output contains the fixture sentinel') (@($seen.Data | Where-Object {$_.Machine -eq $machine -and $_.PSObject.Properties['Fields'] -and ($_.Fields -join ' ') -match "provisioning $machine"}).Count -ge 1)
+        foreach($step in @(@{Name='up-no-provision';Args=@('up','--provider=docker','--no-provision','--no-parallel','--no-install-provider')},@{Name='provision';Args=@('provision')})){
+            $state.Case=$step.Name;Write-WorkspaceJson $statusPath $state
+            $seen=[Collections.Generic.List[object]]::new()
+            $listener={param($event,$runtime) if($seen.Count -ge 5000){throw 'SmokeEventLimit'};[void]$seen.Add($event);$description=if($event.Data.PSObject.Properties['Fields']){$event.Data.Fields -join ' '}else{$event.Type};$state.Case=$step.Name+': '+$seen.Count+' events | '+$description.Substring(0,[Math]::Min(120,$description.Length));Write-WorkspaceJson $statusPath $state}
+            $smokeEvidence.attempted=$true
+            $result=quiet -AsObject -CollectEvents -Ui -FilePath 'vagrant' -ArgumentList $step.Args -WorkingDirectory $fixture -Environment $environment -TimeoutSeconds 600 -Listeners $listener
+            Write-WorkspaceJson (Join-Path $RunDirectory ($step.Name+'.json')) @{Outcome=$result.Outcome;Execution=$result.Execution;Completeness=$result.Completeness;Error=$result.Error;Data=$result.Data;Events=$seen.ToArray()}
+            Assert-ProviderCase ($step.Name+' completed without source/analysis loss') ($result.Outcome -eq 'Success' -and $result.Completeness.Source -and $result.Completeness.Analysis -and !$result.Error.Count)
+            $ordered=$seen.Count -eq $result.Events.Count -and $seen.Count -gt 0
+            for($index=0;$ordered -and $index -lt $seen.Count;$index++){$ordered=[object]::ReferenceEquals($seen[$index],$result.Events[$index])}
+            Assert-ProviderCase ($step.Name+' preserves listener/collected event order') $ordered
+            $machines=@($seen.Data | ForEach-Object {if($_.PSObject.Properties['Machine'] -and $_.Machine){$_.Machine}} | Select-Object -Unique)
+            Assert-ProviderCase ($step.Name+' observes both machines') ('web' -in $machines -and 'db' -in $machines)
+            $starts=@($seen | Where-Object Type -EQ 'ProvisionerStarted')
+            if($step.Name -eq 'up-no-provision'){
+                Assert-ProviderCase 'No-provision emits no provisioner-start event' ($starts.Count -eq 0)
+            }else{
+                foreach($machine in 'web','db'){
+                    Assert-ProviderCase ($machine+' shell provisioner is observed') (@($starts.Data | Where-Object Machine -eq $machine).Count -ge 1)
+                    Assert-ProviderCase ($machine+' shell output contains the fixture sentinel') (@($seen.Data | Where-Object {$_.Machine -eq $machine -and $_.PSObject.Properties['Fields'] -and ($_.Fields -join ' ') -match "provisioning $machine"}).Count -ge 1)
+                }
             }
         }
-    }
-    $state.State='Success'
-}catch{
-    $state.State='Failed';$state.Error=$_.Exception.Message
-    if(!$state.Failed){$state.Failed++}
-}finally{
-    if($attempted){
+    }}
+    $tested=Invoke-QuietPesterCaseTable -WorkspaceRoot $WorkspaceRoot -Suite VagrantProviderSmoke -Cases $scenarios -OnProgress {
+        param($name,$caseState,$passed,$failed)
+        $state.Case="[$caseState] $name";$state.TestPassed=$passed;$state.TestFailed=$failed
+        Write-WorkspaceJson $statusPath $state
+    } -InvokePester {param($configuration) Pester\Invoke-Pester -Configuration $configuration}
+    if($tested.Failed){$state.State='Failed';$state.Error=$tested.Cases[0].Error;if(!$state.Failed){$state.Failed++}}
+    else{$state.State='Success'}
+}catch{$state.State='Crash';$state.Error=$_.Exception.Message;if(!$state.Failed){$state.Failed++}}
+finally{
+    if($smokeEvidence.attempted){
         $state.Case='Destroy owned copied fixture';Write-WorkspaceJson $statusPath $state
         try{
             if($state.State -ne 'Success'){

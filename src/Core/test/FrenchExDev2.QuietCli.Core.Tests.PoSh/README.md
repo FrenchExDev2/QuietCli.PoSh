@@ -4,6 +4,8 @@
 
 # FrenchExDev2.QuietCli.Core.Tests.PoSh
 
+PowerShell qualification uses the pinned Pester 6.2.0 runner, including the companion cases, focused workspace suites, RunProfiles mutation subjects, PowerShell telemetry cases and monitored smoke scenarios. Reports keep individual assertions and mutation evidence alongside Pester test totals. The compiled C# and native PTY suites use their dedicated runners.
+
 Host-matrix assertions require Windows, Linux selection/results and performance prerequisites as a set, allowing reordered/additional dependencies while rejecting each removed prerequisite. Evidence properties include bracketed Unicode paths and owned hidden manifests. CI uploads only the prepared evidence tree with hidden files included. Mutation workers write a start receipt and a terminal receipt in finally; parents retain bounded output tails/process metadata and reject absent or unfinished receipts even after exit code zero. An abrupt-exit fixture verifies that boundary; this does not claim a native ARM64 rerun.
 
 Private profiler-contract helpers parse literal PowerShell tool selections and check a restricted boolean condition against Core/profiling scope properties. They distinguish optional product profiling from mandatory Tooling preparation before RunProfiles, including both tool paths. The Tooling companion owns the actual cases. Generated variants and damaged workflow fixtures exercise the guard without preparing tools, starting collectors or executing arbitrary workflow code.

@@ -8,14 +8,15 @@ function Invoke-QuietConfigurationDeliveryTests {
     Owned report and fixture directory.
     .PARAMETER OnProgress
     Shared visible-monitor progress callback.
+    .PARAMETER OnPesterProgress
+    Optional PowerShell test progress callback independent of compiled assertion counts.
     .PARAMETER Mutation
     Includes owned C# source mutations after the functional baseline.
     #>
-    param([string]$WorkspaceRoot,[string]$RunDirectory,[scriptblock]$OnProgress,[switch]$Mutation)
+    param([string]$WorkspaceRoot,[string]$RunDirectory,[scriptblock]$OnProgress,[scriptblock]$OnPesterProgress,[switch]$Mutation)
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/TestConfiguration.psm1') -DisableNameChecking -ErrorAction Stop
     $core=Get-Module FrenchExDev2.QuietCli.Core.PoSh
-    $cases=[Collections.Generic.List[object]]::new();$passed=0;$failed=0
     $directory=Join-Path $RunDirectory 'configuration-delivery';[void][IO.Directory]::CreateDirectory($directory)
     $fixture=Join-Path $PSScriptRoot 'lib/fixture/QuietCli.Fixture.dll'
     $dotnet=(Get-Command dotnet -CommandType Application|Select-Object -First 1).Source
@@ -156,16 +157,19 @@ function Invoke-QuietConfigurationDeliveryTests {
         if(!$offline.Deliveries[0].AlreadyDelivered -or $offline.Deliveries[0].DeliveryId -ne $id -or $offline.Measurement.OutputTokens -lt 1){throw 'OfflineReceiptChanged'}
     }
     try{
-        foreach($entry in $checks.GetEnumerator()){
-            if($OnProgress){& $OnProgress $entry.Key 'Running' $passed $failed}
-            try{$null=& $entry.Value;$passed++;$cases.Add(@{Name=$entry.Key;State='Passed'})}
-            catch{$failed++;$cases.Add(@{Name=$entry.Key;State='Failed';Error=$_.Exception.Message;Stack=$_.ScriptStackTrace})}
-            if($OnProgress){& $OnProgress $entry.Key 'Completed' $passed $failed}
+        Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+        $powerShellProgress=if($OnPesterProgress){$OnPesterProgress}else{$OnProgress}
+        $pesterResult=Invoke-QuietPesterCaseTable -WorkspaceRoot $WorkspaceRoot -Suite 'ConfigurationDelivery' -Cases $checks -OnProgress $powerShellProgress -InvokePester {
+            param($configuration,$body)
+            if($body){& $body}else{Pester\Invoke-Pester -Configuration $configuration}
         }
         . (Join-Path $PSScriptRoot 'ConfigurationDelivery.Mutation.ps1')
-        $compiled=Invoke-QuietConfigurationDeliveryEngine -WorkspaceRoot $WorkspaceRoot -RunDirectory $directory -Mutation:$Mutation -OnProgress $OnProgress
-        $passed+=$compiled.Passed;$failed+=$compiled.Failed
-        $summary=[pscustomobject]@{Passed=$passed;Failed=$failed;Cases=$cases.ToArray();Compiled=$compiled;Seeds=@(38179,47291);GeneratedYamlCases=104;FuzzCorpusCases=10}
+        $compiled=Invoke-QuietConfigurationDeliveryEngine -WorkspaceRoot $WorkspaceRoot -RunDirectory $directory -Mutation:$Mutation -OnProgress {
+            param($name,$state,$compiledPassed,$compiledFailed)
+            if($OnProgress){$null=& $OnProgress $name $state ($pesterResult.Passed+$compiledPassed) ($pesterResult.Failed+$compiledFailed)}
+        }
+        $passed=$pesterResult.Passed+$compiled.Passed;$failed=$pesterResult.Failed+$compiled.Failed
+        $summary=[pscustomobject]@{Passed=$passed;Failed=$failed;Cases=$pesterResult.Cases;Compiled=$compiled;Seeds=@(38179,47291);GeneratedYamlCases=104;FuzzCorpusCases=10}
         Write-WorkspaceJson (Join-Path $directory 'results.json') $summary
         return $summary
     }finally{

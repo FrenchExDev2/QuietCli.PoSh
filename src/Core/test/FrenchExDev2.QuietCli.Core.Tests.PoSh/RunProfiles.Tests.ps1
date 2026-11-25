@@ -25,6 +25,9 @@ Runs the mutation campaign (RunProfiles.Mutation.ps1) instead of the suite.
 .PARAMETER MutantName
 With -Mutation, restricts the campaign to the named mutants.
 
+.PARAMETER PesterModulePath
+Pinned Pester manifest supplied by the parent when executing a copied mutation fixture.
+
 .EXAMPLE
 pwsh -NoProfile -File ./Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1 -Mutation
 #>
@@ -37,45 +40,37 @@ param(
     [string]$CasePattern,
     [switch]$Mutation,
     [string[]]$MutantName = @(),
-    [ValidateSet('utf-8', 'oem')][string]$ConsoleEncoding = 'utf-8'
+    [ValidateSet('utf-8', 'oem')][string]$ConsoleEncoding = 'utf-8',
+    [string]$PesterModulePath
 )
 $ErrorActionPreference = 'Stop'
 $scripts = [IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../../scripts'))
 foreach ($module in 'RunEncoding', 'RunFormat', 'RunStatistics', 'RunProfileStore', 'RunProfiler') { Import-Module (Join-Path $scripts "lib/$module.psm1") -Force }
-# The console encoding is a boundary setting: tables use box-drawing characters and the consumer decodes strict UTF-8.
-[void](Set-RunConsoleEncoding -Name $ConsoleEncoding)
-# Boundary self-check with an independent oracle (65001 and the culture's OEM page, not the module's own resolution).
-# It fails in pure ASCII, because a consumer that decodes strict UTF-8 cannot read anything else once the console is wrong.
-$expectedCodePage = if ($ConsoleEncoding -eq 'utf-8') { 65001 } else { [Globalization.CultureInfo]::CurrentCulture.TextInfo.OEMCodePage }
-if ([Console]::OutputEncoding.CodePage -ne $expectedCodePage -or $global:OutputEncoding.CodePage -ne $expectedCodePage) {
-    [Console]::Error.WriteLine("console encoding self-check failed: expected code page $expectedCodePage, console $([Console]::OutputEncoding.CodePage), pipe $($global:OutputEncoding.CodePage)")
-    'SUMMARY Passed=0 Failed=1 Skipped=0'
-    exit 1
-}
+# Keep the test report transport independent from the encoding functions being tested.
+$reportEncoding = if ($ConsoleEncoding -eq 'utf-8') { [Text.UTF8Encoding]::new($false) } else { [Text.Encoding]::GetEncoding([Globalization.CultureInfo]::CurrentCulture.TextInfo.OEMCodePage) }
+[Console]::OutputEncoding = $reportEncoding
+$global:OutputEncoding = $reportEncoding
 # Skip entries may be comma-separated, because `pwsh -File` passes an array argument as one string.
 $Skip = @($Skip | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 if ($Mutation -and $CasePattern) { throw 'RunProfileMutationCaseFilterUnsupported' }
 if ($Mutation) { & (Join-Path $PSScriptRoot 'RunProfiles.Mutation.ps1') -Seed $Seed -MutantName $MutantName -ConsoleEncoding $ConsoleEncoding; exit $LASTEXITCODE }
 $work = Join-Path ([IO.Path]::GetTempPath()) ('RunProfilesTests-' + [Guid]::NewGuid().ToString('N'))
 [void][IO.Directory]::CreateDirectory($work)
-$counters = @{ Passed = 0; Failed = 0; Skipped = 0 }
+$cases = [ordered]@{}
+$skipped = 0
 $clock = [Diagnostics.Stopwatch]::StartNew()
 
 function Test-Case {
     <#
     .SYNOPSIS
-    Runs one named case and records its outcome.
+    Registers one named case in the Pester test table.
     .PARAMETER Name
     Case name.
     .PARAMETER Body
     Case body; throws on failure.
     #>
     param([string]$Name, [scriptblock]$Body)
-    if ($CasePattern -and $Name -notlike $CasePattern) { $counters.Skipped++; return }
-    if (@($Skip | Where-Object { $Name.Contains($_) }).Count -gt 0) { $counters.Skipped++; return }
-    $case = [Diagnostics.Stopwatch]::StartNew()
-    try { & $Body; $counters.Passed++; $state = 'passed' } catch { $counters.Failed++; $state = "FAILED: $($_.Exception.Message)" }
-    '{0,-92} {1,8}  {2}' -f $Name, (Format-RunDuration $case.Elapsed.TotalMilliseconds), $state
+    $cases.Add($Name,$Body)
 }
 
 function Assert-That {
@@ -485,8 +480,12 @@ if ($Fail) { throw 'FixtureFailed' }
         $previous = [Console]::OutputEncoding
         $previousPipe = $global:OutputEncoding
         try {
+            [Console]::OutputEncoding = [Text.Encoding]::Unicode
+            $global:OutputEncoding = [Text.Encoding]::Unicode
             [void](Set-RunConsoleEncoding -Name 'oem')
             Assert-That ([Console]::OutputEncoding.CodePage -eq $oem.CodePage -and $global:OutputEncoding.CodePage -eq $oem.CodePage) 'oem was not applied to the console and the pipe'
+            [Console]::OutputEncoding = [Text.Encoding]::Unicode
+            $global:OutputEncoding = [Text.Encoding]::Unicode
             [void](Set-RunConsoleEncoding -Name 'utf-8')
             Assert-That ([Console]::OutputEncoding.CodePage -eq 65001 -and $global:OutputEncoding.CodePage -eq 65001) 'utf-8 was not applied to the console and the pipe'
         }
@@ -494,7 +493,7 @@ if ($Fail) { throw 'FixtureFailed' }
     }
     Test-Case 'console: quiet decodes child output as strict UTF-8 - a UTF-8 child succeeds, an OEM child fails with a decode error' {
         $oemPage = [Globalization.CultureInfo]::CurrentCulture.TextInfo.OEMCodePage
-        if ($oemPage -eq 65001) { $counters.Skipped++; $counters.Passed--; return }
+        if ($oemPage -eq 65001) { Pester\Set-ItResult -Skipped -Because 'The current culture uses UTF-8 as its OEM encoding' }
         if (-not (Get-Command quiet -ErrorAction SilentlyContinue)) { Import-Module ([IO.Path]::GetFullPath([IO.Path]::Combine($scripts,'../src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1'))) }
         $emit = '[Console]::OutputEncoding = [Text.Encoding]::GetEncoding({0}); [Console]::Out.WriteLine([string][char]0x2500 * 3)'
         foreach ($case in @(@{ Page = 65001; Outcome = 'Success' }, @{ Page = $oemPage; Outcome = 'Failed' })) {
@@ -504,21 +503,35 @@ if ($Fail) { throw 'FixtureFailed' }
         }
     }
     Test-Case 'profiler: PSProfiler report is exported for a script block (skipped when the pinned module is absent)' {
-        try { $manifest = Resolve-RunProfilerModule } catch { $counters.Skipped++; $counters.Passed--; $script:ProfilerGap = $_.Exception.Message; return }
+        try { $manifest = Resolve-RunProfilerModule } catch { Pester\Set-ItResult -Skipped -Because $_.Exception.Message }
         $report = Invoke-RunProfiled -ScriptBlock { 1..50 | ForEach-Object { $_ * 2 } | Out-Null } -OutputDirectory (Join-Path $work 'prof') -Label 'unit' -ProfilerModulePath $manifest
         $json = [IO.File]::ReadAllText($report) | ConvertFrom-Json
         Assert-That ($json.Label -eq 'unit' -and $json.ProfilerVersion -eq '4.3.0' -and $json.TopLinesBySelfDuration.Count -gt 0) 'report content'
         Assert-That (-not [IO.File]::ReadAllText($report).Contains("`r")) 'CR in report'
         Assert-Throws { Invoke-RunProfiled -ScriptBlock { } -OutputDirectory $work -Label 'bad label!' -ProfilerModulePath $manifest } 'Label'
     }
+    $selected=[ordered]@{}
+    foreach($entry in $cases.GetEnumerator()){
+        if(($CasePattern -and $entry.Key -notlike $CasePattern) -or @($Skip | Where-Object { $entry.Key.Contains($_) }).Count){$skipped++;continue}
+        $selected.Add($entry.Key,$entry.Value)
+    }
+    Import-Module ([IO.Path]::Combine($scripts,'lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $tested=Invoke-QuietPesterCaseTable -WorkspaceRoot ([IO.Path]::GetDirectoryName($scripts)) -Suite 'RunProfiles' -Cases $selected -PesterModulePath $PesterModulePath -InvokePester {
+        param($configuration)
+        Pester\Invoke-Pester -Configuration $configuration
+    } -OnProgress {
+        param($name,$state,$passed,$failed,$message)
+        [Console]::Out.WriteLine("PESTER_CASE $passed $failed $state $name")
+        if($message){[Console]::Out.WriteLine("FAILED: ${name}: $message")}
+    }
+    $skipped+=@($tested.Cases | Where-Object State -CEQ 'Skipped').Count
 }
 finally {
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
 }
 ''
-$rows = [Collections.Generic.List[object]]::new(); $rows.Add(@('RunProfiles', [string]$counters.Passed, [string]$counters.Failed, [string]$counters.Skipped, (Format-RunDuration $clock.Elapsed.TotalMilliseconds)))
+$rows = [Collections.Generic.List[object]]::new(); $rows.Add(@('RunProfiles', [string]$tested.Passed, [string]$tested.Failed, [string]$skipped, (Format-RunDuration $clock.Elapsed.TotalMilliseconds)))
 Format-RunTable -Headers @('Suite', 'Passed', 'Failed', 'Skipped', 'Duration') -Rows $rows -RightAligned @(1, 2, 3, 4)
-"SUMMARY Passed=$($counters.Passed) Failed=$($counters.Failed) Skipped=$($counters.Skipped)"
-if ($script:ProfilerGap) { "Gap: profiler case skipped - $script:ProfilerGap" }
+"SUMMARY Passed=$($tested.Passed) Failed=$($tested.Failed) Skipped=$skipped"
 'Mutation testing: run this file with -Mutation (see RunProfiles.Mutation.ps1).'
-exit $counters.Failed
+exit $tested.Failed

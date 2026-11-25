@@ -16,6 +16,8 @@ Pester tags to exclude; the run becomes partial.
 Seed exported as QUIETCLI_TEST_SEED for property and fuzz tests; generated and recorded when omitted.
 .PARAMETER Coverage
 Measures JaCoCo coverage of test/scripts/coverage.targets.psd1 and enforces its threshold.
+.PARAMETER MaxConcurrency
+Maximum number of isolated PowerShell workers for parallel test files. Defaults to one. Coverage runs use one worker.
 .PARAMETER Headless
 Disables the visible monitor (CI).
 .PARAMETER RunDirectory
@@ -32,11 +34,11 @@ Scripts root exported as QUIETCLI_SCRIPTS_ROOT (a mutated copy for mutation test
 Requires the pinned test tools to be cached already.
 #>
 [CmdletBinding(SupportsShouldProcess)]
-param([ValidateSet('Unit','Integration','All')][string]$Kind='All',[string[]]$Path=@(),[string[]]$FullNameFilter=@(),[string[]]$Tag=@(),[string[]]$ExcludeTag=@(),[ValidateRange(0,2147483647)][int]$Seed=0,[switch]$Coverage,[switch]$Headless,[string]$RunDirectory,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'..'))),[string]$TestsRoot,[string]$ScriptsRoot=$PSScriptRoot,[switch]$Offline)
+param([ValidateSet('Unit','Integration','All')][string]$Kind='All',[string[]]$Path=@(),[string[]]$FullNameFilter=@(),[string[]]$Tag=@(),[string[]]$ExcludeTag=@(),[ValidateRange(0,2147483647)][int]$Seed=0,[switch]$Coverage,[ValidateRange(1,32)][int]$MaxConcurrency=1,[switch]$Headless,[string]$RunDirectory,[ValidateRange(1,7200)][int]$TimeoutSeconds=1800,[string]$WorkspaceRoot=([IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'..'))),[string]$TestsRoot,[string]$ScriptsRoot=$PSScriptRoot,[switch]$Offline)
 if(!$PSCmdlet.ShouldProcess($PSCommandPath,'Execute automation: Invoke-ScriptsTests')){return}
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Invoke-ScriptsTests.psm1')) -DisableNameChecking -ErrorAction Stop
 if([string]::IsNullOrWhiteSpace($TestsRoot)){$TestsRoot=[IO.Path]::Combine($WorkspaceRoot,'test','scripts')}
-$outcome=Invoke-QuietScriptInvokeScriptsTests -WorkspaceRoot $WorkspaceRoot -TestsRoot $TestsRoot -ScriptsRoot $ScriptsRoot -Kind $Kind -Path $Path -FullNameFilter $FullNameFilter -Tag $Tag -ExcludeTag $ExcludeTag -Seed $Seed -Coverage:$Coverage -Headless:$Headless -RunDirectory $RunDirectory -TimeoutSeconds $TimeoutSeconds -Offline:$Offline
+$outcome=Invoke-QuietScriptInvokeScriptsTests -WorkspaceRoot $WorkspaceRoot -TestsRoot $TestsRoot -ScriptsRoot $ScriptsRoot -Kind $Kind -Path $Path -FullNameFilter $FullNameFilter -Tag $Tag -ExcludeTag $ExcludeTag -Seed $Seed -Coverage:$Coverage -MaxConcurrency $MaxConcurrency -Headless:$Headless -RunDirectory $RunDirectory -TimeoutSeconds $TimeoutSeconds -Offline:$Offline
 $outcome
 if($outcome.ExitCode -ne 0){throw "Scripts tests $($outcome.State). See $($outcome.RunDirectory)"}

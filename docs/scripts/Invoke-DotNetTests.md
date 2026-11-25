@@ -1,5 +1,7 @@
 # Invoke-DotNetTests.ps1
 
+The watcher counts four Pester cases in an `All` run, one per offline PowerShell campaign. `dotnet-summary.json` retains the separate totals for assertions, generated cases and killed mutants.
+
 <!-- script-source:begin -->
 Source file: [`Invoke-DotNetTests.ps1`](../../scripts/Invoke-DotNetTests.ps1)
 <!-- script-source:end -->

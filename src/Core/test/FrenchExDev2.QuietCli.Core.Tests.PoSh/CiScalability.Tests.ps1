@@ -150,7 +150,8 @@ function Test-QuietCiScalability {
     $install.Rid='wrong-architecture';Write-WorkspaceJson (Join-Path $sdkDirectory 'frenchexdev-install.json') $install
     Assert-QuietEqual (Get-QuietWorkspaceDotNetHost $sdkFixture) $null
     $previewSandbox=Join-Path $RunDirectory 'mutation-preview-must-not-exist'
-    $null=& (Join-Path $WorkspaceRoot 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.MutationWorker.ps1') -WorkspaceRoot $WorkspaceRoot -Sandbox $previewSandbox -WhatIf
+    $mutationWorker=[IO.Path]::Combine($WorkspaceRoot,'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.MutationWorker.ps1')
+    $null=& $mutationWorker -WorkspaceRoot $WorkspaceRoot -Sandbox $previewSandbox -PesterModulePath ([IO.Path]::Combine($previewSandbox,'Pester.psd1')) -WhatIf
     Assert-QuietEqual (Test-Path -LiteralPath $previewSandbox) $false
     $previousCache=$env:QUIETCLI_BUILDKIT_CACHE_DIR;$previousActions=$env:GITHUB_ACTIONS
     $seed=20261112;$random=[Random]::new($seed)

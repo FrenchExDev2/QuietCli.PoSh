@@ -14,6 +14,8 @@ Core or Vagrant run does not require an unbuilt Git parser merely because its so
 retains partial-run metadata. It is rejected with other suites or `-GitHubActions`, keeping
 the hosted qualification entry point unfiltered.
 
+For PowerShell test suites, the driver verifies the pinned Pester archive on the host and copies it into the guest workspace cache before starting the network-isolated container. With `QUIETCLI_TEST_TOOLS_OFFLINE=1` the host also requires a cached archive. The guest always initializes Pester in offline mode and verifies the archive again. The standalone native mutation path stages its native inputs independently.
+
 Copying the retained guest report uses TimeoutSeconds rather than a fixed 60-second limit;
 the host launcher still bounds the entire run, including transfer and cleanup.
 The monitor keeps the last readable progress when a live status copy contains incomplete JSON.

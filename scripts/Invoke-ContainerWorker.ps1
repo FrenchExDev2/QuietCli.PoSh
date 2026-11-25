@@ -68,6 +68,13 @@ try{
         if($productFiles.Count){throw 'NativeStageMustNotContainProductBuildsOrModules'}
         Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'bootstrap.json')) @{Mode='Direct CI processes';ProductBuildFiles=0;NativeSourceSHA256=(Get-FileHash ([IO.Path]::Combine($stage,'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/native/quietcli-pty.c')) -Algorithm SHA256).Hash}
     }else{
+        Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/RunToolCache.psm1')) -DisableNameChecking -ErrorAction Stop
+        $tools=& ([IO.Path]::Combine($PSScriptRoot,'Initialize-TestTools.ps1')) -WorkspaceRoot $WorkspaceRoot -Tool pester -Offline:($env:QUIETCLI_TEST_TOOLS_OFFLINE -ceq '1') -Confirm:$false
+        $package=Get-RunTestToolPackages -Tool pester
+        $archiveName=$package.Name+'.'+$package.Version+'.nupkg'
+        $guestToolDirectory=[IO.Path]::Combine((Get-QuietTestToolDirectory -WorkspaceRoot $stage),$package.Name)
+        [void][IO.Directory]::CreateDirectory($guestToolDirectory)
+        Copy-Item -LiteralPath ([IO.Path]::Combine($tools.Directory,$package.Name,$archiveName)) -Destination ([IO.Path]::Combine($guestToolDirectory,$archiveName))
         foreach($file in @('global.json','Directory.Packages.props')){if(Test-Path -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $file))){Copy-Item -LiteralPath ((Resolve-QuietWorkspacePath -WorkspaceRoot $WorkspaceRoot -RelativePath $file)) -Destination $stage}}
         Write-WorkspaceJson ([IO.Path]::Combine($stage,'transport-origin.json')) (Get-QuietWorkspaceIdentity $WorkspaceRoot -Suite $Suite -IncludeBinaries)
     }
@@ -98,7 +105,7 @@ try{
     # Alpine's framework-dependent PowerShell uses the distribution .NET 10 runtime; the SDK has its own .NET 11 root.
     $runtimeEnvironment=if($Platform -eq 'alpine'){@('--env','DOTNET_ROOT=/opt/pwsh-runtime')}else{@()}
     if($GitHubActions){$runtimeEnvironment+=@('--env','GITHUB_ACTIONS=true')}
-    if($Suite -ne 'Mutation'){$runtimeEnvironment+=@('--env','NUGET_PACKAGES=/workspace/artifacts/nuget-cache')}
+    if($Suite -ne 'Mutation'){$runtimeEnvironment+=@('--env','NUGET_PACKAGES=/workspace/artifacts/nuget-cache','--env','QUIETCLI_TEST_TOOLS_OFFLINE=1')}
     $null=Invoke-WorkspaceNative $ContainerRuntime (@('create','--pull=never','--name',$name,'--label',('org.frenchexdev.quietcli2.owner='+$owner),'--network','none')+$memoryLimits+$runtimeEnvironment+@('--entrypoint','pwsh',$imageState.Id)+$guestArguments) $WorkspaceRoot -TimeoutSeconds 30
     $created=$true
     $null=Invoke-WorkspaceNative $ContainerRuntime @('cp',($stage.Replace('\','/')+'/.'),($name+':/workspace')) $WorkspaceRoot -TimeoutSeconds 90
@@ -117,6 +124,7 @@ try{
             } catch [ArgumentException] { $null }
             if($guest -is [Collections.IDictionary]){
                 $state.Passed=$guest.Passed;$state.Failed=$guest.Failed;$state.Case=$guest.Case;$state.GuestProcessId=$guest.ProcessId
+                if($guest.Contains('TestPassed')){$state.TestPassed=$guest.TestPassed;$state.TestFailed=$guest.TestFailed}
                 Write-WorkspaceJson $status $state
             }
         }
@@ -139,6 +147,7 @@ try{
     if($summary.State.Platform -cnotmatch $expected -or $engineIdentity -and $engineIdentity.Engine.RuntimeIdentifier -cne $summary.State.Platform){throw 'GuestRuntimeDoesNotMatchRequestedPlatform'}
     $state.GuestIdentity=@{HostRuntime=$summary.HostRuntime;OSArchitecture=$summary.OSArchitecture;ProcessArchitecture=$summary.ProcessArchitecture;OSDescription=$summary.OSDescription;MachineName=$summary.MachineName;Engine=$(if($engineIdentity){$engineIdentity.Engine}else{$null})}
     $state.Platform=$summary.State.Platform;$state.Passed=$summary.State.Passed;$state.Failed=$summary.State.Failed;$state.State=$summary.State.State;$state.Error=$summary.State.Error
+    if($summary.State.PSObject.Properties['TestPassed']){$state.TestPassed=$summary.State.TestPassed;$state.TestFailed=$summary.State.TestFailed}
     if($Suite -eq 'Mutation'){
         Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/Assert-PtyQualification.psm1')) -DisableNameChecking -ErrorAction Stop
         Assert-PtyQualification $summary

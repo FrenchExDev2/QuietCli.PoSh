@@ -32,17 +32,11 @@ function Invoke-QuietDistributionTests {
         $plan=Get-QuietTestExecutionPlan -CaseNames $selected -Policy $policy -MaxConcurrency 1
         if(@($plan.Stages|Where-Object Mode -CNE Ordered).Count){throw 'DistributionExecutionMustRemainOrdered'}
         Write-WorkspaceJson (Join-Path $RunDirectory 'distribution-execution-plan.json') $plan
-        $results=[Collections.Generic.List[object]]::new();$passed=0;$failed=0;$stoppedAt=$null
-        foreach($name in $selected){
-            if($stoppedAt){continue}
-            if($OnProgress){& $OnProgress ('[Integration] '+$name) Running $passed $failed}
-            $errorText=$null
-            try{$null=& $cases[$name];$passed++;$state='Passed'}catch{$failed++;$state='Failed';$errorText=$_.ToString()+"`n"+$_.ScriptStackTrace}
-            $results.Add([pscustomobject]@{Name=$name;State=$state;Error=$errorText;TestKind=$caseMetadata[$name].TestKind;Dependencies=$caseMetadata[$name].Dependencies})
-            if($OnProgress){& $OnProgress ('[Integration] '+$name) $state $passed $failed}
-            if($failed -and $env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE -ceq '1'){$stoppedAt='stopped at case '+$results.Count+' of '+$cases.Count}
-        }
-        [pscustomobject]@{Project='FrenchExDev2.QuietCli.Distribution.Tests.PoSh';Passed=$passed;Failed=$failed;Partial=[bool]$env:QUIETCLI_TEST_CASE;Incomplete=[bool]$stoppedAt;StoppedAt=$stoppedAt;Skipped=($cases.Count-$results.Count);Cases=$results.ToArray();Gallery=$galleryEvidence.ToArray();ExecutionPlan=$plan}
+        Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+        $pesterResult=Invoke-QuietPesterCompanionPlan -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Suite 'Distribution' `
+            -Plan $plan -Cases $cases -Metadata $caseMetadata -OnProgress $OnProgress `
+            -InvokePester {param($configuration) Pester\Invoke-Pester -Configuration $configuration}
+        [pscustomobject]@{Project='FrenchExDev2.QuietCli.Distribution.Tests.PoSh';Passed=$pesterResult.Passed;Failed=$pesterResult.Failed;Partial=[bool]$env:QUIETCLI_TEST_CASE;Incomplete=[bool]$pesterResult.StoppedAt;StoppedAt=$pesterResult.StoppedAt;Skipped=($cases.Count-$plan.Cases+$pesterResult.Skipped);Cases=$pesterResult.Cases;Gallery=$galleryEvidence.ToArray();ExecutionPlan=$plan}
     } $WorkspaceRoot $RunDirectory $OnProgress $distributionRoot
 }
 Export-ModuleMember -Function Invoke-QuietDistributionTests

@@ -123,6 +123,8 @@ PSProfiler traces PowerShell only: C# time is invisible to it and appears as the
 
 ## Tests and mutation testing
 
+RunProfiles executes each selected PowerShell case with Pester 6.2.0. The shared watcher reports completed tests from the child process. Mutation workers reuse the pinned Pester manifest while exercising their own copies of the scripts. Generated inputs retain their seeds and mutation outcomes retain their own counts.
+
 Property, fuzz, example and integration cases live in `src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1`
 (standalone runner: the exit code is the number of failed cases, seeds are fixed, the last line is
 `SUMMARY Passed=N Failed=N Skipped=N`).

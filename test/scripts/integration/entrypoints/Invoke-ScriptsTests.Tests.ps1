@@ -79,6 +79,146 @@ Describe 'Invoke-ScriptsTests.ps1' {
         (& $readJson $directory 'status.json').State|Should -BeExactly 'Failed'
     }
 
+    It 'renders the first failure immediately in the serial watcher' {
+        $directory=& $newRun
+        $serial=[IO.Path]::Combine($TestDrive,'serial')
+        $null=New-QuietTestFile ([IO.Path]::Combine($serial,'unit','counter.Tests.ps1')) @'
+Describe 'serial fixture' {
+    It 'fails first' { throw 'expected first failure' }
+    It 'sees the failure while the run is active' {
+        $path=[IO.Path]::Combine($env:QUIETCLI_FIXTURE_RUN,'status.json')
+        $state=Get-Content -LiteralPath $path -Raw -Encoding utf8 | ConvertFrom-Json
+        $state.State | Should -BeExactly 'Running'
+        $state.TestPassed | Should -Be 0
+        $state.TestFailed | Should -Be 1
+        & $env:QUIETCLI_FIXTURE_WATCH -RunDirectory $env:QUIETCLI_FIXTURE_RUN
+    }
+    It 'fails again' { throw 'expected second failure' }
+}
+'@
+        $watch=[IO.Path]::Combine((Get-QuietTestScriptsRoot),'Watch-Tests.ps1')
+        $outcome=& $run @('-TestsRoot',$serial,'-Kind','Unit','-RunDirectory',$directory) @{QUIETCLI_FIXTURE_RUN=$directory;QUIETCLI_FIXTURE_WATCH=$watch}
+        $outcome.ExitCode|Should -Be 1
+        $report=& $readJson $directory 'report.json'
+        $report.TestPassed|Should -Be 1
+        $report.TestFailed|Should -Be 2
+        $workerLog=Get-Content -LiteralPath ([IO.Path]::Combine($directory,'worker.stdout.log')) -Raw -Encoding utf8
+        $workerLog|Should -Match '(?m)│[^│]+│Running\s+│[^│]+│[^│]+│\s+0│\s+1│'
+    }
+
+    It 'publishes real test outcomes while parallel files are still running' {
+        $directory=& $newRun
+        $parallel=[IO.Path]::Combine($TestDrive,'parallel')
+        $null=New-QuietTestFile ([IO.Path]::Combine($parallel,'unit','a.Tests.ps1')) @'
+Describe 'first file' {
+    It 'passes' { 1 | Should -Be 1 }
+    It 'fails' { throw 'expected failure' }
+}
+'@
+        $null=New-QuietTestFile ([IO.Path]::Combine($parallel,'unit','b.Tests.ps1')) @'
+Describe 'second file' {
+    It 'observes completed outcomes before this file finishes' {
+        $path=[IO.Path]::Combine($env:QUIETCLI_FIXTURE_RUN,'status.json')
+        $deadline=[DateTimeOffset]::UtcNow.AddSeconds(30)
+        do {
+            $state=Get-Content -LiteralPath $path -Raw -Encoding utf8 | ConvertFrom-Json
+            if($state.TestPassed -eq 1 -and $state.TestFailed -eq 1){break}
+            Start-Sleep -Milliseconds 100
+        } while([DateTimeOffset]::UtcNow -lt $deadline)
+        $state.State | Should -BeExactly 'Running'
+        $state.TestPassed | Should -Be 1
+        $state.TestFailed | Should -Be 1
+        $state.Runs.Count | Should -Be 2
+        Import-Module $env:QUIETCLI_FIXTURE_SUPPORT -DisableNameChecking -ErrorAction Stop
+        $frame=Invoke-QuietTestScript -ScriptPath $env:QUIETCLI_FIXTURE_WATCH -ArgumentList @('-RunDirectory',$env:QUIETCLI_FIXTURE_RUN) -TimeoutSeconds 10
+        $frame.ExitCode | Should -Be 0 -Because $frame.Error
+        [IO.File]::WriteAllText([IO.Path]::Combine($env:QUIETCLI_FIXTURE_RUN,'watcher-frame.txt'),$frame.Output,[Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText([IO.Path]::Combine($env:QUIETCLI_FIXTURE_RUN,'parallel.complete'),'ok',[Text.Encoding]::UTF8)
+    }
+}
+'@
+        $null=New-QuietTestFile ([IO.Path]::Combine($parallel,'unit','serial.Tests.ps1')) @'
+#pester:no-parallel
+Describe 'serial file' {
+    It 'runs after the parallel files' {
+        [IO.File]::Exists([IO.Path]::Combine($env:QUIETCLI_FIXTURE_RUN,'parallel.complete')) | Should -BeTrue
+    }
+}
+'@
+        $watch=[IO.Path]::Combine((Get-QuietTestScriptsRoot),'Watch-Tests.ps1')
+        $support=(Get-Command Invoke-QuietTestScript).Module.Path
+        $outcome=& $run @('-TestsRoot',$parallel,'-Kind','Unit','-MaxConcurrency','2','-RunDirectory',$directory) @{QUIETCLI_FIXTURE_RUN=$directory;QUIETCLI_FIXTURE_WATCH=$watch;QUIETCLI_FIXTURE_SUPPORT=$support}
+        $outcome.ExitCode|Should -Be 1
+        $report=& $readJson $directory 'report.json'
+        $report.TestPassed|Should -Be 3 -Because $outcome.Output
+        $report.TestFailed|Should -Be 1
+        $report.Incomplete|Should -BeFalse
+        $status=& $readJson $directory 'status.json'
+        $status.TestPassed|Should -Be 3
+        $status.TestFailed|Should -Be 1
+        $frame=Get-Content -LiteralPath ([IO.Path]::Combine($directory,'watcher-frame.txt')) -Raw -Encoding utf8
+        $frame|Should -Match '(?m)│Total\s+│Running\s+│[^│]+│[^│]+│\s+1│\s+1│'
+        $junit=[xml](Get-Content -LiteralPath ([IO.Path]::Combine($directory,'results.junit.xml')) -Raw -Encoding utf8)
+        $junit.SelectNodes('//testcase').Count|Should -Be 4
+    }
+
+    It 'keeps companion case state and private fixtures in the owning module' {
+        $fixtureScript=[IO.Path]::Combine($TestDrive,'companion-bridge.ps1')
+        $null=New-QuietTestFile $fixtureScript @'
+param($WorkspaceRoot,$ScriptsRoot,$OutputDirectory)
+$ErrorActionPreference='Stop'
+Import-Module ([IO.Path]::Combine($ScriptsRoot,'lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+$pester=Import-QuietTestPester -WorkspaceRoot $WorkspaceRoot
+$suite=New-Module -ScriptBlock {function Read-PrivateFixture {'témoins'}}
+$observed=& $suite {
+    param($workspace,$directory,$pester)
+    $privateValue='témoins'
+    $notifications=[Collections.Generic.List[string]]::new()
+    $invoker={param($configuration,$body) if($body){& $body}else{Pester\Invoke-Pester -Configuration $configuration}}
+    $cases=[ordered]@{
+        'uses suite state'={
+            if((Read-PrivateFixture) -cne $privateValue){throw 'PrivateFixtureLost'}
+            $nested=Invoke-QuietPesterCaseTable -WorkspaceRoot $workspace -Suite Focused -Cases ([ordered]@{inside={if($privateValue -cne 'témoins'){throw 'NestedFixtureLost'}}}) -InvokePester $invoker
+            if($nested.Passed -ne 1){throw 'NestedCaseFailed'}
+        }
+        'intentional failure'={throw 'CaseFailedAsExpected'}
+        'skips the remaining case'={throw 'MustNotRun'}
+    }
+    $metadata=@{};$index=0
+    $stages=@(foreach($name in $cases.Keys){
+        $metadata[$name]=@{TestKind='Unit';Dependencies=@()}
+        $stage=[Collections.Generic.List[object]]::new()
+        $stage.Add([pscustomobject]@{Name=$name;Mode='Ordered';Index=$index})
+        $index++
+        @{Mode='Ordered';Cases=$stage}
+    })
+    $env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE='1'
+    $plan=@{Cases=$cases.Count;Stages=$stages}
+    $result=Invoke-QuietPesterCompanionPlan -WorkspaceRoot $workspace -RunDirectory $directory -Suite Fixture -Plan $plan -Cases $cases -Metadata $metadata -InvokePester $invoker -OnProgress {
+        param($name,$state,$passed,$failed)
+        if($state -ne 'Running'){$notifications.Add("$state/$passed/$failed")}
+    }
+    $config={Pester\Invoke-Pester -Configuration @{Run=@{PassThru=$true;ScriptBlock={Describe 'hook' {It 'passes' {}}}};TestRegistry=@{Enabled=$false};Output=@{Verbosity='None'}}}
+    $hook=[Collections.Generic.List[string]]::new()
+    $null=Invoke-QuietPesterWithProgress -Pester $pester -Run $config -OnTest {param($test,$state) $hook.Add($state)}
+    @{Passed=$result.Passed;Failed=$result.Failed;Skipped=$result.Skipped;Error=$result.Cases[-1].Error;Notifications=$notifications.ToArray();Hook=$hook.ToArray()}
+} $WorkspaceRoot $OutputDirectory $pester
+$observed | ConvertTo-Json -Compress
+'@
+        $directory=& $newRun
+        $outcome=Invoke-QuietTestScript -ScriptPath $fixtureScript -ArgumentList @($workspace,(Get-QuietTestScriptsRoot),$directory) -TimeoutSeconds 60
+        $outcome.ExitCode|Should -Be 0 -Because ($outcome.Output+$outcome.Error)
+        $observed=$outcome.Output|ConvertFrom-Json
+        $observed.Passed|Should -Be 1
+        $observed.Failed|Should -Be 1
+        $observed.Skipped|Should -Be 1
+        $observed.Error|Should -BeExactly 'CaseFailedAsExpected'
+        ($observed.Notifications -join ',')|Should -BeExactly 'Passed/1/0,Failed/1/1'
+        ($observed.Hook -join ',')|Should -BeExactly 'Running,Passed'
+        $first=& $readJson ([IO.Path]::Combine($directory,'core-cases','pester-0')) 'case-result.json'
+        $first.Name|Should -BeExactly 'uses suite state'
+    }
+
     It 'saves a valid JUnit report for a failure message and a test name that XML cannot hold as they are' {
         $directory=& $newRun
         $outcome=& $run @('-TestsRoot',$unsafe,'-Kind','Unit','-RunDirectory',$directory)

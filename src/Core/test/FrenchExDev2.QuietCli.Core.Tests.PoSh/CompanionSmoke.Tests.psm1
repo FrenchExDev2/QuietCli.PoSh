@@ -13,14 +13,14 @@ function Invoke-QuietCompanionSmokeTests {
     #>
     param([string]$WorkspaceRoot,[string[]]$Suites,[string]$RunDirectory,[scriptblock]$OnProgress)
     Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/CompanionWorkflows.psm1')) -DisableNameChecking -ErrorAction Stop
-    $results=[Collections.Generic.List[object]]::new();$passed=0;$failed=0
+    $cases=[ordered]@{}
+    $companionNames=@{}
     foreach($suite in $Suites){
         Assert-QuietCompanionProfile -WorkspaceRoot $WorkspaceRoot -Suite $suite
         $dedicatedSmoke=$suite -cin @('Core','Git','Vagrant')
         $caseName=$suite+$(if($dedicatedSmoke){' integration smoke'}else{' module-loading smoke'})
-        if($OnProgress){& $OnProgress $caseName 'Running' $passed $failed}
-        $errorText=$null
-        try{
+        $companionNames[$caseName]=$suite
+        $cases.Add($caseName,{
             $context=[pscustomobject]@{Root=$WorkspaceRoot;Suite=$suite;DedicatedSmoke=$dedicatedSmoke}
             $companions=@($suite|Where-Object {$_ -cne 'Core'})
             & ([IO.Path]::Combine($WorkspaceRoot,'scripts/Invoke-Quiet.ps1')) -Companion $companions -Runtime $context -Code {
@@ -41,11 +41,17 @@ function Invoke-QuietCompanionSmokeTests {
                     if(!$parsed -or $parsed.Machine -cne 'web' -or $parsed.Type -cne 'ui' -or ($parsed.Fields -join ',') -cne 'info,ready'){throw 'VagrantParserSmokeFailed'}
                 }
             }
-            $passed++;$caseState='Passed'
-        }catch{$failed++;$caseState='Failed';$errorText=$_.ToString()}
-        $results.Add([pscustomobject]@{Name=$caseName;State=$caseState;Error=$errorText;Companion=$suite;Mode='smoke'})
-        if($OnProgress){& $OnProgress $caseName $caseState $passed $failed}
+        }.GetNewClosure())
     }
-    [pscustomobject]@{Project='CompanionSmoke';Passed=$passed;Failed=$failed;Partial=$false;Incomplete=$false;Skipped=0;QualificationMode='smoke';Cases=$results.ToArray()}
+    $testWorkspace=[IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot,'../../../..'))
+    Import-Module ([IO.Path]::Combine($testWorkspace,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $tested=Invoke-QuietPesterCaseTable -WorkspaceRoot $testWorkspace -Suite CompanionSmoke -Cases $cases -OnProgress $OnProgress -InvokePester {
+        param($configuration,$body)
+        if($body){& $body}else{Pester\Invoke-Pester -Configuration $configuration}
+    }
+    $results=@(foreach($case in $tested.Cases){
+        [pscustomobject]@{Name=$case.Name;State=$case.State;Error=$case.Error;Companion=$companionNames[$case.Name];Mode='smoke'}
+    })
+    [pscustomobject]@{Project='CompanionSmoke';Passed=$tested.Passed;Failed=$tested.Failed;Partial=$false;Incomplete=$false;Skipped=0;QualificationMode='smoke';Cases=$results}
 }
 Export-ModuleMember -Function Invoke-QuietCompanionSmokeTests

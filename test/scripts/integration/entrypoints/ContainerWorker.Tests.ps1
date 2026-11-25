@@ -13,9 +13,17 @@ BeforeAll {
     $fixtureLib = [IO.Path]::Combine($fixtureScripts,'lib')
     [void][IO.Directory]::CreateDirectory($fixtureLib)
     Copy-Item -LiteralPath ([IO.Path]::Combine($scripts,'Invoke-ContainerWorker.ps1')) -Destination $fixtureScripts
-    foreach ($name in 'CiCompanions','WorkspaceJson','WorkspaceLayout','WorkspaceProjects') {
+    Copy-Item -LiteralPath ([IO.Path]::Combine($scripts,'Initialize-TestTools.ps1')) -Destination $fixtureScripts
+    foreach ($name in 'CiCompanions','WorkspaceJson','WorkspaceLayout','WorkspaceProjects','RunEncoding','RunToolCache') {
         Copy-Item -LiteralPath ([IO.Path]::Combine($scripts,'lib',"$name.psm1")) -Destination $fixtureLib
     }
+    Import-QuietTestLibrary RunToolCache
+    $package = Get-RunTestToolPackages -Tool pester
+    $archiveRelativePath = [IO.Path]::Combine($package.Name,($package.Name+'.'+$package.Version+'.nupkg'))
+    $sourceArchive = [IO.Path]::Combine((Get-QuietTestToolDirectory -WorkspaceRoot (Get-QuietTestWorkspaceRoot)),$archiveRelativePath)
+    $fixtureArchive = [IO.Path]::Combine((Get-QuietTestToolDirectory -WorkspaceRoot $workspace),$archiveRelativePath)
+    [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($fixtureArchive))
+    Copy-Item -LiteralPath $sourceArchive -Destination $fixtureArchive
     $support = [IO.Path]::Combine($PSScriptRoot,'..','..','support','ContainerWorker.Fixture.psm1')
     Copy-Item -LiteralPath $support -Destination ([IO.Path]::Combine($fixtureLib,'Common.psm1'))
     $null = New-QuietTestFile ([IO.Path]::Combine($fixtureLib,'ContainerInputs.psm1')) '# Supplied by the container fixture.'
@@ -32,14 +40,18 @@ Describe 'Invoke-ContainerWorker guest progress' {
         $result = Invoke-QuietTestScript -ScriptPath $worker -ArgumentList @(
             '-WorkspaceRoot',$workspace,'-RunDirectory',$reports,'-Image','fixture:prepared','-Platform','alpine',
             '-ExpectedRuntimeIdentifier','linux-musl-arm64','-ContainerRuntime','docker','-GitHubActions','-Suite','Core'
-        ) -Environment @{ QUIETCLI_FIXTURE_TERMINAL=$Terminal } -TimeoutSeconds 20
+        ) -Environment @{ QUIETCLI_FIXTURE_TERMINAL=$Terminal; QUIETCLI_TEST_TOOLS_OFFLINE='1' } -TimeoutSeconds 30
         $result.TimedOut | Should -BeFalse
         $result.ExitCode | Should -Be $ExitCode -Because ($result.Output + $result.Error)
         $report = Get-Content -LiteralPath ([IO.Path]::Combine($reports,'summary.json')) -Raw -Encoding utf8 | ConvertFrom-Json
         $report.State.State | Should -BeExactly $State -Because $report.State.Error
         if ($Terminal -ceq 'valid') {
             $report.State.Passed | Should -Be 42
+            $report.State.TestPassed | Should -Be 39
+            $report.State.TestFailed | Should -Be 0
             $report.State.GuestExitCode | Should -Be 0
+            $stagedCache = Get-QuietTestToolDirectory -WorkspaceRoot ([IO.Path]::Combine($reports,'workspace'))
+            (Get-FileHash -LiteralPath ([IO.Path]::Combine($stagedCache,$archiveRelativePath)) -Algorithm SHA256).Hash | Should -BeExactly $package.SHA256
         } elseif ($Terminal -ceq 'malformed') {
             $report.State.Error | Should -Match "'State'"
         } else {

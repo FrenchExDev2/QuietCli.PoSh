@@ -6,6 +6,8 @@ Runs one already-mutated sandbox and saves a bounded suite result for its owning
 Checkout supplying the engine-independent process helper.
 .PARAMETER Sandbox
 Owned mutation sandbox containing the suite.
+.PARAMETER PesterModulePath
+Verified Pester manifest from the owning checkout.
 .PARAMETER Seed
 Deterministic property seed.
 .PARAMETER Iterations
@@ -16,12 +18,12 @@ Deadline of the owned suite process.
 Encoding selected by the parent campaign.
 #>
 [CmdletBinding(SupportsShouldProcess)]
-param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$Sandbox,[int]$Seed,[int]$Iterations,[int]$TimeoutSeconds,[string]$ConsoleEncoding='utf-8')
+param([Parameter(Mandatory)][string]$WorkspaceRoot,[Parameter(Mandatory)][string]$Sandbox,[Parameter(Mandatory)][string]$PesterModulePath,[int]$Seed,[int]$Iterations,[int]$TimeoutSeconds,[string]$ConsoleEncoding='utf-8')
 if(!$PSCmdlet.ShouldProcess($Sandbox,'Run one owned mutation suite and save its bounded result')){return}
 $ErrorActionPreference='Stop'
 Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Ci.Process.psm1') -DisableNameChecking -ErrorAction Stop
 $capture=@{Summary=$null}
-$result=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -ArgumentList @('-File',(Join-Path $Sandbox 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1'),'-Seed',"$Seed",'-Iterations',"$Iterations",'-ConsoleEncoding',$ConsoleEncoding,'-Skip','profiler:,console:,coldstart-live:,tool-cache-live:') -WorkingDirectory $Sandbox -TimeoutSeconds $TimeoutSeconds -State $capture -OnOutput {
+$result=Invoke-CiProcess -FilePath (Join-Path $PSHOME $(if($IsWindows){'pwsh.exe'}else{'pwsh'})) -ArgumentList @('-File',(Join-Path $Sandbox 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/RunProfiles.Tests.ps1'),'-PesterModulePath',$PesterModulePath,'-Seed',"$Seed",'-Iterations',"$Iterations",'-ConsoleEncoding',$ConsoleEncoding,'-Skip','profiler:,console:,coldstart-live:,tool-cache-live:') -WorkingDirectory $Sandbox -TimeoutSeconds $TimeoutSeconds -State $capture -OnOutput {
     param($record,$state)
     if($record.Stream -eq 'stdout' -and $record.Text -match '^SUMMARY Passed=(\d+) Failed=(\d+) Skipped=(\d+)$'){
         $state.Summary=@{Passed=[int]$Matches[1];Failed=[int]$Matches[2];Skipped=[int]$Matches[3]}

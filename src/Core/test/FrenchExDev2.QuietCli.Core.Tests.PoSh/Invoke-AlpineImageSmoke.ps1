@@ -63,37 +63,41 @@ function Assert-AlpineSmoke {
     Write-WorkspaceJson $status $state
     if(!$Condition){throw ('AlpineSmokeInvariantFailed: '+$Name)}
 }
+$smokeEvidence=@{receipt=$receipt;diagnosis=$diagnosis;sdk=$sdk;backend=$backend;sdkAttempted=$sdkAttempted}
+$state.TestPassed=0;$state.TestFailed=0
 try{
-    $backend=Invoke-AlpineSmokeNative @('info','--format','{{.Host.OS}} {{.Host.Arch}}')
-    Write-WorkspaceJson (Join-Path $RunDirectory 'backend.json') $backend
-    $architecture=if($RuntimeIdentifier.EndsWith('arm64')){'arm64'}else{'amd64'}
-    Assert-AlpineSmoke 'The Podman backend is native Linux for the selected architecture' ($backend.Outcome -eq 'Success' -and ($backend.Stdout -join '').Trim() -ceq "linux $architecture")
-    $state.Case='Build the declared image; detailed output is retained in worker.stdout.log and podman.log';Write-WorkspaceJson $status $state
-    $receipt=& (Join-Path $WorkspaceRoot 'scripts/New-CiImage.ps1') -RuntimeIdentifier $RuntimeIdentifier -WorkspaceRoot $WorkspaceRoot
-    Write-WorkspaceJson (Join-Path $RunDirectory 'image.json') $receipt
-    Assert-AlpineSmoke 'The builder returned a local image without publication' ($receipt.Image -cmatch '^(sha256:)?[a-f0-9]{64}$' -and !$receipt.Published)
-    $state.Case='Run unchanged-default and explicit-root runtime controls';Write-WorkspaceJson $status $state
-    $runtime=& (Join-Path $WorkspaceRoot 'scripts/Invoke-ContainerRuntimeDiagnosis.ps1') -Image $receipt.Image -ExpectedRuntimeIdentifier $RuntimeIdentifier -WorkspaceRoot $WorkspaceRoot -RunDirectory (Join-Path $RunDirectory 'runtime') | Select-Object -Last 1
-    $report=Get-Content -LiteralPath (Join-Path $runtime.RunDirectory 'summary.json') -Raw -Encoding utf8|ConvertFrom-Json
-    $diagnosis=$report.Diagnosis
-    $default=@($report.Observations|Where-Object Name -eq Default)
-    Assert-AlpineSmoke 'PowerShell starts with the unchanged image defaults' ($default.Count -eq 1 -and $default[0].Outcome -eq 'Success')
-    $probe=$default[0].Probe
-    $state.Platform=$probe.RuntimeIdentifier
-    $locked=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'build/ci-images.lock.json') -Raw -Encoding utf8|ConvertFrom-Json
-    Assert-AlpineSmoke 'The installed PowerShell version matches the locked package' ($probe.PowerShellVersion -ceq ($locked.AlpinePowerShellPackage -replace '-r\d+$',''))
-    Assert-AlpineSmoke 'Stable PowerShell uses the locked Microsoft CLR 10' ($probe.FrameworkMajor -eq 10 -and $probe.RuntimeDirectory.StartsWith(('/opt/pwsh-runtime/shared/Microsoft.NETCore.App/'+$locked.AlpineRuntime+'/')))
-    Assert-AlpineSmoke 'The actual portable musl RID matches the selected native target' ($probe.RuntimeIdentifier -ceq $RuntimeIdentifier)
-    Assert-AlpineSmoke 'The expected musl SQLite asset actually loads' ($probe.Libc -ceq 'Musl' -and $probe.ExpectedNative.Outcome -ceq 'Success' -and $probe.ExpectedNative.HashMatches)
-    Assert-AlpineSmoke 'No runtime-root bootstrap correction is needed' (!$diagnosis.BootstrapConfigurationProblem)
-    Assert-AlpineSmoke 'Runtime diagnostic container removal was confirmed' ($report.State.Cleanup -ceq 'RemovedOwnedContainer')
-    $state.Case='Check the pinned SDK with the same image defaults';$state.ContainerId=$sdkName;Write-WorkspaceJson $status $state
-    $sdkAttempted=$true
-    $sdk=Invoke-AlpineSmokeNative @('run','--rm','--network=none','--name',$sdkName,'--label',('org.frenchexdev.quietcli2.owner='+$sdkName),'--entrypoint','dotnet',$receipt.Image,'--version')
-    $expectedSdk=(Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'global.json') -Raw -Encoding utf8|ConvertFrom-Json).sdk.version
-    Assert-AlpineSmoke 'The .NET CLI still starts the pinned SDK under the same defaults' ($sdk.Outcome -eq 'Success' -and ($sdk.Stdout -join '').Trim() -ceq $expectedSdk)
-    $state.Case='Verify offline Gallery compression and hidden-file inspection';Write-WorkspaceJson $status $state
-    $packageProbe=@'
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $scenarios=[ordered]@{'Build and verify the declared Alpine image'={
+        $smokeEvidence.backend=Invoke-AlpineSmokeNative @('info','--format','{{.Host.OS}} {{.Host.Arch}}')
+        Write-WorkspaceJson (Join-Path $RunDirectory 'backend.json') $smokeEvidence.backend
+        $architecture=if($RuntimeIdentifier.EndsWith('arm64')){'arm64'}else{'amd64'}
+        Assert-AlpineSmoke 'The Podman backend is native Linux for the selected architecture' ($smokeEvidence.backend.Outcome -eq 'Success' -and ($smokeEvidence.backend.Stdout -join '').Trim() -ceq "linux $architecture")
+        $state.Case='Build the declared image; detailed output is retained in worker.stdout.log and podman.log';Write-WorkspaceJson $status $state
+        $smokeEvidence.receipt=& (Join-Path $WorkspaceRoot 'scripts/New-CiImage.ps1') -RuntimeIdentifier $RuntimeIdentifier -WorkspaceRoot $WorkspaceRoot
+        Write-WorkspaceJson (Join-Path $RunDirectory 'image.json') $smokeEvidence.receipt
+        Assert-AlpineSmoke 'The builder returned a local image without publication' ($smokeEvidence.receipt.Image -cmatch '^(sha256:)?[a-f0-9]{64}$' -and !$smokeEvidence.receipt.Published)
+        $state.Case='Run unchanged-default and explicit-root runtime controls';Write-WorkspaceJson $status $state
+        $runtime=& (Join-Path $WorkspaceRoot 'scripts/Invoke-ContainerRuntimeDiagnosis.ps1') -Image $smokeEvidence.receipt.Image -ExpectedRuntimeIdentifier $RuntimeIdentifier -WorkspaceRoot $WorkspaceRoot -RunDirectory (Join-Path $RunDirectory 'runtime') | Select-Object -Last 1
+        $report=Get-Content -LiteralPath (Join-Path $runtime.RunDirectory 'summary.json') -Raw -Encoding utf8|ConvertFrom-Json
+        $smokeEvidence.diagnosis=$report.Diagnosis
+        $default=@($report.Observations|Where-Object Name -eq Default)
+        Assert-AlpineSmoke 'PowerShell starts with the unchanged image defaults' ($default.Count -eq 1 -and $default[0].Outcome -eq 'Success')
+        $probe=$default[0].Probe
+        $state.Platform=$probe.RuntimeIdentifier
+        $locked=Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'build/ci-images.lock.json') -Raw -Encoding utf8|ConvertFrom-Json
+        Assert-AlpineSmoke 'The installed PowerShell version matches the locked package' ($probe.PowerShellVersion -ceq ($locked.AlpinePowerShellPackage -replace '-r\d+$',''))
+        Assert-AlpineSmoke 'Stable PowerShell uses the locked Microsoft CLR 10' ($probe.FrameworkMajor -eq 10 -and $probe.RuntimeDirectory.StartsWith(('/opt/pwsh-runtime/shared/Microsoft.NETCore.App/'+$locked.AlpineRuntime+'/')))
+        Assert-AlpineSmoke 'The actual portable musl RID matches the selected native target' ($probe.RuntimeIdentifier -ceq $RuntimeIdentifier)
+        Assert-AlpineSmoke 'The expected musl SQLite asset actually loads' ($probe.Libc -ceq 'Musl' -and $probe.ExpectedNative.Outcome -ceq 'Success' -and $probe.ExpectedNative.HashMatches)
+        Assert-AlpineSmoke 'No runtime-root bootstrap correction is needed' (!$smokeEvidence.diagnosis.BootstrapConfigurationProblem)
+        Assert-AlpineSmoke 'Runtime diagnostic container removal was confirmed' ($report.State.Cleanup -ceq 'RemovedOwnedContainer')
+        $state.Case='Check the pinned SDK with the same image defaults';$state.ContainerId=$sdkName;Write-WorkspaceJson $status $state
+        $smokeEvidence.sdkAttempted=$true
+        $smokeEvidence.sdk=Invoke-AlpineSmokeNative @('run','--rm','--network=none','--name',$sdkName,'--label',('org.frenchexdev.quietcli2.owner='+$sdkName),'--entrypoint','dotnet',$smokeEvidence.receipt.Image,'--version')
+        $expectedSdk=(Get-Content -LiteralPath (Join-Path $WorkspaceRoot 'global.json') -Raw -Encoding utf8|ConvertFrom-Json).sdk.version
+        Assert-AlpineSmoke 'The .NET CLI still starts the pinned SDK under the same defaults' ($smokeEvidence.sdk.Outcome -eq 'Success' -and ($smokeEvidence.sdk.Stdout -join '').Trim() -ceq $expectedSdk)
+        $state.Case='Verify offline Gallery compression and hidden-file inspection';Write-WorkspaceJson $status $state
+        $packageProbe=@'
 $ErrorActionPreference='Stop'
 $root='/tmp/QuietSmoke'
 $null=New-Item -ItemType Directory -Path $root
@@ -104,13 +108,20 @@ Compress-PSResource -Path $root -DestinationPath /tmp -ErrorAction Stop
 if(!(Test-Path /tmp/QuietSmoke.1.0.0.nupkg)){throw 'OfflinePackageMissing'}
 'OfflinePackageAndHiddenFileOK'
 '@
-    $package=Invoke-AlpineSmokeNative @('run','--rm','--network=none','--name',$sdkName,'--entrypoint','pwsh',$receipt.Image,'-NoProfile','-Command',$packageProbe)
-    Write-WorkspaceJson (Join-Path $RunDirectory 'packaging.json') $package
-    Assert-AlpineSmoke 'PSResourceGet creates a real nupkg without network and dotfiles remain readable' ($package.Outcome -eq 'Success' -and ($package.Stdout -contains 'OfflinePackageAndHiddenFileOK'))
-    $state.State='Success'
-}catch{$state.State='Failed';$state.Error=$_.ToString();if(!$state.Failed){$state.Failed++}}
+        $package=Invoke-AlpineSmokeNative @('run','--rm','--network=none','--name',$sdkName,'--entrypoint','pwsh',$smokeEvidence.receipt.Image,'-NoProfile','-Command',$packageProbe)
+        Write-WorkspaceJson (Join-Path $RunDirectory 'packaging.json') $package
+        Assert-AlpineSmoke 'PSResourceGet creates a real nupkg without network and dotfiles remain readable' ($package.Outcome -eq 'Success' -and ($package.Stdout -contains 'OfflinePackageAndHiddenFileOK'))
+    }}
+    $tested=Invoke-QuietPesterCaseTable -WorkspaceRoot $WorkspaceRoot -Suite AlpineImageSmoke -Cases $scenarios -OnProgress {
+        param($name,$caseState,$passed,$failed)
+        $state.Case="[$caseState] $name";$state.TestPassed=$passed;$state.TestFailed=$failed
+        Write-WorkspaceJson $status $state
+    } -InvokePester {param($configuration) Pester\Invoke-Pester -Configuration $configuration}
+    if($tested.Failed){$state.State='Failed';$state.Error=$tested.Cases[0].Error;if(!$state.Failed){$state.Failed++}}
+    else{$state.State='Success'}
+}catch{$state.State='Crash';$state.Error=$_.Exception.Message;if(!$state.Failed){$state.Failed++}}
 finally{
-    if($sdkAttempted){
+    if($smokeEvidence.sdkAttempted){
         try{
             $exists=Invoke-AlpineSmokeNative @('container','exists',$sdkName)
             if($exists.ExitCode -eq 0){$null=Invoke-AlpineSmokeNative @('rm','--force',$sdkName);$exists=Invoke-AlpineSmokeNative @('container','exists',$sdkName)}
@@ -119,7 +130,7 @@ finally{
         }catch{$state.State='Failed';$state.Cleanup='Unconfirmed';$state.Error+='; '+$_.Exception.Message}
     }
     $state.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o')
-    Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$state;Checks=$checks.ToArray();Image=$receipt;Diagnosis=$diagnosis;Sdk=$sdk;Backend=$backend;Qualification='ImageBootstrapSmokeOnly'}
+    Write-WorkspaceJson (Join-Path $RunDirectory 'summary.json') @{State=$state;Checks=$checks.ToArray();Image=$smokeEvidence.receipt;Diagnosis=$smokeEvidence.diagnosis;Sdk=$smokeEvidence.sdk;Backend=$smokeEvidence.backend;Qualification='ImageBootstrapSmokeOnly'}
     Write-WorkspaceJson $status $state
 }
 if($state.State -ne 'Success'){throw "Alpine image smoke failed: $RunDirectory"}

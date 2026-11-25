@@ -21,8 +21,8 @@ The worker performs these steps:
 1. Writes the `Running` status.
 2. Sets `QUIETCLI_TEST_SEED`, `QUIETCLI_SCRIPTS_ROOT` and `QUIETCLI_WORKSPACE_ROOT`.
 3. Imports Pester globally from its pinned path and requires exactly one loaded instance, version 6.2.0 (`ScriptsTestPesterVersionMismatch` otherwise).
-4. Runs one `Invoke-Pester` from an empty dynamic module, not from this module.
-5. Saves `report.json`, the terminal `status.json` and `summary.json`.
+4. Runs `Invoke-Pester` from an empty dynamic module. With file parallelism enabled, isolated processes each take a group of whole files. Files that opt out run after the parallel group.
+5. Saves the counts reported by the Pester test hook while tests run. Collects the worker reports into `report.json`, `results.junit.xml`, terminal `status.json` and `summary.json`.
 
 An exception becomes a `Crash` status. A timeout or a missing summary is recorded by `Wait-WorkspaceWorker` as `Timeout` or `Crash`.
 

@@ -10,6 +10,8 @@ Implements [Watch-Tests.ps1](../Watch-Tests.md). Exports only "Invoke-QuietScrip
 
 ## Purpose
 
+The **Réussis** and **Échoués** columns show the cumulative counts from the test runner. The monitor uses `TestPassed` and `TestFailed` when available and shows per-worker values when provided. An em dash indicates an unavailable count. Log bytes and lines are shown separately as report activity.
+
 This is the shared, read-only visible-monitor UI for every test run, mutation campaign, container CI
 job, GitHub run watch, gallery publish, and workstation smoke test in the repository. It solves the
 problem AGENTS.md mandates directly: "every test run started by an agent also gets a visible
