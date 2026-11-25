@@ -354,6 +354,7 @@ Describe 'ConvertTo-QuietScriptsTestReport' {
     It 'counts failed blocks and containers as failures' {
         $report=ConvertTo-QuietScriptsTestReport -Result (& $result 2 0 0 1 1 'Failed') -Plan $plan
         $report.Failed|Should -Be 2
+        $report.TestFailed|Should -Be 0
         $report.State|Should -BeExactly 'Failed'
     }
     It 'marks <Case> as incomplete' -ForEach @(

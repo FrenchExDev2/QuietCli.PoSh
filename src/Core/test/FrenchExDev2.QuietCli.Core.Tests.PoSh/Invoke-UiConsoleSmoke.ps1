@@ -36,11 +36,15 @@ if(!$Worker){
 $state=@{Project='FrenchExDev2.QuietCli.Core.PoSh';Task='Interactive Spectre console resize';Workspace=$root;ProjectDirectory=(Join-Path $root 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh');Platform='win-x64';State='Running';StartedUtc=[DateTimeOffset]::UtcNow.ToString('o');FinishedUtc=$null;ProcessId=$PID;Passed=0;Failed=0;Case='Attach live surface';Error=$null}
 Write-WorkspaceJson (Join-Path $run 'status.json') $state
 $renderer=$null;$frames=[Collections.Generic.List[object]]::new()
+$smokeEvidence=@{renderer=$renderer}
+$state.TestPassed=0;$state.TestFailed=0
 try{
-    Import-Module (Join-Path $root 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
-    [void][Reflection.Assembly]::LoadFrom((Join-Path $root 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/Spectre.Console.Ansi.dll'))
-    [void][Reflection.Assembly]::LoadFrom((Join-Path $root 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/Spectre.Console.dll'))
-    Add-Type -TypeDefinition @'
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $scenarios=[ordered]@{'Exercise the native Windows console and live surface'={
+        Import-Module (Join-Path $root 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/FrenchExDev2.QuietCli.Core.PoSh.psd1')
+        [void][Reflection.Assembly]::LoadFrom((Join-Path $root 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/Spectre.Console.Ansi.dll'))
+        [void][Reflection.Assembly]::LoadFrom((Join-Path $root 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh/lib/inprocess/Spectre.Console.dll'))
+        Add-Type -TypeDefinition @'
 using System;
 using System.Collections.Concurrent;
 using System.ComponentModel;
@@ -110,98 +114,106 @@ public static class QuietUiConsoleProbe {
     }
 }
 '@
-    if([Console]::IsOutputRedirected -or ![Spectre.Console.AnsiConsole]::Profile.Capabilities.Interactive){throw 'InteractiveConsoleUnavailable'}
-    [Console]::Title='QuietCli Core | Interactive console smoke'
-    [Console]::CursorVisible=$false
-    $logger=[Delegate]::CreateDelegate([Action[string,string,string]],[QuietUiConsoleProbe].GetMethod('Error'))
-    $surface=[FrenchExDev2.QuietCli.Cmdlets.SpectreLiveSurface]::new()
-    $renderer=[FrenchExDev2.QuietCli.Cmdlets.QuietUiRenderer]::new(3,$surface,$logger)
-    $renderer.SetHeader([string[]]@('Project: QuietCli Core | Task: console smoke',$root,(Join-Path $root 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh')))
-    foreach($index in 1..5){foreach($machine in 'web','db'){$renderer.Write([pscustomobject]@{Stream='stdout';Text="été 漢字 🙂 $machine message $index"},$machine);$renderer.NewLine($machine)}}
-    foreach($size in @(@(120,28),@(80,20),@(36,12),@(22,10),@(110,26))){
-        $state.Case='Resize '+($size -join 'x');Write-WorkspaceJson (Join-Path $run 'status.json') $state
-        [Console]::SetBufferSize([Math]::Max([Console]::BufferWidth,$size[0]),[Math]::Max([Console]::BufferHeight,$size[1]))
-        [Console]::SetWindowSize($size[0],$size[1])
-        [Console]::SetBufferSize($size[0],[Console]::BufferHeight)
-        [Threading.Tasks.Task]::Delay(700).GetAwaiter().GetResult()
-        $rows=[QuietUiConsoleProbe]::Capture()
-        [void]$frames.Add(@{Requested=$size;Width=[Console]::WindowWidth;Height=[Console]::WindowHeight;Rows=$rows})
-        if(($rows -join "`n") -match 'QuietCli|QC' -and ($rows -join "`n") -match 'Task:| T:'){$state.Passed++}else{$state.Failed++}
-        Write-WorkspaceJson (Join-Path $run 'frames.json') $frames.ToArray()
-    }
-    $renderer.Dispose();$renderer=$null
-    $state.Case='Cancel a real UI invocation and reuse its live surface';Write-WorkspaceJson (Join-Path $run 'status.json') $state
-    $cancel=Join-Path $run 'cancel.signal'
-    $pending=[QuietUiConsoleProbe]::CancelAfterAsync($cancel)
-    $dotnet=(Get-Command dotnet -CommandType Application | Select-Object -First 1).Source
-    $fixture=Join-Path $root 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture/QuietCli.Fixture.dll'
-    $cancelled=quiet -AsObject -Ui -CancellationFile $cancel -TimeoutSeconds 10 -FilePath $dotnet -ArgumentList @($fixture,'hang') -Output {param($event,$runtime)}
-    [void]$pending.GetAwaiter().GetResult()
-    $child=$cancelled.Execution.Native.ProcessId
-    $removed=$child -and !(Get-Process -Id $child -ErrorAction SilentlyContinue)
-    if($cancelled.Outcome -eq 'Cancelled' -and $removed){$state.Passed++}else{$state.Failed++}
-    $next=quiet -AsObject -Ui -TimeoutSeconds 10 -FilePath $dotnet -ArgumentList @($fixture,'args','after-cancel') -Output {param($event,$runtime)}
-    if($next.Outcome -eq 'Success' -and !@($next.Error | Where-Object Code -Like 'Ui*').Count){$state.Passed++}else{$state.Failed++}
-    Write-WorkspaceJson (Join-Path $run 'cancellation.json') @{Outcome=$cancelled.Outcome;Execution=$cancelled.Execution;Error=$cancelled.Error;ChildRemoved=[bool]$removed;NextOutcome=$next.Outcome;NextErrors=$next.Error}
-    foreach($mode in 'keypress','keypress-or-timer'){
-        $state.Case='Watch '+$mode
-        Write-WorkspaceJson ([IO.Path]::Combine($run,'status.json')) $state
-        $ready = [IO.Path]::Combine($run,$mode+'.ready')
-        $cancel = [IO.Path]::Combine($run,$mode+'.cancel')
-        $data = @{ Cycles = 0; Ready = $ready }
-        $pending = [QuietUiConsoleProbe]::ExerciseWatchKeysAsync($ready,$cancel)
-        $conditions = if($mode -eq 'keypress'){@{WatchOnKeypress=$true}}else{@{Watch='30s';WatchOnKeypress=$true}}
-        $output = @(quiet @conditions -UI -CancellationFile $cancel -TimeoutSeconds 5 -Data $data -Complete {
-            param($runtime)
-            $data = $runtime.Data
-            $data.Cycles++
-            $runtime.Ui.Write('Completed cycle '+$data.Cycles,'watch-test')
-            if($data.Cycles -eq 1){[IO.File]::WriteAllText($data.Ready,'ready',[Text.UTF8Encoding]::new($false))}
-        } -FilePath $dotnet -ArgumentList @($fixture,'args','watch'))
-        $rows = $pending.GetAwaiter().GetResult()
-        if($data.Cycles -ne 3 -or $output.Count -ne 0 -or ($rows -join "`n") -notmatch 'Completed cycle 3'){
-            throw "Watch keyboard or live output changed: $mode, cycles=$($data.Cycles), outputs=$($output.Count)"
+        if([Console]::IsOutputRedirected -or ![Spectre.Console.AnsiConsole]::Profile.Capabilities.Interactive){throw 'InteractiveConsoleUnavailable'}
+        [Console]::Title='QuietCli Core | Interactive console smoke'
+        [Console]::CursorVisible=$false
+        $logger=[Delegate]::CreateDelegate([Action[string,string,string]],[QuietUiConsoleProbe].GetMethod('Error'))
+        $surface=[FrenchExDev2.QuietCli.Cmdlets.SpectreLiveSurface]::new()
+        $smokeEvidence.renderer=[FrenchExDev2.QuietCli.Cmdlets.QuietUiRenderer]::new(3,$surface,$logger)
+        $smokeEvidence.renderer.SetHeader([string[]]@('Project: QuietCli Core | Task: console smoke',$root,(Join-Path $root 'src/Core/src/FrenchExDev2.QuietCli.Core.PoSh')))
+        foreach($index in 1..5){foreach($machine in 'web','db'){$smokeEvidence.renderer.Write([pscustomobject]@{Stream='stdout';Text="été 漢字 🙂 $machine message $index"},$machine);$smokeEvidence.renderer.NewLine($machine)}}
+        foreach($size in @(@(120,28),@(80,20),@(36,12),@(22,10),@(110,26))){
+            $state.Case='Resize '+($size -join 'x');Write-WorkspaceJson (Join-Path $run 'status.json') $state
+            [Console]::SetBufferSize([Math]::Max([Console]::BufferWidth,$size[0]),[Math]::Max([Console]::BufferHeight,$size[1]))
+            [Console]::SetWindowSize($size[0],$size[1])
+            [Console]::SetBufferSize($size[0],[Console]::BufferHeight)
+            [Threading.Tasks.Task]::Delay(700).GetAwaiter().GetResult()
+            $rows=[QuietUiConsoleProbe]::Capture()
+            [void]$frames.Add(@{Requested=$size;Width=[Console]::WindowWidth;Height=[Console]::WindowHeight;Rows=$rows})
+            if(($rows -join "`n") -match 'QuietCli|QC' -and ($rows -join "`n") -match 'Task:| T:'){$state.Passed++}else{$state.Failed++}
+            Write-WorkspaceJson (Join-Path $run 'frames.json') $frames.ToArray()
         }
-        $state.Passed++
-        Write-WorkspaceJson ([IO.Path]::Combine($run,$mode+'.json')) @{Cycles=$data.Cycles;Rows=$rows}
-    }
-    if($GitWatch){
-        $state.Case='Git Watch through the local launcher with default arguments'
-        Write-WorkspaceJson ([IO.Path]::Combine($run,'status.json')) $state
-        $ready=[IO.Path]::Combine($run,'git-watch.ready')
-        $cancel=[IO.Path]::Combine($run,'git-watch.cancel')
-        $data=@{Cycles=0;Ready=$ready}
-        $observe={
-            param($event,$runtime)
-            if($event.Type -eq 'GitStatusSummary'){
+        $smokeEvidence.renderer.Dispose();$smokeEvidence.renderer=$null
+        $state.Case='Cancel a real UI invocation and reuse its live surface';Write-WorkspaceJson (Join-Path $run 'status.json') $state
+        $cancel=Join-Path $run 'cancel.signal'
+        $pending=[QuietUiConsoleProbe]::CancelAfterAsync($cancel)
+        $dotnet=(Get-Command dotnet -CommandType Application | Select-Object -First 1).Source
+        $fixture=Join-Path $root 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/lib/fixture/QuietCli.Fixture.dll'
+        $cancelled=quiet -AsObject -Ui -CancellationFile $cancel -TimeoutSeconds 10 -FilePath $dotnet -ArgumentList @($fixture,'hang') -Output {param($event,$runtime)}
+        [void]$pending.GetAwaiter().GetResult()
+        $child=$cancelled.Execution.Native.ProcessId
+        $removed=$child -and !(Get-Process -Id $child -ErrorAction SilentlyContinue)
+        if($cancelled.Outcome -eq 'Cancelled' -and $removed){$state.Passed++}else{$state.Failed++}
+        $next=quiet -AsObject -Ui -TimeoutSeconds 10 -FilePath $dotnet -ArgumentList @($fixture,'args','after-cancel') -Output {param($event,$runtime)}
+        if($next.Outcome -eq 'Success' -and !@($next.Error | Where-Object Code -Like 'Ui*').Count){$state.Passed++}else{$state.Failed++}
+        Write-WorkspaceJson (Join-Path $run 'cancellation.json') @{Outcome=$cancelled.Outcome;Execution=$cancelled.Execution;Error=$cancelled.Error;ChildRemoved=[bool]$removed;NextOutcome=$next.Outcome;NextErrors=$next.Error}
+        foreach($mode in 'keypress','keypress-or-timer'){
+            $state.Case='Watch '+$mode
+            Write-WorkspaceJson ([IO.Path]::Combine($run,'status.json')) $state
+            $ready = [IO.Path]::Combine($run,$mode+'.ready')
+            $cancel = [IO.Path]::Combine($run,$mode+'.cancel')
+            $data = @{ Cycles = 0; Ready = $ready }
+            $pending = [QuietUiConsoleProbe]::ExerciseWatchKeysAsync($ready,$cancel)
+            $conditions = if($mode -eq 'keypress'){@{WatchOnKeypress=$true}}else{@{Watch='30s';WatchOnKeypress=$true}}
+            $output = @(quiet @conditions -UI -CancellationFile $cancel -TimeoutSeconds 5 -Data $data -Complete {
+                param($runtime)
+                $data = $runtime.Data
                 $data.Cycles++
+                $runtime.Ui.Write('Completed cycle '+$data.Cycles,'watch-test')
                 if($data.Cycles -eq 1){[IO.File]::WriteAllText($data.Ready,'ready',[Text.UTF8Encoding]::new($false))}
+            } -FilePath $dotnet -ArgumentList @($fixture,'args','watch'))
+            $rows = $pending.GetAwaiter().GetResult()
+            if($data.Cycles -ne 3 -or $output.Count -ne 0 -or ($rows -join "`n") -notmatch 'Completed cycle 3'){
+                throw "Watch keyboard or live output changed: $mode, cycles=$($data.Cycles), outputs=$($output.Count)"
             }
-        }.GetNewClosure()
-        $launcher=[IO.Path]::Combine($root,'scripts/Invoke-Quiet.ps1')
-        if(Get-Module FrenchExDev2.QuietCli.Git.PoSh){throw 'Git was already loaded before testing launcher defaults.'}
-        Push-Location -LiteralPath $root
-        try{
-            $pending=[QuietUiConsoleProbe]::ExerciseWatchKeysAsync($ready,$cancel)
-            $output=@(& $launcher -Code {quiet -WatchOnKeypress -CancellationFile $cancel -Listeners $observe git status})
-            if($output.Count){throw "Git Watch did not open its dashboard; first outcome: $($output[0].Outcome)"}
-            $rows=$pending.GetAwaiter().GetResult()
-        }finally{Pop-Location}
-        if($data.Cycles -ne 3 -or ($rows -join "`n") -notmatch 'Watch git status' -or ($rows -join "`n") -notmatch 'Branch:'){
-            throw "Git Watch did not refresh its dashboard: cycles=$($data.Cycles)"
+            $state.Passed++
+            Write-WorkspaceJson ([IO.Path]::Combine($run,$mode+'.json')) @{Cycles=$data.Cycles;Rows=$rows}
         }
-        if(Get-Module FrenchExDev2.QuietCli.Git.PoSh){throw 'Git remained loaded after the launcher returned.'}
-        & $launcher -Companion @() -Code {
-            if(Get-Module FrenchExDev2.QuietCli.Git.PoSh){throw 'Core-only selection unexpectedly loaded Git.'}
+        if($GitWatch){
+            $state.Case='Git Watch through the local launcher with default arguments'
+            Write-WorkspaceJson ([IO.Path]::Combine($run,'status.json')) $state
+            $ready=[IO.Path]::Combine($run,'git-watch.ready')
+            $cancel=[IO.Path]::Combine($run,'git-watch.cancel')
+            $data=@{Cycles=0;Ready=$ready}
+            $observe={
+                param($event,$runtime)
+                if($event.Type -eq 'GitStatusSummary'){
+                    $data.Cycles++
+                    if($data.Cycles -eq 1){[IO.File]::WriteAllText($data.Ready,'ready',[Text.UTF8Encoding]::new($false))}
+                }
+            }.GetNewClosure()
+            $launcher=[IO.Path]::Combine($root,'scripts/Invoke-Quiet.ps1')
+            if(Get-Module FrenchExDev2.QuietCli.Git.PoSh){throw 'Git was already loaded before testing launcher defaults.'}
+            Push-Location -LiteralPath $root
+            try{
+                $pending=[QuietUiConsoleProbe]::ExerciseWatchKeysAsync($ready,$cancel)
+                $output=@(& $launcher -Code {quiet -WatchOnKeypress -CancellationFile $cancel -Listeners $observe git status})
+                if($output.Count){throw "Git Watch did not open its dashboard; first outcome: $($output[0].Outcome)"}
+                $rows=$pending.GetAwaiter().GetResult()
+            }finally{Pop-Location}
+            if($data.Cycles -ne 3 -or ($rows -join "`n") -notmatch 'Watch git status' -or ($rows -join "`n") -notmatch 'Branch:'){
+                throw "Git Watch did not refresh its dashboard: cycles=$($data.Cycles)"
+            }
+            if(Get-Module FrenchExDev2.QuietCli.Git.PoSh){throw 'Git remained loaded after the launcher returned.'}
+            & $launcher -Companion @() -Code {
+                if(Get-Module FrenchExDev2.QuietCli.Git.PoSh){throw 'Core-only selection unexpectedly loaded Git.'}
+            }
+            $state.Passed++
+            Write-WorkspaceJson ([IO.Path]::Combine($run,'git-watch.json')) @{Cycles=$data.Cycles;Rows=$rows}
         }
-        $state.Passed++
-        Write-WorkspaceJson ([IO.Path]::Combine($run,'git-watch.json')) @{Cycles=$data.Cycles;Rows=$rows}
-    }
-    if([QuietUiConsoleProbe]::Errors.Count){$state.Failed++;$state.Error=[QuietUiConsoleProbe]::Errors.ToArray() -join '; '}
-    $state.State=if($state.Failed){'Failed'}else{'Success'}
-}catch{$state.State='Failed';$state.Failed++;$state.Error=$_.ToString()}
+        if([QuietUiConsoleProbe]::Errors.Count){$state.Failed++;$state.Error=[QuietUiConsoleProbe]::Errors.ToArray() -join '; '}
+        if($state.Failed){throw ($state.Error ?? 'One or more native console checks failed')}
+    }}
+    $tested=Invoke-QuietPesterCaseTable -WorkspaceRoot $WorkspaceRoot -Suite UiConsoleSmoke -Cases $scenarios -OnProgress {
+        param($name,$caseState,$passed,$failed)
+        $state.Case="[$caseState] $name";$state.TestPassed=$passed;$state.TestFailed=$failed
+        Write-WorkspaceJson ([IO.Path]::Combine($run,'status.json')) $state
+    } -InvokePester {param($configuration) Pester\Invoke-Pester -Configuration $configuration}
+    if($tested.Failed){$state.State='Failed';$state.Error=$tested.Cases[0].Error;if(!$state.Failed){$state.Failed++}}
+    else{$state.State='Success'}
+}catch{$state.State='Crash';$state.Error=$_.Exception.Message;if(!$state.Failed){$state.Failed++}}
 finally{
-    if($renderer){$renderer.Dispose()}
+    if($smokeEvidence.renderer){$smokeEvidence.renderer.Dispose()}
     [Console]::CursorVisible=$true
     $state.FinishedUtc=[DateTimeOffset]::UtcNow.ToString('o')
     Write-WorkspaceJson (Join-Path $run 'summary.json') @{State=$state;Frames=$frames.ToArray();Scope='Real console and Spectre resize, native cancellation, child termination, surface reuse and Watch keyboard input; physical Ctrl+C not exercised'}

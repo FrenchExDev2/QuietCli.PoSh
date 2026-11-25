@@ -619,10 +619,9 @@ Register-QuietHandler -Id 'Sample.QuietStatus.PoSh' -Definition @{
         'security audit counterexamples are closed with independent evidence'=@{TestKind='Integration';Dependencies=@('FileSystem','NativeProcess','EngineState')}
     }
     Assert-QuietTestCaseMetadata -CaseNames @($cases.Keys) -Metadata $caseMetadata
-    $passed=0;$failed=0;$results=[Collections.Generic.List[object]]::new()
     # Development-only selection (QUIETCLI_TEST_CASE wildcard, QUIETCLI_TEST_STOP_ON_FIRST_FAILURE=1); the default run executes every case.
-    $casePattern=$env:QUIETCLI_TEST_CASE;$stopOnFirst=$env:QUIETCLI_TEST_STOP_ON_FIRST_FAILURE -ceq '1'
-    $stoppedAt=$null;$skipped=0;$ttyExcluded=0
+    $casePattern=$env:QUIETCLI_TEST_CASE
+    $skipped=0;$ttyExcluded=0
     $selected=[Collections.Generic.List[string]]::new()
     foreach($entry in $cases.GetEnumerator()){
         if($env:QUIETCLI_TEST_SKIP_TTY -ceq '1' -and $entry.Key -clike 'PTY *'){$ttyExcluded++;continue}
@@ -632,42 +631,13 @@ Register-QuietHandler -Id 'Sample.QuietStatus.PoSh' -Definition @{
     $policy=Get-QuietTestExecutionPolicy -ManifestPath (Join-Path $PSScriptRoot 'FrenchExDev2.QuietCli.Core.Tests.PoSh.psd1') -CaseNames @($cases.Keys)
     $budget=1
     if($env:QUIETCLI_TEST_MAX_CONCURRENCY -and (![int]::TryParse($env:QUIETCLI_TEST_MAX_CONCURRENCY,[ref]$budget) -or $budget -lt 1 -or $budget -gt 32)){throw 'TestMaxConcurrencyInvalid'}
-    $caseWorker=$env:QUIETCLI_TEST_CASE_WORKER -ceq '1'
     $plan=Get-QuietTestExecutionPlan -CaseNames $selected.ToArray() -Policy $policy -MaxConcurrency $budget
     Write-WorkspaceJson (Join-Path $RunDirectory 'core-execution-plan.json') $plan
-    $batches=[Collections.Generic.List[object]]::new()
-    foreach($stage in $plan.Stages){
-        if($stoppedAt){$skipped+=$stage.Cases.Count;continue}
-        if($stage.Mode -ceq 'IsolatedProcess' -and !$caseWorker){
-            $counts=@{Passed=$passed;Failed=$failed}
-            $batch=Invoke-QuietTestCaseWorkers -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Cases $stage.Cases.ToArray() -MaxConcurrency $plan.MaxConcurrency -StopOnFirstFailure:$stopOnFirst -SkipTty:($env:QUIETCLI_TEST_SKIP_TTY -ceq '1') -ExpectedRuntimeIdentifier $env:QUIETCLI_TEST_EXPECT_RID -OnCase {
-                param($name,$caseState,$caseResult)
-                if($caseState -ceq 'Passed'){$counts.Passed++}elseif($caseState -ceq 'Failed'){$counts.Failed++}
-                if($OnProgress){& $OnProgress ('['+$caseMetadata[$name].TestKind+'] '+$name) $caseState $counts.Passed $counts.Failed}
-            }
-            $passed=$counts.Passed;$failed=$counts.Failed
-            foreach($item in $batch.Cases){
-                $item|Add-Member NoteProperty TestKind $caseMetadata[$item.Name].TestKind
-                $item|Add-Member NoteProperty Dependencies @($caseMetadata[$item.Name].Dependencies)
-                $results.Add($item)
-            }
-            $skipped+=$batch.NotStarted.Count;$batches.Add($batch)
-            if($stopOnFirst -and @($batch.Cases|Where-Object State -CEQ Failed).Count){$stoppedAt="stopped at case $($passed+$failed) of $($cases.Count)"}
-            continue
-        }
-        foreach($plannedCase in $stage.Cases){
-            if($stoppedAt){$skipped++;continue}
-            $name=$plannedCase.Name;$metadata=$caseMetadata[$name]
-            $progressName='['+$metadata.TestKind+'] '+$name
-            if($OnProgress){& $OnProgress $progressName 'Running' $passed $failed}
-            $failure=$null
-            try{$null=& $cases[$name];$passed++;$state='Passed'}catch{$failed++;$state='Failed';$failure=$_.Exception.Message}
-            $results.Add([pscustomobject]@{Name=$name;State=$state;Error=$failure;TestKind=$metadata.TestKind;Dependencies=@($metadata.Dependencies);ExecutionMode=if($caseWorker){'CaseWorker'}else{$plannedCase.Mode}})
-            if($OnProgress){& $OnProgress $progressName $state $passed $failed}
-            if($state -eq 'Failed' -and $stopOnFirst){$stoppedAt="stopped at case $($passed+$failed) of $($cases.Count)"}
-        }
-    }
-    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Partial=[bool]$casePattern;Incomplete=[bool]$stoppedAt;StoppedAt=$stoppedAt;Skipped=$skipped;TtyExcluded=($ttyExcluded+$testScope.TtyExcluded);Cases=$results.ToArray();Performance=$performance.ToArray();Gallery=$galleryEvidence.ToArray();Integration=$integration.ToArray();ExecutionPlan=$plan;ParallelBatches=$batches.ToArray()}
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $pesterResult=Invoke-QuietPesterCompanionPlan -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -Suite 'Core' `
+        -Plan $plan -Cases $cases -Metadata $caseMetadata -OnProgress $OnProgress `
+        -InvokePester {param($configuration) Pester\Invoke-Pester -Configuration $configuration}
+    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$pesterResult.Passed;Failed=$pesterResult.Failed;Partial=[bool]$casePattern;Incomplete=[bool]$pesterResult.StoppedAt;StoppedAt=$pesterResult.StoppedAt;Skipped=($skipped+$pesterResult.Skipped);TtyExcluded=($ttyExcluded+$testScope.TtyExcluded);Cases=$pesterResult.Cases;Performance=$performance.ToArray();Gallery=$galleryEvidence.ToArray();Integration=$integration.ToArray();ExecutionPlan=$plan;ParallelBatches=$pesterResult.ParallelBatches}
 }
 Export-ModuleMember -Function Invoke-QuietCoreTests,Assert-QuietEqual,Invoke-QuietConformance
 

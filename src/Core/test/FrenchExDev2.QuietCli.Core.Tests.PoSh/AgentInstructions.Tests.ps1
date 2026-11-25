@@ -90,7 +90,7 @@ function Invoke-QuietAgentInstructionTests {
     $core=Get-Module FrenchExDev2.QuietCli.Core.PoSh
     $root=Join-Path $RunDirectory 'agent-instructions';[void][IO.Directory]::CreateDirectory($root)
     $utf8=[Text.UTF8Encoding]::new($false,$true)
-    $cases=[ordered]@{};$results=[Collections.Generic.List[object]]::new();$mutations=[Collections.Generic.List[object]]::new()
+    $cases=[ordered]@{};$mutations=[Collections.Generic.List[object]]::new()
     $campaign=@{Seed=73607;PropertyCases=48;MalformedMarkerCases=240;FilesystemProperties=24;MalformedFilesystemCases=0;MutantsKilled=0;MutantsTotal=4}
     # The reference builder is compiled; its source mutants live in the engine mutation catalogue.
     $builder={param([string]$Text,[string]$Reference,[switch]$Claude)try{[FrenchExDev2.QuietCli.Agents.AgentReferenceBlock]::Apply($Text,$Reference,[bool]$Claude)}catch{throw $_.Exception.InnerException}}
@@ -221,11 +221,10 @@ function Invoke-QuietAgentInstructionTests {
             $mutations.Add(@{Original='distributed documents';Replacement=$mutant.Name;State='Killed'});$campaign.MutantsKilled++
         }
     }
-    $passed=0;$failed=0
-    foreach($entry in $cases.GetEnumerator()){
-        if($OnProgress){& $OnProgress $entry.Key Running $passed $failed}
-        try{& $entry.Value;$passed++;$results.Add(@{Name=$entry.Key;State='Passed';Error=$null})}catch{$failed++;$results.Add(@{Name=$entry.Key;State='Failed';Error=$_.Exception.ToString()})}
-        if($OnProgress){& $OnProgress $entry.Key $(if($results[-1].State -eq 'Passed'){'Passed'}else{'Failed'}) $passed $failed}
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $pesterResult=Invoke-QuietPesterCaseTable -WorkspaceRoot $WorkspaceRoot -Suite 'AgentInstructions' -Cases $cases -OnProgress $OnProgress -InvokePester {
+        param($configuration,$body)
+        if($body){& $body}else{Pester\Invoke-Pester -Configuration $configuration}
     }
-    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Campaign=$campaign;Mutations=$mutations.ToArray();Limits='Focused PowerShell/reference and installed-layout resource qualification; no publication or full release matrix. Staged import exercises the packaged resource layout, not a Gallery download.'}
+    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$pesterResult.Passed;Failed=$pesterResult.Failed;Cases=$pesterResult.Cases;Campaign=$campaign;Mutations=$mutations.ToArray();Limits='Focused PowerShell/reference and installed-layout resource qualification; no publication or full release matrix. Staged import exercises the packaged resource layout, not a Gallery download.'}
 }

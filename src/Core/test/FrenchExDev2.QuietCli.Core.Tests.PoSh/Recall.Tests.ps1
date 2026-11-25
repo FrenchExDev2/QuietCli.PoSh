@@ -308,13 +308,16 @@ throw 'CrashCallbackNotExecuted'
         Assert-QuietEqual $r.Recall.State Failed
         Assert-QuietEqual ($r.Recall.RecallId.Length -eq 32) $true
     }
-    $passed=0;$failed=0;$ttyExcluded=0;$results=[Collections.Generic.List[object]]::new()
-    foreach($case in $cases.GetEnumerator()){
-        if($env:QUIETCLI_TEST_SKIP_TTY -ceq '1' -and $case.Key -clike 'PTY *'){$ttyExcluded++;continue}
-        $errorText=$null
-        try{& $case.Value;$passed++;$state='Passed'}catch{$failed++;$state='Failed';$errorText=$_.ToString()+"`n"+$_.ScriptStackTrace}
-        $results.Add(@{Name=$case.Key;State=$state;Error=$errorText})
-        if($OnProgress){& $OnProgress $case.Key $state $passed $failed}
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $selected=[ordered]@{}
+    $ttyExcluded=0
+    foreach($entry in $cases.GetEnumerator()){
+        if($env:QUIETCLI_TEST_SKIP_TTY -ceq '1' -and $entry.Key -clike 'PTY *'){$ttyExcluded++;continue}
+        $selected.Add($entry.Key,$entry.Value)
     }
-    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$passed;Failed=$failed;TtyExcluded=$ttyExcluded;Cases=$results.ToArray();Performance=$metrics.ToArray()}
+    $pesterResult=Invoke-QuietPesterCaseTable -WorkspaceRoot $WorkspaceRoot -Suite 'Recall' -Cases $selected -OnProgress $OnProgress -InvokePester {
+        param($configuration,$body)
+        if($body){& $body}else{Pester\Invoke-Pester -Configuration $configuration}
+    }
+    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$pesterResult.Passed;Failed=$pesterResult.Failed;TtyExcluded=$ttyExcluded;Cases=$pesterResult.Cases;Performance=$metrics.ToArray()}
 }

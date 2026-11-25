@@ -74,21 +74,35 @@ try{
             $lines=[Collections.Generic.List[string]]::new()
             $heading=if($width -lt 75){'P:'+($state.Project -replace 'FrenchExDev2.QuietCli.','' -replace '\.PoSh','')+' | T:Tests'}else{$title}
             $lines.Add((Fit-Cell $heading $width));$lines.Add((Fit-Cell $state.Workspace $width));$lines.Add((Fit-Cell $state.ProjectDirectory $width))
-            if($width -ge 75){
-                $columns=@([Math]::Max(12,$width-60),12,10,12,8,8)
+            $passed=[string]($state.TestPassed ?? $state.Passed ?? '—')
+            $failed=[string]($state.TestFailed ?? $state.Failed ?? '—')
+            if($width -ge 75 -and $height -ge 10){
+                $columns=@(($width-59),12,10,12,8,10)
                 $border='┌'+(($columns|ForEach-Object{'─'*$_}) -join '┬')+'┐'
                 $lines.Add((Fit-Cell $border $width))
                 $identity=if($state.PSObject.Properties['ContainerId']){$state.ContainerId}else{[string]$state.ProcessId}
-                $passed=if($null -eq $state.Passed){'-'}else{[string]$state.Passed};$failed=if($null -eq $state.Failed){'-'}else{[string]$state.Failed}
-                $rows=[Collections.Generic.List[object]]::new();$rows.Add(@('Platform','State','Duration','Process','Passed','Failed'))
+                $rows=[Collections.Generic.List[object]]::new();$rows.Add(@('Plateforme','État','Durée','Processus','Réussis','Échoués'))
                 if($state.PSObject.Properties['Runs'] -and $state.Runs.Count){
-                    $rows[0]=@('Platform','State','Duration','Job','Passed','Failed')
-                    foreach($run in $state.Runs){$elapsed=if($run.StartedUtc){Get-QuietMonitorDuration -StartedUtc $run.StartedUtc -FinishedUtc $run.FinishedUtc}else{'-'};$rows.Add(@($run.Platform,$run.State,$elapsed,$run.Identity,'-','-'))}
+                    $rows[0][3]='Job'
+                    $rows.Add(@('Total',$state.State,$duration,$identity,$passed,$failed))
+                    foreach($run in $state.Runs){
+                        $elapsed=if($run.StartedUtc){Get-QuietMonitorDuration -StartedUtc $run.StartedUtc -FinishedUtc $run.FinishedUtc}else{'—'}
+                        $rows.Add(@($run.Platform,$run.State,$elapsed,$run.Identity,($run.TestPassed ?? $run.Passed ?? '—'),($run.TestFailed ?? $run.Failed ?? '—')))
+                    }
                 }else{$rows.Add(@($state.Platform,$state.State,$duration,$identity,$passed,$failed))}
                 $rowNumber=0
-                foreach($row in $rows){$cells=for($i=0;$i -lt 6;$i++){Fit-Cell ([string]$row[$i]) $columns[$i] -Right:($rowNumber -gt 0 -and $i -ge 2)};$rowNumber++;$lines.Add((Fit-Cell ('|'+($cells -join '|')+'|') $width))}
+                foreach($row in $rows){
+                    if($lines.Count -ge $height-2){break}
+                    $cells=for($i=0;$i -lt 6;$i++){Fit-Cell ([string]$row[$i]) $columns[$i] -Right:($rowNumber -gt 0 -and $i -ge 4)}
+                    $rowNumber++;$lines.Add((Fit-Cell ('│'+($cells -join '│')+'│') $width))
+                    if($rowNumber -eq 1){$lines.Add((Fit-Cell ('├'+(($columns|ForEach-Object{'─'*$_}) -join '┼')+'┤') $width))}
+                }
                 $lines.Add((Fit-Cell ('└'+(($columns|ForEach-Object{'─'*$_}) -join '┴')+'┘') $width))
-            }else{$lines.Add((Fit-Cell "$($state.Platform) | $($state.State) | $duration | PID $($state.ProcessId)" $width));$lines.Add((Fit-Cell "Passed $($state.Passed) | Failed $($state.Failed)" $width))}
+            }else{
+                $lines.Insert(1,(Fit-Cell "Réussis $passed" $width))
+                $lines.Insert(2,(Fit-Cell "Échoués $failed" $width))
+                $lines.Add((Fit-Cell "$($state.Platform) | $($state.State) | $duration | PID $($state.ProcessId)" $width))
+            }
             $lines.Add((Fit-Cell $state.Case $width));$lines.Add((Fit-Cell "Rapport : $RunDirectory" $width))
             if($state.Error){$lines.Add((Fit-Cell $state.Error $width))}
             $lines.Add((Fit-Cell ('Report activity | bytes='+(($streams|ForEach-Object {$_.TotalBytes}|Measure-Object -Sum).Sum)+' | lines='+(($streams|ForEach-Object {$_.TotalLines}|Measure-Object -Sum).Sum)+' (not test counts)') $width))

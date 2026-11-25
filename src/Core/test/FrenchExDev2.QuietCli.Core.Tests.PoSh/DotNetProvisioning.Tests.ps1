@@ -242,7 +242,7 @@ try {
             @('downgrade',"if(!`$AllowDowngrade -and [System.Management.Automation.SemanticVersion]`$Version -lt `$old)",'if($false)'),
             @('preservation','$data=ConvertFrom-Json -InputObject $original -AsHashtable -Depth 64 -ErrorAction Stop','$data=[ordered]@{}'),
             @('preview',"if(!`$PSCmdlet.ShouldProcess((`$Path -join ', '),`"Verify SDK `$(if(`$Version){`$Version}else{`"latest eligible `$Channel`"}); back up and update global.json`"))",'if($false)'),
-            @('runtime-verification',"if(!`$inventory.Sdk.Success -or !`$inventory.Runtime.Success -or `$Version -notin @(`$inventory.Sdk.Records|ForEach-Object Version))",'if($false)'),
+            @('runtime-verification','if(!$inventory.Sdk.Success -or !$inventory.Runtime.Success -or $Version -notin @($inventory.Sdk.Records|ForEach-Object {$_.Version}))','if($false)'),
             @('installed-pin','if(!$SkipInstalledCheck)','if($false)')
         )
         foreach($mutation in $mutations) {
@@ -250,7 +250,9 @@ try {
             $mutantRoot=Join-Path $root ('mutant-'+$mutation[0])
             $null=[IO.Directory]::CreateDirectory($mutantRoot)
             $mutantPath=Join-Path $mutantRoot 'DotNetProvisioning.psm1'
-            Copy-Item -LiteralPath (Join-Path (Split-Path $ModulePath -Parent) 'DotNetReadiness.psm1') -Destination (Join-Path $mutantRoot 'DotNetReadiness.psm1')
+            foreach($dependency in @('DotNetReadiness.psm1','WorkspaceLayout.psm1')){
+                Copy-Item -LiteralPath ([IO.Path]::Combine([IO.Path]::GetDirectoryName($ModulePath),$dependency)) -Destination ([IO.Path]::Combine($mutantRoot,$dependency))
+            }
             [IO.File]::WriteAllText($mutantPath,$source.Replace($mutation[1],$mutation[2]),[Text.UTF8Encoding]::new($false))
             $detected=$false
             try{$null=& $PSCommandPath -ModulePath $mutantPath -NoMutations}catch{

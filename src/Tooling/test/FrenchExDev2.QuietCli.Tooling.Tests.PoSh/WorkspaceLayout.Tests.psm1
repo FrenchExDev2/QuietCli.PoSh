@@ -269,14 +269,12 @@ Export-ModuleMember -Function *
             if(($plan.FullSuites -join ',') -ceq 'Companion017'){throw 'SelectionMutantSurvived'};$campaign.Killed++
         }finally{Remove-Module $module -ErrorAction SilentlyContinue}
     }
-    $results=[Collections.Generic.List[object]]::new();$passed=0;$failed=0
-    foreach($name in $cases.Keys){
-        if($OnProgress){& $OnProgress $name 'Running' $passed $failed};$errorText=$null
-        try{$null=& $cases[$name];$passed++;$caseState='Passed'}catch{$failed++;$caseState='Failed';$errorText=$_.ToString()}
-        $results.Add([pscustomobject]@{Name=$name;State=$caseState;Error=$errorText})
-        if($OnProgress){& $OnProgress $name $caseState $passed $failed}
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $pesterResult=Invoke-QuietPesterCaseTable -WorkspaceRoot $WorkspaceRoot -Suite 'WorkspaceLayout' -Cases $cases -OnProgress $OnProgress -InvokePester {
+        param($configuration,$body)
+        if($body){& $body}else{Pester\Invoke-Pester -Configuration $configuration}
     }
-    Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'layout-campaign.json')) @{Seed=$seed;Properties=$campaign.Properties;MalformedInputs=$campaign.Malformed;KilledMutants=$campaign.Killed;Cases=$results.ToArray()}
-    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Tooling.Tests.PoSh';Passed=$passed;Failed=$failed;Cases=$results.ToArray();Partial=$false;Incomplete=$false;Skipped=0}
+    Write-WorkspaceJson ([IO.Path]::Combine($RunDirectory,'layout-campaign.json')) @{Seed=$seed;Properties=$campaign.Properties;MalformedInputs=$campaign.Malformed;KilledMutants=$campaign.Killed;Cases=$pesterResult.Cases}
+    [pscustomobject]@{Project='FrenchExDev2.QuietCli.Tooling.Tests.PoSh';Passed=$pesterResult.Passed;Failed=$pesterResult.Failed;Cases=$pesterResult.Cases;Partial=$false;Incomplete=$false;Skipped=0}
 }
 Export-ModuleMember -Function Invoke-QuietWorkspaceLayoutTests

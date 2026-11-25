@@ -23,6 +23,7 @@ Runs the Pester 6 unit and integration tests of `./scripts` that live under [`te
 | `FullNameFilter`, `Tag`, `ExcludeTag` | Pester filters. Non-blank values make the run partial. |
 | `Seed` | Exported as `QUIETCLI_TEST_SEED` for property and fuzz tests. It is generated when omitted and recorded in `report.json` and `worker.stdout.log`. |
 | `Coverage` | JaCoCo line coverage of the targets in `test/scripts/coverage.targets.psd1`. A result below `Threshold` fails the run. |
+| `MaxConcurrency` | Number of isolated PowerShell workers for test files, from 1 to 32. Defaults to 1. Coverage uses one worker. Files with a `#pester:no-parallel` comment run after the parallel workers finish. |
 | `Headless` | No monitor (CI). A visible monitor requires Windows. |
 | `RunDirectory`, `TimeoutSeconds` | New report directory (an existing one is rejected with `TestRunDirectoryExists`). Worker deadline, default 1800 s, range 1–7200. |
 | `WorkspaceRoot`, `TestsRoot`, `ScriptsRoot` | Roots. `ScriptsRoot` is exported as `QUIETCLI_SCRIPTS_ROOT`; tests import libraries from it, so [mutation testing](Invoke-ScriptsMutation.md) can substitute a mutated copy. |
@@ -55,7 +56,7 @@ The script succeeds only for `Success`. `Failed`, `Crash` and `Timeout` throw wi
 
 ## Critical review and verdict
 
-The worker runs Pester **once** over every selected file. That produces one JUnit file and one coverage report. Live progress comes from Pester's Detailed output in `worker.stdout.log`, which the launcher and the monitor tail. `status.json` moves from `Running` to exactly one terminal state, with counts, and never updates between files. Coverage only measures code executed in the worker process. Code exercised by child processes in `integration/` (for example this launcher) is not counted, so the targets list libraries. Self-tests: `test/scripts/unit/lib/ScriptsTests.Tests.ps1` (plan, fuzzed selectors, configuration accepted by Pester, report invariant, status transitions) and `test/scripts/integration/entrypoints/Invoke-ScriptsTests.Tests.ps1` (real child process: exit codes, report/JUnit/status consistency, seed propagation, WhatIf, invalid selector, existing directory, timeout).
+Each worker publishes completed Pester tests in `status.json`. The visible monitor shows cumulative **Réussis** and **Échoués** counts during the run. Diagnostic activity has its own line. With `-MaxConcurrency 4`, the launcher assigns whole files to up to four isolated PowerShell processes and combines their counts and JUnit results. Use `-Coverage` for a single JaCoCo report. It measures code executed in the Pester worker process. The integration entry-point tests verify the live counters during a parallel run and the consistency of the final reports.
 
 <!-- script-contract:begin -->
 ## Execution contract

@@ -12,6 +12,10 @@ Executes the selected test scope, verifies identities and always saves progress/
 
 Suite is dynamically discovered, default All. WorkspaceRoot and RunDirectory are mandatory. Normal callers use the documented launchers, which own build/monitor/deadline behavior. ExpectedRuntimeIdentifier, SkipTty, profiling paths, Case/StopOnFirstFailure and MaxConcurrency preserve their shared contracts. Case filters/stops remain partial/incomplete evidence; GitHub qualification rejects them.
 
+Core, Git, Vagrant, Tooling and Distribution register the selected companion cases with pinned Pester 6.2.0. The status publishes each completed Pester test. `TestPassed` and `TestFailed` are the watcher counters. The existing `Failed` field also captures worker and qualification errors.
+
+The focused PowerShell scopes use the same Pester runner. DotNet registers one case for each selected offline campaign and retains its assertion, property, fuzz and mutation counts in `dotnet-summary.json`. RunProfiles publishes Pester case outcomes from its child process. Its mutation workers use the same cases and pinned Pester manifest in each isolated copy. CompanionSmoke, Integration, Import, RealStatus and RecallLarge publish completed cases in the shared watcher.
+
 ## Catalogue and scheduling
 
 Owning .psm1/manifest declarations supply cases, classification and execution policy for Core, Git, Vagrant, Tooling and Distribution. The worker imports Core.Tests explicitly with DisableNameChecking before consumers whose RequiredModules need it, then imports the owning runner. This avoids repeated verb warnings without globally suppressing other warnings.

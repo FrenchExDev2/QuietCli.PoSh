@@ -53,7 +53,7 @@ function Invoke-QuietGalleryPreviewTests {
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Common.psm1') -DisableNameChecking -ErrorAction Stop
     Import-Module (Join-Path $WorkspaceRoot 'scripts/lib/Gallery.psm1')
     $previewRoot=Join-Path $RunDirectory 'gallery-preview';[void][IO.Directory]::CreateDirectory($previewRoot)
-    $cases=[ordered]@{};$results=[Collections.Generic.List[object]]::new();$mutants=[Collections.Generic.List[object]]::new()
+    $cases=[ordered]@{};$mutants=[Collections.Generic.List[object]]::new()
     $identityEvidence=[Collections.Generic.List[object]]::new()
     $cases['GitHub releases publish exact Gallery assets after tag-bound draft verification']={
         . (Join-Path $WorkspaceRoot 'src/Core/test/FrenchExDev2.QuietCli.Core.Tests.PoSh/GitHubRelease.Tests.ps1')
@@ -334,14 +334,12 @@ function Invoke-QuietGalleryPreviewTests {
             if(@($mutants|Where-Object Outcome -CNE Killed).Count){throw 'PreviewMutationQualificationFailed'}
         }
     }
-    $passed=0;$failed=0
-    foreach($entry in $cases.GetEnumerator()){
-        $errorText=$null
-        try{$null=& $entry.Value;$passed++;$state='Passed'}catch{$failed++;$state='Failed';$errorText=$_.Exception.Message}
-        $results.Add([pscustomobject]@{Name=$entry.Key;State=$state;Error=$errorText})
-        if($OnProgress){$null=& $OnProgress $entry.Key $state $passed $failed}
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $pesterResult=Invoke-QuietPesterCaseTable -WorkspaceRoot $WorkspaceRoot -Suite 'GalleryPreview' -Cases $cases -OnProgress $OnProgress -InvokePester {
+        param($configuration,$body)
+        if($body){& $body}else{Pester\Invoke-Pester -Configuration $configuration}
     }
-    $summary=[pscustomobject]@{Project='GalleryPreview';Passed=$passed;Failed=$failed;Seed=82719;GeneratedInputs=128;PublicIdentity=$identityEvidence.ToArray();Cases=$results.ToArray();Mutations=$mutants.ToArray();ExternalPublication=$false}
+    $summary=[pscustomobject]@{Project='GalleryPreview';Passed=$pesterResult.Passed;Failed=$pesterResult.Failed;Seed=82719;GeneratedInputs=128;PublicIdentity=$identityEvidence.ToArray();Cases=$pesterResult.Cases;Mutations=$mutants.ToArray();ExternalPublication=$false}
     Write-WorkspaceJson (Join-Path $previewRoot 'summary.json') $summary
     return $summary
 }

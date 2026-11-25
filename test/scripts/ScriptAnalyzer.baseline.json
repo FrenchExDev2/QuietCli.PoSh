@@ -343,7 +343,7 @@
       "Path": "scripts/Invoke-TestWorker.ps1",
       "Function": "",
       "ExtentSHA256": "7C02C375594A35A2C94BCDAD9384F7A71DEEC75D53BCDDA0EA7B90FFDA6BF769",
-      "Count": 12
+      "Count": 2
     },
     {
       "Rule": "PSReviewUnusedParameter",

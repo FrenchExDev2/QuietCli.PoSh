@@ -27,10 +27,11 @@ Creates `companions/<Suite>` reports and starts owned processes with inherited o
 Each child is the only writer in its own directory. The parent never opens active
 workers' mutable status.json files. It reads the independently published terminal
 core-cases/<case>/case-result.json receipts once and caches their Passed/Failed states.
-These receipts are written after each case process exits and remain immutable. When
+Isolated-case receipts are written after the case process exits. In-process Pester
+cases publish their own receipts as each test finishes. When
 the suite process exits, its final summary replaces its partial contribution to the
-aggregate; the two are never added together. Ordered cases without intermediate
-receipts contribute when their suite completes. Heartbeats continue between completions.
+aggregate. Heartbeats continue between completions. A terminal worker failure publishes
+the results observed so far before the supervisor reports the failure.
 
 The supervisor reads terminal summary.json only after observing the worker exit.
 Its existing exit-code/state/suite-count gates remain mandatory. Malformed, duplicate

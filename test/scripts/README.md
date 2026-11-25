@@ -5,6 +5,7 @@ Pester 6 tests for the automation in [`scripts/`](../../scripts). Run them with 
 ```powershell
 ./scripts/Initialize-TestTools.ps1                  # pinned Pester + PSScriptAnalyzer into .cache/test-tools
 ./scripts/Invoke-ScriptsTests.ps1                   # unit + integration, visible monitor
+./scripts/Invoke-ScriptsTests.ps1 -MaxConcurrency 4 # isolated file workers, live counts
 ./scripts/Invoke-ScriptsTests.ps1 -Kind Unit -Path unit/lib/CiImpact.Tests.ps1 -Seed 61207
 ```
 

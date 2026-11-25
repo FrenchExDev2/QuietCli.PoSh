@@ -12,7 +12,7 @@ function Invoke-QuietScriptTests {
     param([string]$WorkspaceRoot, [string]$RunDirectory, [scriptblock]$OnProgress)
     $core = Get-Module FrenchExDev2.QuietCli.Core.PoSh
     $root = Join-Path $RunDirectory 'scripts'; [void][IO.Directory]::CreateDirectory($root)
-    $cases = [ordered]@{}; $results = [Collections.Generic.List[object]]::new(); $mutations = [Collections.Generic.List[object]]::new()
+    $cases = [ordered]@{}; $mutations = [Collections.Generic.List[object]]::new()
     $launcher = Join-Path $WorkspaceRoot 'scripts/Invoke-Quiet.ps1'
     $cases['local launcher preserves context identity, caller variables and fresh defaults'] = {
         $marker = [pscustomobject]@{ Text = 'é漢'; Calls = 0 }
@@ -334,12 +334,10 @@ try {
             $mutations.Add(@{ Name=$spec.Name; State='Killed' })
         }
     }
-    $passed = 0; $failed = 0
-    foreach ($entry in $cases.GetEnumerator()) {
-        if ($OnProgress) { & $OnProgress $entry.Key Running $passed $failed }
-        try { & $entry.Value; $passed++; $results.Add(@{Name=$entry.Key;State='Passed';Error=$null}) }
-        catch { $failed++; $results.Add(@{Name=$entry.Key;State='Failed';Error=$_.Exception.ToString();Stack=$_.ScriptStackTrace}) }
-        if ($OnProgress) { & $OnProgress $entry.Key $(if ($results[-1].State -eq 'Passed') {'Passed'} else {'Failed'}) $passed $failed }
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $pesterResult=Invoke-QuietPesterCaseTable -WorkspaceRoot $WorkspaceRoot -Suite 'Script' -Cases $cases -OnProgress $OnProgress -InvokePester {
+        param($configuration,$body)
+        if($body){& $body}else{Pester\Invoke-Pester -Configuration $configuration}
     }
-    [pscustomobject]@{ Project='FrenchExDev2.QuietCli.Core.PoSh'; Passed=$passed; Failed=$failed; Cases=$results.ToArray(); Mutations=$mutations.ToArray(); Limits='Focused PowerShell script-generation qualification; no C# or native behavior changes and no release matrix.' }
+    [pscustomobject]@{ Project='FrenchExDev2.QuietCli.Core.PoSh'; Passed=$pesterResult.Passed; Failed=$pesterResult.Failed; Cases=$pesterResult.Cases; Mutations=$mutations.ToArray(); Limits='Focused PowerShell script-generation qualification; no C# or native behavior changes and no release matrix.' }
 }

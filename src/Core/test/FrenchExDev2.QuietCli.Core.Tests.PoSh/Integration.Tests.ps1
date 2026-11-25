@@ -14,20 +14,30 @@ function Invoke-QuietCoreIntegrationTests {
     Visible-monitor observer with name/state/passed/failed arguments.
     #>
     param([string]$WorkspaceRoot,[string]$RunDirectory,[scriptblock]$OnProgress)
-    $evidenceValidation=Test-QuietEvidenceBundle -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
-    $gateValidation=Test-QuietCoreIntegrationGate -WorkspaceRoot $WorkspaceRoot
-    if($OnProgress){& $OnProgress 'Owned complex Git states with Core callbacks only' Running 0 0}
-    $controlled=Invoke-QuietControlledStatusIntegration -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {
-        param($name)
-        if($OnProgress){& $OnProgress $name Running 0 0}
-    }.GetNewClosure()
-    if($OnProgress){& $OnProgress 'Fresh process import measurement' Running 1 0}
-    $import=Invoke-QuietImportIntegration -WorkspaceRoot $WorkspaceRoot
-    if($OnProgress){& $OnProgress 'Import diagnostics' Running 2 0}
-    $diagnostics=Invoke-QuietImportDiagnostics -WorkspaceRoot $WorkspaceRoot
-    $startup=Invoke-QuietStartupIntegration -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
-    $summary=[pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=3;Failed=0;Performance=@($import,$diagnostics,$startup);Integration=@($controlled);GateValidation=$gateValidation;EvidenceValidation=$evidenceValidation}
-    & (Join-Path $WorkspaceRoot 'scripts/Assert-CoreIntegrationEvidence.ps1') -Summary $summary
-    if($OnProgress){& $OnProgress 'Mandatory Core integration evidence verified' Passed 3 0}
+    Import-Module ([IO.Path]::Combine($WorkspaceRoot,'scripts/lib/PesterProgress.psm1')) -DisableNameChecking -ErrorAction Stop
+    $evidence=@{}
+    $cases=[ordered]@{
+        'Owned complex Git states with Core callbacks only'={
+            $evidence.Bundle=Test-QuietEvidenceBundle -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+            $evidence.Gate=Test-QuietCoreIntegrationGate -WorkspaceRoot $WorkspaceRoot
+            $evidence.Controlled=Invoke-QuietControlledStatusIntegration -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory -OnProgress {
+                param($name)
+                if($OnProgress){& $OnProgress $name Running 0 0}
+            }.GetNewClosure()
+        }
+        'Fresh process import measurement'={
+            $evidence.Import=Invoke-QuietImportIntegration -WorkspaceRoot $WorkspaceRoot
+        }
+        'Import diagnostics and startup'={
+            $evidence.Diagnostics=Invoke-QuietImportDiagnostics -WorkspaceRoot $WorkspaceRoot
+            $evidence.Startup=Invoke-QuietStartupIntegration -WorkspaceRoot $WorkspaceRoot -RunDirectory $RunDirectory
+        }
+    }
+    $tested=Invoke-QuietPesterCaseTable -WorkspaceRoot $WorkspaceRoot -Suite Integration -Cases $cases -OnProgress $OnProgress -InvokePester {
+        param($configuration,$body)
+        if($body){& $body}else{Pester\Invoke-Pester -Configuration $configuration}
+    }
+    $summary=[pscustomobject]@{Project='FrenchExDev2.QuietCli.Core.PoSh';Passed=$tested.Passed;Failed=$tested.Failed;Cases=$tested.Cases;Performance=@($evidence.Import,$evidence.Diagnostics,$evidence.Startup);Integration=@($evidence.Controlled);GateValidation=$evidence.Gate;EvidenceValidation=$evidence.Bundle}
+    if(!$summary.Failed){& ([IO.Path]::Combine($WorkspaceRoot,'scripts/Assert-CoreIntegrationEvidence.ps1')) -Summary $summary}
     return $summary
 }
