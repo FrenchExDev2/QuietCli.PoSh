@@ -28,12 +28,6 @@ Uses Common.ps1, lib/Gallery.psm1, New-QuietGalleryPackage.ps1 and Publish-Quiet
 
 GitHub creates an immutable, uniquely versioned R2R preview artifact. Publication validates that checkpoint and those bytes independently.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -65,3 +59,9 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

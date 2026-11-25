@@ -73,12 +73,6 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- grouped-layout-review:begin -->
 Core test preloading resolves the selected manifest through the layout catalogue, including isolated legacy fixtures, before importing Tooling or Distribution.
 WorkspaceLayout verifies source identity without importing, querying or stopping a product engine, including at the final boundary. It runs in a source-only checkout with no compiled lib directories.
@@ -92,3 +86,9 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

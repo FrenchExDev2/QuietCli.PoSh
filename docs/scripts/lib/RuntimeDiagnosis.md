@@ -45,12 +45,6 @@ $diagnosis.NextSteps     # actionable, non-prescriptive remediation hints
 
 Functionally sound and appropriately conservative in its claims, but the single monolithic function mixing evidence-extraction and decision-policy is a maintainability risk; the highest-priority fix is splitting `Get-QuietRuntimeDiagnosis` into smaller, independently testable helpers (probe validation/usability vs. the final decision mapping) and adding mutation coverage for the decision-tree boundaries.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -64,3 +58,9 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 ## Explicit library dependencies
 
 Copy-QuietRuntimeProbeInputs -ScriptsRoot <scripts> -Destination <owned directory> stages exactly the probe entry point and five library files under their original lib paths. It supports standard WhatIf/Confirm, validates all source files before copying, and includes BinaryHeaders without staging product assemblies or private configuration. The orchestration library uses this helper; the Tooling regression checks no-write preview, exact membership and hashes.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

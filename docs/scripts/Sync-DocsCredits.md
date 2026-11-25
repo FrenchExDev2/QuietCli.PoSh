@@ -9,6 +9,8 @@ Source file: [`Sync-DocsCredits.ps1`](../../scripts/Sync-DocsCredits.ps1)
 This entry point preserves its parameters and defaults and forwards explicitly bound parameters, including standard preview options, to [Sync-DocsCredits.psm1](lib/Sync-DocsCredits.md). See that library for the full operation, dependencies, examples, effects and validation limits.
 
 The scan includes docs/**/*.md, root README*.md, and readmes/README-*.md.
+The check requires a single current credits block at the end of each document.
+`-Apply` moves misplaced blocks to the end while preserving the document body.
 
 ## Dependencies and effects
 

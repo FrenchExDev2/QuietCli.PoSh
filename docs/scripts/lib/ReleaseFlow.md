@@ -63,12 +63,6 @@ Resume refuses an invalid or completed receipt, another workspace and a dirty ch
 
 The CI optimization case runs `ReleaseFlow.Tests.ps1` against an owned repository, a private bare remote and a scripted GitHub double that creates real merge commits and enforces the required check. It covers WhatIf without effects, the nominal merge with tags on the merge commit, a red check, a replaced head, a closed pull request, a manual merge after a timeout and resume, tags created by someone else, already merged versions, and tampered receipts. Stops run in a dedicated runspace (`PowerShell.Stop()`, the Ctrl+C path): during polling, and after GitHub accepted a merge without answering, followed by a hard-kill receipt. A 512-case seeded property checks the decision against an independent oracle. Four mutants are killed: no green-check guard, no head guard, no receipt write in `finally`, and a single long wait (stop latency).
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -78,3 +72,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

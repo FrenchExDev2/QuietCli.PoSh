@@ -64,12 +64,6 @@ Example:
 
 Fit for purpose, with genuinely careful cross-checks between the profiled target's self-reported identity and the collectors actually attached. The highest-priority improvement is making the single, reused 120-second deadline (line 29) a parameter — the current fixed budget covers target startup, collector attach, workload execution, and trace completion all at once, which does not scale to a larger profiled workload without editing the script.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -101,3 +95,9 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

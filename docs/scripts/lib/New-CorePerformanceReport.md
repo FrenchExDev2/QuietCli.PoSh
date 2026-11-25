@@ -68,12 +68,6 @@ Core reports require the FreshProcessStartup campaign and seven first-call / 21 
 
 Review: missing timer series are checked independently of the success flag in the supplied summary. Tests supply deterministic complete/missing/nonfinite fixtures and verify Markdown/Mermaid, HTML/SVG, JSON and no-write WhatIf. Verdict: complete supplied timing evidence does not establish a causal performance improvement; that requires a matched before/after campaign.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -85,3 +79,9 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- script-contract:end -->
 
 Read-only property projections use script blocks so metadata remains available during WhatIf; mutating operations retain their existing operation guards.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

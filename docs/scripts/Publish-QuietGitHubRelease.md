@@ -22,12 +22,6 @@ Uses GalleryRelease for tag policy, Gallery for exact nupkg integrity/identity v
 
 `scripts/Publish-QuietGitHubRelease.ps1` guards effects with ShouldProcess and checks workflow context and successful per-module publication hashes. `scripts/lib/GitHubRelease.psm1` checks the remote tag's peeled commit, uploads verified files to a draft, then publishes only after SHA-256/size verification. Existing drafts/releases are refused without replacement. Failed uploads leave a draft for deliberate recovery; partial batch success has no rollback. A GitHub-only job failure does not undo Gallery publication and may be investigated/retried separately after handling any existing draft/release. Offline tests cover requests and boundaries; real credentials, hosted artifact layout and actual publication remain hosted qualification requirements.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -47,3 +41,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

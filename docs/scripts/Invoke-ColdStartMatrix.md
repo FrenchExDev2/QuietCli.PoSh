@@ -68,12 +68,6 @@ Examples (from the file's own help, lines 62–72):
 
 Fit for purpose: a well-structured, resilient top-level orchestrator with good per-target failure isolation. The highest-priority fix is making temp-directory cleanup failures observable (replace silent `-ErrorAction SilentlyContinue` at line 176 with a logged warning) so leaked temp directories don't accumulate unnoticed across repeated matrix runs.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -93,3 +87,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

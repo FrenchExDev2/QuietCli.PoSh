@@ -32,12 +32,6 @@ ValidateOnly checks catalogue paths and the mode without starting a build or tes
 
 Explicit source-bound automation with a checked scope. Read the selected run's saved reports for qualification evidence.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 The `-Campaign performance` option times one unprofiled test run for a declared companion after the build. It writes `component-performance.json` to the run directory on success. The measurement includes test harness overhead and process startup. It does not apply a performance threshold.
 
 <!-- script-contract:begin -->
@@ -49,3 +43,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

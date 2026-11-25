@@ -49,12 +49,6 @@ Write-RunTextFile -Path './profile.json' -Text $json
 
 This module is a clean, well-isolated, convention-compliant encoding policy with no bugs found; it is in fact the best example in this review of the repository's own async-I/O and UTF-8 rules being followed to the letter, so no rework is needed.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -64,3 +58,9 @@ Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

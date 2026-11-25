@@ -18,12 +18,6 @@ Draft creation precedes uploads and final publication. Uploaded name, size, stat
 
 `scripts/lib/GitHubRelease.psm1` refuses existing releases/drafts and never deletes/replaces assets. Interrupted uploads leave an unpublished draft; manual inspection is required before recovery. Multi-module publication is ordered but non-atomic, with no rollback. Offline state-machine fixtures assert draft/upload/publish ordering, tag identity, preview/stable policy, no-network WhatIf, failure propagation, malformed assets and mutation counterexamples. They do not qualify real GitHub transport, permissions or hosted artifact extraction. API contracts: [releases](https://docs.github.com/en/rest/releases/releases), [assets](https://docs.github.com/en/rest/releases/assets).
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -33,3 +27,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

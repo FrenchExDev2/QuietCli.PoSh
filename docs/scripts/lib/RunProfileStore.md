@@ -59,12 +59,6 @@ Assert-RunTargetParameters -TargetPath $target -Parameters $args
 
 Solid, deliberately defensive design (restricted-language parsing is the right call for a file format that must never execute); no rework needed, and the only worthwhile improvement is enriching `RunProfileUnsupportedValue`/`RunProfileInvalidParameterName` error messages with the actual offending type/value for faster diagnosis.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -74,3 +68,9 @@ Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

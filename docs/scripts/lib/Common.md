@@ -82,12 +82,6 @@ helper exports; CI test execution remains independent of workstation profile ini
 
 Solid, carefully-written infrastructure that the whole folder depends on, but `Wait-WorkspaceWorker`'s hardcoded Core/Git project identity in its crash-fallback path (lines 106, 109) is the highest-priority fix — a "common" worker supervisor should not assume which project it supervises, and as written it would misreport unrelated future workers' crashes under the wrong project name.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 ## Live administrative reporting
 
 Invoke-WorkspaceNative prints operation progress and a terminal outcome/line summary. Wait-WorkspaceWorker streams bounded tails of the owned stdout/stderr logs through ReportStreaming.ps1, with an elapsed/observed-line heartbeat and the saved terminal state. No objective announcement is printed when this library is loaded. Diagnostic activity is distinct from test counters and never enables product event collection.
@@ -107,3 +101,9 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- script-contract:end -->
 
 Read-only property projections use script blocks so metadata remains available during WhatIf; mutating operations retain their existing operation guards.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

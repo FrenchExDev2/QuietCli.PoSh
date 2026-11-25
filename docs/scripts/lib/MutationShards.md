@@ -20,12 +20,6 @@ PowerShell Core and .NET hashing; the trusted source-controlled catalogue is an 
 
 `scripts/lib/MutationShards.psm1:1` centralizes partitioning and completion without sharing workers or sandboxes. `MutationShards.Tests.ps1` independently checks complete/disjoint generated partitions, damaged/missing receipts, a partition mutant and exporter previews. Actual mutants remain independently asserted by their existing test suite. Hosted timing and cross-runner transfer require CI evidence.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -49,3 +43,9 @@ See the [layout and selective-CI contract](
 ../../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

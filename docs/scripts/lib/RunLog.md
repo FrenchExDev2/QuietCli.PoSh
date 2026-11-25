@@ -51,12 +51,6 @@ $result = $logger.Time('step', { Do-Something })
 
 A well-designed, test-friendly logging abstraction (the `MemoryLogSink` strategy alone shows real testability intent) with two concrete, fixable convention inconsistencies — synchronous `[Console]::Error.WriteLine` instead of the async-then-block pattern used elsewhere in the same tree, and local-time rather than UTC timestamps; the console-write async inconsistency is the smaller of the two in practice, so the higher-priority fix is switching the timestamp to UTC for correlation with the rest of the run's UTC-stamped artifacts.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -66,3 +60,9 @@ Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

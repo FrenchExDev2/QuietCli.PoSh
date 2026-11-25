@@ -56,12 +56,6 @@ Use -Module profiler, -Module dottrace or -Module profiler,dottrace. The string-
 
 Review: Initialize-Profilers.ps1:12 delegates selection to Get-RunProfilerPackages; RunProfiles.Profiler.Tests.ps1 covers single/both selections, duplicates, invalid/empty inputs, preview and real offline archives. The cache receipt describes this invocation, not an inventory of every prior cache entry. No global installation or module import is performed by preparation.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -81,3 +75,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

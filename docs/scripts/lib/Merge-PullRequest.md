@@ -16,12 +16,6 @@ Publication expands the checklist from `build/companions.yaml` and applies expli
 
 The operations use the bounded Git/GitHub adapter and standard preview guards. Unit tests use offline module-bound doubles for GitHub and entry points. The integration preview exercises the real entry points.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -31,3 +25,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 3.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

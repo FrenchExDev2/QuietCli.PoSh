@@ -145,12 +145,6 @@ prioritizing are: (1) confirming whether the multi-run `Passed`/`Failed` columns
 per-run counters by hardcoding `'-'` (line 83), and (2) adding fuzz coverage for `Fit-Cell`/
 `Get-DisplayWidth` given their Unicode-width-arithmetic complexity and current zero test coverage.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 ## Live report tail
 
 The read-only monitor incrementally reads the run's existing worker stdout/stderr through ReportStreaming.ps1. It preserves fragmented UTF-8 and displays bounded tails plus byte/line activity separately from test counters. The viewport adapts to terminal dimensions, keeps project identity visible and hides the cursor while active. Complete evidence stays in the existing logs; the monitor closes after the saved terminal report.
@@ -166,3 +160,9 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- script-contract:end -->
 
 Read-only property projections use script blocks so metadata remains available during WhatIf; mutating operations retain their existing operation guards.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

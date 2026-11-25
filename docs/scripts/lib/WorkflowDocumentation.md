@@ -38,12 +38,6 @@ Requires the checksum-verified YamlDotNet assembly, prepared on demand through R
 
 One structural source of truth for workflow diagrams and the index; authored purpose, trigger/effect descriptions and limits remain review obligations.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -57,3 +51,9 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 Preview is explicit across module boundaries: Get-QuietWorkflowDocumentation -WhatIf forwards standard preview options to Ensure-QuietResource. A missing parser remains unprepared in preview and cannot produce a successful documentation result.
 
 Read-only property projections use script blocks, so the ForEach-Object member-access ShouldProcess behavior cannot suppress workflow metadata during WhatIf. The complete Commit-Workspace preview is exercised in a clean process.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

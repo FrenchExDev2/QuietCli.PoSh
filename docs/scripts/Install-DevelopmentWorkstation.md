@@ -79,12 +79,6 @@ The entry point preserves independent bootstrap, explicit side effects and a str
 wrkflw is a separately excludable workstation component. Its usage helpers remain planned, and a
 successful installation/version check does not establish GitHub runner compatibility.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -104,3 +98,9 @@ Boundary: **Executable**. Preview API: **DelegatedShouldProcess**. Guarded funct
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

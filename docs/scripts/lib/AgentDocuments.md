@@ -58,12 +58,6 @@ Copy-QuietProductionAgentDocuments -WorkspaceRoot (Split-Path $PSScriptRoot -Par
 
 Fit for purpose: small, correctly uses async I/O, and has a real Pester caller. The single highest-priority fix is adding `[Parameter(Mandatory)]` plus basic validation to both public functions' parameters, and naming the offending file in the `AgentDocumentMustBeNonemptyUtf8Lf` throw.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -73,3 +67,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

@@ -52,12 +52,6 @@ Export-EditorExtensionManifest -Cli $cli -Path ./extensions.json -ShouldApply { 
 
 A well-defended, single-responsibility module with existing test coverage and no bugs found on close reading; the only real improvement opportunity is usability (batching per-extension confirmations) rather than correctness, so no urgent fix is required.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -69,3 +63,9 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- script-contract:end -->
 
 Read-only property projections use script blocks so metadata remains available during WhatIf; mutating operations retain their existing operation guards.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->
