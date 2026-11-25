@@ -1,6 +1,6 @@
 # workspace-component-ci.yml
 
-<!-- workflow-source-sha256: 21B2C4D972842B30D9E867FBE4E3210E0BF01501A5A9E8A9B140C26EC39A224C -->
+<!-- workflow-source-sha256: 114D5BF806FABA435B84A79F92E12B717362EBA73F1BC345724A7C9D180E29A8 -->
 
 ## Purpose
 
@@ -11,6 +11,8 @@ Shared profile-validated workspace build/smoke engine. Supports individual compo
 Reusable workflow_call.
 
 ## Scripts and effects
+
+PR smokes, Distribution and non-mutation companion campaigns consume the shared build artifact. The standalone path retains its scoped build cache. Mutation campaigns produce their own evidence from isolated source variants.
 
 The optional campaign input runs the requested companion mutation, PowerShell profiling, or mutation with profiling in the same pass. Artifacts include the campaign name to distinguish reports from the same companion.
 

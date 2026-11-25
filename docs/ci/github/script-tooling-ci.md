@@ -1,6 +1,6 @@
 # tooling-ci.yml
 
-<!-- workflow-source-sha256: E27D1469C06BEF5CFA8748A7184971908FF28C64D40ED5FFE47CDF3897542755 -->
+<!-- workflow-source-sha256: 36B9E67214FAD295CA19386435084274785FA5C5BC2E5FA14D9ECD2183CB6B5F -->
 
 ## Purpose
 
@@ -47,7 +47,7 @@ The `script-tests` job runs [Invoke-ScriptsTests](../../scripts/Invoke-ScriptsTe
 
 Its tools come from [Initialize-TestTools](../../scripts/Initialize-TestTools.md), after the `cache-test-tools` action has restored the pinned archives. The archives are keyed by OS and the hash of `scripts/lib/RunToolCache.psm1`, and each SHA-256 is re-verified before extraction.
 
-Some test files drive git through `quiet` and declare `#ScriptsImpact: RequiresBuild`, such as the [Start-QuietWorkBranch](../../scripts/Start-QuietWorkBranch.md) integration tests. When one of them is selected, the job first restores the workspace and builds the Git suite, which includes Core ([Build-Workspace](../../scripts/Build-Workspace.md) `-Suite Git`).
+Some test files drive git through `quiet` and declare `#ScriptsImpact: RequiresBuild`, such as the [Start-QuietWorkBranch](../../scripts/Start-QuietWorkBranch.md) integration tests. When one is selected, the job restores the workspace and uses the shared PR artifact or builds the Git suite on a standalone run. Full functional tooling uses the same PR artifact. The Core independence job builds and runs in its own copy with Git source absent.
 
 The job uploads the report, JUnit, coverage and log.
 

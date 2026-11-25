@@ -20,13 +20,15 @@ Optional caller test path.
 Optional owned report destination.
 .PARAMETER ValidateOnly
 Checks the mode and declared paths without building or running tests.
+.PARAMETER SkipBuild
+Uses distributions supplied by the shared CI artifact.
 .PARAMETER Campaign
 Selects normal qualification, mutation, profiling, profiled mutation, or a timed unprofiled test run.
 .PARAMETER Parallel
 Enables the normal worker budget. False restricts the requested campaign to one worker.
 #>
 [CmdletBinding(SupportsShouldProcess)]
-param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$Suite,[ValidateSet('full','smoke','build')][string]$QualificationMode='full',[string]$SuitesJson='[]',[string]$SolutionPath,[string]$SourcePath,[string]$TestPath,[string]$RunDirectory,[switch]$ValidateOnly,[ValidateSet('qualification','mutation','profiling','profiled-mutation','performance')][string]$Campaign='qualification',[switch]$Parallel)
+param([string]$WorkspaceRoot=(Split-Path $PSScriptRoot -Parent),[Parameter(Mandatory)][string]$Suite,[ValidateSet('full','smoke','build')][string]$QualificationMode='full',[string]$SuitesJson='[]',[string]$SolutionPath,[string]$SourcePath,[string]$TestPath,[string]$RunDirectory,[switch]$ValidateOnly,[ValidateSet('qualification','mutation','profiling','profiled-mutation','performance')][string]$Campaign='qualification',[switch]$Parallel,[switch]$SkipBuild)
 if(!$PSCmdlet.ShouldProcess($Suite,('Run component '+$QualificationMode))){return}
 $ErrorActionPreference='Stop'
 Import-Module ([IO.Path]::Combine($PSScriptRoot,'lib/CompanionWorkflows.psm1')) -DisableNameChecking -ErrorAction Stop
@@ -62,7 +64,7 @@ $launch=[IO.Path]::Combine($PSScriptRoot,$entry)
 $budget=[Math]::Min(4,[Math]::Max(1,[Environment]::ProcessorCount))
 if($PSBoundParameters.ContainsKey('Parallel') -and !$Parallel){$budget=1}
 $mutationSuite=if($mutation){$mutation['suite']}
-foreach($selected in $suites|Where-Object {!$mutationSuite}){
+foreach($selected in $suites|Where-Object {!$mutationSuite -and !$SkipBuild}){
     $parameters=@{WorkspaceRoot=$WorkspaceRoot;Suite=$selected;ReuseVerifiedBuild=$true}
     if($selected -cne 'Distribution'){$parameters.RuntimeIdentifier=@([Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)}
     & ([IO.Path]::Combine($PSScriptRoot,'Build-Workspace.ps1')) @parameters

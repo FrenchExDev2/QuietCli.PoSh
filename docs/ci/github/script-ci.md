@@ -1,6 +1,6 @@
 # ci.yml
 
-<!-- workflow-source-sha256: D8DB554B11F0024C513B69BDAC44FF3162E862FAC5C6C56840AF13C7E810700C -->
+<!-- workflow-source-sha256: 26ED7FF5F1F072DD81186F9586DB6CE8E4D424A40CF43930ED97A5F010A56308 -->
 
 ## Purpose
 
@@ -11,6 +11,8 @@ Shared product qualification engine. The same workflow accepts the generated com
 Reusable workflow_call and explicit workflow_dispatch.
 
 ## Scripts and effects
+
+When invoked by a PR with `build_artifact`, the Windows and Linux rows download the producer's immutable artifact and restore the selected NuGet closure. The rows verify the required ReadyToRun RID using `-RequireVerifiedBuild` and execute the existing host matrix with `-SkipBuild`. Standalone invocations retain target-specific build-cache reuse.
 
 Profile validation initializes the checkout's deterministic GitHub environment immediately after checkout, like execution jobs. It performs no product build. The Linux matrix job restores the pinned resource archive cache before `Initialize-CiCompanions.ps1` reads the YAML catalogue. The consumer extracts and verifies YamlDotNet in the current checkout.
 

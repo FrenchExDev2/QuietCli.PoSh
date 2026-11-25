@@ -314,7 +314,7 @@ param([string]$Base,[string]$Revision,[string]$Event,[string[]]$Suite,[string]$O
 
     It 'replans edits and gates the strict ReadyToRun call' {
         $companions['on']['pull_request']['types'] | Should -Contain 'edited'
-        $companions['jobs']['readytorun']['if'] | Should -BeExactly "needs.plan.outputs.run_readytorun == 'true'"
+        $companions['jobs']['readytorun']['if'] | Should -Match "needs.plan.outputs.run_readytorun == 'true'"
         $companions['jobs']['readytorun']['with']['require_complete'] | Should -Be 'true'
         $companions['jobs']['ci-status']['needs'] | Should -Contain 'readytorun'
         $companions['jobs']['products']['with']['run_preview'] | Should -BeExactly '${{ matrix.run_preview }}'
@@ -384,7 +384,8 @@ Describe 'companions-ci.yml qualification ordering' {
 
 Describe 'companions-ci.yml script-only plans' {
     It 'exposes the plan output <Name> from the plan step' -ForEach @(
-        @{Name='run_layout'},@{Name='tooling_scope'},@{Name='script_tests'},@{Name='script_mutation_targets'},@{Name='script_mutation_no_input_cache'},@{Name='run_tooling'}
+        @{Name='run_layout'},@{Name='tooling_scope'},@{Name='script_tests'},@{Name='script_mutation_targets'},@{Name='script_mutation_no_input_cache'},@{Name='run_tooling'},
+        @{Name='run_shared_build'},@{Name='tooling_requires_build'}
     ) {
         [string]$companions['jobs']['plan']['outputs'][$Name]|Should -BeExactly ('${{ steps.plan.outputs.'+$Name+' }}')
     }
@@ -397,7 +398,7 @@ Describe 'companions-ci.yml script-only plans' {
 
     It 'starts the tooling after the layout tests, or without them only when the plan skipped them' {
         $tooling=$companions['jobs']['tooling-only']
-        (@($tooling['needs'])|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'layout-tests,plan,source-checks'
+        (@($tooling['needs'])|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'build,layout-tests,plan,source-checks'
         $guard=[string]$tooling['if']
         foreach($clause in @('always()','!cancelled()',"needs.plan.result == 'success'","needs.source-checks.result == 'success'","needs.layout-tests.result == 'success' || (needs.layout-tests.result == 'skipped' && needs.plan.outputs.run_layout == 'false')","needs.plan.outputs.run_tooling == 'true'")){
             $guard.Contains($clause)|Should -BeTrue -Because $clause
@@ -409,7 +410,7 @@ Describe 'companions-ci.yml script-only plans' {
         @{Name='scope';Source='tooling_scope'},@{Name='script_tests';Source='script_tests'},@{Name='script_mutation_targets';Source='script_mutation_targets'}
     ) {
         $with=$companions['jobs']['tooling-only']['with']
-        (@($with.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'mutation_parallel,scope,script_mutation_no_input_cache,script_mutation_targets,script_tests'
+        (@($with.Keys)|Sort-Object -CaseSensitive) -join ','|Should -BeExactly 'build_artifact,mutation_parallel,scope,script_mutation_no_input_cache,script_mutation_targets,script_tests'
         [string]$with[$Name]|Should -BeExactly ('${{ needs.plan.outputs.'+$Source+' }}')
     }
 
@@ -454,4 +455,38 @@ Describe 'ci.yml per-suite producer' {
         ([string]$producer['with']['publish_cache']).Contains("github.ref == 'refs/heads/develop'")|Should -BeTrue
     }
 
+}
+
+Describe 'Shared PR build artifact' {
+    It 'compiles once on a cache miss and uploads an immutable artifact on either path' {
+        $job=$companions['jobs']['build']
+        $steps=@($job['steps'])
+        $build=$steps|Where-Object {$_['run'] -match '\./scripts/Build-Workspace\.ps1'}
+        @($build).Count|Should -Be 1
+        $build['if']|Should -BeExactly "steps.build_cache.outputs.cache-hit != 'true'"
+        $cache=$steps|Where-Object {$_['id'] -ceq 'build_cache'}
+        $cache['with']['key']|Should -Match 'github\.sha'
+        $cache['with'].ContainsKey('restore-keys')|Should -BeFalse
+        $job['outputs']['artifact']|Should -BeExactly '${{ steps.upload.outputs.artifact-id }}'
+        $verify=& $stepIndex $job {param($step)$step['run'] -match 'Sync-CiBuildArtifact.ps1 -Mode Verify'}
+        $upload=& $stepIndex $job {param($step)$step['id'] -ceq 'upload'}
+        $verify|Should -BeGreaterOrEqual 0
+        $verify|Should -BeLessThan $upload
+        $steps[$upload]['if']|Should -BeNullOrEmpty
+        $companions['jobs']['ci-status']['needs']|Should -Contain 'build'
+    }
+
+    It 'passes the producer ID to each consumer instead of letting a PR fall back to compilation' {
+        foreach($name in 'products','smokes','tooling-only','companion-checks','distribution','readytorun'){
+            $job=$companions['jobs'][$name]
+            $job['needs']|Should -Contain 'build'
+            $job['with']['build_artifact']|Should -BeExactly '${{ needs.build.outputs.artifact }}'
+            $job['if']|Should -Match "needs\.build\.outputs\.artifact != ''"
+        }
+        foreach($name in 'windows','linux-result'){
+            $steps=@($engine['jobs'][$name]['steps'])
+            ($steps|Where-Object {$_['run'] -match 'Build-Workspace\.ps1.*-ReuseVerifiedBuild'})['if']|Should -BeExactly "inputs.build_artifact == ''"
+            ($steps|Where-Object {$_['run'] -match 'Build-Workspace\.ps1 -RequireVerifiedBuild'})['if']|Should -BeExactly "inputs.build_artifact != ''"
+        }
+    }
 }

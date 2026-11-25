@@ -8,6 +8,8 @@ One `companions-ci.yml` caller plans the complete diff. Companion paths select d
 
 The shared `ci.yml` selects four native GA Windows host/mode rows and four Linux targets; run_preview=true explicitly adds two next-version Preview rows. Tooling runs once outside this product matrix. All executes complete Core before bounded independent companions on the same prepared image/build.
 
+When a PR plan requires compiled outputs, a single Windows x64 job prepares the shared Release build or restores the exact revision's build cache. Selected consumers download the run's artifact by ID, verify the archive and use the distributions for their configured targets. Standalone calls keep their own build path. [Companions workflow](github/script-companions-ci.md)
+
 ```mermaid
 flowchart TD
     LOCAL[Local launcher] --> BUILD[Optional selected build]
@@ -15,8 +17,10 @@ flowchart TD
     LW --> REPORT[External reports]
     LOCAL --> MON[Visible read-only monitor]
     REPORT --> MON
-    GH[GitHub product job] --> GB[Release build for tested RID]
-    GB --> ENTRY[Invoke-GitHubCi.ps1]
+    PR[PR build producer] --> PA[Verified build artifact]
+    GH[GitHub product job] --> GB[Load shared artifact or prepare standalone build]
+    PA --> GB
+    GB --> ENTRY[Invoke-GitHubCi.ps1 with SkipBuild]
     ENTRY --> MODE{Image supplied?}
     MODE -- No --> WORK[Invoke-TestWorker in selected process]
     MODE -- Yes --> TRANS[Invoke-ContainerWorker with Docker]
@@ -34,20 +38,14 @@ GitHub direct execution has no desktop monitor or extra local supervision proces
 
 ```mermaid
 flowchart TD
-    T[Native Debian or Alpine x64 or ARM64 target] --> V{Verified immutable final image available?}
-    V -- No --> D[Docker fallback on matching Ubuntu CPU]
-    V -- Yes --> A{Alpine ARM64?}
-    A -- Yes --> D
-    A -- No --> C[GitHub job container at verified digest]
-    D --> H[Host builds and stages current source and binaries]
+    T[Native Debian or Alpine x64 or ARM64 target] --> D[Load verified image on matching Ubuntu CPU]
+    D --> H[Stage sources, binaries and restored NuGet dependencies]
     H --> N[Tests in networkless guest]
-    C --> B[Build and test inside job container]
     N --> R[Require actual guest RID and successful terminal reports]
-    B --> R
-    R --> G[Aggregate every selected execution path]
+    R --> G[Aggregate every selected target]
 ```
 
-Alpine ARM64 keeps JavaScript checkout/upload actions on Ubuntu and tests real musl ARM64 in Docker. This is native execution, without architecture emulation. Job containers retain networking for checkout/setup; only fallback guest tests are described as networkless. [GitHubCi](../scripts/lib/GitHubCi.md) owns routing and aggregate-result policy; [Linux images](linux-images.md) owns cache preparation.
+Checkout, artifact download and NuGet restore run on Ubuntu. Debian and Alpine test their actual glibc and musl environments on the matching CPU inside networkless Docker guests. [GitHubCi](../scripts/lib/GitHubCi.md) · [Linux images](linux-images.md)
 
 ## Qualification and artifacts
 

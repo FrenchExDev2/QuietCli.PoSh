@@ -1,6 +1,6 @@
 # quietcli2-readytorun.yml
 
-<!-- workflow-source-sha256: 4D26349E5B5758F4AB10870A550B2502C13A04363961E1BD76254146C6A7D481 -->
+<!-- workflow-source-sha256: 91321E732F2E78E22145DB8FE61F9A60E03017E4026E04F4BA0795CE1BDB9222 -->
 
 ## Purpose
 
@@ -19,7 +19,7 @@ The reviewed setup-dotnet steps read the checked-out global.json through global-
 
 ## Measurement and artifacts
 
-Windows and Linux restore pinned Core resources before building the IL baseline and copying it into the ReadyToRun candidate. Both variants carry the native runtime files that Core verifies on engine startup. Windows and native Linux run paired A/B directly by default and save source-bound reports. Instrumentation runs outside timed samples. [Report and dispatch guide](../../README-readytorun_profiling.md)
+Windows and Linux restore pinned Core resources. Manual runs build the IL baseline and its ReadyToRun candidate locally. PR runs download both sets of binaries from the shared producer and assemble the IL baseline and single-RID candidate without compiling in the profiling jobs. Windows and native Linux run paired A/B directly by default and save source-bound reports. Instrumentation runs outside timed samples. [Report and dispatch guide](../../README-readytorun_profiling.md)
 
 Linux comparisons wait for the Core image handoff. A PR reuses its workspace producer. A standalone dispatch calls the same producer for Core. The Linux runner verifies the archive or registry image before executing the comparison. [Linux CI images](../linux-images.md)
 

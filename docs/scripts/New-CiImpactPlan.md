@@ -57,6 +57,8 @@ Outputs are written once each, in a stable order:
 | `run_tooling` | Whether `tooling-ci.yml` runs at all. |
 | `image_suites` | JSON array of suites needed by the shared Linux producer. Fully qualified suites contribute their image chains. Selecting ReadyToRun also includes Core. A renewal-only PR selects all declared product image chains. |
 | `renew_image_caches` | `true` when the PR requests a fresh Linux image cache. |
+| `run_shared_build` | A selected product, smoke, distribution, benchmark, companion or tooling check uses shared compiled binaries. |
+| `tooling_requires_build` | Complete tooling or a selected script test needs compiled binaries. |
 | `run_distribution` | The distribution campaign. |
 | `run_layout` | Whether `layout-tests` runs. It is false only when script tests are the whole plan. |
 | `run_smokes`, `smoke_suites` | The dependent smokes. |

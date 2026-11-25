@@ -55,6 +55,8 @@ jobs:
       tooling_scope: ${{ steps.plan.outputs.tooling_scope }}
       script_tests: ${{ steps.plan.outputs.script_tests }}
       script_mutation_targets: ${{ steps.plan.outputs.script_mutation_targets }}
+      run_shared_build: ${{ steps.plan.outputs.run_shared_build }}
+      tooling_requires_build: ${{ steps.plan.outputs.tooling_requires_build }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {fetch-depth: 0, persist-credentials: false}
@@ -95,6 +97,69 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with: {name: quietcli-layout-tests, path: artifacts/layout-tests}
+  build:
+    name: Build shared PR distributions
+    needs: [plan, source-checks]
+    if: github.event_name == 'pull_request' && needs.plan.outputs.run_shared_build == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 35
+    outputs:
+      artifact: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: ./.github/actions/setup-powershell
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: build_cache
+        with:
+          path: artifacts/ci-build
+          key: quietcli-pr-build-v1-${{ github.sha }}-${{ needs.plan.outputs.run_products }}-${{ needs.plan.outputs.run_readytorun }}
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        if: steps.build_cache.outputs.cache-hit != 'true'
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            Directory.Packages.props
+            Directory.Build.props
+            global.json
+      - uses: ./.github/actions/cache-resources
+        if: steps.build_cache.outputs.cache-hit != 'true'
+      - name: Compile the solution and prepare the selected engine variants
+        if: steps.build_cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        env:
+          PRODUCTS: ${{ needs.plan.outputs.run_products }}
+          BASELINE: ${{ needs.plan.outputs.run_readytorun }}
+        run: |
+          ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
+          ./scripts/Initialize-Workspace.ps1 -Restore
+          $parameters=@{Configuration='Release'}
+          if($env:PRODUCTS -ceq 'true' -or $env:BASELINE -ceq 'true'){
+            Import-Module ./scripts/lib/RuntimeTargets.psm1 -DisableNameChecking -ErrorAction Stop
+            $parameters.ReadyToRun=$true
+            $parameters.ReadyToRunRuntimeIdentifier=@((Get-QuietRuntimeTargets $PWD.Path).Rid)
+          }
+          if($env:BASELINE -ceq 'true'){$parameters.ReadyToRunBaselineDirectory='artifacts/ci-build-baseline'}
+          ./scripts/Build-Workspace.ps1 @parameters
+          ./scripts/Sync-CiBuildArtifact.ps1 -Mode Export -Baseline:($env:BASELINE -ceq 'true')
+      - name: Verify the revision and archive checksum
+        shell: pwsh
+        run: ./scripts/Sync-CiBuildArtifact.ps1 -Mode Verify
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        id: upload
+        with:
+          name: quietcli-pr-build-${{ github.sha }}-attempt${{ github.run_attempt }}
+          path: artifacts/ci-build
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.build_cache.outputs.cache-hit != 'true'
+        with:
+          path: artifacts/ci-build
+          key: ${{ steps.build_cache.outputs.cache-primary-key }}
   images:
     name: Prepare shared Linux images
     needs: [plan, source-checks]
@@ -108,8 +173,8 @@ jobs:
       publish_cache: ${{ github.repository == 'FrenchExDev2/QuietCli.PoSh' && github.ref == 'refs/heads/develop' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
   products:
     name: Qualify ${{ matrix.suite }}
-    needs: [plan, source-checks, layout-tests, images]
-    if: ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && needs.layout-tests.result == 'success' && needs.images.result == 'success' && needs.plan.outputs.run_products == 'true' }}
+    needs: [plan, source-checks, layout-tests, images, build]
+    if: ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && needs.layout-tests.result == 'success' && needs.images.result == 'success' && needs.plan.outputs.run_products == 'true' && (github.event_name != 'pull_request' || needs.build.outputs.artifact != '') }}
     strategy:
       fail-fast: false
       max-parallel: 4
@@ -127,10 +192,11 @@ jobs:
       run_preview: ${{ matrix.run_preview }}
       run_tooling: false
       images_prepared: ${{ needs.images.result == 'success' }}
+      build_artifact: ${{ needs.build.outputs.artifact }}
   smokes:
     name: Dependent smoke (${{ matrix.runner }})
-    needs: [plan, source-checks, layout-tests]
-    if: needs.plan.outputs.run_smokes == 'true'
+    needs: [plan, source-checks, layout-tests, build]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && needs.layout-tests.result == 'success' && needs.plan.outputs.run_smokes == 'true' && (github.event_name != 'pull_request' || needs.build.outputs.artifact != '') }}
     strategy:
       fail-fast: false
       matrix:
@@ -141,10 +207,11 @@ jobs:
       qualification_mode: smoke
       suites_json: ${{ needs.plan.outputs.smoke_suites }}
       runner: ${{ matrix.runner }}
+      build_artifact: ${{ needs.build.outputs.artifact }}
   tooling-only:
-    needs: [plan, source-checks, layout-tests]
+    needs: [plan, source-checks, layout-tests, build]
     # A scripts-only plan skips layout-tests; any other plan still requires it to pass first.
-    if: ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && (needs.layout-tests.result == 'success' || (needs.layout-tests.result == 'skipped' && needs.plan.outputs.run_layout == 'false')) && needs.plan.outputs.run_tooling == 'true' }}
+    if: ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && (needs.layout-tests.result == 'success' || (needs.layout-tests.result == 'skipped' && needs.plan.outputs.run_layout == 'false')) && needs.plan.outputs.run_tooling == 'true' && (github.event_name != 'pull_request' || needs.plan.outputs.tooling_requires_build == 'false' || needs.build.outputs.artifact != '') }}
     uses: ./.github/workflows/tooling-ci.yml
     with:
       scope: ${{ needs.plan.outputs.tooling_scope }}
@@ -152,9 +219,10 @@ jobs:
       script_mutation_targets: ${{ needs.plan.outputs.script_mutation_targets }}
       mutation_parallel: ${{ needs.plan.outputs.mutation_parallel == 'true' }}
       script_mutation_no_input_cache: ${{ needs.plan.outputs.script_mutation_no_input_cache == 'true' }}
+      build_artifact: ${{ needs.build.outputs.artifact }}
   companion-checks:
-    needs: [plan, source-checks, layout-tests]
-    if: needs.plan.outputs.run_companion_checks == 'true'
+    needs: [plan, source-checks, layout-tests, build]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && needs.layout-tests.result == 'success' && needs.plan.outputs.run_companion_checks == 'true' && (github.event_name != 'pull_request' || needs.plan.outputs.run_shared_build == 'false' || needs.build.outputs.artifact != '') }}
     strategy:
       fail-fast: false
       max-parallel: ${{ needs.plan.outputs.mutation_parallel == 'true' && 6 || 1 }}
@@ -164,21 +232,26 @@ jobs:
       suite: ${{ matrix.suite }}
       campaign: ${{ matrix.campaign }}
       mutation_parallel: ${{ needs.plan.outputs.mutation_parallel == 'true' }}
+      build_artifact: ${{ needs.build.outputs.artifact }}
   distribution:
-    needs: [plan, source-checks, layout-tests]
-    if: needs.plan.outputs.run_distribution == 'true'
-    uses: ./.github/workflows/distribution-ci.yml
+    needs: [plan, source-checks, layout-tests, build]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && needs.layout-tests.result == 'success' && needs.plan.outputs.run_distribution == 'true' && (github.event_name != 'pull_request' || needs.build.outputs.artifact != '') }}
+    uses: ./.github/workflows/workspace-component-ci.yml
+    with:
+      suite: Distribution
+      build_artifact: ${{ needs.build.outputs.artifact }}
   readytorun:
-    needs: [plan, source-checks, layout-tests, images]
-    if: needs.plan.outputs.run_readytorun == 'true'
+    needs: [plan, source-checks, layout-tests, images, build]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.source-checks.result == 'success' && needs.layout-tests.result == 'success' && needs.images.result == 'success' && needs.plan.outputs.run_readytorun == 'true' && (github.event_name != 'pull_request' || needs.build.outputs.artifact != '') }}
     permissions: {contents: read, packages: read}
     uses: ./.github/workflows/quietcli2-readytorun.yml
     with:
       require_complete: true
       images_prepared: true
+      build_artifact: ${{ needs.build.outputs.artifact }}
   ci-status:
     name: QuietCli required CI
-    needs: [plan, source-checks, layout-tests, images, products, smokes, tooling-only, companion-checks, distribution, readytorun]
+    needs: [plan, source-checks, layout-tests, build, images, products, smokes, tooling-only, companion-checks, distribution, readytorun]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

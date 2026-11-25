@@ -1,6 +1,6 @@
 # companions-ci.yml
 
-<!-- workflow-source-sha256: 8EFEF452E81E07906C74391FE895857CFE0C3992EA19084868646BF3059099E5 -->
+<!-- workflow-source-sha256: CED6FEF283537FC749F56DFFFDA7753D1B5F5D065FB51162429C587099B3DA49 -->
 
 ## Purpose
 
@@ -26,7 +26,9 @@ Selected campaigns wait for successful planning, source checks and layout valida
 
 When the plan selects products, ReadyToRun or image cache renewal, the `images` job calls the shared image workflow once for the run. Four native jobs prepare the selected chains and upload one handoff per RID. `products` and `readytorun` restore or load the identified images. Checking **Renew images caches** forces fresh images and records the option in the CI plan. Registry publication is restricted to upstream develop pushes and dispatches. A failed producer blocks its consumers and fails the required status.
 
-Uses profile validation, source-bound build preparation, explicit selected qualification/smoke entry points and private artifacts. The PR planner publishes plan.json and impact.md; build_projects_json passes affected CSharp paths to Build-Workspace. GitHub may prepare pinned SDK/PowerShell resources and verified image caches. No module publication or repository setting change is performed here.
+For a PR with a selected binary consumer, the `build` job on Windows x64 compiles the Release solution once and prepares the declared libraries. Product and benchmark plans request the six ReadyToRun RIDs. Benchmarks also request the six IL apphost publications. The job verifies the archive's checkout SHA and checksum after either building or restoring an exact cache entry. It uploads the archive for the current run and passes its immutable artifact ID to product, smoke, distribution, tooling and profiling consumers. Plans containing only source checks and source-only campaigns skip the build job.
+
+The PR planner publishes plan.json and impact.md with the affected project paths and test scopes. Test runners still qualify the planned suites, host modes and native RIDs. Standalone and develop invocations retain their own build/cache path. The Git-absent Core build and mutation builds still execute in their isolated source copies.
 
 ## Validation and limits
 
@@ -45,6 +47,7 @@ Generated from the workflow by Sync-GitHubWorkflowsReadme.ps1. Conditions can sk
 ~~~mermaid
 flowchart TD
     event["Triggers: pull_request, push, workflow_dispatch"]
+    job_build["build"]
     job_ci_status["ci-status"]
     job_companion_checks["companion-checks"]
     job_distribution["distribution"]
@@ -56,9 +59,12 @@ flowchart TD
     job_smokes["smokes"]
     job_source_checks["source-checks"]
     job_tooling_only["tooling-only"]
+    job_plan --> job_build
+    job_source_checks --> job_build
     job_plan --> job_ci_status
     job_source_checks --> job_ci_status
     job_layout_tests --> job_ci_status
+    job_build --> job_ci_status
     job_images --> job_ci_status
     job_products --> job_ci_status
     job_smokes --> job_ci_status
@@ -69,9 +75,11 @@ flowchart TD
     job_plan --> job_companion_checks
     job_source_checks --> job_companion_checks
     job_layout_tests --> job_companion_checks
+    job_build --> job_companion_checks
     job_plan --> job_distribution
     job_source_checks --> job_distribution
     job_layout_tests --> job_distribution
+    job_build --> job_distribution
     job_plan --> job_images
     job_source_checks --> job_images
     job_plan --> job_layout_tests
@@ -80,32 +88,37 @@ flowchart TD
     job_source_checks --> job_products
     job_layout_tests --> job_products
     job_images --> job_products
+    job_build --> job_products
     job_plan --> job_readytorun
     job_source_checks --> job_readytorun
     job_layout_tests --> job_readytorun
     job_images --> job_readytorun
+    job_build --> job_readytorun
     job_plan --> job_smokes
     job_source_checks --> job_smokes
     job_layout_tests --> job_smokes
+    job_build --> job_smokes
     event --> job_source_checks
     job_plan --> job_tooling_only
     job_source_checks --> job_tooling_only
     job_layout_tests --> job_tooling_only
+    job_build --> job_tooling_only
 ~~~
 
 | Job | Execution | Needs | Condition | Script entry points |
 | --- | --- | --- | --- | --- |
-| ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, images, products, smokes, tooling-only, companion-checks, distribution, readytorun | <code>&#36;{{ always() }}</code> | [`./scripts/Assert-CiPlanResults.ps1`](../../scripts/Assert-CiPlanResults.md) |
-| companion-checks | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;companion&#95;checks == 'true'</code> |  |
-| distribution | reuses ./.github/workflows/distribution-ci.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;distribution == 'true'</code> |  |
+| build | runner windows-latest | plan, source-checks | <code>github.event&#95;name == 'pull&#95;request' &#38;&#38; needs.plan.outputs.run&#95;shared&#95;build == 'true'</code> | [`./scripts/Initialize-CiEnvironment.ps1`](../../scripts/Initialize-CiEnvironment.md), [`./scripts/Initialize-Workspace.ps1`](../../scripts/Initialize-Workspace.md), [`./scripts/lib/RuntimeTargets.psm1`](../../scripts/lib/RuntimeTargets.md), [`./scripts/Build-Workspace.ps1`](../../scripts/Build-Workspace.md), [`./scripts/Sync-CiBuildArtifact.ps1`](../../scripts/Sync-CiBuildArtifact.md) |
+| ci-status | runner ubuntu-latest | plan, source-checks, layout-tests, build, images, products, smokes, tooling-only, companion-checks, distribution, readytorun | <code>&#36;{{ always() }}</code> | [`./scripts/Assert-CiPlanResults.ps1`](../../scripts/Assert-CiPlanResults.md) |
+| companion-checks | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests, build | <code>&#36;{{ !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; needs.layout-tests.result == 'success' &#38;&#38; needs.plan.outputs.run&#95;companion&#95;checks == 'true' &#38;&#38; (github.event&#95;name != 'pull&#95;request' &#124;&#124; needs.plan.outputs.run&#95;shared&#95;build == 'false' &#124;&#124; needs.build.outputs.artifact != '') }}</code> |  |
+| distribution | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests, build | <code>&#36;{{ !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; needs.layout-tests.result == 'success' &#38;&#38; needs.plan.outputs.run&#95;distribution == 'true' &#38;&#38; (github.event&#95;name != 'pull&#95;request' &#124;&#124; needs.build.outputs.artifact != '') }}</code> |  |
 | images | reuses ./.github/workflows/linux-images.yml | plan, source-checks | <code>needs.plan.outputs.run&#95;products == 'true' &#124;&#124; needs.plan.outputs.run&#95;readytorun == 'true' &#124;&#124; needs.plan.outputs.renew&#95;image&#95;caches == 'true'</code> |  |
 | layout-tests | runner windows-latest | plan | <code>needs.plan.outputs.run&#95;layout == 'true'</code> | [`./scripts/Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.md), [`./scripts/Invoke-WorkspaceCi.ps1`](../../scripts/Invoke-WorkspaceCi.md) |
 | plan | runner ubuntu-latest |  | default success condition | [`./scripts/Invoke-GitHubCiPlan.ps1`](../../scripts/Invoke-GitHubCiPlan.md) |
-| products | reuses ./.github/workflows/ci.yml | plan, source-checks, layout-tests, images | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; needs.layout-tests.result == 'success' &#38;&#38; needs.images.result == 'success' &#38;&#38; needs.plan.outputs.run&#95;products == 'true' }}</code> |  |
-| readytorun | reuses ./.github/workflows/quietcli2-readytorun.yml | plan, source-checks, layout-tests, images | <code>needs.plan.outputs.run&#95;readytorun == 'true'</code> |  |
-| smokes | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests | <code>needs.plan.outputs.run&#95;smokes == 'true'</code> |  |
+| products | reuses ./.github/workflows/ci.yml | plan, source-checks, layout-tests, images, build | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; needs.layout-tests.result == 'success' &#38;&#38; needs.images.result == 'success' &#38;&#38; needs.plan.outputs.run&#95;products == 'true' &#38;&#38; (github.event&#95;name != 'pull&#95;request' &#124;&#124; needs.build.outputs.artifact != '') }}</code> |  |
+| readytorun | reuses ./.github/workflows/quietcli2-readytorun.yml | plan, source-checks, layout-tests, images, build | <code>&#36;{{ !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; needs.layout-tests.result == 'success' &#38;&#38; needs.images.result == 'success' &#38;&#38; needs.plan.outputs.run&#95;readytorun == 'true' &#38;&#38; (github.event&#95;name != 'pull&#95;request' &#124;&#124; needs.build.outputs.artifact != '') }}</code> |  |
+| smokes | reuses ./.github/workflows/workspace-component-ci.yml | plan, source-checks, layout-tests, build | <code>&#36;{{ !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; needs.layout-tests.result == 'success' &#38;&#38; needs.plan.outputs.run&#95;smokes == 'true' &#38;&#38; (github.event&#95;name != 'pull&#95;request' &#124;&#124; needs.build.outputs.artifact != '') }}</code> |  |
 | source-checks | runner ubuntu-latest |  | default success condition | [`./scripts/Invoke-WorkspaceChecks.ps1`](../../scripts/Invoke-WorkspaceChecks.md) |
-| tooling-only | reuses ./.github/workflows/tooling-ci.yml | plan, source-checks, layout-tests | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; (needs.layout-tests.result == 'success' &#124;&#124; (needs.layout-tests.result == 'skipped' &#38;&#38; needs.plan.outputs.run&#95;layout == 'false')) &#38;&#38; needs.plan.outputs.run&#95;tooling == 'true' }}</code> |  |
+| tooling-only | reuses ./.github/workflows/tooling-ci.yml | plan, source-checks, layout-tests, build | <code>&#36;{{ always() &#38;&#38; !cancelled() &#38;&#38; needs.plan.result == 'success' &#38;&#38; needs.source-checks.result == 'success' &#38;&#38; (needs.layout-tests.result == 'success' &#124;&#124; (needs.layout-tests.result == 'skipped' &#38;&#38; needs.plan.outputs.run&#95;layout == 'false')) &#38;&#38; needs.plan.outputs.run&#95;tooling == 'true' &#38;&#38; (github.event&#95;name != 'pull&#95;request' &#124;&#124; needs.plan.outputs.tooling&#95;requires&#95;build == 'false' &#124;&#124; needs.build.outputs.artifact != '') }}</code> |  |
 
 <!-- workflow-generated:end -->
 

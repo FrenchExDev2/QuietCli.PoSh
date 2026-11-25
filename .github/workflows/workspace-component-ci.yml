@@ -2,6 +2,10 @@ name: QuietCli component build and smoke
 on:
   workflow_call:
     inputs:
+      build_artifact:
+        description: ID of the optional shared PR build artifact
+        type: string
+        default: ''
       suite:
         type: string
         required: true
@@ -58,6 +62,8 @@ jobs:
     needs: validate
     if: inputs.suite == 'Tooling' && inputs.qualification_mode == 'full'
     uses: ./.github/workflows/tooling-ci.yml
+    with:
+      build_artifact: ${{ inputs.build_artifact }}
   component:
     needs: validate
     if: inputs.suite != 'Tooling' || inputs.qualification_mode != 'full'
@@ -84,6 +90,7 @@ jobs:
           ./scripts/Initialize-CiEnvironment.ps1 -Target GitHub -ContainerRuntime docker -Confirm:$false
           ./scripts/Initialize-Workspace.ps1 -Restore
       - name: Compute selected build cache key
+        if: inputs.build_artifact == ''
         id: build_key
         shell: pwsh
         env:
@@ -91,10 +98,15 @@ jobs:
           SUITES_JSON: ${{ inputs.suites_json }}
         run: ./scripts/Get-CompanionBuildKey.ps1 -Suite $env:SUITE -SuitesJson $env:SUITES_JSON -OutputPath $env:GITHUB_OUTPUT
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: inputs.build_artifact == ''
         with:
           path: src/**/lib/
           key: ${{ steps.build_key.outputs.cache_key }}
           restore-keys: ${{ steps.build_key.outputs.cache_prefix }}
+      - uses: ./.github/actions/load-ci-build
+        if: inputs.build_artifact != '' && inputs.campaign != 'mutation' && inputs.campaign != 'profiled-mutation'
+        with:
+          artifact: ${{ inputs.build_artifact }}
       - name: Run the selected component check
         id: campaign
         shell: pwsh
@@ -107,7 +119,8 @@ jobs:
           SUITES_JSON: ${{ inputs.suites_json }}
           CAMPAIGN: ${{ inputs.campaign }}
           MUTATION_PARALLEL: ${{ inputs.mutation_parallel }}
-        run: ./scripts/Invoke-ComponentCheck.ps1 -Suite $env:SUITE -QualificationMode $env:MODE -SolutionPath $env:SOLUTION -SourcePath $env:SOURCE -TestPath $env:TEST -SuitesJson $env:SUITES_JSON -Campaign $env:CAMPAIGN -Parallel:($env:MUTATION_PARALLEL -ceq 'true') -RunDirectory ./artifacts/component
+          BUILD_ARTIFACT: ${{ inputs.build_artifact }}
+        run: ./scripts/Invoke-ComponentCheck.ps1 -Suite $env:SUITE -QualificationMode $env:MODE -SolutionPath $env:SOLUTION -SourcePath $env:SOURCE -TestPath $env:TEST -SuitesJson $env:SUITES_JSON -Campaign $env:CAMPAIGN -Parallel:($env:MUTATION_PARALLEL -ceq 'true') -RunDirectory ./artifacts/component -SkipBuild:([bool]$env:BUILD_ARTIFACT)
       - name: Render companion campaign results
         if: always() && inputs.campaign != 'qualification' && steps.campaign.outcome != '' && steps.campaign.outcome != 'skipped'
         shell: pwsh

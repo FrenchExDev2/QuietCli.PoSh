@@ -108,6 +108,7 @@ file by hand, run:
 - [`Show-ColdStartMatrixReport.ps1`](../../scripts/Show-ColdStartMatrixReport.ps1) -> [documentation](Show-ColdStartMatrixReport.md)
 - [`Show-ColdStartReport.ps1`](../../scripts/Show-ColdStartReport.ps1) -> [documentation](Show-ColdStartReport.md)
 - [`Start-QuietWorkBranch.ps1`](../../scripts/Start-QuietWorkBranch.ps1) -> [documentation](Start-QuietWorkBranch.md)
+- [`Sync-CiBuildArtifact.ps1`](../../scripts/Sync-CiBuildArtifact.ps1) -> [documentation](Sync-CiBuildArtifact.md)
 - [`Sync-CompanionWorkflows.ps1`](../../scripts/Sync-CompanionWorkflows.ps1) -> [documentation](Sync-CompanionWorkflows.md)
 - [`Sync-Credits.ps1`](../../scripts/Sync-Credits.ps1) -> [documentation](Sync-Credits.md)
 - [`Sync-DevelopmentEditorExtensions.ps1`](../../scripts/Sync-DevelopmentEditorExtensions.ps1) -> [documentation](Sync-DevelopmentEditorExtensions.md)
