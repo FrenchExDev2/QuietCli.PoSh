@@ -30,12 +30,6 @@ Parameters: `-WorkspaceRoot` defaults to the repository; `-WrkflwPath` is mandat
 to `podman`. `-TimeoutSeconds` defaults to 180 (range 1–1800); `-RunDirectory` selects a new report
 directory. `-Worker` is internal; use the monitored launcher. `-WhatIf` starts no process.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -67,3 +61,9 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

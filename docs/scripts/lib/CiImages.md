@@ -70,12 +70,6 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 ## Explicit library dependencies
 
 Imports Common explicitly for runtime resolution, native orchestration and metadata receipts; callers do not need to inject those functions into a shared scope.
@@ -93,3 +87,9 @@ See the [layout and selective-CI contract](
 ../../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

@@ -20,12 +20,6 @@ Without `-Merge` the facade waits for a manual merge until `-TimeoutMinutes` (12
 
 Imports its local library using `-DisableNameChecking -ErrorAction Stop` and invokes `Invoke-QuietScriptInvokeQuietRelease` with the bound parameters. Requires a clean checkout at the repository root, the local Core/Git modules, the GitHub CLI with existing credentials, and permission to push `release/*` branches and release tags. It never forces a push, uses `--admin`, enables auto-merge or pushes the delivery branch. Branch protection on GitHub stays authoritative for the merge.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -35,3 +29,9 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

@@ -60,12 +60,6 @@ pwsh -File ./scripts/Invoke-GitHubRunWorker.ps1 -RunId 123456789 -Repository Fre
 
 Fit for purpose and notably careful about secrets/data minimization (no token handling, narrow jq projections, bounded buffer). The two concrete gaps worth prioritizing are: missing pagination beyond 100 jobs (line 37) for workflows with larger matrices, and the non-configurable 58-minute deadline (line 34) that can produce a false "Timeout" for legitimately longer-running remote workflows.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -87,3 +81,9 @@ See the [layout and selective-CI contract](
 ../../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

@@ -60,10 +60,10 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
 
+The library imports Ci.Process explicitly. Companion PR tests install their native adapter inside this module's own scope; they perform no GitHub mutations.
+
 <!-- credits:begin -->
 ## Credits
 
 This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
-
-The library imports Ci.Process explicitly. Companion PR tests install their native adapter inside this module's own scope; they perform no GitHub mutations.

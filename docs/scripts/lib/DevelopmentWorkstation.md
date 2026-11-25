@@ -88,12 +88,6 @@ The missing native ARM64 artifacts and workflow-semantic qualification remain ex
 
 The wrkflw download cache composes the installation root, downloads directory and pinned archive filename as separate System.IO.Path components. Offline installer assertions verify the exact cache path and extraction destination.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -115,3 +109,9 @@ See the [layout and selective-CI contract](
 ../../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

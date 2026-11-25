@@ -62,12 +62,6 @@ Fit for purpose as-is; this is a small, correct, well-isolated utility with its 
 
 Path components are passed separately to System.IO.Path.Combine, including the temporary QuietCli2/workspace/category and CI artifacts/category segments. Returned paths use native separators and remain stable across trailing-separator variants.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -77,3 +71,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

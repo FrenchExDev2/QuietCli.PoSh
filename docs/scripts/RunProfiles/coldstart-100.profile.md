@@ -45,12 +45,6 @@ None. This is a static data file; loading it has no side effects, and nothing in
 
 Fit for purpose as-is; this is a correctly-formed, minimal configuration record with no action needed. If anything, a one-line comment explaining the shared `Seed` choice with `coldstart-1000.profile.psd1` would be a nice-to-have, not a requirement.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -60,3 +54,9 @@ Boundary: **ProfileDefinition**. Preview API: **Unclassified**. Guarded function
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

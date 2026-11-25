@@ -124,14 +124,14 @@ flowchart TD
 
 See [companion layout and selective CI](../../README-companion-layout-and-ci.md).
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 ## Pull request checklist
 
 The script mutation cache checkbox passes `script_mutation_no_input_cache` to `tooling-ci.yml`. It changes how the selected script mutation shards run. Their selection still comes from the diff and the repository script mutation checkbox.
 
 PR description edits recompute the plan. Invoke-GitHubCiPlan passes the raw description to New-CiImpactPlan, and the required check verifies complete evidence from the selected jobs and the current PR. See [PR options](../../README-pull-request-ci.md).
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

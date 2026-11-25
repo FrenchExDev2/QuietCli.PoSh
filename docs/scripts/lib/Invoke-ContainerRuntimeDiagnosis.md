@@ -70,12 +70,6 @@ Example:
 
 Fit for purpose as a careful, narrowly-scoped diagnostic tool with good path-injection defenses; the main improvement is decoupling the cleanup-failure path (line 124) from the diagnosis's own success/failure state so a successful diagnosis is never masked as `'Failed'` purely due to a leaked container.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -97,3 +91,9 @@ See the [layout and selective-CI contract](
 ../../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

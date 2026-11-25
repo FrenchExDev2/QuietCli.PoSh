@@ -69,7 +69,9 @@ regardless of how deep the document lives under `docs/`.
 
 - No arguments: reports each file's compliance and writes nothing. Throws if anything is
   non-compliant.
-- `-Apply`: writes the missing or stale block into every non-compliant file.
+- `-Apply`: writes one current block at the end of every non-compliant file. The script
+  removes misplaced or duplicate generated blocks and keeps the surrounding Markdown,
+  including fenced examples.
 - `-Apply -WhatIf`: previews that write without touching any file.
 
 ## How: running it locally
@@ -124,5 +126,5 @@ system's own templates or wording, which belongs in the scripts themselves.
 <!-- credits:begin -->
 ## Credits
 
-This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of [Git](https://github.com/git/git/blob/master/COPYING), [Vagrant](https://github.com/hashicorp/vagrant/blob/main/LICENSE) and [Microsoft .NET/PowerShell](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt).
+This document is covered by the mandatory [CREDITS.md](../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->

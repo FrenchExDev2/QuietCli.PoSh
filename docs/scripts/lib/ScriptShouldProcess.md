@@ -38,12 +38,6 @@ Uses the host PowerShell parser and UTF-8 JSON policy. Scans .ps1/.psm1 sources 
 
 Enforces the standard preview API for new executable scripts, with explicit legacy scope and reviewed read-only exceptions.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 ## .NET tooling review
 
 The RAC-PS-003 placement guard at scripts/ScriptShouldProcess.psm1:80 rejects every scripts/**/*.psm1 outside scripts/lib before consulting the frozen legacy inventory. Declarative module initialization is limited to function definitions, strict mode, exports and an exact sibling-module import; executable initializer statements remain unclassified. The .NET Layout suite independently generates accepted/rejected initializer corpora and removes the placement guard in a targeted mutant. AST classification is not execution qualification.
@@ -59,3 +53,9 @@ See [the complete review](../preview-support.md) for orchestration guards, deleg
 <!-- script-contract:end -->
 
 Read-only property projections use script blocks so metadata remains available during WhatIf; mutating operations retain their existing operation guards.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

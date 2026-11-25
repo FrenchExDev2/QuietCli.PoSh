@@ -45,12 +45,6 @@ None. Static data file; no side effects from loading it.
 
 Fit for purpose as-is; the parameter scaling between the two profiles is coherent and deliberate. The only improvement worth considering — shared with `coldstart-100.profile.psd1` — is adding a small regression test that validates every committed `.profile.psd1` file against its target script's current parameter set, so drift is caught by CI rather than by a failed benchmark run.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -60,3 +54,9 @@ Boundary: **ProfileDefinition**. Preview API: **Unclassified**. Guarded function
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

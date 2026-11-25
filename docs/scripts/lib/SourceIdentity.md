@@ -54,12 +54,6 @@ External resources retain their dedicated pinned manifests. See
 [source identity](../../README-source-identity.md). The commit integration campaign asserts
 that an uncommitted edit changes the digest without changing the committed revision/tree.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 ## Portable toolchain and backup boundary
 
 scripts/SourceIdentity.psm1 prunes .dotnet before traversal and hashing, and excludes the
@@ -92,3 +86,9 @@ See the [layout and selective-CI contract](
 ../../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

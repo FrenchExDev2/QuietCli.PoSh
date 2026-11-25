@@ -48,10 +48,10 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 1.
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
 
+Read-only property projections use script blocks so metadata remains available during WhatIf; mutating operations retain their existing operation guards.
+
 <!-- credits:begin -->
 ## Credits
 
 This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
 <!-- credits:end -->
-
-Read-only property projections use script blocks so metadata remains available during WhatIf; mutating operations retain their existing operation guards.

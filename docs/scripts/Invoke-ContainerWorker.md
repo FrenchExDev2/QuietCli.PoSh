@@ -101,12 +101,6 @@ pwsh -File ./scripts/Invoke-ContainerWorker.ps1 -WorkspaceRoot C:\repo -RunDirec
 
 Fit for purpose, with careful cross-checks for the higher-risk `Mutation` suite. The highest-priority improvement is making the 360-second guest-test deadline (line 95) and the `Mutation` suite's 1GB memory limit (line 87) configurable, since their current fixed combination risks flaky failures on larger fuzz/mutation workloads with no way to tune it without editing this script.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -138,3 +132,9 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

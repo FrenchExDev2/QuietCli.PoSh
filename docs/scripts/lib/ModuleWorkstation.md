@@ -53,12 +53,6 @@ if ($status.State -eq 'NeedsInstallation') { Install-ModuleWorkstationTool -Name
 
 The module is small, reuses existing logic reasonably, and has no obvious bugs, but it has zero dedicated test coverage (unlike its sibling `DevelopmentWorkstation.psm1`) and leans on a fragile module-private-function-reach-through pattern that should be replaced with a proper shared/exported API. Highest-priority fix: add a Pester test file covering `Get-ModuleWorkstationArtifact`'s platform/version validation, since that is pure logic with zero current coverage.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -68,3 +62,9 @@ Boundary: **Library**. Preview API: **Unclassified**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

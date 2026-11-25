@@ -57,12 +57,6 @@ Complete-WorkstationRun -RunDirectory $runDir -State 'Succeeded'
 
 Solid and conscientiously safety-first in design (fail-closed ownership checks, no force/prune, atomic receipt writes, reparse-point rejection); the highest-priority fix is replacing the inline UTF-8 encoding in `Write-WorkstationOwnership` (line 16) with the shared `RunEncoding.psm1::Write-RunTextFile`, both to eliminate the duplicated encoding policy and to pick up its LF normalization for free.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -72,3 +66,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

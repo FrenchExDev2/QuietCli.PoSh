@@ -48,12 +48,6 @@ Cross-compiles the native PTY bridge binary for Linux x64/ARM64 (both glibc and 
 
 Functionally careful (pinned/verified toolchain download, post-compile source-tamper check), but needs rework on two points: deduplicate the compile-argument list (line 47 vs. line 55) so the recorded manifest cannot drift from what was actually run, and add a minimal regression test — the total absence of test coverage for a script that rewrites a committed, security-relevant lock file is the single highest-priority fix.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-library-boundary:begin -->
 ## Automation library boundary
 
@@ -85,3 +79,9 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

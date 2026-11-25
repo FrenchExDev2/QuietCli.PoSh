@@ -47,12 +47,6 @@ None — every function is a pure formatter that returns a string or string arra
 
 The formatting primitives themselves (duration, size, quoting) are correct and convention-compliant, but `Format-RunTable`'s column-shrinking algorithm has two real edge cases — the undocumented first-column exemption and the break-instead-of-continue floor behavior — that can let a rendered table exceed its requested width, which is the opposite of what the shrinking logic exists to prevent; fixing the break-vs-continue behavior (try the next-widest shrinkable column before giving up) is the highest-priority improvement.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -62,3 +56,9 @@ Boundary: **Library**. Preview API: **Library**. Guarded functions: 0.
 
 See [the complete review](../preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

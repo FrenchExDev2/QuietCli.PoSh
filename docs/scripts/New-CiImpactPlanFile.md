@@ -23,12 +23,6 @@ Creates a UTF-8 file with the local working-tree CI job outputs from [New-CiImpa
 
 The wrapper publishes the destination after successful planning, so repeated calls produce one set of outputs. An unavailable comparison base fails before file creation. An editor discovery or launch failure leaves the generated file available at the reported path. Editor discovery follows the development editor helper's supported installations.
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- script-contract:begin -->
 ## Execution contract
 
@@ -40,3 +34,9 @@ See [the complete review](preview-support.md) for orchestration guards, delegate
 <!-- script-contract:end -->
 
 Use `-PullRequestBody (Get-Content -LiteralPath ./description.md -Raw -Encoding utf8)` to include the PR checklist in the local plan.
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

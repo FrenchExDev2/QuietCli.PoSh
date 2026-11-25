@@ -12,6 +12,8 @@ Check with `./scripts/Sync-ScriptContracts.ps1`; apply with `-Apply -WhatIf` or 
 
 Removes objective comment headers and automatic entry-point announcements from ps1 files; replaces remaining explicit objective-tagged progress with neutral progress text. Preserves existing granular guards and PlanOnly planning, adds missing executable orchestration guards, and regenerates mirrored contracts plus docs/scripts/preview-support.md. Purpose comes from comment-based help. Default mode detects drift; Apply supports WhatIf/Confirm and writes UTF-8/LF.
 
+New execution contracts are inserted before the generated credits footer when it is present.
+
 ## Critical review and verdict
 
 Source: [Sync-ScriptContracts.ps1:40](../../scripts/Sync-ScriptContracts.ps1#L40). Whole-operation preview avoids starting workers/builds but does not simulate native effects. Review the generated diff. Existing detailed supports/guards are not rewritten. Mirrored documentation must exist first.
@@ -38,12 +40,6 @@ Boundary: **Executable**. Preview API: **ShouldProcess**. Guarded functions: 0.
 See [the complete review](preview-support.md) for orchestration guards, delegated effects and static-analysis limits.
 <!-- script-contract:end -->
 
-<!-- credits:begin -->
-## Credits
-
-This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
-<!-- credits:end -->
-
 <!-- grouped-layout-review:begin -->
 ## Grouped workspace contract
 
@@ -55,3 +51,9 @@ See the [layout and selective-CI contract](
 ../README-companion-layout-and-ci.md
 ).
 <!-- grouped-layout-review:end -->
+
+<!-- credits:begin -->
+## Credits
+
+This document is covered by the mandatory [CREDITS.md](../../CREDITS.md), which records the licenses of all softwares which have QuietCli companions
+<!-- credits:end -->

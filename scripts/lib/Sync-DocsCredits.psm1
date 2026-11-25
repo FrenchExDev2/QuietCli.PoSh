@@ -9,7 +9,8 @@ end with a regex-identifiable block, surrounded by <!-- credits:begin --> / <!--
 markers, linking the mandatory CREDITS.md file. Default (no -Apply) mode only reports each file's
 compliance state and writes nothing. -Apply writes the missing or stale block into every
 non-compliant file, honoring -WhatIf/-Confirm through SupportsShouldProcess. -Apply -WhatIf
-previews exactly what -Apply would write.
+previews exactly what -Apply would write. Existing generated blocks are replaced by one footer
+at the end of the file, preserving the Markdown around them.
 The distributed docs/agents/AGENTS.md and SKILL.md use the public absolute credits URL because
 they must remain self-contained when copied into consumer projects; other docs use relative links.
 .PARAMETER DocsPath
@@ -46,12 +47,6 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-$beginMarker = '<!-- credits:begin -->'
-$endMarker = '<!-- credits:end -->'
-$blockRegex = [System.Text.RegularExpressions.Regex]::new(
-    [regex]::Escape($beginMarker) + '.*?' + [regex]::Escape($endMarker),
-    [System.Text.RegularExpressions.RegexOptions]::Singleline)
-
 if (-not (Test-Path -LiteralPath $DocsPath)) { throw "DocsPathMissing: $DocsPath" }
 if (-not (Test-Path -LiteralPath $RootPath)) { throw "RootPathMissing: $RootPath" }
 if (-not (Test-Path -LiteralPath $CreditsPath)) { throw "CreditsFileMissing: $CreditsPath" }
@@ -72,20 +67,22 @@ $report = foreach ($file in $files) {
     $creditsTarget = if ($file.FullName -in $portableAgentDocs) {
         'https://github.com/FrenchExDev2/QuietCli.PoSh/blob/HEAD/CREDITS.md'
     } else { $creditsRelative }
-    $expectedBlock = Format-QuietDocsCreditsBlock -Link $creditsTarget
-
-    $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
-    $match = $blockRegex.Match($content)
-    $state = if (-not $match.Success) { 'Missing' }
-             elseif ($match.Value.Trim() -ne $expectedBlock.Trim()) { 'Stale' }
+    $content = [IO.File]::ReadAllTextAsync($file.FullName, $utf8NoBom).GetAwaiter().GetResult()
+    $lineEnding = [regex]::Match($content, '\r?\n').Value
+    if (!$lineEnding) { $lineEnding = "`n" }
+    $expectedBlock = (Format-QuietDocsCreditsBlock -Link $creditsTarget).Replace("`n", $lineEnding)
+    $blocks = @(Get-QuietDocsCreditsBlocks -Content $content)
+    $state = if ($blocks.Count -eq 0) { 'Missing' }
+             elseif ($blocks.Count -ne 1 -or $content.Substring($blocks[0].Index).TrimEnd() -cne $expectedBlock) { 'Stale' }
              else { 'UpToDate' }
 
     if ($state -ne 'UpToDate' -and $Apply -and $PSCmdlet.ShouldProcess($file.FullName, "Write credits block ($state)")) {
-        $newContent = if ($match.Success) {
-            $content.Substring(0, $match.Index) + $expectedBlock + $content.Substring($match.Index + $match.Length)
-        } else {
-            $content.TrimEnd("`r", "`n") + "`n`n" + $expectedBlock + "`n"
+        foreach ($block in ($blocks | Sort-Object Index -Descending)) {
+            $content = $content.Remove($block.Index, $block.Length)
         }
+        $body = $content.TrimEnd("`r", "`n")
+        if ($body.Length) { $body += $lineEnding + $lineEnding }
+        $newContent = $body + $expectedBlock + $lineEnding
         [void][System.IO.File]::WriteAllTextAsync($file.FullName, $newContent, $utf8NoBom).GetAwaiter().GetResult()
         $state = "$state (Applied)"
     }
@@ -99,6 +96,30 @@ if ($nonCompliant) {
     throw ('DocsCreditsNonCompliant: ' + (($nonCompliant | ForEach-Object { "$($_.Path) ($($_.State))" }) -join '; '))
 }
 
+}
+
+function Get-QuietDocsCreditsBlocks {
+    <#
+    .SYNOPSIS
+    Finds complete top-level credits blocks and their trailing separator.
+    .PARAMETER Content
+    Markdown source. Literal markers in code examples and inline text are ignored.
+    #>
+    param([string]$Content)
+
+    $start = $null
+    $separatorPattern = [regex]::new('\G(?:\r?\n){0,2}')
+    $document = [Markdig.Markdown]::Parse($Content)
+    foreach ($node in [Linq.Enumerable]::OfType[Markdig.Syntax.HtmlBlock]($document)) {
+        $marker = $Content.Substring($node.Span.Start, $node.Span.Length).TrimEnd()
+        if ($marker -ceq '<!-- credits:begin -->') {
+            $start = $node.Span.Start
+        } elseif ($marker -ceq '<!-- credits:end -->' -and $null -ne $start) {
+            $separator = $separatorPattern.Match($Content, $node.Span.End + 1)
+            [pscustomobject]@{ Index = $start; Length = $separator.Index + $separator.Length - $start }
+            $start = $null
+        }
+    }
 }
 
 function Format-QuietDocsCreditsBlock {
